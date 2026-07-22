@@ -51,7 +51,7 @@ After this change the annotation states the real contract, so the type checker b
 
 ### Measurable Outcomes
 
-- **SC-001**: The static type gate passes for the git module with the corrected annotation — zero new type errors introduced.
+- **SC-001**: The static type gate passes with the corrected annotation — zero new type errors introduced. (Note: `infrahub.git.repository` runs under a mypy override that suppresses `return-value`, so a green gate for this module does not by itself prove the lie is fixed; the corrected annotation's enforcement value accrues to callers in other modules and to human readers, and it makes a future removal of that suppression meaningful.)
 - **SC-002**: The `merge()` and `rebase()` return annotations read `str | Literal[False]` (verifiable by inspection).
 - **SC-003**: 100% of the git component tests (`backend/tests/component/git/test_git_repository.py`) pass, confirming unchanged runtime behavior.
 - **SC-004**: The change set is confined to `backend/infrahub/git/repository.py` plus a `changelog/` fragment (and, only if strictly required by the type gate, minimal caller reconciliation) — with no changes to database schema, migrations, API contracts, authentication, dependencies, CI workflows, or generated files.
@@ -60,5 +60,5 @@ After this change the annotation states the real contract, so the type checker b
 
 - The only production caller of `merge()` discards its return value, and `rebase()` has no production callers, so no production-caller reconciliation is expected — to be confirmed by the type gate rather than assumed.
 - `str | Literal[False]` is the preferred annotation form: it matches the actual `return False` / `return str(...)` statements and the source SOLID analysis's recommendation. The looser `str | bool` is deliberately not used.
-- The project's static type configuration type-checks `backend/infrahub/git/`, so the type gate is a meaningful verification of this change.
+- `backend/infrahub/git/repository.py` is type-checked, but under a mypy override that disables `return-value` / `arg-type` / `assignment` / `call-overload`; the corrected annotation is therefore enforced primarily at external call sites and read by humans. Removing that suppression is a separate mypy-burndown item and is out of scope here.
 - No new tests are strictly required for an annotation-only change; the existing git component tests are the behavioral guard. A focused assertion may be added only if it clarifies the contract, and never references the tracking ticket.

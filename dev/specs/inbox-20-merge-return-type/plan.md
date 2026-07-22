@@ -82,6 +82,14 @@ No caller edits are anticipated (the sole production `merge()` caller discards i
 `rebase()` has no production callers), but the type gate is the authority — any site it flags is
 reconciled minimally with `isinstance(result, str)` narrowing.
 
+**mypy-suppression note**: `infrahub.git.repository` sits under a `[[tool.mypy.overrides]]` block
+that disables `return-value` (plus `arg-type`, `assignment`, `call-overload`). That suppression is
+why the lie went uncaught; it also means the corrected annotation is not enforced *inside* this
+module by mypy. The fix is still correct and valuable (callers in other modules and human readers),
+and it is a prerequisite for a future, separate card that removes the suppression. Removing the
+suppression now is explicitly **out of scope** — it would surface unrelated suppressed errors and
+expand the diff.
+
 ## Complexity Tracking
 
 > Not applicable — Constitution Check passed with no violations.
