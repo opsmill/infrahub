@@ -630,6 +630,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             if node.kind not in expected_map:
                 expected_map[node.kind] = NodeDiffFieldSummary(kind=node.kind)
             field_summary = expected_map[node.kind]
+            field_summary.node_uuids.add(node.uuid)
             attr_names = {a.name for a in node.attributes if a.action is not DiffAction.UNCHANGED}
             field_summary.attribute_names.update(attr_names)
             rel_names = {r.name for r in node.relationships if r.action is not DiffAction.UNCHANGED}

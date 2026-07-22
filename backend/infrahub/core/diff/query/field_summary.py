@@ -42,7 +42,7 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
         AND (diff_root.uuid = $diff_id OR $diff_id IS NULL)
         OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(n:DiffNode)
         WHERE n.action <> $unchanged_str
-        WITH DISTINCT n.kind AS kind
+        WITH n.kind AS kind, collect(DISTINCT n.uuid) AS node_uuids
         CALL (kind) {
             OPTIONAL MATCH (n:DiffNode {kind: kind})-[:DIFF_HAS_ATTRIBUTE]->(a:DiffAttribute)
             WHERE n.action <> $unchanged_str
@@ -50,7 +50,7 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
             WITH DISTINCT a.name AS attr_name
             RETURN collect(attr_name) AS attr_names
         }
-        WITH kind, attr_names
+        WITH kind, node_uuids, attr_names
         CALL (kind) {
             OPTIONAL MATCH (n:DiffNode {kind: kind})-[:DIFF_HAS_RELATIONSHIP]->(r:DiffRelationship)
             WHERE n.action <> $unchanged_str
@@ -61,16 +61,22 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
         """
         self.add_to_query(query=query)
         self.order_by = ["kind"]
-        self.return_labels = ["kind", "attr_names", "rel_names"]
+        self.return_labels = ["kind", "node_uuids", "attr_names", "rel_names"]
 
     async def get_field_summaries(self) -> list[NodeDiffFieldSummary]:
         field_summaries = []
         for result in self.get_results():
             kind = result.get_as_type(label="kind", return_type=str)
+            node_uuids = result.get_as_type(label="node_uuids", return_type=list[str])
             attr_names = result.get_as_type(label="attr_names", return_type=list[str])
             rel_names = result.get_as_type(label="rel_names", return_type=list[str])
             if attr_names or rel_names:
                 field_summaries.append(
-                    NodeDiffFieldSummary(kind=kind, attribute_names=set(attr_names), relationship_names=set(rel_names))
+                    NodeDiffFieldSummary(
+                        kind=kind,
+                        attribute_names=set(attr_names),
+                        relationship_names=set(rel_names),
+                        node_uuids=set(node_uuids),
+                    )
                 )
         return field_summaries
