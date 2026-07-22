@@ -78,6 +78,11 @@ The read-modify-write runs inside a per-owner distributed lock keyed on `owner_i
 observe "no row" and create a duplicate, and concurrent updates could lose writes. The read runs
 inside the lock so it observes any in-flight write for the same owner. Distinct owners never contend.
 
+This lock is an invariant, not an implementation detail of the upsert: **every path that mutates
+Preference rows — deletes included — must acquire the same per-owner lock**, because a mutation
+running outside it can interleave with the read-then-save above (e.g. a delete slipping between the
+read and the save gets silently undone by the save).
+
 ## Permissions
 
 | Path | Requirement |
