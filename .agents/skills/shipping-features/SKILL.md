@@ -61,7 +61,7 @@ skill adds **at the seam** between stages.
 
 | # | Stage | Canonical tools (do the work) | Output → external home | Orchestration added at the seam |
 |---|---|---|---|---|
-| 1 | **Intake** | `creating-issues`/`/create-issue` · `grilling-ideas`/`/grill-idea` · `creating-prd`/`/create-prd` | issue + PRD → **GitHub / Jira (JPD)** | **classify** type×size×risk; open `ship.md` index; **gate:** issue w/ clear scope; **checkpoint:** scope accepted → propose Jira *In design* |
+| 1 | **Intake** | `creating-issues`/`/create-jira-tickets` · `grilling-ideas`/`/grill-idea` · `creating-prd`/`/create-prd` | issue + PRD → **GitHub / Jira (JPD)** | **classify** type×size×risk; open `ship.md` index; **gate:** issue w/ clear scope; **checkpoint:** scope accepted → propose Jira *In design* |
 | 2 | **Prep** | `/speckit-opsmill-prep` = specify → plan → critique-run → tasks + alignment check *(or the granular skills on M/L)* | spec · plan · tasks → **`specs/<feature>/`** | **parallel** framings into specify/plan on `L`; **gate:** `tasks.md` exists, alignment clean, no `[NEEDS CLARIFICATION]`; **checkpoint** after each design decision |
 | 3 | **Implement** | `/speckit-opsmill-implement` = preflight → implement (↻ clean-context subagents) → review-run → report *(bug lane: `/bug-tdd` → `/bug-fix`)* | code + `opsmill-implement-report.md` → **`specs/<feature>/`** + git | **verify:** adversarial skeptic on the report + high-sev findings; **gate:** report clean + tests green; **checkpoint:** findings & fixes accepted |
 | 4 | **Delivery** | `/pre-ci` · `/pr` · `/pr-monitor` · review (spec & code) · `/qa` | PR + CI → **GitHub PR** | **gate:** CI green before PR; **parallel** split assessment ([phases/pr-split.md](phases/pr-split.md)); **checkpoint:** PR plan accepted → propose Jira *In review*; monitor loops back on red |
@@ -105,7 +105,7 @@ never auto-transition. If Jira is absent, record status in the `ship.md` index o
 
 ### Stage 1 — Intake
 Restate the ask in one sentence; classify (checkpoint). If no ticket and the project tracks work,
-offer `creating-issues` / `/create-issue`; harden a fuzzy idea with `grilling-ideas` / `creating-prd`.
+offer `creating-issues` / `/create-jira-tickets`; harden a fuzzy idea with `grilling-ideas` / `creating-prd`.
 **Pick the base branch deliberately:** before cutting, verify the code the ticket references
 actually exists on the intended base (`git ls-tree <base> -- <path>`) — follow-up tickets often
 reference modules that only exist on the integration branch (e.g. `develop`), not the default
@@ -114,11 +114,13 @@ branch. Then cut via `/speckit-git-feature` (validates Jira/JPD ref) or `git che
 whose base contains the referenced code. **Checkpoint:** scope accepted → propose Jira *In design*.
 
 ### Stage 2 — Prep
+- **bug:** `/bug-analyze` → ✓ root cause accepted. No spec/plan/tasks — the bug lane's gate is a
+  written root-cause analysis, not the feature/chore gate below.
 - **S (or opt-in):** `/speckit-opsmill-prep` hands-off → one checkpoint on the resulting `tasks.md`.
 - **M/L:** drive the granular skills with a checkpoint after each decision — `/speckit-specify` → ✓,
   `/speckit-plan` → ✓ (on `L`, **parallel** framings feed it), `speckit-critique-run` (gate),
   `/speckit-tasks` → ✓. Outputs land in `specs/<feature>/`.
-**Gate:** `tasks.md` exists, alignment check clean, no unresolved `[NEEDS CLARIFICATION]`.
+**Gate (feature/chore):** `tasks.md` exists, alignment check clean, no unresolved `[NEEDS CLARIFICATION]`.
 
 ### Stage 3 — Implement
 - **bug:** `/bug-tdd` (failing test) → `/bug-fix`.

@@ -13,7 +13,7 @@ Three axes. Write all three to the `ship.md` index.
 
 | Type | Signals | Lane across the 5 stages |
 |---|---|---|
-| `bug` | "broken", "regression", stack trace, failing test, "used to work" | light lane: issue → `/bug-analyze` → `/bug-tdd`→`/bug-fix` → PR |
+| `bug` | "broken", "regression", stack trace, failing test, "used to work" | light lane: issue → `/bug-analyze` → `/bug-tdd` → `/bug-fix` → PR |
 | `feature` | new capability, user story, "add", "support", "allow users to…" | full framework: Intake → Prep (`speckit-opsmill-prep`/granular) → Implement (`speckit-opsmill-implement`) → Delivery → Extract |
 | `chore` | refactor, dependency bump, rename, config, docs-only, cleanup | Intake (light) → direct edit → Delivery |
 
