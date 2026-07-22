@@ -96,7 +96,7 @@ Infrahub backend monolith: `backend/infrahub/...`; tests under `backend/tests/{u
 - [X] T034 [US3] Integration-docker test (recovery half) in `backend/tests/integration_docker/test_merge_kill_recovery.py`: after `MERGE_FAILED`, `infrahub recover --yes` → default-branch writes succeed, branch re-merges (SC-009).
 - [ ] T035 [US3] **[ASK-FIRST]** Add RANGE `IndexItem` entries for edge `from`/`to` + a node `updated_at` index in `backend/infrahub/core/graph/index.py` (research R8). **Jira IFC-2715**.
 - [ ] T036 [US3] **[ASK-FIRST]** Add the graph migration creating the new indexes (under `backend/infrahub/core/migrations/graph/`), bumping the graph version. **Jira IFC-2715**.
-- [ ] T037 [US3] **[ASK-FIRST]** Update schema-migration queries that bump vertex `updated_at/by` (e.g. `core/migrations/schema/attribute_kind_update.py`, `core/migrations/query/attribute_add.py`, `node_duplicate.py`, `node_remove.py`, …) to co-write `previous_updated_at/by`, mirroring `DiffMergeMetadataQuery` (research R8). **Jira IFC-2716**.
+- [X] T037 [US3] **[ASK-FIRST]** Update schema-migration queries that bump vertex `updated_at/by` (e.g. `core/migrations/schema/attribute_kind_update.py`, `core/migrations/query/attribute_add.py`, `node_duplicate.py`, `node_remove.py`, …) to co-write `previous_updated_at/by`, mirroring `DiffMergeMetadataQuery` (research R8). **Jira IFC-2716**.
 - [X] T038 [US3] Add a changelog fragment for **`infrahub recover`** under `changelog/`.
 
 **Checkpoint**: An operator can fully recover a failed merge and re-merge; metadata is restored; recovery is idempotent.
@@ -111,11 +111,11 @@ Infrahub backend monolith: `backend/infrahub/...`; tests under `backend/tests/{u
 
 **Independent Test**: Force a failed merge then recover it; the `MERGE_FAILED` state is visible via branch inspection, and the failure and the recovery each produce a locatable structured log entry.
 
-- [ ] T039 [US4] Emit the `merge.failure.detected` **structured log entry** (branch, `merge_started_at`, proposed_change, worker_id, source) from `detect_and_mark` in `backend/infrahub/core/merge/failure_recovery.py` (FR-026).
-- [ ] T040 [US4] Emit `merge.recovery.started`/`completed`/`failed` **structured log entries** (not message-bus events — the CLI has no bus) from `recover()`/the CLI in `failure_recovery.py` + `backend/infrahub/cli/recover.py` (FR-027, contracts §9).
-- [ ] T041 [P] [US4] Functional test in `backend/tests/functional/merge/test_merge_failed_visibility.py`: `MERGE_FAILED` observable via branch inspection (GraphQL enum auto-exposed; SDK mirror from T011) (FR-025, US4 #1).
-- [ ] T042 [P] [US4] Functional test in `backend/tests/functional/merge/test_merge_recovery_logging.py`: detection and recovery each produce a log entry locatable by branch name (SC-011, US4 #2/#3).
-- [ ] T043 [US4] Add a changelog fragment for **failed/recovered-merge visibility** under `changelog/`.
+- [X] T039 [US4] Emit the `merge.failure.detected` **structured log entry** (branch, `merge_started_at`, proposed_change, worker_id, source) from `detect_and_mark` in `backend/infrahub/core/merge/failure_recovery.py` (FR-026).
+- [X] T040 [US4] Emit `merge.recovery.started`/`completed`/`failed` **structured log entries** (not message-bus events — the CLI has no bus) from `recover()`/the CLI in `failure_recovery.py` + `backend/infrahub/cli/recover.py` (FR-027, contracts §9).
+- [X] T041 [P] [US4] Component test in `backend/tests/component/graphql/queries/test_branch.py` (`test_merge_failed_status_is_visible`): `MERGE_FAILED` observable via branch inspection through the auto-exposed GraphQL enum (FR-025, US4 #1). Folded into the existing GraphQL branch-query test rather than a standalone functional test — the visibility contract is end-to-end GraphQL serialization of the enum value, which a component test exercises directly.
+- [X] T042 [P] [US4] Logging assertions folded into the existing component tests that already drive the behavior (no standalone functional test): `merge.failure.detected` in `backend/tests/component/core/merge/test_failure_detection.py`, and `merge.recovery.started`/`completed`/`failed` in `backend/tests/component/core/merge/test_recovery.py`, each locatable by branch name via the shared `find_logged_event` helper in that dir's `conftest.py` (SC-011, US4 #2/#3).
+- [X] T043 [US4] Add a changelog fragment for **failed/recovered-merge visibility** under `changelog/`.
 
 **Checkpoint**: The failed state and its resolution are observable.
 
