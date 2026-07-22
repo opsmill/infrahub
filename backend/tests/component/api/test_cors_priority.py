@@ -16,10 +16,7 @@ _ORIGIN = "https://frontend.example"
 class _FakeLoadSignal:
     """Unstressed stand-in; the unconditional backstop sheds before the gate is consulted."""
 
-    def stress_ratio_min(self) -> float:
-        return 1.0
-
-    def stress_ratio_avg(self) -> float:
+    def stress_ratio_median(self) -> float:
         return 1.0
 
     def sample_count(self) -> int:

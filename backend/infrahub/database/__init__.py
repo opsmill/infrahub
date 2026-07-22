@@ -42,9 +42,6 @@ from infrahub.utils import InfrahubStringEnum
 from .load_signal import reference_query_load_tracker
 from .metrics import (
     CONNECTION_POOL_USAGE,
-    QUERY_AVAILABLE_AFTER_METRICS,
-    QUERY_AVAILABLE_AFTER_TRACKED_QUERIES,
-    QUERY_CONSUMED_AFTER_METRICS,
     QUERY_EXECUTION_METRICS,
     REFERENCE_QUERY_NAME,
     TRANSACTION_RETRIES,
@@ -419,16 +416,6 @@ class InfrahubDatabase:
                 if name == REFERENCE_QUERY_NAME and type == QueryType.READ:
                     reference_query_load_tracker.record(time.monotonic() - execution_start)
                 metadata = response._metadata or {}
-                available_after_ms = metadata.get("t_first", metadata.get("result_available_after"))
-                if available_after_ms is not None and name in QUERY_AVAILABLE_AFTER_TRACKED_QUERIES:
-                    consumed_after_ms = metadata.get("t_last", metadata.get("result_consumed_after"))
-                    QUERY_AVAILABLE_AFTER_METRICS.labels(
-                        type=labels["type"], runtime=labels["runtime"], query=name
-                    ).observe(available_after_ms / 1000)
-                    if consumed_after_ms is not None:
-                        QUERY_CONSUMED_AFTER_METRICS.labels(
-                            type=labels["type"], runtime=labels["runtime"], query=name
-                        ).observe(consumed_after_ms / 1000)
                 span.set_attribute("rows", len(results))
                 return results, metadata
 

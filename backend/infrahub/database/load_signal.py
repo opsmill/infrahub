@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+import bisect
 import time
 from collections import deque
 from typing import Callable, Protocol
 
 from .metrics import (
     REFERENCE_QUERY_FLOOR_SECONDS,
-    REFERENCE_QUERY_STRESS_RATIO_AVG,
-    REFERENCE_QUERY_STRESS_RATIO_MIN,
+    REFERENCE_QUERY_STRESS_RATIO_MEDIAN,
     REFERENCE_QUERY_WINDOW_MIN_SECONDS,
 )
 
@@ -21,8 +21,8 @@ UNSTRESSED_RATIO = 1.0
 # effectively zero (measurement noise, or a round-trip faster than the timer's useful
 # resolution) must not become the floor: a near-zero floor would peg the stress ratio at 1.0
 # (nothing divided by it ever exceeds it) or make the ratio undefined, so the signal could
-# never move. 10 us is below any realistic database round-trip, so it never clamps a genuine one.
-MIN_OBSERVATION_SECONDS = 0.00001
+# never move. 100 us is below any realistic database round-trip, so it never clamps a genuine one.
+MIN_OBSERVATION_SECONDS = 0.0001
 
 
 class LoadSignal(Protocol):
@@ -32,9 +32,7 @@ class LoadSignal(Protocol):
     than a live tracker.
     """
 
-    def stress_ratio_min(self) -> float: ...
-
-    def stress_ratio_avg(self) -> float: ...
+    def stress_ratio_median(self) -> float: ...
 
     def sample_count(self) -> int: ...
 
@@ -45,13 +43,17 @@ class ReferenceQueryLoadTracker:
     Every reference-query observation feeds :meth:`record`. The tracker keeps the all-time
     minimum ("floor") plus a rolling window of the most recent ``window_seconds`` of samples,
     and derives how much slower the database currently is than at its best. A stress ratio of
-    ``5`` means even the fastest recent query took five times the floor: sustained load.
+    ``5`` means the recent query time is five times the floor: sustained load.
+
+    The window uses the median rather than the mean for its central tendency: with sparse idle
+    traffic a single slow outlier (a GC pause, event-loop scheduling delay) would dominate a
+    mean, but barely moves a median.
 
     State is per worker process and lives on a single asyncio event loop, so — like the
     admission slot pool — it takes no lock: ``record`` never awaits, so no two updates
-    interleave. Both the window minimum and the window average are maintained incrementally so
-    each observation is O(1) amortized rather than an O(n) scan, which matters when the window
-    holds tens of thousands of samples under load.
+    interleave. Window values are held in one list kept sorted (via ``bisect``), giving the
+    minimum and the median in O(1); insertion and eviction shift that list, which is a cheap
+    C-level move in practice.
 
     The floor is an absolute running minimum: a single anomalously fast observation lowers it
     permanently. That is intentional (it is the best the database has ever demonstrated), at
@@ -67,12 +69,10 @@ class ReferenceQueryLoadTracker:
         self.window_seconds = window_seconds
         self._clock = clock
         self._floor: float | None = None
-        # Every in-window sample, for the average (running sum / count).
+        # In-window samples in arrival order, so eviction knows which value ages out next.
         self._samples: deque[tuple[float, float]] = deque()
-        self._running_sum = 0.0
-        # A monotonic-increasing-by-value deque; its front is the window minimum. Values that
-        # can never again be the minimum (an equal-or-larger older sample) are dropped on push.
-        self._window_min: deque[tuple[float, float]] = deque()
+        # The same in-window values kept sorted: front is the minimum, middle is the median.
+        self._sorted: list[float] = []
         self._observer: Callable[[ReferenceQueryLoadTracker], None] | None = None
 
     def set_observer(self, observer: Callable[[ReferenceQueryLoadTracker], None] | None) -> None:
@@ -101,11 +101,7 @@ class ReferenceQueryLoadTracker:
             self._floor = observation
 
         self._samples.append((now, observation))
-        self._running_sum += observation
-
-        while self._window_min and self._window_min[-1][1] >= observation:
-            self._window_min.pop()
-        self._window_min.append((now, observation))
+        bisect.insort(self._sorted, observation)
 
         self._evict(now=now)
 
@@ -115,9 +111,8 @@ class ReferenceQueryLoadTracker:
     def _evict(self, *, now: float) -> None:
         horizon = now - self.window_seconds
         while self._samples and self._samples[0][0] <= horizon:
-            self._running_sum -= self._samples.popleft()[1]
-        while self._window_min and self._window_min[0][0] <= horizon:
-            self._window_min.popleft()
+            _, value = self._samples.popleft()
+            del self._sorted[bisect.bisect_left(self._sorted, value)]
 
     def floor(self) -> float | None:
         """The all-time minimum observation, or ``None`` before any observation."""
@@ -129,23 +124,23 @@ class ReferenceQueryLoadTracker:
 
     def window_min(self) -> float | None:
         """The minimum observation within the window, or ``None`` when the window is empty."""
-        if not self._window_min:
+        if not self._sorted:
             return None
-        return self._window_min[0][1]
+        return self._sorted[0]
 
-    def window_avg(self) -> float | None:
-        """The mean observation within the window, or ``None`` when the window is empty."""
-        if not self._samples:
+    def window_median(self) -> float | None:
+        """The median observation within the window, or ``None`` when the window is empty."""
+        count = len(self._sorted)
+        if count == 0:
             return None
-        return self._running_sum / len(self._samples)
+        mid = count // 2
+        if count % 2:
+            return self._sorted[mid]
+        return (self._sorted[mid - 1] + self._sorted[mid]) / 2
 
-    def stress_ratio_min(self) -> float:
-        """Window minimum divided by the floor; ``1.0`` when there is nothing to compare."""
-        return self._ratio(self.window_min())
-
-    def stress_ratio_avg(self) -> float:
-        """Window average divided by the floor; ``1.0`` when there is nothing to compare."""
-        return self._ratio(self.window_avg())
+    def stress_ratio_median(self) -> float:
+        """Window median divided by the floor; ``1.0`` when there is nothing to compare."""
+        return self._ratio(self.window_median())
 
     def _ratio(self, value: float | None) -> float:
         if value is None or self._floor is None or self._floor <= 0:
@@ -160,8 +155,7 @@ def _publish_metrics(tracker: ReferenceQueryLoadTracker) -> None:
     window_min = tracker.window_min()
     if window_min is not None:
         REFERENCE_QUERY_WINDOW_MIN_SECONDS.set(window_min)
-    REFERENCE_QUERY_STRESS_RATIO_MIN.set(tracker.stress_ratio_min())
-    REFERENCE_QUERY_STRESS_RATIO_AVG.set(tracker.stress_ratio_avg())
+    REFERENCE_QUERY_STRESS_RATIO_MEDIAN.set(tracker.stress_ratio_median())
 
 
 # Process-global singleton fed by the database layer and read by the admission layer. Built

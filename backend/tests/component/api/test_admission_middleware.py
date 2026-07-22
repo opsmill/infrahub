@@ -36,10 +36,7 @@ class _FakeLoadSignal:
         self._ratio = ratio
         self._samples = samples
 
-    def stress_ratio_min(self) -> float:
-        return self._ratio
-
-    def stress_ratio_avg(self) -> float:
+    def stress_ratio_median(self) -> float:
         return self._ratio
 
     def sample_count(self) -> int:

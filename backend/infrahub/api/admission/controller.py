@@ -168,7 +168,7 @@ class AdmissionController:
         if self._stress_signal.sample_count() < self._stress_min_samples:
             return 0.0
         return stress_shed_fraction(
-            ratio=self._stress_signal.stress_ratio_avg(), threshold=self._stress_thresholds[priority]
+            ratio=self._stress_signal.stress_ratio_median(), threshold=self._stress_thresholds[priority]
         )
 
     def release(self, *, acquisition: Acquisition) -> None:

@@ -9,7 +9,7 @@ from infrahub.database.load_signal import (
 )
 from infrahub.database.metrics import (
     REFERENCE_QUERY_FLOOR_SECONDS,
-    REFERENCE_QUERY_STRESS_RATIO_MIN,
+    REFERENCE_QUERY_STRESS_RATIO_MEDIAN,
     REFERENCE_QUERY_WINDOW_MIN_SECONDS,
 )
 
@@ -34,10 +34,9 @@ def test_empty_tracker_reads_as_unstressed() -> None:
 
     assert tracker.floor() is None
     assert tracker.window_min() is None
-    assert tracker.window_avg() is None
+    assert tracker.window_median() is None
     assert tracker.sample_count() == 0
-    assert tracker.stress_ratio_min() == 1.0
-    assert tracker.stress_ratio_avg() == 1.0
+    assert tracker.stress_ratio_median() == 1.0
 
 
 def test_floor_is_absolute_running_minimum() -> None:
@@ -66,7 +65,7 @@ def test_window_evicts_samples_older_than_the_window() -> None:
 
     assert tracker.sample_count() == 2
     assert tracker.window_min() == 0.020
-    assert tracker.window_avg() == pytest.approx((0.020 + 0.030) / 2)
+    assert tracker.window_median() == pytest.approx((0.020 + 0.030) / 2)
     # The floor still remembers the evicted best observation.
     assert tracker.floor() == 0.010
 
@@ -93,44 +92,57 @@ def test_stress_ratio_reflects_window_relative_to_floor() -> None:
     tracker = ReferenceQueryLoadTracker(window_seconds=WINDOW, clock=clock)
 
     tracker.record(0.001)  # t=0, sets the floor
-    assert tracker.stress_ratio_min() == 1.0
+    assert tracker.stress_ratio_median() == 1.0
 
     clock.advance(WINDOW + 1)
     tracker.record(0.010)  # the floor sample is now out of the window
     tracker.record(0.030)
-    # Floor stays 0.001; the window min is 0.010 and the average is 0.020.
-    assert tracker.stress_ratio_min() == pytest.approx(10.0)
-    assert tracker.stress_ratio_avg() == pytest.approx(20.0)
+    # Floor stays 0.001; the window min is 0.010 and the median is 0.020.
+    assert tracker.window_min() == 0.010
+    assert tracker.stress_ratio_median() == pytest.approx(20.0)
 
 
-def test_sub_millisecond_observations_are_clamped_to_the_resolution() -> None:
-    # Neo4j reports whole milliseconds, so a fast query reads as 0. It must not become the floor.
+def test_window_median_ignores_outliers() -> None:
+    # The whole reason for a median: a lone slow sample among fast ones barely moves it, so the
+    # stress signal does not spike on a single GC pause or scheduling blip.
+    clock = FakeClock()
+    tracker = ReferenceQueryLoadTracker(window_seconds=WINDOW, clock=clock)
+
+    for _ in range(9):
+        tracker.record(0.002)
+    tracker.record(0.500)  # a single large outlier
+
+    assert tracker.window_min() == 0.002
+    assert tracker.window_median() == 0.002  # a mean would be pulled up to ~0.052
+
+
+def test_sub_resolution_observations_are_clamped_to_the_floor() -> None:
+    # A query timed faster than the clamp resolution must not become the floor.
     tracker = ReferenceQueryLoadTracker(window_seconds=WINDOW, clock=FakeClock())
 
     tracker.record(0.0)
     assert tracker.floor() == MIN_OBSERVATION_SECONDS
     assert tracker.window_min() == MIN_OBSERVATION_SECONDS
-    assert tracker.window_avg() == MIN_OBSERVATION_SECONDS
+    assert tracker.window_median() == MIN_OBSERVATION_SECONDS
 
 
 def test_zero_baseline_then_load_still_moves_the_ratio() -> None:
-    # Regression: a 0 ms observation used to pin the floor to 0, which pinned every stress ratio
-    # to 1.0 for the life of the process even under heavy load.
+    # Regression: a near-zero observation used to pin the floor to 0, which pinned every stress
+    # ratio to 1.0 for the life of the process even under heavy load.
     clock = FakeClock()
     tracker = ReferenceQueryLoadTracker(window_seconds=WINDOW, clock=clock)
 
-    tracker.record(0.0)  # healthy, sub-millisecond → clamped to the 1 ms floor
-    assert tracker.stress_ratio_min() == 1.0
+    tracker.record(0.0)  # healthy, sub-resolution → clamped to the resolution floor
+    assert tracker.stress_ratio_median() == 1.0
 
     clock.advance(WINDOW + 1)  # age the baseline sample out of the window
     for _ in range(5):
         tracker.record(0.020)  # 20 ms under load
 
-    # Floor stays at the 1 ms resolution; the window is entirely 20 ms, so the ratio climbs.
+    # Floor stays at the resolution; the window is entirely 20 ms, so the ratio climbs.
     assert tracker.floor() == MIN_OBSERVATION_SECONDS
     assert tracker.window_min() == 0.020
-    assert tracker.stress_ratio_min() == pytest.approx(0.020 / MIN_OBSERVATION_SECONDS)
-    assert tracker.stress_ratio_avg() == pytest.approx(0.020 / MIN_OBSERVATION_SECONDS)
+    assert tracker.stress_ratio_median() == pytest.approx(0.020 / MIN_OBSERVATION_SECONDS)
 
 
 def test_observer_publishes_the_derived_signal_to_the_gauges() -> None:
@@ -144,4 +156,4 @@ def test_observer_publishes_the_derived_signal_to_the_gauges() -> None:
 
     assert REFERENCE_QUERY_FLOOR_SECONDS._value.get() == 0.002
     assert REFERENCE_QUERY_WINDOW_MIN_SECONDS._value.get() == 0.050
-    assert REFERENCE_QUERY_STRESS_RATIO_MIN._value.get() == pytest.approx(25.0)
+    assert REFERENCE_QUERY_STRESS_RATIO_MEDIAN._value.get() == pytest.approx(25.0)
