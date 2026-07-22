@@ -53,6 +53,25 @@ async def test_restore_metadata_rejected_on_non_default_branch(db: InfrahubDatab
         )
 
 
+async def assert_no_orphan_vertices(db: InfrahubDatabase) -> None:
+    """Assert that no vertex is left without a single connection.
+
+    The rollback's edge deletions must take the vertices they orphan down with them.
+    """
+    result = await db.execute_query(
+        query="MATCH (n) WHERE NOT exists((n)--()) RETURN count(n) AS orphan_count",
+    )
+    assert result[0].get("orphan_count") == 0
+
+
+async def _count_vertices_with_uuid(db: InfrahubDatabase, uuid: str) -> int:
+    result = await db.execute_query(
+        query="MATCH (n {uuid: $uuid}) RETURN count(n) AS c",
+        params={"uuid": uuid},
+    )
+    return result[0].get("c")
+
+
 async def _count_branch_edges_at(db: InfrahubDatabase, branch: Branch, at: Timestamp) -> int:
     result = await db.execute_query(
         query="MATCH ()-[r {from: $at, branch: $branch}]->() RETURN count(r) AS c",
@@ -136,6 +155,11 @@ async def test_rollback_at_timestamp_only_reverses_that_timestamp(
 
     edges_after = await _count_branch_edges_at(db=db, branch=default_branch, at=at_rolled_back)
     assert edges_after == 0, "Rollback should delete every edge stamped with `at` on the branch"
+
+    assert await _count_vertices_with_uuid(db=db, uuid=discarded.id) == 0, (
+        "The removed node's own vertices must not survive as orphans"
+    )
+    await assert_no_orphan_vertices(db=db)
 
 
 @dataclass
@@ -260,6 +284,11 @@ class TestRollbackSinceTimestamp:
         loaded_created_in_window = await NodeManager.get_one(db=db, id=dataset.created_main.id, branch=default_branch)
         assert loaded_created_in_window is None, "Node created inside the window must be removed"
 
+        assert await _count_vertices_with_uuid(db=db, uuid=dataset.created_main.id) == 0, (
+            "The removed node's own vertices must not survive as orphans"
+        )
+        await assert_no_orphan_vertices(db=db)
+
         await assert_no_changes_at_or_after(db=db, branch=default_branch, at_or_after=dataset.window_start)
 
         metadata = await _get_node_vertex_metadata(db=db, node_uuid=dataset.updated_main.id)
@@ -303,6 +332,11 @@ class TestRollbackSinceTimestamp:
 
         created = await NodeManager.get_one(db=db, id=dataset.created_on_branch.id, branch=dataset.branch2)
         assert created is None, "The node created on the branch must be removed"
+
+        assert await _count_vertices_with_uuid(db=db, uuid=dataset.created_on_branch.id) == 0, (
+            "The removed node's own vertices must not survive as orphans"
+        )
+        await assert_no_orphan_vertices(db=db)
 
         await assert_no_changes_at_or_after(db=db, branch=dataset.branch2, at_or_after=dataset.window_start)
 
