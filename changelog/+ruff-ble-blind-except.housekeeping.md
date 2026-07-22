@@ -1,0 +1,1 @@
+The BLE (flake8-blind-except) ruff rule is now enforced — blind `except Exception` handlers are either narrowed to the specific exception types they guard against or carry an explicit justified `# noqa: BLE001`.

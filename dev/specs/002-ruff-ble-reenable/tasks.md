@@ -78,10 +78,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Remove the `"BLE",      # flake8-blind-except (BLE)` line from the `[tool.ruff.lint]` `ignore` list in pyproject.toml (~line 511) — depends on T010 + T014 (all sites resolved)
-- [ ] T016 [P] [US1] Add towncrier fragment changelog/+ruff-ble-blind-except.housekeeping.md: one sentence stating the BLE (flake8-blind-except) ruff rule is now enforced — blind `except Exception` handlers are either narrowed or carry an explicit justified `# noqa: BLE001`
-- [ ] T017 [US1] Full-gate verification (quickstart.md §1–2): `uv run ruff check --select=BLE .` → 0; `uv run ruff check . --exclude python_sdk` → exit 0; `uv run ruff format --check --diff --exclude python_sdk .` → exit 0; `uv run invoke backend.lint` → exit 0 (ruff + ty + mypy)
-- [ ] T018 [US1] Enforcement mutation check (quickstart.md §3, spec SC-006): append the canary `except Exception: pass` function to tasks/utils.py, verify `uv run ruff check --select=BLE tasks/utils.py` reports exactly 1 × BLE001, then `git checkout -- tasks/utils.py` and verify the tree is clean
+- [X] T015 [US1] Remove the `"BLE",      # flake8-blind-except (BLE)` line from the `[tool.ruff.lint]` `ignore` list in pyproject.toml (~line 511) — depends on T010 + T014 (all sites resolved)
+- [X] T016 [P] [US1] Add towncrier fragment changelog/+ruff-ble-blind-except.housekeeping.md: one sentence stating the BLE (flake8-blind-except) ruff rule is now enforced — blind `except Exception` handlers are either narrowed or carry an explicit justified `# noqa: BLE001`
+- [X] T017 [US1] Full-gate verification (quickstart.md §1–2): `uv run ruff check --select=BLE .` → 0; `uv run ruff check . --exclude python_sdk` → exit 0; `uv run ruff format --check --diff --exclude python_sdk .` → exit 0; `uv run invoke backend.lint` → exit 0 (ruff + ty + mypy) — note: the `--select=BLE` gate was run as `uv run ruff check --select=BLE . --exclude python_sdk` because the python_sdk submodule is checked out locally (separate repo, excluded from this repo's lint gates; contains 4 out-of-scope BLE001 findings)
+- [X] T018 [US1] Enforcement mutation check (quickstart.md §3, spec SC-006): append the canary `except Exception: pass` function to tasks/utils.py, verify `uv run ruff check --select=BLE tasks/utils.py` reports exactly 1 × BLE001, then `git checkout -- tasks/utils.py` and verify the tree is clean
 
 **Checkpoint**: Enforcement live; all card acceptance criteria met except final audits.
 

@@ -508,7 +508,6 @@ ignore = [
     "FBT",      # flake8-boolean-trap
     "G",        # flake8-logging-format
     "RSE",      # flake8-raise
-    "BLE",      # flake8-blind-except (BLE)
 
     ##################################################################################################
     # Documentation rules - resolve in smaller batches after deciding which of these we want to have #
