@@ -131,7 +131,7 @@ checkout.
 
 ## Coding Standards
 
-- Backend: `dev/guidelines/backend/python.md`
+- Backend: `dev/guidelines/backend/python.md` (load before writing backend Python — typing, exception handling) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
 - Frontend: `frontend/app/AGENTS.md`
 - Git workflow: `dev/guidelines/git-workflow.md`
 - Markdown: `dev/guidelines/markdown.md`
