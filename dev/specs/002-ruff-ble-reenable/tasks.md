@@ -21,7 +21,7 @@
 
 **Purpose**: Confirm the working inventory still matches the plan before editing.
 
-- [ ] T001 Re-measure the violation inventory from repo root with `uv run ruff check --select=BLE --output-format=concise .` and reconcile against the 78 sites in specs/002-ruff-ble-reenable/data-model.md; if any site moved (line drift) locate it by handler shape in the same file; if any *new* site appeared, classify it with the same policy (constraint area → SUPPRESS; defensive boundary → SUPPRESS; enumerable surface → NARROW) and append it to the matching batch table in specs/002-ruff-ble-reenable/data-model.md before proceeding
+- [X] T001 Re-measure the violation inventory from repo root with `uv run ruff check --select=BLE --output-format=concise .` and reconcile against the 78 sites in specs/002-ruff-ble-reenable/data-model.md; if any site moved (line drift) locate it by handler shape in the same file; if any *new* site appeared, classify it with the same policy (constraint area → SUPPRESS; defensive boundary → SUPPRESS; enumerable surface → NARROW) and append it to the matching batch table in specs/002-ruff-ble-reenable/data-model.md before proceeding
 
 ---
 
