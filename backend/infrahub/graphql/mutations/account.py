@@ -5,12 +5,14 @@ from graphql import GraphQLResolveInfo
 from infrahub_sdk.uuidt import UUIDT
 from typing_extensions import Self
 
+from infrahub import lock
 from infrahub.auth.types import AuthType
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.order import OrderModel
+from infrahub.core.preferences.constants import PREFERENCE_LOCK_NAMESPACE
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.core.protocols import CoreAccount, CoreNode, InternalAccountToken
 from infrahub.core.schema import NodeSchema
@@ -228,11 +230,14 @@ class InfrahubAccountMutation(InfrahubMutationMixin, Mutation):
 
         # Accounts are branch-agnostic, so the deletion is effective everywhere at once; drop the
         # account's Preference row (a StandardNode keyed by owner_id, which cannot cascade via the
-        # schema) instead of leaving it behind as unreachable dead data (IFC-2867). Best-effort: the
-        # account is already deleted, so a cleanup failure must not fail the mutation — the orphaned
-        # row is benign (account ids are UUIDs and never reused, so it stays unreachable).
+        # schema) instead of leaving it behind as unreachable dead data (IFC-2867). The per-owner
+        # preference lock serialises this with InfrahubSetPreferences' read-modify-write, so an
+        # in-flight upsert cannot resurrect the row mid-delete. Best-effort: the account is already
+        # deleted, so a cleanup failure must not fail the mutation — the orphaned row is benign
+        # (account ids are UUIDs and never reused, so it stays unreachable).
         try:
-            await PreferenceRepository(db=graphql_context.db).delete_for_owner(owner_id=obj.id)
+            async with lock.registry.get(name=obj.id, namespace=PREFERENCE_LOCK_NAMESPACE, local=False):
+                await PreferenceRepository(db=graphql_context.db).delete_for_owner(owner_id=obj.id)
         except Exception as exc:
             log.warning(f"Failed to delete the Preference row of deleted account {obj.id}: {exc}")
 

@@ -281,6 +281,9 @@ async def test_account_delete_also_deletes_its_preference_row(
     repository = PreferenceRepository(db=db)
     await repository.save(Preference(owner_id=first_account.id, timezone="Europe/Paris"))
     await repository.save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
+    # Guard against a silently failing save: the delete assertion below is only meaningful if the
+    # row actually existed before the mutation.
+    assert await repository.get_for_owner(owner_id=first_account.id) is not None
 
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
