@@ -39,12 +39,12 @@ backend Python, including:
 - Docstring conventions
 - Naming conventions
 - Query patterns
+- Type hints
 - Exception handling (catch the narrowest types the call path actually raises)
 
 When planning or implementing a backend feature, also walk
 `dev/guidelines/backend/checklist.md` — migrations, query efficiency (set-based, no N+1),
 permissions, error handling.
-- Type hints
 
 ### Neo4j/Cypher Queries
 
