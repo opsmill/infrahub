@@ -18,7 +18,10 @@ specs/<feature>/
 
 Locate the dir via `.specify/feature.json` (`{"feature_directory": "specs/<feature>"}`). For a
 bug/chore that skips speckit, create `specs/<feature>/ship.md` from the branch slug and still write
-`feature.json` so downstream speckit calls agree on the dir.
+`feature.json` so downstream speckit calls agree on the dir — **unless `feature.json` already points
+at a different feature's directory**: it is untracked local state that may belong to other
+in-progress work, so never overwrite it for a lane that runs no speckit steps. Leave it alone, note
+the decision in `ship.md`, and rely on the branch-matching resume scan instead.
 
 ## Schema
 
