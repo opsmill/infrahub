@@ -653,7 +653,8 @@ class Migration029(ArbitraryMigration):
             duplicate_relationships_cleanup_query = await DeleteDuplicateRelationships.init(db=db)
             await duplicate_relationships_cleanup_query.execute(db=db)
 
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             migration_result.errors.append(str(exc))
             return migration_result
 

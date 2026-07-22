@@ -79,7 +79,8 @@ class Migration066(ArbitraryMigration):
 
                 await self._update_schema_parameters(db=dbt, pool_id_map=pool_id_map, console=console)
 
-            except Exception as exc:
+            # Failures become MigrationResult errors so the runner reports them instead of crashing
+            except Exception as exc:  # noqa: BLE001
                 error_msg = str(exc) or f"{type(exc).__name__}: {repr(exc)}"
                 return MigrationResult(errors=[error_msg])
 

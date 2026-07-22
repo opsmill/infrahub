@@ -154,7 +154,8 @@ class SchemaMigration(BaseModel):
                 )
                 await query.execute(db=migration_input.db)
                 result.nbr_migrations_executed += query.get_nbr_migrations_executed()
-            except Exception as exc:
+            # Per-query failures become result errors so the runner reports them instead of crashing
+            except Exception as exc:  # noqa: BLE001
                 result.errors.append(str(exc))
                 return result
 
@@ -242,7 +243,8 @@ class GraphMigration(BaseMigration):
             try:
                 query = await migration_query.init(db=migration_input.db, at=migration_input.at)
                 await query.execute(db=migration_input.db)
-            except Exception as exc:
+            # Per-query failures become result errors so the runner reports them instead of crashing
+            except Exception as exc:  # noqa: BLE001
                 result.errors.append(str(exc))
                 return result
 
@@ -274,7 +276,8 @@ class InternalSchemaMigration(BaseMigration):
             try:
                 execution_result = await migration.execute(migration_input=migration_input, branch=default_branch)
                 result.errors.extend(execution_result.errors)
-            except Exception as exc:
+            # First failing sub-migration is recorded as a result error and aborts the remaining steps
+            except Exception as exc:  # noqa: BLE001
                 result.errors.append(str(exc))
                 return result
 

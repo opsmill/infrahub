@@ -235,7 +235,8 @@ class Migration059(MigrationRequiringRebase):
                     value = await self._compute_display_label(db=db, schema=schema, node=node, console=console)
                     if value is not None:
                         dl_values[node_uuid] = value
-                except Exception as exc:
+                # Best-effort per-node recompute: record the failure, skip this node, keep fixing the rest
+                except Exception as exc:  # noqa: BLE001
                     console.print(f"  Skipping display_label for {node_uuid} ({kind}): {exc}")
                     errors.append(f"display_label compute failed for {node_uuid} ({kind}): {exc}")
 
@@ -244,7 +245,8 @@ class Migration059(MigrationRequiringRebase):
                     value = await self._compute_hfid(db=db, schema=schema, node=node, console=console)
                     if value is not None:
                         hfid_values[node_uuid] = value
-                except Exception as exc:
+                # Best-effort per-node recompute: record the failure, skip this node, keep fixing the rest
+                except Exception as exc:  # noqa: BLE001
                     console.print(f"  Skipping human_friendly_id for {node_uuid} ({kind}): {exc}")
                     errors.append(f"human_friendly_id compute failed for {node_uuid} ({kind}): {exc}")
 
@@ -378,7 +380,8 @@ class Migration059(MigrationRequiringRebase):
                 else:
                     console.print("No nodes with bad values found on global branch")
 
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             result.errors.append(str(exc))
 
         return result
@@ -417,5 +420,6 @@ class Migration059(MigrationRequiringRebase):
                     progress=progress,
                     progress_task=task,
                 )
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             return MigrationResult(errors=[str(exc)])
