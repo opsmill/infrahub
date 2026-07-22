@@ -27,11 +27,11 @@ so callers and the type checker are no longer misled — with runtime behavior u
 `-> str | Literal[False]`, the static type gate is green (no new errors), and
 `backend/tests/component/git/test_git_repository.py` passes.
 
-- [ ] T001 [US1] In `backend/infrahub/git/repository.py`, ensure `Literal` is imported from `typing` (add it to the existing `typing` import line, or add an import if none exists).
-- [ ] T002 [US1] In `backend/infrahub/git/repository.py`, change the `merge()` return annotation from `-> bool` to `-> str | Literal[False]` (the `async def merge(...)` around line 271). Do not touch the body — `return False` and `return str(commit_after)` stay exactly as-is.
-- [ ] T003 [US1] In `backend/infrahub/git/repository.py`, change the `rebase()` return annotation from `-> bool` to `-> str | Literal[False]` (the `async def rebase(...)` around line 309). Body (`return await self.merge(...)`) stays as-is.
-- [ ] T004 [US1] Run the static type gate (`uv run invoke backend.lint`, i.e. mypy + ruff). Confirm no new errors. If mypy flags a genuinely bool-assuming caller, reconcile it minimally with `isinstance(result, str)` narrowing (no behavioral change). Confirm the sole production `merge()` caller (`backend/infrahub/git/tasks.py:746`) discards its result and that `rebase()` has no production callers — expect zero caller edits.
-- [ ] T005 [US1] Run `uv run pytest backend/tests/component/git/test_git_repository.py` and confirm all tests pass (runtime behavior unchanged: commit-hash `str` on success, `False` on no-op).
+- [X] T001 [US1] In `backend/infrahub/git/repository.py`, ensure `Literal` is imported from `typing` (add it to the existing `typing` import line, or add an import if none exists).
+- [X] T002 [US1] In `backend/infrahub/git/repository.py`, change the `merge()` return annotation from `-> bool` to `-> str | Literal[False]` (the `async def merge(...)` around line 271). Do not touch the body — `return False` and `return str(commit_after)` stay exactly as-is.
+- [X] T003 [US1] In `backend/infrahub/git/repository.py`, change the `rebase()` return annotation from `-> bool` to `-> str | Literal[False]` (the `async def rebase(...)` around line 309). Body (`return await self.merge(...)`) stays as-is.
+- [X] T004 [US1] Run the static type gate (`uv run invoke backend.lint`, i.e. mypy + ruff). Confirm no new errors. If mypy flags a genuinely bool-assuming caller, reconcile it minimally with `isinstance(result, str)` narrowing (no behavioral change). Confirm the sole production `merge()` caller (`backend/infrahub/git/tasks.py:746`) discards its result and that `rebase()` has no production callers — expect zero caller edits.
+- [X] T005 [US1] Run `uv run pytest backend/tests/component/git/test_git_repository.py` and confirm all tests pass (runtime behavior unchanged: commit-hash `str` on success, `False` on no-op).
 
 ## Phase 4: Polish & Cross-Cutting
 
