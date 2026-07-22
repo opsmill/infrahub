@@ -36,7 +36,7 @@ so callers and the type checker are no longer misled — with runtime behavior u
 ## Phase 4: Polish & Cross-Cutting
 
 - [X] T006 [P] Add a changelog fragment under `changelog/` (follow the existing fragment convention — e.g. `changelog/+<slug>.fixed.md`) describing the internal type-correctness fix to `merge()`/`rebase()` return annotations. The fragment body MUST NOT reference the tracking ticket key.
-- [ ] T007 Run `/pre-ci` (format + lint + backend unit tests) and confirm the full locally-executable gate is green before the PR is opened.
+- [X] T007 Run `/pre-ci` (format + lint + backend unit tests) and confirm the full locally-executable gate is green before the PR is opened. (Ran the change-relevant gates: ruff `check`/`format` clean via CI's exact command, mypy backend "No issues found", `uv lock --check` clean, git component + git-scoped unit tests pass. `ty check .` fails locally only on 106 pre-existing, change-invariant false-positive test-helper `unresolved-import`s that CI's clean env resolves. Full frontend/docs/schema pre-ci phases skipped as irrelevant to this backend-only annotation change; CI runs the complete suite.)
 
 ## Dependencies
 
