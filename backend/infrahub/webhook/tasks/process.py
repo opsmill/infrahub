@@ -87,7 +87,8 @@ async def _record_http_capture(capture: CapturedHttp) -> None:
                 data=capture.to_artifact_data(),
                 flow_run_id=UUID(flow_run.id),
             )
-    except Exception as exc:
+    # Best-effort capture: an artifact write failure must never alter or mask the delivery outcome
+    except Exception as exc:  # noqa: BLE001
         get_run_logger().warning(f"Could not record the delivery capture: {exc}")
 
 

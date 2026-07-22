@@ -250,5 +250,6 @@ async def request_generator_definition_run(
     try:
         await asyncio.gather(*tasks)
         return Completed(message=f"Successfully run {len(tasks)} generators")
-    except Exception as exc:
+    # Flow boundary: any generator failure must surface as a Failed state carrying the error, not a crashed flow run
+    except Exception as exc:  # noqa: BLE001
         return Failed(message="One or more generators failed", error=exc)

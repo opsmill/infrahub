@@ -82,7 +82,8 @@ async def schema_path_validate(
         )
         try:
             violations = await aggregated_constraint_checker.run_constraints(constraint_request)
-        except Exception as exc:
+        # Degrade any checker failure into a reported violation so schema validation fails visibly instead of crashing the task
+        except Exception as exc:  # noqa: BLE001
             violation = SchemaViolation(
                 node_id="unknown",
                 node_kind=node_schema.kind,

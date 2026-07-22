@@ -202,7 +202,8 @@ async def token(
             identity_source=provider_name,
         )
         await service.event.send(event=event)
-    except Exception as ex:
+    # Login event emission is best-effort telemetry; it must never fail a successful OAuth2 login
+    except Exception as ex:  # noqa: BLE001
         log.warning(f"Failed to emit OAuth2 login event for account_id={auth_result.account_id}: {str(ex)}")
 
     return models.UserTokenWithUrl(

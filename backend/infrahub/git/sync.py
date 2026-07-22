@@ -117,7 +117,7 @@ class RepositorySyncer:
                     await self._importer.apply_branch_import(repo, plan)
             except (RepositoryConnectionError, RepositoryCredentialsError):
                 raise
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 # The import already records its own per-branch error status before re-raising, so
                 # isolate the failure here to keep importing the remaining branches.
                 failed_imports.append(

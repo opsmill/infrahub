@@ -380,7 +380,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 fingerprint_composer=fingerprint_composer,
             )
 
-        except Exception as exc:
+        # Any import failure must stamp the repository sync status as errored before being re-raised
+        except Exception as exc:  # noqa: BLE001
             sync_status = RepositorySyncStatus.ERROR_IMPORT
             error = exc
 
