@@ -20,7 +20,13 @@ from infrahub.core.protocols import CoreAccount, CoreNode, InternalAccountToken
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
-from infrahub.exceptions import DatabaseError, NodeNotFoundError, PermissionDeniedError, ValidationError
+from infrahub.exceptions import (
+    DatabaseError,
+    NodeNotFoundError,
+    PermissionDeniedError,
+    QueryTimeoutError,
+    ValidationError,
+)
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.mutations.main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
 from infrahub.log import get_logger
@@ -241,7 +247,7 @@ class InfrahubAccountMutation(InfrahubMutationMixin, Mutation):
         try:
             async with lock.registry.get(name=obj.id, namespace=PREFERENCE_LOCK_NAMESPACE, local=False):
                 await PreferenceRepository(db=graphql_context.db).delete_for_owner(owner_id=obj.id)
-        except (DatabaseError, DriverError, Neo4jError, RedisError) as exc:
+        except (DatabaseError, QueryTimeoutError, DriverError, Neo4jError, RedisError) as exc:
             log.warning(f"Failed to delete the Preference row of deleted account {obj.id}: {exc}")
 
         return result
