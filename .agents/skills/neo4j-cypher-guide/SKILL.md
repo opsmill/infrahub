@@ -1,11 +1,11 @@
 ---
 name: neo4j-cypher-guide
-description: Comprehensive guide for writing modern Neo4j Cypher read queries. Essential for text2cypher MCP tools and LLMs generating Cypher queries. Covers removed/deprecated syntax, modern replacements, CALL subqueries for reads, COLLECT patterns, sorting best practices, and Quantified Path Patterns (QPP) for efficient graph traversal.
+description: Comprehensive guide for writing modern Neo4j Cypher queries. Essential for text2cypher MCP tools and LLMs generating Cypher queries. Covers removed/deprecated syntax, modern replacements, CALL subqueries for reads, COLLECT patterns, sorting best practices, set-based writes, and Quantified Path Patterns (QPP) for efficient graph traversal.
 ---
 
 # Neo4j Modern Cypher Query Guide
 
-This skill helps generate Neo4j Cypher read queries using modern syntax patterns and avoiding deprecated features. It focuses on efficient query patterns for graph traversal and data retrieval.
+This skill helps generate Neo4j Cypher queries using modern syntax patterns and avoiding deprecated features. It focuses on efficient query patterns for graph traversal, data retrieval, and set-based writes.
 
 ## Quick Compatibility Check
 
