@@ -26,6 +26,14 @@ Style: be direct and substantive. No filler, preamble, or pleasantries. Challeng
 - `changelog/` – Towncrier changelog fragments
 - `dev/` – Internal developer documentation - see [dev/README.md](dev/README.md)
 
+## Branching
+
+- Feature and bugfix branches start from `develop` (the integration branch); `stable` is the
+  release branch. PRs for new work target `develop` unless they fix a released version.
+- Before cutting a branch for a ticket, verify the code the ticket references actually exists on
+  the chosen base (`git ls-tree <base> -- <path>`): follow-up tickets often reference modules that
+  are only on `develop`.
+
 ## Commands
 
 ### Setup
@@ -43,6 +51,14 @@ uv run invoke backend.test-integration # Backend integration tests
 cd frontend/app && pnpm test          # Frontend unit tests
 cd frontend/app && pnpm test:e2e      # Frontend E2E tests (legacy TS suite)
 uv run pytest -c tests/e2e/pytest.ini tests/e2e  # E2E tests (pytest, testcontainers)
+```
+
+Backend component tests (`backend/tests/component/`) and the testcontainers-based suites need a
+running Docker daemon. testcontainers looks for `/var/run/docker.sock`; if your daemon only exposes
+a user socket (e.g. Docker Desktop without the "default socket" option), point `DOCKER_HOST` at it:
+
+```bash
+DOCKER_HOST=unix://$HOME/.docker/run/docker.sock uv run pytest backend/tests/component/... -q
 ```
 
 #### Debugging e2e tests with `--pdb`

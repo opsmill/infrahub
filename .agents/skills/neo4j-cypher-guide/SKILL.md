@@ -23,6 +23,15 @@ When generating Cypher queries, immediately avoid these REMOVED features:
 2. **Optimize during traversal** - Filter early within patterns, not after expansion
 3. **Always filter nulls when sorting** - Add IS NOT NULL checks for sorted properties
 4. **Explicit is better than implicit** - Always use explicit grouping and type checking
+5. **Write set-based, not per-node** - One query with a `WHERE`/property condition beats fetching
+   nodes and mutating them one by one (an N+1). E.g. delete all rows for one owner in one shot:
+
+   ```cypher
+   MATCH (n:Preference { owner_id: $owner_id })
+   DETACH DELETE n
+   ```
+
+   not "fetch matching nodes, then run one DELETE per node".
 
 ## Critical Sorting Rule
 
