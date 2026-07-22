@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, test, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import { store } from "@/shared/stores";
 
@@ -18,11 +18,21 @@ describe("NodeDiff", () => {
   const getDiffTreeFromApiMock = vi.mocked(getDiffTreeFromApi);
   const getDiffTreeSummaryFromApiMock = vi.mocked(getDiffTreeSummaryFromApi);
 
+  const initialNodeSchemas = store.get(nodeSchemasAtom);
+
   beforeAll(() => {
     store.set(nodeSchemasAtom, [
       generateNodeSchema({ kind: "TestDevice", label: "Device" }),
       generateNodeSchema({ kind: "TestInterface", label: "Interface" }),
     ]);
+  });
+
+  afterAll(() => {
+    store.set(nodeSchemasAtom, initialNodeSchemas);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
   });
 
   test("shows a changed node in the diff tree when its parent node is unchanged", async () => {

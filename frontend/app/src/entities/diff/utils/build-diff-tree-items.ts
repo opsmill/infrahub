@@ -29,11 +29,17 @@ export function buildDiffTreeItems(nodes: Array<DiffNode>): Array<DiffTreeItem> 
 
   const [nodesWithoutParent, nodesWithParent] = partition(nodes, (node) => !node.parent);
 
+  // Pre-create one tree item per node so a parent can be found in O(1) even when
+  // it appears after its children in the input
+  const nodeTreeItemsByUuid = new Map(
+    nodes.map((node) => [node.uuid, createNodeTreeItemFromDiffNode(node)])
+  );
+
   const baseTreeItems = nodesWithoutParent.reduce<DiffTreeItem[]>((acc, node) => {
     const { kind } = node;
     const topLevelKindTreeItem = acc.find((treeItem) => treeItem.kind === kind);
 
-    const newDiffTreeItem = createNodeTreeItemFromDiffNode(node);
+    const newDiffTreeItem = nodeTreeItemsByUuid.get(node.uuid)!;
 
     if (!topLevelKindTreeItem) {
       const newKindTreeItem = createGroupTreeItemFromDiffNode(node);
@@ -45,56 +51,33 @@ export function buildDiffTreeItems(nodes: Array<DiffNode>): Array<DiffTreeItem> 
     return acc;
   }, []);
 
-  // Attach nodes in as many passes as needed: a node can only be attached once its
-  // parent is in the tree, and parents may appear after their children in the input
-  let pendingNodes = nodesWithParent;
-  while (pendingNodes.length) {
-    const remainingNodes = pendingNodes.filter(
-      (node) => !attachNodeToParent(baseTreeItems, node)
+  for (const node of nodesWithParent) {
+    // Nodes whose parent is not part of the diff payload are skipped, along with
+    // their own children: their subtree is never linked to the returned tree
+    const parentTreeItem = nodeTreeItemsByUuid.get(node.parent!.uuid);
+    if (!parentTreeItem) continue;
+
+    const newDiffTreeItem = nodeTreeItemsByUuid.get(node.uuid)!;
+    const relationshipName = node.parent!.relationship_name as string;
+    const relationshipTreeItem = parentTreeItem.children.find(
+      (rel) => !rel.isNode && rel.label === relationshipName
     );
-    if (remainingNodes.length === pendingNodes.length) break;
-    pendingNodes = remainingNodes;
+
+    if (!relationshipTreeItem) {
+      // Create new relationship group if it doesn't exist
+      const newRelationshipTreeItem = createGroupTreeItemFromDiffNode(node);
+      newRelationshipTreeItem.id = `${node.parent!.uuid}-${relationshipName}`;
+      newRelationshipTreeItem.label = relationshipName;
+      newRelationshipTreeItem.children.push(newDiffTreeItem);
+      parentTreeItem.children.push(newRelationshipTreeItem);
+      continue;
+    }
+
+    // Add to existing relationship group
+    relationshipTreeItem.children.push(newDiffTreeItem);
   }
 
   return baseTreeItems;
-}
-
-function attachNodeToParent(treeItems: DiffTreeItem[], node: DiffNode): boolean {
-  const parentTreeItem = findTreeItemById(treeItems, node.parent!.uuid);
-  if (!parentTreeItem) return false;
-
-  const newDiffTreeItem = createNodeTreeItemFromDiffNode(node);
-  const relationshipName = node.parent!.relationship_name as string;
-  const relationshipTreeItem = parentTreeItem.children.find(
-    (rel) => !rel.isNode && rel.label === relationshipName
-  );
-
-  if (!relationshipTreeItem) {
-    // Create new relationship group if it doesn't exist
-    const newRelationshipTreeItem = createGroupTreeItemFromDiffNode(node);
-    newRelationshipTreeItem.id = `${node.parent!.uuid}-${relationshipName}`;
-    newRelationshipTreeItem.label = relationshipName;
-    newRelationshipTreeItem.children.push(newDiffTreeItem);
-    parentTreeItem.children.push(newRelationshipTreeItem);
-    return true;
-  }
-
-  // Add to existing relationship group
-  relationshipTreeItem.children.push(newDiffTreeItem);
-  return true;
-}
-
-function findTreeItemById(treeItems: DiffTreeItem[], id: string): DiffTreeItem | undefined {
-  for (const item of treeItems) {
-    if (item.id === id) return item;
-
-    for (const child of item.children) {
-      if (child.id === id) return child;
-
-      const found = findTreeItemById([child], id);
-      if (found) return found;
-    }
-  }
 }
 
 function createNodeTreeItemFromDiffNode(node: DiffNode): NodeTreeItem {

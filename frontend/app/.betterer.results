@@ -54,9 +54,6 @@ exports[`fix ts error`] = {
       [137, 22, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
       [141, 22, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"]
     ],
-    "src/entities/diff/utils/build-diff-tree-items.ts:2745435919": [
-      [86, 66, 24, "tsc: Not all code paths return a value.", "3673565821"]
-    ],
     "src/entities/events/ui/filters/global-branch-filter.tsx:4154549494": [
       [82, 14, 7, "tsc: Type \'{ label: string; name: string; }[]\' is not assignable to type \'\\"absent\\"; name: string; description?: string | null | null | null | null | undefined; color?: string | undefined; label?: string | undefined; state: \\"present\\" | undefined; }[] | { id?: string\'.\\n  Property \'state\' is missing in type \'{ label: string; name: string; }\' but required in type \'\\"absent\\"; name: string; description?: string | null | null | null | null | undefined; color?: string | undefined; label?: string | undefined; state: \\"present\\" | undefined; } | { id?: string\'.", "3821181085"]
     ],
