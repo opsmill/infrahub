@@ -962,7 +962,14 @@ def _generate_schemas_sdk(context: Context) -> None:
             _sdk_extension_families,
             False,
         ),
-        "read": (Visibility.READ, 'extra="ignore", use_enum_values=True', "Read", False, _sdk_profile_template_families, True),
+        "read": (
+            Visibility.READ,
+            'extra="ignore", use_enum_values=True',
+            "Read",
+            False,
+            _sdk_profile_template_families,
+            True,
+        ),
     }
     for variant, (
         minimum,
