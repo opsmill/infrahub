@@ -42,7 +42,7 @@ updated: 2026-07-15
 - [x] intake       → issue INFP-460 · branch user-auth-infp-460
 - [x] prep         → specs/007-user-auth/ (spec·plan·tasks)
 - [>] implement    → specs/007-user-auth/opsmill-implement-report.md (3/5 chunks)
-- [ ] delivery     → pr: <url once open>
+- [ ] delivery     → pr: <url once open> · harvest: pending (0 rounds)
 - [ ] extract      → dev/knowledge, dev/adr
 
 ## Notes
@@ -59,6 +59,9 @@ Only list the stages the lane actually runs (a bug's light lane has fewer).
   where the output landed (spec dir, report path, PR url) — not a copy of the content.
 - **On skipping:** `[-]` with a one-line reason in Notes.
 - **On a Jira transition:** record it here only after the user accepts it at the checkpoint.
+- **On processing review feedback:** after `harvesting-review` runs on a round of threads, bump the
+  delivery row's `harvest` marker (rounds harvested); it is what reconcile compares against the PR's
+  live threads.
 - Never mark a stage `[x]` speculatively — the index must reflect reality, not intent.
 
 ## Resume + reconcile
@@ -76,7 +79,7 @@ When the skill is invoked with empty `$ARGUMENTS`, or on any re-entry:
    | intake | branch exists & checked out; issue resolves (Jira/GitHub) |
    | prep | `spec.md`/`plan.md`/`tasks.md` exist and are non-empty in the spec dir |
    | implement | branch ahead of base; gate tests green; report has no open high-sev findings |
-   | delivery | PR url resolves and is open; CI status on GitHub |
+   | delivery | PR url resolves and is open; CI status on GitHub; review threads vs the `harvest` marker — unharvested threads re-open the harvest step (and a merged PR proposes a final harvest before Jira *Done*) |
    | extract | referenced `dev/` docs exist |
 
    A failed check **re-opens** that stage (`[x]`→`[>]`) and everything downstream. Say so explicitly:

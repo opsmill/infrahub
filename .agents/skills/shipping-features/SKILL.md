@@ -65,7 +65,7 @@ skill adds **at the seam** between stages.
 | 2 | **Prep** | `/speckit-opsmill-prep` = specify → plan → critique-run → tasks + alignment check *(or the granular skills on M/L)* | spec · plan · tasks → **`specs/<feature>/`** | **parallel** framings into specify/plan on `L`; **gate:** `tasks.md` exists, alignment clean, no `[NEEDS CLARIFICATION]`; **checkpoint** after each design decision |
 | 3 | **Implement** | `/speckit-opsmill-implement` = preflight → implement (↻ clean-context subagents) → review-run → report *(bug lane: `/bug-tdd` → `/bug-fix`)* | code + `opsmill-implement-report.md` → **`specs/<feature>/`** + git | **verify:** adversarial skeptic on the report + high-sev findings; **gate:** report clean + tests green; **checkpoint:** findings & fixes accepted |
 | 4 | **Delivery** | `/pre-ci` · `/pr` · `/pr-monitor` · review (spec & code) · `/qa` | PR + CI → **GitHub PR** | **gate:** CI green before PR; **parallel** split assessment ([phases/pr-split.md](phases/pr-split.md)); **checkpoint:** PR plan accepted → propose Jira *In review*; monitor loops back on red |
-| 5 | **Extract** *(manual)* | `/speckit-opsmill-extract` (+ `capturing-knowledge`, `harvesting-review`¹, `speckit-opsmill-retrospect`) | knowledge · guidelines · ADR → **`dev/…`**; archive spec | **manual gate:** you review the report first; **checkpoint** on doc changes → propose Jira *Done* |
+| 5 | **Extract** *(manual)* | `/speckit-opsmill-extract` (+ `harvesting-review`¹, triggered from the Stage 4 review loop) | knowledge · guidelines · ADR → **`dev/…`**; archive spec | **manual gate:** you review the report first; session-bound tools (`speckit-opsmill-retrospect`, `capturing-knowledge`) run at the Stage 4 checkpoint, not here; **checkpoint** on doc changes → propose Jira *Done* |
 
 ¹ `harvesting-review` is merged in `stable` (PR #9922); use it when present, skip cleanly when absent.
 
@@ -139,15 +139,34 @@ has no unaddressed high-severity findings. **Checkpoint:** findings & fixes acce
 4. **Review feedback:** when processing review comments, fetch **all** unresolved threads — every
    author, review bots included — never only the reviewer the user named; assess each (fix, or
    answer on the thread with evidence). **Re-fetch the threads after every push**: bots re-review
-   the new diff and their newest findings are otherwise invisible.
+   the new diff and their newest findings are otherwise invisible. After resolving a round of
+   feedback, run `harvesting-review` on the threads just processed and update the `harvest` marker
+   in `ship.md` — the fix loop already holds every thread and its landed correction, which makes it
+   the cheapest and most complete moment to harvest.
+5. **Session-bound extraction (every lane):** once the PR is open and its CI is green, run
+   `speckit-opsmill-retrospect` and `capturing-knowledge` at this checkpoint — even on lanes that
+   skip Stage 5. Their raw material is the session itself (friction, wrong turns, tooling gaps) and
+   it decays when the session ends; deferring them to Extract loses it.
 Optional `/qa` and spec-&-code review where the project defines them.
 
 ### Stage 5 — Extract *(manual)*
+Extract keeps only the **artifact-bound** work — inputs that outlive the session (the spec dir, the
+implement report, the PR threads). The **session-bound** tools (`speckit-opsmill-retrospect`,
+`capturing-knowledge`) already ran at the Stage 4 checkpoint; do not defer or re-run them here.
+
 **Manual gate:** the user reviews `opsmill-implement-report.md` first. Then `/speckit-opsmill-extract`
 distils durable knowledge into `dev/knowledge` · `dev/guidelines` · `dev/adr` and archives the spec.
-Also run `capturing-knowledge`, `harvesting-review` (when present), and `speckit-opsmill-retrospect`
-for process/tooling gaps. Doc changes join **this** PR unless the user asks otherwise. **Checkpoint**
-only if a step proposes changes → propose Jira *Done*.
+
+**`harvesting-review` is triggered by review activity, not by this stage or the lane.** Review
+feedback arrives after the shipping session ends, so the harvest cannot run on a schedule — it
+anchors to the moments the PR pulls you back:
+- the Stage 4 review-fix loop harvests each round of feedback right after processing it;
+- on any resume, reconcile compares the PR's review threads against the `harvest` marker in
+  `ship.md` — unharvested threads re-open the step;
+- when reconcile detects the PR merged, propose a final harvest before proposing Jira *Done*.
+
+Doc changes join **this** PR unless the user asks otherwise. **Checkpoint** only if a step proposes
+changes → propose Jira *Done*.
 
 ## Manifest & resume
 
