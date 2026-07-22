@@ -689,6 +689,25 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         hand-edited payload. Neither is part of the write contract, so both are dropped silently
         rather than rejected.
         """
+        # Define a fresh node (no existing instances) so the extension is applicable, then extend it
+        # with an optional attribute carrying a read-level field and an unknown field.
+        base = {
+            "schemas": [
+                {
+                    "version": "1.0",
+                    "nodes": [
+                        {"name": "Gadget", "namespace": "Test", "attributes": [{"name": "name", "kind": "Text"}]}
+                    ],
+                }
+            ]
+        }
+        base_response = await test_client.post(
+            "/api/schema/load",
+            json=base,
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+        assert base_response.status_code == 200
+
         payload = {
             "schemas": [
                 {
@@ -696,11 +715,12 @@ class TestLoadSchemaAPI(TestInfrahubApp):
                     "extensions": {
                         "nodes": [
                             {
-                                "kind": "TestDevice",
+                                "kind": "TestGadget",
                                 "attributes": [
                                     {
                                         "name": "extra",
                                         "kind": "Text",
+                                        "optional": True,
                                         "inherited": True,
                                         "not_a_real_field": "value",
                                     }
