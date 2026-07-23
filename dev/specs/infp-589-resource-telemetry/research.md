@@ -2,10 +2,11 @@
 
 Phase 0 decisions. Each resolves an unknown surfaced while planning against the existing telemetry code, the heartbeat service, and the deployment topology. No `NEEDS CLARIFICATION` markers remain.
 
-## D1 — No new dependency
+## D1 — psutil promoted from dev-only to a runtime dependency; no new package added
 
-- **Decision**: Read host CPU/RAM via `psutil` and the enforced limit via stdlib `/sys/fs/cgroup` file reads. Add nothing to `pyproject.toml`.
-- **Rationale**: `psutil==6.1.0` is already a direct dependency. cgroup quota/usage is not exposed by psutil and must be read from the pseudo-filesystem regardless — that read is stdlib. Honors Principle VII and the Ask-First "new dependency" gate (not crossed).
+- **Decision**: Read host CPU/RAM via `psutil` and the enforced limit via stdlib `/sys/fs/cgroup` file reads.
+- **Correction (found during CI, not planning)**: `psutil==6.1.0` was already pinned in `pyproject.toml`, but only under `[dependency-groups] dev` — the production images are built with `uv sync --frozen --no-dev`, so the shipped `task-worker`/`api_server` containers never had it installed. This surfaced as every Docker-stack-based CI job (`backend-docker-integration`, all `E2E-*`) failing with the Prefect worker unable to load its collection (`ModuleNotFoundError: No module named 'psutil'`) — not a CI quirk, a real gap that would have shipped a broken feature. Fixed by moving the `psutil==6.1.0` entry from `dev` to `[project] dependencies` and regenerating `uv.lock` (package version unchanged; no new third-party package pulled in).
+- **Rationale**: cgroup quota/usage is not exposed by psutil and must be read from the pseudo-filesystem regardless — that read is stdlib. No new package is added to the dependency set, but promoting an existing dev-only pin to a runtime dependency is itself an Ask-First "new dependency" change (confirmed with the user before editing `pyproject.toml`), since it is new to what ships in production.
 - **Alternatives**: adding a cgroup helper library — rejected (a few lines of file parsing do not justify a dependency + review gate).
 
 ## D2 — Logical cores, never physical
