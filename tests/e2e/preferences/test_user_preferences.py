@@ -65,10 +65,17 @@ class TestUserPreferences:
         await select_combobox_option(admin_page, "Date format", EU_DATE_FORMAT)
         await admin_page.get_by_role("button", name="Save", exact=True).click()
         await expect(admin_page.get_by_text("Preferences updated")).to_be_visible()
+        # Let the toast auto-dismiss so the second save's toast is unambiguous;
+        # otherwise the next visibility check can pass against this stale toast
+        # and the reload below races the in-flight mutation.
+        await expect(admin_page.get_by_text("Preferences updated")).not_to_be_visible()
 
         # Re-selecting the currently-applied value clears the override; the field
         # falls back to the inherited value and shows its placeholder again.
         await select_combobox_option(admin_page, "Date format", EU_DATE_FORMAT)
+        await expect(admin_page.get_by_role("button", name="Date format", exact=True)).to_contain_text(
+            "Automatic (inherited)"
+        )
         await admin_page.get_by_role("button", name="Save", exact=True).click()
         await expect(admin_page.get_by_text("Preferences updated")).to_be_visible()
 
