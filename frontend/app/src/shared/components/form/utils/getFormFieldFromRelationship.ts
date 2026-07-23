@@ -28,7 +28,7 @@ interface GetFieldLabelParams {
   peerSchema?: ModelSchema | null;
 }
 
-const getFieldLabel = ({ type, relationshipSchema, peerSchema }: GetFieldLabelParams) => {
+const getFormFieldLabel = ({ type, relationshipSchema, peerSchema }: GetFieldLabelParams) => {
   const label = getRelationshipFieldLabel(relationshipSchema, peerSchema);
 
   if (type === "relationship-add") {
@@ -73,7 +73,7 @@ export const getFormFieldFromRelationship = ({
 }: GetFormFieldFromRelationshipParams): DynamicRelationshipFieldProps => {
   const { schema: peerSchema } = getSchema(relationshipSchema.peer);
 
-  const label = getFieldLabel({ type, relationshipSchema, peerSchema });
+  const label = getFormFieldLabel({ type, relationshipSchema, peerSchema });
 
   const relationshipData = objectData?.[relationshipSchema.name] as NodeRelationship | undefined;
 
