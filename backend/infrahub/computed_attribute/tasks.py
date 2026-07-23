@@ -3,8 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
-from prefect import flow, task
-from prefect.cache_policies import NONE
+from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
@@ -52,6 +51,7 @@ from .transform_recompute import TransformRecomputeSubmitter
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
     from infrahub.database import InfrahubDatabase
+    from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
     from infrahub.graphql.analyzer import GraphQLQueryReport
 
 
@@ -78,24 +78,6 @@ async def _reconcile_python_computed_attribute_automations(db: InfrahubDatabase)
     log.debug("Reconciled Python computed-attribute node-input automations")
 
 
-UPDATE_ATTRIBUTE = """
-mutation UpdateAttribute(
-    $id: String!,
-    $kind: String!,
-    $attribute: String!,
-    $value: String!
-    $context_account_id: String!
-  ) {
-  InfrahubUpdateComputedAttribute(
-    context: {account: {id: $context_account_id}},
-    data: {id: $id, attribute: $attribute, value: $value, kind: $kind}
-  ) {
-    ok
-  }
-}
-"""
-
-
 def _resolve_changed_elements(
     changed_elements: ChangedElementsPayload | None,
 ) -> ChangedElementSet | None:
@@ -116,33 +98,29 @@ def _transform_read_set_from_query_report(report: GraphQLQueryReport) -> Transfo
     return TransformReadSet.from_read_fields({kind: access.fields for kind, access in report.requested_read.items()})
 
 
-@task(name="computed-attribute-process-transform-for-node", cache_policy=NONE)
-async def process_transform_for_node(
+async def _transform_value_for_node(
+    *,
     branch_name: str,
     object_id: str,
-    node_kind: str,
     attribute_name: str,
     query_id: str,
     transform_timeout: int | None,
-    repository_id: str,
-    repository_name: str,
-    repository_kind: str,
     commit: str | None,
     file_path: str,
     class_name: str,
     convert_query_response: bool,
     context: EventContext,
-) -> None:
+    repo: InfrahubReadOnlyRepository | InfrahubRepository,
+) -> AttributeValueWrite:
+    """Run the transform for one node against an already-initialized repository.
+
+    The query is run with ``update_group`` so the node is (re)registered as a subscriber of the
+    transform's query group, which is how a later change to any node the query reads triggers this
+    node's recompute. The recomputed value is returned to be persisted in bulk with the rest of the
+    batch rather than written here.
+    """
     client = get_client()
     client.request_context = context.to_request_context()
-
-    repo = await get_initialized_repo(
-        client=client,
-        repository_id=repository_id,
-        name=repository_name,
-        repository_kind=repository_kind,
-        commit=commit,
-    )
 
     data = await client.query_gql_query(
         name=query_id,
@@ -152,7 +130,7 @@ async def process_transform_for_node(
         subscribers=[object_id],
     )
 
-    transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=transform_timeout)(
+    value = await repo.execute_python_transform.with_options(timeout_seconds=transform_timeout)(
         client=client,
         branch_name=branch_name,
         commit=commit,
@@ -161,17 +139,30 @@ async def process_transform_for_node(
         convert_query_response=convert_query_response,
     )  # type: ignore[call-overload]
 
-    await client.execute_graphql(
-        query=UPDATE_ATTRIBUTE,
-        variables={
-            "id": object_id,
-            "kind": node_kind,
-            "attribute": attribute_name,
-            "value": transformed_data,
-            "context_account_id": context.account_id,
-        },
-        branch_name=branch_name,
-    )
+    return AttributeValueWrite(node_id=object_id, field=attribute_name, value=value)
+
+
+def _partition_transform_results(
+    results: list[tuple[str, AttributeValueWrite | Exception]],
+) -> tuple[list[AttributeValueWrite], list[tuple[str, str]]]:
+    """Split per-node transform results into values to persist and nodes to skip.
+
+    A node is skipped, leaving its previous value in place, when its transform raised or produced a
+    non-string value. Isolating failures this way keeps one failing node from blocking the rest of
+    the batch, and preserves the contract that only a real string is persisted rather than silently
+    overwriting a value with null. Returns the writes to persist and ``(node_id, reason)`` pairs
+    describing each skip.
+    """
+    writes: list[AttributeValueWrite] = []
+    skipped: list[tuple[str, str]] = []
+    for object_id, result in results:
+        if isinstance(result, Exception):
+            skipped.append((object_id, f"transform raised {result!r}"))
+        elif not isinstance(result.value, str):
+            skipped.append((object_id, f"transform returned {type(result.value).__name__}, expected a string"))
+        else:
+            writes.append(result)
+    return writes, skipped
 
 
 @flow(
@@ -188,8 +179,25 @@ async def process_transform(
     object_ids: list[str] | None = None,
     updated_fields: list[str] | None = None,  # noqa: ARG001
 ) -> None:
+    """Recompute one or more Python computed attributes for a batch of nodes.
+
+    The transform's git repository is initialized once for the whole batch instead of once per node,
+    each node's value is computed concurrently, and the results are persisted in a single bulk write
+    instead of a GraphQL mutation per node. The bulk write skips any node whose recomputed value is
+    unchanged, so an unchanged node neither writes nor fans out a further recompute.
+
+    A node whose transform raises or returns a non-string value is skipped with its previous value
+    left in place, so one failing node cannot block the rest of the batch from being persisted.
+
+    Raises:
+        ValueError: if a computed attribute has no transform configured or the transform cannot be fetched.
+
+    """
+    log = get_run_logger()
     all_ids = list({*([object_id] if object_id else []), *(object_ids or [])})
     await add_tags(branches=[branch_name], nodes=all_ids)
+    if not all_ids:
+        return
     client = get_client()
     client.request_context = context.to_request_context()
 
@@ -202,6 +210,8 @@ async def process_transform(
 
     if not transform_attributes:
         return
+
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
 
     for attribute_name, transform_attribute in transform_attributes.items():
         if not transform_attribute.transform:
@@ -219,26 +229,49 @@ async def process_transform(
                 f"Unable to fetch transform '{transform_attribute.transform}' for computed attribute '{attribute_name}'"
             )
 
-        batch = await client.create_batch()
+        # Initialize the repository once and share it across the whole batch rather than paying a
+        # repository init per node.
+        repo = await get_initialized_repo(
+            client=client,
+            repository_id=transform.repository_id,
+            name=transform.repository_name,
+            repository_kind=transform.repository_typename,
+            commit=transform.repository_commit,
+        )
+
+        # return_exceptions keeps one node's failed read or transform from aborting the batch and
+        # dropping the healthy nodes' writes; node=oid tags each result with the node it belongs to.
+        batch = await client.create_batch(return_exceptions=True)
         for oid in all_ids:
             batch.add(
-                task=process_transform_for_node,
+                task=_transform_value_for_node,
+                node=oid,
                 branch_name=branch_name,
                 object_id=oid,
-                node_kind=node_kind,
                 attribute_name=attribute_name,
                 query_id=transform.query_name,
                 transform_timeout=transform.timeout,
-                repository_id=transform.repository_id,
-                repository_name=transform.repository_name,
-                repository_kind=transform.repository_typename,
                 commit=transform.repository_commit,
                 file_path=transform.file_path,
                 class_name=transform.class_name,
                 convert_query_response=transform.convert_query_response,
                 context=context,
+                repo=repo,
             )
-        _ = [r async for _, r in batch.execute()]
+        results: list[tuple[str, AttributeValueWrite | Exception]] = [
+            (oid, result) async for oid, result in batch.execute()
+        ]
+        writes, skipped = _partition_transform_results(results)
+        for skipped_id, reason in skipped:
+            log.warning(f"Skipping recompute of '{attribute_name}' for node {skipped_id}: {reason}")
+
+        await dispatcher.dispatch(
+            writes=writes,
+            branch_name=branch_name,
+            context=context,
+            coalesced=False,
+            recompute_depth=0,
+        )
 
 
 @flow(
