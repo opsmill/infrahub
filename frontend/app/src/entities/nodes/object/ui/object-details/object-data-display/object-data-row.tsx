@@ -21,13 +21,12 @@ interface ObjectDataRowProps {
 
 export function ObjectDataRow({ value, className, objectKind, fieldSchema }: ObjectDataRowProps) {
   const { schema } = useSchema(objectKind);
-  const { schema: peerSchema } = useSchema("peer" in fieldSchema ? fieldSchema.peer : undefined);
-
   const isRelationship = isRelationshipSchema(fieldSchema);
-  const fieldName =
-    "peer" in fieldSchema
-      ? getRelationshipDisplayLabel(fieldSchema, peerSchema)
-      : (fieldSchema.label ?? fieldSchema.name);
+  const { schema: peerSchema } = useSchema(isRelationship ? fieldSchema.peer : undefined);
+
+  const fieldName = isRelationship
+    ? getRelationshipDisplayLabel(fieldSchema, peerSchema)
+    : (fieldSchema.label ?? fieldSchema.name);
   const defaultTab = isRelationship ? "relationships" : "attributes";
 
   return (

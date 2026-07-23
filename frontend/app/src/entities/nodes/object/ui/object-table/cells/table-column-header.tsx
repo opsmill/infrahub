@@ -212,11 +212,11 @@ function ColumnHeaderMenu({
   const [showFilterForm, setShowFilterForm] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const currentColumnFilters = filters.find((f) => isFieldFiltered(f, columnSchema.name));
-  const { schema: peerSchema } = useSchema("peer" in columnSchema ? columnSchema.peer : undefined);
-  const label =
-    "peer" in columnSchema
-      ? getRelationshipDisplayLabel(columnSchema, peerSchema)
-      : (columnSchema.label ?? columnSchema.name);
+  const isRelationship = isRelationshipSchema(columnSchema);
+  const { schema: peerSchema } = useSchema(isRelationship ? columnSchema.peer : undefined);
+  const label = isRelationship
+    ? getRelationshipDisplayLabel(columnSchema, peerSchema)
+    : (columnSchema.label ?? columnSchema.name);
 
   const closeFilterForm = () => {
     setShowFilterForm(false);
