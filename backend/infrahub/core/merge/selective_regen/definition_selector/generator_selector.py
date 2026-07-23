@@ -14,7 +14,7 @@ class GeneratorSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition
 
     subscriber_kind = InfrahubKind.GENERATORINSTANCE
 
-    async def _load_definitions(
+    async def load_definitions(
         self, *, target_branch: str
     ) -> list[LoadedDefinition[ProposedChangeGeneratorDefinition]]:
         generators = await self.client.filters(
@@ -44,6 +44,7 @@ class GeneratorSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition
                 execute_after_merge=generator.execute_after_merge.value,
                 dependencies=generator.dependencies.value,
                 dependencies_complete=generator.dependencies_complete.value,
+                fingerprint=generator.fingerprint.value,
             )
             definitions.append(LoadedDefinition(definition=definition, group_id=definition.group_id))
         return definitions

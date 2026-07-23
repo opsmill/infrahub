@@ -18,6 +18,9 @@ query GatherArtifactDefinitions {
         content_type {
             value
         }
+        fingerprint {
+            value
+        }
         targets {
           node {
             id
@@ -102,6 +105,7 @@ def parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeAr
             transform_kind=transformation["__typename"],
             dependencies=transformation["dependencies"]["value"],
             dependencies_complete=transformation["dependencies_complete"]["value"],
+            fingerprint=definition["node"]["fingerprint"]["value"],
         )
         if artifact_definition.transform_kind == InfrahubKind.TRANSFORMJINJA2:
             artifact_definition.template_path = transformation["template_path"]["value"]

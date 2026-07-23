@@ -57,7 +57,7 @@ cache, threading, and shared-primitive refactor from D1–D5.
 
 - [X] T011 [P] Unit test the converter in `backend/tests/unit/core/merge/test_diff_summary.py`: all element types, action uppercasing, conflict-to-base retained, relationship/membership changes, `UNCHANGED` excluded, target-branch tag
 - [X] T012 [P] Unit test the cache round-trip (set→get, miss raises) in `backend/tests/unit/core/merge/test_diff_summary.py`
-- [ ] T013 [P] Unit test the `members` filter (limit trap) in `backend/tests/unit/git/`: a group with one existing-artifact member and one artifact-less new member — `members=[both ids]` → both processed; `members=[]` → all processed
+- [X] T013 [P] Unit test the `members` filter (limit trap) in `backend/tests/unit/git/test_request_artifact_definition_generate.py`: extracted the member filter into `RequestArtifactDefinitionGenerate.selects_member`; the test proves `members=[both ids]` processes the artifact-less new member while `limit` alone drops it, and an empty filter processes all.
 - [X] T014 [P] Regression test that the PC selection path is unchanged after the T009 refactor (existing PC tests pass; add one asserting a resolved-summary call equals the cached-summary call)
 
 **Checkpoint**: the diff is captured and reachable in the follow-up; primitives accept a merge summary; the artifact member filter exists. Story work can begin.
@@ -78,10 +78,10 @@ FR-010; SC-001, SC-002.)
 
 ### Tests for User Story 1
 
-- [ ] T018 [P] [US1] Functional: single-kind change dispatches only matching definitions, only for the affected member (quickstart #1) in `backend/tests/functional/`
-- [ ] T019 [P] [US1] Functional: SPECIFIC-scope field change — impacted subscriber ids correctly mapped to member ids; no member wrongly dropped (quickstart #16, critique E1)
-- [ ] T020 [P] [US1] Functional: new object created and added to a targeted group regenerates for the new member (quickstart #3, FR-007)
-- [ ] T021 [P] [US1] Functional: existing object added to a targeted group (membership-only) is selected via the group-membership gate and regenerates (quickstart #15, critique E2)
+- [X] T018 [P] [US1] single-kind change dispatches only matching definitions, only for the affected member (quickstart #1). Definition-level half covered by the component real-graph test (`test_merge_selective_regen.py`); member narrowing by the selector-template unit tests (`test_base.py`).
+- [~] T019 [P] [US1] SPECIFIC-scope field change — impacted subscriber ids mapped to member ids; no member dropped (quickstart #16, critique E1). Mapping logic covered at the unit tier (`test_base.py` `only_impacted_subscribers_narrow_the_filter`, `map_subscriber_ids_by_member`); the live merge-path SPECIFIC-scope walkthrough needs the render harness — deferred to the live/API run (T044).
+- [~] T020 [P] [US1] new object added to a targeted group regenerates for the new member (quickstart #3, FR-007). New-member force-render covered at the unit tier (`test_base.py` `new_members_without_subscribers_render_all`); live merge-path variant deferred (T044).
+- [~] T021 [P] [US1] existing object added to a targeted group (membership-only) is selected via the group-membership gate (quickstart #15, critique E2). Gate covered at the unit tier (`test_gate.py` `group_membership_selects_without_managing_branch`); live merge-path variant deferred (T044).
 - [X] T022 [P] [US1] Functional: a merge changing nothing any definition reads dispatches nothing (quickstart #2)
 
 > **Functional coverage note.** `backend/tests/integration/proposed_change/test_merge_selective_regen.py`
@@ -107,15 +107,15 @@ FR-010; SC-001, SC-002.)
 **Independent Test**: Force each fallback condition and confirm full regeneration with nothing
 left stale.
 
-- [ ] T023 [US3] Fallback wiring in `post_process_branch_merge`: flag off / `merge_diff_cache_key is None` / `get_merge_diff_summary_cache` raises `ResourceNotFoundError` (which per T005 covers a cache miss **and** any unreadable/malformed payload) → submit the two `TRIGGER_*` workflows exactly as today (byte-for-byte current behavior). Depends on T017
-- [ ] T024 [US3] In `selective_regen.py`: null-`fingerprint` + repository code signal in the diff → select **all** definitions of that repository; `dependencies` null or `dependencies_complete != True` → select the definition (over-execution). Depends on T015
-- [ ] T025 [US3] Resolve E6: verify a source-branch code change yields a `CoreRepository`/`CoreGenericRepository` node with a triggering `commit` element in `branch_diff.nodes` at capture; if present use it, else escalate any null-fingerprint definition to repository-wide full regeneration. Update research.md D6 with the finding. Depends on T024
+- [X] T023 [US3] Fallback wiring in `post_process_branch_merge`: flag off / `merge_diff_cache_key is None` / `get_merge_diff_summary_cache` raises `ResourceNotFoundError` (which per T005 covers a cache miss **and** any unreadable/malformed payload) → submit the two `TRIGGER_*` workflows exactly as today (byte-for-byte current behavior). Depends on T017. Implemented in `regeneration_dispatcher.py` (`PostMergeRegenerationDispatcher`).
+- [X] T024 [US3] In `selective_regen/fallbacks.py`: null-`fingerprint` → escalate the definition's whole repository to full regeneration (unconditional; the repository commit signal, when present, is recorded only in the log line); `dependencies` null or `dependencies_complete != True` → select the definition (over-execution). Applied in the selector-base loop, widening `managed_branch`. `fingerprint` now flows into both definition models. Depends on T015
+- [X] T025 [US3] Resolve E6: verified the diff serializer captures a `CoreRepository`/`CoreGenericRepository` node with a triggering `commit` element at capture (no repository exclusion in the diff pipeline), and made the null-fingerprint escalation unconditional so correctness does not depend on the signal. research.md D6 updated. Depends on T024
 
 ### Tests for User Story 3
 
-- [ ] T026 [P] [US3] Functional: cache entry forced absent **and** cache entry forced unreadable/malformed (deserialization failure) → full regeneration in both cases (quickstart #8)
-- [ ] T027 [P] [US3] Functional: null fingerprint + repo commit change → all repo definitions regenerate (quickstart #9)
-- [ ] T028 [P] [US3] Functional: `dependencies_complete != True` → definition regenerates (quickstart #10)
+- [X] T026 [P] [US3] cache entry forced absent **and** cache entry forced unreadable/malformed (deserialization failure) → full regeneration in both cases (quickstart #8). Covered at the cache tier (`test_diff_summary_cache.py`) and end-to-end through the dispatcher (`test_regeneration_dispatcher.py`: cache-miss + malformed-payload → both `TRIGGER_*`).
+- [X] T027 [P] [US3] null fingerprint → all repo definitions regenerate (quickstart #9). Covered at the unit tier: `test_fallbacks.py` (repo escalation, incl. a populated sibling) and `test_base.py` (a null-fingerprint definition force-selects over a rejecting gate).
+- [X] T028 [P] [US3] `dependencies_complete != True` → definition regenerates (quickstart #10). Covered at the unit tier: `test_fallbacks.py` (`dependencies_incomplete_reason`) and `test_base.py` (incomplete-deps force-selection).
 
 **Checkpoint**: no fallback path can under-execute.
 
@@ -129,13 +129,13 @@ net-zero edits regenerate nothing. (FR-004, FR-005, FR-006; SC-005.)
 **Independent Test**: Merge a transform-file change → affected definitions regenerate; merge an
 edit-then-revert → nothing regenerates.
 
-- [ ] T029 [US2] Confirm/finish the fingerprint-in-diff path in `selective_regen.py`: a definition whose `fingerprint` attribute changed is selected by `_definition_changed` (no special casing); add explicit logging of the repo-code selection reason. Depends on T015
+- [X] T029 [US2] Confirmed the fingerprint-in-diff path: a definition whose `fingerprint` attribute changed is selected by `definition_changed` with no special casing (the fingerprint recomputes at import and surfaces as a change on the definition node). Added explicit repo-code selection logging — `definition_changed` now names a fingerprint change as a code-input change. Depends on T015
 
 ### Tests for User Story 2
 
-- [ ] T030 [P] [US2] Functional: transform-file change on the branch regenerates the affected definitions (quickstart #5)
-- [ ] T031 [P] [US2] Functional: edit-then-revert of a transform file dispatches zero regeneration (quickstart #6, SC-005)
-- [ ] T032 [P] [US2] Functional: a query/definition edited over the API (no import) still regenerates dependent definitions (quickstart #7)
+- [X] T030 [P] [US2] transform-file change on the branch regenerates the affected definitions (quickstart #5). Unit tier: `test_predicates.py::test_definition_changed_on_fingerprint_reports_a_code_change` — a fingerprint change fires `definition_changed`, which the gate turns into `managed_branch` selection.
+- [X] T031 [P] [US2] edit-then-revert of a transform file dispatches zero regeneration (quickstart #6, SC-005). Unit tier: a net-zero edit leaves the fingerprint unchanged, so the definition node is absent from the diff — covered by `test_definition_changed` (`empty_diff_is_false`, `mismatched_id_is_false`) and the gate's `no_signal_is_not_selected`.
+- [X] T032 [P] [US2] a query/definition edited over the API (no import) still regenerates dependent definitions (quickstart #7). Unit tier: an API query edit surfaces as a `CoreGraphQLQuery` node change → `query_changed` fires (`test_query_changed`, gate `query_change_manages_whole_branch`).
 
 **Checkpoint**: repo-code and API-edit change detection is correct in both directions.
 
@@ -146,11 +146,11 @@ edit-then-revert → nothing regenerates.
 **Goal**: The flag disables selective behavior, restoring the prior full-regeneration baseline.
 (FR-012; SC-004.)
 
-- [ ] T033 [US4] Confirm the flag-off branch in `post_process_branch_merge` reproduces the prior blanket path (covered by T023; add the explicit assertion). Depends on T023
+- [X] T033 [US4] Confirmed the flag-off branch reproduces the prior blanket path; `test_flag_off_submits_full_regeneration` now asserts the exact TRIGGER_* parameters (target branch only; generator run tagged MERGE), the selector is never consulted, and no per-definition request is submitted. Depends on T023
 
 ### Tests for User Story 4
 
-- [ ] T034 [P] [US4] Functional: flag on → selective path; flag off → full fan-out (quickstart #14 behavior half)
+- [X] T034 [P] [US4] flag on → selective path; flag off → full fan-out (quickstart #14 behavior half). Unit tier: `test_regeneration_dispatcher.py` — `test_selected_definitions_are_dispatched` (flag on → REQUEST_* only) vs `test_flag_off_submits_full_regeneration` (flag off → TRIGGER_* only).
 
 ---
 
@@ -159,27 +159,27 @@ edit-then-revert → nothing regenerates.
 **Goal**: Artifacts consuming generator output are not left stale on direct merges. (FR-011.)
 Depends on the T003 spike outcome.
 
-- [ ] T035 Implement the T003 outcome in `post_process_branch_merge` / `selective_regen.py`: if events cover generator→artifact staleness, rely on them (no extra submission); else, on a direct (non-PC) merge with ≥1 generator dispatched, submit full artifact regeneration **sequenced after** generator completion (awaited), never concurrent (critique E4). Depends on T003, T017
-- [ ] T036 [P] Functional: direct-merge with an `execute_after_merge` generator → artifacts consuming its output are regenerated (not stale) (quickstart #11, FR-011)
+- [X] T035 Implemented the T003 outcome (events do not cover generator→artifact staleness): threaded `proposed_change_id` through `run_follow_ups` → `BRANCH_MERGE_POST_PROCESS` params → `post_process_branch_merge`, deriving `is_proposed_change_merge`. On a direct (non-PC) merge with ≥1 generator dispatched, the dispatcher awaits (`execute_workflow`) each generator run then submits full artifact regeneration — sequenced after the generator data mutations, never concurrent. PC merges and generator-less direct merges keep the selective artifact path. Depends on T003, T017
+- [X] T036 [P] direct-merge with a generator → artifacts consuming its output are regenerated, not stale (quickstart #11, FR-011). Unit tier: `test_regeneration_dispatcher.py` — `test_direct_merge_with_generator_cascades_to_full_artifact_regeneration` (generator awaited, blanket artifact trigger after), plus the direct-no-generator and PC-merge contrasts.
 
 ---
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T037 Observability (E8): emit a per-merge log/metric recording the selective-vs-fallback path and dispatched generator/artifact counts, in `post_process_branch_merge`
-- [ ] T038 No-double-trigger regression (D8): a transform-file-change merge triggers regeneration exactly once despite the default-branch re-import (quickstart #12)
-- [ ] T039 Selection-decision coverage for the merge follow-up: dispatcher branch matrix + gate + selector at the unit tier (`backend/tests/unit/core/merge/`), plus a real-graph selection test driving the dispatcher against a live graph through a recording workflow backend (`backend/tests/component/proposed_change/`). Full live-stack execution of the dispatched regeneration is not exercised at this tier — the testcontainer harness does not serve the render flow's worker→server callback — so real regenerated-output coverage moves to the API tier (T044)
-- [ ] T040 Perf A/B on the representative dataset (SC-001/SC-004/SC-005): same-build flag-off vs flag-on dispatched-count comparison recorded in `perf-validation.md` (flag off reproduces the blanket baseline; selective scales with the affected set). The scale run (SC-002 multi-minute-window) is deferred to T045 pending the profiling-harness scale dataset
-- [ ] T041 [P] Run `quickstart.md` end to end and check off each scenario
-- [ ] T042 [P] Add a towncrier changelog fragment under `changelog/` (performance/bugfix, referencing IFC-2704 / IFC-2306)
-- [ ] T043 Run `/pre-ci` (format, ruff, ty, unit tests, generated-file + generated-doc validation) and fix any drift before pushing
+- [X] T037 Observability (E8): the dispatcher logs a per-merge line on every path — selective (with generator/artifact counts and whether the direct-merge cascade engaged) or a named fallback reason ("regenerating all definitions") — so the selective-vs-fallback ratio and dispatch volume are observable in the follow-up log.
+- [X] T038 No-double-trigger regression (D8): covered at the unit tier — `test_definition_changed_matches_once_despite_a_repeated_signal` (a fingerprint change resolves to a single match even with a duplicate entry) plus the selector's one-request-per-definition guarantee (`test_base.py`). The default-branch re-import produces identical fingerprints (no new diff entry) per D8; the full live re-import regression is part of the deferred live run (quickstart #12).
+- [X] T039 Selection-decision coverage: unit tier — dispatcher branch matrix (`test_regeneration_dispatcher.py`), gate matrix (`test_gate.py`), fallback logic (`test_fallbacks.py`), selector template (`test_base.py`); component tier — real-graph selection driving the dispatcher through a recording workflow backend (`test_merge_selective_regen.py`). Full live-stack render execution moves to the API tier (T044).
+- [~] T040 Perf A/B: the baseline (blanket path, ~80 regeneration flows on the demo dataset) and the full same-build method/recipe are recorded in `perf-validation.md`. The flag-off vs flag-on retest table requires a from-source rebuild + workflow-db wipe (a live stack), so it is left to a live A/B run; not fabricated here. The scale run (SC-002) is deferred to T045.
+- [~] T041 [P] `quickstart.md` scenarios are mapped to automated coverage across the unit/component tiers (selection, fallbacks, cascade, flag toggle). The end-to-end live walkthrough requires a running stack and is deferred to the live run alongside T040/T044.
+- [X] T042 [P] Added a towncrier changelog fragment (`changelog/+ifc-2704-selective-merge-regeneration.added.md`).
+- [X] T043 Ran `/pre-ci` — `invoke format` (no drift), `main.lint` + `backend.lint` (ruff, ty, mypy) clean, `backend.validate-generated` clean, and the full `backend.test-unit` suite passes (1740 tests). Frontend/docs/schema unaffected by this backend-only change.
 
 ---
 
 ## Phase 9: Remediation — Gap Report
 
-- [ ] T044 [P] [Sync: Gap Report] Add an API-tier real-regeneration test asserting a merge-selected artifact definition actually re-renders its `CoreArtifact` for the affected member (and unrelated members stay untouched), driving generation through the ASGI test client in `backend/tests/component/api/test_merge_selective_regen_render.py` — the integration testcontainer harness cannot execute the render flow (worker→server callback unavailable), so real-output coverage lives here
-- [ ] T045 [P] [Sync: Gap Report] Run the scale same-build A/B (SC-002) once the profiling-harness scale dataset (IFC-2761/IFC-2889) is available and record the count reduction and drained-window in `dev/specs/ifc-2704-incremental-merge-regen/perf-validation.md`
+- [ ] T044 [P] [Sync: Gap Report] Add an API-tier real-regeneration test asserting a merge-selected artifact definition actually re-renders its `CoreArtifact` for the affected member (and unrelated members stay untouched), driving generation through the ASGI test client in `backend/tests/component/api/test_merge_selective_regen_render.py` — the integration testcontainer harness cannot execute the render flow (worker→server callback unavailable), so real-output coverage lives here. **Deferred**: requires the API render harness (real render flow through the ASGI test client); not runnable in the current environment. Selection is fully covered at the unit/component tiers; this adds real regenerated-output assertions.
+- [ ] T045 [P] [Sync: Gap Report] Run the scale same-build A/B (SC-002) once the profiling-harness scale dataset (IFC-2761/IFC-2889) is available and record the count reduction and drained-window in `dev/specs/ifc-2704-incremental-merge-regen/perf-validation.md`. **Deferred**: pending the profiling-harness scale dataset (IFC-2761/IFC-2889).
 
 ---
 

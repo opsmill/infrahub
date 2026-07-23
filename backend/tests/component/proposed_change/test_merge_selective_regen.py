@@ -81,7 +81,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
     graph. The recorder makes the dispatch itself the observable, so the plain-async path needs neither
     the branch-merge flow nor the task manager. The gate decision matrix, member narrowing and the
     blanket-fallback branches are covered by the selective-regen unit tests; this proves the concrete
-    ``_load_definitions`` gathering and the dispatch wiring hold end to end.
+    ``load_definitions`` gathering and the dispatch wiring hold end to end.
     """
 
     @pytest.fixture(scope="class", autouse=True)
@@ -125,8 +125,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:
-        workflow_recorder.execute_calls.clear()
-        workflow_recorder.submit_calls.clear()
+        workflow_recorder.reset()
 
     @pytest.fixture(autouse=True)
     def enable_selective(self) -> Generator[None, None, None]:
@@ -226,11 +225,12 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
         client: InfrahubClient,
         workflow_recorder: WorkflowRecorder,
     ) -> None:
-        """A data change on a queried kind selects the artifact and generator definitions reading it.
+        """A data change on a queried kind selects the generator reading it, which then cascades.
 
         The dispatcher loads the real definitions from the graph and, finding no existing subscribers,
-        selects every live member (an empty members filter). The selective requests fire, not the
-        blanket triggers.
+        selects every live member (an empty members filter). Because the selected generator runs after
+        the merge, its output is absent from the merge diff, so the consuming artifacts are regenerated
+        through the blanket trigger rather than a selective request.
         """
         await DiffSummaryCache(
             cache=memory_cache, serializer=DiffSummarySerializer(), key_namespace="branch_merge"
@@ -252,14 +252,15 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
             merge_diff_cache_key=DIFF_CACHE_KEY,
         )
 
-        artifact_calls = workflow_recorder.get_submit_calls_for(REQUEST_ARTIFACT_DEFINITION_GENERATE)
-        generator_calls = workflow_recorder.get_submit_calls_for(REQUEST_GENERATOR_DEFINITION_RUN)
-        assert [call["parameters"]["model"].artifact_definition_name for call in artifact_calls] == ["device-artifact"]
+        generator_calls = workflow_recorder.get_execute_calls_for(REQUEST_GENERATOR_DEFINITION_RUN)
         assert [call["parameters"]["model"].generator_definition.definition_name for call in generator_calls] == [
             "device-generator"
         ]
         # No existing subscribers, so every live member is new and the filter collapses to "all".
-        assert artifact_calls[0]["parameters"]["model"].members == []
         assert generator_calls[0]["parameters"]["model"].target_members == []
-        # The selective path ran, not the blanket fallback.
-        assert workflow_recorder.get_submit_calls_for(TRIGGER_ARTIFACT_DEFINITION_GENERATE) == []
+        # The generator runs after the merge, so its output is absent from the merge diff: it is awaited
+        # and the consuming artifacts are regenerated through the blanket trigger, not a selective request.
+        assert workflow_recorder.get_submit_calls_for(REQUEST_GENERATOR_DEFINITION_RUN) == []
+        assert workflow_recorder.get_submit_calls_for(REQUEST_ARTIFACT_DEFINITION_GENERATE) == []
+        trigger_calls = workflow_recorder.get_submit_calls_for(TRIGGER_ARTIFACT_DEFINITION_GENERATE)
+        assert [call["parameters"]["branch"] for call in trigger_calls] == [default_branch.name]

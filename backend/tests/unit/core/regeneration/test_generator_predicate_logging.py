@@ -1,10 +1,15 @@
 from __future__ import annotations
 
-from infrahub_sdk.diff import NodeDiff, NodeDiffElement, NodeDiffSummary
+from typing import TYPE_CHECKING
 
+from infrahub.core.regeneration.models import RegenerationReason
 from infrahub.core.regeneration.predicates import definition_changed, query_changed, transform_changed
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.message_bus.types import ProposedChangeRepository
+from tests.helpers.diff_summary import node_diff
+
+if TYPE_CHECKING:
+    from infrahub_sdk.diff import NodeDiff
 
 QUERY_ID = "11111111-1111-1111-1111-111111111111"
 DEFINITION_ID = "22222222-2222-2222-2222-222222222222"
@@ -49,22 +54,7 @@ def _build_repo_diff(*, files_changed: list[str] | None = None) -> ProposedChang
 
 
 def _node_diff(*, node_id: str, kind: str, element_names: list[str] | None = None) -> NodeDiff:
-    return NodeDiff(
-        branch="main",
-        kind=kind,
-        id=node_id,
-        action="updated",
-        display_label="some-node",
-        elements=[
-            NodeDiffElement(
-                name=name,
-                element_type="attribute",
-                action="updated",
-                summary=NodeDiffSummary(added=0, updated=1, removed=0),
-            )
-            for name in (element_names or [])
-        ],
-    )
+    return node_diff(node_id=node_id, kind=kind, display_label="some-node", field_names=element_names)
 
 
 def test_query_changed_reason_uses_generator_nouns() -> None:
@@ -75,6 +65,8 @@ def test_query_changed_reason_uses_generator_nouns() -> None:
     )
 
     assert outcome.matched is True
+    assert outcome.trigger is not None
+    assert outcome.trigger.code is RegenerationReason.QUERY_CHANGED
     assert outcome.reason == (
         f"Definition device-generator ({DEFINITION_ID}): GraphQL query GetNetworkDevice ({QUERY_ID}) was modified - "
         f"all instances of this definition will regenerate."
@@ -89,6 +81,8 @@ def test_definition_changed_reason_uses_generator_nouns() -> None:
     )
 
     assert outcome.matched is True
+    assert outcome.trigger is not None
+    assert outcome.trigger.code is RegenerationReason.DEFINITION_CHANGED
     assert outcome.reason == (
         f"Definition device-generator ({DEFINITION_ID}): definition node was modified (targets) - "
         f"all instances of this definition will regenerate."
@@ -103,6 +97,8 @@ def test_transform_changed_reason_uses_generator_source_noun() -> None:
     )
 
     assert outcome.matched is True
+    assert outcome.trigger is not None
+    assert outcome.trigger.code is RegenerationReason.FILE_IN_CLOSURE
     assert outcome.reason == (
         "Definition device-generator: file generators/device/device.py changed and is in this generator source's "
         "dependency closure - all instances will regenerate."
@@ -117,6 +113,8 @@ def test_transform_changed_reason_explains_the_legacy_fallback_for_generators() 
     )
 
     assert outcome.matched is True
+    assert outcome.trigger is not None
+    assert outcome.trigger.code is RegenerationReason.DEPENDENCIES_NULL
     assert outcome.reason == (
         "Definition device-generator: generator source was imported before this feature deployed "
         "(dependencies=null) - falling back to regenerate-on-any-file-change. The next re-import of this "
@@ -132,6 +130,8 @@ def test_transform_changed_reason_explains_the_incomplete_closure_fallback_for_g
     )
 
     assert outcome.matched is True
+    assert outcome.trigger is not None
+    assert outcome.trigger.code is RegenerationReason.DEPENDENCIES_INCOMPLETE
     assert outcome.reason == (
         "Definition device-generator: generator source dependency closure is incomplete "
         "(dependencies_complete=False) - falling back to regenerate-on-any-file-change."

@@ -31,6 +31,20 @@ class RequestArtifactDefinitionGenerate(BaseModel):
         description="Member node ids to generate artifacts for; when populated, only these members are processed.",
     )
 
+    def selects_member(self, *, member_id: str, artifact_id: str | None) -> bool:
+        """Whether the member should have its artifact (re)generated under this request's filters.
+
+        ``members`` filters on the member node id, so a member with no artifact yet is still
+        selected when its id is listed. ``limit`` filters on the existing artifact id, so it can
+        only ever narrow to members that already have an artifact -- a member whose ``artifact_id``
+        is ``None`` is skipped by a non-empty ``limit``. An empty filter imposes no restriction.
+        """
+        if self.members and member_id not in self.members:
+            return False
+        if self.limit and artifact_id not in self.limit:
+            return False
+        return True
+
 
 class RequestArtifactGenerate(BaseModel):
     """Runs to generate an artifact."""
