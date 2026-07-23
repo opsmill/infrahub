@@ -1,0 +1,1 @@
+Opening the edit form for an object reached through its generic kind URL (for example a repository via the homepage "Git repositories" widget) no longer fails with a GraphQL error about querying the `profiles` field; the edit-form query no longer requests `profiles` for generic kinds.

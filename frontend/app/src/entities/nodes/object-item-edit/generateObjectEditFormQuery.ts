@@ -6,6 +6,7 @@ import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelat
 
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 
 export const generateObjectEditFormQuery = ({
@@ -48,7 +49,9 @@ export const generateObjectEditFormQuery = ({
             ...addRelationshipsToRequest([...formRelationships, ...extraRelationships], {
               withMetadata: true,
             }),
-            ...("generate_profile" in objectSchema && objectSchema.generate_profile
+            ...(!isGenericSchema(objectSchema) &&
+            "generate_profile" in objectSchema &&
+            objectSchema.generate_profile
               ? {
                   profiles: {
                     edges: {
