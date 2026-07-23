@@ -28,6 +28,7 @@ from infrahub.workflows.catalogue import (
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
+from infrahub.workflows.constants import WorkflowTag
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_computed_attribute_python
@@ -211,8 +212,6 @@ async def process_transform(
     if not transform_attributes:
         return
 
-    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
-
     for attribute_name, transform_attribute in transform_attributes.items():
         if not transform_attribute.transform:
             raise ValueError(f"No transform configured for computed attribute '{attribute_name}'")
@@ -265,6 +264,7 @@ async def process_transform(
         for skipped_id, reason in skipped:
             log.warning(f"Skipping recompute of '{attribute_name}' for node {skipped_id}: {reason}")
 
+        dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
         await dispatcher.dispatch(
             writes=writes,
             branch_name=branch_name,
@@ -307,6 +307,11 @@ async def trigger_update_python_computed_attributes(
                 "computed_attribute_kind": computed_attribute_kind,
                 "context": context,
             },
+            # Bake the branch tag in at submission so it is part of the run's creation
+            # tags: a later in-flow tag update rebuilds the list from the tags known at
+            # flow start, so a branch tag added only mid-run would be dropped and the
+            # run would disappear from branch-filtered task queries.
+            tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
         )
 
 
@@ -708,6 +713,9 @@ async def query_transform_targets(
                     "computed_attribute_kind": kind,
                     "context": context,
                 },
+                # Same rationale as the setup-path submission: the branch tag must be part
+                # of the creation tags to survive in-flow tag updates.
+                tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
             )
 
 
