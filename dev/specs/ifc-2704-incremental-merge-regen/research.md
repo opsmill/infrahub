@@ -288,6 +288,23 @@ over-execution here is acceptable.
 
 **Rationale**: Direct restatement of the INFP-409 invariant. Every uncertain path regenerates.
 
+**Repo signal verification outcome (2026-07-16) — the signal is capturable, but correctness does
+not depend on it.** The merge diff serializer emits every node whose action is not `UNCHANGED`
+with all of its changed attribute elements, and nothing in the diff pipeline excludes
+`CoreRepository` / `CoreGenericRepository` nodes. A source-branch code change bumps the
+repository's `commit` attribute, so that node appears in the pre-freeze `branch_diff.nodes` with a
+triggering `commit` element and is therefore present in the captured summary. The
+null-fingerprint escalation is nonetheless made **unconditional**: any definition with no computed
+fingerprint escalates its whole repository to full regeneration whether or not a commit change is
+confirmed. This removes the dependency on the E6-flagged uncertainty entirely — the confirmed and
+unconfirmed branches select identically, so a missing or late commit signal can never
+under-execute. The confirmed-vs-unconfirmed distinction is retained only in the log line. For the
+same reason, the `dependencies` null / `dependencies_complete != True` fallback is also
+unconditional (it does not gate on the commit signal): an untrustworthy dependency closure means a
+code change outside the known inputs would not move the fingerprint, so the definition regenerates
+all members defensively. Both fallbacks over-execute and self-heal on the next re-import, honoring
+the no-under-execution invariant without relying on the repository commit signal being present.
+
 ## Decision 7 — Generator-output cascade on direct merges (resolves Open Question 1)
 
 **Finding**: For a merge **via a proposed change**, generators ran as checks and their output
@@ -394,9 +411,10 @@ committed or CI fails.
 - **Blocking spike (D7/E4)**: RESOLVED 2026-07-13 — the event machinery does **not** cover
   generator→artifact staleness on direct merges (see Decision 7 spike outcome). The T035 fallback
   is required and must await generator completion (sequenced). No further investigation needed.
-- **Verification (D6/E6)**: confirm a source-branch code change produces a `CoreRepository`
-  node with a triggering `commit` element in `branch_diff.nodes` at capture; else escalate the
-  null-fingerprint case to repository-wide full regeneration.
+- **Verification (D6/E6)**: RESOLVED 2026-07-16 — the diff serializer captures the
+  `CoreRepository.commit` element when a source-branch code change is present (no repository
+  exclusion in the diff pipeline), but the null-fingerprint escalation is made unconditional so
+  correctness does not depend on the signal being present (see Decision 6 verification outcome).
 - Confirm no other caller of the artifact `GENERATE` workflow regresses when `members` is
   added (default-empty preserves behavior; verify by grep + test).
 - Member reconciliation (D4a) must be covered by a functional test for each of: new object
