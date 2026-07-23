@@ -1,14 +1,19 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.diff import NodeDiff, NodeDiffElement
 
 from infrahub.core.regeneration.members import run_generator
 from infrahub.core.regeneration.predicates import definition_changed, query_changed, transform_changed
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.message_bus.types import ProposedChangeRepository
+from tests.helpers.diff_summary import node_diff
+from tests.unit.core.regeneration.conftest import DiffCase, TransformChangedCase
+
+if TYPE_CHECKING:
+    from infrahub_sdk.diff import NodeDiff
 
 QUERY_ID = "11111111-1111-1111-1111-111111111111"
 DEFINITION_ID = "22222222-2222-2222-2222-222222222222"
@@ -72,34 +77,17 @@ def _build_repo_diff(
 
 
 def _node_diff(*, node_id: str, kind: str = "CoreGraphQLQuery", action: str = "UPDATED") -> NodeDiff:
-    # ``action`` is the uppercase GraphQL enum name as emitted by the diff summary, not the lowercase
-    # ``DiffAction.*.value``; fixtures must mirror production casing so the case-insensitive match is exercised.
-    elements: list[NodeDiffElement] = []
-    return NodeDiff(
-        branch="main",
-        kind=kind,
-        id=node_id,
-        action=action,
-        display_label="some-node",
-        elements=elements,
-    )
+    return node_diff(node_id=node_id, kind=kind, action=action, display_label="some-node")
 
 
-@dataclass(frozen=True, kw_only=True)
-class QueryChangedCase:
-    name: str
-    diff: list[NodeDiff]
-    expected: bool
-
-
-QUERY_CHANGED_CASES: list[QueryChangedCase] = [
-    QueryChangedCase(name="empty_diff_is_false", diff=[], expected=False),
-    QueryChangedCase(
+QUERY_CHANGED_CASES: list[DiffCase] = [
+    DiffCase(name="empty_diff_is_false", diff=[], expected=False),
+    DiffCase(
         name="query_id_match_is_true",
         diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery")],
         expected=True,
     ),
-    QueryChangedCase(
+    DiffCase(
         name="unresolvable_query_peer_never_matches_here",
         diff=[_node_diff(node_id=OTHER_ID, kind="CoreGraphQLQuery")],
         expected=False,
@@ -108,7 +96,7 @@ QUERY_CHANGED_CASES: list[QueryChangedCase] = [
 
 
 @pytest.mark.parametrize("case", [pytest.param(c, id=c.name) for c in QUERY_CHANGED_CASES])
-def test_query_changed_generator_variant(case: QueryChangedCase) -> None:
+def test_query_changed_generator_variant(case: DiffCase) -> None:
     """The query predicate fires for a generator definition exactly when its query node id is modified.
 
     A generator whose query peer cannot be resolved (no diff entry carries its id) never matches here;
@@ -118,26 +106,19 @@ def test_query_changed_generator_variant(case: QueryChangedCase) -> None:
     assert query_changed(definition=definition, diff_summary=case.diff).matched is case.expected
 
 
-@dataclass(frozen=True, kw_only=True)
-class DefinitionChangedCase:
-    name: str
-    diff: list[NodeDiff]
-    expected: bool
-
-
-DEFINITION_CHANGED_CASES: list[DefinitionChangedCase] = [
-    DefinitionChangedCase(name="empty_diff_is_false", diff=[], expected=False),
-    DefinitionChangedCase(
+DEFINITION_CHANGED_CASES: list[DiffCase] = [
+    DiffCase(name="empty_diff_is_false", diff=[], expected=False),
+    DiffCase(
         name="definition_id_match_is_true",
         diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreGeneratorDefinition")],
         expected=True,
     ),
-    DefinitionChangedCase(
+    DiffCase(
         name="query_id_alone_is_false",
         diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery")],
         expected=False,
     ),
-    DefinitionChangedCase(
+    DiffCase(
         name="definition_match_among_other_entries",
         diff=[
             _node_diff(node_id=OTHER_ID, kind="TestNetworkDevice"),
@@ -149,7 +130,7 @@ DEFINITION_CHANGED_CASES: list[DefinitionChangedCase] = [
 
 
 @pytest.mark.parametrize("case", [pytest.param(c, id=c.name) for c in DEFINITION_CHANGED_CASES])
-def test_definition_changed_generator_variant(case: DefinitionChangedCase) -> None:
+def test_definition_changed_generator_variant(case: DiffCase) -> None:
     """The definition predicate fires for a generator definition when its own node id is modified.
 
     An attribute change or a ``targets`` repoint on the definition surfaces as a modification of the
@@ -157,17 +138,6 @@ def test_definition_changed_generator_variant(case: DefinitionChangedCase) -> No
     """
     definition = _build_definition()
     assert definition_changed(definition=definition, diff_summary=case.diff).matched is case.expected
-
-
-@dataclass(frozen=True, kw_only=True)
-class TransformChangedCase:
-    name: str
-    dependencies: list[str] | None
-    dependencies_complete: bool | None
-    files_added: list[str] = field(default_factory=list)
-    files_changed: list[str] = field(default_factory=list)
-    files_removed: list[str] = field(default_factory=list)
-    expected: bool
 
 
 TRANSFORM_CHANGED_CASES: list[TransformChangedCase] = [

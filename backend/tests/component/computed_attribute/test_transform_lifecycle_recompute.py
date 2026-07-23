@@ -237,8 +237,7 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
         assert transform_to_delete is not None
         await transform_to_delete.delete(db=db)
 
-        workflow_recorder.execute_calls.clear()
-        workflow_recorder.submit_calls.clear()
+        workflow_recorder.reset()
 
         await process_transform_lifecycle(
             branch_name=default_branch.name,
