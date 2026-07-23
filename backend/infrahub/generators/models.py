@@ -85,6 +85,10 @@ class ProposedChangeGeneratorDefinition(GeneratorDefinitionModel):
         default=None,
         description="True when the dependency list is fully resolved. False when partial. None when not yet computed.",
     )
+    fingerprint: str | None = Field(
+        default=None,
+        description="Content hash of the definition's inputs, recomputed on each import. None when not yet computed.",
+    )
 
     @property
     def source_noun(self) -> str:

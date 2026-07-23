@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.diff import NodeDiff
 
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
 from infrahub.core.merge.selective_regen.models import GateResult
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
+from tests.helpers.diff_summary import node_diff
+
+if TYPE_CHECKING:
+    from infrahub_sdk.diff import NodeDiff
 
 TARGET_BRANCH = "main"
 DEFINITION_ID = "definition-1"
@@ -18,9 +22,7 @@ GROUP_ID = "group-1"
 
 
 def _node_diff(*, node_id: str) -> NodeDiff:
-    return NodeDiff(
-        branch=TARGET_BRANCH, kind="TestDevice", id=node_id, action="UPDATED", display_label="node", elements=[]
-    )
+    return node_diff(node_id=node_id, kind="TestDevice", branch=TARGET_BRANCH)
 
 
 def _generator_definition(*, query_models: list[str]) -> ProposedChangeGeneratorDefinition:

@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.diff import NodeDiff, NodeDiffElement, NodeDiffSummary
 
 from infrahub.core.regeneration.predicates import relevant_node_changes
+from tests.helpers.diff_summary import node_diff
+
+if TYPE_CHECKING:
+    from infrahub_sdk.diff import NodeDiff
 
 BRANCH = "feature/test"
 
@@ -23,21 +27,13 @@ def _node_diff(
     `element_type` accepts the raw value (e.g. "RELATIONSHIP_MANY") so a relationship endpoint
     flip can be reproduced exactly as it appears in production data.
     """
-    return NodeDiff(
-        branch=branch,
+    return node_diff(
+        node_id=node_id,
         kind=kind,
-        id=node_id,
-        action="updated",
+        branch=branch,
         display_label="",
-        elements=[
-            NodeDiffElement(
-                name=name,
-                element_type=element_type,
-                action="updated",
-                summary=NodeDiffSummary(added=0, updated=1, removed=0),
-            )
-            for name in field_names
-        ],
+        field_names=field_names,
+        element_type=element_type,
     )
 
 

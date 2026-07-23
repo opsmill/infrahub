@@ -18,9 +18,7 @@ class ArtifactSelector(DefinitionSelectorBase[ProposedChangeArtifactDefinition, 
 
     subscriber_kind = InfrahubKind.ARTIFACT
 
-    async def _load_definitions(
-        self, *, target_branch: str
-    ) -> list[LoadedDefinition[ProposedChangeArtifactDefinition]]:
+    async def load_definitions(self, *, target_branch: str) -> list[LoadedDefinition[ProposedChangeArtifactDefinition]]:
         definition_information = await self.client.execute_graphql(
             query=GATHER_ARTIFACT_DEFINITIONS, branch_name=target_branch
         )
