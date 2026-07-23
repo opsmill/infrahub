@@ -1,1 +1,0 @@
-Fixed flow-run tags being silently dropped when a workflow tagged its run more than once: later tag updates were based on the tags known at flow start, so they replaced tags added earlier in the same run. Tag updates now build on the run's current tags, keeping branch and node tags visible in the task list for flows that also record a database change.
