@@ -1,7 +1,7 @@
 """E2E coverage for organisation-wide default preferences (IFC-2720 / IFC-2722).
 
 A user holding ``manage_global_preferences`` sets organisation defaults on the
-Global preferences tab. Every user without a personal override then inherits
+Global preferences page. Every user without a personal override then inherits
 those defaults — surfaced in the Preferences card as the "organisation default"
 source.
 
@@ -47,7 +47,7 @@ class TestGlobalPreferences:
         self, admin_page: Page, read_only_page: Page
     ) -> None:
         # An administrator sets the organisation default.
-        await admin_page.goto("/profile/global-preferences")
+        await admin_page.goto("/global-preferences")
         await select_combobox_option(admin_page, "Date format", GLOBAL_DATE_FORMAT)
         await admin_page.get_by_role("button", name="Save", exact=True).click()
         await expect(admin_page.get_by_text("Global preferences updated")).to_be_visible()
@@ -59,5 +59,8 @@ class TestGlobalPreferences:
             "Automatic (inherited)"
         )
 
-        await read_only_page.get_by_role("button", name="Where this value comes from").first.hover()
+        # Focus (not hover): React Aria opens the tooltip immediately on keyboard
+        # focus, while hover goes through the warm-up delay — the deterministic
+        # option for CI.
+        await read_only_page.get_by_role("button", name="Where this value comes from").first.focus()
         await expect(read_only_page.get_by_text("From the organisation default")).to_be_visible()
