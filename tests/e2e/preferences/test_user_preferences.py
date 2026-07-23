@@ -1,4 +1,4 @@
-"""E2E coverage for personal user preferences (IFC-2720 / IFC-2721).
+"""E2E coverage for personal user preferences.
 
 Each user sets their own date format and timezone from the Preferences card on
 the account Profile tab. A saved value persists across a reload; re-selecting the

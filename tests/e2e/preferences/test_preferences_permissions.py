@@ -1,4 +1,4 @@
-"""E2E coverage for the manage_global_preferences permission gate (IFC-2722).
+"""E2E coverage for the manage_global_preferences permission gate.
 
 The Global preferences page is gated by the ``manage_global_preferences`` global
 permission. An administrator (super admin, who holds it implicitly) sees the

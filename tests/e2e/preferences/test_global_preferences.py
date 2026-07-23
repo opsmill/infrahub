@@ -1,4 +1,4 @@
-"""E2E coverage for organisation-wide default preferences (IFC-2720 / IFC-2722).
+"""E2E coverage for organisation-wide default preferences.
 
 A user holding ``manage_global_preferences`` sets organisation defaults on the
 Global preferences page. Every user without a personal override then inherits
