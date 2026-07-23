@@ -13,8 +13,25 @@ from infrahub.core.schema import SchemaRoot, internal_schema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.enum import ConstraintIdentifier
+from infrahub.core.validators.node_diff_index import NodeDiffIndex
+from infrahub.core.validators.uniqueness.scope import UniquenessConstraintScoper
 
 RELATIONSHIP_PROPERTIES = ("peer", "cardinality", "optional", "min_count", "max_count")
+
+
+class _NoDependentsResolver:
+    async def resolve(self, node_kind: str, relationship_identifier: str, peer_uuids: list[str]) -> set[str]:
+        return set()
+
+
+def _build_determiner(schema_branch: SchemaBranch) -> ConstraintValidatorDeterminer:
+    node_diff_index = NodeDiffIndex()
+    scoper = UniquenessConstraintScoper(
+        schema_branch=schema_branch, dependent_resolver=_NoDependentsResolver(), node_diff_index=node_diff_index
+    )
+    return ConstraintValidatorDeterminer(
+        schema_branch=schema_branch, node_diff_index=node_diff_index, uniqueness_scoper=scoper
+    )
 
 
 def node_constraint(kind: str, property_name: str) -> SchemaUpdateConstraintInfo:
@@ -153,7 +170,7 @@ def person_cars_node_diff(
 class TestConstraintDeterminer:
     async def test_no_node_diffs(self, car_person_schema: SchemaBranch, default_branch: Branch) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
 
         constraints = await determiner.get_constraints(node_diffs=[])
 
@@ -166,7 +183,7 @@ class TestConstraintDeterminer:
         person_name_node_diff: tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]],
     ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         node_diff, constraint_info_set = person_name_node_diff
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
@@ -187,7 +204,7 @@ class TestConstraintDeterminer:
         person_cars_node_diff: tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]],
     ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         node_diff, constraint_info_set = person_cars_node_diff
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
@@ -208,7 +225,7 @@ class TestConstraintDeterminer:
         name_attr_schema.parameters.max_length = 30
         car_schema = schema_branch.get(name="TestCar", duplicate=False)
         car_schema.uniqueness_constraints = [["owner", "color__value"]]
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         node_diff, constraint_info_set = person_name_node_diff
         max_length_param_constraint_info = SchemaUpdateConstraintInfo(
             constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE.value,
@@ -235,7 +252,7 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         car_schema = schema_branch.get(name="TestCar", duplicate=False)
         car_schema.uniqueness_constraints = [["owner__name", "color__value"]]
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         node_diff, constraint_info_set = person_name_node_diff
         constraint_info_set.add(node_uniqueness_constraint("TestPerson"))
         # TestCar's constraint reads the name attribute of the related TestPerson, so a TestPerson
@@ -254,7 +271,7 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         generic_schema = schema_branch.get(name="TestCar", duplicate=False)
         generic_schema.uniqueness_constraints = [["name__value"]]
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         node_diff = NodeDiffFieldSummary(kind="TestElectricCar", attribute_names={"nbr_engine"})
         # nbr_engine participates in no uniqueness path, so the uniqueness check must not be
         # triggered on the implementation or on its generic; only the nbr_engine field constraints remain
@@ -276,7 +293,7 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         generic_schema = schema_branch.get(name="TestCar", duplicate=False)
         generic_schema.uniqueness_constraints = [["name__value"]]
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         # `name` is inherited from the generic; a generic-level uniqueness check spans every
         # implementing node, so changing name on an implementation must trigger the check on the
         # generic (TestCar) as well as on the implementation (TestElectricCar)
@@ -304,7 +321,7 @@ class TestConstraintDeterminer:
         # reading the peer's `name` must fire when an implementation of that generic (LocationSite)
         # changes `name`, even though the peer kind named in the path (LocationGeneric) has no diff
         thing_schema.uniqueness_constraints = [["location__name"]]
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         node_diff = NodeDiffFieldSummary(kind="LocationSite", attribute_names={"name"})
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
@@ -319,7 +336,7 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         car_schema = schema_branch.get(name="TestCar", duplicate=False)
         car_schema.uniqueness_constraints = [["owner__name", "color__value"]]
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         # TestCar's uniqueness constraints read TestPerson.name; a change to an unrelated
         # TestPerson attribute, height, does not participate, so neither kind's uniqueness
         # check should trigger
@@ -338,7 +355,7 @@ class TestConstraintDeterminer:
         person_name_node_diff: tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]],
     ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         node_diff, constraint_info_set = person_name_node_diff
         constraint_info_set.add(node_uniqueness_constraint("TestPerson"))
 
@@ -358,7 +375,7 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.register_schema(
             schema=SchemaRoot(**internal_schema), branch=default_branch.name
         )
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         node_diff, constraint_info_set = person_name_node_diff
         constraint_info_set.add(node_uniqueness_constraint("TestPerson"))
 
@@ -367,7 +384,7 @@ class TestConstraintDeterminer:
         assert set(constraints) == constraint_info_set
 
         internal_kinds = {"SchemaNode", "SchemaGeneric", "SchemaAttribute", "SchemaRelationship"}
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         constraints = await determiner.get_constraints(
             node_diffs=[
                 node_diff,
@@ -386,7 +403,7 @@ class TestConstraintDeterminer:
         default_branch: Branch,
     ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         # A hierarchy edge change surfaces on both endpoints: the child (LocationRack) records its
         # `parent` change and the parent (LocationSite) records its `children` change. Each endpoint
         # emits only the hierarchy constraint whose relationship actually changed there, and no
@@ -415,7 +432,7 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         person_schema = schema_branch.get(name="TestPerson", duplicate=False)
         person_schema.uniqueness_constraints = [["does_not_exist__value"]]
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         # `height` is not a unique attribute, so evaluating uniqueness must fall through to parsing
         # the (unparseable) constraint group rather than short-circuiting on a unique attribute.
         node_diff = NodeDiffFieldSummary(kind="TestPerson", attribute_names={"height"})
@@ -433,7 +450,7 @@ class TestConstraintDeterminer:
         default_branch: Branch,
     ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        determiner = _build_determiner(schema_branch=schema_branch)
         # Re-parenting a rack changes only its `parent` relationship, so only the parent hierarchy
         # constraint may be emitted for that kind, never the children one.
         node_diffs = [NodeDiffFieldSummary(kind="LocationSite", relationship_names={"parent"})]
