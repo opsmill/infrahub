@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
 
 from infrahub.core.merge.selective_regen.definition_selector.base import DefinitionSelectorBase
+from infrahub.core.merge.selective_regen.fallbacks import repositories_forcing_full_regeneration
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
 from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
 from infrahub.core.merge.selective_regen.models import GateResult, LoadedDefinition
@@ -17,7 +19,44 @@ if TYPE_CHECKING:
 TARGET_BRANCH = "main"
 
 
-def _generator_definition(*, name: str = "gen", group_id: str = "grp-1") -> ProposedChangeGeneratorDefinition:
+async def _run_select(selector: _StubSelector) -> list[RequestGeneratorDefinitionRun]:
+    loaded = await selector.load_definitions(target_branch=TARGET_BRANCH)
+    forced = repositories_forcing_full_regeneration(definitions=[entry.definition for entry in loaded])
+    return await selector.select(
+        loaded_definitions=loaded,
+        forced_repositories=forced,
+        diff_summary=[],
+        target_branch=TARGET_BRANCH,
+        modified_kinds=[],
+    )
+
+
+async def _select_with_rejecting_gate(
+    *definitions: ProposedChangeGeneratorDefinition,
+) -> list[RequestGeneratorDefinitionRun]:
+    selector = _StubSelector(
+        gate=_StubGate(
+            {
+                definition.definition_name: GateResult(regenerate_all_members=False, selected=False)
+                for definition in definitions
+            }
+        ),
+        impacted_resolver=_StubImpactedResolver([]),
+        definitions=list(definitions),
+        member_ids=["m1", "m2"],
+        subscriber_by_member={"m1": "s1", "m2": "s2"},
+    )
+    return await _run_select(selector)
+
+
+def _generator_definition(
+    *,
+    name: str = "gen",
+    group_id: str = "grp-1",
+    dependencies: list[str] | None = None,
+    dependencies_complete: bool | None = True,
+    fingerprint: str | None = "fp-1",
+) -> ProposedChangeGeneratorDefinition:
     return ProposedChangeGeneratorDefinition(
         definition_id=f"def-{name}",
         definition_name=name,
@@ -33,6 +72,9 @@ def _generator_definition(*, name: str = "gen", group_id: str = "grp-1") -> Prop
         query_models=[],
         query_payload="query {}",
         repository_id="repo-1",
+        dependencies=dependencies if dependencies is not None else [],
+        dependencies_complete=dependencies_complete,
+        fingerprint=fingerprint,
     )
 
 
@@ -69,8 +111,7 @@ class _StubImpactedResolver(ImpactedSubscriberResolver):
 class _StubSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun]):
     """Drives the template's ``select`` with canned definitions, group members and subscribers.
 
-    The kind-specific hooks return injected data so the test exercises only the shared template:
-    gating, member reconciliation, impact narrowing and the drop of a definition left with no members.
+    The kind-specific hooks return injected data so the test exercises only the shared template.
     """
 
     subscriber_kind = "TestSubscriber"
@@ -86,11 +127,12 @@ class _StubSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition, Re
     ) -> None:
         self.gate = gate
         self.impacted_resolver = impacted_resolver
+        self.log = logging.getLogger("test_base")
         self._definitions = definitions
         self._member_ids = member_ids
         self._subscriber_by_member = subscriber_by_member
 
-    async def _load_definitions(
+    async def load_definitions(
         self, *, target_branch: str
     ) -> list[LoadedDefinition[ProposedChangeGeneratorDefinition]]:
         return [
@@ -195,9 +237,62 @@ async def test_select_narrows_and_drops(case: SelectCase) -> None:
         subscriber_by_member=case.subscriber_by_member,
     )
 
-    requests = await selector.select(diff_summary=[], target_branch=TARGET_BRANCH, modified_kinds=[])
+    requests = await _run_select(selector)
 
     assert [request.target_members for request in requests] == case.expected_target_members
+
+
+@dataclass
+class ForceCase:
+    name: str
+    fingerprint: str | None
+    dependencies_complete: bool | None
+
+
+FORCE_CASES = [
+    ForceCase(name="null_fingerprint_forces_selection", fingerprint=None, dependencies_complete=True),
+    ForceCase(name="incomplete_dependencies_force_selection", fingerprint="fp-1", dependencies_complete=False),
+]
+
+
+@pytest.mark.parametrize("case", FORCE_CASES, ids=lambda case: case.name)
+async def test_untrusted_signal_forces_selection_over_a_rejecting_gate(case: ForceCase) -> None:
+    # The gate rejects and no member has an impacted subscriber, yet the untrusted change signal
+    # must still regenerate every member (empty filter = all) rather than drop the definition.
+    definition = _generator_definition(fingerprint=case.fingerprint, dependencies_complete=case.dependencies_complete)
+    requests = await _select_with_rejecting_gate(definition)
+    assert [request.target_members for request in requests] == [[]]
+
+
+async def test_null_fingerprint_forces_a_populated_sibling_in_the_same_repository() -> None:
+    # The escalation is computed across all loaded definitions, so a definition with a populated
+    # fingerprint is force-regenerated because a sibling of the same repository has none — even
+    # though the gate rejects both. A regression scoping the forcing per-definition would silently
+    # drop the populated sibling.
+    null_fp = _generator_definition(name="null-fp", fingerprint=None)
+    populated_fp = _generator_definition(name="populated-fp", fingerprint="fp-1")
+    assert null_fp.repository_id == populated_fp.repository_id
+
+    requests = await _select_with_rejecting_gate(null_fp, populated_fp)
+
+    assert sorted(request.generator_definition.definition_name for request in requests) == [
+        "null-fp",
+        "populated-fp",
+    ]
+    assert [request.target_members for request in requests] == [[], []]
+
+
+async def test_untrusted_dependency_closure_forces_only_its_own_definition() -> None:
+    untrusted = _generator_definition(name="untrusted", dependencies=["a.py"], dependencies_complete=False)
+    trusted = _generator_definition(name="trusted", dependencies=["a.py"], dependencies_complete=True)
+    assert untrusted.repository_id == trusted.repository_id
+
+    requests = await _select_with_rejecting_gate(untrusted, trusted)
+
+    # Only the untrusted definition regenerates, and it regenerates every member (empty filter); the
+    # trusted sibling is dropped because nothing selected or forced it.
+    assert [request.generator_definition.definition_name for request in requests] == ["untrusted"]
+    assert [request.target_members for request in requests] == [[]]
 
 
 async def test_select_processes_each_definition_independently() -> None:
@@ -216,6 +311,6 @@ async def test_select_processes_each_definition_independently() -> None:
         subscriber_by_member={},
     )
 
-    requests = await selector.select(diff_summary=[], target_branch=TARGET_BRANCH, modified_kinds=[])
+    requests = await _run_select(selector)
 
     assert [request.generator_definition.definition_name for request in requests] == ["selected"]

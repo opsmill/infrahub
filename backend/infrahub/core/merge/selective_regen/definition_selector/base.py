@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.regeneration.members import map_subscriber_ids_by_member
 
+from ..fallbacks import dependency_closure_trigger
 from ..models import DefinitionModel
 
 if TYPE_CHECKING:
@@ -12,6 +13,8 @@ if TYPE_CHECKING:
 
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
+
+    from infrahub.core.regeneration.models import RegenerationTrigger
 
     from ..gate import DefinitionGate
     from ..impacted import ImpactedSubscriberResolver
@@ -24,7 +27,7 @@ def _narrow_members_filter(rendered_members: list[str], total_members: int) -> l
     An empty filter means "every member", so only narrow to a strict subset that renders; when every
     member renders, the empty filter lets the whole group be resolved at execution time.
     """
-    if rendered_members and len(rendered_members) == total_members:
+    if len(rendered_members) == total_members:
         return []
     return rendered_members
 
@@ -53,7 +56,13 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
         self.log = log
 
     async def select(
-        self, *, diff_summary: list[NodeDiff], target_branch: str, modified_kinds: list[str]
+        self,
+        *,
+        loaded_definitions: list[LoadedDefinition[DefinitionT]],
+        forced_repositories: dict[str, RegenerationTrigger],
+        diff_summary: list[NodeDiff],
+        target_branch: str,
+        modified_kinds: list[str],
     ) -> list[RequestT]:
         """Return one regeneration request per definition the merge diff requires be reprocessed.
 
@@ -63,7 +72,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
         affected.
         """
         requests: list[RequestT] = []
-        for loaded in await self._load_definitions(target_branch=target_branch):
+        for loaded in loaded_definitions:
             definition = loaded.definition
             gate_result = self.gate.evaluate(
                 definition=definition,
@@ -71,8 +80,21 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                 modified_kinds=modified_kinds,
                 group_id=loaded.group_id,
             )
-            if not gate_result.selected:
+
+            # A definition whose change signal cannot be trusted regenerates all of its members
+            # rather than risk narrowing away one the merge affected.
+            candidate_triggers = (
+                forced_repositories.get(definition.repository_id),
+                dependency_closure_trigger(definition),
+            )
+            forced_triggers = [trigger for trigger in candidate_triggers if trigger is not None]
+            for trigger in forced_triggers:
+                self.log.info(trigger.detail)
+            forced = bool(forced_triggers)
+
+            if not (gate_result.selected or forced):
                 continue
+            regenerate_all_members = gate_result.regenerate_all_members or forced
 
             subscriber_by_member = await self._map_subscribers_by_member(
                 definition=definition, target_branch=target_branch
@@ -91,15 +113,20 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                 for member_id in member_ids
                 if self._should_render(
                     subscriber_id=subscriber_by_member.get(member_id),
-                    regenerate_all_members=gate_result.regenerate_all_members,
+                    regenerate_all_members=regenerate_all_members,
                     impacted=impacted,
                 )
             ]
+            self.log.info(
+                f"SELECTIVE_REGEN select [{definition.definition_name}]: "
+                f"regenerate_all_members={regenerate_all_members} forced={forced} "
+                f"members={len(member_ids)} mapped_subscribers={len(subscriber_by_member)} "
+                f"impacted={len(impacted)} rendered={len(rendered_members)}"
+            )
+            if not rendered_members:
+                continue
             members = _narrow_members_filter(rendered_members, len(member_ids))
-            if rendered_members:
-                requests.append(
-                    self._build_request(definition=definition, target_branch=target_branch, members=members)
-                )
+            requests.append(self._build_request(definition=definition, target_branch=target_branch, members=members))
         return requests
 
     async def _map_subscribers_by_member(self, *, definition: DefinitionT, target_branch: str) -> dict[str, str]:
@@ -120,7 +147,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
         )
 
     @abstractmethod
-    async def _load_definitions(self, *, target_branch: str) -> list[LoadedDefinition[DefinitionT]]:
+    async def load_definitions(self, *, target_branch: str) -> list[LoadedDefinition[DefinitionT]]:
         """Load the candidate definitions for this kind, each paired with its target group id."""
 
     @abstractmethod
