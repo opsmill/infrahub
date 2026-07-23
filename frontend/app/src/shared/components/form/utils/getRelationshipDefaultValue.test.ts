@@ -970,6 +970,135 @@ describe("getRelationshipDefaultValue", () => {
     });
   });
 
+  describe("when adding a child to a hierarchical parent", () => {
+    // Country (child, parent cardinality "one") under Continent (parent, children "many").
+    const buildHierarchySchemas = () => {
+      const childSchema = generateNodeSchema({
+        kind: "LocationCountry",
+        display_labels: ["name__value"],
+        inherit_from: ["LocationGeneric"],
+        relationships: [
+          {
+            ...generateRelationshipSchema(),
+            kind: "Hierarchy",
+            name: "parent",
+            cardinality: "one",
+            peer: "LocationContinent",
+          },
+          {
+            ...generateRelationshipSchema(),
+            kind: "Hierarchy",
+            name: "children",
+            cardinality: "many",
+            peer: "LocationSite",
+          },
+        ],
+      });
+      const parentSchema = generateNodeSchema({
+        kind: "LocationContinent",
+        display_labels: ["name__value"],
+        inherit_from: ["LocationGeneric"],
+        relationships: [
+          {
+            ...generateRelationshipSchema(),
+            kind: "Hierarchy",
+            name: "parent",
+            cardinality: "one",
+            peer: "LocationGeneric",
+          },
+          {
+            ...generateRelationshipSchema(),
+            kind: "Hierarchy",
+            name: "children",
+            cardinality: "many",
+            peer: "LocationCountry",
+          },
+        ],
+      });
+      return { childSchema, parentSchema };
+    };
+
+    it("fills the child's parent field with the parent", () => {
+      // GIVEN
+      const { childSchema, parentSchema } = buildHierarchySchemas();
+      const parentData: NodeObject = {
+        id: "continent-id",
+        display_label: "Europe",
+        __typename: "LocationContinent",
+      };
+      store.set(nodeSchemasAtom, [parentSchema]);
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        objectTemplate: null,
+        relationshipName: "parent",
+        schema: childSchema,
+        parentSchema,
+        parentData,
+      });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: { type: "user" },
+        value: {
+          id: parentData.id,
+          display_label: parentData.display_label,
+          __typename: parentData.__typename,
+        },
+      });
+    });
+
+    it("does not fill the child's own children field", () => {
+      // GIVEN
+      const { childSchema, parentSchema } = buildHierarchySchemas();
+      const parentData: NodeObject = {
+        id: "continent-id",
+        display_label: "Europe",
+        __typename: "LocationContinent",
+      };
+      store.set(nodeSchemasAtom, [parentSchema]);
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        objectTemplate: null,
+        relationshipName: "children",
+        schema: childSchema,
+        parentSchema,
+        parentData,
+      });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({ source: null, value: null });
+    });
+
+    it("does not fill the parent field when the object is not a valid parent kind", () => {
+      // GIVEN
+      const { childSchema } = buildHierarchySchemas(); // LocationCountry, parent peer LocationContinent
+      const unrelatedParentSchema = generateNodeSchema({
+        kind: "InfraDevice",
+        display_labels: ["name__value"],
+      });
+      const parentData: NodeObject = {
+        id: "device-id",
+        display_label: "device-1",
+        __typename: "InfraDevice",
+      };
+      store.set(nodeSchemasAtom, [unrelatedParentSchema]);
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        objectTemplate: null,
+        relationshipName: "parent",
+        schema: childSchema,
+        parentSchema: unrelatedParentSchema,
+        parentData,
+      });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({ source: null, value: null });
+    });
+  });
+
   describe("when profiles are provided", () => {
     const buildProfileData = (override: Partial<ProfileData> = {}): ProfileData => ({
       id: "profile-id",
