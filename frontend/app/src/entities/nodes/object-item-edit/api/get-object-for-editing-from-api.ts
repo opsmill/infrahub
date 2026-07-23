@@ -19,10 +19,11 @@ export async function getObjectForEditingFromApi({
   branchName,
   atDate,
 }: GetObjectForEditingFromApiParams) {
-  const queryString = generateObjectEditFormQuery({ schema, objectId, extraRelationshipNames });
+  const queryString = generateObjectEditFormQuery({ schema, extraRelationshipNames });
 
   return graphqlClient.query({
     query: gql(queryString),
+    variables: { ids: [objectId] },
     context: {
       branch: branchName,
       date: atDate,

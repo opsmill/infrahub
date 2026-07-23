@@ -24,11 +24,10 @@ type GenerateObjectRelationshipsQueryParams = PaginationParams & {
 
 const generateObjectRelationshipsQuery = ({
   parentKind,
-  parentId,
   relationshipName,
   relationshipSchema,
   filters,
-}: Omit<GenerateObjectRelationshipsQueryParams, "limit" | "offset">) => {
+}: Omit<GenerateObjectRelationshipsQueryParams, "limit" | "offset" | "parentId">) => {
   const { kind: relationshipKind, attributes = [], relationships = [] } = relationshipSchema;
   const attributesVisible = getAttributesVisibleInListView(attributes);
   const relationshipsVisible = getRelationshipsVisibleInListView(relationships);
@@ -37,12 +36,13 @@ const generateObjectRelationshipsQuery = ({
     query: {
       __name: `Get${parentKind}Relationships${relationshipKind}`,
       __variables: {
+        parentIds: "[ID]",
         limit: "Int",
         offset: "Int",
       },
       [parentKind]: {
         __args: {
-          ids: [parentId],
+          ids: new VariableType("parentIds"),
         },
         edges: {
           node: {
@@ -82,13 +82,14 @@ export const getObjectRelationshipsFromApi = ({
   atDate,
   limit,
   offset,
+  parentId,
   ...params
 }: GetObjectRelationshipsFromApiParams) => {
   const query = gql(generateObjectRelationshipsQuery(params));
 
   return graphqlClient.query({
     query,
-    variables: { limit, offset },
+    variables: { parentIds: [parentId], limit, offset },
     context: {
       branch: branchName,
       date: atDate,

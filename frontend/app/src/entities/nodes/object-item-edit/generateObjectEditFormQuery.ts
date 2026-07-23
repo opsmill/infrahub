@@ -1,4 +1,4 @@
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
@@ -10,11 +10,9 @@ import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 
 export const generateObjectEditFormQuery = ({
   schema,
-  objectId,
   extraRelationshipNames = [],
 }: {
   schema: NodeSchema | ProfileSchema;
-  objectId: string;
   extraRelationshipNames?: string[];
 }): string => {
   let objectSchema = schema;
@@ -34,9 +32,12 @@ export const generateObjectEditFormQuery = ({
   const request = {
     query: {
       __name: "GetObjectForEditForm",
+      __variables: {
+        ids: "[ID]",
+      },
       [schema.kind as string]: {
         __args: {
-          ids: [objectId],
+          ids: new VariableType("ids"),
         },
         edges: {
           node: {

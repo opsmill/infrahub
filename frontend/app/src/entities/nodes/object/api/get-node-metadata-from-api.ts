@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { nodeMetadataFragment } from "@/shared/api/graphql/fragments";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -10,13 +10,16 @@ export interface GetNodeMetadataQueryParams {
   objectKind: string;
 }
 
-const getNodeMetadataQuery = ({ objectId, objectKind }: GetNodeMetadataQueryParams) => {
+const getNodeMetadataQuery = ({ objectKind }: Omit<GetNodeMetadataQueryParams, "objectId">) => {
   const query = {
     query: {
       __name: `GetNodeMetadata${objectKind}`,
+      __variables: {
+        ids: "[ID]",
+      },
       [objectKind]: {
         __args: {
-          ids: [objectId],
+          ids: new VariableType("ids"),
         },
         edges: nodeMetadataFragment,
       },
@@ -38,7 +41,8 @@ export const getNodeMetadataFromApi = async ({
   atDate,
 }: GetNodeMetadataFromApiParams) => {
   return graphqlClient.query({
-    query: getNodeMetadataQuery({ objectId, objectKind }),
+    query: getNodeMetadataQuery({ objectKind }),
+    variables: { ids: [objectId] },
     context: {
       branch: branchName,
       date: atDate,

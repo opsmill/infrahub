@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
@@ -13,16 +13,18 @@ export type getRelationshipCountQueryParams = {
 
 const getRelationshipCountQuery = ({
   objectKind,
-  objectId,
   relationshipName,
   queryFilter,
-}: getRelationshipCountQueryParams) => {
+}: Omit<getRelationshipCountQueryParams, "objectId">) => {
   const query = {
     query: {
       __name: `getRelationshipCount_${objectKind}_${relationshipName}`,
+      __variables: {
+        ids: "[ID]",
+      },
       [objectKind]: {
         __args: {
-          [queryFilter ?? "ids"]: [objectId],
+          [queryFilter ?? "ids"]: new VariableType("ids"),
         },
         edges: {
           node: {
@@ -45,10 +47,12 @@ export interface GetRelationshipCountFromApiParams
 export const getRelationshipCountFromApi = async ({
   branchName,
   atDate,
+  objectId,
   ...params
 }: GetRelationshipCountFromApiParams) => {
   return graphqlClient.query({
     query: getRelationshipCountQuery(params),
+    variables: { ids: [objectId] },
     context: {
       branch: branchName,
       date: atDate,

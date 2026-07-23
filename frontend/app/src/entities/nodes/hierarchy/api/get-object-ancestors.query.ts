@@ -1,4 +1,4 @@
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 export type GetObjectAncestorsQueryParams = {
   objectKind: string;
@@ -7,14 +7,16 @@ export type GetObjectAncestorsQueryParams = {
 
 export function getObjectAncestorsQuery({
   objectKind,
-  objectId,
-}: GetObjectAncestorsQueryParams): string {
+}: Omit<GetObjectAncestorsQueryParams, "objectId">): string {
   return jsonToGraphQLQuery({
     query: {
       __name: `Get${objectKind}Ancestors`,
+      __variables: {
+        ids: "[ID]",
+      },
       [objectKind]: {
         __args: {
-          ids: [objectId],
+          ids: new VariableType("ids"),
         },
         edges: {
           node: {
