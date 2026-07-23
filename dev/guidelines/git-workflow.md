@@ -116,6 +116,12 @@ Add changelog fragments to `changelog/` using Towncrier. Use the `creating-chang
 - Any notable implementation details
 - Testing performed
 
+**Scope to match the change.** A trivial, code-only fix with no behavior change ships as just the
+code diff — no spec-kit design record (`dev/specs/<feature>/`, see
+[Repository Organization](repository-organization.md)), no changelog fragment (see the
+`creating-changelog-entries` skill). Trim both before opening the PR if the workflow that produced
+the change generated them by default.
+
 ## Critical Rules
 
 - Never force push to `stable` or `develop`
