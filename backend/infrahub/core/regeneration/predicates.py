@@ -6,7 +6,7 @@ from infrahub.core.constants import DiffAction
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 
-from .models import PredicateOutcome
+from .models import PredicateOutcome, RegenerationReason, RegenerationTrigger
 
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
@@ -17,9 +17,24 @@ if TYPE_CHECKING:
 
 
 _TRIGGERING_DIFF_ACTIONS = {DiffAction.ADDED.value, DiffAction.UPDATED.value}
+_FINGERPRINT_ELEMENT = "fingerprint"
 
 
-def _is_triggering_action(action: str) -> bool:
+def classify_untrusted_dependency_closure(definition: RegenerationDefinition) -> RegenerationReason | None:
+    """Classify why a definition's dependency closure cannot be trusted, or None when it can.
+
+    A closure that was never computed and one computed only partially are distinguished so each path
+    can explain itself; both mean a code change outside the known inputs would not move the
+    fingerprint, so the definition must be regenerated defensively rather than narrowed.
+    """
+    if definition.dependencies is None:
+        return RegenerationReason.DEPENDENCIES_NULL
+    if definition.dependencies_complete is not True:
+        return RegenerationReason.DEPENDENCIES_INCOMPLETE
+    return None
+
+
+def is_triggering_action(action: str) -> bool:
     """Return True for diff actions that should trigger artifact regeneration.
 
     ``get_diff_summary`` serialises a node/element action as the GraphQL enum *name*
@@ -28,6 +43,14 @@ def _is_triggering_action(action: str) -> bool:
     ``action in _TRIGGERING_DIFF_ACTIONS`` silently never matches real diff data.
     """
     return action.lower() in _TRIGGERING_DIFF_ACTIONS
+
+
+def _find_triggering_entry(diff_summary: list[NodeDiff], node_id: str) -> NodeDiff | None:
+    """Return the first triggering diff entry for the given node id, or None when none matches."""
+    return next(
+        (entry for entry in diff_summary if entry["id"] == node_id and is_triggering_action(entry["action"])),
+        None,
+    )
 
 
 def relevant_node_changes(
@@ -69,18 +92,18 @@ def query_changed(
     with ``action=removed`` are ignored because a query deleted on the source branch
     leaves the definition broken and there is nothing to regenerate against.
     """
-    matched = any(
-        entry["id"] == definition.query_id and _is_triggering_action(entry["action"]) for entry in diff_summary
-    )
-    if not matched:
+    if _find_triggering_entry(diff_summary, definition.query_id) is None:
         return PredicateOutcome(matched=False)
 
     return PredicateOutcome(
         matched=True,
-        reason=(
-            f"Definition {definition.definition_name} ({definition.definition_id}): "
-            f"GraphQL query {definition.query_name} ({definition.query_id}) was modified - "
-            f"all {definition.instance_noun} of this definition will regenerate."
+        trigger=RegenerationTrigger(
+            code=RegenerationReason.QUERY_CHANGED,
+            detail=(
+                f"Definition {definition.definition_name} ({definition.definition_id}): "
+                f"GraphQL query {definition.query_name} ({definition.query_id}) was modified - "
+                f"all {definition.instance_noun} of this definition will regenerate."
+            ),
         ),
     )
 
@@ -102,26 +125,26 @@ def definition_changed(
     with ``action=removed`` cannot occur in practice here because the definition list
     is fetched from the source branch's current state.
     """
-    matched_entry = next(
-        (
-            entry
-            for entry in diff_summary
-            if entry["id"] == definition.definition_id and _is_triggering_action(entry["action"])
-        ),
-        None,
-    )
+    matched_entry = _find_triggering_entry(diff_summary, definition.definition_id)
     if matched_entry is None:
         return PredicateOutcome(matched=False)
 
-    changed_fields = ", ".join(
-        element["name"] for element in matched_entry["elements"] if _is_triggering_action(element["action"])
-    )
-    detail = f"definition node was modified ({changed_fields})" if changed_fields else "definition node was modified"
+    changed_field_names = [
+        element["name"] for element in matched_entry["elements"] if is_triggering_action(element["action"])
+    ]
+    detail = "definition node was modified"
+    if changed_field_names:
+        detail += f" ({', '.join(changed_field_names)})"
+    if _FINGERPRINT_ELEMENT in changed_field_names:
+        detail += "; the fingerprint moved, so the definition's code inputs changed"
     return PredicateOutcome(
         matched=True,
-        reason=(
-            f"Definition {definition.definition_name} ({definition.definition_id}): {detail} - "
-            f"all {definition.instance_noun} of this definition will regenerate."
+        trigger=RegenerationTrigger(
+            code=RegenerationReason.DEFINITION_CHANGED,
+            detail=(
+                f"Definition {definition.definition_name} ({definition.definition_id}): {detail} - "
+                f"all {definition.instance_noun} of this definition will regenerate."
+            ),
         ),
     )
 
@@ -143,25 +166,30 @@ def transform_changed(
     (``dependencies_complete=False``) names the cause as the safety fallback. The
     precise path names the intersecting file(s).
     """
-    if definition.dependencies is None:
-        legacy_reason = (
+    closure_reason = classify_untrusted_dependency_closure(definition)
+    if closure_reason is RegenerationReason.DEPENDENCIES_NULL:
+        legacy_detail = (
             f"Definition {definition.definition_name}: {definition.source_noun} was imported before this feature "
             f"deployed (dependencies=null) - falling back to regenerate-on-any-file-change. The next re-import of "
             f"this {definition.source_noun} will populate its dependency closure."
         )
         return PredicateOutcome(
             matched=repo_diff.has_modifications,
-            reason=legacy_reason if repo_diff.has_modifications else None,
+            trigger=RegenerationTrigger(code=closure_reason, detail=legacy_detail)
+            if repo_diff.has_modifications
+            else None,
         )
 
-    if definition.dependencies_complete is not True:
-        incomplete_reason = (
+    if closure_reason is RegenerationReason.DEPENDENCIES_INCOMPLETE:
+        incomplete_detail = (
             f"Definition {definition.definition_name}: {definition.source_noun} dependency closure is incomplete "
             f"(dependencies_complete=False) - falling back to regenerate-on-any-file-change."
         )
         return PredicateOutcome(
             matched=repo_diff.has_modifications,
-            reason=incomplete_reason if repo_diff.has_modifications else None,
+            trigger=RegenerationTrigger(code=closure_reason, detail=incomplete_detail)
+            if repo_diff.has_modifications
+            else None,
         )
 
     if not definition.dependencies:
@@ -182,9 +210,12 @@ def transform_changed(
     files = ", ".join(sorted(intersection))
     return PredicateOutcome(
         matched=True,
-        reason=(
-            f"Definition {definition.definition_name}: file {files} changed and is in this "
-            f"{definition.source_noun}'s dependency closure - all {definition.instance_noun} will regenerate."
+        trigger=RegenerationTrigger(
+            code=RegenerationReason.FILE_IN_CLOSURE,
+            detail=(
+                f"Definition {definition.definition_name}: file {files} changed and is in this "
+                f"{definition.source_noun}'s dependency closure - all {definition.instance_noun} will regenerate."
+            ),
         ),
     )
 
