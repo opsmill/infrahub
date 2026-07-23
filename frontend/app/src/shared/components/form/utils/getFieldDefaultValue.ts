@@ -253,10 +253,12 @@ export const getDefaultValueFromTemplate = (
 export const getDefaultValueFromSchema = (
   fieldSchema: FieldSchema
 ): AttributeValueFromUser | null => {
-  return isRelationshipSchema(fieldSchema)
-    ? null
-    : {
-        source: { type: "schema" },
-        value: fieldSchema.default_value as AttributeValueFromUser["value"],
-      };
+  if (isRelationshipSchema(fieldSchema)) {
+    return null;
+  }
+
+  return {
+    source: { type: "schema" },
+    value: fieldSchema.default_value as AttributeValueFromUser["value"],
+  };
 };
