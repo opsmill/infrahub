@@ -1,5 +1,3 @@
-import pytest
-
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
@@ -117,13 +115,6 @@ class TestUniquenessCheckerNodeScoped:
             (car_prius_main.id, "nbr_seats", "5"),
         }
 
-    @pytest.mark.xfail(
-        reason="peer-attribute uniqueness (owner__height) is not supported by the batched targeted "
-        "query; such constraints are rejected at schema load, so this path is unreachable in a "
-        "valid schema. Full-population validation still covers it.",
-        raises=ValueError,
-        strict=True,
-    )
     async def test_targeted_cross_kind_peer_attribute_collision(
         self,
         db: InfrahubDatabase,
@@ -147,13 +138,6 @@ class TestUniquenessCheckerNodeScoped:
         assert (car_accord_main.id, "owner", "180") in violations
         assert (car_camry_main.id, "owner", "180") in violations
 
-    @pytest.mark.xfail(
-        reason="peer-attribute uniqueness (owner__height) is not supported by the batched targeted "
-        "query; the determiner still resolves the cross-kind change, but the checker rejects the "
-        "peer-attribute constraint. Such constraints cannot exist in a valid schema.",
-        raises=ValueError,
-        strict=True,
-    )
     async def test_cross_kind_peer_change_resolves_and_detects_end_to_end(
         self,
         db: InfrahubDatabase,

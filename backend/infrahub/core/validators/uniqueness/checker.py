@@ -73,7 +73,9 @@ class UniquenessChecker(ConstraintCheckerInterface):
         return request.constraint_name == self.name
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
-        if request.node_uuids is None:
+        if request.node_uuids is None or not self._supports_targeted(
+            schema=request.node_schema, schema_branch=request.schema_branch
+        ):
             non_unique_nodes = await self.check_one_schema(
                 schema=request.node_schema, branch=request.branch, schema_branch=request.schema_branch
             )
@@ -90,6 +92,20 @@ class UniquenessChecker(ConstraintCheckerInterface):
                 schema_branch=request.schema_branch,
             )
         ]
+
+    def _supports_targeted(self, schema: MainSchemaTypes, schema_branch: SchemaBranch) -> bool:
+        """Whether every uniqueness constraint of the schema can be checked by the targeted query.
+
+        The targeted query compares node attributes by value and cardinality-one relationships by
+        peer id, but cannot read an attribute of a related peer (a constraint element such as
+        "owner__name"). A schema with any such element falls back to full-population validation,
+        which does support it, rather than being scoped to the changed nodes.
+        """
+        for constraint_path in schema.get_unique_constraint_schema_attribute_paths(schema_branch=schema_branch):
+            for element in constraint_path.attributes_paths:
+                if element.relationship_schema is not None and element.attribute_schema is not None:
+                    return False
+        return True
 
     async def _check_targeted(
         self,
