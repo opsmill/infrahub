@@ -35,7 +35,8 @@ from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
+from infrahub.core.validators.constraint_merge import build_constraint_info_merger
+from infrahub.core.validators.determiner import build_constraint_validator_determiner
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
@@ -66,6 +67,7 @@ from infrahub.workflows.utils import add_tags
 if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
 
+    from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.database import InfrahubDatabase
 
 
@@ -175,14 +177,19 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         )
 
         candidate_schema = schema_analyzer.get_candidate_schema()
-        determiner = ConstraintValidatorDeterminer(schema_branch=candidate_schema)
-        constraints = await determiner.get_constraints(node_diffs=node_diff_field_summaries)
+        determiner = build_constraint_validator_determiner(
+            db=db, branch=user_branch, schema_branch=candidate_schema, at=rebase_at
+        )
+        data_diff_constraints = await determiner.get_constraints(node_diffs=node_diff_field_summaries)
 
         # If there are some changes related to the schema between this branch and main, we need to
         #  - Run all the validations to ensure everything is correct before rebasing the branch
         #  - Run all the migrations after the rebase
+        schema_diff_constraints: list[SchemaUpdateConstraintInfo] = []
         if user_branch.has_schema_changes:
-            constraints += await schema_analyzer.calculate_validations(target_schema=candidate_schema)
+            schema_diff_constraints = await schema_analyzer.calculate_validations(target_schema=candidate_schema)
+        merger = build_constraint_info_merger(schema_branch=candidate_schema)
+        constraints = merger.merge(data_diff_constraints, schema_diff_constraints)
         if constraints:
             responses = await schema_validate_migrations(
                 message=SchemaValidateMigrationData(
