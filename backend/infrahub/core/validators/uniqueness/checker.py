@@ -187,11 +187,14 @@ class UniquenessChecker(ConstraintCheckerInterface):
                 property_name = "id"
                 path_type = PathType.RELATIONSHIP_ONE
                 peer_id: str | None = value
+                path_value: str | None = value
             else:
                 field_name = element.active_attribute_schema.name
                 property_name = "value"
                 path_type = PathType.ATTRIBUTE
                 peer_id = None
+                # value is always a str
+                path_value = None if value is None else str(value)
             for node_id in involved_node_ids:
                 data_paths.append(
                     DataPath(
@@ -201,7 +204,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
                         kind=schema.kind,
                         field_name=field_name,
                         property_name=property_name,
-                        value=value,
+                        value=path_value,
                         peer_id=peer_id,
                     )
                 )
