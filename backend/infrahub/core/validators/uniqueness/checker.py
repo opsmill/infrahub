@@ -8,6 +8,7 @@ from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
 from infrahub.core.validators.uniqueness.index import UniquenessQueryResultsIndex
 
+from ..enum import ConstraintIdentifier
 from ..interface import ConstraintCheckerInterface
 from .model import (
     NodeUniquenessQueryRequest,
@@ -66,7 +67,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
 
     @property
     def name(self) -> str:
-        return "node.uniqueness_constraints.update"
+        return ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name == self.name
