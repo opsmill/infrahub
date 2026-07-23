@@ -35,7 +35,7 @@ Environment for E2E: live local Infrahub stack (frontend :8080, API :8000, demo 
 
 | Test id | Type | Run command | Passed at | Env | Verbatim pass line |
 |---------|------|-------------|-----------|-----|--------------------|
-| `get-relationship-label.test.ts` (5 cases C1–C4) | unit | `pnpm test src/entities/schema/domain/rules/get-relationship-label.test.ts` | 2026-07-21T14:03:22Z (re-run w/ column-header 2026-07-21T17:07) | Vitest browser (chromium) | `Test Files 1 passed (1)` / `Tests 5 passed (5)` |
+| `get-relationship-label.test.ts` (6 cases C1–C5) | unit | `pnpm test src/entities/schema/domain/rules/get-relationship-label.test.ts` | 2026-07-21T14:03:22Z (re-run w/ column-header 2026-07-21T17:07; C5 added later at `177cbc47`) | Vitest browser (chromium) | `Test Files 1 passed (1)` / `Tests 6 passed (6)` |
 | `object-hierarchy-navigation.spec.ts:20` (new label step) | e2e | `pnpm exec playwright test tests/e2e/objects/hierarchy/object-hierarchy-navigation.spec.ts --project=setup --project=e2e` | 2026-07-21 16:21:12 CEST | live stack | `4 passed (20.2s)` |
 | `object-relationships.spec.ts:120` (hierarchical children) | e2e | `pnpm exec playwright test tests/e2e/objects/object-relationships.spec.ts ... -g "hierarchical children"` | 2026-07-21T14:24:22Z | live stack | `✓ …hierarchical children (4.3s)` / `4 passed (15.9s)` |
 | `object-hierarchy-crud.spec.ts` + `object-hierarchy-tree-list.spec.ts` (combobox label) | e2e | `pnpm exec playwright test <both specs> --project=setup --project=e2e` | 2026-07-21 16:42:55 CEST | live stack | `5 passed (41.0s)` |
