@@ -8,6 +8,7 @@ from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.registry import registry
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.workers.dependencies import get_cache, get_event_service, get_workflow
@@ -79,7 +80,11 @@ async def build_branch_merge_orchestrator(
         logger=logger,
     )
     schema_update_coordinator = SchemaUpdateCoordinator(
-        db=db, schema_manager=registry.schema, workflow=workflow, logger=logger
+        db=db,
+        schema_manager=registry.schema,
+        rollbacker=GraphRollbacker(db=db),
+        workflow=workflow,
+        logger=logger,
     )
     rollback_handler = MergeRollbackHandler(
         db=db,

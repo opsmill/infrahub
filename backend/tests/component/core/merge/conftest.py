@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.merge.failure_identifier import MergeFailureIdentifier
 from infrahub.core.merge.failure_recoverer import MergeFailureRecoverer
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
+from infrahub.core.rollback import GraphRollbacker
 
 if TYPE_CHECKING:
     import pytest
@@ -94,4 +95,5 @@ def build_recovery(
         ),
         default_branch=default_branch,
         cache=cache,
+        rollbacker=GraphRollbacker(db=db),
     )

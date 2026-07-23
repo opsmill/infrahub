@@ -10,7 +10,7 @@ from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreProposedChange
-from infrahub.core.query.rollback import RollbackQuery, RollbackScope
+from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
@@ -20,6 +20,7 @@ from .merge_locker import MERGE_LOCK_KEY
 from .write_blocker import MalformedMergeProtectionError
 
 if TYPE_CHECKING:
+    from infrahub.core.rollback import GraphRollbacker
     from infrahub.database import InfrahubDatabase
     from infrahub.services.adapters.cache import InfrahubCache
 
@@ -62,12 +63,14 @@ class MergeFailureRecoverer:
         identifier: MergeFailureIdentifier,
         default_branch: Branch,
         cache: InfrahubCache,
+        rollbacker: GraphRollbacker,
     ) -> None:
         self.db = db
         self.merge_write_blocker = merge_write_blocker
         self.identifier = identifier
         self.default_branch = default_branch
         self.cache = cache
+        self.rollbacker = rollbacker
 
     async def preview(self, *, force: bool = False, branch_name: str | None = None) -> RecoveryReport:
         """Report whether a failed merge can be recovered, making no changes.
@@ -254,15 +257,12 @@ class MergeFailureRecoverer:
         """
         if merge_started_at is None:
             return
-        rollback_query = await RollbackQuery.init(
-            db=self.db,
-            branch=self.default_branch,
+        await self.rollbacker.rollback(
             target_branch=self.default_branch,
             at=Timestamp(merge_started_at),
             scope=RollbackScope.SINCE_TIMESTAMP,
             restore_metadata=True,
         )
-        await rollback_query.execute(db=self.db)
 
     async def _reset_branch(self, branch: Branch) -> None:
         branch.status = BranchStatus.OPEN

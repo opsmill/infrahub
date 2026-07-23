@@ -49,6 +49,7 @@ from infrahub.core.migrations.shared import (
     get_migration_console,
     suppress_internal_logs,
 )
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
@@ -836,6 +837,7 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
     coordinator = SchemaUpdateCoordinator(
         db=db,
         schema_manager=registry.schema,
+        rollbacker=GraphRollbacker(db=db),
     )
 
     try:

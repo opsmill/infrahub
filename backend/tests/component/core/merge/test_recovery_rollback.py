@@ -17,6 +17,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge.failure_recoverer import RecoveryOutcome
 from infrahub.core.merge.write_blocker import MergeProtectionState, MergeWriteBlocker
 from infrahub.core.node import Node
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.services.component import InfrahubComponent
@@ -188,6 +189,11 @@ class TestRecoveryRollback:
         alice_after_merge = await NodeManager.get_one(db=db, id=merge_dataset.alice_id, raise_on_error=True)
         assert alice_after_merge.get_attribute("height").value == 200
         assert (await get_node_metadata(db=db, node_uuid=merge_dataset.alice_id))["previous_updated_at"] is not None
+        # Bob is new to the default branch: the merge stamps his vertex without a restore snapshot
+        # (there was no earlier default-branch value to snapshot).
+        bob_after_merge = await get_node_metadata(db=db, node_uuid=merge_dataset.bob_id)
+        assert bob_after_merge["updated_at"] is not None
+        assert bob_after_merge["previous_updated_at"] is None
 
         # The merge does not touch branched_from; it stays at its branch-creation value.
         after_merge = await Branch.get_by_name(db=db, name=branch.name)
@@ -213,6 +219,12 @@ class TestRecoveryRollback:
 
         # Touched-node updated_at/by is restored to its pre-merge value.
         assert await get_node_metadata(db=db, node_uuid=merge_dataset.alice_id) == alice_metadata_before
+
+        # A vertex stamped by the merge without a snapshot must have its merge-time stamps cleared
+        assert await get_node_metadata(db=db, node_uuid=merge_dataset.bob_id) == {
+            "updated_at": None,
+            "previous_updated_at": None,
+        }
 
         # Data on the default branch is reverted.
         alice_main = await NodeManager.get_one(db=db, id=merge_dataset.alice_id, raise_on_error=True)
@@ -272,6 +284,7 @@ class TestRecoveryRollback:
             identifier=build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
             default_branch=default_branch,
             cache=cache,
+            rollbacker=GraphRollbacker(db=db),
         )
         first = await failing.recover()
 
@@ -320,6 +333,7 @@ class TestRecoveryRollback:
             destination_branch=default_branch,
             diff_repository=diff_repository,
             exclusion_plan_builder=MergeExclusionPlanBuilder(),
+            rollbacker=GraphRollbacker(db=db),
         )
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
 

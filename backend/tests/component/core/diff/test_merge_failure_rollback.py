@@ -12,6 +12,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 
@@ -49,6 +50,7 @@ class TestRollbackBeforeMergeIsNoop:
             destination_branch=default_branch_scope_class,
             diff_repository=diff_repository,
             exclusion_plan_builder=MergeExclusionPlanBuilder(),
+            rollbacker=GraphRollbacker(db=db),
         )
 
         await diff_merger.rollback(merge_started_at=at_existing)

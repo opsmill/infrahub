@@ -89,3 +89,4 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 - [Computed Attributes](computed-attributes.md) - the live evaluation paths for Jinja2 computed attributes
 - [Display Labels & HFID](display-labels-and-hfid.md) - the same for display labels and human-friendly ids
 - [Events System](events.md) - node mutation events and the `origin` metadata
+- [Merge Failure Recovery](merge-failure-recovery.md) - reversing a merge that died before the post-`MERGED` recompute

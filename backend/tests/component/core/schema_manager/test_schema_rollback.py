@@ -12,7 +12,8 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.query.rollback import RollbackQuery, RollbackScope
+from infrahub.core.query.rollback import RollbackScope
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
@@ -124,6 +125,7 @@ class TestSchemaUpdateAndRollback:
         coordinator = SchemaUpdateCoordinator(
             db=db,
             schema_manager=registry.schema,
+            rollbacker=GraphRollbacker(db=db),
         )
         await coordinator.execute(
             branch=default_branch,
@@ -163,14 +165,12 @@ class TestSchemaUpdateAndRollback:
         )
 
         # Step 6: Run rollback
-        rollback_query = await RollbackQuery.init(
-            db=db,
+        await GraphRollbacker(db=db).rollback(
             target_branch=default_branch,
             at=schema_update_at,
             scope=RollbackScope.AT_TIMESTAMP,
             restore_metadata=False,
         )
-        await rollback_query.execute(db=db)
 
         # Step 7: Verify schema reverted by loading from DB and comparing to original
         # Load fresh schema from database (this verifies DB state was rolled back)
@@ -265,6 +265,7 @@ class TestSchemaUpdateAndRollback:
         coordinator = SchemaUpdateCoordinator(
             db=db,
             schema_manager=registry.schema,
+            rollbacker=GraphRollbacker(db=db),
         )
         with pytest.raises(ValueError, match="Unable to find the generic"):
             await coordinator.execute(

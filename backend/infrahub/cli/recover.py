@@ -15,6 +15,7 @@ from infrahub.core.merge.failure_identifier import MergeFailureIdentifier
 from infrahub.core.merge.failure_recoverer import MergeFailureRecoverer, RecoveryOutcome, RecoveryReport
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.registry import registry
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.dependencies.registry import build_component_registry
@@ -124,6 +125,7 @@ async def recover_cmd(
             identifier=identifier,
             default_branch=default_branch,
             cache=cache,
+            rollbacker=GraphRollbacker(db=db),
         )
 
         preview = await recoverer.preview(force=force, branch_name=branch)

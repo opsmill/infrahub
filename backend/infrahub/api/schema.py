@@ -27,6 +27,7 @@ from infrahub.core.models import (  # noqa: TC001
     SchemaUpdateConstraintInfo,
     SchemaUpdateValidationResult,
 )
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import (
     GenericSchema,
     MainSchemaTypes,
@@ -392,6 +393,7 @@ async def load_schema(
         coordinator = SchemaUpdateCoordinator(
             db=db,
             schema_manager=registry.schema,
+            rollbacker=GraphRollbacker(db=db),
             workflow=service.workflow,
         )
 

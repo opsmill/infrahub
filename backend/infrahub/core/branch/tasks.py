@@ -33,6 +33,7 @@ from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
@@ -152,7 +153,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             schema_manager=registry.schema,
         )
         schema_update_coordinator = SchemaUpdateCoordinator(
-            db=db, schema_manager=registry.schema, workflow=workflow, logger=log
+            db=db,
+            schema_manager=registry.schema,
+            rollbacker=GraphRollbacker(db=db),
+            workflow=workflow,
+            logger=log,
         )
 
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
