@@ -2,16 +2,11 @@
 paths:
   - "backend/**/*.py"
   - "python_testcontainers/**/*.py"
-  - "dev/knowledge/**/*.md"
-  - "dev/guidelines/**/*.md"
-  - "dev/guides/**/*.md"
 ---
 
 # Code documentation style
 
-Applies to docstrings, comments, and any inline documentation in Python source files. The
-work-item-ID rule below also applies to the internal docs under `dev/knowledge/`,
-`dev/guidelines/`, and `dev/guides/`.
+Applies to docstrings, comments, and any inline documentation in Python source files.
 
 ## No references to other code
 
@@ -31,9 +26,7 @@ Acceptable exceptions:
 
 ## No work-item or spec IDs
 
-Do not reference Jira tickets, GitHub issues, or spec-kit identifiers in docstrings, comments, test
-names, or `dev/knowledge`/`dev/guidelines`/`dev/guides` pages — describe the constraint or behavior
-itself, not the ticket that tracked it. Examples of what to avoid:
+Do not reference Jira tickets, GitHub issues, or spec-kit identifiers in docstrings, comments, or test names. Examples of what to avoid:
 
 - `# Fixes INFP-556`
 - `"""Implements FR-003: ..."""`

@@ -88,6 +88,8 @@ Infrahub documentation follows the [Diataxis framework](https://diataxis.fr/), s
 - Use marketing language or hype (in topics)
 - Skip definitions of technical terms
 - Focus on "how to" instead of "how it works" (in topics)
+- Reference Jira tickets, GitHub issues, or spec IDs — describe the behavior or constraint itself;
+  work-item IDs belong in commit messages, PR descriptions, and changelog fragments
 
 ## Documentation Workflow
 

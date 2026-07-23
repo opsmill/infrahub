@@ -222,14 +222,18 @@ WHERE n:!Archived      // NOT
 
 ### Dynamic Labels and Types
 
-Labels and relationship types accept parameters (Neo4j 5.26+) — do not interpolate them into the
-query string with `%`/f-strings, and do not claim labels "can't be parameterized":
+Labels and relationship types accept parameters (Neo4j 5.26+):
 
 ```cypher
 MATCH (n:$($label))                    // dynamic node label
-CREATE (n:$($label) {name: $name})
 MATCH (a)-[r:$($rel_type)]->(b)        // dynamic relationship type
 ```
+
+Choosing between a dynamic label and interpolating the label into the query text is a performance
+tradeoff, not a style rule: each interpolated variant is planned and cached separately, but the
+planner generally does better with a static label than a dynamic one. If the label is the primary
+filter of the `MATCH`, prefer a static/interpolated label; when other indexed predicates carry the
+filtering, a dynamic label is more likely to be acceptable. When in doubt, `PROFILE` both.
 
 ### Type Predicates
 
