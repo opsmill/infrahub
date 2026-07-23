@@ -6,6 +6,7 @@ import { Row } from "@/shared/components/container";
 import { classNames } from "@/shared/utils/common";
 
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { SchemaViewerModal } from "@/entities/schema/ui/schema-viewer-modal";
@@ -21,7 +22,7 @@ export function ObjectDataRow({ value, className, objectKind, fieldSchema }: Obj
   const { schema } = useSchema(objectKind);
 
   const fieldName = fieldSchema.label ?? fieldSchema.name;
-  const isRelationship = "peer" in fieldSchema;
+  const isRelationship = isRelationshipSchema(fieldSchema);
   const defaultTab = isRelationship ? "relationships" : "attributes";
 
   return (
