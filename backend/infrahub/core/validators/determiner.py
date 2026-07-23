@@ -43,6 +43,7 @@ class ConstraintValidatorDeterminer:
         self, node_diffs: list[NodeDiffFieldSummary], filter_invalid: bool = True
     ) -> list[SchemaUpdateConstraintInfo]:
         self.node_diff_index.initialize(node_diffs)
+        self.uniqueness_scoper.reset()
         constraints: list[SchemaUpdateConstraintInfo] = []
         if not node_diffs:
             return constraints

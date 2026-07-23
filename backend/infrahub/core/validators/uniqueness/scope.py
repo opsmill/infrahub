@@ -62,8 +62,12 @@ class UniquenessConstraintScoper:
         self.dependent_resolver = dependent_resolver
         self.node_diff_index = node_diff_index
         # scopes are recomputed for the same kind across the trigger check and the uuid resolution;
-        # the schema branch and node-diff index are fixed for this scoper's lifetime, so cache them
+        # the cache is valid only for the node-diff index's current contents
         self._scope_cache: dict[str, UniquenessScopeForKind] = {}
+
+    def reset(self) -> None:
+        """Drop cached scopes so the next lookup recomputes against the current node-diff index."""
+        self._scope_cache = {}
 
     def requires_validation(self, schema: MainSchemaTypes) -> bool:
         return self._scope(schema=schema).requires_validation
