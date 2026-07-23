@@ -41,6 +41,10 @@ class TestPreferencesPermissions:
         await expect(read_only_page.get_by_role("menuitem", name="Global preferences")).to_have_count(0)
         await read_only_page.keyboard.press("Escape")
 
-        # A direct visit to the gated page is refused.
+        # A direct visit to the gated page is refused. The detailed message sits
+        # inside a collapsed accordion, so expand it before asserting on it.
         await read_only_page.goto("/global-preferences")
+        await expect(read_only_page.get_by_text("You can't access this view")).to_be_visible()
+        await read_only_page.get_by_text("You can't access this view").click()
         await expect(read_only_page.get_by_text("You don't have permission to edit global preferences")).to_be_visible()
+        await expect(read_only_page.get_by_role("button", name="Save", exact=True)).to_have_count(0)
