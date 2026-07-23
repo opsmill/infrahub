@@ -32,6 +32,7 @@ import type {
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -52,7 +53,7 @@ export function TableColumnHeader({
     return <TableColumnHeaderSimple columnSchema={columnSchema} className={className} />;
   }
 
-  if (schema && !("peer" in columnSchema) && isSortableAttribute(columnSchema)) {
+  if (schema && !isRelationshipSchema(columnSchema) && isSortableAttribute(columnSchema)) {
     return (
       <SortableAttributeColumnHeader
         schema={schema}
@@ -62,7 +63,7 @@ export function TableColumnHeader({
     );
   }
 
-  if (schema && "peer" in columnSchema && isSortableRelationship(columnSchema)) {
+  if (schema && isRelationshipSchema(columnSchema) && isSortableRelationship(columnSchema)) {
     return (
       <SortableRelationshipColumnHeader
         schema={schema}
@@ -262,7 +263,7 @@ function ColumnHeaderMenu({
         onOpenChange={setShowFilterForm}
         placement="bottom start"
       >
-        {"peer" in columnSchema ? (
+        {isRelationshipSchema(columnSchema) ? (
           <RelationshipFilterForm relationshipSchema={columnSchema} onSuccess={closeFilterForm} />
         ) : (
           <AttributeFilterForm attributeSchema={columnSchema} onSuccess={closeFilterForm} />

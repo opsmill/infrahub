@@ -15,6 +15,7 @@ import type {
   AttributeSchema,
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 
 export interface DynamicFilterInputProps {
   fieldSchema: AttributeSchema | RelationshipSchema;
@@ -23,7 +24,7 @@ export interface DynamicFilterInputProps {
 }
 
 export function DynamicFilterInput({ fieldSchema, value, onChange }: DynamicFilterInputProps) {
-  if ("peer" in fieldSchema) {
+  if (isRelationshipSchema(fieldSchema)) {
     return <RelationshipFilterCombobox peer={fieldSchema.peer} value={value} onChange={onChange} />;
   }
 
