@@ -85,6 +85,11 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 - Moved to `knowledge/` (if describing how something works)
 - Moved to `guidelines/` (if describing how to use something)
 
+**Proportionality**: Not every change needs a spec. When the change is small enough to be
+self-explanatory — an annotation-only fix, a one-line correction with no behavior change — skip the
+spec-kit scaffolding, or trim `dev/specs/<feature>/` from the PR before review. The design record
+scales with the change it documents. See [Git Workflow → Pull Requests](git-workflow.md).
+
 ### guidelines/
 
 **Purpose**: "What rules should I follow?"

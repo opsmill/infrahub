@@ -24,6 +24,11 @@ When NOT to use: the project doesn't use Towncrier; pure internal refactors with
 shipped in any release is not user-observable: the feature's own `added` fragment already covers
 everything a user will ever see, and a `fixed` entry for something never released is noise.
 
+**`housekeeping` is not a catch-all.** It covers internal work a user could still notice — a
+dependency bump, a build or tooling change. A change with no user-facing effect at all (an internal
+type annotation, a behavior-preserving refactor, cleanup of internal docs or spec scaffolding) gets
+no fragment. When it's unclear whether a change is user-facing, ask instead of adding one by default.
+
 ## Quick Reference
 
 ```bash
