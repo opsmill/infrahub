@@ -44,7 +44,10 @@ async def add_tags(
     """
     client = get_client(httpx_settings={"verify": get_http().verify_tls()}, sync_client=False)
     current_flow_run_id = flow_run.id
-    current_tags: list[str] = flow_run.tags
+    # Read the run's current tags from the API rather than the runtime context: the runtime
+    # snapshot is frozen at flow start, and update_flow_run replaces the full tag list, so basing
+    # the update on the snapshot silently drops tags added by an earlier call in the same run.
+    current_tags: list[str] = list((await client.read_flow_run(current_flow_run_id)).tags)
     branch_tags = (
         [
             WorkflowTag.BRANCH.render(identifier=branch_name)
