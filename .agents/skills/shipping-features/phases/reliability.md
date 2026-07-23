@@ -1,5 +1,10 @@
 # Reliability model
 
+> **Phase vs stage.** The five delivery *stages* (Intake → Extract) are the coarse checkpoints the
+> conductor stops at. A *phase* here is a finer unit of work *within* those stages — understand →
+> implement → review → ci/commit/pr — and it is the granularity at which these reliability layers
+> attach. Gating every phase therefore gates every stage.
+
 Three independent layers, each catching a different failure mode. The gate is universal;
 parallel and adversarial-verify sit at opposite ends of the pipeline; all three stack on a
 single phase **only** when a risk flag makes it worth the cost.

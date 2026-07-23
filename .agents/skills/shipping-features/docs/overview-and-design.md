@@ -23,8 +23,8 @@ The stages and their tools already exist. This skill adds a thin **orchestration
 | 1 | **Intake** | `creating-issues` · `grilling-ideas` · `creating-prd` | issue + PRD → **GitHub / Jira** | classify type×size×risk; open `ship.md` index; gate: clear scope; checkpoint → propose Jira *In design* |
 | 2 | **Prep** | `/speckit-opsmill-prep` (specify→plan→critique→tasks) *or granular on M/L* | spec·plan·tasks → **`specs/<feature>/`** | parallel framings on `L`; gate: tasks + alignment clean; checkpoint per decision |
 | 3 | **Implement** | `/speckit-opsmill-implement` (preflight→clean-context subagents→review-run→report) *· bug: `/bug-tdd`→`/bug-fix`* | code + `opsmill-implement-report.md` | verify: adversarial skeptic on the report; gate: tests green; checkpoint: fixes accepted |
-| 4 | **Delivery** | `/pre-ci` · `/pr` · `/pr-monitor` · `/qa` | PR + CI → **GitHub PR** | gate: CI green before PR; parallel split assessment; checkpoint → propose Jira *In review* |
-| 5 | **Extract** *(manual)* | `/speckit-opsmill-extract` (+ `capturing-knowledge`, `retrospect`) | knowledge·guidelines·ADR → **`dev/…`** | manual gate: review report first; checkpoint on doc changes → propose Jira *Done* |
+| 4 | **Delivery** | `/pre-ci` · `/pr` · `monitoring-pull-requests` · `/qa` | PR + CI → **GitHub PR** | gate: CI green before PR; parallel split assessment; actionable PR-review comments; session-bound `retrospect` + `capturing-knowledge`; checkpoint → propose Jira *In review* |
+| 5 | **Extract** *(manual)* | `/speckit-opsmill-extract` · `audit-docs`→`add-docs` (+ `harvesting-review`) | knowledge·guidelines·ADR → **`dev/…`** | manual gate: review report first; session-bound tools already ran at Stage 4; checkpoint on doc changes → propose Jira *Done* |
 
 ## Five orchestration ideas
 

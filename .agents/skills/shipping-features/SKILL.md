@@ -61,10 +61,10 @@ skill adds **at the seam** between stages.
 
 | # | Stage | Canonical tools (do the work) | Output → external home | Orchestration added at the seam |
 |---|---|---|---|---|
-| 1 | **Intake** | `creating-issues`/`/create-jira-tickets` · `grilling-ideas`/`/grill-idea` · `creating-prd`/`/create-prd` | issue + PRD → **GitHub / Jira (JPD)** | **classify** type×size×risk; open `ship.md` index; **gate:** issue w/ clear scope; **checkpoint:** scope accepted → propose Jira *In design* |
+| 1 | **Intake** | `creating-issues`/`/create-jira-tickets` · `grilling-ideas` · `creating-prd` | issue + PRD → **GitHub / Jira (JPD)** | **classify** type×size×risk; open `ship.md` index; **gate:** issue w/ clear scope; **checkpoint:** scope accepted → propose Jira *In design* |
 | 2 | **Prep** | `/speckit-opsmill-prep` = specify → plan → critique-run → tasks + alignment check *(or the granular skills on M/L)* | spec · plan · tasks → **`specs/<feature>/`** | **parallel** framings into specify/plan on `L`; **gate:** `tasks.md` exists, alignment clean, no `[NEEDS CLARIFICATION]`; **checkpoint** after each design decision |
 | 3 | **Implement** | `/speckit-opsmill-implement` = preflight → implement (↻ clean-context subagents) → review-run → report *(bug lane: `/bug-tdd` → `/bug-fix`)* | code + `opsmill-implement-report.md` → **`specs/<feature>/`** + git | **verify:** adversarial skeptic on the report + high-sev findings; **gate:** report clean + tests green; **checkpoint:** findings & fixes accepted |
-| 4 | **Delivery** | `/pre-ci` · `/pr` · `/pr-monitor` · review (spec & code) · `/qa` | PR + CI → **GitHub PR** | **gate:** CI green before PR; **parallel** split assessment ([phases/pr-split.md](phases/pr-split.md)); **checkpoint:** PR plan accepted → propose Jira *In review*; monitor loops back on red |
+| 4 | **Delivery** | `/pre-ci` · `/pr` · `monitoring-pull-requests` · review (spec & code) · `/qa` | PR + CI → **GitHub PR** | **gate:** CI green before PR; **parallel** split assessment ([phases/pr-split.md](phases/pr-split.md)); **checkpoint:** PR plan accepted → propose Jira *In review*; monitor loops back on red; PR review findings → **actionable prompt comments** ✓ |
 | 5 | **Extract** *(manual)* | `/speckit-opsmill-extract` (+ `harvesting-review`¹, triggered from the Stage 4 review loop) | knowledge · guidelines · ADR → **`dev/…`**; archive spec | **manual gate:** you review the report first; session-bound tools (`speckit-opsmill-retrospect`, `capturing-knowledge`) run at the Stage 4 checkpoint, not here; **checkpoint** on doc changes → propose Jira *Done* |
 
 ¹ `harvesting-review` is merged in `stable` (PR #9922); use it when present, skip cleanly when absent.
@@ -78,7 +78,7 @@ Follow [phases/classification.md](phases/classification.md): propose `type` (bug
 
 | | Intake | Prep | Implement | Delivery | Extract |
 |---|---|---|---|---|---|
-| **bug** *(light lane)* | issue | `/bug-analyze` → ✓ root cause | `/bug-tdd` → `/bug-fix` (gate red→green + verify) | CI → `/pr` → `/pr-monitor` | usually skip |
+| **bug** *(light lane)* | issue | `/bug-analyze` → ✓ root cause | `/bug-tdd` → `/bug-fix` (gate red→green + verify) | CI → `/pr` → `monitoring-pull-requests` | usually skip |
 | **S** | quick | `/speckit-opsmill-prep` hands-off → 1 ✓ | `/speckit-opsmill-implement` hands-off → verify report | CI → PR | manual, light |
 | **M** | issue + scope ✓ | specify ✓ · plan + tasks ✓ | implement → review + verify ✓ | CI ✓ · PR ✓ | extract ✓ |
 | **L** | issue + PRD ✓ | specify ✓ · plan ✓ · **parallel** critique · tasks ✓ | chunked implement (clean-context) · verify ✓ | CI ✓ · **split** assess ✓ · PR · monitor | extract + retrospect ✓ |
@@ -137,7 +137,8 @@ has no unaddressed high-severity findings. **Checkpoint:** findings & fixes acce
 2. **Split assessment** (bias toward single PR) per [phases/pr-split.md](phases/pr-split.md).
    **Checkpoint:** user picks single / accepts split. Never force a split.
 3. **Open** the PR with `pr` → `/git-pr` → `gh pr create`. Record PR URL in `ship.md`; propose Jira
-   *In review*. Then `/pr-monitor` (or `gh run watch`) follows CI; red loops back to the Stage 3 fix pass.
+   *In review*. Then `monitoring-pull-requests` (or `gh run watch`) follows CI; red loops back to the
+   Stage 3 fix pass.
 4. **Review feedback:** when processing review comments, fetch **all** unresolved threads — every
    author, review bots included — never only the reviewer the user named; assess each (fix, or
    answer on the thread with evidence). **Re-fetch the threads after every push**: bots re-review
@@ -145,11 +146,32 @@ has no unaddressed high-severity findings. **Checkpoint:** findings & fixes acce
    feedback, run `harvesting-review` on the threads just processed and update the `harvest` marker
    in `ship.md` — the fix loop already holds every thread and its landed correction, which makes it
    the cheapest and most complete moment to harvest.
-5. **Session-bound extraction (every lane):** once the PR is open and its CI is green, run
+5. **PR review → actionable comments.** When the review target is an **open GitHub PR** (not a local
+   diff — check for a PR url in `ship.md` or `gh pr view`), don't leave findings in the chat: draft
+   one **inline PR comment per finding**, anchored to its file/line. Each comment states the issue,
+   then ends with a **copy-ready agent prompt** in a fenced block (cubic-style) so anyone reading the
+   PR can paste it straight into their agent to implement the fix:
+
+   ````markdown
+   The error from `save()` is swallowed, so a failed write looks successful.
+
+   ```prompt
+   Check if this issue is valid. If so, propagate the error from `save()` in
+   `src/store.ts:42` instead of swallowing it, and add a test covering the
+   failed-write path.
+   ```
+   ````
+
+   Prompts must be **self-contained** (file, line, expected behavior — no "see above") and open with
+   *"Check if this issue is valid. If so, …"* so a stale or wrong finding costs nothing to dismiss.
+   **Checkpoint:** show all drafted comments; post via `gh pr review --comment` / `gh api` **only on
+   accept** — never post to the PR unattended.
+
+   Optional `/qa` and spec-&-code review where the project defines them.
+6. **Session-bound extraction (every lane):** once the PR is open and its CI is green, run
    `speckit-opsmill-retrospect` and `capturing-knowledge` at this checkpoint — even on lanes that
    skip Stage 5. Their raw material is the session itself (friction, wrong turns, tooling gaps) and
    it decays when the session ends; deferring them to Extract loses it.
-Optional `/qa` and spec-&-code review where the project defines them.
 
 ### Stage 5 — Extract *(manual)*
 Extract keeps only the **artifact-bound** work — inputs that outlive the session (the spec dir, the
@@ -158,6 +180,8 @@ implement report, the PR threads). The **session-bound** tools (`speckit-opsmill
 
 **Manual gate:** the user reviews `opsmill-implement-report.md` first. Then `/speckit-opsmill-extract`
 distils durable knowledge into `dev/knowledge` · `dev/guidelines` · `dev/adr` and archives the spec.
+For user-facing changes, `audit-docs`/`/audit-docs` checks whether the feature's docs are complete and
+`add-docs` authors any new page it needs (a new feature usually warrants one).
 
 **`harvesting-review` is triggered by review activity, not by this stage or the lane.** Review
 feedback arrives after the shipping session ends, so the harvest cannot run on a schedule — it
@@ -198,6 +222,7 @@ Use the first available source per capability. Probe; never invent a command the
 | Commit | `commit`, `/git-commit` | `commit-commands:commit` | `git commit` (conventional) |
 | PR | `pr`, `/git-pr` | `commit-commands:commit-push-pr`, `superpowers:finishing-a-development-branch` | `gh pr create` |
 | Post-open CI watch | `monitoring-pull-requests` | — | `gh run watch` / skip |
+| PR review comments | `/review` | `code-review:code-review`, `coderabbit:code-review` | `gh pr review --comment` / `gh api` (drafted findings + prompt blocks) |
 | Extract knowledge | `/speckit-opsmill-extract`, `capturing-knowledge`, `audit-docs`/`/audit-docs` → `add-docs` | — | edit `dev/` docs directly |
 | Learn from review | `harvesting-review` *(PR #9922, in `stable`)* | — | skip |
 | Retrospective | `speckit-opsmill-retrospect` (`/speckit.opsmill.retrospect`) | — | skip |
@@ -216,3 +241,5 @@ Use the first available source per capability. Probe; never invent a command the
 - ❌ Stacking all three reliability layers on a stage with no risk flag.
 - ❌ Reimplementing anything in the discovery table, or inventing a command the repo lacks.
 - ❌ Opening a PR with a red CI gate; forcing a PR split when the changes are coupled.
+- ❌ Leaving PR-review findings in the chat instead of drafting prompt comments; posting comments to
+  the PR without the user accepting them; writing prompts that aren't self-contained.
