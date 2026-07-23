@@ -130,10 +130,10 @@ async def test_get_proposed_change_schema_integrity_constraints(
     constraints = await _get_proposed_change_schema_integrity_constraints(
         db=db, schema=schema, diff_summary=branch_diff_01_summary, branch=default_branch
     )
-    # the diff changes name on one TestPerson and height+cars on another; both are TestPerson, so the
-    # uniqueness check (name participates) is scoped to both changed nodes while every field-level
-    # check spans the population (node_uuids=None)
-    person_uuids = ("11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222")
+    # the diff changes name on one TestPerson and height+cars on another; only name participates in
+    # uniqueness, so the uniqueness check is scoped to just the node that changed name, while every
+    # field-level check spans the population (node_uuids=None)
+    name_changed_person_uuids = ("11111111-1111-1111-1111-111111111111",)
     actual = {
         (
             c.constraint_name,
@@ -163,7 +163,7 @@ async def test_get_proposed_change_schema_integrity_constraints(
             "uniqueness_constraints",
             "uniqueness_constraints",
             SchemaPathType.NODE,
-            person_uuids,
+            name_changed_person_uuids,
         ),
     }
 

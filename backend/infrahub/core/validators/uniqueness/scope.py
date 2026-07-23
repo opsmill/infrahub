@@ -104,6 +104,20 @@ class UniquenessConstraintScoper:
         )
         return {kind for kind in kinds if check(kind=kind, name=field_name)}
 
+    def _uuids_for_field(self, kinds: set[str], field_name: str, is_relationship: bool) -> set[str]:
+        """UUIDs of the nodes that changed `field_name`, across the given kinds.
+
+        Scoped to the specific field, so an unrelated change to another field of the same node's
+        kind does not pull that node into the uniqueness scope.
+        """
+        uuids: set[str] = set()
+        for kind in kinds:
+            if is_relationship:
+                uuids |= self.node_diff_index.get_uuids_for_relationship(kind=kind, name=field_name)
+            else:
+                uuids |= self.node_diff_index.get_uuids_for_attribute(kind=kind, name=field_name)
+        return uuids
+
     def _scope(self, schema: MainSchemaTypes) -> UniquenessScopeForKind:
         cached = self._scope_cache.get(schema.kind)
         if cached is None:
@@ -122,12 +136,14 @@ class UniquenessConstraintScoper:
         """
         scope = UniquenessScopeForKind()
         for attribute_schema in schema.unique_attributes:
-            kinds = self._diffed_kinds_with_field(
+            attr_kinds = self._diffed_kinds_with_field(
                 schema=schema, field_name=attribute_schema.name, is_relationship=False
             )
-            if kinds:
+            if attr_kinds:
                 scope.requires_validation = True
-                scope.object_uuids |= self.node_diff_index.uuids_for_kinds(kinds)
+                scope.object_uuids |= self._uuids_for_field(
+                    kinds=attr_kinds, field_name=attribute_schema.name, is_relationship=False
+                )
         for constraint_group in schema.uniqueness_constraints or []:
             for constraint_path in constraint_group:
                 try:
@@ -141,7 +157,9 @@ class UniquenessConstraintScoper:
                     )
                     if rel_kinds:
                         scope.requires_validation = True
-                        scope.object_uuids |= self.node_diff_index.uuids_for_kinds(rel_kinds)
+                        scope.object_uuids |= self._uuids_for_field(
+                            kinds=rel_kinds, field_name=schema_path.relationship_schema.name, is_relationship=True
+                        )
                     if schema_path.attribute_schema is not None and schema_path.related_schema is not None:
                         peer_kinds = self._diffed_kinds_with_field(
                             schema=schema_path.related_schema,
@@ -153,7 +171,11 @@ class UniquenessConstraintScoper:
                             scope.cross_kind_peer_changes.append(
                                 CrossKindPeerChange(
                                     relationship_identifier=schema_path.relationship_schema.get_identifier(),
-                                    changed_peer_uuids=self.node_diff_index.uuids_for_kinds(peer_kinds),
+                                    changed_peer_uuids=self._uuids_for_field(
+                                        kinds=peer_kinds,
+                                        field_name=schema_path.attribute_schema.name,
+                                        is_relationship=False,
+                                    ),
                                 )
                             )
                 elif schema_path.attribute_schema is not None:
@@ -162,5 +184,7 @@ class UniquenessConstraintScoper:
                     )
                     if attr_kinds:
                         scope.requires_validation = True
-                        scope.object_uuids |= self.node_diff_index.uuids_for_kinds(attr_kinds)
+                        scope.object_uuids |= self._uuids_for_field(
+                            kinds=attr_kinds, field_name=schema_path.attribute_schema.name, is_relationship=False
+                        )
         return scope

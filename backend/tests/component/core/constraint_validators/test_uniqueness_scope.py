@@ -35,12 +35,33 @@ class TestUniquenessConstraintScoper:
         scoper = _scoper(
             schema_branch,
             _RecordingResolver(dependents=set()),
-            [NodeDiffFieldSummary(kind="TestPerson", attribute_names={"name"}, node_uuids={"person-1", "person-2"})],
+            [NodeDiffFieldSummary(kind="TestPerson", attribute_node_uuids={"name": {"person-1", "person-2"}})],
         )
         person_schema = schema_branch.get(name="TestPerson")
 
         assert scoper.requires_validation(schema=person_schema) is True
         assert await scoper.affected_node_uuids(schema=person_schema) == ["person-1", "person-2"]
+
+    async def test_scopes_only_nodes_that_changed_the_unique_field(
+        self, car_person_schema: SchemaBranch, default_branch: Branch
+    ) -> None:
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        # person-1 changed the unique "name"; person-2 only changed the non-unique "height"
+        scoper = _scoper(
+            schema_branch,
+            _RecordingResolver(dependents=set()),
+            [
+                NodeDiffFieldSummary(
+                    kind="TestPerson",
+                    attribute_node_uuids={"name": {"person-1"}, "height": {"person-2"}},
+                )
+            ],
+        )
+        person_schema = schema_branch.get(name="TestPerson")
+
+        assert scoper.requires_validation(schema=person_schema) is True
+        # only person-1 is scoped; person-2's change does not participate in uniqueness
+        assert await scoper.affected_node_uuids(schema=person_schema) == ["person-1"]
 
     async def test_triggered_without_node_uuids_falls_back_to_full_scan(
         self, car_person_schema: SchemaBranch, default_branch: Branch
@@ -49,7 +70,7 @@ class TestUniquenessConstraintScoper:
         scoper = _scoper(
             schema_branch,
             _RecordingResolver(dependents=set()),
-            [NodeDiffFieldSummary(kind="TestPerson", attribute_names={"name"})],
+            [NodeDiffFieldSummary(kind="TestPerson", attribute_node_uuids={"name": set()})],
         )
         person_schema = schema_branch.get(name="TestPerson")
 
@@ -64,7 +85,7 @@ class TestUniquenessConstraintScoper:
         scoper = _scoper(
             schema_branch,
             _RecordingResolver(dependents=set()),
-            [NodeDiffFieldSummary(kind="TestPerson", attribute_names={"height"}, node_uuids={"person-1"})],
+            [NodeDiffFieldSummary(kind="TestPerson", attribute_node_uuids={"height": {"person-1"}})],
         )
         person_schema = schema_branch.get(name="TestPerson")
 
@@ -85,7 +106,7 @@ class TestUniquenessConstraintScoper:
         scoper = _scoper(
             schema_branch,
             resolver,
-            [NodeDiffFieldSummary(kind="TestPerson", attribute_names={"name"}, node_uuids={"person-1"})],
+            [NodeDiffFieldSummary(kind="TestPerson", attribute_node_uuids={"name": {"person-1"}})],
         )
         car_schema = schema_branch.get(name="TestCar")
 
@@ -109,7 +130,7 @@ class TestUniquenessConstraintScoper:
         scoper = _scoper(
             schema_branch,
             resolver,
-            [NodeDiffFieldSummary(kind="TestPerson", attribute_names={"name"})],
+            [NodeDiffFieldSummary(kind="TestPerson", attribute_node_uuids={"name": set()})],
         )
         car_schema = schema_branch.get(name="TestCar")
 

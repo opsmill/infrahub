@@ -158,9 +158,7 @@ class TestUniquenessCheckerNodeScoped:
         determiner = build_constraint_validator_determiner(
             db=db, branch=branch, schema_branch=registry.schema.get_schema_branch(name=branch.name)
         )
-        person_change = NodeDiffFieldSummary(
-            kind="TestPerson", attribute_names={"height"}, node_uuids={person_john_main.id}
-        )
+        person_change = NodeDiffFieldSummary(kind="TestPerson", attribute_node_uuids={"height": {person_john_main.id}})
 
         constraints = await determiner.get_constraints(node_diffs=[person_change])
 

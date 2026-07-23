@@ -612,16 +612,16 @@ async def _get_proposed_change_schema_integrity_constraints(
         if node_kind not in node_diff_field_summary_map:
             node_diff_field_summary_map[node_kind] = NodeDiffFieldSummary(kind=node_kind)
         field_summary = node_diff_field_summary_map[node_kind]
-        field_summary.node_uuids.add(node_diff["id"])
+        node_id = node_diff["id"]
         for element in node_diff["elements"]:
             element_name = element["name"]
             # The SDK diff summary reports element_type using the DiffElementType member name
             # (e.g. "RELATIONSHIP_ONE"), not its value ("RelationshipOne").
             element_type = element["element_type"]
             if element_type in (DiffElementType.RELATIONSHIP_MANY.name, DiffElementType.RELATIONSHIP_ONE.name):
-                field_summary.relationship_names.add(element_name)
+                field_summary.add_relationship_node_uuid(name=element_name, node_uuid=node_id)
             elif element_type == DiffElementType.ATTRIBUTE.name:
-                field_summary.attribute_names.add(element_name)
+                field_summary.add_attribute_node_uuid(name=element_name, node_uuid=node_id)
 
     async with db.start_session(read_only=True) as session_db:
         determiner = build_constraint_validator_determiner(db=session_db, branch=branch, schema_branch=schema)
