@@ -45,11 +45,15 @@ def _schema_branch() -> SchemaBranch:
     )
     branch.set(
         name="TestElectricCar",
-        schema=NodeSchema(name="ElectricCar", namespace="Test", inherit_from=["TestCar"], uniqueness_constraints=[["name__value"]]),
+        schema=NodeSchema(
+            name="ElectricCar", namespace="Test", inherit_from=["TestCar"], uniqueness_constraints=[["name__value"]]
+        ),
     )
     branch.set(
         name="TestGazCar",
-        schema=NodeSchema(name="GazCar", namespace="Test", inherit_from=["TestCar"], uniqueness_constraints=[["name__value"]]),
+        schema=NodeSchema(
+            name="GazCar", namespace="Test", inherit_from=["TestCar"], uniqueness_constraints=[["name__value"]]
+        ),
     )
     branch.set(
         name="TestSpecialCar",
