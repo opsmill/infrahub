@@ -8,6 +8,7 @@ import type { ContextParams } from "@/shared/api/types";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/schema";
+import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
@@ -55,7 +56,9 @@ export async function getObjectForEditingFromApi({
             ...addRelationshipsToRequest([...formRelationships, ...extraRelationships], {
               withMetadata: true,
             }),
-            ...("generate_profile" in objectSchema && objectSchema.generate_profile
+            ...(!isGenericSchema(objectSchema) &&
+            "generate_profile" in objectSchema &&
+            objectSchema.generate_profile
               ? {
                   profiles: {
                     edges: {

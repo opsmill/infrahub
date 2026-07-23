@@ -1,0 +1,1 @@
+Fixed the object edit form failing with a GraphQL `profiles` error when an object is opened via its generic kind. Generic kinds inherit `generate_profile: true` but have no `profiles` relationship, so the edit form no longer requests that field for generics.
