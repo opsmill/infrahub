@@ -12,10 +12,10 @@
 
 ## Decision 2 — Shape of the resolver
 
-**Decision**: A pure function `getRelationshipDisplayLabel(relationshipSchema, peerSchema): string` where `peerSchema` is the already-resolved peer schema (or `undefined`).
+**Decision**: A pure function `getRelationshipFieldLabel(relationshipSchema, peerSchema): string` where `peerSchema` is the already-resolved peer schema (or `undefined`).
 
 ```
-getRelationshipDisplayLabel(relationshipSchema, peerSchema):
+getRelationshipFieldLabel(relationshipSchema, peerSchema):
   if relationshipSchema.hierarchical && peerSchema?.label:
       return peerSchema.label
   return relationshipSchema.label ?? relationshipSchema.name

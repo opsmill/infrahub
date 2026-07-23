@@ -10,10 +10,10 @@ Validates that hierarchical `parent`/`children` relationships render the peer ki
 ## Unit validation (fast, no backend)
 
 ```bash
-cd frontend/app && pnpm test src/entities/schema/domain/rules/get-relationship-display-label.test.ts
+cd frontend/app && pnpm test src/entities/schema/domain/rules/get-relationship-field-label.test.ts
 ```
 
-Expected: all contract cases pass — see [contracts/get-relationship-display-label.md](./contracts/get-relationship-display-label.md) (C1–C4).
+Expected: all contract cases pass — see [contracts/get-relationship-field-label.md](./contracts/get-relationship-field-label.md) (C1–C4).
 
 ## Manual validation
 

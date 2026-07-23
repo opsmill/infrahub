@@ -6,7 +6,7 @@
 
 ## Summary
 
-For hierarchical objects, replace the generic "Parent"/"Children" relationship labels with the **peer kind's own schema label** (e.g. "Region"), everywhere the relationship label is rendered. This is a **frontend-only** change: introduce one pure rule in the schema domain layer, `getRelationshipDisplayLabel(relationshipSchema, peerSchema)`, and route every relationship-label render site through it. The rule detects the hierarchical parent/children relationship via `relationshipSchema.hierarchical` (a field already present on the relationship, set to the hierarchy generic's kind), swaps in `peerSchema.label` when available, and otherwise returns today's `label ?? name`.
+For hierarchical objects, replace the generic "Parent"/"Children" relationship labels with the **peer kind's own schema label** (e.g. "Region"), everywhere the relationship label is rendered. This is a **frontend-only** change: introduce one pure rule in the schema domain layer, `getRelationshipFieldLabel(relationshipSchema, peerSchema)`, and route every relationship-label render site through it. The rule detects the hierarchical parent/children relationship via `relationshipSchema.hierarchical` (a field already present on the relationship, set to the hierarchy generic's kind), swaps in `peerSchema.label` when available, and otherwise returns today's `label ?? name`.
 
 ## Technical Context
 
@@ -57,7 +57,7 @@ specs/003-parent-children-labels/
 ├── data-model.md        # Phase 1 output
 ├── quickstart.md        # Phase 1 output
 ├── contracts/
-│   └── get-relationship-display-label.md   # UI contract for the rule
+│   └── get-relationship-field-label.md   # UI contract for the rule
 └── checklists/
     └── requirements.md  # from /speckit-specify
 ```
@@ -66,8 +66,8 @@ specs/003-parent-children-labels/
 
 ```text
 frontend/app/src/entities/schema/domain/rules/
-├── get-relationship-display-label.ts        # NEW — the pure resolver rule
-├── get-relationship-display-label.test.ts   # NEW — colocated Vitest unit test
+├── get-relationship-field-label.ts        # NEW — the pure resolver rule
+├── get-relationship-field-label.test.ts   # NEW — colocated Vitest unit test
 └── is-hierarchical-schema.ts                # existing (reference/adjacent)
 
 frontend/app/src/entities/nodes/object/ui/object-details/object-data-display/

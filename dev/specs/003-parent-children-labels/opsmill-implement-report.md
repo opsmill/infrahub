@@ -35,7 +35,7 @@ Environment for E2E: live local Infrahub stack (frontend :8080, API :8000, demo 
 
 | Test id | Type | Run command | Passed at | Env | Verbatim pass line |
 |---------|------|-------------|-----------|-----|--------------------|
-| `get-relationship-display-label.test.ts` (5 cases C1–C4) | unit | `pnpm test src/entities/schema/domain/rules/get-relationship-display-label.test.ts` | 2026-07-21T14:03:22Z (re-run w/ column-header 2026-07-21T17:07) | Vitest browser (chromium) | `Test Files 1 passed (1)` / `Tests 5 passed (5)` |
+| `get-relationship-field-label.test.ts` (5 cases C1–C4) | unit | `pnpm test src/entities/schema/domain/rules/get-relationship-field-label.test.ts` | 2026-07-21T14:03:22Z (re-run w/ column-header 2026-07-21T17:07) | Vitest browser (chromium) | `Test Files 1 passed (1)` / `Tests 5 passed (5)` |
 | `object-hierarchy-navigation.spec.ts:20` (new label step) | e2e | `pnpm exec playwright test tests/e2e/objects/hierarchy/object-hierarchy-navigation.spec.ts --project=setup --project=e2e` | 2026-07-21 16:21:12 CEST | live stack | `4 passed (20.2s)` |
 | `object-relationships.spec.ts:120` (hierarchical children) | e2e | `pnpm exec playwright test tests/e2e/objects/object-relationships.spec.ts ... -g "hierarchical children"` | 2026-07-21T14:24:22Z | live stack | `✓ …hierarchical children (4.3s)` / `4 passed (15.9s)` |
 | `object-hierarchy-crud.spec.ts` + `object-hierarchy-tree-list.spec.ts` (combobox label) | e2e | `pnpm exec playwright test <both specs> --project=setup --project=e2e` | 2026-07-21 16:42:55 CEST | live stack | `5 passed (41.0s)` |
@@ -49,7 +49,7 @@ Environment for E2E: live local Infrahub stack (frontend :8080, API :8000, demo 
 | Severity | File | Finding | Status |
 |----------|------|---------|--------|
 | **Critical** | `object-table/cells/table-column-header.tsx:214` | Peer label computed only for the sort-submenu aria-label; the **visible** header text (in `ColumnHeaderMenu`) recomputed `label ?? name`, so column headers still showed "Parent"/"Children" — and the `children` cardinality-many path never resolved the peer at all. | **Fixed inline** (`c9d13a658b`) — resolve the peer label inside `ColumnHeaderMenu`, covering all paths. |
-| Low | `get-relationship-display-label.test.ts` | Empty-string peer `label` edge (truthiness fall-through) not covered. | Deferred — peer labels are always populated in practice. |
+| Low | `get-relationship-field-label.test.ts` | Empty-string peer `label` edge (truthiness fall-through) not covered. | Deferred — peer labels are always populated in practice. |
 | Medium | sort picker (`add-sort-picker.tsx`) & filter heading (`relationship-filter-form.tsx`) | No e2e asserts the peer label on a hierarchical relationship in these two surfaces (unit + other e2e cover the rest). | Deferred — behavior verified by the rule unit test; surfaces wired identically. |
 | Low | `object-hierarchy-navigation.spec.ts:57` | `childrenTab` locator (`a[href*="/children"]`) unscoped; relies on a single match. | Deferred — passes today; could scope to the tab bar for robustness. |
 | Low | `table-column-header.test.tsx` | No component test exercises a hierarchical relationship column header (the exact path the review fix touched). | Deferred — fix verified via rule unit test + type gate; worth a regression test later. |

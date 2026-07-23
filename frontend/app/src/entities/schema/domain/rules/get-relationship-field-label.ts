@@ -15,7 +15,7 @@ import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schem
  * Pure: the peer schema is supplied by the caller, so there is no store
  * access and no side effects.
  */
-export const getRelationshipDisplayLabel = (
+export const getRelationshipFieldLabel = (
   relationshipSchema: RelationshipSchema,
   peerSchema?: ModelSchema | null
 ): string => {
