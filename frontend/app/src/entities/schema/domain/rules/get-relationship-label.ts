@@ -1,7 +1,7 @@
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 
-export const getRelationshipFieldLabel = (
+export const getRelationshipLabel = (
   relationshipSchema: RelationshipSchema,
   peerSchema?: ModelSchema | null
 ): string => {

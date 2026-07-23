@@ -6,7 +6,7 @@ import { LinkTab } from "@/shared/components/ui/link";
 import { constructPathForIpam } from "@/entities/ipam/ip-namespaces/ui/routing/ipam-urls";
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/ui/queries/get-relationship-count.query";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
-import { getRelationshipFieldLabel } from "@/entities/schema/domain/rules/get-relationship-field-label";
+import { getRelationshipLabel } from "@/entities/schema/domain/rules/get-relationship-label";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -35,7 +35,7 @@ export function ObjectDetailsTab({
   return (
     <LinkTab to={url}>
       <Icon icon={getSchemaIcon(schema)} />
-      {getRelationshipFieldLabel(relationship, schema)}
+      {getRelationshipLabel(relationship, schema)}
       <Badge variant="blue" className="rounded-full font-normal">
         {data}
       </Badge>

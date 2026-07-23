@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getRelationshipFieldLabel } from "@/entities/schema/domain/rules/get-relationship-field-label";
+import { getRelationshipLabel } from "@/entities/schema/domain/rules/get-relationship-label";
 
 import {
   generateGenericSchema,
@@ -8,7 +8,7 @@ import {
   generateRelationshipSchema,
 } from "../../../../../tests/fake/schema";
 
-describe("getRelationshipFieldLabel", () => {
+describe("getRelationshipLabel", () => {
   it("returns the peer label when the relationship is hierarchical and the peer has a label (C1)", () => {
     // GIVEN
     const relationshipSchema = generateRelationshipSchema({
@@ -20,7 +20,7 @@ describe("getRelationshipFieldLabel", () => {
     const peerSchema = generateNodeSchema({ kind: "Site", label: "Site" });
 
     // WHEN
-    const result = getRelationshipFieldLabel(relationshipSchema, peerSchema);
+    const result = getRelationshipLabel(relationshipSchema, peerSchema);
 
     // THEN
     expect(result).toBe("Site");
@@ -36,7 +36,7 @@ describe("getRelationshipFieldLabel", () => {
     });
 
     // WHEN
-    const result = getRelationshipFieldLabel(relationshipSchema);
+    const result = getRelationshipLabel(relationshipSchema);
 
     // THEN
     expect(result).toBe("Parent");
@@ -53,7 +53,7 @@ describe("getRelationshipFieldLabel", () => {
     const peerSchema = generateNodeSchema({ kind: "Site", label: null });
 
     // WHEN
-    const result = getRelationshipFieldLabel(relationshipSchema, peerSchema);
+    const result = getRelationshipLabel(relationshipSchema, peerSchema);
 
     // THEN
     expect(result).toBe("parent");
@@ -70,7 +70,7 @@ describe("getRelationshipFieldLabel", () => {
     const peerSchema = generateNodeSchema({ kind: "Site", label: "Site" });
 
     // WHEN
-    const result = getRelationshipFieldLabel(relationshipSchema, peerSchema);
+    const result = getRelationshipLabel(relationshipSchema, peerSchema);
 
     // THEN
     expect(result).toBe("Parent");
@@ -87,7 +87,7 @@ describe("getRelationshipFieldLabel", () => {
     const peerSchema = generateNodeSchema({ kind: "Site", label: "Site" });
 
     // WHEN
-    const result = getRelationshipFieldLabel(relationshipSchema, peerSchema);
+    const result = getRelationshipLabel(relationshipSchema, peerSchema);
 
     // THEN
     expect(result).toBe("Site");
@@ -104,7 +104,7 @@ describe("getRelationshipFieldLabel", () => {
     const peerSchema = generateGenericSchema({ kind: "LocationGeneric", label: "Location" });
 
     // WHEN
-    const result = getRelationshipFieldLabel(relationshipSchema, peerSchema);
+    const result = getRelationshipLabel(relationshipSchema, peerSchema);
 
     // THEN
     expect(result).toBe("Parent");

@@ -24,9 +24,9 @@ No new data is created or persisted. This feature reads existing schema types al
 
 ## New unit of logic
 
-### `getRelationshipFieldLabel` (pure rule)
+### `getRelationshipLabel` (pure rule)
 
-- **Location**: `frontend/app/src/entities/schema/domain/rules/get-relationship-field-label.ts`
+- **Location**: `frontend/app/src/entities/schema/domain/rules/get-relationship-label.ts`
 - **Signature**: `(relationshipSchema: RelationshipSchema, peerSchema?: ModelSchema | null) => string`
 - **Behavior**:
   1. If `relationshipSchema.hierarchical` is truthy **and** `peerSchema?.label` is present **and** `peerSchema` is a concrete node (not a generic, via `isGenericSchema`) → return `peerSchema.label`.

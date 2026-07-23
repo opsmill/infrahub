@@ -13,7 +13,7 @@ import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form
 import { RelationshipFilterCombobox } from "@/entities/nodes/object/ui/filters/relationship-filter-combobox";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
-import { getRelationshipFieldLabel } from "@/entities/schema/domain/rules/get-relationship-field-label";
+import { getRelationshipLabel } from "@/entities/schema/domain/rules/get-relationship-label";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RelationshipFilterFormProps {
@@ -82,7 +82,7 @@ export function RelationshipFilterForm({
   return (
     <FilterFormLayout
       filterType="relationship"
-      label={getRelationshipFieldLabel(relationshipSchema, peerSchema)}
+      label={getRelationshipLabel(relationshipSchema, peerSchema)}
       condition={condition}
       onConditionChange={setCondition}
       testId="relationship-filter-form"

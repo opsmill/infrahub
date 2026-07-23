@@ -1,11 +1,11 @@
-# UI Contract: `getRelationshipFieldLabel`
+# UI Contract: `getRelationshipLabel`
 
 The single client-side interface introduced by this feature. Every relationship-label render site MUST resolve its label through this function.
 
 ## Signature
 
 ```ts
-function getRelationshipFieldLabel(
+function getRelationshipLabel(
   relationshipSchema: RelationshipSchema,
   peerSchema?: ModelSchema | null,
 ): string;

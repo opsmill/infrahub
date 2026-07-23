@@ -18,7 +18,7 @@ import type {
 } from "@/entities/nodes/object/domain/model/node";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
-import { getRelationshipFieldLabel } from "@/entities/schema/domain/rules/get-relationship-field-label";
+import { getRelationshipLabel } from "@/entities/schema/domain/rules/get-relationship-label";
 import { validateRelationshipMany } from "@/entities/schema/domain/rules/validation/validate-relationship-many";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
@@ -29,7 +29,7 @@ interface GetFieldLabelParams {
 }
 
 const getFormFieldLabel = ({ type, relationshipSchema, peerSchema }: GetFieldLabelParams) => {
-  const label = getRelationshipFieldLabel(relationshipSchema, peerSchema);
+  const label = getRelationshipLabel(relationshipSchema, peerSchema);
 
   if (type === "relationship-add") {
     return `Add ${label}`;
