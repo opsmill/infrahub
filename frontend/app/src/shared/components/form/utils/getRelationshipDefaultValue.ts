@@ -154,15 +154,22 @@ const getRelationshipValueFromParent = (
 ): RelationshipValueFromUser | null => {
   if (!parentSchema || !parentData || !schema) return null;
 
-  const relationshipToParent = schema.relationships?.find((r) => {
-    return r.kind === "Parent" && r.name === relationshipName;
-  });
+  const childRelationship = schema.relationships?.find((r) => r.name === relationshipName);
+  if (!childRelationship) return null;
 
-  const relationshipFromParent = parentSchema.relationships?.find((r) => {
-    return r.kind === "Component" && isOfKind(r.peer, schema);
-  });
+  // The reverse Component side is optional, so check it exists and accepts this child.
+  const isFlatParent =
+    childRelationship.kind === "Parent" &&
+    !!parentSchema.relationships?.some((r) => r.kind === "Component" && isOfKind(r.peer, schema));
 
-  if (relationshipToParent && relationshipFromParent) {
+  // Hierarchy always exists on both sides. "one" is the parent side (children is "many"),
+  // and isOfKind checks parentData is a kind this parent field accepts.
+  const isHierarchyParent =
+    childRelationship.kind === "Hierarchy" &&
+    childRelationship.cardinality === "one" &&
+    isOfKind(childRelationship.peer, parentSchema);
+
+  if (isFlatParent || isHierarchyParent) {
     return {
       source: { type: "user" },
       value: {
