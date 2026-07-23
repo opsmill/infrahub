@@ -1,6 +1,7 @@
 import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
 import { buildAttributeSortField } from "@/entities/nodes/sort/domain/rules/sort-field";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 
 /**
  * The single active sort targeting the given schema field: returned only when
@@ -16,7 +17,7 @@ export function findSortForField(
   const sort = sorts?.length === 1 ? sorts[0] : undefined;
   if (!sort) return null;
 
-  if ("peer" in fieldSchema) {
+  if (isRelationshipSchema(fieldSchema)) {
     const [relationshipName] = sort.field.split("__");
     return relationshipName === fieldSchema.name ? sort : null;
   }

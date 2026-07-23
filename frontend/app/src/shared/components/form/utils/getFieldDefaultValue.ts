@@ -22,6 +22,7 @@ import type {
 } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { isPoolSchema } from "@/entities/schema/domain/rules/is-pool-schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
@@ -252,10 +253,12 @@ export const getDefaultValueFromTemplate = (
 export const getDefaultValueFromSchema = (
   fieldSchema: FieldSchema
 ): AttributeValueFromUser | null => {
-  return "default_value" in fieldSchema
-    ? {
-        source: { type: "schema" },
-        value: fieldSchema.default_value as AttributeValueFromUser["value"],
-      }
-    : null;
+  if (isRelationshipSchema(fieldSchema)) {
+    return null;
+  }
+
+  return {
+    source: { type: "schema" },
+    value: fieldSchema.default_value as AttributeValueFromUser["value"],
+  };
 };

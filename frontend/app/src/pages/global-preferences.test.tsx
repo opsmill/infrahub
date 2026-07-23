@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
 import { hasGlobalPermission } from "@/entities/permission/domain/use-cases/has-global-permission";
 
-import { render } from "../../../tests/components/render";
-import { Component } from "./global-preferences-page";
+import { render } from "../../tests/components/render";
+import { Component } from "./global-preferences";
 
 vi.mock("@/entities/permission/domain/use-cases/has-global-permission");
 vi.mock("@/entities/preferences/ui/global-preferences-editor", () => ({
@@ -16,11 +16,14 @@ describe("GlobalPreferencesPage", () => {
     vi.clearAllMocks();
   });
 
-  test("renders the editor when the user can manage global preferences", async () => {
+  test("renders the titled page with the editor when the user can manage global preferences", async () => {
     vi.mocked(hasGlobalPermission).mockResolvedValue(true);
 
     const component = await render(<Component />);
 
+    await expect
+      .element(component.getByRole("heading", { name: "Global preferences" }))
+      .toBeVisible();
     await expect.element(component.getByTestId("global-preferences-editor")).toBeVisible();
   });
 
@@ -29,7 +32,11 @@ describe("GlobalPreferencesPage", () => {
 
     const component = await render(<Component />);
 
-    await expect.element(component.getByText("You can't access this view")).toBeVisible();
+    // The custom message sits inside the unauthorized screen's collapsed accordion.
+    await component.getByText("You can't access this view").click();
+    await expect
+      .element(component.getByText("You don't have permission to edit global preferences"))
+      .toBeVisible();
     expect(component.getByTestId("global-preferences-editor").elements()).toHaveLength(0);
   });
 

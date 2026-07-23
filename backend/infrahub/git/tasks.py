@@ -563,9 +563,12 @@ async def generate_request_artifact_definition(
     current_members = [member.id for member in group.members.peers]
 
     artifacts_by_member = {}
+    stale_artifacts = []
     for artifact in existing_artifacts:
         if artifact.object.id in current_members:
             artifacts_by_member[artifact.object.peer.id] = artifact.id
+        else:
+            stale_artifacts.append(artifact)
 
     await artifact_definition.transformation.fetch()
     transformation_repository = artifact_definition.transformation.peer.repository
@@ -630,6 +633,27 @@ async def generate_request_artifact_definition(
 
     async for _, _ in batch.execute():
         pass
+
+    # A full pass over the definition also cleans up artifacts whose target is no
+    # longer a member of the target group; a limited run only regenerates the
+    # requested artifacts and must not delete anything else. The cleanup runs
+    # after the regeneration is dispatched and tolerates individual failures:
+    # a stale artifact that cannot be deleted must not block the regeneration
+    # of current members.
+    if not model.limit:
+        log = get_run_logger()
+        for artifact in stale_artifacts:
+            try:
+                await artifact.delete()
+                log.info(
+                    f"Deleted artifact {artifact.id} ({artifact.name.value}) on branch {model.branch}: "
+                    f"its target {artifact.object.id} is no longer a member of the definition's targets"
+                )
+            except Exception:
+                log.warning(
+                    f"Failed to delete stale artifact {artifact.id} ({artifact.name.value}) on branch {model.branch}",
+                    exc_info=True,
+                )
 
 
 @flow(name="git-repository-pull-read-only", flow_run_name="Pull latest commit on {model.repository_name}")

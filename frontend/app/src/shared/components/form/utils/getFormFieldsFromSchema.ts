@@ -20,6 +20,7 @@ import type {
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 
 interface GetFormFieldsFromSchema extends FormContextType {
   schema: ModelSchema;
@@ -59,7 +60,7 @@ export const getFormFieldsFromSchema = ({
   const orderedFields = sortByOrderWeight(unorderedFields);
 
   return orderedFields.reduce((acc: Array<DynamicFieldProps>, field) => {
-    if ("peer" in field) {
+    if (isRelationshipSchema(field)) {
       if (isBulkUpdate && field.cardinality === "many") {
         return [
           ...acc,

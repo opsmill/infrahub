@@ -93,8 +93,8 @@ exports[`fix ts error`] = {
     "src/entities/nodes/convert/ui/convert-form.tsx:1982113281": [
       [41, 6, 8, "tsc: Type \'{}\' is not assignable to type \'Record<string, ConvertFieldMapping>\'.\\n  Index signature for type \'string\' is missing in type \'{}\'.", "1301887866"]
     ],
-    "src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx:1945941723": [
-      [118, 25, 9, "tsc: Argument of type \'\\"NodeKind\\"\' is not assignable to parameter of type \'never\'.", "2512581423"]
+    "src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx:593364690": [
+      [119, 25, 9, "tsc: Argument of type \'\\"NodeKind\\"\' is not assignable to parameter of type \'never\'.", "2512581423"]
     ],
     "src/entities/nodes/object/ui/filters/kind-combobox-list.tsx:2661968571": [
       [19, 8, 8, "tsc: Type \'(null | string | undefined)[]\' is not assignable to type \'string[]\'.\\n  Type \'string | null | undefined\' is not assignable to type \'string\'.\\n    Type \'undefined\' is not assignable to type \'string\'.", "3441362927"]
@@ -107,8 +107,8 @@ exports[`fix ts error`] = {
       [62, 28, 24, "tsc: \'objectDetailsData.object\' is possibly \'null\' or \'undefined\'.", "865142553"],
       [62, 53, 4, "tsc: Property \'node\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
-    "src/entities/nodes/object/ui/object-details/object-data-display/object-data-display.tsx:1242790340": [
-      [154, 75, 10, "tsc: Property \'properties\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'properties\' does not exist on type \'string\'.", "408285988"]
+    "src/entities/nodes/object/ui/object-details/object-data-display/object-data-display.tsx:3545110285": [
+      [155, 75, 10, "tsc: Property \'properties\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'properties\' does not exist on type \'string\'.", "408285988"]
     ],
     "src/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row.test.tsx:3396911868": [
       [81, 9, 21, "tsc: Property \'objectKind\' is missing in type \'\\"Attribute\\" | \\"Component\\" | \\"Group\\" | \\"Hierarchy\\" | \\"Parent\\" | \\"Profile\\" | \\"Template\\"; label?: string | \\"absent\\"; name: string; peer: string; kind: \\"Generic\\" | \\"agnostic\\" | \\"any\\"; read_only: boolean; deprecation?: string | \\"aware\\" | \\"cascade\\" | \\"extra\\"; }; relationshipData: NodeRelationshipOneWithMetadata; permission: Permission; } | \\"inbound\\"; hierarchical?: string | \\"many\\"; min_count: number; max_count: number; common_parent?: string | \\"outbound\\" | null | null | null | null | null | null | null | null | null | null | null | undefined; allow_override: \\"none\\" | undefined; cardinality: \\"one\\" | undefined; common_relatives?: string[] | undefined; description?: string | undefined; display: \\"default\\" | undefined; identifier?: string | undefined; inherited: boolean; direction: \\"bidirectional\\" | undefined; on_delete?: \\"no-action\\" | undefined; optional: boolean; branch?: \\"local\\" | undefined; order_weight?: number | undefined; state: \\"present\\" | { relationshipSchema: { id?: string\' but required in type \'ObjectRelationshipRowProps\'.", "417292446"],
