@@ -16,6 +16,7 @@ import {
   InfoIcon,
   LogInIcon,
   LogOutIcon,
+  SlidersHorizontalIcon,
 } from "lucide-react";
 import React from "react";
 import { useLocation } from "react-router";
@@ -35,6 +36,8 @@ import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useLogoutMutation } from "@/entities/authentication/ui/queries/logout.mutation";
 import { AboutModal } from "@/entities/config/ui/about-modal";
 import { AppInfo } from "@/entities/config/ui/app-info";
+import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
+import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import { useGetAccountProfile } from "@/entities/user-profile/ui/queries/get-account-profile.query";
 
 export const AccountMenu = () => {
@@ -146,6 +149,8 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
 const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }) => {
   const { setToken } = useAuth();
   const { data: profile, isPending } = useGetAccountProfile();
+  const { data: canManageGlobalPreferences = false } =
+    useHasGlobalPermission(MANAGE_GLOBAL_PREFERENCES);
   const { mutateAsync: logout, isPending: isLoggingOut } = useLogoutMutation();
 
   const handleSignOut = async () => {
@@ -188,6 +193,12 @@ const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }
           <MenuItem href={constructPath("/profile")}>
             <CircleUserIcon /> Account settings
           </MenuItem>
+
+          {canManageGlobalPreferences && (
+            <MenuItem href={constructPath("/global-preferences")}>
+              <SlidersHorizontalIcon /> Global preferences
+            </MenuItem>
+          )}
 
           <MenuSeparator />
 
