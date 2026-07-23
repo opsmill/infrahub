@@ -83,7 +83,6 @@ class PreferenceGetByOwnerQuery(PreferenceReadQuery):
         # Cypher parameters cannot bind a set, so pass the ids as a list.
         self.params["owner_ids"] = list(self.owner_ids)
 
-        # The label is the Preference StandardNode type name (Cypher labels can't be parameterised).
         query = """
         MATCH (n:Preference)
         WHERE n.owner_id IN $owner_ids
@@ -92,13 +91,33 @@ class PreferenceGetByOwnerQuery(PreferenceReadQuery):
         self._set_return_shape()
 
 
+class PreferenceDeleteByOwnerQuery(StandardNodeQuery):
+    """Delete every Preference row owned by one owner, in ONE query (no fetch-then-delete-each)."""
+
+    name = "preference_delete_by_owner"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, owner_id: str, **kwargs: Any) -> None:
+        self.owner_id = owner_id
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["owner_id"] = self.owner_id
+
+        query = """
+        MATCH (n:Preference { owner_id: $owner_id })
+        DETACH DELETE n
+        """
+        self.add_to_query(query=query)
+
+
 class PreferenceGetAllQuery(PreferenceReadQuery):
     """Fetch every Preference row, across all owners."""
 
     name = "preference_get_all"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        # The label is the Preference StandardNode type name (Cypher labels can't be parameterised).
         query = """
         MATCH (n:Preference)
         """

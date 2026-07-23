@@ -78,6 +78,11 @@ The read-modify-write runs inside a per-owner distributed lock keyed on `owner_i
 observe "no row" and create a duplicate, and concurrent updates could lose writes. The read runs
 inside the lock so it observes any in-flight write for the same owner. Distinct owners never contend.
 
+This lock is an invariant, not an implementation detail of the upsert: **every path that mutates
+Preference rows — deletes included — must acquire the same per-owner lock**, because a mutation
+running outside it can interleave with the read-then-save above (e.g. a delete slipping between the
+read and the save gets silently undone by the save).
+
 ## Permissions
 
 | Path | Requirement |
@@ -108,7 +113,9 @@ source.
 ## Caveats
 
 - **Orphan rows.** A `StandardNode` cannot declare an `on_delete: cascade` schema relationship, so
-  deleting an account leaves its `Preference` row behind. Account ids are UUIDs and are never reused,
-  so the row is permanently unreachable and benign. Cleanup is out of scope for V1 (tracked in Jira).
+  the schema cannot cascade a `Preference` row when its account is deleted. Instead the account-delete
+  mutation drops the row explicitly, best-effort and under the per-owner preference lock.
+  A deletion path that bypasses the mutation still leaves the row behind; that orphan is benign:
+  account ids are UUIDs and are never reused, so it is permanently unreachable.
 - **`Optional[X]` on the model.** Persisted nullable fields use `Optional[X]` rather than `X | None`
   because of how `StandardNode.guess_field_type` works on Python before 3.14.
