@@ -4,19 +4,7 @@ import asyncio
 
 from infrahub.api.admission.priority import Priority
 from infrahub.api.admission.slot_pool import PrioritySlotPool
-
-
-class FakeClock:
-    """Manually advanced monotonic clock so sojourn is deterministic in tests."""
-
-    def __init__(self) -> None:
-        self.now = 0.0
-
-    def __call__(self) -> float:
-        return self.now
-
-    def advance(self, seconds: float) -> None:
-        self.now += seconds
+from tests.unit.api.admission.helpers import FakeClock
 
 
 async def _wait_until_waiting(pool: PrioritySlotPool, *, priority: Priority, count: int) -> None:

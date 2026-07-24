@@ -1,23 +1,11 @@
 from __future__ import annotations
 
 from infrahub.api.admission.codel import CoDelController
+from tests.unit.api.admission.helpers import FakeClock
 
 TARGET = 0.005
 INTERVAL = 0.1
 HIGH_MULTIPLIER = 4.0
-
-
-class FakeClock:
-    """Mutable monotonic clock advanced by hand; no real sleeps in CoDel tests."""
-
-    def __init__(self) -> None:
-        self.now = 0.0
-
-    def __call__(self) -> float:
-        return self.now
-
-    def advance(self, seconds: float) -> None:
-        self.now += seconds
 
 
 def test_burst_shorter_than_interval_never_drops() -> None:
