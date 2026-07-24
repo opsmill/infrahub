@@ -68,7 +68,7 @@ manifest edit moves the fingerprint on its own.
 | Setup condition | Effect if not met |
 |-----------------|-------------------|
 | The definition is declared in an imported, git-synced repository `.infrahub.yml`, with a resolvable entry file a closure builder supports | No closure or fingerprint is computed; the definition stays on the legacy fallback |
-| Python transform or generator: the import graph is statically resolvable (no dynamic or unresolvable imports) | Unresolved imports leave `dependencies_complete=false`, so the definition regenerates in full |
+| Python transform or generator: the entry file sits in a git repository whose tracked files can be enumerated | The closure is the git-tracked files under the entry's directory; imports are not analyzed, so any file in that directory is a dependency. Enumeration failing (not a git repo, git error) leaves `dependencies_complete=false`, so the definition regenerates in full |
 | Jinja2 transform: `{% include %}` targets and references are statically resolvable (no computed include paths) | Unresolved references leave `dependencies_complete=false`, so the definition regenerates in full |
 | A `watch:` block in the manifest declares the dependency files auto-detection cannot infer | Without it an incomplete closure stays `complete=false`; declaring watch files forces `complete=true`, the author taking responsibility for the declared paths |
 | The definition has been re-imported at the current commit | A definition imported before the feature carries `dependencies=null` and stays on the legacy fallback until re-imported; a stale import yields a stale fingerprint |
