@@ -52,7 +52,7 @@ test.describe("Object hierarchy tree lite - Focused tree view", () => {
     await test.step("add a sibling node - lite tree should refresh", async () => {
       await page.getByTestId("create-object-button").click();
       await page.getByRole("textbox", { name: "Name *" }).fill("Country 1");
-      await page.getByRole("combobox", { name: "Parent *" }).click();
+      await page.getByRole("combobox", { name: "Continent *" }).click();
       await page.getByRole("option", { name: "North America" }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Country created")).toBeVisible();
@@ -63,7 +63,7 @@ test.describe("Object hierarchy tree lite - Focused tree view", () => {
     await test.step("add another sibling node - lite tree should refresh", async () => {
       await page.getByTestId("create-object-button").click();
       await page.getByRole("textbox", { name: "Name *" }).fill("country 2");
-      await page.getByRole("combobox", { name: "Parent *" }).click();
+      await page.getByRole("combobox", { name: "Continent *" }).click();
       await page.getByRole("option", { name: "North America" }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(objectHierarchyTreeLite.getByText("country 2")).toBeVisible();
