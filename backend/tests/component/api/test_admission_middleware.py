@@ -606,6 +606,7 @@ async def test_prefix_of_excluded_path_is_not_bypassed(path: str) -> None:
     app.add_middleware(AdmissionMiddleware, controller=_shed_everything_controller(), enabled=True)
 
     offered_before = _offered_total()
+    missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
 
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get(path)
@@ -613,6 +614,8 @@ async def test_prefix_of_excluded_path_is_not_bypassed(path: str) -> None:
     assert response.status_code == 429
     # The request reached the admission layer, so the offered counter moved.
     assert _offered_total() - offered_before == 1
+    # The header-less request was classified inside the admission layer, so it counted as missing.
+    assert metrics.MISSING_PRIORITY_TOTAL._value.get() - missing_before == 1
 
 
 async def test_kill_switch_passes_through() -> None:
