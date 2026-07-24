@@ -113,12 +113,11 @@ async def _transform_value_for_node(
     context: EventContext,
     repo: InfrahubReadOnlyRepository | InfrahubRepository,
 ) -> AttributeValueWrite:
-    """Run the transform for one node against an already-initialized repository.
+    """Compute one node's value against a shared, pre-initialized repository.
 
-    The query is run with ``update_group`` so the node is (re)registered as a subscriber of the
-    transform's query group, which is how a later change to any node the query reads triggers this
-    node's recompute. The recomputed value is returned to be persisted in bulk with the rest of the
-    batch rather than written here.
+    ``update_group`` keeps the node subscribed to the transform's query group, which is
+    what routes future source changes back to this node. ``context`` is reapplied here
+    because ``get_client()`` builds a fresh client per call rather than inheriting one.
     """
     client = get_client()
     client.request_context = context.to_request_context()
@@ -146,13 +145,10 @@ async def _transform_value_for_node(
 def _partition_transform_results(
     results: list[tuple[str, AttributeValueWrite | Exception]],
 ) -> tuple[list[AttributeValueWrite], list[tuple[str, str]]]:
-    """Split per-node transform results into values to persist and nodes to skip.
+    """Split results into values to persist and ``(node_id, reason)`` skips.
 
-    A node is skipped, leaving its previous value in place, when its transform raised or produced a
-    non-string value. Isolating failures this way keeps one failing node from blocking the rest of
-    the batch, and preserves the contract that only a real string is persisted rather than silently
-    overwriting a value with null. Returns the writes to persist and ``(node_id, reason)`` pairs
-    describing each skip.
+    A raised or non-string result is skipped so one bad node cannot block its siblings,
+    and a failure never overwrites the last good value with null.
     """
     writes: list[AttributeValueWrite] = []
     skipped: list[tuple[str, str]] = []
@@ -180,15 +176,11 @@ async def process_transform(
     object_ids: list[str] | None = None,
     updated_fields: list[str] | None = None,  # noqa: ARG001
 ) -> None:
-    """Recompute one or more Python computed attributes for a batch of nodes.
+    """Recompute Python computed attributes for a batch of nodes.
 
-    The transform's git repository is initialized once for the whole batch instead of once per node,
-    each node's value is computed concurrently, and the results are persisted in a single bulk write
-    instead of a GraphQL mutation per node. The bulk write skips any node whose recomputed value is
-    unchanged, so an unchanged node neither writes nor fans out a further recompute.
-
-    A node whose transform raises or returns a non-string value is skipped with its previous value
-    left in place, so one failing node cannot block the rest of the batch from being persisted.
+    One repository init and one bulk write per batch; unchanged values emit no events
+    and fan out no further recompute; a failing node keeps its previous value without
+    blocking its siblings.
 
     Raises:
         ValueError: if a computed attribute has no transform configured or the transform cannot be fetched.
@@ -228,8 +220,6 @@ async def process_transform(
                 f"Unable to fetch transform '{transform_attribute.transform}' for computed attribute '{attribute_name}'"
             )
 
-        # Initialize the repository once and share it across the whole batch rather than paying a
-        # repository init per node.
         repo = await get_initialized_repo(
             client=client,
             repository_id=transform.repository_id,
@@ -238,8 +228,7 @@ async def process_transform(
             commit=transform.repository_commit,
         )
 
-        # return_exceptions keeps one node's failed read or transform from aborting the batch and
-        # dropping the healthy nodes' writes; node=oid tags each result with the node it belongs to.
+        # One failing node must not abort the batch and drop its siblings' writes.
         batch = await client.create_batch(return_exceptions=True)
         for oid in all_ids:
             batch.add(
@@ -272,8 +261,7 @@ async def process_transform(
             coalesced=False,
             recompute_depth=0,
         )
-        # One aggregate line per attribute so partial failure is greppable/alertable from the
-        # flow log alone; until a recompute-failure surface exists, this is the only rollup.
+        # The only rollup of partial failure until a recompute-failure surface exists.
         log.info(
             f"Recompute of '{attribute_name}' complete: submitted={len(results)} "
             f"written={len(writes)} skipped={len(skipped)}"

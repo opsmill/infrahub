@@ -100,12 +100,10 @@ class TestComputedAttributeTaskOptimization(TestInfrahubApp):
     ) -> None:
         """An oversized fan-out splits into bounded submissions, each carrying the branch tag.
 
-        The branch tag must be part of every submission: it is what branch-filtered task
-        queries match on, and only tags present at run creation reliably survive later
-        in-flow tag updates.
+        Branch-filtered task queries match on that tag, and only creation tags reliably
+        survive in-flow tag updates.
         """
-        # Shrink the submission limit (derived from this environment variable) so three
-        # nodes already exceed one chunk: limit 4 -> chunk size 2 -> splits [2, 1].
+        # Limit 4 -> chunk size 2, so three nodes already split into [2, 1].
         monkeypatch.setenv("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "4")
 
         recorder = WorkflowRecorder()
@@ -120,7 +118,6 @@ class TestComputedAttributeTaskOptimization(TestInfrahubApp):
         submissions = recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM)
         assert [len(call["parameters"]["object_ids"]) for call in submissions] == [2, 1]
 
-        # Every node is submitted exactly once across the chunks.
         submitted_ids = [oid for call in submissions for oid in call["parameters"]["object_ids"]]
         assert sorted(submitted_ids) == sorted(tags_dataset)
 
