@@ -5,7 +5,7 @@
 - **Module**: `backend/infrahub/api/admission/metrics.py`
 - **Prefix**: `METRIC_PREFIX = "infrahub_admission"` (matches `database/metrics.py` / `graphql/metrics.py` convention).
 - **Registration**: module-level `prometheus_client` singletons on the default registry — auto-exported, zero endpoint change.
-- **`priority` label values**: `high`, `normal`, `low`.
+- **`priority` label values**: `high`, `medium`, `low`.
 - **Scope**: per worker process (each gunicorn/uvicorn worker exports its own series; this is by design — admission state is per-worker, FR-009). Operators read per-worker series; no cross-worker aggregation in v1.
 
 ## Metric families
@@ -14,7 +14,7 @@
 |--------|-------------|------|--------|---------|
 | 1 | `infrahub_admission_offered_total` | Counter | `priority` | Requests entering the admission layer, per class (offered load). |
 | 5 | `infrahub_admission_admitted_total` | Counter | `priority` | Requests admitted (handler ran), per class. |
-| 2 | `infrahub_admission_rejected_total` | Counter | `priority`, `reason` | Shed requests, per class, split by `reason` ∈ {`codel`, `backstop`}. |
+| 2 | `infrahub_admission_rejected_total` | Counter | `priority`, `reason` | Shed requests, per class, split by `reason` ∈ {`codel`, `backstop`, `stress`}. |
 | 3 | `infrahub_admission_in_flight` | Gauge | `priority` | Currently-running admitted requests, per class. |
 | 3 | `infrahub_admission_waiters` | Gauge | `priority` | Requests currently queued waiting for a slot, per class. |
 | 4 | `infrahub_admission_sojourn_seconds` | Histogram | `priority` | Distribution of slot-wait (sojourn) time per class; exposes P50/P99 and the gradient. |
@@ -27,7 +27,7 @@
 
 | ID | Invariant |
 |----|-----------|
-| M-1 | For each class, for every request the server adjudicates: `offered_total == admitted_total + rejected_total{codel} + rejected_total{backstop}`. `offered_total` is incremented at the entry of `admit()`, before the slot acquire, by design — so it counts true offered load regardless of what happens next. The consequence is a documented exception to the equality: a request whose client disconnects while it is still queued (the acquire await is cancelled) is counted in `offered_total` only — it is neither admitted nor shed by the server — so under in-flight cancellation `offered_total` may transiently exceed `admitted + rejected` by the number of abandoned waiters. The `waiters`/`in_flight` gauges stay accurate across that case (they are driven by the pool's own enqueue/dequeue transitions, including cancellation). |
+| M-1 | For each class, for every request the server adjudicates: `offered_total == admitted_total + rejected_total{codel} + rejected_total{backstop} + rejected_total{stress}`. `offered_total` is incremented at the entry of `admit()`, before the slot acquire, by design — so it counts true offered load regardless of what happens next. The consequence is a documented exception to the equality: a request whose client disconnects while it is still queued (the acquire await is cancelled) is counted in `offered_total` only — it is neither admitted nor shed by the server — so under in-flight cancellation `offered_total` may transiently exceed `admitted + rejected` by the number of abandoned waiters. The `waiters`/`in_flight` gauges stay accurate across that case (they are driven by the pool's own enqueue/dequeue transitions, including cancellation). |
 | M-2 | `max_concurrency` gauge equals `derive_max_concurrency(pool_size, factor)` and is > 0 (no magic number; FR-009/FR-OBS-6). |
 | M-3 | `in_flight{priority}` never exceeds `max_concurrency`; `sum(in_flight)` never exceeds `max_concurrency`. |
 | M-4 | Every shed increments `rejected_total` with a valid `reason` label; no shed is uncounted (M-1 closes the accounting). |

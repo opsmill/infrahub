@@ -17,9 +17,9 @@ All decisions below are grounded in the current Infrahub backend. File reference
 - `@app.middleware("http")` decorator (used by 3 existing middlewares): rejected — it wraps `BaseHTTPMiddleware`, which fully buffers the response and is a poor fit for a hot admission path.
 - A FastAPI dependency instead of middleware: rejected — dependencies run after routing/auth and per-route wiring; a middleware gives one uniform admission point across all endpoints.
 
-**Path exclusions**: The middleware MUST bypass admission for `/health` and `/metrics` (liveness and scraping must never be shed) and SHOULD bypass static/docs paths (`/assets`, `/favicons`, `/docs`, `/api/schema`) to match the existing `ConditionalGZipMiddleware` skip set. Non-`http` scopes (WebSocket, lifespan) pass through untouched.
+**Path exclusions**: The middleware MUST bypass admission for `/health` and `/metrics` (liveness and scraping must never be shed) and the config-probe endpoint `/api/config` (a probe that must stay responsive under load), and SHOULD bypass static/docs paths (`/assets`, `/favicons`, `/docs`, `/api/schema`) to match the existing `ConditionalGZipMiddleware` skip set. Non-`http` scopes (WebSocket, lifespan) pass through untouched.
 
-**CORS preflight bypass**: A CORS preflight (`OPTIONS` carrying `Access-Control-Request-Method`) MUST also bypass the gate. It carries no `X-Priority` and would classify as `normal`; shedding it under load would strip the CORS response and break every cross-origin request precisely when the backend is busy. Preflights therefore pass straight through to the downstream CORS middleware and are never counted as offered load.
+**CORS preflight bypass**: A CORS preflight (`OPTIONS` carrying `Access-Control-Request-Method`) MUST also bypass the gate. It carries no `X-Priority` and would classify as `medium`; shedding it under load would strip the CORS response and break every cross-origin request precisely when the backend is busy. Preflights therefore pass straight through to the downstream CORS middleware and are never counted as offered load.
 
 ## R2. Concurrency primitive — priority slot pool
 
@@ -39,7 +39,7 @@ All decisions below are grounded in the current Infrahub backend. File reference
 
 **Rationale**:
 - CoDel is the algorithm named in the PRD and is the right fit: it keys off *delay* (sojourn), self-adapts with no hand-tuned queue-length threshold (FR-009 / User Story 4), and has a well-defined recovery. The controller is a pure function of (sojourn, clock) → decision, so it is unit-testable with a fake clock and zero real sleeps (Constitution IV; the project has no `freezegun` usage and prefers injected clocks, per `backend/tests/adapters/lock/timeline.py`).
-- Per-class controllers with different `target`s give the shed gradient (FR-005): `high` gets a larger effective target (via a multiplier) so it sheds last; `low` and `normal` shed first/second.
+- Per-class controllers with different `target`s give the shed gradient (FR-005): `high` gets a larger effective target (via a multiplier) so it sheds last; `low` and `medium` shed first/second.
 
 **Parameters** (classic CoDel defaults, tuned via settings — see R4):
 - `target` = 5 ms (default sojourn tolerance).
@@ -111,7 +111,7 @@ Sojourn histogram buckets follow the seconds-suffix convention with fine low-end
 ## R7. Testing strategy
 
 **Decision** (matching `dev/guidelines/backend/testing.md` and `.agents/rules/testing-python.md`):
-- **Unit** (`backend/tests/unit/api/admission/`): CoDel controller with an **injected fake clock** advanced manually (no real sleeps, no `freezegun`); slot pool priority ordering, within-class FIFO, and cancellation cleanup (no leaked slots / no deadlock) using `asyncio` primitives and event logs (à la `backend/tests/unit/test_lock.py`); capacity derivation from settings; `X-Priority` parser mapping (incl. missing/invalid → `normal`).
+- **Unit** (`backend/tests/unit/api/admission/`): CoDel controller with an **injected fake clock** advanced manually (no real sleeps, no `freezegun`); slot pool priority ordering, within-class FIFO, and cancellation cleanup (no leaked slots / no deadlock) using `asyncio` primitives and event logs (à la `backend/tests/unit/test_lock.py`); capacity derivation from settings; `X-Priority` parser mapping (incl. missing/invalid → `medium`).
 - **Component** (`backend/tests/component/api/`): admission middleware end-to-end against a minimal `FastAPI()` app via `fastapi.testclient.TestClient` (header classification → class; shed → `429` + `Retry-After`; handler not executed) and, for concurrency, `httpx.AsyncClient` + `httpx.ASGITransport` firing many in-flight requests to observe the shed gradient.
 - **Metrics assertions**: read module-level metric objects' `.labels(...)._value.get()` deltas before/after (the one existing precedent, `test_retry_db_transaction.py:150-161`).
 - **No mocking**: use injected clocks / small test adapters, never `unittest.mock` (project rule). Parametrized cases use the `name`-first dataclass pattern; `pytest.raises` uses `match=`.
