@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from typing import Callable
 
 import httpx
 import pytest
@@ -10,10 +11,22 @@ from fastapi import FastAPI
 from infrahub import config
 from infrahub.api.admission import metrics
 from infrahub.api.admission.capacity import derive_max_concurrency
+from infrahub.api.admission.codel import CoDelController
 from infrahub.api.admission.controller import AdmissionController, build_admission_controller
 from infrahub.api.admission.middleware import AdmissionMiddleware
 from infrahub.api.admission.priority import Priority
 from infrahub.api.admission.slot_pool import PrioritySlotPool
+
+
+def _codel_controllers(
+    *, target: float, interval: float, high_target_multiplier: float, clock: Callable[[], float] = time.monotonic
+) -> dict[Priority, CoDelController]:
+    """Per-class CoDel controllers, HIGH given a larger effective target so it sheds last."""
+    return {
+        Priority.HIGH: CoDelController(target=target * high_target_multiplier, interval=interval, clock=clock),
+        Priority.MEDIUM: CoDelController(target=target, interval=interval, clock=clock),
+        Priority.LOW: CoDelController(target=target, interval=interval, clock=clock),
+    }
 
 
 def _install_admission(app: FastAPI, controller: AdmissionController, *, enabled: bool = True) -> None:
@@ -120,10 +133,8 @@ def _build_app() -> FastAPI:
 
     controller = AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=MAX_CONCURRENCY),
-        target=0.005,
-        interval=0.02,
         # A large HIGH target keeps the interactive stream admitted while LOW is shed.
-        high_target_multiplier=20.0,
+        codel=_codel_controllers(target=0.005, interval=0.02, high_target_multiplier=20.0),
         backstop_max_waiters=_backstop(1000),
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
@@ -181,9 +192,7 @@ async def test_all_admitted_when_capacity_available(priority: str) -> None:
 
     controller = AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=10),
-        target=0.005,
-        interval=0.1,
-        high_target_multiplier=4.0,
+        codel=_codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
         backstop_max_waiters=_backstop(1000),
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
@@ -216,9 +225,7 @@ async def test_shed_backstop_returns_rest_envelope() -> None:
 
     controller = AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=0),
-        target=0.005,
-        interval=0.1,
-        high_target_multiplier=4.0,
+        codel=_codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
         backstop_max_waiters=_backstop(0),
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
@@ -268,15 +275,12 @@ async def test_shed_codel_returns_429() -> None:
     slot_pool = PrioritySlotPool(max_concurrency=1, clock=_StepClock(step=1.0))
     controller = AdmissionController(
         slot_pool=slot_pool,
-        target=0.005,
-        interval=1.0,
-        high_target_multiplier=4.0,
+        codel=_codel_controllers(target=0.005, interval=1.0, high_target_multiplier=4.0, clock=_StepClock(step=1.0)),
         backstop_max_waiters=_backstop(1000),
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=0,
         retry_after=3,
-        clock=_StepClock(step=1.0),
     )
     _install_admission(app, controller, enabled=True)
 
@@ -343,9 +347,7 @@ async def test_capacity_and_burst() -> None:
 
     controller = AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=max_concurrency),
-        target=0.005,
-        interval=interval,
-        high_target_multiplier=4.0,
+        codel=_codel_controllers(target=0.005, interval=interval, high_target_multiplier=4.0),
         backstop_max_waiters=_backstop(1000),
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
@@ -394,9 +396,7 @@ def _admit_app() -> FastAPI:
 
     controller = AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=10),
-        target=0.005,
-        interval=0.1,
-        high_target_multiplier=4.0,
+        codel=_codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
         backstop_max_waiters=_backstop(1000),
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
@@ -417,9 +417,7 @@ def _backstop_app() -> FastAPI:
 
     controller = AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=0),
-        target=0.005,
-        interval=0.1,
-        high_target_multiplier=4.0,
+        codel=_codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
         backstop_max_waiters=_backstop(0),
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
@@ -480,15 +478,12 @@ async def test_metrics() -> None:
     slot_pool = PrioritySlotPool(max_concurrency=1, clock=_StepClock(step=1.0))
     controller = AdmissionController(
         slot_pool=slot_pool,
-        target=0.005,
-        interval=1.0,
-        high_target_multiplier=4.0,
+        codel=_codel_controllers(target=0.005, interval=1.0, high_target_multiplier=4.0, clock=_StepClock(step=1.0)),
         backstop_max_waiters=_backstop(1000),
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=0,
         retry_after=1,
-        clock=_StepClock(step=1.0),
     )
     _install_admission(codel_app, controller, enabled=True)
 
@@ -555,9 +550,7 @@ def _shed_everything_controller() -> AdmissionController:
     """Controller with no slots and no waiter budget: every admitted attempt is shed."""
     return AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=0),
-        target=0.005,
-        interval=0.1,
-        high_target_multiplier=4.0,
+        codel=_codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
         backstop_max_waiters=_backstop(0),
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
@@ -668,9 +661,7 @@ async def test_handler_exception_releases_slot() -> None:
     slot_pool = PrioritySlotPool(max_concurrency=1)
     controller = AdmissionController(
         slot_pool=slot_pool,
-        target=0.005,
-        interval=0.1,
-        high_target_multiplier=4.0,
+        codel=_codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
         backstop_max_waiters=_backstop(1000),
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
@@ -698,7 +689,7 @@ async def test_handler_exception_releases_slot() -> None:
 
 async def test_build_admission_controller_sets_gauge() -> None:
     """The real settings-reading factory returns a usable controller and sets the max-concurrency gauge."""
-    controller = build_admission_controller()
+    controller = build_admission_controller(settings=config.SETTINGS.active_settings)
 
     assert isinstance(controller, AdmissionController)
     expected = derive_max_concurrency(

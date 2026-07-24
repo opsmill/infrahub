@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import pytest
 
+from infrahub.api.admission.codel import CoDelController
 from infrahub.api.admission.controller import (
     AdmissionController,
     Admitted,
@@ -54,18 +55,16 @@ def _build(
     *, ratio: float, samples: int, rng_value: float = 0.0, max_concurrency: int = 1, min_samples: int = 1
 ) -> tuple[AdmissionController, PrioritySlotPool]:
     slot_pool = PrioritySlotPool(max_concurrency=max_concurrency, clock=_StepClock(step=1.0))
+    # Neutralise the per-class CoDel target so nothing but the signal under test differs.
+    codel_clock = _StepClock(step=1.0)
     controller = AdmissionController(
         slot_pool=slot_pool,
-        target=0.005,
-        interval=1.0,
-        # Neutralise the per-class CoDel target so nothing but the signal under test differs.
-        high_target_multiplier=1.0,
+        codel={priority: CoDelController(target=0.005, interval=1.0, clock=codel_clock) for priority in Priority},
         backstop_max_waiters=dict.fromkeys(Priority, 1000),
         stress_signal=_FakeLoadSignal(ratio=ratio, samples=samples),
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=min_samples,
         retry_after=1,
-        clock=_StepClock(step=1.0),
         rng=lambda: rng_value,
     )
     return controller, slot_pool

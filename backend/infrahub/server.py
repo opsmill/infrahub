@@ -59,7 +59,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     # Build the admission controller once here, at startup, and publish it (with the kill-switch)
     # on app.state for the outermost AdmissionMiddleware to read. Constructing it at the app entry
     # point keeps settings resolution and the controller's object graph out of the middleware.
-    application.state.admission_controller = build_admission_controller()
+    application.state.admission_controller = build_admission_controller(settings=config.SETTINGS.active_settings)
     application.state.admission_enabled = config.SETTINGS.api.backpressure_enabled
 
     # Initialize trace

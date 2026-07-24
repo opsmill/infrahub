@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import random
-import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Literal
 
-from infrahub import config
 from infrahub.database.load_signal import get_reference_query_load_tracker
 
 from . import metrics
@@ -15,6 +13,7 @@ from .priority import Priority
 from .slot_pool import PrioritySlotPool
 
 if TYPE_CHECKING:
+    from infrahub import config
     from infrahub.database.load_signal import LoadSignal
 
     from .slot_pool import Acquisition
@@ -85,15 +84,12 @@ class AdmissionController:
         self,
         *,
         slot_pool: PrioritySlotPool,
-        target: float,
-        interval: float,
-        high_target_multiplier: float,
+        codel: dict[Priority, CoDelController],
         backstop_max_waiters: dict[Priority, int],
         stress_signal: LoadSignal,
         stress_thresholds: dict[Priority, float],
         stress_min_samples: int,
         retry_after: int,
-        clock: Callable[[], float] = time.monotonic,
         rng: Callable[[], float] = random.random,
     ) -> None:
         self._slot_pool = slot_pool
@@ -108,12 +104,7 @@ class AdmissionController:
         self._retry_after = retry_after
         # Source of the [0, 1) draw used to shed a fraction of a stressed class's requests.
         self._rng = rng
-        # HIGH gets a larger effective target so it sheds last; MEDIUM and LOW share the base target.
-        self._codel: dict[Priority, CoDelController] = {
-            Priority.HIGH: CoDelController(target=target * high_target_multiplier, interval=interval, clock=clock),
-            Priority.MEDIUM: CoDelController(target=target, interval=interval, clock=clock),
-            Priority.LOW: CoDelController(target=target, interval=interval, clock=clock),
-        }
+        self._codel = codel
 
     async def admit(self, *, priority: Priority) -> AdmissionDecision:
         """Decide whether to admit or shed a request of the given priority.
@@ -186,13 +177,12 @@ def _publish_slot_metrics(priority: Priority, *, in_flight: int, waiters: int) -
     metrics.WAITERS.labels(priority=priority.label).set(waiters)
 
 
-def build_admission_controller() -> AdmissionController:
-    """Build the default admission controller from global settings.
+def build_admission_controller(settings: config.Settings) -> AdmissionController:
+    """Build the default admission controller from the given settings.
 
     Keeps settings resolution out of ``AdmissionController`` itself: the class stays
     settings-free and testable while this factory owns the wiring of the defaults.
     """
-    settings = config.SETTINGS
     max_concurrency = derive_max_concurrency(
         pool_size=settings.database.max_connection_pool_size,
         factor=settings.api.backpressure_max_concurrency_factor,
@@ -218,11 +208,24 @@ def build_admission_controller() -> AdmissionController:
         Priority.MEDIUM: settings.api.backpressure_shed_medium_stress_ratio,
         Priority.LOW: settings.api.backpressure_shed_low_stress_ratio,
     }
+    # HIGH gets a larger effective target so it sheds last; MEDIUM and LOW share the base target.
+    codel = {
+        Priority.HIGH: CoDelController(
+            target=settings.api.backpressure_codel_target_seconds * settings.api.backpressure_high_target_multiplier,
+            interval=settings.api.backpressure_codel_interval_seconds,
+        ),
+        Priority.MEDIUM: CoDelController(
+            target=settings.api.backpressure_codel_target_seconds,
+            interval=settings.api.backpressure_codel_interval_seconds,
+        ),
+        Priority.LOW: CoDelController(
+            target=settings.api.backpressure_codel_target_seconds,
+            interval=settings.api.backpressure_codel_interval_seconds,
+        ),
+    }
     return AdmissionController(
         slot_pool=slot_pool,
-        target=settings.api.backpressure_codel_target_seconds,
-        interval=settings.api.backpressure_codel_interval_seconds,
-        high_target_multiplier=settings.api.backpressure_high_target_multiplier,
+        codel=codel,
         backstop_max_waiters=backstop_max_waiters,
         stress_signal=tracker,
         stress_thresholds=stress_thresholds,
