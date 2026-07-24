@@ -73,6 +73,7 @@ Infrahub documentation follows the [Diataxis framework](https://diataxis.fr/), s
 - Link to topic/explanation docs for background information (in guides)
 - Link to guides for task instructions (in topics)
 - Define technical terms on first use
+- Before citing a specific test as verifying a scenario (a spec table, a status doc), confirm that test function actually exists in the change or repo — label not-yet-written coverage as planned/unverified instead of naming a test that isn't there
 
 ### Don't
 

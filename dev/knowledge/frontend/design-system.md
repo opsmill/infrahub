@@ -75,6 +75,8 @@ If a component needs a slot the package doesn't expose yet, **extend the package
 
 **Popover exists in both places.** `shared/components/ui/popover.tsx` is Radix-based (`@radix-ui/react-popover`), adds `PopoverAnchor` and `PopoverTabs*` subcomponents, and marks its content with `data-react-aria-top-layer` so clicking inside it does not count as an outside interaction for an enclosing react-aria overlay such as the package `Sheet`. `@infrahub/ui` exports a separate react-aria `Popover` / `PopoverDialog` / `PopoverTrigger`. Both are actively used in the app (roughly 23 vs 26 importing files); the dismiss guard itself lives in `@infrahub/ui` (`Sheet` + `useDismissGuard`), not in either popover.
 
+**`PopoverDialog` gotcha: don't wrap content that auto-opens a nested combobox/dropdown.** `PopoverDialog` wraps react-aria's `Dialog`, which invokes `useDialog` and focuses itself on mount. If the popover's content renders a `defaultOpen` combobox or dropdown in its own portal (e.g. an enum/relationship filter field), `useDialog`'s focus-on-mount steals focus from that nested portal and closes it immediately. For content shaped like that, skip `PopoverDialog` and render the plain `Popover` instead — accepting the reduced dialog semantics for that one case.
+
 When you touch one of these and notice it could be a generic primitive, consider migrating it to `@infrahub/ui` as part of the change.
 
 ## Migration policy
