@@ -118,7 +118,6 @@ class SchemaReadAPI(BaseModel):
 
 
 class SchemaLoadAPI(InfrahubSchemaWrite):
-    version: str
     _internal_schema: SchemaRoot = PrivateAttr()
 
     @model_validator(mode="before")

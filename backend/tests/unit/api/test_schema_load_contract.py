@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import pytest
+from infrahub_sdk.schema import validate_schema
 
 from infrahub.api.schema import SchemaLoadAPI
 from infrahub.core.schema import SchemaRoot
@@ -51,6 +52,13 @@ LOAD_CONTRACT_CASES = [
         },
         accepted=False,
     ),
+    LoadContractCase(
+        name="missing-version-rejected",
+        payload={
+            "nodes": [{"namespace": "Test", "name": "Widget", "attributes": [{"name": "field_one", "kind": "Text"}]}],
+        },
+        accepted=False,
+    ),
 ]
 
 
@@ -64,3 +72,14 @@ def test_schema_load_contract(case: LoadContractCase) -> None:
     else:
         with pytest.raises(ValueError, match="validation error for SchemaLoadAPI"):
             SchemaLoadAPI.model_validate(payload)
+
+
+@pytest.mark.parametrize("case", [pytest.param(tc, id=tc.name) for tc in LOAD_CONTRACT_CASES])
+def test_offline_validation_matches_load_contract_verdict(case: LoadContractCase) -> None:
+    # The published write contract is only useful if a payload can be checked before submission:
+    # the SDK's offline validator must reach the same accept/reject verdict as the load endpoint.
+    payload = _full_internal_dump() if case.use_full_dump else case.payload
+
+    result = validate_schema(schema=payload)
+
+    assert result.valid is case.accepted, result.messages

@@ -481,7 +481,9 @@ def _sdk_extension_families(suffix: str) -> list[dict[str, Any]]:
 
 def _sdk_root(suffix: str, with_version: bool, model_config_args: str, with_extensions: bool) -> dict[str, Any]:
     config_field = [f"model_config = ConfigDict({model_config_args})"] if model_config_args else []
-    version_field = ["version: str | None = None"] if with_version else []
+    # Required on write: the load endpoint rejects a payload without it, so the offline
+    # validator must reach the same verdict.
+    version_field = ["version: str"] if with_version else []
     extensions_field = [f"extensions: SchemaExtension{suffix} | None = None"] if with_extensions else []
     fields = [
         *config_field,
