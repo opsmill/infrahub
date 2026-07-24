@@ -2,8 +2,12 @@
 
 Scope: the regeneration that runs in the merge follow-up (`post_process_branch_merge`), for artifact
 definitions and generator definitions. This document records which merges regenerate less work when the
-feature is active, and the exact conditions that gate the selective path. Behaviors below are the ones
-verified by `backend/tests/integration_docker/test_merge_*` on the rendered artifact content.
+feature is active, and the exact conditions that gate the selective path. The Test column cites the
+node that verifies each row, across two suites. Dispatch-layer tests in
+`backend/tests/integration/proposed_change/test_merge_selective_regen.py` are committed and run in CI;
+they assert which generators and artifacts a merge dispatches. Rendered-content tests in
+`backend/tests/integration_docker/test_merge_*` assert the artifact content a merge produces; they are
+run locally rather than in CI because of their cost.
 
 ## Baseline vs selective
 
@@ -11,6 +15,26 @@ verified by `backend/tests/integration_docker/test_merge_*` on the rendered arti
 |------|-------------------------|
 | Legacy (feature off, or any fallback) | Regenerate every artifact of every definition and run every generator, for all members of each target group. Cost is proportional to the whole branch, independent of what the merge changed. |
 | Selective (feature on, closure trusted) | Regenerate only the definitions the merge diff affects, narrowed to the impacted members reconciled against the live target group. Cost is proportional to what the merge changed. |
+
+## Generator-to-artifact cascade
+
+An `execute_after_merge` generator runs in the follow-up, after the merge diff was captured, so its
+writes are absent from that diff. The artifacts that read the generator's output cannot be selected
+from the merge diff alone; they are selected from the generator's own output, captured once every
+generator has run.
+
+| Aspect | Before | Now |
+|--------|--------|-----|
+| Artifacts after a generator runs | Every artifact of the branch is regenerated; the output is not in the merge diff, so nothing narrows it | Only the artifacts that read the generator's output are regenerated, alongside the merge-diff selection |
+| Reading the generator output | Not read; the blanket regeneration stands in for it | A second diff over the window the generators ran, scoped to the tracking-group output nodes (`GeneratorTrackingGroupDiffCapturer`) |
+| Output cannot be captured, or a tracking group does not resolve | Already blanket | Widen to every artifact of the branch, without re-running the generators; the merge-diff artifacts already dispatched are kept |
+
+The cascade is gated on `execute_after_merge` and runs the same way for direct merges and
+proposed-change merges; the follow-up is identical for both, and the before/now change above applies
+to both. A generator flagged `execute_in_proposed_change` is a separate case: it runs during the
+proposed change and writes its output on the source branch, so that output is in the merge diff and
+its consuming artifacts are selected by the merge-diff narrowing, not the cascade. That path is
+unchanged.
 
 ## Activation conditions
 
@@ -57,13 +81,13 @@ tests that assert the behavior on rendered content.
 
 | Scenario | Legacy work | Selective work | Test |
 |----------|-------------|----------------|------|
-| Merge changes only a kind no definition reads | All definitions, all members | None | `test_irrelevant_kind_change_regenerates_nothing` |
-| Merge changes one member of one definition | All definitions, all members | Only the changed member's artifact of the affected definition; other members untouched (identical `storage_id`) | `test_change_to_one_member_leaves_the_other_untouched` |
-| Merge changes data of a given kind | All definitions | Only definitions whose query reads that kind, narrowed to impacted members | narrowing + `reads_kind` gate |
-| Transform or query code changed on the destination (fingerprint moved) | All definitions | Only the affected definition, rendered against the destination's current code | `test_merge_main_code_changed` |
-| A definition added to the destination after the branch was cut | Included by full regen | Included, because the selection loads definitions from the destination's live state | `test_merge_new_definition_on_main` |
-| Destination gained a member while the branch existed | All definitions, all members | The branch-impacted member regenerates; the extra live member does not break selection | `test_merge_*_diverged` (cascade), diverged-main |
-| Merge runs an `execute_after_merge` generator | All artifacts, all members | Only the artifacts the generator's output affects, selected from a post-generator diff | `test_merge_generator_artifact_cascade` |
+| Merge changes only a kind no definition reads | All definitions, all members | None | `integration/proposed_change/test_merge_selective_regen.py::TestIrrelevantKindChange::test_irrelevant_kind_change_dispatches_nothing` |
+| Merge changes one member of one definition | All definitions, all members | Only the changed member's artifact of the affected definition; other members untouched (identical `storage_id`) | `integration/proposed_change/test_merge_selective_regen.py::TestMemberNarrowing::test_change_to_one_member_narrows_the_filter` |
+| Merge changes data of a given kind | All definitions | Only definitions whose query reads that kind, narrowed to impacted members | `integration/proposed_change/test_merge_selective_regen.py::TestRelevantChange::test_relevant_change_dispatches_matching_definitions` |
+| Transform or query code changed on the destination (fingerprint moved) | All definitions | Only the affected definition, rendered against the destination's current code | `integration_docker/test_merge_main_code_changed.py::TestMergeMainCodeChanged::test_merge_renders_against_mains_updated_transform` |
+| A definition added to the destination after the branch was cut | Included by full regen | Included, because the selection loads definitions from the destination's live state | No dedicated test; follows from loading definitions on the destination branch |
+| Destination gained a member while the branch existed | All definitions, all members | The branch-impacted member regenerates; the extra live member does not break selection | `integration_docker/test_merge_diverged_main.py::TestDivergedMainComposition::test_merge_after_main_gained_a_member_refreshes_the_branch_member`; `integration/proposed_change/test_merge_selective_regen.py::TestConcurrentlyAddedMember::test_concurrently_added_member_does_not_misroute_selection` |
+| Merge runs an `execute_after_merge` generator | All artifacts, all members | Only the artifacts the generator's output affects, selected from a post-generator diff | `integration_docker/test_merge_generator_artifact_cascade.py::TestMergeGeneratorArtifactCascade::test_direct_merge_cascades_generator_output_into_artifacts` |
 
 ## Live validation (manual battery)
 
@@ -90,11 +114,11 @@ choice is correctness over precision.
 |------|----------|
 | Feature off, missing or unloadable diff summary, or selection error | Full regeneration of the whole branch |
 | A cascade generator fails to run, or its output cannot be captured or selected | Regenerate every artifact of the branch without re-running the generators; the affected artifacts cannot be selected, and the merge-diff artifacts already dispatched are kept |
-| A generator declared `execute_after_merge: false` | Does not run in the follow-up; its output is not produced. `test_merge_generator_after_merge_false` |
+| A generator declared `execute_after_merge: false` | Does not run in the follow-up; its output is not produced. `integration/proposed_change/test_merge_selective_regen.py::TestGeneratorExecuteAfterMergeFalse::test_generator_with_execute_after_merge_false_is_excluded` |
 | Query changed, definition node changed, or fingerprint moved on a definition | Regenerate all members of that definition (a code change can alter any output) |
 
 ## Known limitations
 
 | Limitation | Evidence |
 |------------|----------|
-| A composite artifact that inlines an upstream artifact's content (content composition) is not refreshed after a direct merge that changes the upstream. The composite keeps stale inlined content. | `test_merge_composition_cascade` (failing, documents the gap); confirmed live on the demo stack |
+| A composite artifact that inlines an upstream artifact's content (content composition) is not refreshed after a direct merge that changes the upstream. The composite keeps stale inlined content. | `integration_docker/test_merge_composition_cascade.py::TestMergeCompositionCascade::test_direct_merge_refreshes_inlined_section` (asserts the fresh content, so it fails while the gap is unfixed; local-only, so it does not gate CI); confirmed live on the demo stack |
