@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from fastapi import APIRouter, Depends, Query, Request
 from infrahub_sdk.schema.generated.read import (
+    BaseNodeSchemaRead,
     GenericSchemaRead,
     NodeSchemaRead,
     ProfileSchemaRead,
@@ -78,32 +79,30 @@ log = get_logger()
 router = APIRouter(prefix="/schema")
 
 
-class APISchemaMixin:
-    @classmethod
-    def from_schema(cls, schema: MainSchemaTypes) -> Self:
-        data = schema.model_dump()
-        data["relationships"] = [
-            relationship.model_dump() for relationship in schema.relationships if not relationship.internal_peer
-        ]
-        # ``kind`` is a computed field on the generated read model (derived from namespace+name);
-        # only ``hash`` needs to be supplied here since it is computed by the server.
-        data["hash"] = schema.get_hash()
-        return cls(**data)
+def _api_schema_from_schema[TApiSchema: BaseNodeSchemaRead](
+    model: type[TApiSchema], schema: MainSchemaTypes
+) -> TApiSchema:
+    data = schema.model_dump()
+    data["relationships"] = [
+        relationship.model_dump() for relationship in schema.relationships if not relationship.internal_peer
+    ]
+    data["hash"] = schema.get_hash()
+    return model(**data)
 
 
-class APINodeSchema(NodeSchemaRead, APISchemaMixin):
+class APINodeSchema(NodeSchemaRead):
     pass
 
 
-class APIGenericSchema(GenericSchemaRead, APISchemaMixin):
+class APIGenericSchema(GenericSchemaRead):
     pass
 
 
-class APIProfileSchema(ProfileSchemaRead, APISchemaMixin):
+class APIProfileSchema(ProfileSchemaRead):
     pass
 
 
-class APITemplateSchema(TemplateSchemaRead, APISchemaMixin):
+class APITemplateSchema(TemplateSchemaRead):
     pass
 
 
@@ -229,22 +228,22 @@ async def get_schema(
     return SchemaReadAPI(
         main=registry.schema.get_schema_branch(name=branch.name).get_hash(),
         nodes=[
-            APINodeSchema.from_schema(value)
+            _api_schema_from_schema(model=APINodeSchema, schema=value)
             for value in all_schemas
             if isinstance(value, NodeSchema) and value.namespace != "Internal"
         ],
         generics=[
-            APIGenericSchema.from_schema(value)
+            _api_schema_from_schema(model=APIGenericSchema, schema=value)
             for value in all_schemas
             if isinstance(value, GenericSchema) and value.namespace != "Internal"
         ],
         profiles=[
-            APIProfileSchema.from_schema(value)
+            _api_schema_from_schema(model=APIProfileSchema, schema=value)
             for value in all_schemas
             if isinstance(value, ProfileSchema) and value.namespace != "Internal"
         ],
         templates=[
-            APITemplateSchema.from_schema(value)
+            _api_schema_from_schema(model=APITemplateSchema, schema=value)
             for value in all_schemas
             if isinstance(value, TemplateSchema) and value.namespace != "Internal"
         ],
@@ -286,7 +285,7 @@ async def get_schema_by_kind(
     if isinstance(schema, TemplateSchema):
         key = "template"
 
-    return api_schema[key].from_schema(schema=schema)
+    return _api_schema_from_schema(model=api_schema[key], schema=schema)
 
 
 @router.get("/json_schema/{schema_kind}")
