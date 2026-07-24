@@ -121,6 +121,17 @@ All three run `process_transform_lifecycle`. On create or update it waits for th
 
 Besides the transform-lifecycle triggers, each `(kind, attribute)` has a data-path automation that recomputes the value when a node feeding the transform's query changes. `_reconcile_python_computed_attribute_automations` rebuilds these from the schema. One gather builds both trigger lists and they are applied under a single trigger-registry lock, so a concurrent reconcile cannot delete an automation another run just created, and a transform delete prunes its automation rather than leaving it stale.
 
+### Batch Execution
+
+`process_transform` processes its node ids as one batch per attribute, not one task per node:
+
+- The transform's git repository is initialized once for the whole batch and shared across the per-node executions. Transform execution must not mutate the shared checkout.
+- Each node's read still runs individually with `update_group=True`, keeping the node subscribed to the transform's query group (the reverse index that routes future source changes to affected readers).
+- The recomputed values persist through the shared bulk recompute writer (bounded transactions), not via per-node GraphQL mutations. The writer's skip-unchanged gating means a value identical to the stored one emits no event and dispatches no follow-on recompute, which is what keeps a wide fan-out from echoing into further waves.
+- A node whose transform raises or returns a non-string is skipped with its previous value intact and a logged reason; the rest of the batch persists. The flow ends with a `submitted/written/skipped` summary line.
+- Each submission carries the branch tag at creation so the flow run stays visible in branch-filtered task queries; tags added mid-run do not survive later in-flow tag updates.
+- Crash semantics: the writer commits in bounded chunks, so a mid-batch crash leaves earlier chunks persisted. Recovery is re-running the recompute; skip-unchanged makes redone work no-op-cheap. Rollback of the whole feature is a clean revert (no schema or data migration).
+
 ### Invariants
 
 - **Over-recompute is acceptable, under-recompute is not.** Any fallback or error path recomputes rather than risk a stale value.
