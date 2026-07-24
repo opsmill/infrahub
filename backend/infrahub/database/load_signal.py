@@ -49,9 +49,9 @@ class ReferenceQueryLoadTracker:
     traffic a single slow outlier (a GC pause, event-loop scheduling delay) would dominate a
     mean, but barely moves a median.
 
-    State is per worker process and lives on a single asyncio event loop, so — like the
-    admission slot pool — it takes no lock: ``record`` never awaits, so no two updates
-    interleave. Window values are held in one list kept sorted (via ``bisect``), giving the
+    State is per worker process and lives on a single asyncio event loop, so it takes no
+    lock: ``record`` never awaits, so no two updates interleave. Window values are held in
+    one list kept sorted (via ``bisect``), giving the
     minimum and the median in O(1); insertion and eviction shift that list, which is a cheap
     C-level move in practice.
 
