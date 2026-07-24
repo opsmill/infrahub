@@ -4,7 +4,8 @@ import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Literal
 
-from infrahub.database.load_signal import UNSTRESSED_RATIO, get_reference_query_load_tracker
+from infrahub.database.load_signal import UNSTRESSED_RATIO
+from infrahub.database.load_signal_registry import get_reference_query_load_tracker
 
 from . import metrics
 from .capacity import derive_max_concurrency
@@ -17,7 +18,8 @@ if TYPE_CHECKING:
     from infrahub import config
     from infrahub.database.load_signal import LoadSignal
 
-    from .slot_pool import Acquisition
+    from .retry_policy import RetryPolicyObserver
+    from .slot_pool import Acquisition, SlotPoolObserver
 
 # Backstop shedding (waiter queue saturated) is unambiguous overload, so its retry-after hint
 # always uses the top intensity tier regardless of the current stress ratio.
@@ -106,14 +108,7 @@ class AdmissionController:
         rng: Callable[[], float] = random.random,
     ) -> None:
         self._slot_pool = slot_pool
-        # Publish the live gauges straight from the pool's own state transitions, so a class's
-        # waiter count is reflected the moment a request enqueues. The sink is a plain function
-        # fed the counts by the pool, so nothing reads back into the pool.
-        self._slot_pool.set_observer(_publish_slot_metrics)
-        # Publish the sustained-load gauge the same way: the policy pushes the duration to a plain
-        # sink, so it carries no metrics dependency of its own.
         self._retry_policy = retry_policy
-        self._retry_policy.set_observer(_publish_sustained_load_metric)
         self._backstop_max_waiters = backstop_max_waiters
         self._stress_signal = stress_signal
         self._stress_thresholds = stress_thresholds
@@ -180,31 +175,34 @@ class AdmissionController:
         return self._stress_signal.stress_ratio_median()
 
     def release(self, *, acquisition: Acquisition) -> None:
-        """Return a served request's slot; the pool observer refreshes the live gauges.
+        """Return a served request's slot; the pool's observers refresh the live gauges.
 
-        The release flows through the pool, whose observer drives ``in_flight``/``waiters``
+        The release flows through the pool, whose observers drive ``in_flight``/``waiters``
         back down, so a finished request is reflected immediately rather than lingering
         until the next admit.
         """
         self._slot_pool.release(acquisition=acquisition)
 
 
-def _publish_slot_metrics(priority: Priority, *, in_flight: int, waiters: int) -> None:
-    """Pool observer sink: mirror a class's live in-flight and waiter counts onto the gauges."""
-    metrics.IN_FLIGHT.labels(priority=priority.label).set(in_flight)
-    metrics.WAITERS.labels(priority=priority.label).set(waiters)
-
-
-def _publish_sustained_load_metric(sustained_seconds: float) -> None:
-    """Retry-policy observer sink: mirror the current sustained-load duration onto the gauge."""
-    metrics.SUSTAINED_LOAD_SECONDS.set(sustained_seconds)
-
-
-def build_admission_controller(settings: config.Settings) -> AdmissionController:
-    """Build the default admission controller from the given settings.
+def build_admission_controller(
+    *,
+    settings: config.Settings,
+    slot_pool_observers: list[SlotPoolObserver],
+    retry_policy_observers: list[RetryPolicyObserver],
+) -> AdmissionController:
+    """Build the default admission controller from the given settings and observers.
 
     Keeps settings resolution out of ``AdmissionController`` itself: the class stays
     settings-free and testable while this factory owns the wiring of the defaults.
+
+    The observers arrive as arguments rather than being chosen here, so the concrete sinks are
+    named only by the caller that owns the application's wiring.
+
+    Args:
+        settings: Source of every tuning value the object graph needs.
+        slot_pool_observers: Sinks notified as a class's in-flight and waiter counts change.
+        retry_policy_observers: Sinks notified with the current sustained-load duration.
+
     """
     max_concurrency = derive_max_concurrency(
         pool_size=settings.database.max_connection_pool_size,
@@ -213,7 +211,7 @@ def build_admission_controller(settings: config.Settings) -> AdmissionController
     # Set the gauge wherever the controller is actually built, so it reflects the derived cap
     # in use rather than being frozen at some earlier import.
     metrics.MAX_CONCURRENCY.set(max_concurrency)
-    slot_pool = PrioritySlotPool(max_concurrency=max_concurrency)
+    slot_pool = PrioritySlotPool(max_concurrency=max_concurrency, observers=slot_pool_observers)
 
     # The stress window lives on the shared tracker; apply the configured length here, where
     # settings are available, rather than at the tracker's construction.
@@ -247,6 +245,7 @@ def build_admission_controller(settings: config.Settings) -> AdmissionController
         ),
     }
     retry_policy = RetryAfterPolicy(
+        observers=retry_policy_observers,
         level1_seconds=settings.api.backpressure_retry_after_level1_seconds,
         level2_seconds=settings.api.backpressure_retry_after_level2_seconds,
         level3_seconds=settings.api.backpressure_retry_after_level3_seconds,

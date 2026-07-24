@@ -22,7 +22,7 @@ class SlotPoolObserver(Protocol):
     dependency runs one way, from pool to sink.
     """
 
-    def __call__(self, priority: Priority, *, in_flight: int, waiters: int) -> None: ...
+    def on_counts_changed(self, priority: Priority, *, in_flight: int, waiters: int) -> None: ...
 
 
 class Acquisition:
@@ -53,34 +53,36 @@ class PrioritySlotPool:
     re-releases that slot to the next eligible waiter so no slot is ever leaked.
     """
 
-    def __init__(self, *, max_concurrency: int, clock: Callable[[], float] = time.monotonic) -> None:
+    def __init__(
+        self,
+        *,
+        max_concurrency: int,
+        observers: list[SlotPoolObserver],
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self._max_concurrency = max_concurrency
         self._available = max_concurrency
         self._clock = clock
         self._waiters: dict[Priority, deque[Future[bool]]] = {priority: deque() for priority in Priority}
         self._in_flight: dict[Priority, int] = dict.fromkeys(Priority, 0)
-        self._on_change: SlotPoolObserver | None = None
-
-    def set_observer(self, on_change: SlotPoolObserver | None) -> None:
-        """Register a callback invoked with a class and its current counts whenever they change.
-
-        The pool passes the up-to-date in-flight and waiter counts as arguments, so an external
-        observer (e.g. metric gauges) tracks queue depth the moment a request enqueues or leaves
-        the queue without reading back from the pool. The primitive itself stays free of any
-        metrics dependency.
-        """
-        self._on_change = on_change
+        self._observers = observers
 
     def _notify(self, priority: Priority) -> None:
-        if self._on_change is None:
+        """Push a class's current counts to every observer.
+
+        Each observer is isolated on its own: the sinks are best-effort and run mid-transition,
+        so a failing one must neither corrupt admission state (leak a slot, strand a waiter),
+        surface to the caller, nor skip the observers behind it.
+        """
+        if not self._observers:
             return
-        try:
-            self._on_change(priority, in_flight=self._in_flight[priority], waiters=len(self._waiters[priority]))
-        except Exception:
-            # The observer is a best-effort metrics sink invoked mid-transition: a failing
-            # callback must never corrupt admission state (leak a slot, strand a waiter) or
-            # surface to the caller, so its failure is swallowed after being logged.
-            log.warning("admission slot-pool observer raised; continuing", exc_info=True)
+        in_flight = self._in_flight[priority]
+        waiters = len(self._waiters[priority])
+        for observer in self._observers:
+            try:
+                observer.on_counts_changed(priority, in_flight=in_flight, waiters=waiters)
+            except Exception:
+                log.warning("admission slot-pool observer raised; continuing", exc_info=True)
 
     @property
     def max_concurrency(self) -> int:

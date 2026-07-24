@@ -41,9 +41,29 @@ Everything lives in `backend/infrahub/api/admission/`:
 | `codel.py` | `CoDelController`, the pure CoDel state machine |
 | `capacity.py` | `derive_max_concurrency`, the slot-cap derivation |
 | `priority.py` | the `Priority` enum and `X-Priority` header parsing |
+| `retry_policy.py` | `RetryAfterPolicy`, the adaptive `Retry-After` computation |
 | `metrics.py` | the `infrahub_admission_*` Prometheus families |
+| `observers.py` | the sinks that publish the live gauges |
 
-The database-stress signal it consumes lives in `backend/infrahub/database/load_signal.py`.
+The database-stress signal it consumes lives in `backend/infrahub/database/load_signal.py`, with its
+metrics sink in `load_signal_metrics.py` and the process-global instance in `load_signal_registry.py`.
+
+## Where metrics attach
+
+Three primitives feed gauges: the slot pool, the retry policy, and the stress tracker. None of them
+imports a metrics module. Each takes `observers` as a required constructor argument and *pushes*
+values to them — counts, a duration, the derived signal — so a sink never reads back into the
+primitive it observes.
+
+The concrete sinks in `observers.py` are named only where the object graph is wired: `server.py`
+passes them to `build_admission_controller`, which takes them as arguments rather than choosing them,
+and `load_signal_registry` wires the tracker's. Nothing under `api/admission/` outside that entry
+point imports them, which is what keeps the sinks out of the primitives' import chain and makes every
+gauge visible at the point of construction.
+
+Observer failures are contained per observer, so one broken sink can neither skip the sinks behind
+it, corrupt admission state, shed a request that would have been admitted, nor fail the database
+query that fed an observation.
 
 ## The request path
 

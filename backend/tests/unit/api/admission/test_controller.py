@@ -55,7 +55,7 @@ class _FakeLoadSignal:
 def _build(
     *, ratio: float, samples: int, rng_value: float = 0.0, max_concurrency: int = 1, min_samples: int = 1
 ) -> tuple[AdmissionController, PrioritySlotPool]:
-    slot_pool = PrioritySlotPool(max_concurrency=max_concurrency, clock=_StepClock(step=1.0))
+    slot_pool = PrioritySlotPool(max_concurrency=max_concurrency, observers=[], clock=_StepClock(step=1.0))
     # Neutralise the per-class CoDel target so nothing but the signal under test differs.
     codel_clock = _StepClock(step=1.0)
     controller = AdmissionController(
@@ -67,7 +67,7 @@ def _build(
         stress_signal=_FakeLoadSignal(ratio=ratio, samples=samples),
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=min_samples,
-        retry_policy=RetryAfterPolicy(),
+        retry_policy=RetryAfterPolicy(observers=[]),
         rng=lambda: rng_value,
     )
     return controller, slot_pool

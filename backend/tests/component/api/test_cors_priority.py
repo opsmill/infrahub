@@ -7,6 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 from infrahub.api.admission.codel import CoDelController
 from infrahub.api.admission.controller import AdmissionController
 from infrahub.api.admission.middleware import AdmissionMiddleware
+from infrahub.api.admission.observers import SlotPoolMetricsObserver
 from infrahub.api.admission.priority import Priority
 from infrahub.api.admission.retry_policy import RetryAfterPolicy
 from infrahub.api.admission.slot_pool import PrioritySlotPool
@@ -28,7 +29,7 @@ class _FakeLoadSignal:
 def _shed_everything_controller() -> AdmissionController:
     """Controller with no slots and no waiter budget: every admitted attempt is shed."""
     return AdmissionController(
-        slot_pool=PrioritySlotPool(max_concurrency=0),
+        slot_pool=PrioritySlotPool(max_concurrency=0, observers=[SlotPoolMetricsObserver()]),
         codel_priority_map={
             Priority.HIGH: CoDelController(target=0.005 * 4.0, interval=0.1),
             Priority.MEDIUM: CoDelController(target=0.005, interval=0.1),
@@ -38,7 +39,7 @@ def _shed_everything_controller() -> AdmissionController:
         stress_signal=_FakeLoadSignal(),
         stress_thresholds=dict.fromkeys(Priority, 1.0),
         stress_min_samples=0,
-        retry_policy=RetryAfterPolicy(),
+        retry_policy=RetryAfterPolicy(observers=[]),
     )
 
 

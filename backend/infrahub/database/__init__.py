@@ -39,7 +39,7 @@ from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
-from .load_signal import get_reference_query_load_tracker
+from .load_signal_registry import get_reference_query_load_tracker
 from .metrics import (
     CONNECTION_POOL_USAGE,
     QUERY_EXECUTION_METRICS,

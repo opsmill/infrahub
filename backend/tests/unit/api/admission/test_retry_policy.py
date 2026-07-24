@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from infrahub.api.admission import metrics
+from infrahub.api.admission.observers import SustainedLoadMetricsObserver
 from infrahub.api.admission.retry_policy import RetryAfterPolicy
 
 
@@ -16,9 +18,28 @@ class FakeClock:
         self.now += seconds
 
 
+class RecordingRetryPolicyObserver:
+    """Retry-policy sink that keeps every sustained-load duration pushed to it."""
+
+    def __init__(self) -> None:
+        self.sustained_seconds: list[float] = []
+
+    def on_sustained_load(self, *, sustained_seconds: float) -> None:
+        self.sustained_seconds.append(sustained_seconds)
+
+
+class FailingRetryPolicyObserver:
+    """Retry-policy sink that raises on every observation, to prove failures stay contained."""
+
+    def on_sustained_load(self, *, sustained_seconds: float) -> None:
+        raise RuntimeError("observer blew up")
+
+
 def _policy(clock: FakeClock | None = None) -> tuple[RetryAfterPolicy, list[float]]:
     """Build a policy plus a recorder capturing the sustained-load values it pushes to its observer."""
+    observer = RecordingRetryPolicyObserver()
     policy = RetryAfterPolicy(
+        observers=[observer],
         level1_seconds=1,
         level2_seconds=5,
         level3_seconds=10,
@@ -28,9 +49,7 @@ def _policy(clock: FakeClock | None = None) -> tuple[RetryAfterPolicy, list[floa
         sustained_high_seconds=300.0,
         clock=clock or FakeClock(),
     )
-    recorded: list[float] = []
-    policy.set_observer(recorded.append)
-    return policy, recorded
+    return policy, observer.sustained_seconds
 
 
 def test_tier_maps_to_level_seconds_without_sustained_load() -> None:
@@ -82,7 +101,7 @@ def test_sustained_load_escalates_by_duration() -> None:
 
 def test_result_is_clamped_to_max() -> None:
     clock = FakeClock()
-    policy = RetryAfterPolicy(level3_seconds=10, max_seconds=20, clock=clock)
+    policy = RetryAfterPolicy(observers=[], level3_seconds=10, max_seconds=20, clock=clock)
 
     policy.observe(ratio=25.0)
     clock.advance(400)  # high tier -> x3 -> 30, above the cap
@@ -105,3 +124,52 @@ def test_episode_resets_when_load_clears() -> None:
 
     assert recorded[-1] == 0.0
     assert policy.retry_after(tier=1) == 1  # back to x1
+
+
+def test_every_observer_receives_the_sustained_duration() -> None:
+    clock = FakeClock()
+    first = RecordingRetryPolicyObserver()
+    second = RecordingRetryPolicyObserver()
+    policy = RetryAfterPolicy(observers=[first, second], significant_load_ratio=20.0, clock=clock)
+
+    policy.observe(ratio=25.0)
+    clock.advance(30)
+    policy.observe(ratio=25.0)
+
+    # Both sinks track the same episode: the policy fans out rather than keeping one slot.
+    assert first.sustained_seconds == [0.0, 30.0]
+    assert second.sustained_seconds == [0.0, 30.0]
+
+
+def test_failing_observer_does_not_fail_the_observation() -> None:
+    clock = FakeClock()
+    survivor = RecordingRetryPolicyObserver()
+    # The failing sink is ordered first, so a shared guard would swallow the survivor too.
+    policy = RetryAfterPolicy(
+        observers=[FailingRetryPolicyObserver(), survivor], significant_load_ratio=20.0, clock=clock
+    )
+
+    # observe() runs on the admission path of every request, so a raising sink must not propagate
+    # into a request that would otherwise be admitted, and must not skip the sinks behind it.
+    policy.observe(ratio=25.0)
+    clock.advance(120)
+    policy.observe(ratio=25.0)
+
+    assert survivor.sustained_seconds == [0.0, 120.0]
+    # The episode still tracked through the failures, so escalation is unaffected.
+    assert policy.retry_after(tier=1) == 2
+
+
+def test_metrics_observer_publishes_the_sustained_duration_to_the_gauge() -> None:
+    clock = FakeClock()
+    policy = RetryAfterPolicy(observers=[SustainedLoadMetricsObserver()], significant_load_ratio=20.0, clock=clock)
+
+    policy.observe(ratio=25.0)
+    clock.advance(45)
+    policy.observe(ratio=25.0)
+
+    assert metrics.SUSTAINED_LOAD_SECONDS._value.get() == 45.0
+
+    # Load clearing resets the gauge, so a finished episode never reads as still ongoing.
+    policy.observe(ratio=1.0)
+    assert metrics.SUSTAINED_LOAD_SECONDS._value.get() == 0.0
