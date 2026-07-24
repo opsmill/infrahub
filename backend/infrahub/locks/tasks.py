@@ -22,8 +22,7 @@ async def clean_up_deadlocks(service: InfrahubServices) -> None:
 
     log = get_run_logger()
     values = await service.cache.get_values(keys=keys)
-    workers = await service.component.list_workers(branch=registry.default_branch, schema_hash=False)
-    workers_active = {worker.id for worker in workers if worker.active}
+    workers_active = await service.component.list_active_worker_ids(branch=registry.default_branch)
 
     for key, value in zip(keys, values, strict=False):
         if not key or not value:

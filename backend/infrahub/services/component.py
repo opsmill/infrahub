@@ -75,6 +75,11 @@ class InfrahubComponent:
                 workers[identity].add_value(key=key, value=value)
         return list(workers.values())
 
+    async def list_active_worker_ids(self, branch: str) -> set[str]:
+        """Return the ids of the workers currently reporting an active heartbeat."""
+        workers = await self.list_workers(branch=branch, schema_hash=False)
+        return {worker.id for worker in workers if worker.active}
+
     async def refresh_schema_hash(self, branches: list[str] | None = None) -> None:
         branches = branches or list(registry.branch.keys())
         async with self.db.start_session(read_only=True) as safe_db:

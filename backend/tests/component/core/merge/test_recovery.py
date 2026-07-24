@@ -10,6 +10,7 @@ from infrahub.components import ComponentType
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.failure_recoverer import RecoveryOutcome
 from infrahub.core.merge.merge_locker import MERGE_LOCK_KEY
@@ -17,6 +18,7 @@ from infrahub.core.merge.write_blocker import MergeProtection, MergeProtectionSt
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import MergeRecoveryRequiredError
+from infrahub.lock import GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK, LOCK_PREFIX
 from infrahub.services.component import InfrahubComponent
 from infrahub.worker import WORKER_IDENTITY
 from tests.adapters.cache import MemoryCache
@@ -38,6 +40,22 @@ DEAD_WORKER = "dead-worker"
 
 def _lock_token(worker_id: str) -> str:
     return f"{Timestamp().to_string()}::{worker_id}"
+
+
+def _stale_lock_keys(default_branch_name: str, branch_name: str) -> list[str]:
+    """The distributed-lock cache keys a hard-killed merge can leak, built from the shared builders."""
+    diff_locker = DiffLocker()
+    diff_names = [
+        diff_locker.get_lock_name(
+            base_branch_name=default_branch_name, diff_branch_name=branch_name, is_incremental=incremental
+        )
+        for incremental in (False, True)
+    ]
+    return [
+        f"{LOCK_PREFIX}.{GLOBAL_GRAPH_LOCK}",
+        f"{LOCK_PREFIX}.{GLOBAL_SCHEMA_LOCK}",
+        *(f"{LOCK_PREFIX}.{DiffLocker.lock_namespace}.{name}" for name in diff_names),
+    ]
 
 
 class TestRecovery:
@@ -328,6 +346,46 @@ class TestRecovery:
         assert reloaded.status == BranchStatus.MERGE_FAILED
         assert await blocker.get() == MergeProtection(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
         assert await cache.get(MERGE_LOCK_KEY) == lock_token
+
+    async def test_recovery_clears_dead_locks_and_leaves_live_locks(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        cache: MemoryCache,
+        component: InfrahubComponent,
+    ) -> None:
+        branch = Branch(
+            name="recovery-stale-locks",
+            status=BranchStatus.MERGE_FAILED,
+            branched_from=Timestamp().to_string(),
+            merge_started_at=Timestamp().to_string(),
+        )
+        await branch.save(db=db)
+        blocker = MergeWriteBlocker(cache=cache)
+        await blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
+
+        # Split the leaked lock keys: half are held by a dead worker and must be cleared, half by THIS
+        # (active) worker — a live branch-diff or schema load running concurrently — and must survive.
+        all_keys = _stale_lock_keys(default_branch.name, branch.name)
+        dead_keys = all_keys[::2]
+        live_keys = all_keys[1::2]
+        for key in dead_keys:
+            await cache.set(key, _lock_token(DEAD_WORKER))
+        live_tokens = {key: _lock_token(WORKER_IDENTITY) for key in live_keys}
+        for key, token in live_tokens.items():
+            await cache.set(key, token)
+
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        report = await recovery.recover()
+
+        assert report.outcome == RecoveryOutcome.RECOVERED
+        # The dead worker's leaked locks are dropped so the next merge is not silently blocked; a lock a
+        # live worker still holds is left in place.
+        for key in dead_keys:
+            assert await cache.get(key) is None
+        for key, token in live_tokens.items():
+            assert await cache.get(key) == token
 
     async def test_absent_lock_merging_is_gated_by_force(
         self,

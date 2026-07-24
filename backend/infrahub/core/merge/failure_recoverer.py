@@ -8,11 +8,13 @@ from typing import TYPE_CHECKING
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.filters import BranchListFilters
+from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreProposedChange
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
+from infrahub.lock import GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK, LOCK_PREFIX
 from infrahub.log import get_logger
 from infrahub.proposed_change.constants import ProposedChangeState
 
@@ -24,6 +26,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.locks.cleaner import StaleLockCleaner
     from infrahub.services.adapters.cache import InfrahubCache
 
     from .failure_identifier import MergeFailureIdentifier
@@ -67,6 +70,8 @@ class MergeFailureRecoverer:
         cache: InfrahubCache,
         rollbacker: GraphRollbacker,
         schema_manager: SchemaManager,
+        lock_cleaner: StaleLockCleaner,
+        diff_locker: DiffLocker,
     ) -> None:
         self.db = db
         self.merge_write_blocker = merge_write_blocker
@@ -75,6 +80,8 @@ class MergeFailureRecoverer:
         self.cache = cache
         self.rollbacker = rollbacker
         self.schema_manager = schema_manager
+        self.lock_cleaner = lock_cleaner
+        self.diff_locker = diff_locker
 
     async def preview(self, *, force: bool = False, branch_name: str | None = None) -> RecoveryReport:
         """Report whether a failed merge can be recovered, making no changes.
@@ -141,6 +148,10 @@ class MergeFailureRecoverer:
             # Drop the stale merge lock while protection is still up, so this unconditional delete can
             # only hit the dead worker's lock, not a lock for a fresh merge.
             await self._release_merge_lock()
+            # Clear the branch/global locks the dead merge leaked, while protection is still up. Unlike
+            # the merge lock these may be legitimately held by a live flow, so a liveness check guards
+            # each delete.
+            await self._clear_stale_locks(branch=branch)
             await self._reset_branch(branch=branch)
             # Lift the write protection last, so a failure earlier in the sequence leaves it in place.
             await self.merge_write_blocker.delete()
@@ -305,6 +316,25 @@ class MergeFailureRecoverer:
         A no-op when the lock is already unheld.
         """
         await self.cache.delete(key=MERGE_LOCK_KEY)
+
+    async def _clear_stale_locks(self, branch: Branch) -> None:
+        """Clear the diff-update and global graph/schema locks a dead merge may have left held.
+
+        Deletes only keys whose holder is no longer an active worker, so a lock a live flow still
+        holds is left in place.
+        """
+        diff_names = [
+            self.diff_locker.get_lock_name(
+                base_branch_name=self.default_branch.name, diff_branch_name=branch.name, is_incremental=incremental
+            )
+            for incremental in (False, True)
+        ]
+        keys = [
+            f"{LOCK_PREFIX}.{GLOBAL_GRAPH_LOCK}",
+            f"{LOCK_PREFIX}.{GLOBAL_SCHEMA_LOCK}",
+            *(f"{LOCK_PREFIX}.{DiffLocker.lock_namespace}.{name}" for name in diff_names),
+        ]
+        await self.lock_cleaner.clear_if_holder_dead(keys=keys)
 
     async def _find_proposed_change(self, branch_name: str) -> CoreProposedChange | None:
         proposed_changes = await NodeManager.query(

@@ -10,6 +10,7 @@ from rich.console import Console
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core.branch import Branch
+from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.initialization import initialize_registry
 from infrahub.core.merge.failure_identifier import MergeFailureIdentifier
 from infrahub.core.merge.failure_recoverer import MergeFailureRecoverer, RecoveryOutcome, RecoveryReport
@@ -19,6 +20,7 @@ from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.dependencies.registry import build_component_registry
+from infrahub.locks.cleaner import StaleLockCleaner
 from infrahub.workers.dependencies import get_cache, get_component, set_component_type
 
 if TYPE_CHECKING:
@@ -127,6 +129,8 @@ async def recover_cmd(
             cache=cache,
             rollbacker=GraphRollbacker(db=db),
             schema_manager=schema_manager,
+            lock_cleaner=StaleLockCleaner(cache=cache, component=component, default_branch_name=default_branch.name),
+            diff_locker=DiffLocker(),
         )
 
         preview = await recoverer.preview(force=force, branch_name=branch)

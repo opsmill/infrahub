@@ -95,7 +95,9 @@ class BranchMergeOrchestrator:
         schema_updated_hash: str | None = None
 
         try:
+            self.log.info("Acquiring global graph lock for merge")
             async with lock.registry.global_graph_lock():
+                self.log.info("Global graph lock acquired for merge")
                 await self._record_merge_start(merge_at=merge_at, user_id=user_id)
                 await self.graph_merger.merge(at=merge_at)
 

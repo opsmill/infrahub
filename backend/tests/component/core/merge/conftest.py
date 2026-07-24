@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.merge.failure_identifier import MergeFailureIdentifier
 from infrahub.core.merge.failure_recoverer import MergeFailureRecoverer
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.registry import registry
 from infrahub.core.rollback import GraphRollbacker
+from infrahub.locks.cleaner import StaleLockCleaner
 
 if TYPE_CHECKING:
     import pytest
@@ -112,4 +114,6 @@ def build_recovery(
         cache=cache,
         rollbacker=GraphRollbacker(db=db),
         schema_manager=registry.schema,
+        lock_cleaner=StaleLockCleaner(cache=cache, component=component, default_branch_name=default_branch.name),
+        diff_locker=DiffLocker(),
     )
