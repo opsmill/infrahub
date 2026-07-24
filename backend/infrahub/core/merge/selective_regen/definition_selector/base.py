@@ -89,7 +89,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
             )
             forced_triggers = [trigger for trigger in candidate_triggers if trigger is not None]
             for trigger in forced_triggers:
-                self.log.info(trigger.detail)
+                self.log.debug(trigger.detail)
             forced = bool(forced_triggers)
 
             if not (gate_result.selected or forced):
@@ -117,7 +117,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                     impacted=impacted,
                 )
             ]
-            self.log.info(
+            self.log.debug(
                 f"SELECTIVE_REGEN select [{definition.definition_name}]: "
                 f"regenerate_all_members={regenerate_all_members} forced={forced} "
                 f"members={len(member_ids)} mapped_subscribers={len(subscriber_by_member)} "

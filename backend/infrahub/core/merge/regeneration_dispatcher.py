@@ -117,7 +117,7 @@ class PostMergeRegenerationDispatcher:
 
         kind_counts = Counter(entry["kind"] for entry in diff_summary)
         field_counts = Counter(element["name"] for entry in diff_summary for element in entry.get("elements", []))
-        self.log.info(
+        self.log.debug(
             f"SELECTIVE_REGEN merge-diff: nodes={len(diff_summary)} "
             f"kinds={dict(kind_counts)} changed_fields={dict(field_counts)}"
         )
@@ -144,7 +144,7 @@ class PostMergeRegenerationDispatcher:
         generator_cascade = bool(plan.generator_runs)
         cascade_started_at = Timestamp() if generator_cascade else None
 
-        self.log.info(
+        self.log.debug(
             f"Selective post-merge execution: {len(plan.generator_runs)} generator run(s), "
             f"{len(plan.artifact_generates)} artifact generation(s)"
             + ("; generator cascade engaged" if generator_cascade else "")
@@ -214,13 +214,13 @@ class PostMergeRegenerationDispatcher:
             self.log.exception("Failed to target artifacts from generator output; regenerating all artifacts instead")
             await self._submit_full_artifact_regeneration(context=context, target_branch=target_branch)
             return None
-        self.log.info(f"Targeted {len(targeted)} artifact definition(s) from generator output")
+        self.log.debug(f"Targeted {len(targeted)} artifact definition(s) from generator output")
         return targeted
 
     async def _full_regeneration(
         self, context: InfrahubContext, target_branch: str, reason: FullRegenerationReason
     ) -> None:
-        self.log.info(f"{reason}; regenerating all definitions")
+        self.log.debug(f"{reason}; regenerating all definitions")
         await submit_full_regeneration(workflow=self.workflow, context=context, target_branch=target_branch)
 
     async def _submit_full_artifact_regeneration(self, context: InfrahubContext, target_branch: str) -> None:
