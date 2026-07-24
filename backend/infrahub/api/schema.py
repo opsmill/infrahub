@@ -24,7 +24,6 @@ from starlette.responses import JSONResponse
 from infrahub import lock
 from infrahub.api.dependencies import get_branch_dep, get_context, get_current_user, get_db, get_permission_manager
 from infrahub.api.exceptions import SchemaNotValidError
-from infrahub.api.schema_write_projection import project_to_write_contract
 from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
@@ -123,13 +122,8 @@ class SchemaLoadAPI(InfrahubSchemaWrite):
     @model_validator(mode="before")
     @classmethod
     def validate_write_contract(cls, data: Any) -> Any:
-        # A submitted schema may carry fields that are not part of the write contract: read-only or
-        # internal fields (a schema read back from Infrahub, or a full internal dump), or unknown
-        # fields from an older or hand-edited payload. All of them are dropped silently by the
-        # projection below rather than rejected, so an otherwise-valid schema still loads. What
-        # remains is the user-facing write contract, validated for out-of-range constrained values.
+        # Raising here turns the field-level messages into a single request-validation error.
         if isinstance(data, dict):
-            data = project_to_write_contract(data)
             result = validate_write_schema(schema=data)
             if not result.valid:
                 raise ValueError("; ".join(result.messages))

@@ -112,8 +112,12 @@ The `internal.py` definitions remain the single source of truth. `invoke backend
 renders two model families from them by filtering each field on its visibility level (see
 `_generate_schemas_sdk` in `tasks/backend.py`):
 
-- **write models** — include only `WRITE` fields and set `extra="forbid"`, so submitting a
-  read-only, internal, or unknown field is rejected.
+- **write models** — include only `WRITE` fields and set `extra="ignore"`, so a read-only,
+  internal, or unknown field in a submitted payload is dropped by pydantic itself instead of
+  rejected. That holds at every nesting level, and the per-kind discriminated unions
+  (attribute kinds, computed-attribute kinds) resolve first, so each variant keeps only the
+  fields valid for it. Constrained values that *are* settable are still validated and
+  rejected when out of range. No hand-written filtering step is needed at the boundary.
 - **read models** — include `WRITE` and `READ` fields, describing the shape returned by
   `GET /api/schema`.
 
