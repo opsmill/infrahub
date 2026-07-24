@@ -60,3 +60,8 @@ MISSING_PRIORITY_TOTAL = Counter(
     f"{METRIC_PREFIX}_missing_priority_total",
     "Requests arriving with no or invalid X-Priority header",
 )
+
+SUSTAINED_LOAD_SECONDS = Gauge(
+    f"{METRIC_PREFIX}_sustained_load_seconds",
+    "Seconds the worker has continuously observed database stress at or above the significant-load ratio (0 below it)",
+)

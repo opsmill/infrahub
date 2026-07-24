@@ -13,6 +13,7 @@ from infrahub.api.admission.controller import (
     stress_shed_fraction,
 )
 from infrahub.api.admission.priority import Priority
+from infrahub.api.admission.retry_policy import RetryAfterPolicy
 from infrahub.api.admission.slot_pool import PrioritySlotPool
 
 # Per-class stress triggers (the ratio at which a class starts shedding).
@@ -64,7 +65,7 @@ def _build(
         stress_signal=_FakeLoadSignal(ratio=ratio, samples=samples),
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=min_samples,
-        retry_after=1,
+        retry_policy=RetryAfterPolicy(),
         rng=lambda: rng_value,
     )
     return controller, slot_pool
@@ -199,6 +200,27 @@ async def test_codel_sheds_independent_of_stress() -> None:
 
     assert isinstance(result, Rejected)
     assert result.reason == "codel"
+
+
+async def test_retry_after_reflects_per_priority_stress_tier() -> None:
+    """The shed Retry-After uses the same per-priority tier as the drop fraction.
+
+    The same ratio lands on a different tier per class because each class's trigger differs, so
+    the advised wait tracks the class, not a single global level.
+    """
+    # LOW trigger is 5. ratio 60 -> 12x -> severe (tier 3) -> level-3 base (10s, default policy).
+    low_controller, _ = _build(ratio=60.0, samples=100, rng_value=0.0, max_concurrency=10)
+    low = await low_controller.admit(priority=Priority.LOW)
+    assert isinstance(low, Rejected)
+    assert low.reason == "stress"
+    assert low.retry_after == 10
+
+    # MEDIUM trigger is 20. Same ratio 60 -> 3x -> moderate (tier 2) -> level-2 base (5s).
+    medium_controller, _ = _build(ratio=60.0, samples=100, rng_value=0.0, max_concurrency=10)
+    medium = await medium_controller.admit(priority=Priority.MEDIUM)
+    assert isinstance(medium, Rejected)
+    assert medium.reason == "stress"
+    assert medium.retry_after == 5
 
 
 async def test_stress_sheds_before_queueing_for_a_slot() -> None:

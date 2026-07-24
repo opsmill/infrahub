@@ -560,8 +560,37 @@ class ApiSettings(BaseSettings):
     backpressure_backstop_max_waiters: int = Field(
         default=1000, ge=1, description="Per-class hard cap on queued waiters before requests are rejected."
     )
-    backpressure_retry_after_seconds: int = Field(
-        default=1, ge=0, description="Value returned in the Retry-After header when a request is shed."
+    backpressure_retry_after_level1_seconds: int = Field(
+        default=1, ge=0, description="Retry-After (seconds) advised for a shed request at load level 1 (mild)."
+    )
+    backpressure_retry_after_level2_seconds: int = Field(
+        default=5, ge=0, description="Retry-After (seconds) advised for a shed request at load level 2 (moderate)."
+    )
+    backpressure_retry_after_level3_seconds: int = Field(
+        default=10, ge=0, description="Retry-After (seconds) advised for a shed request at load level 3 (severe)."
+    )
+    backpressure_retry_after_max_seconds: int = Field(
+        default=30,
+        ge=0,
+        description="Upper bound on the advised Retry-After after sustained-load escalation is applied.",
+    )
+    backpressure_significant_load_stress_ratio: float = Field(
+        default=20.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Stress ratio at or above which the server is counted as under significant sustained load.",
+    )
+    backpressure_sustained_load_warn_seconds: float = Field(
+        default=60.0,
+        gt=0,
+        allow_inf_nan=False,
+        description="Seconds of continuous significant load after which the advised Retry-After is escalated.",
+    )
+    backpressure_sustained_load_high_seconds: float = Field(
+        default=300.0,
+        gt=0,
+        allow_inf_nan=False,
+        description="Seconds of continuous significant load after which the advised Retry-After is escalated further.",
     )
     backpressure_max_concurrency_factor: float = Field(
         default=0.5,

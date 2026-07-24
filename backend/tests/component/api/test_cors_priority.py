@@ -8,6 +8,7 @@ from infrahub.api.admission.codel import CoDelController
 from infrahub.api.admission.controller import AdmissionController
 from infrahub.api.admission.middleware import AdmissionMiddleware
 from infrahub.api.admission.priority import Priority
+from infrahub.api.admission.retry_policy import RetryAfterPolicy
 from infrahub.api.admission.slot_pool import PrioritySlotPool
 from infrahub.config import default_cors_allow_headers, default_cors_allow_methods
 
@@ -37,7 +38,7 @@ def _shed_everything_controller() -> AdmissionController:
         stress_signal=_FakeLoadSignal(),
         stress_thresholds=dict.fromkeys(Priority, 1.0),
         stress_min_samples=0,
-        retry_after=1,
+        retry_policy=RetryAfterPolicy(),
     )
 
 

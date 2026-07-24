@@ -20,6 +20,7 @@
 | 4 | `infrahub_admission_sojourn_seconds` | Histogram | `priority` | Distribution of slot-wait (sojourn) time per class; exposes P50/P99 and the gradient. |
 | 6 | `infrahub_admission_max_concurrency` | Gauge | (none) | The effective derived per-worker slot cap. |
 | 7 | `infrahub_admission_missing_priority_total` | Counter | (none) | Requests arriving with no/invalid `X-Priority` (adoption tracking). |
+| 8 | `infrahub_admission_sustained_load_seconds` | Gauge | (none) | Seconds the worker has continuously seen the database-stress ratio at or above the significant-load line (0 below it); drives the adaptive `Retry-After` escalation. |
 
 **Histogram buckets** (`infrahub_admission_sojourn_seconds`): `[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 5]` (seconds; fine at the low end where the CoDel `target` sits).
 

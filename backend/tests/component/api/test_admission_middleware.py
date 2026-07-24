@@ -15,6 +15,7 @@ from infrahub.api.admission.codel import CoDelController
 from infrahub.api.admission.controller import AdmissionController, build_admission_controller
 from infrahub.api.admission.middleware import AdmissionMiddleware
 from infrahub.api.admission.priority import Priority
+from infrahub.api.admission.retry_policy import RetryAfterPolicy
 from infrahub.api.admission.slot_pool import PrioritySlotPool
 
 
@@ -139,7 +140,7 @@ def _build_app() -> FastAPI:
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=0,
-        retry_after=1,
+        retry_policy=RetryAfterPolicy(),
     )
     _install_admission(app, controller, enabled=True)
     return app
@@ -197,7 +198,7 @@ async def test_all_admitted_when_capacity_available(priority: str) -> None:
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=0,
-        retry_after=1,
+        retry_policy=RetryAfterPolicy(),
     )
     _install_admission(app, controller, enabled=True)
 
@@ -230,7 +231,8 @@ async def test_shed_backstop_returns_rest_envelope() -> None:
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=0,
-        retry_after=7,
+        # Backstop sheds at the top tier; pin level-3 so the wired-through Retry-After is 7.
+        retry_policy=RetryAfterPolicy(level3_seconds=7),
     )
     _install_admission(app, controller, enabled=True)
 
@@ -280,7 +282,8 @@ async def test_shed_codel_returns_429() -> None:
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=0,
-        retry_after=3,
+        # Unstressed CoDel shed lands at tier 0, which floors to level 1; pin it to 3.
+        retry_policy=RetryAfterPolicy(level1_seconds=3),
     )
     _install_admission(app, controller, enabled=True)
 
@@ -352,7 +355,7 @@ async def test_capacity_and_burst() -> None:
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=0,
-        retry_after=1,
+        retry_policy=RetryAfterPolicy(),
     )
     # The gauge is set at server wiring time, not by constructing a controller; set it the same
     # way the wiring does so the invariant is observable here.
@@ -401,7 +404,7 @@ def _admit_app() -> FastAPI:
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=0,
-        retry_after=1,
+        retry_policy=RetryAfterPolicy(),
     )
     _install_admission(app, controller, enabled=True)
     return app
@@ -422,7 +425,7 @@ def _backstop_app() -> FastAPI:
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=0,
-        retry_after=1,
+        retry_policy=RetryAfterPolicy(),
     )
     _install_admission(app, controller, enabled=True)
     return app
@@ -483,7 +486,7 @@ async def test_metrics() -> None:
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=0,
-        retry_after=1,
+        retry_policy=RetryAfterPolicy(),
     )
     _install_admission(codel_app, controller, enabled=True)
 
@@ -555,7 +558,7 @@ def _shed_everything_controller() -> AdmissionController:
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=0,
-        retry_after=1,
+        retry_policy=RetryAfterPolicy(),
     )
 
 
@@ -716,7 +719,7 @@ async def test_handler_exception_releases_slot() -> None:
         stress_signal=_UNSTRESSED,
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=0,
-        retry_after=1,
+        retry_policy=RetryAfterPolicy(),
     )
     _install_admission(app, controller, enabled=True)
 

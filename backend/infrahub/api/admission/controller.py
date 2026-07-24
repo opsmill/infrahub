@@ -4,12 +4,13 @@ import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Literal
 
-from infrahub.database.load_signal import get_reference_query_load_tracker
+from infrahub.database.load_signal import UNSTRESSED_RATIO, get_reference_query_load_tracker
 
 from . import metrics
 from .capacity import derive_max_concurrency
 from .codel import CoDelController
 from .priority import Priority
+from .retry_policy import RetryAfterPolicy
 from .slot_pool import PrioritySlotPool
 
 if TYPE_CHECKING:
@@ -18,12 +19,33 @@ if TYPE_CHECKING:
 
     from .slot_pool import Acquisition
 
-# Fraction of a stressed class's requests to shed, escalating with how far the stress ratio has
-# climbed past that class's trigger (its threshold). The same schedule applies to every class;
-# only the trigger differs, so a graduated response replaces shedding the whole class at once.
-_SHED_FRACTION_MILD = 0.20  # within [1x, 2x) of the trigger
-_SHED_FRACTION_MODERATE = 0.50  # within [2x, 5x) of the trigger
-_SHED_FRACTION_SEVERE = 0.80  # at or beyond 5x the trigger
+# Backstop shedding (waiter queue saturated) is unambiguous overload, so its retry-after hint
+# always uses the top intensity tier regardless of the current stress ratio.
+_BACKSTOP_TIER = 3
+
+# Fraction of a stressed class's requests to shed at each tier. The same schedule applies to every
+# class; only the trigger differs, so a graduated response replaces shedding the whole class at
+# once. The tiers are shared with the adaptive retry-after, so a class's escalation is expressed
+# once and both the drop percentage and the retry hint move together.
+_SHED_FRACTION_BY_TIER = {0: 0.0, 1: 0.20, 2: 0.50, 3: 0.80}
+
+
+def stress_tier(*, ratio: float, threshold: float) -> int:
+    """Severity tier of a stress ratio against a class's trigger.
+
+    Returns ``0`` below the trigger, then ``1``/``2``/``3`` (mild/moderate/severe) as the ratio
+    climbs past ``1x``/``2x``/``5x`` of the trigger.
+    """
+    if threshold <= 0:
+        return 0
+    multiple = ratio / threshold
+    if multiple < 1.0:
+        return 0
+    if multiple < 2.0:
+        return 1
+    if multiple < 5.0:
+        return 2
+    return 3
 
 
 def stress_shed_fraction(*, ratio: float, threshold: float) -> float:
@@ -31,16 +53,7 @@ def stress_shed_fraction(*, ratio: float, threshold: float) -> float:
 
     Returns ``0.0`` below the trigger, then steps up as the ratio climbs to 2x, 5x, and beyond.
     """
-    if threshold <= 0:
-        return 0.0
-    multiple = ratio / threshold
-    if multiple < 1.0:
-        return 0.0
-    if multiple < 2.0:
-        return _SHED_FRACTION_MILD
-    if multiple < 5.0:
-        return _SHED_FRACTION_MODERATE
-    return _SHED_FRACTION_SEVERE
+    return _SHED_FRACTION_BY_TIER[stress_tier(ratio=ratio, threshold=threshold)]
 
 
 @dataclass(frozen=True)
@@ -89,7 +102,7 @@ class AdmissionController:
         stress_signal: LoadSignal,
         stress_thresholds: dict[Priority, float],
         stress_min_samples: int,
-        retry_after: int,
+        retry_policy: RetryAfterPolicy,
         rng: Callable[[], float] = random.random,
     ) -> None:
         self._slot_pool = slot_pool
@@ -101,7 +114,7 @@ class AdmissionController:
         self._stress_signal = stress_signal
         self._stress_thresholds = stress_thresholds
         self._stress_min_samples = stress_min_samples
-        self._retry_after = retry_after
+        self._retry_policy = retry_policy
         # Source of the [0, 1) draw used to shed a fraction of a stressed class's requests.
         self._rng = rng
         self._codel = codel
@@ -118,17 +131,25 @@ class AdmissionController:
         """
         metrics.OFFERED_TOTAL.labels(priority=priority.label).inc()
 
+        # The stress ratio is the shared server-load proxy: it drives the graduated shed decision
+        # and, via the retry policy, both the adaptive Retry-After and the sustained-load clock.
+        # Sample it once and let the policy track how long load has persisted.
+        ratio = self._current_stress_ratio()
+        self._retry_policy.observe(ratio=ratio)
+        tier = stress_tier(ratio=ratio, threshold=self._stress_thresholds[priority])
+
         if self._slot_pool.waiters(priority=priority) >= self._backstop_max_waiters[priority]:
             metrics.REJECTED_TOTAL.labels(priority=priority.label, reason="backstop").inc()
-            return Rejected(reason="backstop", retry_after=self._retry_after)
+            # A saturated waiter queue is unambiguous overload, so the hint uses the top tier.
+            return Rejected(reason="backstop", retry_after=self._retry_policy.retry_after(tier=_BACKSTOP_TIER))
 
         # Database stress is evaluated before the request queues for a slot: a stressed class sheds
         # a random fraction of its requests, and a shed one gets its fast 429 without waiting behind
         # a saturated pool or consuming waiter capacity. CoDel keys off the measured sojourn, so it
         # can only run once a slot is held — a request shed here never reaches it.
-        if self._stress_should_shed(priority=priority):
+        if tier >= 1 and self._rng() < _SHED_FRACTION_BY_TIER[tier]:
             metrics.REJECTED_TOTAL.labels(priority=priority.label, reason="stress").inc()
-            return Rejected(reason="stress", retry_after=self._retry_after)
+            return Rejected(reason="stress", retry_after=self._retry_policy.retry_after(tier=tier))
 
         acquisition = await self._slot_pool.acquire(priority=priority)
         # Once a slot is held, any exception before returning Admitted would strand it (the
@@ -139,7 +160,7 @@ class AdmissionController:
             if self._codel[priority].should_drop(sojourn=acquisition.sojourn):
                 self._slot_pool.release(acquisition=acquisition)
                 metrics.REJECTED_TOTAL.labels(priority=priority.label, reason="codel").inc()
-                return Rejected(reason="codel", retry_after=self._retry_after)
+                return Rejected(reason="codel", retry_after=self._retry_policy.retry_after(tier=tier))
 
             metrics.ADMITTED_TOTAL.labels(priority=priority.label).inc()
             return Admitted(acquisition=acquisition)
@@ -147,19 +168,13 @@ class AdmissionController:
             self._slot_pool.release(acquisition=acquisition)
             raise
 
-    def _stress_should_shed(self, *, priority: Priority) -> bool:
-        """Whether database stress sheds this request: a random draw against the class's fraction."""
-        shed_fraction = self._stress_shed_fraction(priority=priority)
-        return shed_fraction > 0.0 and self._rng() < shed_fraction
-
-    def _stress_shed_fraction(self, *, priority: Priority) -> float:
-        # Until the window holds enough samples, the floor is unreliable (a cold or outlier
-        # floor would distort the ratio), so the stress signal sheds nothing yet.
+    def _current_stress_ratio(self) -> float:
+        # Below the sample floor the ratio is unreliable (a cold or outlier floor would distort
+        # it), so the signal reads as unstressed — matching the shed gate, which also stays quiet
+        # until the window holds enough samples.
         if self._stress_signal.sample_count() < self._stress_min_samples:
-            return 0.0
-        return stress_shed_fraction(
-            ratio=self._stress_signal.stress_ratio_median(), threshold=self._stress_thresholds[priority]
-        )
+            return UNSTRESSED_RATIO
+        return self._stress_signal.stress_ratio_median()
 
     def release(self, *, acquisition: Acquisition) -> None:
         """Return a served request's slot; the pool observer refreshes the live gauges.
@@ -223,6 +238,15 @@ def build_admission_controller(settings: config.Settings) -> AdmissionController
             interval=settings.api.backpressure_codel_interval_seconds,
         ),
     }
+    retry_policy = RetryAfterPolicy(
+        level1_seconds=settings.api.backpressure_retry_after_level1_seconds,
+        level2_seconds=settings.api.backpressure_retry_after_level2_seconds,
+        level3_seconds=settings.api.backpressure_retry_after_level3_seconds,
+        max_seconds=settings.api.backpressure_retry_after_max_seconds,
+        significant_load_ratio=settings.api.backpressure_significant_load_stress_ratio,
+        sustained_warn_seconds=settings.api.backpressure_sustained_load_warn_seconds,
+        sustained_high_seconds=settings.api.backpressure_sustained_load_high_seconds,
+    )
     return AdmissionController(
         slot_pool=slot_pool,
         codel=codel,
@@ -230,5 +254,5 @@ def build_admission_controller(settings: config.Settings) -> AdmissionController
         stress_signal=tracker,
         stress_thresholds=stress_thresholds,
         stress_min_samples=settings.api.backpressure_stress_min_samples,
-        retry_after=settings.api.backpressure_retry_after_seconds,
+        retry_policy=retry_policy,
     )

@@ -53,7 +53,13 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_API_BACKPRESSURE_CODEL_INTERVAL_SECONDS` | CoDel interval in seconds the sojourn must stay above target before dropping. | number | 0.1 |
 | `INFRAHUB_API_BACKPRESSURE_HIGH_TARGET_MULTIPLIER` | Multiplier applied to the CoDel target for the high-priority class. | number | 4.0 |
 | `INFRAHUB_API_BACKPRESSURE_BACKSTOP_MAX_WAITERS` | Per-class hard cap on queued waiters before requests are rejected. | integer | 1000 |
-| `INFRAHUB_API_BACKPRESSURE_RETRY_AFTER_SECONDS` | Value returned in the Retry-After header when a request is shed. | integer | 1 |
+| `INFRAHUB_API_BACKPRESSURE_RETRY_AFTER_LEVEL1_SECONDS` | Retry-After (seconds) advised for a shed request at load level 1 (mild). | integer | 1 |
+| `INFRAHUB_API_BACKPRESSURE_RETRY_AFTER_LEVEL2_SECONDS` | Retry-After (seconds) advised for a shed request at load level 2 (moderate). | integer | 5 |
+| `INFRAHUB_API_BACKPRESSURE_RETRY_AFTER_LEVEL3_SECONDS` | Retry-After (seconds) advised for a shed request at load level 3 (severe). | integer | 10 |
+| `INFRAHUB_API_BACKPRESSURE_RETRY_AFTER_MAX_SECONDS` | Upper bound on the advised Retry-After after sustained-load escalation is applied. | integer | 30 |
+| `INFRAHUB_API_BACKPRESSURE_SIGNIFICANT_LOAD_STRESS_RATIO` | Stress ratio at or above which the server is counted as under significant sustained load. | number | 20.0 |
+| `INFRAHUB_API_BACKPRESSURE_SUSTAINED_LOAD_WARN_SECONDS` | Seconds of continuous significant load after which the advised Retry-After is escalated. | number | 60.0 |
+| `INFRAHUB_API_BACKPRESSURE_SUSTAINED_LOAD_HIGH_SECONDS` | Seconds of continuous significant load after which the advised Retry-After is escalated further. | number | 300.0 |
 | `INFRAHUB_API_BACKPRESSURE_MAX_CONCURRENCY_FACTOR` | Scales the derived maximum admission concurrency. | number | 0.5 |
 | `INFRAHUB_API_BACKPRESSURE_STRESS_WINDOW_SECONDS` | Rolling window, in seconds, over which the database-stress signal is measured. | number | 20.0 |
 | `INFRAHUB_API_BACKPRESSURE_STRESS_MIN_SAMPLES` | Reference-query samples required in the window before the stress signal gates shedding. | integer | 5 |
