@@ -453,7 +453,7 @@ class TestRecoverySchemaMetadataRestore:
         assert reloaded_again.schema_hash.main == expected_hash.main
         assert reloaded_again.schema_changed_at == pre_merge_changed_at
 
-    async def test_missing_pre_merge_changed_at_leaves_it_untouched(
+    async def test_none_changed_at_is_restored(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
@@ -462,15 +462,18 @@ class TestRecoverySchemaMetadataRestore:
         component: InfrahubComponent,
     ) -> None:
         expected_hash = registry.schema.get_schema_branch(name=default_branch.name).get_hash_full()
-        # An older branch record predates the persisted pre-merge changed-at, so it stays None.
-        failed_merge_changed_at = Timestamp().to_string()
 
+        # The destination had no schema_changed_at at merge start, so the merge captured None; the crash
+        # then stamped a failed-merge value that recovery must revert back to None.
         default_branch.schema_hash = SchemaBranchHash(main="0" * 32, nodes={"stale": "stale"}, generics={})
-        default_branch.schema_changed_at = failed_merge_changed_at
+        default_branch.schema_changed_at = Timestamp().to_string()
         await default_branch.save(db=db)
 
         _, blocker = await self._flag_failed_source_branch(
-            db=db, cache=cache, branch_name="schema-meta-recover-no-field", pre_merge_changed_at=None
+            db=db,
+            cache=cache,
+            branch_name="schema-meta-recover-none",
+            pre_merge_changed_at=None,
         )
 
         recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
@@ -479,9 +482,9 @@ class TestRecoverySchemaMetadataRestore:
 
         reloaded_default = await Branch.get_by_name(db=db, name=default_branch.name)
         assert reloaded_default.schema_hash is not None
-        # Hash is still recomputed from the schema, but changed-at is left at the failed-merge value.
         assert reloaded_default.schema_hash.main == expected_hash.main
-        assert reloaded_default.schema_changed_at == failed_merge_changed_at
+        # A captured None is restored, not left at the failed-merge value.
+        assert reloaded_default.schema_changed_at is None
         assert await blocker.get() is None
 
     async def test_recomputed_hash_matches_persisted_schema(

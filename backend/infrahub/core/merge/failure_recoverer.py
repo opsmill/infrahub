@@ -293,16 +293,14 @@ class MergeFailureRecoverer:
         The range rollback reverts versioned edges but not the plain ``Branch`` vertex properties the
         merge wrote in place, so a crash mid-merge leaves the persisted schema metadata at the
         failed-merge values. The hash is recomputed from the rolled-back graph rather than restored
-        literally; the changed-at is restored from the value persisted at merge start when present,
-        and left untouched for an older branch record that predates that field.
+        literally; the changed-at is restored from the value captured at merge start.
         """
         # Reload the destination branch so the metadata is written onto the current persisted record
         # rather than a possibly-stale in-memory copy carried in from before the rollback.
         default_branch = await Branch.get_by_name(db=self.db, name=self.default_branch.name)
         schema_branch = await self._load_destination_schema(branch=default_branch)
         default_branch.schema_hash = schema_branch.get_hash_full()
-        if branch.pre_merge_destination_schema_changed_at is not None:
-            default_branch.schema_changed_at = branch.pre_merge_destination_schema_changed_at
+        default_branch.schema_changed_at = branch.pre_merge_destination_schema_changed_at
         await default_branch.save(db=self.db)
         self.default_branch = default_branch
         registry.branch[default_branch.name] = default_branch
