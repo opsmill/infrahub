@@ -586,6 +586,35 @@ async def test_excluded_path_bypasses_admission(path: str) -> None:
     assert metrics.MISSING_PRIORITY_TOTAL._value.get() - missing_before == 0
 
 
+@pytest.mark.parametrize("path", ["/healthcheck", "/metrics-internal"])
+async def test_prefix_of_excluded_path_is_not_bypassed(path: str) -> None:
+    """A path that merely shares a leading substring with an excluded route is still gated.
+
+    ``/healthcheck`` is not the excluded ``/health`` route, so it must reach the admission
+    layer and be shed (429) rather than slip through unguarded.
+    """
+    app = FastAPI()
+
+    @app.get("/healthcheck")
+    async def healthcheck() -> dict[str, bool]:
+        return {"ok": True}
+
+    @app.get("/metrics-internal")
+    async def metrics_internal() -> dict[str, bool]:
+        return {"ok": True}
+
+    app.add_middleware(AdmissionMiddleware, controller=_shed_everything_controller(), enabled=True)
+
+    offered_before = _offered_total()
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get(path)
+
+    assert response.status_code == 429
+    # The request reached the admission layer, so the offered counter moved.
+    assert _offered_total() - offered_before == 1
+
+
 async def test_kill_switch_passes_through() -> None:
     """With the layer disabled, a request that would be shed instead runs the handler and moves no metric."""
     app = FastAPI()

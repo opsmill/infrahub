@@ -67,13 +67,22 @@ class AdmissionMiddleware:
             self._enabled = True if enabled is None else enabled
         self._excluded_paths = excluded_paths
 
+    def _is_excluded(self, path: str) -> bool:
+        """Whether a path is an excluded route: an exact match or a slash-delimited descendant.
+
+        Matching the exact path or a ``<excluded>/`` prefix keeps mounted trees (``/assets/...``)
+        and their roots excluded without also excluding unrelated paths that merely share a
+        leading substring (``/healthcheck`` is not ``/health``).
+        """
+        return any(path == excluded or path.startswith(f"{excluded}/") for excluded in self._excluded_paths)
+
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or not self._enabled:
             await self.app(scope, receive, send)
             return
 
         path = scope.get("path", "")
-        if any(path.startswith(excluded) for excluded in self._excluded_paths):
+        if self._is_excluded(path):
             await self.app(scope, receive, send)
             return
 
