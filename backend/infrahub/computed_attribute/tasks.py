@@ -272,6 +272,12 @@ async def process_transform(
             coalesced=False,
             recompute_depth=0,
         )
+        # One aggregate line per attribute so partial failure is greppable/alertable from the
+        # flow log alone; until a recompute-failure surface exists, this is the only rollup.
+        log.info(
+            f"Recompute of '{attribute_name}' complete: submitted={len(results)} "
+            f"written={len(writes)} skipped={len(skipped)}"
+        )
 
 
 @flow(
@@ -307,10 +313,7 @@ async def trigger_update_python_computed_attributes(
                 "computed_attribute_kind": computed_attribute_kind,
                 "context": context,
             },
-            # Bake the branch tag in at submission so it is part of the run's creation
-            # tags: a later in-flow tag update rebuilds the list from the tags known at
-            # flow start, so a branch tag added only mid-run would be dropped and the
-            # run would disappear from branch-filtered task queries.
+            # Must be a creation tag: in-flow tag updates drop tags added mid-run.
             tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
         )
 
@@ -713,8 +716,7 @@ async def query_transform_targets(
                     "computed_attribute_kind": kind,
                     "context": context,
                 },
-                # Same rationale as the setup-path submission: the branch tag must be part
-                # of the creation tags to survive in-flow tag updates.
+                # Must be a creation tag: in-flow tag updates drop tags added mid-run.
                 tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
             )
 
