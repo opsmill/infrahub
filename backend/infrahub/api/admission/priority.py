@@ -43,9 +43,9 @@ def parse_priority(header_value: str | None) -> PriorityHeaderParseResult:
     if header_value is None:
         return PriorityHeaderParseResult(priority=Priority.MEDIUM, was_explicit=False)
 
-    normalized = header_value.strip().lower()
+    normalized = header_value.strip().upper()
     try:
-        priority = Priority[normalized.upper()]
+        priority = Priority[normalized]
     except KeyError:
         return PriorityHeaderParseResult(priority=Priority.MEDIUM, was_explicit=False)
 

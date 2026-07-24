@@ -158,6 +158,12 @@ class PrioritySlotPool:
         self._wake_up_next()
 
     def _wake_up_next(self) -> None:
+        """Hand the just-freed slot to the highest-priority waiting request.
+
+        Scans the per-class waiter queues in priority order and resolves the first
+        not-yet-done waiter's future with ``set_result(True)``, decrementing ``_available``
+        for the handed-out slot. Done or cancelled futures are skipped.
+        """
         for priority in Priority:
             for future in self._waiters[priority]:
                 if not future.done():
