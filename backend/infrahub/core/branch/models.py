@@ -48,6 +48,7 @@ class Branch(StandardNode):
     schema_hash: Optional[SchemaBranchHash] = None
     graph_version: Optional[int] = None
     merge_started_at: Optional[str] = None
+    pre_merge_destination_schema_changed_at: Optional[str] = None
 
     _exclude_attrs: list[str] = ["id", "uuid", "owner"]
 
