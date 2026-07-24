@@ -4,6 +4,7 @@ import pytest
 
 from infrahub.database.load_signal import (
     MIN_OBSERVATION_SECONDS,
+    UNSTRESSED_RATIO,
     ReferenceQueryLoadTracker,
     _publish_metrics,
 )
@@ -85,6 +86,30 @@ def test_window_min_recovers_when_the_minimum_sample_is_evicted() -> None:
     tracker.record(0.006)  # t=36, horizon=6 → the t=0 minimum leaves the window
     assert tracker.window_min() == 0.004
     assert tracker.floor() == 0.002
+
+
+def test_reads_expire_stale_window_after_idle_without_recording() -> None:
+    # Regression: eviction was driven only by recording an observation, so after a stressed burst
+    # the window stayed "stressed" through an idle gap — long enough to shed the first request that
+    # arrived after the lull, before it could refresh the signal. A read must age the window itself.
+    clock = FakeClock()
+    tracker = ReferenceQueryLoadTracker(window_seconds=WINDOW, clock=clock)
+
+    tracker.record(0.001)  # sets the floor
+    for _ in range(5):
+        tracker.record(0.050)  # a stressed burst
+    assert tracker.sample_count() == 6
+    assert tracker.stress_ratio_median() > 1.0
+
+    # Traffic goes idle: the clock advances past the window but nothing new is recorded.
+    clock.advance(WINDOW + 1)
+
+    assert tracker.sample_count() == 0
+    assert tracker.window_min() is None
+    assert tracker.window_median() is None
+    assert tracker.stress_ratio_median() == UNSTRESSED_RATIO
+    # The floor is absolute and survives the window emptying.
+    assert tracker.floor() == 0.001
 
 
 def test_stress_ratio_reflects_window_relative_to_floor() -> None:

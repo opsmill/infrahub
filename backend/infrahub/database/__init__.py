@@ -39,7 +39,7 @@ from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
-from .load_signal import reference_query_load_tracker
+from .load_signal import get_reference_query_load_tracker
 from .metrics import (
     CONNECTION_POOL_USAGE,
     QUERY_EXECUTION_METRICS,
@@ -414,7 +414,7 @@ class InfrahubDatabase:
                 # the reference query feed the database-stress signal, so a write sharing the name
                 # cannot pollute the floor or the window.
                 if name == REFERENCE_QUERY_NAME and type == QueryType.READ:
-                    reference_query_load_tracker.record(time.monotonic() - execution_start)
+                    get_reference_query_load_tracker().record(time.monotonic() - execution_start)
                 metadata = response._metadata or {}
                 span.set_attribute("rows", len(results))
                 return results, metadata

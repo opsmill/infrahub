@@ -158,7 +158,7 @@ async def test_stress_sheds_a_fraction_without_queueing(case: _StressCase) -> No
 
     result = await controller.admit(priority=case.priority)
     if isinstance(result, Admitted):
-        result.acquisition.release()
+        controller.release(acquisition=result.acquisition)
         assert case.expect_shed is False
     else:
         assert case.expect_shed is True
@@ -181,14 +181,14 @@ async def _second_follower(
     while slot_pool.waiters(priority=priority) < 2:  # noqa: ASYNC110
         await asyncio.sleep(0)
 
-    holder.acquisition.release()
+    controller.release(acquisition=holder.acquisition)
     result_a = await follower_a
     assert isinstance(result_a, Admitted)
-    result_a.acquisition.release()
+    controller.release(acquisition=result_a.acquisition)
 
     result_b = await follower_b
     if isinstance(result_b, Admitted):
-        result_b.acquisition.release()
+        controller.release(acquisition=result_b.acquisition)
     return result_b
 
 
@@ -202,29 +202,25 @@ async def test_codel_sheds_independent_of_stress() -> None:
     assert result.reason == "codel"
 
 
-async def test_stress_is_reported_when_both_triggers_fire() -> None:
-    """When both the stress signal and a CoDel overrun fire, the shed is attributed to stress.
+async def test_stress_sheds_before_queueing_for_a_slot() -> None:
+    """A stressed request is shed before it waits for a slot, so a saturated pool never queues it.
 
-    HIGH is below its 100x trigger at 50x, so a HIGH holder occupies the slot while two LOW
-    followers queue and build an above-target sojourn. LOW is severely stressed at 50x (10x its
-    trigger, an 80% shed fraction) and the draw is forced below it, so the second follower — which
-    also trips CoDel — is reported as stress.
+    A single slot is held by an admitted HIGH request (below its 100x trigger at 30x). A LOW
+    request is severely stressed at 30x (6x its 5x trigger, an 80% fraction) with the draw forced
+    below it: were stress evaluated after acquisition it would block behind the held slot, but it
+    is shed on the fast path instead — reported as stress, with the waiter queue left empty.
     """
-    controller, slot_pool = _build(ratio=50.0, samples=100, rng_value=0.0)
+    controller, slot_pool = _build(ratio=30.0, samples=100, rng_value=0.0, max_concurrency=1)
 
     holder = await controller.admit(priority=Priority.HIGH)
     assert isinstance(holder, Admitted)
+    assert slot_pool.available == 0
 
-    follower_a = asyncio.create_task(controller.admit(priority=Priority.LOW))
-    follower_b = asyncio.create_task(controller.admit(priority=Priority.LOW))
-    while slot_pool.waiters(priority=Priority.LOW) < 2:  # noqa: ASYNC110
-        await asyncio.sleep(0)
+    result = await controller.admit(priority=Priority.LOW)
 
-    holder.acquisition.release()
-    results = [await follower_a, await follower_b]
-    for result in results:
-        if isinstance(result, Admitted):
-            result.acquisition.release()
+    assert isinstance(result, Rejected)
+    assert result.reason == "stress"
+    # The shed took the fast path: the request never enqueued behind the held slot.
+    assert slot_pool.waiters(priority=Priority.LOW) == 0
 
-    assert isinstance(results[1], Rejected)
-    assert results[1].reason == "stress"
+    controller.release(acquisition=holder.acquisition)

@@ -114,22 +114,35 @@ class ReferenceQueryLoadTracker:
             _, value = self._samples.popleft()
             del self._sorted[bisect.bisect_left(self._sorted, value)]
 
+    def _prune(self) -> None:
+        """Drop samples that have aged out as of now.
+
+        Recording an observation ages the window, but a read taken after traffic goes idle
+        would otherwise keep reporting a stale window — a burst that has fully aged out could
+        still shed the first request that arrives after the lull — so a read ages the window to
+        the current time before answering.
+        """
+        self._evict(now=self._clock())
+
     def floor(self) -> float | None:
         """The all-time minimum observation, or ``None`` before any observation."""
         return self._floor
 
     def sample_count(self) -> int:
         """Number of observations currently inside the window."""
+        self._prune()
         return len(self._samples)
 
     def window_min(self) -> float | None:
         """The minimum observation within the window, or ``None`` when the window is empty."""
+        self._prune()
         if not self._sorted:
             return None
         return self._sorted[0]
 
     def window_median(self) -> float | None:
         """The median observation within the window, or ``None`` when the window is empty."""
+        self._prune()
         count = len(self._sorted)
         if count == 0:
             return None
@@ -158,7 +171,20 @@ def _publish_metrics(tracker: ReferenceQueryLoadTracker) -> None:
     REFERENCE_QUERY_STRESS_RATIO_MEDIAN.set(tracker.stress_ratio_median())
 
 
-# Process-global singleton fed by the database layer and read by the admission layer. Built
-# with the default window; the startup wiring overrides it from settings.
-reference_query_load_tracker = ReferenceQueryLoadTracker()
-reference_query_load_tracker.set_observer(_publish_metrics)
+_reference_query_load_tracker: ReferenceQueryLoadTracker | None = None
+
+
+def get_reference_query_load_tracker() -> ReferenceQueryLoadTracker:
+    """Return the process-global stress tracker, building and wiring it on first use.
+
+    The database layer feeds it and the admission layer reads it, so both must share one
+    instance. Building it lazily here — rather than at import — keeps importing this module
+    free of side effects and defers attaching the metrics sink until it is first needed. It
+    starts with the default window; the startup wiring overrides that from settings.
+    """
+    global _reference_query_load_tracker
+    if _reference_query_load_tracker is None:
+        tracker = ReferenceQueryLoadTracker()
+        tracker.set_observer(_publish_metrics)
+        _reference_query_load_tracker = tracker
+    return _reference_query_load_tracker

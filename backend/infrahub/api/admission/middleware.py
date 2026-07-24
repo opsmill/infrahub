@@ -89,19 +89,19 @@ class AdmissionMiddleware:
             metrics.MISSING_PRIORITY_TOTAL.inc()
 
         decision = await self._controller.admit(priority=parsed.priority)
-        if isinstance(decision, Admitted):
-            try:
-                await self.app(scope, receive, send)
-            finally:
-                self._controller.release(acquisition=decision.acquisition)
-            return
-        if isinstance(decision, Rejected):
-            # Short-circuit: the shed response is written directly, so the downstream app and
-            # every handler dependency (auth, routing, DB query) never runs.
-            response = _build_shed_response(path=path, retry_after=decision.retry_after)
-            await response(scope, receive, send)
-            return
-        assert_never(decision)
+        match decision:
+            case Admitted():
+                try:
+                    await self.app(scope, receive, send)
+                finally:
+                    self._controller.release(acquisition=decision.acquisition)
+            case Rejected():
+                # Short-circuit: the shed response is written directly, so the downstream app and
+                # every handler dependency (auth, routing, DB query) never runs.
+                response = _build_shed_response(path=path, retry_after=decision.retry_after)
+                await response(scope, receive, send)
+            case _:
+                assert_never(decision)
 
 
 def _is_cors_preflight(scope: Scope) -> bool:

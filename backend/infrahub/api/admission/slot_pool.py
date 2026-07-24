@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections import deque
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Protocol
 
 from .priority import Priority
 
@@ -11,29 +11,32 @@ if TYPE_CHECKING:
     from asyncio import Future
 
 
+class SlotPoolObserver(Protocol):
+    """Sink notified after a class's in-flight or waiter count changes.
+
+    Receives the new counts as arguments, so it never reads back from the pool: the
+    dependency runs one way, from pool to sink.
+    """
+
+    def __call__(self, priority: Priority, *, in_flight: int, waiters: int) -> None: ...
+
+
 class Acquisition:
     """Handle for a held slot, carrying the priority class and measured sojourn.
 
-    ``release`` returns the slot to the pool and is safe to call more than once; use it
-    in a ``finally`` so the slot is always returned even when the handler raises.
+    A plain data holder handed out by the pool and handed back to release the slot. The
+    ``_released`` guard the pool checks makes returning the same handle twice a no-op, so
+    releasing in a ``finally`` is safe even on a path that already released.
     """
 
-    def __init__(self, *, priority: Priority, sojourn: float, pool: PrioritySlotPool) -> None:
+    def __init__(self, *, priority: Priority, sojourn: float) -> None:
         self.priority = priority
         """Priority class the slot was acquired for."""
 
         self.sojourn = sojourn
         """Seconds spent waiting to acquire the slot (``0.0`` on the fast path)."""
 
-        self._pool = pool
         self._released = False
-
-    def release(self) -> None:
-        """Return the slot to the pool. Idempotent."""
-        if self._released:
-            return
-        self._released = True
-        self._pool._release_acquisition(priority=self.priority)
 
 
 class PrioritySlotPool:
@@ -52,20 +55,21 @@ class PrioritySlotPool:
         self._clock = clock
         self._waiters: dict[Priority, deque[Future[bool]]] = {priority: deque() for priority in Priority}
         self._in_flight: dict[Priority, int] = dict.fromkeys(Priority, 0)
-        self._on_change: Callable[[Priority], None] | None = None
+        self._on_change: SlotPoolObserver | None = None
 
-    def set_observer(self, on_change: Callable[[Priority], None] | None) -> None:
-        """Register a callback invoked with a class whenever its waiter or in-flight count changes.
+    def set_observer(self, on_change: SlotPoolObserver | None) -> None:
+        """Register a callback invoked with a class and its current counts whenever they change.
 
-        This lets an external observer (e.g. metric gauges) track queue depth the moment
-        a request enqueues or leaves the queue, rather than only when some other request is
-        admitted or released. The primitive itself stays free of any metrics dependency.
+        The pool passes the up-to-date in-flight and waiter counts as arguments, so an external
+        observer (e.g. metric gauges) tracks queue depth the moment a request enqueues or leaves
+        the queue without reading back from the pool. The primitive itself stays free of any
+        metrics dependency.
         """
         self._on_change = on_change
 
     def _notify(self, priority: Priority) -> None:
         if self._on_change is not None:
-            self._on_change(priority)
+            self._on_change(priority, in_flight=self._in_flight[priority], waiters=len(self._waiters[priority]))
 
     @property
     def max_concurrency(self) -> int:
@@ -118,14 +122,27 @@ class PrioritySlotPool:
             if not future.cancelled():
                 # A slot was handed to us in the same tick but we were cancelled before
                 # consuming it: re-release it so the next eligible waiter is served.
-                self.release()
+                self._return_slot()
             raise
 
         sojourn = self._clock() - enqueue_time
         return self._make_acquisition(priority=priority, sojourn=sojourn)
 
-    def release(self) -> None:
-        """Return a slot and hand it to the highest-priority waiter, if any."""
+    def release(self, *, acquisition: Acquisition) -> None:
+        """Return a served request's slot and hand it to the highest-priority waiter, if any.
+
+        Idempotent per acquisition: returning the same handle again is a no-op, so releasing
+        in a ``finally`` is always safe even when an earlier path already released.
+        """
+        if acquisition._released:
+            return
+        acquisition._released = True
+        self._in_flight[acquisition.priority] -= 1
+        self._notify(acquisition.priority)
+        self._return_slot()
+
+    def _return_slot(self) -> None:
+        """Return a raw slot to the pool and hand it to the highest-priority waiter, if any."""
         self._available += 1
         self._wake_up_next()
 
@@ -140,9 +157,4 @@ class PrioritySlotPool:
     def _make_acquisition(self, *, priority: Priority, sojourn: float) -> Acquisition:
         self._in_flight[priority] += 1
         self._notify(priority)
-        return Acquisition(priority=priority, sojourn=sojourn, pool=self)
-
-    def _release_acquisition(self, *, priority: Priority) -> None:
-        self._in_flight[priority] -= 1
-        self._notify(priority)
-        self.release()
+        return Acquisition(priority=priority, sojourn=sojourn)
