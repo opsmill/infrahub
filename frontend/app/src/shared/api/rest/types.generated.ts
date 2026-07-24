@@ -1848,7 +1848,7 @@ export interface components {
             /**
              * Selective Execution After Merge
              * @description When enabled, only the generators and artifact definitions affected by a merge are re-executed; when disabled, every generator and artifact definition is re-executed.
-             * @default false
+             * @default true
              */
             selective_execution_after_merge: boolean;
             /**

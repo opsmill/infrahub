@@ -389,11 +389,11 @@ class TestRelevantChange(_MergeSelectiveRegenBase):
         memory_cache: MemoryCache,
         workflow_recorder: WorkflowRecorder,
     ) -> None:
-        """A relevant change cascades through its after-merge generator to a full artifact regeneration.
+        """A change to the device kind dispatches exactly the definitions the merge diff selected.
 
-        The generator's output lands after the merge diff was captured, so the follow-up regenerates
-        every artifact through the blanket trigger rather than the per-definition request the diff alone
-        would select.
+        The generator is awaited but performs no writes here, so its captured output is empty and adds no
+        artifacts; the merge diff's own selection stands, dispatched by selective requests, not a blanket
+        trigger.
         """
         await self._run_follow_up(
             default_branch=default_branch,
@@ -401,19 +401,16 @@ class TestRelevantChange(_MergeSelectiveRegenBase):
             memory_cache=memory_cache,
             diff_summary=self._device_diff(target_branch=default_branch.name, device_id=dataset["device_id"]),
         )
+        artifact_requests = self._artifact_requests(workflow_recorder)
         generator_models = self._generator_run_models(workflow_recorder)
 
+        assert [request.artifact_definition_name for request in artifact_requests] == ["device-artifact"]
         assert [model.generator_definition.definition_name for model in generator_models] == ["device-generator"]
         # No existing subscribers, so every live member is new and the filter resolves to "all".
+        assert artifact_requests[0].members == []
         assert generator_models[0].target_members == []
-        # The generator's output lands after the merge diff was captured, so the artifact is regenerated
-        # through the blanket trigger rather than a per-definition request the diff alone would select.
-        assert self._artifact_requests(workflow_recorder) == []
-        trigger_branches = [
-            call["parameters"]["branch"]
-            for call in workflow_recorder.get_submit_calls_for(TRIGGER_ARTIFACT_DEFINITION_GENERATE)
-        ]
-        assert trigger_branches == [default_branch.name]
+        # The empty generator capture triggers no blanket regeneration; the merge-diff selection stands.
+        assert workflow_recorder.get_submit_calls_for(TRIGGER_ARTIFACT_DEFINITION_GENERATE) == []
 
 
 class TestGeneratorExecuteAfterMergeFalse(_MergeSelectiveRegenBase):
@@ -624,80 +621,3 @@ class TestConcurrentlyAddedMember(_MergeSelectiveRegenBase):
         # A member added on main without a subscriber is treated as new and regenerates alongside the
         # impacted member, while the untouched existing member is left out.
         assert set(artifact_requests[0].members) == {dataset["device1_id"], dataset["device3_id"]}
-
-
-class TestAfterMergeGeneratorArtifactCascade(_MergeSelectiveRegenBase):
-    """An after-merge generator's output reaches its consuming artifacts.
-
-    The generator runs in the post-merge follow-up, after the merge diff was captured, so the fields
-    it writes are absent from that diff. The change under test edits only a device field the artifact
-    query never reads, so the artifact is never selected on the diff's own merit -- the sole reason to
-    regenerate it is that an after-merge generator ran. The follow-up must therefore regenerate every
-    artifact once the generator has run.
-    """
-
-    @pytest.fixture(scope="class")
-    async def dataset(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        client: InfrahubClient,
-        git_sources_dir: Path,
-        git_repos_dir: Path,
-    ) -> dict[str, Any]:
-        await self._seed_schema(db)
-        device = await self._make_device(db, name="dev1", color="red")
-        repo_node, transform, query = await self._import_transform(db, client, git_sources_dir)
-        group = await self._make_group(db, name="regen-targets", members=[device])
-        artdef = await self._make_artifact_definition(
-            db, name="device-artifact", group=group, transform_id=transform.id
-        )
-        # An existing subscriber keeps the member off the "new member" path, so a change to a field the
-        # artifact query never reads leaves the artifact with nothing to render on the diff's own merit.
-        artifact = await self._make_artifact_subscriber(db, name="artifact-dev1", device=device, artdef=artdef)
-        await self._make_query_group(db, name="qg-dev1", query_id=query.id, member=device, subscriber=artifact)
-        await self._make_generator(
-            db, name="device-generator", query_name="GetGenDevice", group=group, repo_node=repo_node
-        )
-        await create_branch(branch_name=SOURCE_BRANCH, db=db)
-        return {"device_id": device.id}
-
-    def _unread_field_diff(self, *, target_branch: str, device_id: str) -> list[NodeDiff]:
-        # "color" sits on the device kind the generator targets but is absent from the artifact query, so
-        # the generator is selected on the kind while the artifact resolves to zero impacted members.
-        return [
-            node_diff(
-                node_id=device_id,
-                kind=DEVICE_KIND,
-                branch=target_branch,
-                action="UPDATED",
-                display_label="device",
-                field_names=["color"],
-            )
-        ]
-
-    async def test_merge_regenerates_artifacts_after_generator(
-        self,
-        dataset: dict[str, Any],
-        default_branch: Branch,
-        admin_account: CoreAccount,
-        memory_cache: MemoryCache,
-        workflow_recorder: WorkflowRecorder,
-    ) -> None:
-        """A merge regenerates every artifact once its after-merge generator has run."""
-        await self._run_follow_up(
-            default_branch=default_branch,
-            admin_account=admin_account,
-            memory_cache=memory_cache,
-            diff_summary=self._unread_field_diff(target_branch=default_branch.name, device_id=dataset["device_id"]),
-        )
-        generator_models = self._generator_run_models(workflow_recorder)
-        assert [model.generator_definition.definition_name for model in generator_models] == ["device-generator"]
-        # The diff touches no field the artifact reads, so it is never selected on its own merit; the
-        # after-merge generator run is the only reason to regenerate it, via the blanket artifact trigger.
-        assert self._artifact_requests(workflow_recorder) == []
-        trigger_branches = [
-            call["parameters"]["branch"]
-            for call in workflow_recorder.get_submit_calls_for(TRIGGER_ARTIFACT_DEFINITION_GENERATE)
-        ]
-        assert trigger_branches == [default_branch.name]
