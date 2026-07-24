@@ -384,8 +384,7 @@ async def load_schema(
     for schema in schemas.schemas:
         internal_schema = schema.internal_schema
         candidate_schemas.append(internal_schema)
-        errors += internal_schema.validate_namespaces()
-        errors += internal_schema.validate_reserved_suffixes()
+        errors += internal_schema.validate_reserved_names()
         warnings += internal_schema.gather_warnings()
 
     if errors:
@@ -478,8 +477,7 @@ async def check_schema(
     for schema in schemas.schemas:
         internal_schema = schema.internal_schema
         candidate_schemas.append(internal_schema)
-        errors += internal_schema.validate_namespaces()
-        errors += internal_schema.validate_reserved_suffixes()
+        errors += internal_schema.validate_reserved_names()
         warnings += internal_schema.gather_warnings()
 
     if errors:
