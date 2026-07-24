@@ -7,6 +7,7 @@ from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
 from infrahub.core.validators.uniqueness.index import UniquenessQueryResultsIndex
+from infrahub.utilities.chunks import chunked
 
 from ..enum import ConstraintIdentifier
 from ..interface import ConstraintCheckerInterface
@@ -21,8 +22,6 @@ from .model import (
 from .query import NodeUniqueAttributeConstraintQuery, TargetedUniquenessValidationQuery
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from infrahub.core.branch import Branch
     from infrahub.core.query import QueryResult
     from infrahub.core.schema.basenode_schema import SchemaAttributePath
@@ -31,11 +30,6 @@ if TYPE_CHECKING:
 
     from ..model import SchemaConstraintValidatorRequest
     from .query import TargetedUniquenessViolation
-
-
-def _chunked(items: list[str], size: int) -> Iterator[list[str]]:
-    for start in range(0, len(items), size):
-        yield items[start : start + size]
 
 
 def get_attribute_path_from_string(
@@ -59,6 +53,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
         self,
         db: InfrahubDatabase,
         max_concurrent_execution: int = 5,
+        # default to 500 as we commonly do with CALL IN TRANSACTIONS OF 500 ROWS in cypher
         query_batch_size: int = 500,
     ) -> None:
         self.db = db
@@ -135,7 +130,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
         async with self.db.start_session(read_only=True) as session_db:
             for constraint_path in constraint_paths:
                 constraint_elements = constraint_path.attributes_paths
-                for window in _chunked(node_uuids, self.query_batch_size):
+                for window in chunked(node_uuids, self.query_batch_size):
                     data_paths = await self._query_group_violations(
                         session_db=session_db,
                         schema=schema,
