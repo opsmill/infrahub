@@ -129,7 +129,7 @@ async def recover_cmd(
             cache=cache,
             rollbacker=GraphRollbacker(db=db),
             schema_manager=schema_manager,
-            lock_cleaner=StaleLockCleaner(cache=cache, component=component, default_branch_name=default_branch.name),
+            lock_cleaner=StaleLockCleaner(cache=cache, component=component),
             diff_locker=DiffLocker(),
         )
 

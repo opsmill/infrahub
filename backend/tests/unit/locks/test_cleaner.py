@@ -33,7 +33,7 @@ async def _build_cleaner(cache: MemoryCache) -> StaleLockCleaner:
         cache=cache, db=db, message_bus=BusRecorder(), component_type=ComponentType.API_SERVER
     )
     await component.refresh_heartbeat()  # marks WORKER_IDENTITY active in the cache
-    return StaleLockCleaner(cache=cache, component=component, default_branch_name="main")
+    return StaleLockCleaner(cache=cache, component=component)
 
 
 async def test_clears_only_locks_held_by_dead_workers() -> None:

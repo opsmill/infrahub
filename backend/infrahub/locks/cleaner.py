@@ -22,10 +22,9 @@ class StaleLockCleaner:
     computation or a schema load on another branch — so those are left untouched.
     """
 
-    def __init__(self, cache: InfrahubCache, component: InfrahubComponent, default_branch_name: str) -> None:
+    def __init__(self, cache: InfrahubCache, component: InfrahubComponent) -> None:
         self.cache = cache
         self.component = component
-        self.default_branch_name = default_branch_name
 
     async def clear_if_holder_dead(self, keys: list[str]) -> list[str]:
         """Delete each lock key whose holder is not an active worker; return the keys deleted.
@@ -45,4 +44,4 @@ class StaleLockCleaner:
         return deleted
 
     async def _active_worker_ids(self) -> set[str]:
-        return await self.component.list_active_worker_ids(branch=self.default_branch_name)
+        return await self.component.list_active_worker_ids()

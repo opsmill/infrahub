@@ -147,7 +147,7 @@ class MergeFailureIdentifier:
             await self.merge_write_blocker.set(branch=protected.name, state=expected_state)
 
     async def _active_worker_ids(self) -> set[str]:
-        return await self.component.list_active_worker_ids(branch=self.default_branch.name)
+        return await self.component.list_active_worker_ids()
 
 
 async def scan_for_failed_merges(db: InfrahubDatabase, service: InfrahubServices) -> str | None:

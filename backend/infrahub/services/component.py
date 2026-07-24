@@ -75,9 +75,13 @@ class InfrahubComponent:
                 workers[identity].add_value(key=key, value=value)
         return list(workers.values())
 
-    async def list_active_worker_ids(self, branch: str) -> set[str]:
-        """Return the ids of the workers currently reporting an active heartbeat."""
-        workers = await self.list_workers(branch=branch, schema_hash=False)
+    async def list_active_worker_ids(self) -> set[str]:
+        """Return the ids of the workers currently reporting an active heartbeat.
+
+        Liveness is global: the active set is the same for every branch, so this takes no branch.
+        """
+        # ``branch`` only scopes the schema-hash lookup, which is skipped here, so its value is inert.
+        workers = await self.list_workers(branch=registry.default_branch, schema_hash=False)
         return {worker.id for worker in workers if worker.active}
 
     async def refresh_schema_hash(self, branches: list[str] | None = None) -> None:
