@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, assert_never
+from typing import TYPE_CHECKING, Any, assert_never, cast
 
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_429_TOO_MANY_REQUESTS
@@ -88,7 +88,7 @@ class AdmissionMiddleware:
             await self.app(scope, receive, send)
             return
 
-        controller: AdmissionController = state.admission_controller
+        controller = cast("AdmissionController", state.admission_controller)
         parsed = parse_priority(_read_priority_header(scope))
         if not parsed.was_explicit:
             metrics.MISSING_PRIORITY_TOTAL.inc()
