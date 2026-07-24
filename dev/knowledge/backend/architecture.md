@@ -62,6 +62,7 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 - [Async Tasks](async-tasks.md) - Background task processing
 - [Message Bus](message-bus.md) - Inter-service communication
 - [Computed Attributes](computed-attributes.md) - Jinja2 evaluation paths and schema registry
+- [Selective Post-Merge Regeneration](selective-merge-regeneration.md) - narrowing generator/artifact regeneration to the merge's affected set
 - [Object Templates](templates.md) - Template generation, application, and resource pool integration
 
 ### Guidelines
