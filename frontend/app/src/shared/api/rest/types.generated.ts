@@ -604,490 +604,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** APIGenericSchema */
-        APIGenericSchema: {
-            /**
-             * Id
-             * @description The ID of the node
-             */
-            id?: string | null;
-            /**
-             * Name
-             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
-             */
-            name: string;
-            /**
-             * Namespace
-             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
-             */
-            namespace: string;
-            /**
-             * Description
-             * @description Short description of the model, will be visible in the frontend.
-             */
-            description?: string | null;
-            /**
-             * Label
-             * @description Human friendly representation of the name/kind
-             */
-            label?: string | null;
-            /**
-             * @description Type of branch support for the model.
-             * @default aware
-             */
-            branch: components["schemas"]["BranchSupportType"];
-            /**
-             * Default Filter
-             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
-             */
-            default_filter?: string | null;
-            /**
-             * Human Friendly Id
-             * @description Human friendly and unique identifier for the object.
-             */
-            human_friendly_id?: string[] | null;
-            /**
-             * Display Label
-             * @description Attribute or Jinja2 template to use to generate the display label
-             */
-            display_label?: string | null;
-            /**
-             * Display Labels
-             * @description List of attributes to use to generate the display label (deprecated)
-             */
-            display_labels?: string[] | null;
-            /**
-             * Include In Menu
-             * @description Defines if objects of this kind should be included in the menu.
-             */
-            include_in_menu?: boolean | null;
-            /**
-             * Menu Placement
-             * @description Defines where in the menu this object should be placed.
-             */
-            menu_placement?: string | null;
-            /**
-             * Icon
-             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
-             */
-            icon?: string | null;
-            /**
-             * Order By
-             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
-             */
-            order_by?: string[] | null;
-            /**
-             * Uniqueness Constraints
-             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
-             */
-            uniqueness_constraints?: string[][] | null;
-            /**
-             * Documentation
-             * @description Link to a documentation associated with this object, can be internal or external.
-             */
-            documentation?: string | null;
-            /**
-             * @description Expected state of the node/generic after loading the schema
-             * @default present
-             */
-            state: components["schemas"]["SchemaState"];
-            /**
-             * Attributes
-             * @description Node attributes
-             */
-            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
-            /**
-             * Relationships
-             * @description Node Relationships
-             */
-            relationships?: components["schemas"]["RelationshipSchemaRead"][];
-            /**
-             * Hash
-             * @description Hash of the node computed by the server.
-             */
-            hash?: string | null;
-            /**
-             * Hierarchical
-             * @description Defines if the Generic support the hierarchical mode.
-             * @default false
-             */
-            hierarchical: boolean;
-            /**
-             * Generate Profile
-             * @description Indicate if a profile schema should be generated for this schema
-             * @default true
-             */
-            generate_profile: boolean;
-            /**
-             * Used By
-             * @description List of Nodes that are referencing this Generic
-             */
-            used_by?: string[];
-            /**
-             * Restricted Namespaces
-             * @description Nodes inheriting from this Generic schema must belong to one of the listed namespaces
-             */
-            restricted_namespaces?: string[] | null;
-            /** Kind */
-            readonly kind: string;
-        };
-        /** APINodeSchema */
-        APINodeSchema: {
-            /**
-             * Id
-             * @description The ID of the node
-             */
-            id?: string | null;
-            /**
-             * Name
-             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
-             */
-            name: string;
-            /**
-             * Namespace
-             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
-             */
-            namespace: string;
-            /**
-             * Description
-             * @description Short description of the model, will be visible in the frontend.
-             */
-            description?: string | null;
-            /**
-             * Label
-             * @description Human friendly representation of the name/kind
-             */
-            label?: string | null;
-            /**
-             * @description Type of branch support for the model.
-             * @default aware
-             */
-            branch: components["schemas"]["BranchSupportType"];
-            /**
-             * Default Filter
-             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
-             */
-            default_filter?: string | null;
-            /**
-             * Human Friendly Id
-             * @description Human friendly and unique identifier for the object.
-             */
-            human_friendly_id?: string[] | null;
-            /**
-             * Display Label
-             * @description Attribute or Jinja2 template to use to generate the display label
-             */
-            display_label?: string | null;
-            /**
-             * Display Labels
-             * @description List of attributes to use to generate the display label (deprecated)
-             */
-            display_labels?: string[] | null;
-            /**
-             * Include In Menu
-             * @description Defines if objects of this kind should be included in the menu.
-             */
-            include_in_menu?: boolean | null;
-            /**
-             * Menu Placement
-             * @description Defines where in the menu this object should be placed.
-             */
-            menu_placement?: string | null;
-            /**
-             * Icon
-             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
-             */
-            icon?: string | null;
-            /**
-             * Order By
-             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
-             */
-            order_by?: string[] | null;
-            /**
-             * Uniqueness Constraints
-             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
-             */
-            uniqueness_constraints?: string[][] | null;
-            /**
-             * Documentation
-             * @description Link to a documentation associated with this object, can be internal or external.
-             */
-            documentation?: string | null;
-            /**
-             * @description Expected state of the node/generic after loading the schema
-             * @default present
-             */
-            state: components["schemas"]["SchemaState"];
-            /**
-             * Attributes
-             * @description Node attributes
-             */
-            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
-            /**
-             * Relationships
-             * @description Node Relationships
-             */
-            relationships?: components["schemas"]["RelationshipSchemaRead"][];
-            /**
-             * Hash
-             * @description Hash of the node computed by the server.
-             */
-            hash?: string | null;
-            /**
-             * Inherit From
-             * @description List of Generic Kind that this node is inheriting from
-             */
-            inherit_from?: string[];
-            /**
-             * Generate Profile
-             * @description Indicate if a profile schema should be generated for this schema
-             * @default true
-             */
-            generate_profile: boolean;
-            /**
-             * Generate Template
-             * @description Indicate if an object template schema should be generated for this schema
-             * @default false
-             */
-            generate_template: boolean;
-            /**
-             * Hierarchy
-             * @description Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode
-             */
-            hierarchy?: string | null;
-            /**
-             * Parent
-             * @description Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.
-             */
-            parent?: string | null;
-            /**
-             * Children
-             * @description Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.
-             */
-            children?: string | null;
-            /** Kind */
-            readonly kind: string;
-        };
-        /** APIProfileSchema */
-        APIProfileSchema: {
-            /**
-             * Id
-             * @description The ID of the node
-             */
-            id?: string | null;
-            /**
-             * Name
-             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
-             */
-            name: string;
-            /**
-             * Namespace
-             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
-             */
-            namespace: string;
-            /**
-             * Description
-             * @description Short description of the model, will be visible in the frontend.
-             */
-            description?: string | null;
-            /**
-             * Label
-             * @description Human friendly representation of the name/kind
-             */
-            label?: string | null;
-            /**
-             * @description Type of branch support for the model.
-             * @default aware
-             */
-            branch: components["schemas"]["BranchSupportType"];
-            /**
-             * Default Filter
-             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
-             */
-            default_filter?: string | null;
-            /**
-             * Human Friendly Id
-             * @description Human friendly and unique identifier for the object.
-             */
-            human_friendly_id?: string[] | null;
-            /**
-             * Display Label
-             * @description Attribute or Jinja2 template to use to generate the display label
-             */
-            display_label?: string | null;
-            /**
-             * Display Labels
-             * @description List of attributes to use to generate the display label (deprecated)
-             */
-            display_labels?: string[] | null;
-            /**
-             * Include In Menu
-             * @description Defines if objects of this kind should be included in the menu.
-             */
-            include_in_menu?: boolean | null;
-            /**
-             * Menu Placement
-             * @description Defines where in the menu this object should be placed.
-             */
-            menu_placement?: string | null;
-            /**
-             * Icon
-             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
-             */
-            icon?: string | null;
-            /**
-             * Order By
-             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
-             */
-            order_by?: string[] | null;
-            /**
-             * Uniqueness Constraints
-             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
-             */
-            uniqueness_constraints?: string[][] | null;
-            /**
-             * Documentation
-             * @description Link to a documentation associated with this object, can be internal or external.
-             */
-            documentation?: string | null;
-            /**
-             * @description Expected state of the node/generic after loading the schema
-             * @default present
-             */
-            state: components["schemas"]["SchemaState"];
-            /**
-             * Attributes
-             * @description Node attributes
-             */
-            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
-            /**
-             * Relationships
-             * @description Node Relationships
-             */
-            relationships?: components["schemas"]["RelationshipSchemaRead"][];
-            /**
-             * Hash
-             * @description Hash of the node computed by the server.
-             */
-            hash?: string | null;
-            /**
-             * Inherit From
-             * @description List of Generic Kind that this profile is inheriting from
-             */
-            inherit_from?: string[];
-            /** Kind */
-            readonly kind: string;
-        };
-        /** APITemplateSchema */
-        APITemplateSchema: {
-            /**
-             * Id
-             * @description The ID of the node
-             */
-            id?: string | null;
-            /**
-             * Name
-             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
-             */
-            name: string;
-            /**
-             * Namespace
-             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
-             */
-            namespace: string;
-            /**
-             * Description
-             * @description Short description of the model, will be visible in the frontend.
-             */
-            description?: string | null;
-            /**
-             * Label
-             * @description Human friendly representation of the name/kind
-             */
-            label?: string | null;
-            /**
-             * @description Type of branch support for the model.
-             * @default aware
-             */
-            branch: components["schemas"]["BranchSupportType"];
-            /**
-             * Default Filter
-             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
-             */
-            default_filter?: string | null;
-            /**
-             * Human Friendly Id
-             * @description Human friendly and unique identifier for the object.
-             */
-            human_friendly_id?: string[] | null;
-            /**
-             * Display Label
-             * @description Attribute or Jinja2 template to use to generate the display label
-             */
-            display_label?: string | null;
-            /**
-             * Display Labels
-             * @description List of attributes to use to generate the display label (deprecated)
-             */
-            display_labels?: string[] | null;
-            /**
-             * Include In Menu
-             * @description Defines if objects of this kind should be included in the menu.
-             */
-            include_in_menu?: boolean | null;
-            /**
-             * Menu Placement
-             * @description Defines where in the menu this object should be placed.
-             */
-            menu_placement?: string | null;
-            /**
-             * Icon
-             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
-             */
-            icon?: string | null;
-            /**
-             * Order By
-             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
-             */
-            order_by?: string[] | null;
-            /**
-             * Uniqueness Constraints
-             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
-             */
-            uniqueness_constraints?: string[][] | null;
-            /**
-             * Documentation
-             * @description Link to a documentation associated with this object, can be internal or external.
-             */
-            documentation?: string | null;
-            /**
-             * @description Expected state of the node/generic after loading the schema
-             * @default present
-             */
-            state: components["schemas"]["SchemaState"];
-            /**
-             * Attributes
-             * @description Node attributes
-             */
-            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
-            /**
-             * Relationships
-             * @description Node Relationships
-             */
-            relationships?: components["schemas"]["RelationshipSchemaRead"][];
-            /**
-             * Hash
-             * @description Hash of the node computed by the server.
-             */
-            hash?: string | null;
-            /**
-             * Inherit From
-             * @description List of Generic Kind that this template is inheriting from
-             */
-            inherit_from?: string[];
-            /** Kind */
-            readonly kind: string;
-        };
         /** AccessTokenResponse */
         AccessTokenResponse: {
             /**
@@ -1578,6 +1094,133 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["AttributeParametersWrite"] | null;
+        };
+        /** GenericSchemaRead */
+        GenericSchemaRead: {
+            /**
+             * Id
+             * @description The ID of the node
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+             */
+            name: string;
+            /**
+             * Namespace
+             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+             */
+            namespace: string;
+            /**
+             * Description
+             * @description Short description of the model, will be visible in the frontend.
+             */
+            description?: string | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name/kind
+             */
+            label?: string | null;
+            /**
+             * @description Type of branch support for the model.
+             * @default aware
+             */
+            branch: components["schemas"]["BranchSupportType"];
+            /**
+             * Default Filter
+             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
+             */
+            default_filter?: string | null;
+            /**
+             * Human Friendly Id
+             * @description Human friendly and unique identifier for the object.
+             */
+            human_friendly_id?: string[] | null;
+            /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
+             * Display Labels
+             * @description List of attributes to use to generate the display label (deprecated)
+             */
+            display_labels?: string[] | null;
+            /**
+             * Include In Menu
+             * @description Defines if objects of this kind should be included in the menu.
+             */
+            include_in_menu?: boolean | null;
+            /**
+             * Menu Placement
+             * @description Defines where in the menu this object should be placed.
+             */
+            menu_placement?: string | null;
+            /**
+             * Icon
+             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+             */
+            icon?: string | null;
+            /**
+             * Order By
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
+             */
+            order_by?: string[] | null;
+            /**
+             * Uniqueness Constraints
+             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+             */
+            uniqueness_constraints?: string[][] | null;
+            /**
+             * Documentation
+             * @description Link to a documentation associated with this object, can be internal or external.
+             */
+            documentation?: string | null;
+            /**
+             * @description Expected state of the node/generic after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * Attributes
+             * @description Node attributes
+             */
+            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
+            /**
+             * Relationships
+             * @description Node Relationships
+             */
+            relationships?: components["schemas"]["RelationshipSchemaRead"][];
+            /**
+             * Hash
+             * @description Hash of the node computed by the server.
+             */
+            hash?: string | null;
+            /**
+             * Hierarchical
+             * @description Defines if the Generic support the hierarchical mode.
+             * @default false
+             */
+            hierarchical: boolean;
+            /**
+             * Generate Profile
+             * @description Indicate if a profile schema should be generated for this schema
+             * @default true
+             */
+            generate_profile: boolean;
+            /**
+             * Used By
+             * @description List of Nodes that are referencing this Generic
+             */
+            used_by?: string[];
+            /**
+             * Restricted Namespaces
+             * @description Nodes inheriting from this Generic schema must belong to one of the listed namespaces
+             */
+            restricted_namespaces?: string[] | null;
+            /** Kind */
+            readonly kind: string;
         };
         /** GenericSchemaWrite */
         GenericSchemaWrite: {
@@ -2249,6 +1892,143 @@ export interface components {
              * @description Relationships to add to the existing node.
              */
             relationships?: components["schemas"]["RelationshipSchemaWrite"][];
+        };
+        /** NodeSchemaRead */
+        NodeSchemaRead: {
+            /**
+             * Id
+             * @description The ID of the node
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+             */
+            name: string;
+            /**
+             * Namespace
+             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+             */
+            namespace: string;
+            /**
+             * Description
+             * @description Short description of the model, will be visible in the frontend.
+             */
+            description?: string | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name/kind
+             */
+            label?: string | null;
+            /**
+             * @description Type of branch support for the model.
+             * @default aware
+             */
+            branch: components["schemas"]["BranchSupportType"];
+            /**
+             * Default Filter
+             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
+             */
+            default_filter?: string | null;
+            /**
+             * Human Friendly Id
+             * @description Human friendly and unique identifier for the object.
+             */
+            human_friendly_id?: string[] | null;
+            /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
+             * Display Labels
+             * @description List of attributes to use to generate the display label (deprecated)
+             */
+            display_labels?: string[] | null;
+            /**
+             * Include In Menu
+             * @description Defines if objects of this kind should be included in the menu.
+             */
+            include_in_menu?: boolean | null;
+            /**
+             * Menu Placement
+             * @description Defines where in the menu this object should be placed.
+             */
+            menu_placement?: string | null;
+            /**
+             * Icon
+             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+             */
+            icon?: string | null;
+            /**
+             * Order By
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
+             */
+            order_by?: string[] | null;
+            /**
+             * Uniqueness Constraints
+             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+             */
+            uniqueness_constraints?: string[][] | null;
+            /**
+             * Documentation
+             * @description Link to a documentation associated with this object, can be internal or external.
+             */
+            documentation?: string | null;
+            /**
+             * @description Expected state of the node/generic after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * Attributes
+             * @description Node attributes
+             */
+            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
+            /**
+             * Relationships
+             * @description Node Relationships
+             */
+            relationships?: components["schemas"]["RelationshipSchemaRead"][];
+            /**
+             * Hash
+             * @description Hash of the node computed by the server.
+             */
+            hash?: string | null;
+            /**
+             * Inherit From
+             * @description List of Generic Kind that this node is inheriting from
+             */
+            inherit_from?: string[];
+            /**
+             * Generate Profile
+             * @description Indicate if a profile schema should be generated for this schema
+             * @default true
+             */
+            generate_profile: boolean;
+            /**
+             * Generate Template
+             * @description Indicate if an object template schema should be generated for this schema
+             * @default false
+             */
+            generate_template: boolean;
+            /**
+             * Hierarchy
+             * @description Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode
+             */
+            hierarchy?: string | null;
+            /**
+             * Parent
+             * @description Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.
+             */
+            parent?: string | null;
+            /**
+             * Children
+             * @description Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.
+             */
+            children?: string | null;
+            /** Kind */
+            readonly kind: string;
         };
         /** NodeSchemaWrite */
         NodeSchemaWrite: {
@@ -2955,6 +2735,116 @@ export interface components {
              */
             revoke_proposed_change_approvals: boolean;
         };
+        /** ProfileSchemaRead */
+        ProfileSchemaRead: {
+            /**
+             * Id
+             * @description The ID of the node
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+             */
+            name: string;
+            /**
+             * Namespace
+             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+             */
+            namespace: string;
+            /**
+             * Description
+             * @description Short description of the model, will be visible in the frontend.
+             */
+            description?: string | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name/kind
+             */
+            label?: string | null;
+            /**
+             * @description Type of branch support for the model.
+             * @default aware
+             */
+            branch: components["schemas"]["BranchSupportType"];
+            /**
+             * Default Filter
+             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
+             */
+            default_filter?: string | null;
+            /**
+             * Human Friendly Id
+             * @description Human friendly and unique identifier for the object.
+             */
+            human_friendly_id?: string[] | null;
+            /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
+             * Display Labels
+             * @description List of attributes to use to generate the display label (deprecated)
+             */
+            display_labels?: string[] | null;
+            /**
+             * Include In Menu
+             * @description Defines if objects of this kind should be included in the menu.
+             */
+            include_in_menu?: boolean | null;
+            /**
+             * Menu Placement
+             * @description Defines where in the menu this object should be placed.
+             */
+            menu_placement?: string | null;
+            /**
+             * Icon
+             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+             */
+            icon?: string | null;
+            /**
+             * Order By
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
+             */
+            order_by?: string[] | null;
+            /**
+             * Uniqueness Constraints
+             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+             */
+            uniqueness_constraints?: string[][] | null;
+            /**
+             * Documentation
+             * @description Link to a documentation associated with this object, can be internal or external.
+             */
+            documentation?: string | null;
+            /**
+             * @description Expected state of the node/generic after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * Attributes
+             * @description Node attributes
+             */
+            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
+            /**
+             * Relationships
+             * @description Node Relationships
+             */
+            relationships?: components["schemas"]["RelationshipSchemaRead"][];
+            /**
+             * Hash
+             * @description Hash of the node computed by the server.
+             */
+            hash?: string | null;
+            /**
+             * Inherit From
+             * @description List of Generic Kind that this profile is inheriting from
+             */
+            inherit_from?: string[];
+            /** Kind */
+            readonly kind: string;
+        };
         /** QueryPayload */
         QueryPayload: {
             /** Variables */
@@ -3326,13 +3216,13 @@ export interface components {
              */
             main: string;
             /** Nodes */
-            nodes?: components["schemas"]["APINodeSchema"][];
+            nodes?: components["schemas"]["NodeSchemaRead"][];
             /** Generics */
-            generics?: components["schemas"]["APIGenericSchema"][];
+            generics?: components["schemas"]["GenericSchemaRead"][];
             /** Profiles */
-            profiles?: components["schemas"]["APIProfileSchema"][];
+            profiles?: components["schemas"]["ProfileSchemaRead"][];
             /** Templates */
-            templates?: components["schemas"]["APITemplateSchema"][];
+            templates?: components["schemas"]["TemplateSchemaRead"][];
             /** Namespaces */
             namespaces?: components["schemas"]["SchemaNamespace"][];
         };
@@ -3432,6 +3322,116 @@ export interface components {
             /** Checksum */
             checksum: string;
             remote_send_status: components["schemas"]["RemoteSendStatus"];
+        };
+        /** TemplateSchemaRead */
+        TemplateSchemaRead: {
+            /**
+             * Id
+             * @description The ID of the node
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+             */
+            name: string;
+            /**
+             * Namespace
+             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+             */
+            namespace: string;
+            /**
+             * Description
+             * @description Short description of the model, will be visible in the frontend.
+             */
+            description?: string | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name/kind
+             */
+            label?: string | null;
+            /**
+             * @description Type of branch support for the model.
+             * @default aware
+             */
+            branch: components["schemas"]["BranchSupportType"];
+            /**
+             * Default Filter
+             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
+             */
+            default_filter?: string | null;
+            /**
+             * Human Friendly Id
+             * @description Human friendly and unique identifier for the object.
+             */
+            human_friendly_id?: string[] | null;
+            /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
+             * Display Labels
+             * @description List of attributes to use to generate the display label (deprecated)
+             */
+            display_labels?: string[] | null;
+            /**
+             * Include In Menu
+             * @description Defines if objects of this kind should be included in the menu.
+             */
+            include_in_menu?: boolean | null;
+            /**
+             * Menu Placement
+             * @description Defines where in the menu this object should be placed.
+             */
+            menu_placement?: string | null;
+            /**
+             * Icon
+             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+             */
+            icon?: string | null;
+            /**
+             * Order By
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
+             */
+            order_by?: string[] | null;
+            /**
+             * Uniqueness Constraints
+             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+             */
+            uniqueness_constraints?: string[][] | null;
+            /**
+             * Documentation
+             * @description Link to a documentation associated with this object, can be internal or external.
+             */
+            documentation?: string | null;
+            /**
+             * @description Expected state of the node/generic after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * Attributes
+             * @description Node attributes
+             */
+            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
+            /**
+             * Relationships
+             * @description Node Relationships
+             */
+            relationships?: components["schemas"]["RelationshipSchemaRead"][];
+            /**
+             * Hash
+             * @description Hash of the node computed by the server.
+             */
+            hash?: string | null;
+            /**
+             * Inherit From
+             * @description List of Generic Kind that this template is inheriting from
+             */
+            inherit_from?: string[];
+            /** Kind */
+            readonly kind: string;
         };
         /** TextAttributeParametersRead */
         TextAttributeParametersRead: {
@@ -4484,7 +4484,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["APIProfileSchema"] | components["schemas"]["APINodeSchema"] | components["schemas"]["APIGenericSchema"] | components["schemas"]["APITemplateSchema"];
+                    "application/json": components["schemas"]["ProfileSchemaRead"] | components["schemas"]["NodeSchemaRead"] | components["schemas"]["GenericSchemaRead"] | components["schemas"]["TemplateSchemaRead"];
                 };
             };
             /** @description Validation Error */

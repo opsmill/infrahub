@@ -90,28 +90,12 @@ def _api_schema_from_schema[TApiSchema: BaseNodeSchemaRead](
     return model(**data)
 
 
-class APINodeSchema(NodeSchemaRead):
-    pass
-
-
-class APIGenericSchema(GenericSchemaRead):
-    pass
-
-
-class APIProfileSchema(ProfileSchemaRead):
-    pass
-
-
-class APITemplateSchema(TemplateSchemaRead):
-    pass
-
-
 class SchemaReadAPI(BaseModel):
     main: str = Field(description="Main hash for the entire schema")
-    nodes: list[APINodeSchema] = Field(default_factory=list)
-    generics: list[APIGenericSchema] = Field(default_factory=list)
-    profiles: list[APIProfileSchema] = Field(default_factory=list)
-    templates: list[APITemplateSchema] = Field(default_factory=list)
+    nodes: list[NodeSchemaRead] = Field(default_factory=list)
+    generics: list[GenericSchemaRead] = Field(default_factory=list)
+    profiles: list[ProfileSchemaRead] = Field(default_factory=list)
+    templates: list[TemplateSchemaRead] = Field(default_factory=list)
     namespaces: list[SchemaNamespace] = Field(default_factory=list)
 
 
@@ -225,22 +209,22 @@ async def get_schema(
     return SchemaReadAPI(
         main=registry.schema.get_schema_branch(name=branch.name).get_hash(),
         nodes=[
-            _api_schema_from_schema(model=APINodeSchema, schema=value)
+            _api_schema_from_schema(model=NodeSchemaRead, schema=value)
             for value in all_schemas
             if isinstance(value, NodeSchema) and value.namespace != "Internal"
         ],
         generics=[
-            _api_schema_from_schema(model=APIGenericSchema, schema=value)
+            _api_schema_from_schema(model=GenericSchemaRead, schema=value)
             for value in all_schemas
             if isinstance(value, GenericSchema) and value.namespace != "Internal"
         ],
         profiles=[
-            _api_schema_from_schema(model=APIProfileSchema, schema=value)
+            _api_schema_from_schema(model=ProfileSchemaRead, schema=value)
             for value in all_schemas
             if isinstance(value, ProfileSchema) and value.namespace != "Internal"
         ],
         templates=[
-            _api_schema_from_schema(model=APITemplateSchema, schema=value)
+            _api_schema_from_schema(model=TemplateSchemaRead, schema=value)
             for value in all_schemas
             if isinstance(value, TemplateSchema) and value.namespace != "Internal"
         ],
@@ -260,16 +244,16 @@ async def get_schema_summary(
 @router.get("/{schema_kind}")
 async def get_schema_by_kind(
     schema_kind: str, branch: Branch = Depends(get_branch_dep), _: AccountSession = Depends(get_current_user)
-) -> APIProfileSchema | APINodeSchema | APIGenericSchema | APITemplateSchema:
+) -> ProfileSchemaRead | NodeSchemaRead | GenericSchemaRead | TemplateSchemaRead:
     log.debug("schema_kind_request", branch=branch.name)
 
     schema = registry.schema.get(name=schema_kind, branch=branch, duplicate=False)
 
-    api_schema: dict[str, type[APIProfileSchema | APINodeSchema | APIGenericSchema | APITemplateSchema]] = {
-        "profile": APIProfileSchema,
-        "node": APINodeSchema,
-        "generic": APIGenericSchema,
-        "template": APITemplateSchema,
+    api_schema: dict[str, type[ProfileSchemaRead | NodeSchemaRead | GenericSchemaRead | TemplateSchemaRead]] = {
+        "profile": ProfileSchemaRead,
+        "node": NodeSchemaRead,
+        "generic": GenericSchemaRead,
+        "template": TemplateSchemaRead,
     }
     key = ""
 
