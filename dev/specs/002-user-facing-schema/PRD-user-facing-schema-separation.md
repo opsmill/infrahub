@@ -38,7 +38,7 @@ Generate the user-facing schema as a distinct contract instead of dumping the in
 - **FR-005**: The read model MUST include `read`-level fields and exclude `internal` fields. *Verify:* GET returns `inherited`; it never returns internal bookkeeping fields.
 - **FR-006**: The write and read models MUST be generated into the Python SDK and be importable with only the SDK installed (no server, no backend package). *Verify:* import and validate a payload in an SDK-only environment.
 - **FR-007**: The backend MUST validate write submissions and serialise read responses using the SDK-hosted models, not a backend-local copy. *Verify:* a rule change in the generated model changes both server and SDK behaviour.
-- **FR-008**: The SDK's existing hand-written schema models MUST be replaced by the generated write/read models, leaving no third parallel definition. *Verify:* old model classes are removed; SDK callers use the generated ones.
+- **FR-008** *(deferred — not delivered in this cycle, see [Out of Scope](#out-of-scope))*: The SDK's existing hand-written schema models MUST be replaced by the generated write/read models, leaving no third parallel definition. *Verify:* old model classes are removed; SDK callers use the generated ones.
 
 ## Key Entities
 
@@ -75,7 +75,7 @@ Generate the user-facing schema as a distinct contract instead of dumping the in
 - Error handling: field-level, machine-readable rejection errors that name the offending field and why it is not accepted.
 - Data / persistence: none — this is an API-model and generation-layer change, no stored-data model change or migration.
 - Frontend surface: none in this cycle; the `schema-visualizer` package is a separate downstream consumer assessed later.
-- SDK / CLI surface: the SDK gains the generated write/read models and a local-validation capability; hand-written schema models are removed.
+- SDK / CLI surface: the SDK gains the generated write/read models and a local-validation capability; removing the hand-written schema models is deferred (FR-008).
 
 ## Testing Decisions
 
@@ -111,6 +111,7 @@ Generate the user-facing schema as a distinct contract instead of dumping the in
 
 ## Out of Scope
 
+- Removal of the SDK's hand-written schema models (FR-008) — the generated models become the single source of truth for the write boundary, but the hand-written read models and their in-SDK consumers stay in place this cycle; tracked in [the follow-ups](./opsmill-implement-followups.md).
 - The write-shaped export capability (export excluding read-only fields, emitting only user-defined values with defaults omitted) — deferred; needs value provenance.
 - Kind-conditional `read_only` defaults for `computed_attribute` / `NumberPool` attributes — a defaults-and-conditional-validation problem, tracked separately.
 - Changes to the `frontend/packages/schema-visualizer` consumer — assessed after the models land.

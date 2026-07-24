@@ -130,10 +130,7 @@ class SchemaLoadAPI(InfrahubSchemaWrite):
 
     @model_validator(mode="after")
     def build_internal_schema(self) -> Self:
-        # The published request contract only exposes user-settable fields; the processing
-        # engine operates on the richer internal SchemaRoot. Building it here surfaces
-        # internal-only invariants (e.g. reserved keywords) as request-validation errors,
-        # and lets the endpoints feed the pipeline without re-deriving the conversion.
+        # Built here to surface validation errors at construction.
         self._internal_schema = SchemaRoot.model_validate(self.model_dump(exclude_none=True))
         return self
 

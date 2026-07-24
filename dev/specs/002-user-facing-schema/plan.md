@@ -38,7 +38,7 @@ Separate Infrahub's user-facing schema from its internal schema by generating, f
 - **IV. Test Discipline** — ✅ Unit (generator: idempotency, per-model membership, enum propagation), functional (API load rejection + read serialization), SDK offline validation, and server/SDK parity contract test. Frontend E2E is **N/A** (no user-facing UI this cycle) — justified below.
 - **V. Query Performance & Efficiency** — ✅ N/A. No new queries.
 - **VI. Security & Input Boundaries** — ✅ Advances it. Hard rejection at the API boundary; input validated by generated models; no injection surface introduced.
-- **VII. Simplicity & Maintainability** — ✅ Single source of truth → three generated outputs; the SDK's hand-written schema models are *removed* (net reduction of parallel definitions), not multiplied. The added generation variants are justified below.
+- **VII. Simplicity & Maintainability** — ✅ Single source of truth → three generated outputs, not multiplied: the generated models become the sole definition of the write boundary, consumed by both the server and the SDK. Retiring the SDK's remaining hand-written schema models is the tracked follow-up that realises the net reduction of parallel definitions; see [the follow-ups](./opsmill-implement-followups.md). The added generation variants are justified below.
 
 **Gate result: PASS.** No unjustified violations. See Complexity Tracking for the two justified additions.
 
