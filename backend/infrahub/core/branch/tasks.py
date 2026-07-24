@@ -33,6 +33,7 @@ from infrahub.core.merge.recompute_coalescing import (
 )
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher, submit_full_regeneration
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
+from infrahub.core.merge.selective_regen.generator_diff_capturer import GeneratorTrackingGroupDiffCapturer
 from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
@@ -473,13 +474,25 @@ async def _get_diff_root(
 
 
 async def _build_post_merge_regeneration_dispatcher(
+    db: InfrahubDatabase,
+    branch: Branch,
     log: Logger | LoggerAdapter[Logger],
 ) -> PostMergeRegenerationDispatcher:
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
     return PostMergeRegenerationDispatcher(
         workflow=get_workflow(),
         selector=build_merge_selective_regeneration(client=get_client(), log=log),
         summary_cache=DiffSummaryCache(
             cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
+        ),
+        generator_diff_capturer=GeneratorTrackingGroupDiffCapturer(
+            diff_coordinator=diff_coordinator,
+            diff_repository=diff_repository,
+            serializer=DiffSummarySerializer(),
+            client=get_client(),
+            branch=branch,
         ),
         log=log,
     )
@@ -506,7 +519,8 @@ async def post_process_branch_merge(
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
         if config.SETTINGS.main.selective_execution_after_merge:
-            dispatcher = await _build_post_merge_regeneration_dispatcher(log=log)
+            target_branch_obj = await Branch.get_by_name(db=db, name=target_branch)
+            dispatcher = await _build_post_merge_regeneration_dispatcher(db=db, branch=target_branch_obj, log=log)
             await dispatcher.dispatch(
                 context=context,
                 target_branch=target_branch,
