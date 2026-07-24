@@ -45,6 +45,8 @@ Provide an identifier — a UUID, a name, or an HFID — to display a single obj
 infrahubctl get InfraDevice spine01
 ```
 
+The identifier you pass to `update` and `delete` is any of these three values. To find it for an object in a list, use its name or HFID directly, or switch to `--output json` or `--output yaml` to see the object's UUID (`id`) and HFID alongside the other fields.
+
 Filter the results by attribute value with `attribute__value=<value>`:
 
 ```bash
@@ -101,6 +103,10 @@ Identify the object by kind and identifier, then apply the changes with `--set` 
 ```bash
 infrahubctl update InfraDevice spine01 --set status=active
 ```
+
+An update only changes the fields you provide. Attributes and relationships you leave out keep their current values — omitting a field does not clear it.
+
+With `--file`, the file defines which objects to update and what to change, so the kind and identifier on the command line are ignored:
 
 ```bash
 infrahubctl update InfraDevice spine01 --file updates.yml
