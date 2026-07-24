@@ -623,6 +623,56 @@ async def test_prefix_of_excluded_path_is_not_bypassed(path: str) -> None:
     assert metrics.MISSING_PRIORITY_TOTAL._value.get() - missing_before == 1
 
 
+async def test_probe_path_bypasses_admission() -> None:
+    """The public /api/config probe passes through behind a shed-everything controller.
+
+    infrahub-helm hits this no-auth endpoint as a k8s/docker liveness probe; gating it would fail
+    probes under load. The handler runs (200) and the admission layer is never entered.
+    """
+    app = FastAPI()
+
+    @app.get("/api/config")
+    async def config_probe() -> dict[str, bool]:
+        return {"ok": True}
+
+    _install_admission(app, _shed_everything_controller(), enabled=True)
+
+    offered_before = _offered_total()
+    missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/api/config")
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    # The probe never reached the admission layer, so no admission metric moved.
+    assert _offered_total() - offered_before == 0
+    assert metrics.MISSING_PRIORITY_TOTAL._value.get() - missing_before == 0
+
+
+async def test_excluded_path_served_without_startup_state() -> None:
+    """An excluded probe path is served even when startup never published the gate's state.
+
+    The excluded-path check runs before app.state is read, so a probe reaches its handler instead
+    of failing with a 500 when admission_enabled/admission_controller were never set on app.state
+    (e.g. the lifespan was disabled or the app was invoked directly).
+    """
+    app = FastAPI()
+
+    @app.get("/api/config")
+    async def config_probe() -> dict[str, bool]:
+        return {"ok": True}
+
+    # Deliberately do not set app.state.admission_enabled or app.state.admission_controller.
+    app.add_middleware(AdmissionMiddleware)
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/api/config")
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+
+
 async def test_kill_switch_passes_through() -> None:
     """With the layer disabled, a request that would be shed instead runs the handler and moves no metric."""
     app = FastAPI()

@@ -21,6 +21,7 @@ EXCLUDED_PATHS: tuple[str, ...] = (
     "/assets",
     "/favicons",
     "/docs",
+    "/api/config",
     "/api/schema",
 )
 
@@ -66,14 +67,6 @@ class AdmissionMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # The controller and kill-switch are published on app.state during startup, before any
-        # request reaches this gate; a non-http (lifespan) scope short-circuits above, so state is
-        # only read once it is guaranteed present.
-        state = scope["app"].state
-        if not state.admission_enabled:
-            await self.app(scope, receive, send)
-            return
-
         path = scope.get("path", "")
         if self._is_excluded(path):
             await self.app(scope, receive, send)
@@ -83,6 +76,15 @@ class AdmissionMiddleware:
         # load would strip the CORS response and break every cross-origin request precisely when the
         # backend is busy, so preflights bypass the gate and reach the downstream CORS middleware.
         if _is_cors_preflight(scope):
+            await self.app(scope, receive, send)
+            return
+
+        # Excluded paths (liveness/scrape/probe) and preflights bypass above without touching
+        # app.state, so probes stay served even if the startup lifespan never published the gate's
+        # state. Everything past this point is a gated request, so the state is read now: the
+        # kill-switch first, then the controller once a request is actually admitted through it.
+        state = scope["app"].state
+        if not state.admission_enabled:
             await self.app(scope, receive, send)
             return
 
