@@ -110,7 +110,7 @@ field is hidden until it is deliberately classified.
 
 The `internal.py` definitions remain the single source of truth. `invoke backend.generate`
 renders two model families from them by filtering each field on its visibility level (see
-`_generate_schemas_sdk` in `tasks/backend.py`):
+`SdkSchemaGenerator` in `tasks/backend.py`, entered through `_generate_schemas_sdk`):
 
 - **write models** — include only `WRITE` fields and set `extra="ignore"`, so a read-only,
   internal, or unknown field in a submitted payload is dropped by pydantic itself instead of
@@ -149,7 +149,7 @@ change; CI fails if the generated artifact is stale.
 | Internal schema definitions | `backend/infrahub/core/schema/definitions/internal/` |
 | Generated schemas (do not edit) | `backend/infrahub/core/schema/generated/` |
 | `Visibility` enum | `backend/infrahub/core/constants/schema.py` |
-| SDK write/read generator | `_generate_schemas_sdk` in `tasks/backend.py` |
+| SDK write/read generator | `SdkSchemaGenerator` in `tasks/backend.py` |
 | Generated SDK write/read models (do not edit) | `python_sdk/infrahub_sdk/schema/generated/{write,read}.py` |
 | Offline write-contract validator | `python_sdk/infrahub_sdk/schema/validate.py` |
 | RelationshipSchema class | `backend/infrahub/core/schema/relationship_schema.py` |
