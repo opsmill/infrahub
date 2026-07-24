@@ -31,7 +31,8 @@ uv run invoke backend.generate         # Regenerate schemas/protocols
 
 ## Coding Standards
 
-See `dev/guidelines/backend/python.md` for detailed coding standards including:
+See `dev/guidelines/backend/python.md` for detailed coding standards — load it before writing
+backend Python, including:
 
 - Async-first patterns
 - Pydantic models
@@ -39,6 +40,11 @@ See `dev/guidelines/backend/python.md` for detailed coding standards including:
 - Naming conventions
 - Query patterns
 - Type hints
+- Exception handling (catch the narrowest types the call path actually raises)
+
+When planning or implementing a backend feature, also walk
+`dev/guidelines/backend/checklist.md` — migrations, query efficiency (set-based, no N+1),
+permissions, error handling.
 
 ### Neo4j/Cypher Queries
 
@@ -81,7 +87,8 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 
 ### Guidelines
 
-- `dev/guidelines/backend/python.md` - Python coding standards
+- `dev/guidelines/backend/python.md` - Python coding standards — load before writing backend Python (typing, imports, exception handling, docstrings)
+- `dev/guidelines/backend/checklist.md` - feature checklist — walk when planning or implementing a backend feature (migrations, query efficiency, permissions)
 - `dev/guidelines/changelog.md` - Changelog fragment creation
 
 ### Knowledge (How the system works)

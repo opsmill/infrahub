@@ -354,6 +354,7 @@ except NodeNotFoundError:
 Guidelines:
 
 - **Name the exceptions.** Catch the narrowest type(s) that the called code actually raises. If several are handled the same way, group them: `except (NodeNotFoundError, BranchNotFoundError):`.
+- **Check the hierarchy before narrowing.** Infrahub's exception types are mostly direct `Error` subclasses, not a tree — `QueryTimeoutError` is a *sibling* of `DatabaseError`, so catching `DatabaseError` does not cover query timeouts. Verify in `backend/infrahub/exceptions.py` which types the call path actually raises before writing the tuple.
 - **Keep the `try` body small.** Wrap only the statement that can raise, not a whole block, so an unexpected error elsewhere isn't caught by accident.
 - **Never silence.** A bare `except Exception: pass` hides real failures. If there is genuinely nothing to do, comment why, and at minimum `log.debug(...)`.
 - **Re-raise what you can't handle.** If you must catch broadly to add context or clean up, re-raise afterwards (`raise` to preserve the traceback, or `raise NewError(...) from exc` to chain).
