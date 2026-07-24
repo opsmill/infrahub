@@ -564,7 +564,10 @@ class ApiSettings(BaseSettings):
         default=1, ge=0, description="Value returned in the Retry-After header when a request is shed."
     )
     backpressure_max_concurrency_factor: float = Field(
-        default=0.5, gt=0, description="Scales the derived maximum admission concurrency."
+        default=0.5,
+        gt=0,
+        allow_inf_nan=False,
+        description="Scales the derived maximum admission concurrency.",
     )
     backpressure_stress_window_seconds: float = Field(
         default=20.0,
