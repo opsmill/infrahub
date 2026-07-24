@@ -20,9 +20,12 @@ class ConstraintInfoMerger:
         self.deduplicator = deduplicator
 
     def merge(self, *constraint_lists: list[SchemaUpdateConstraintInfo]) -> list[SchemaUpdateConstraintInfo]:
-        # Collapse the same constraint from multiple producers onto one entry. A constraint both
-        # broadened by a schema change (full population) and hit by a data change (node-scoped) must
-        # re-check every node, so a None node_uuids always wins; two node-scoped entries union.
+        """Collapse the same constraint from multiple producers onto one entry.
+
+        A constraint both broadened by a schema change (full population) and hit by a data change
+        (node-scoped) must re-check every node, so a ``None`` node_uuids always wins and two
+        node-scoped entries union.
+        """
         merged: dict[tuple[str, str], SchemaUpdateConstraintInfo] = {}
         for constraint_list in constraint_lists:
             for constraint in constraint_list:
