@@ -100,8 +100,7 @@ class GeneratorTrackingGroupDiffCapturer:
                 node_ids.update(relationship.peer.id for relationship in group.members.peers)
         return node_ids
 
-    @staticmethod
-    def _is_tracking_group(*, group_name: str, definition_name: str) -> bool:
+    def _is_tracking_group(self, *, group_name: str, definition_name: str) -> bool:
         # ``partial_match`` matches any name containing the definition name; keep only this generator's own
         # "<definition name>-<hash>" groups
         suffix = group_name.removeprefix(f"{definition_name}-")
