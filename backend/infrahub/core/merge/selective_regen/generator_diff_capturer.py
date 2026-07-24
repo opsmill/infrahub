@@ -74,8 +74,12 @@ class GeneratorTrackingGroupDiffCapturer:
         )
         return self.serializer.serialize(root=enriched, target_branch_name=self.branch.name)
 
-    async def _output_node_ids(self, *, generator_definition_names: list[str]) -> set[str]:
-        """Resolve the nodes the just-run generators wrote from their tracking groups on the target branch."""
+    async def _output_node_ids(self, *, generator_definition_names: list[str]) -> set[str] | None:
+        """Resolve the nodes the just-run generators wrote from their tracking groups on the target branch.
+
+        Returns ``None`` when any requested definition has no resolved tracking group: narrowing on the
+        partial aggregate would drop that generator's output, so the caller widens the read instead.
+        """
         node_ids: set[str] = set()
         for definition_name in generator_definition_names:
             groups = await self.client.filters(
@@ -85,9 +89,14 @@ class GeneratorTrackingGroupDiffCapturer:
                 partial_match=True,
                 include=["members"],
             )
-            for group in groups:
-                if not self._is_tracking_group(group_name=group.name.value, definition_name=definition_name):
-                    continue
+            matched = [
+                group
+                for group in groups
+                if self._is_tracking_group(group_name=group.name.value, definition_name=definition_name)
+            ]
+            if not matched:
+                return None
+            for group in matched:
                 node_ids.update(relationship.peer.id for relationship in group.members.peers)
         return node_ids
 

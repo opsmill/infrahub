@@ -140,3 +140,14 @@ async def test_capture_ignores_groups_whose_name_is_not_a_tracking_group() -> No
     await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
 
     assert repository.filters_seen == [None]
+
+
+async def test_capture_widens_when_any_definition_lacks_a_tracking_group() -> None:
+    # One generator resolved its group, another did not; narrowing on only the resolved ids would drop
+    # the unresolved generator's output, so the read must widen instead of filtering on the aggregate.
+    client = _FakeClient({"genA": [_group(f"genA-{_HASH_A}", ["n1", "n2"])]})
+    capturer, repository = _capturer(client)
+
+    await capturer.capture(since=Timestamp(), generator_definition_names=["genA", "genB"])
+
+    assert repository.filters_seen == [None]
