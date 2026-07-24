@@ -175,6 +175,30 @@ async def test_observer_reflects_cancelled_waiter_leaving_queue() -> None:
     pool.release(acquisition=holder)
 
 
+async def test_failing_observer_does_not_corrupt_admission_state() -> None:
+    pool = PrioritySlotPool(max_concurrency=1)
+
+    def boom(priority: Priority, **counts: int) -> None:
+        raise RuntimeError("observer blew up")
+
+    pool.set_observer(boom)
+
+    # Acquire and release must both complete despite the observer raising on every transition,
+    # and the slot must be returned so a following waiter is served rather than deadlocked.
+    holder = await pool.acquire(priority=Priority.MEDIUM)
+    assert pool.available == 0
+
+    pool.release(acquisition=holder)
+
+    assert pool.available == pool.max_concurrency
+    assert all(pool.in_flight(priority=priority) == 0 for priority in Priority)
+
+    # A fresh acquire still succeeds on the recovered slot.
+    again = await pool.acquire(priority=Priority.LOW)
+    pool.release(acquisition=again)
+    assert pool.available == pool.max_concurrency
+
+
 async def test_cancel_after_handoff_rereleases_slot() -> None:
     pool = PrioritySlotPool(max_concurrency=1)
 

@@ -5,10 +5,14 @@ import time
 from collections import deque
 from typing import TYPE_CHECKING, Callable, Protocol
 
+from infrahub.log import get_logger
+
 from .priority import Priority
 
 if TYPE_CHECKING:
     from asyncio import Future
+
+log = get_logger()
 
 
 class SlotPoolObserver(Protocol):
@@ -68,8 +72,15 @@ class PrioritySlotPool:
         self._on_change = on_change
 
     def _notify(self, priority: Priority) -> None:
-        if self._on_change is not None:
+        if self._on_change is None:
+            return
+        try:
             self._on_change(priority, in_flight=self._in_flight[priority], waiters=len(self._waiters[priority]))
+        except Exception:
+            # The observer is a best-effort metrics sink invoked mid-transition: a failing
+            # callback must never corrupt admission state (leak a slot, strand a waiter) or
+            # surface to the caller, so its failure is swallowed after being logged.
+            log.warning("admission slot-pool observer raised; continuing", exc_info=True)
 
     @property
     def max_concurrency(self) -> int:
