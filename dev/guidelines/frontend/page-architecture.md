@@ -96,9 +96,11 @@ If the backend already filters, transforms, or defaults something, do not duplic
 
 If the client needs to *display* a server-side default, surface it via the API (extend a query or response field) rather than mirroring the constant.
 
-## Pagination must reset when sort changes
+## Pagination and sort-change: know the current tradeoff
 
-An offset-paginated list that also supports user-driven sorting must reset its offset to page 1 whenever the active sort changes. Preserving the current offset across a sort change causes a page-stitching bug: at a deep offset, switching sort direction shows the tail of the new order immediately followed by rows from the old offset — two inconsistent windows stitched together. Reset-to-page-1-on-sort-change is the safe default; don't thread the previous offset through independently of sort state.
+The header-sort-menu spec (`dev/specs/002-header-sort-menu/spec.md`, FR-010) intentionally keeps the pagination offset unchanged when the active sort changes, matching how filter changes already behave — today's implementation and its regression test both assert the offset is preserved. At scale (verified with ~10k rows) this produces a page-stitching bug: from a deep offset, changing sort direction shows the tail of the new order immediately followed by rows from the old, now-inconsistent offset. The reviewer-recommended fix — reset the offset to its default (`offset: 0`) whenever sort changes — was deferred to a follow-up PR (see PR #9948) rather than applied immediately.
+
+For any *new* offset-paginated list that supports both sorting and pagination, prefer resetting the offset to its default value on sort change rather than repeating this known tradeoff.
 
 ## Anti-patterns observed in past PRs
 
@@ -110,7 +112,7 @@ An offset-paginated list that also supports user-driven sorting must reset its o
 | Two selectors with ~50% duplicated UI | Extract a `KindMultiSelect` / shared block once both exist |
 | Hand-rolling `gql` + `graphqlClient.query` in a `ui/` file | Use the entity layer (`useGetObject`, `ui/queries/`) |
 | Hardcoding `HIDDEN_NAMESPACES` on the client | Backend-authoritative; surface via schema if needed |
-| Sort change preserves the current pagination offset (PR #9948) | Reset the offset to page 1 whenever the active sort changes |
+| Sort change preserving pagination offset at scale — page-stitching bug (PR #9948, fix deferred to a follow-up PR) | Reset the offset to its default (`0`) on sort change, once implemented |
 
 ## See also
 
