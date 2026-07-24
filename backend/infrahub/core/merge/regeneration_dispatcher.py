@@ -49,6 +49,26 @@ async def submit_full_regeneration(*, workflow: InfrahubWorkflow, context: Infra
     )
 
 
+def _consolidate_artifact_generates(
+    artifact_generates: list[RequestArtifactDefinitionGenerate],
+) -> list[RequestArtifactDefinitionGenerate]:
+    """Merge requests for the same artifact definition into one, unioning their member/limit filters.
+
+    An artifact selected from both the merge diff and a generator's output would otherwise be dispatched
+    twice; an empty filter means "all members", so it subsumes any specific filter.
+    """
+    consolidated: dict[str, RequestArtifactDefinitionGenerate] = {}
+    for request in artifact_generates:
+        merged = consolidated.get(request.artifact_definition_id)
+        if merged is None:
+            consolidated[request.artifact_definition_id] = request
+            continue
+        members = [] if not merged.members or not request.members else sorted({*merged.members, *request.members})
+        limit = [] if not merged.limit or not request.limit else sorted({*merged.limit, *request.limit})
+        consolidated[request.artifact_definition_id] = merged.model_copy(update={"members": members, "limit": limit})
+    return list(consolidated.values())
+
+
 class PostMergeRegenerationDispatcher:
     """Decide and submit which generators and artifacts a committed merge should regenerate.
 
@@ -167,7 +187,7 @@ class PostMergeRegenerationDispatcher:
     async def _submit_artifacts(
         self, *, context: InfrahubContext, artifact_generates: list[RequestArtifactDefinitionGenerate]
     ) -> None:
-        for artifact_generate in artifact_generates:
+        for artifact_generate in _consolidate_artifact_generates(artifact_generates):
             await self.workflow.submit_workflow(
                 workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, context=context, parameters={"model": artifact_generate}
             )

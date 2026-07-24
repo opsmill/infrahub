@@ -442,3 +442,42 @@ async def test_generator_run_failure_is_isolated_and_regenerates_artifacts_not_g
     assert recorder.get_submit_calls_for(REQUEST_ARTIFACT_DEFINITION_GENERATE) == []
     assert recorder.get_submit_calls_for(TRIGGER_GENERATOR_DEFINITION_RUN) == []
     assert capturer.calls == 0
+
+
+async def test_merge_consolidates_artifacts_selected_by_both_diffs() -> None:
+    recorder = WorkflowRecorder()
+    plan = SelectiveRegenerationPlan(
+        generator_runs=[_generator_run(definition_id="gd1")],
+        artifact_generates=[
+            RequestArtifactDefinitionGenerate(
+                branch=TARGET_BRANCH, artifact_definition_id="ad1", artifact_definition_name="art", members=["m1"]
+            ),
+            RequestArtifactDefinitionGenerate(
+                branch=TARGET_BRANCH, artifact_definition_id="ad2", artifact_definition_name="art2"
+            ),
+        ],
+    )
+    generator_output = [
+        RequestArtifactDefinitionGenerate(
+            branch=TARGET_BRANCH, artifact_definition_id="ad1", artifact_definition_name="art", members=["m2"]
+        ),
+        RequestArtifactDefinitionGenerate(
+            branch=TARGET_BRANCH, artifact_definition_id="ad2", artifact_definition_name="art2", members=["m3"]
+        ),
+    ]
+    selector = _FakeSelector(plan=plan, artifact_plan=generator_output)
+    capturer = _FakeCapturer(diff_summary=[{"kind": "TestDevice"}])
+    cache = _summary_cache(MemoryCache())
+    await cache.set(diff_id=DIFF_ID, diff_summary=[])
+
+    await _dispatcher(selector, cache, recorder, capturer).dispatch(
+        context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=DIFF_ID
+    )
+
+    submits = recorder.get_submit_calls_for(REQUEST_ARTIFACT_DEFINITION_GENERATE)
+    by_def = {call["parameters"]["model"].artifact_definition_id: call["parameters"]["model"] for call in submits}
+    # One request per definition -- ad1, selected by both diffs, is not dispatched twice.
+    assert len(submits) == 2
+    # Member filters are unioned; an unfiltered (all-members) request wins.
+    assert sorted(by_def["ad1"].members) == ["m1", "m2"]
+    assert by_def["ad2"].members == []
