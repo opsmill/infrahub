@@ -7,13 +7,14 @@ from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreGeneratorInstance
 from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig
-from prefect import State, flow, task
+from prefect import State, flow, get_run_logger, task
 from prefect.cache_policies import NONE
 from prefect.states import Completed, Failed
 
 from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001 needed for prefect flow
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
+from infrahub.core.regeneration.members import map_subscriber_ids_by_member
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import (
     GeneratorDefinitionModel,
@@ -205,9 +206,11 @@ async def request_generator_definition_run(
         client=client, branch=model.branch, definition=model.generator_definition
     )
 
-    instance_by_member = {}
-    for instance in existing_instances:
-        instance_by_member[instance.object.peer.id] = instance.id
+    instance_by_member = map_subscriber_ids_by_member(
+        existing_subscribers=existing_instances,
+        definition_name=model.generator_definition.definition_name,
+        log=get_run_logger(),
+    )
 
     repository = await client.get(
         kind=InfrahubKind.REPOSITORY,

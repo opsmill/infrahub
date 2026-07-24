@@ -85,7 +85,7 @@ async def get_field_level_impacted_subscribers(
     # specific set of nodes -- e.g. it uses an `ids` argument or a uniqueness constraint. When
     # False, the query may return any number of nodes and we cannot map a changed node back to a
     # specific subscriber without re-processing every target.
-    log.info(
+    log.debug(
         "SELECTIVE_REGEN field-impact: "
         f"branch={query_branch} subscriber_kind={subscriber_kind} "
         f"unique_targets={query_report.only_has_unique_targets} "
@@ -97,19 +97,19 @@ async def get_field_level_impacted_subscribers(
         # which subscribers are linked to the changed nodes and limit processing to only those.
         subscribers = await _get_subscribers_for_nodes(node_ids=changed_node_ids, branch=query_branch, client=client)
         ids = [subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == subscriber_kind]
-        log.info(f"SELECTIVE_REGEN field-impact result: scope=SPECIFIC ids={len(ids)}")
+        log.debug(f"SELECTIVE_REGEN field-impact result: scope=SPECIFIC ids={len(ids)}")
         return ImpactedSubscribers(scope=ImpactScope.SPECIFIC, ids=ids)
 
     if changed_node_ids:
         # The query does not guarantee unique targets, so we cannot determine which specific
         # subscribers are affected. At least one relevant field changed, so the caller must fall
         # back to processing all targets to be safe.
-        log.info("SELECTIVE_REGEN field-impact result: scope=ALL")
+        log.debug("SELECTIVE_REGEN field-impact result: scope=ALL")
         return ImpactedSubscribers(scope=ImpactScope.ALL)
 
     # No node of a queried kind had any of its queried fields modified, so no subscriber can be
     # stale regardless of query targeting capability.
-    log.info("SELECTIVE_REGEN field-impact result: scope=NONE")
+    log.debug("SELECTIVE_REGEN field-impact result: scope=NONE")
     return ImpactedSubscribers(scope=ImpactScope.NONE)
 
 

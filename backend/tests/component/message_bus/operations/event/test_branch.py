@@ -141,6 +141,7 @@ async def test_merged(
         mock_submit_workflow.assert_has_calls(expected_calls)
         assert mock_submit_workflow.call_count == len(expected_calls)
 
-    # Use `db=ANY` as a new InfrahubDatabase object is created as we use a new session
-    mock_component_registry.get_component.assert_awaited_once_with(DiffRepository, db=ANY, branch=default_branch)
+    # `db=ANY` since a new InfrahubDatabase object is created for the new session. The selective
+    # post-merge dispatcher also fetches components, so this is awaited among other calls, not just once.
+    mock_component_registry.get_component.assert_any_await(DiffRepository, db=ANY, branch=default_branch)
     diff_repo.get_roots_metadata.assert_awaited_once_with(base_branch_names=[target_branch_name])
