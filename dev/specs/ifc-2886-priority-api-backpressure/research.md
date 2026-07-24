@@ -19,6 +19,8 @@ All decisions below are grounded in the current Infrahub backend. File reference
 
 **Path exclusions**: The middleware MUST bypass admission for `/health` and `/metrics` (liveness and scraping must never be shed) and SHOULD bypass static/docs paths (`/assets`, `/favicons`, `/docs`, `/api/schema`) to match the existing `ConditionalGZipMiddleware` skip set. Non-`http` scopes (WebSocket, lifespan) pass through untouched.
 
+**CORS preflight bypass**: A CORS preflight (`OPTIONS` carrying `Access-Control-Request-Method`) MUST also bypass the gate. It carries no `X-Priority` and would classify as `normal`; shedding it under load would strip the CORS response and break every cross-origin request precisely when the backend is busy. Preflights therefore pass straight through to the downstream CORS middleware and are never counted as offered load.
+
 ## R2. Concurrency primitive — priority slot pool
 
 **Decision**: Implement a custom async **PrioritySlotPool**: a bounded counter of `max_concurrency` slots with **one FIFO waiter queue per priority class**. On release, hand the freed slot to the highest-priority non-empty queue, FIFO within that class. Cancellation-safe: model the acquire path on CPython's `asyncio.Semaphore` (each waiter is a `Future`; on cancellation the waiter deregisters and, if it was already handed a slot in the same tick, re-releases it so no slot leaks and no waiter deadlocks).
