@@ -27,37 +27,41 @@ export type DiffTreeItem = NodeTreeItem | GroupTreeItem;
 export function buildDiffTreeItems(nodes: Array<DiffNode>): Array<DiffTreeItem> {
   if (!nodes.length) return [];
 
-  const [nodesWithoutParent, nodesWithParent] = partition(nodes, (node) => !node.parent);
-
-  // Pre-create one tree item per node so a parent can be found in O(1) even when
-  // it appears after its children in the input
+  // Pair each node with its tree item upfront so a parent item can be found in O(1)
+  // even when it appears after its children in the input
+  const nodeEntries = nodes.map((node) => ({
+    node,
+    treeItem: createNodeTreeItemFromDiffNode(node),
+  }));
   const nodeTreeItemsByUuid = new Map(
-    nodes.map((node) => [node.uuid, createNodeTreeItemFromDiffNode(node)])
+    nodeEntries.map(({ node, treeItem }) => [node.uuid, treeItem])
   );
 
-  const baseTreeItems = nodesWithoutParent.reduce<DiffTreeItem[]>((acc, node) => {
-    const { kind } = node;
-    const topLevelKindTreeItem = acc.find((treeItem) => treeItem.kind === kind);
+  const [entriesWithoutParent, entriesWithParent] = partition(
+    nodeEntries,
+    ({ node }) => !node.parent
+  );
 
-    const newDiffTreeItem = nodeTreeItemsByUuid.get(node.uuid)!;
+  const baseTreeItems = entriesWithoutParent.reduce<DiffTreeItem[]>((acc, { node, treeItem }) => {
+    const { kind } = node;
+    const topLevelKindTreeItem = acc.find((item) => item.kind === kind);
 
     if (!topLevelKindTreeItem) {
       const newKindTreeItem = createGroupTreeItemFromDiffNode(node);
-      newKindTreeItem.children.push(newDiffTreeItem);
+      newKindTreeItem.children.push(treeItem);
       return [...acc, newKindTreeItem];
     }
 
-    topLevelKindTreeItem.children.push(newDiffTreeItem);
+    topLevelKindTreeItem.children.push(treeItem);
     return acc;
   }, []);
 
-  for (const node of nodesWithParent) {
+  for (const { node, treeItem } of entriesWithParent) {
     // Nodes whose parent is not part of the diff payload are skipped, along with
     // their own children: their subtree is never linked to the returned tree
     const parentTreeItem = nodeTreeItemsByUuid.get(node.parent!.uuid);
     if (!parentTreeItem) continue;
 
-    const newDiffTreeItem = nodeTreeItemsByUuid.get(node.uuid)!;
     const relationshipName = node.parent!.relationship_name as string;
     const relationshipTreeItem = parentTreeItem.children.find(
       (rel) => !rel.isNode && rel.label === relationshipName
@@ -68,13 +72,13 @@ export function buildDiffTreeItems(nodes: Array<DiffNode>): Array<DiffTreeItem> 
       const newRelationshipTreeItem = createGroupTreeItemFromDiffNode(node);
       newRelationshipTreeItem.id = `${node.parent!.uuid}-${relationshipName}`;
       newRelationshipTreeItem.label = relationshipName;
-      newRelationshipTreeItem.children.push(newDiffTreeItem);
+      newRelationshipTreeItem.children.push(treeItem);
       parentTreeItem.children.push(newRelationshipTreeItem);
       continue;
     }
 
     // Add to existing relationship group
-    relationshipTreeItem.children.push(newDiffTreeItem);
+    relationshipTreeItem.children.push(treeItem);
   }
 
   return baseTreeItems;
