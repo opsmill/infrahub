@@ -108,8 +108,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
 
   const changedNodes = nodes.filter(
     (node) =>
-      node.status !== "UNCHANGED" &&
-      (qspStatus !== DIFF_STATUS.CONFLICT || node.contains_conflict)
+      node.status !== "UNCHANGED" && (qspStatus !== DIFF_STATUS.CONFLICT || node.contains_conflict)
   );
 
   return (
