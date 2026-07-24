@@ -169,6 +169,13 @@ Complete. Artifacts:
 5. **Merge selection routine — definition level** (D4, D6) — `selective_regen.py`: definition
    gates (query/definition/fingerprint/modified-kinds), the group-membership gate, the repo-code
    fingerprint signal + null-fingerprint fallback (with the E6 repo-signal verification).
+   A fingerprint that moved between the fork point and the source branch needs no dedicated
+   mechanism: the hash is recomputed and persisted on the source branch at import, and
+   `fingerprint` is an ordinary branch-tracked attribute, so the delta rides the merge diff
+   summary as a `NodeDiff` element on the definition node and is selected by the
+   `definition_changed` gate like any other node change. The null-fingerprint fallback in
+   `fallbacks.py` covers only the disjoint pre-feature case where the hash was never computed
+   (`fingerprint=null`), not a hash that changed.
 6. **Merge selection routine — member level** (D4a, D5) — live-group reconciliation on the
    **target branch**: fetch group members + subscriber map, compute `managed_branch`, map
    impacted subscriber ids → member ids, force-render new members, emit member-id filters.
