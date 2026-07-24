@@ -15,6 +15,18 @@ from infrahub.api.admission.middleware import AdmissionMiddleware
 from infrahub.api.admission.priority import Priority
 from infrahub.api.admission.slot_pool import PrioritySlotPool
 
+
+def _install_admission(app: FastAPI, controller: AdmissionController, *, enabled: bool = True) -> None:
+    """Publish the controller/kill-switch on app.state (as the startup lifespan does) and gate the app.
+
+    The middleware reads both from app.state per request; setting them here mirrors production
+    startup without a live server.
+    """
+    app.state.admission_controller = controller
+    app.state.admission_enabled = enabled
+    app.add_middleware(AdmissionMiddleware)
+
+
 HANDLER_SLEEP = 0.02
 MAX_CONCURRENCY = 2
 LOW_REQUESTS = 60
@@ -118,7 +130,7 @@ def _build_app() -> FastAPI:
         stress_min_samples=0,
         retry_after=1,
     )
-    app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+    _install_admission(app, controller, enabled=True)
     return app
 
 
@@ -178,7 +190,7 @@ async def test_all_admitted_when_capacity_available(priority: str) -> None:
         stress_min_samples=0,
         retry_after=1,
     )
-    app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+    _install_admission(app, controller, enabled=True)
 
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/work", headers={"X-Priority": priority})
@@ -213,7 +225,7 @@ async def test_shed_backstop_returns_rest_envelope() -> None:
         stress_min_samples=0,
         retry_after=7,
     )
-    app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+    _install_admission(app, controller, enabled=True)
 
     before = metrics.REJECTED_TOTAL.labels(priority="low", reason="backstop")._value.get()
 
@@ -266,7 +278,7 @@ async def test_shed_codel_returns_429() -> None:
         retry_after=3,
         clock=_StepClock(step=1.0),
     )
-    app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+    _install_admission(app, controller, enabled=True)
 
     before = metrics.REJECTED_TOTAL.labels(priority="low", reason="codel")._value.get()
 
@@ -343,7 +355,7 @@ async def test_capacity_and_burst() -> None:
     # The gauge is set at server wiring time, not by constructing a controller; set it the same
     # way the wiring does so the invariant is observable here.
     metrics.MAX_CONCURRENCY.set(max_concurrency)
-    app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+    _install_admission(app, controller, enabled=True)
 
     # (a) Gauge equals the derived cap and is positive.
     gauge_value = metrics.MAX_CONCURRENCY._value.get()
@@ -391,7 +403,7 @@ def _admit_app() -> FastAPI:
         stress_min_samples=0,
         retry_after=1,
     )
-    app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+    _install_admission(app, controller, enabled=True)
     return app
 
 
@@ -414,7 +426,7 @@ def _backstop_app() -> FastAPI:
         stress_min_samples=0,
         retry_after=1,
     )
-    app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+    _install_admission(app, controller, enabled=True)
     return app
 
 
@@ -478,7 +490,7 @@ async def test_metrics() -> None:
         retry_after=1,
         clock=_StepClock(step=1.0),
     )
-    codel_app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+    _install_admission(codel_app, controller, enabled=True)
 
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=codel_app), base_url="http://test") as client:
 
@@ -571,7 +583,7 @@ async def test_excluded_path_bypasses_admission(path: str) -> None:
     async def scrape() -> dict[str, bool]:
         return {"ok": True}
 
-    app.add_middleware(AdmissionMiddleware, controller=_shed_everything_controller(), enabled=True)
+    _install_admission(app, _shed_everything_controller(), enabled=True)
 
     offered_before = _offered_total()
     missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
@@ -603,7 +615,7 @@ async def test_prefix_of_excluded_path_is_not_bypassed(path: str) -> None:
     async def metrics_internal() -> dict[str, bool]:
         return {"ok": True}
 
-    app.add_middleware(AdmissionMiddleware, controller=_shed_everything_controller(), enabled=True)
+    _install_admission(app, _shed_everything_controller(), enabled=True)
 
     offered_before = _offered_total()
     missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
@@ -626,7 +638,7 @@ async def test_kill_switch_passes_through() -> None:
     async def work() -> dict[str, bool]:
         return {"ok": True}
 
-    app.add_middleware(AdmissionMiddleware, controller=_shed_everything_controller(), enabled=False)
+    _install_admission(app, _shed_everything_controller(), enabled=False)
 
     offered_before = _offered_total()
     missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
@@ -665,7 +677,7 @@ async def test_handler_exception_releases_slot() -> None:
         stress_min_samples=0,
         retry_after=1,
     )
-    app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+    _install_admission(app, controller, enabled=True)
 
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         with pytest.raises(ValueError, match=r"^handler exploded$"):

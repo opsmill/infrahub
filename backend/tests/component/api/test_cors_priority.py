@@ -57,8 +57,11 @@ def _build_app() -> FastAPI:
         allow_headers=default_cors_allow_headers(),
         allow_credentials=True,
     )
-    # Added last so it is outermost, mirroring the production middleware stack.
-    app.add_middleware(AdmissionMiddleware, controller=_shed_everything_controller(), enabled=True)
+    # Publish the controller/kill-switch on app.state as the startup lifespan does, then register
+    # the gate last so it is outermost, mirroring the production middleware stack.
+    app.state.admission_controller = _shed_everything_controller()
+    app.state.admission_enabled = True
+    app.add_middleware(AdmissionMiddleware)
     return app
 
 

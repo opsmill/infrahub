@@ -5,11 +5,9 @@ from typing import TYPE_CHECKING, Any, assert_never
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_429_TOO_MANY_REQUESTS
 
-from infrahub import config
-
 from ..exception_handlers import GRAPHQL_PATH_PREFIX
 from . import metrics
-from .controller import Admitted, Rejected, build_admission_controller
+from .controller import Admitted, Rejected
 from .priority import parse_priority
 
 if TYPE_CHECKING:
@@ -42,29 +40,16 @@ class AdmissionMiddleware:
     request is answered with a ``429`` error envelope carrying ``Retry-After`` and never
     reaches the app.
 
-    In production the controller and enabled flag are resolved from global settings here,
-    at middleware-stack build time, so runtime environment overrides are honoured (the
-    settings are also loaded here, exiting on bad config, rather than at module import). A
-    controller and enabled flag can instead be injected, making the gate exercisable
-    without global settings or a live server.
+    The controller and kill-switch are not built here. They are constructed once during
+    application startup (the lifespan) and published on ``app.state`` as
+    ``admission_controller`` and ``admission_enabled``, which this gate reads per request.
+    Building at startup keeps settings resolution and the controller's object graph out of
+    the middleware, so the class carries no dependency on global settings and a test can
+    exercise the gate by setting those two ``app.state`` attributes on a bare app.
     """
 
-    def __init__(
-        self,
-        app: ASGIApp,
-        *,
-        controller: AdmissionController | None = None,
-        enabled: bool | None = None,
-        excluded_paths: tuple[str, ...] = EXCLUDED_PATHS,
-    ) -> None:
+    def __init__(self, app: ASGIApp, *, excluded_paths: tuple[str, ...] = EXCLUDED_PATHS) -> None:
         self.app = app
-        if controller is None:
-            config.SETTINGS.initialize_and_exit()
-            self._controller = build_admission_controller()
-            self._enabled = config.SETTINGS.api.backpressure_enabled if enabled is None else enabled
-        else:
-            self._controller = controller
-            self._enabled = True if enabled is None else enabled
         self._excluded_paths = excluded_paths
 
     def _is_excluded(self, path: str) -> bool:
@@ -77,7 +62,15 @@ class AdmissionMiddleware:
         return any(path == excluded or path.startswith(f"{excluded}/") for excluded in self._excluded_paths)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http" or not self._enabled:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        # The controller and kill-switch are published on app.state during startup, before any
+        # request reaches this gate; a non-http (lifespan) scope short-circuits above, so state is
+        # only read once it is guaranteed present.
+        state = scope["app"].state
+        if not state.admission_enabled:
             await self.app(scope, receive, send)
             return
 
@@ -93,17 +86,18 @@ class AdmissionMiddleware:
             await self.app(scope, receive, send)
             return
 
+        controller: AdmissionController = state.admission_controller
         parsed = parse_priority(_read_priority_header(scope))
         if not parsed.was_explicit:
             metrics.MISSING_PRIORITY_TOTAL.inc()
 
-        decision = await self._controller.admit(priority=parsed.priority)
+        decision = await controller.admit(priority=parsed.priority)
         match decision:
             case Admitted():
                 try:
                     await self.app(scope, receive, send)
                 finally:
-                    self._controller.release(acquisition=decision.acquisition)
+                    controller.release(acquisition=decision.acquisition)
             case Rejected():
                 # Short-circuit: the shed response is written directly, so the downstream app and
                 # every handler dependency (auth, routing, DB query) never runs.
