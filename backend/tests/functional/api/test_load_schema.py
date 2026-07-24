@@ -607,12 +607,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         test_client: InfrahubTestClient,
         api_admin_token: str,
     ) -> None:
-        """Accept a payload carrying a read-level field plus an unknown field, dropping both.
-
-        A read-level field (`inherited`) and a genuinely unknown field (`not_a_real_field`) are not
-        part of the write contract; they are dropped silently rather than rejected, so the schema
-        still loads.
-        """
+        """Accept a payload carrying a read-level field plus an unknown field."""
         payload = {
             "schemas": [
                 {
@@ -672,9 +667,13 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         )
 
         assert response.status_code == 422
-        body = response.text
-        assert "kind" in body
-        assert "NotARealKind" in body
+        messages = [item["msg"] for item in response.json()["detail"]]
+        assert len(messages) == 1, messages
+        message = messages[0]
+        # The invalid kind fails the attribute discriminator, so the path stops at the attribute.
+        assert "nodes[0].attributes[0]:" in message, message
+        assert "Input tag 'NotARealKind' found using 'kind' does not match any of the expected tags" in message, message
+        assert "(received: {'name': 'name', 'kind': 'NotARealKind'})" in message, message
 
     async def test_schema_load_tolerates_non_write_and_unknown_fields_in_extensions(
         self,
@@ -682,13 +681,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         test_client: InfrahubTestClient,
         api_admin_token: str,
     ) -> None:
-        """An extension attribute's read-level and unknown fields are dropped, so the load is accepted.
-
-        A read-level field (`inherited`) may accompany a schema read back from Infrahub or a full
-        model dump, and a genuinely unknown field (`not_a_real_field`) may come from an older or
-        hand-edited payload. Neither is part of the write contract, so both are dropped silently
-        rather than rejected.
-        """
+        """Accept an extension attribute carrying a read-level field and an unknown field."""
         # Define a fresh node (no existing instances) so the extension is applicable, then extend it
         # with an optional attribute carrying a read-level field and an unknown field.
         base = {
@@ -773,9 +766,11 @@ class TestLoadSchemaAPI(TestInfrahubApp):
 
         assert response.status_code == 422
         messages = [item["msg"] for item in response.json()["detail"]]
-        joined = " ".join(messages)
-        assert "nodes[0].relationships[0].cardinality" in joined, messages
-        assert "both" in joined, messages
+        assert len(messages) == 1, messages
+        message = messages[0]
+        assert "nodes[0].relationships[0].cardinality:" in message, message
+        assert "Input should be 'one' or 'many'" in message, message
+        assert "(received: 'both')" in message, message
 
     async def test_stored_schema_with_read_level_field_reads_back(
         self,
@@ -817,12 +812,13 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         schema = response.json()
 
         generics = {item["kind"]: item for item in schema["generics"]}
-        assert "TestDog" in generics["TestAnimal"]["used_by"]
+        assert generics["TestAnimal"]["used_by"] == ["TestDog"]
 
         nodes = {item["kind"]: item for item in schema["nodes"]}
         dog = nodes["TestDog"]
-        inherited_attributes = [attr for attr in dog["attributes"] if attr["inherited"]]
-        assert inherited_attributes  # the `name` attribute inherited from TestAnimal reads back as inherited
+        inherited_attributes = {attr["name"] for attr in dog["attributes"] if attr["inherited"]}
+        assert inherited_attributes == {"name"}
+        assert {attr["name"] for attr in dog["attributes"]} == {"name", "breed"}
 
     async def test_schema_load_id_cannot_bypass_authorization(
         self,
@@ -876,6 +872,9 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         # The targeted object was neither renamed nor deleted.
         still_present = registry.schema.get(name="TestDevice", branch=default_branch.name)
         assert still_present.id == existing_id
+        assert still_present.name == "Device"
+        assert still_present.namespace == "Test"
+        assert not registry.schema.has(name="TestDeviceRenamed", branch=default_branch.name)
 
     async def test_write_contract_parity_sdk_offline_vs_load_endpoint(
         self,
@@ -951,11 +950,16 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         # naming the invalid value the SDK named offline.
         offline_invalid = validate_schema(schema=invalid_schema_root)
         assert offline_invalid.valid is False
-        assert any("NotARealKind" in message for message in offline_invalid.messages)
+        assert len(offline_invalid.messages) == 1, offline_invalid.messages
+        offline_message = offline_invalid.messages[0]
+        assert offline_message.startswith("nodes[0].attributes[0]:"), offline_message
+        assert "NotARealKind" in offline_message, offline_message
         response_invalid = await test_client.post(
             "/api/schema/load",
             json={"schemas": [invalid_schema_root]},
             headers={"X-INFRAHUB-KEY": api_admin_token},
         )
         assert response_invalid.status_code == 422
-        assert "NotARealKind" in response_invalid.text
+        server_messages = [item["msg"] for item in response_invalid.json()["detail"]]
+        assert len(server_messages) == 1, server_messages
+        assert offline_message in server_messages[0], (offline_message, server_messages)
