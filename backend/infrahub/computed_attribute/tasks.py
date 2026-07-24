@@ -261,7 +261,6 @@ async def process_transform(
             coalesced=False,
             recompute_depth=0,
         )
-        # The only rollup of partial failure until a recompute-failure surface exists.
         log.info(
             f"Recompute of '{attribute_name}' complete: submitted={len(results)} "
             f"written={len(writes)} skipped={len(skipped)}"

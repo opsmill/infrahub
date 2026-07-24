@@ -14,10 +14,13 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.computed_attribute.tasks import trigger_update_python_computed_attributes
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM
-from tests.component.computed_attribute._base import CAR_PERSON_PYTHON_SCHEMA, ScopedRecomputeTestBase
+from tests.component.computed_attribute._base import (
+    CAR_PERSON_PYTHON_SCHEMA,
+    ScopedRecomputeTestBase,
+    create_transform01,
+)
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
@@ -48,26 +51,7 @@ class TestMergeFanoutPython(ScopedRecomputeTestBase):
         Returns the ids of every car, so the test can compare the fan-out against the
         full population of the kind.
         """
-        query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
-        await query.new(
-            db=db,
-            name="query01",
-            query="query { TestCar { edges { node { name { value } } } } }",
-            models=["TestCar", "TestPerson"],
-        )
-        await query.save(db=db)
-
-        repo = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY)
-        await repo.new(
-            db=db, name="repo01", ref=default_branch.name, commit="commit01", location="location01", queries=[query]
-        )
-        await repo.save(db=db)
-
-        transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON)
-        await transform.new(
-            db=db, name="transform01", file_path="transform.py", class_name="Transform", query=query, repository=repo
-        )
-        await transform.save(db=db)
+        await create_transform01(db=db, branch_name=default_branch.name)
 
         await load_schema(db=db, schema=CAR_PERSON_PYTHON_SCHEMA, update_db=True)
 

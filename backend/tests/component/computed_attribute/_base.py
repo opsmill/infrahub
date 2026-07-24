@@ -11,7 +11,8 @@ from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
-from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality
+from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  used in dataclass field
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
+    from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
     from infrahub.services import InfrahubServices
     from infrahub.workflows.models import WorkflowDefinition
@@ -81,6 +83,35 @@ CAR_PERSON_PYTHON_SCHEMA = SchemaRoot(
         ),
     ]
 )
+
+
+async def create_transform01(db: InfrahubDatabase, branch_name: str) -> Node:
+    """query01/repo01/transform01: a Python transform whose query reads only TestCar.name.
+
+    The edges/node query structure is required for the analyzer to record the field as
+    a read, making ``name`` the single "related" field. Returns the repository so a
+    test can attach further transforms to it.
+    """
+    query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+    await query.new(
+        db=db,
+        name="query01",
+        query="query { TestCar { edges { node { name { value } } } } }",
+        models=["TestCar", "TestPerson"],
+    )
+    await query.save(db=db)
+
+    repo = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY)
+    await repo.new(db=db, name="repo01", ref=branch_name, commit="commit01", location="location01", queries=[query])
+    await repo.save(db=db)
+
+    transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON)
+    await transform.new(
+        db=db, name="transform01", file_path="transform.py", class_name="Transform", query=query, repository=repo
+    )
+    await transform.save(db=db)
+
+    return repo
 
 
 @dataclass
