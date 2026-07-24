@@ -15,7 +15,6 @@ from infrahub.core.merge.failure_recoverer import RecoveryOutcome
 from infrahub.core.merge.merge_locker import MERGE_LOCK_KEY
 from infrahub.core.merge.write_blocker import MergeProtection, MergeProtectionState, MergeWriteBlocker
 from infrahub.core.node import Node
-from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import MergeRecoveryRequiredError
 from infrahub.services.component import InfrahubComponent
@@ -26,7 +25,6 @@ from tests.adapters.message_bus import BusRecorder
 from .conftest import (
     FailAtBranchResetRecoverer,
     FailAtLockReleaseRecoverer,
-    build_identifier,
     build_recovery,
     find_logged_event,
 )
@@ -270,13 +268,13 @@ class TestRecovery:
         blocker = MergeWriteBlocker(cache=cache)
         await blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
 
-        recovery = FailAtBranchResetRecoverer(
+        recovery = build_recovery(
             db=db,
-            merge_write_blocker=blocker,
-            identifier=build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
-            default_branch=default_branch,
             cache=cache,
-            rollbacker=GraphRollbacker(db=db),
+            component=component,
+            default_branch=default_branch,
+            recoverer_class=FailAtBranchResetRecoverer,
+            merge_write_blocker=blocker,
         )
 
         with caplog.at_level("ERROR", logger="infrahub"):
@@ -311,13 +309,13 @@ class TestRecovery:
         blocker = MergeWriteBlocker(cache=cache)
         await blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
 
-        recovery = FailAtLockReleaseRecoverer(
+        recovery = build_recovery(
             db=db,
-            merge_write_blocker=blocker,
-            identifier=build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
-            default_branch=default_branch,
             cache=cache,
-            rollbacker=GraphRollbacker(db=db),
+            component=component,
+            default_branch=default_branch,
+            recoverer_class=FailAtLockReleaseRecoverer,
+            merge_write_blocker=blocker,
         )
 
         report = await recovery.recover()

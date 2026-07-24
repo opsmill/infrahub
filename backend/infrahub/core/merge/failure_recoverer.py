@@ -21,6 +21,8 @@ from .write_blocker import MalformedMergeProtectionError
 
 if TYPE_CHECKING:
     from infrahub.core.rollback import GraphRollbacker
+    from infrahub.core.schema.manager import SchemaManager
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.services.adapters.cache import InfrahubCache
 
@@ -64,6 +66,7 @@ class MergeFailureRecoverer:
         default_branch: Branch,
         cache: InfrahubCache,
         rollbacker: GraphRollbacker,
+        schema_manager: SchemaManager,
     ) -> None:
         self.db = db
         self.merge_write_blocker = merge_write_blocker
@@ -71,6 +74,7 @@ class MergeFailureRecoverer:
         self.default_branch = default_branch
         self.cache = cache
         self.rollbacker = rollbacker
+        self.schema_manager = schema_manager
 
     async def preview(self, *, force: bool = False, branch_name: str | None = None) -> RecoveryReport:
         """Report whether a failed merge can be recovered, making no changes.
@@ -128,6 +132,9 @@ class MergeFailureRecoverer:
         started_at = time.monotonic()
         try:
             await self._rollback(merge_started_at=merge_started_at)
+            # Restore the destination schema metadata right after the graph rollback so a failure here
+            # leaves the branch flagged and a re-run is idempotent.
+            await self._restore_destination_schema_metadata(branch=branch)
             # Reset the proposed change before the branch in case a later step fails, the branch stays
             # flagged so a re-run re-detects it and completes.
             await self._reset_proposed_change(proposed_change=proposed_change)
@@ -268,6 +275,29 @@ class MergeFailureRecoverer:
         branch.status = BranchStatus.OPEN
         await branch.save(db=self.db)
         registry.branch[branch.name] = branch
+
+    async def _restore_destination_schema_metadata(self, branch: Branch) -> None:
+        """Realign the destination branch's persisted schema hash/changed-at with the rolled-back graph.
+
+        The range rollback reverts versioned edges but not the plain ``Branch`` vertex properties the
+        merge wrote in place, so a crash mid-merge leaves the persisted schema metadata at the
+        failed-merge values. The hash is recomputed from the rolled-back graph rather than restored
+        literally; the changed-at is restored from the value persisted at merge start when present,
+        and left untouched for an older branch record that predates that field.
+        """
+        # Reload the destination branch so the metadata is written onto the current persisted record
+        # rather than a possibly-stale in-memory copy carried in from before the rollback.
+        default_branch = await Branch.get_by_name(db=self.db, name=self.default_branch.name)
+        schema_branch = await self._load_destination_schema(branch=default_branch)
+        default_branch.schema_hash = schema_branch.get_hash_full()
+        if branch.pre_merge_destination_schema_changed_at is not None:
+            default_branch.schema_changed_at = branch.pre_merge_destination_schema_changed_at
+        await default_branch.save(db=self.db)
+        self.default_branch = default_branch
+        registry.branch[default_branch.name] = default_branch
+
+    async def _load_destination_schema(self, branch: Branch) -> SchemaBranch:
+        return await self.schema_manager.load_schema_from_db(db=self.db, branch=branch)
 
     async def _release_merge_lock(self) -> None:
         """Release the global merge lock a dead merge worker left held by dropping its cache key.

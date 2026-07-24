@@ -14,9 +14,11 @@ from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.merge.failure_recoverer import RecoveryOutcome
+from infrahub.core.merge.failure_recoverer import MergeFailureRecoverer, RecoveryOutcome
 from infrahub.core.merge.write_blocker import MergeProtectionState, MergeWriteBlocker
+from infrahub.core.models import SchemaBranchHash
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
@@ -25,7 +27,7 @@ from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.db_validation import count_branch_edges_at, get_node_metadata, verify_graph
 
-from .conftest import FailAtBranchResetRecoverer, build_identifier, build_recovery
+from .conftest import FailAtBranchResetRecoverer, build_recovery
 
 if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -278,13 +280,13 @@ class TestRecoveryRollback:
         )
 
         # First run: the rollback lands, then the branch reset fails, so the branch stays flagged.
-        failing = FailAtBranchResetRecoverer(
+        failing = build_recovery(
             db=db,
-            merge_write_blocker=blocker,
-            identifier=build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
-            default_branch=default_branch,
             cache=cache,
-            rollbacker=GraphRollbacker(db=db),
+            component=component,
+            default_branch=default_branch,
+            recoverer_class=FailAtBranchResetRecoverer,
+            merge_write_blocker=blocker,
         )
         first = await failing.recover()
 
@@ -373,3 +375,148 @@ class TestRecoveryRollback:
         assert await blocker.get() is None
 
         await verify_graph(db=db)
+
+
+class TestRecoverySchemaMetadataRestore:
+    """Recovery realigns the destination schema hash/changed-at with the rolled-back graph (real db).
+
+    A merge that crashes after writing schema graph and the failed-merge schema metadata leaves the
+    destination ``Branch`` vertex carrying a hash/changed-at that disagrees with the rolled-back graph
+    (plain vertex properties are not versioned, so the range rollback cannot revert them). Recovery
+    recomputes the hash from the graph and restores changed-at from the value persisted at merge start.
+    """
+
+    @pytest.fixture
+    async def cache(self) -> MemoryCache:
+        return MemoryCache()
+
+    @pytest.fixture
+    async def component(self, db: InfrahubDatabase, cache: MemoryCache, default_branch: Branch) -> InfrahubComponent:
+        component = InfrahubComponent(
+            cache=cache, db=db, message_bus=BusRecorder(), component_type=ComponentType.API_SERVER
+        )
+        await component.refresh_heartbeat()
+        return component
+
+    async def _flag_failed_source_branch(
+        self,
+        db: InfrahubDatabase,
+        cache: MemoryCache,
+        branch_name: str,
+        pre_merge_changed_at: str | None,
+    ) -> tuple[Branch, MergeWriteBlocker]:
+        branch = await create_branch(branch_name=branch_name, db=db)
+        branch.status = BranchStatus.MERGE_FAILED
+        branch.merge_started_at = Timestamp().to_string()
+        branch.pre_merge_destination_schema_changed_at = pre_merge_changed_at
+        await branch.save(db=db)
+        blocker = MergeWriteBlocker(cache=cache)
+        await blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
+        return branch, blocker
+
+    async def test_recompute_hash_and_restore_changed_at(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        cache: MemoryCache,
+        component: InfrahubComponent,
+    ) -> None:
+        # The hash a worker would compute from the destination's rolled-back schema.
+        expected_hash = registry.schema.get_schema_branch(name=default_branch.name).get_hash_full()
+        pre_merge_changed_at = Timestamp().to_string()
+
+        # A crashed merge left failed-merge schema metadata on the destination Branch vertex.
+        default_branch.schema_hash = SchemaBranchHash(main="0" * 32, nodes={"stale": "stale"}, generics={})
+        default_branch.schema_changed_at = Timestamp().to_string()
+        await default_branch.save(db=db)
+
+        _, blocker = await self._flag_failed_source_branch(
+            db=db, cache=cache, branch_name="schema-meta-recover", pre_merge_changed_at=pre_merge_changed_at
+        )
+
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        report = await recovery.recover()
+        assert report.outcome == RecoveryOutcome.RECOVERED
+
+        reloaded_default = await Branch.get_by_name(db=db, name=default_branch.name)
+        assert reloaded_default.schema_hash is not None
+        assert reloaded_default.schema_hash.main == expected_hash.main
+        assert reloaded_default.schema_changed_at == pre_merge_changed_at
+        assert await blocker.get() is None
+
+        # Re-running recovery after the restore finds nothing to do and leaves the metadata unchanged.
+        second = await recovery.recover()
+        assert second.outcome == RecoveryOutcome.NOTHING_TO_RECOVER
+        reloaded_again = await Branch.get_by_name(db=db, name=default_branch.name)
+        assert reloaded_again.schema_hash is not None
+        assert reloaded_again.schema_hash.main == expected_hash.main
+        assert reloaded_again.schema_changed_at == pre_merge_changed_at
+
+    async def test_missing_pre_merge_changed_at_leaves_it_untouched(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        cache: MemoryCache,
+        component: InfrahubComponent,
+    ) -> None:
+        expected_hash = registry.schema.get_schema_branch(name=default_branch.name).get_hash_full()
+        # An older branch record predates the persisted pre-merge changed-at, so it stays None.
+        failed_merge_changed_at = Timestamp().to_string()
+
+        default_branch.schema_hash = SchemaBranchHash(main="0" * 32, nodes={"stale": "stale"}, generics={})
+        default_branch.schema_changed_at = failed_merge_changed_at
+        await default_branch.save(db=db)
+
+        _, blocker = await self._flag_failed_source_branch(
+            db=db, cache=cache, branch_name="schema-meta-recover-no-field", pre_merge_changed_at=None
+        )
+
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        report = await recovery.recover()
+        assert report.outcome == RecoveryOutcome.RECOVERED
+
+        reloaded_default = await Branch.get_by_name(db=db, name=default_branch.name)
+        assert reloaded_default.schema_hash is not None
+        # Hash is still recomputed from the schema, but changed-at is left at the failed-merge value.
+        assert reloaded_default.schema_hash.main == expected_hash.main
+        assert reloaded_default.schema_changed_at == failed_merge_changed_at
+        assert await blocker.get() is None
+
+    async def test_recomputed_hash_matches_persisted_schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_schema_db: None,
+        cache: MemoryCache,
+        component: InfrahubComponent,
+    ) -> None:
+        # The production recoverer loads the schema from the DB; this is the one test that persists the
+        # schema and proves the DB-loaded hash equals what a worker recomputes from the same graph.
+        expected_hash = (await registry.schema.load_schema_from_db(db=db, branch=default_branch)).get_hash_full()
+        pre_merge_changed_at = Timestamp().to_string()
+
+        default_branch.schema_hash = SchemaBranchHash(main="0" * 32, nodes={"stale": "stale"}, generics={})
+        default_branch.schema_changed_at = Timestamp().to_string()
+        await default_branch.save(db=db)
+
+        _, blocker = await self._flag_failed_source_branch(
+            db=db, cache=cache, branch_name="schema-meta-recover-db", pre_merge_changed_at=pre_merge_changed_at
+        )
+
+        recovery = build_recovery(
+            db=db,
+            cache=cache,
+            component=component,
+            default_branch=default_branch,
+            recoverer_class=MergeFailureRecoverer,
+        )
+        report = await recovery.recover()
+        assert report.outcome == RecoveryOutcome.RECOVERED
+
+        reloaded_default = await Branch.get_by_name(db=db, name=default_branch.name)
+        assert reloaded_default.schema_hash is not None
+        assert reloaded_default.schema_hash.main == expected_hash.main
+        assert reloaded_default.schema_changed_at == pre_merge_changed_at
+        assert await blocker.get() is None

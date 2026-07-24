@@ -126,6 +126,7 @@ async def recover_cmd(
             default_branch=default_branch,
             cache=cache,
             rollbacker=GraphRollbacker(db=db),
+            schema_manager=schema_manager,
         )
 
         preview = await recoverer.preview(force=force, branch_name=branch)
