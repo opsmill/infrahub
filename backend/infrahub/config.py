@@ -545,7 +545,7 @@ class ApiSettings(BaseSettings):
         default=True, description="If True, cookies will be allowed to be included in cross-site HTTP requests"
     )
     backpressure_enabled: bool = Field(
-        default=True,
+        default=False,
         description="Kill-switch for priority-aware API backpressure; when disabled every request passes through.",
     )
     backpressure_codel_target_seconds: float = Field(

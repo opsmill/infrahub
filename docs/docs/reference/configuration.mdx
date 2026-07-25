@@ -48,7 +48,7 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_API_CORS_ALLOW_METHODS` | A list of HTTP verbs that are allowed for the actual request | array[string] | None |
 | `INFRAHUB_API_CORS_ALLOW_HEADERS` | The list of non-standard HTTP headers allowed in requests from the browser | array[string] | None |
 | `INFRAHUB_API_CORS_ALLOW_CREDENTIALS` | If True, cookies will be allowed to be included in cross-site HTTP requests | boolean | True |
-| `INFRAHUB_API_BACKPRESSURE_ENABLED` | Kill-switch for priority-aware API backpressure; when disabled every request passes through. | boolean | True |
+| `INFRAHUB_API_BACKPRESSURE_ENABLED` | Kill-switch for priority-aware API backpressure; when disabled every request passes through. | boolean | False |
 | `INFRAHUB_API_BACKPRESSURE_CODEL_TARGET_SECONDS` | CoDel target sojourn in seconds before shedding is considered. | number | 0.005 |
 | `INFRAHUB_API_BACKPRESSURE_CODEL_INTERVAL_SECONDS` | CoDel interval in seconds the sojourn must stay above target before dropping. | number | 0.1 |
 | `INFRAHUB_API_BACKPRESSURE_HIGH_TARGET_MULTIPLIER` | Multiplier applied to the CoDel target for the high-priority class. | number | 4.0 |
