@@ -60,7 +60,7 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_API_BACKPRESSURE_SIGNIFICANT_LOAD_STRESS_RATIO` | Stress ratio at or above which the server is counted as under significant sustained load. | number | 20.0 |
 | `INFRAHUB_API_BACKPRESSURE_SUSTAINED_LOAD_WARN_SECONDS` | Seconds of continuous significant load after which the advised Retry-After is escalated. | number | 60.0 |
 | `INFRAHUB_API_BACKPRESSURE_SUSTAINED_LOAD_HIGH_SECONDS` | Seconds of continuous significant load after which the advised Retry-After is escalated further. | number | 300.0 |
-| `INFRAHUB_API_BACKPRESSURE_MAX_CONCURRENCY_FACTOR` | Scales the derived maximum admission concurrency. | number | 0.5 |
+| `INFRAHUB_API_BACKPRESSURE_MAX_CONCURRENCY_FACTOR` | Scales the derived maximum admission concurrency. | number | 1.0 |
 | `INFRAHUB_API_BACKPRESSURE_STRESS_WINDOW_SECONDS` | Rolling window, in seconds, over which the database-stress signal is measured. | number | 20.0 |
 | `INFRAHUB_API_BACKPRESSURE_STRESS_MIN_SAMPLES` | Reference-query samples required in the window before the stress signal gates shedding. | integer | 5 |
 | `INFRAHUB_API_BACKPRESSURE_SHED_LOW_STRESS_RATIO` | Database-stress ratio at or above which low-priority requests become eligible for shedding. | number | 10.0 |
