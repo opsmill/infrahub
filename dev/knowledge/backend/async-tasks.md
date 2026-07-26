@@ -72,14 +72,18 @@ WorkflowDefinition(
 
 ### Flow Functions
 
-Async functions decorated with `@flow` containing business logic:
+Async functions decorated with `@flow`. A flow function is a **composition root, not the home of business logic**: it resolves the singleton services (`get_database()`, `get_workflow()`, …), builds a component with those dependencies injected, and delegates to it. Keep the flow body thin — the logic lives in the component, where it is testable without a running worker (see `.agents/rules/backend-component-design.md`).
 
 ```python
 @flow(name="branch-merge", flow_run_name="Merge branch {branch}")
 async def merge_branch(branch: str, context: InfrahubContext) -> None:
     database = await get_database()
-    # ... implementation
+    async with database.start_session() as db:
+        merger = BranchMerger(db=db, diff_coordinator=..., ...)  # collaborators injected here
+        await merger.merge()
 ```
+
+Singleton getters belong at this entry point only — do not call `get_database()`/`get_workflow()` inside helper functions or component internals; pass the resolved services down as constructor arguments.
 
 ### Task Functions
 
@@ -101,6 +105,8 @@ Names must use **lowercase with dashes** (not underscores):
 - Bad: `branch_merge`, `BranchMerge`, `branchMerge`
 
 All flows and tasks must have an explicit `name` parameter in their decorator.
+
+**Reference workflow names via the catalogue, never as re-typed string literals.** When code outside the flow needs a workflow's name — dispatching it, filtering its flow runs, labelling metrics — import the `WorkflowDefinition` from `backend/infrahub/workflows/catalogue.py` and use it (e.g. pass `workflow=WEBHOOK_PROCESS`, or read `WEBHOOK_PROCESS.name`). A duplicated literal drifts silently when the flow is renamed.
 
 ### Flow Run Names
 
@@ -260,6 +266,10 @@ Existing examples: `DisplayLabelNodeIDQuery`, `HFIDNodeIDQuery`, `ComputedAttrib
 ### A subflow succeeds only when it is completed
 
 When inspecting a subflow's terminal state, gate on `state.is_completed()`, not on the negation of `state.is_failed()`. `is_failed()` is only one terminal failure mode — a `CANCELLED` or `CRASHED` subflow is not failed but is also not a success, so `if not state.is_failed(): return` reports those as success. Treat "completed" as the only success and every other terminal state as a failure.
+
+### Observability side-writes must never change the primary outcome
+
+A write whose only purpose is observability — persisting a Prefect artifact that captures a request/response, emitting a metric, invoking a metrics-observer callback — is best-effort by definition. It must be exception-isolated (catch, log a warning, continue) so that its failure can never fail, retry, or alter the outcome of the operation it observes: a webhook delivery that succeeded must not be reported as failed because the capture artifact could not be written, and a metrics callback raising must not corrupt lock/pool state. The primary operation's result is decided before and independently of the telemetry write.
 
 ### Post-commit follow-up work is best-effort
 

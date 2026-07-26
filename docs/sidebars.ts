@@ -100,6 +100,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'schema/overview' }, // hub
           items: [
             { type: 'doc', id: 'schema/nodes-and-attributes', label: 'Nodes & attributes' },
+            { type: 'doc', id: 'schema/namespaces', label: 'Namespaces' },
             { type: 'doc', id: 'schema/relationships', label: 'Relationships' },
             { type: 'doc', id: 'schema/generics-and-inheritance', label: 'Generics & inheritance' },
             { type: 'doc', id: 'schema/branch-awareness', label: 'Branch awareness' },
@@ -282,6 +283,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'generators/overview' }, // hub
           items: [
             { type: 'doc', id: 'generators/build', label: 'Build a generator' },
+            { type: 'doc', id: 'generators/remove', label: 'Remove a generator' },
             { type: 'doc', id: 'generators/modular', label: 'Modular generators' },
             { type: 'doc', id: 'generators/modular-best-practices', label: 'Modular generator best practices' },
           ],
