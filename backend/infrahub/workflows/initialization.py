@@ -1,10 +1,12 @@
+import asyncio
+import contextlib
 from urllib.parse import quote, urlencode
 
 from prefect import flow, task
 from prefect.blocks.redis import RedisStorageContainer
 from prefect.cache_policies import NONE
 from prefect.client.orchestration import PrefectClient, get_client
-from prefect.client.schemas.actions import WorkPoolCreate
+from prefect.client.schemas.actions import VariableCreate, WorkPoolCreate
 from prefect.exceptions import ObjectAlreadyExists
 from prefect.logging import get_run_logger
 from pydantic import SecretStr
@@ -19,6 +21,63 @@ from infrahub.trigger.setup import setup_triggers
 
 from .catalogue import WORKER_POOLS, get_workflows
 from .models import TASK_RESULT_STORAGE_NAME
+
+TASK_MANAGER_SETUP_MARKER = "infrahub_task_manager_setup_completed"
+
+
+async def mark_task_manager_setup_completed() -> None:
+    """Record in the task manager that the deployments and triggers are fully registered.
+
+    The marker is a task-manager variable so it shares the task manager's lifecycle: a fresh task
+    manager has no marker until the registration completes, while a task manager with persisted
+    state keeps both the marker and the registrations across restarts.
+    """
+    async with get_client(sync_client=False) as client:
+        if await client.read_variable_by_name(TASK_MANAGER_SETUP_MARKER) is None:
+            # a concurrent registration may have created it in between; its presence is all that matters
+            with contextlib.suppress(Exception):
+                await client.create_variable(variable=VariableCreate(name=TASK_MANAGER_SETUP_MARKER, value="true"))
+
+
+async def wait_for_task_manager_setup(max_wait_seconds: int = 180) -> None:
+    """Block until the task-manager deployments and triggers are registered.
+
+    A serving worker may receive a request that dispatches a workflow run at any moment, and the
+    dispatch fails while the registration is still in flight. Workers that do not perform the
+    registration themselves must therefore wait for the completion marker before finishing their
+    startup and accepting traffic.
+
+    Raises:
+        RuntimeError: When the registration marker does not appear within ``max_wait_seconds``.
+
+    """
+    async with get_client(sync_client=False) as client:
+        for _ in range(max(1, max_wait_seconds * 2)):
+            with contextlib.suppress(Exception):  # connection errors while the task manager is still booting
+                if await client.read_variable_by_name(TASK_MANAGER_SETUP_MARKER) is not None:
+                    return
+            await asyncio.sleep(0.5)
+    raise RuntimeError(f"Task manager setup did not complete within {max_wait_seconds}s")
+
+
+async def wait_for_task_manager(max_wait_seconds: int = 120) -> None:
+    """Block until the task manager (Prefect) API is reachable.
+
+    The API server's dependency on the task manager is relaxed to ``service_started`` so the schema
+    load can overlap the (slow) task manager boot. Registering deployments and triggers still needs a
+    reachable API, so callers wait here first.
+
+    Raises:
+        RuntimeError: When the task manager is not reachable within ``max_wait_seconds`` seconds.
+
+    """
+    async with get_client(sync_client=False) as client:
+        for _ in range(max(1, max_wait_seconds * 2)):
+            with contextlib.suppress(Exception):  # any connection error means the API is not up yet
+                if await client.api_healthcheck() is None:
+                    return
+            await asyncio.sleep(0.5)
+    raise RuntimeError(f"Task manager (Prefect) did not become reachable within {max_wait_seconds}s")
 
 
 def build_cache_connection_string(cache: CacheSettings) -> str:

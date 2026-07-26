@@ -213,8 +213,17 @@ def infrahub_app(
     legacy TS suite did). Yields the compose object so dependents can read mapped
     ports (get_services_port) and toggle runtime settings (set_server_response_delay).
     Stays synchronous: compose operations are blocking subprocess calls.
+
+    When ``INFRAHUB_TESTING_DB_SNAPSHOT`` points at a snapshot file, the database is seeded from
+    it before the server starts (skips first-time initialization); otherwise the stack boots
+    normally and runs it.
     """
-    compose = InfrahubDockerCompose.init(directory=infrahub_compose_dir, version=infrahub_version)
+    snapshot = os.environ.get("INFRAHUB_TESTING_DB_SNAPSHOT")
+    compose = InfrahubDockerCompose.init(
+        directory=infrahub_compose_dir,
+        version=infrahub_version,
+        snapshot_path=Path(snapshot) if snapshot else None,
+    )
     try:
         compose.start()
     except Exception as exc:  # pragma: no cover - surfaced with logs for debugging

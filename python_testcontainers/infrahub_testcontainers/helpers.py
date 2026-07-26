@@ -91,10 +91,12 @@ class TestInfrahubDocker:
         infrahub_version: str,
         deployment_type: str | None,
     ) -> InfrahubDockerCompose:
+        snapshot = os.environ.get("INFRAHUB_TESTING_DB_SNAPSHOT")
         return InfrahubDockerCompose.init(
             directory=tmp_directory,
             version=infrahub_version,
             deployment_type=deployment_type,
+            snapshot_path=Path(snapshot) if snapshot else None,
         )
 
     @pytest.fixture(scope="class")

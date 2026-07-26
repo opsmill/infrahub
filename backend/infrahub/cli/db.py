@@ -398,6 +398,94 @@ async def reset_deployment_id_cmd(
         await dbdriver.close()
 
 
+@app.command(name="snapshot-dump")
+async def snapshot_dump_cmd(
+    ctx: typer.Context,
+    output: str = typer.Argument(..., help="Path to write the snapshot to (.json.gz)."),
+    config_file: str = typer.Option("infrahub.toml", "--config-file", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Bootstrap an empty database deterministically and write a portable snapshot of the initialized graph.
+
+    The target database MUST be empty. Generation is deterministic (fixed uuids/timestamps/secrets),
+    so the snapshot is byte-stable across regenerations and a CI job can validate its freshness with a
+    plain diff. Restore it later with ``snapshot-restore`` to skip first-time initialization.
+
+    Raises:
+        Exit: When the target database is not empty.
+
+    """
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+    console = Console()
+
+    config.load_and_exit(config_file_name=config_file)
+
+    from infrahub.components import ComponentType
+    from infrahub.core.initialization import initialization
+    from infrahub.core.root import Root
+    from infrahub.database.snapshot import capture_graph, deterministic_generation, write_snapshot_file
+    from infrahub.lock import initialize_lock
+    from infrahub.workers.dependencies import set_component_type
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+    set_component_type(component_type=ComponentType.API_SERVER)
+    initialize_lock(local_only=True)
+    build_component_registry()
+
+    try:
+        async with dbdriver.start_session() as db:
+            if await Root.get_list(db=db):
+                console.print("[red]Database is not empty; snapshot-dump requires a fresh database.[/red]")
+                raise typer.Exit(code=1)
+            with deterministic_generation():
+                await initialization(db=db, add_database_indexes=True)
+            snapshot = await capture_graph(db=db)
+        write_snapshot_file(snapshot=snapshot, path=output)
+        console.print(
+            f"Wrote snapshot: {len(snapshot.nodes)} nodes, {len(snapshot.edges)} edges "
+            f"(graph v{snapshot.graph_version}) -> {output}"
+        )
+    finally:
+        await dbdriver.close()
+
+
+@app.command(name="snapshot-restore")
+async def snapshot_restore_cmd(
+    ctx: typer.Context,
+    snapshot_path: str = typer.Argument(..., help="Path to a snapshot (.json.gz) to restore."),
+    config_file: str = typer.Option("infrahub.toml", "--config-file", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Restore a portable graph snapshot into an empty database, as a fast alternative to first-time init.
+
+    Raises:
+        Exit: When the target database is not empty.
+
+    """
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    console = Console()
+
+    config.load_and_exit(config_file_name=config_file)
+
+    from infrahub.core.root import Root
+    from infrahub.database.snapshot import read_snapshot_file, restore_graph
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+    try:
+        snapshot = read_snapshot_file(snapshot_path)
+        async with dbdriver.start_session() as db:
+            if await Root.get_list(db=db):
+                console.print("[red]Database is not empty; snapshot-restore requires a fresh database.[/red]")
+                raise typer.Exit(code=1)
+            await restore_graph(db=db, snapshot=snapshot)
+        console.print(f"Restored snapshot: {len(snapshot.nodes)} nodes, {len(snapshot.edges)} edges")
+    finally:
+        await dbdriver.close()
+
+
 @app.command(name="check-duplicate-schema-fields")
 async def check_duplicate_schema_fields_cmd(
     ctx: typer.Context,

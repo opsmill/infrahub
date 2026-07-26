@@ -578,6 +578,39 @@ jobs:
       #     type: "junit"
       #     githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
 
+  backend-validate-db-snapshot:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v7"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      # Fails if the committed snapshot no longer matches a freshly generated one (e.g. after a
+      # schema/menu/permission change). Regenerate with:
+      #   infrahub db snapshot-dump backend/tests/fixtures/db_snapshots/core_bootstrap.json.gz
+      - name: "Validate database snapshot freshness"
+        run: "uv run pytest backend/tests/component/database/test_snapshot.py -q"
+
   backend-tests-integration:
     if: |
       always() && !cancelled() &&
@@ -687,6 +720,9 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
       PYTEST_XDIST_WORKER_COUNT: 1
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      # Seed each test stack's database from the committed snapshot instead of running
+      # first-time initialization (~9s less fixture-blocking boot per stack).
+      INFRAHUB_TESTING_DB_SNAPSHOT: ${{ github.workspace }}/backend/tests/fixtures/db_snapshots/core_bootstrap.json.gz
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
@@ -1323,6 +1359,9 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       PYTEST_XDIST_WORKER_COUNT: 1
+      # Seed each test stack's database from the committed snapshot instead of running
+      # first-time initialization (~9s less fixture-blocking boot per stack).
+      INFRAHUB_TESTING_DB_SNAPSHOT: ${{ github.workspace }}/backend/tests/fixtures/db_snapshots/core_bootstrap.json.gz
     steps:
       - name: Check out repository code
         uses: actions/checkout@v7
