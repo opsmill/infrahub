@@ -97,10 +97,12 @@ backend/infrahub/
 │   ├── merge/
 │   │   ├── orchestrator.py        # D1: capture branch_diff → summary → cache; D3: pass key to run_follow_ups
 │   │   ├── post_merge.py          # D3: thread merge_diff_cache_key + proposed_change_id into BRANCH_MERGE_POST_PROCESS params
-│   │   ├── selective_regen.py     # NEW — D4/D4a: definition gates + live-group member reconciliation on target branch
-│   │   └── diff_summary.py        # NEW — D2: EnrichedDiffNode → NodeDiff converter (target-branch tag) + merge-scoped cache fns
+│   │   ├── regeneration_dispatcher.py  # NEW — D6/D7: decide+submit; per-generator isolation, targeted generator→artifact cascade, fallbacks
+│   │   ├── diff_summary.py        # NEW — D2: EnrichedDiffNode → NodeDiff converter (target-branch tag) + merge-scoped cache fns
+│   │   └── selective_regen/       # NEW — D4/D4a package: orchestrator.py (selector), definition_selector/ (base + artifact/generator), fallbacks.py, generator_diff_capturer.py (group-scoped output capture), models.py
+│   ├── regeneration/             # NEW — shared selection primitives extracted for both callers: predicates.py, members.py, definitions.py, models.py
 │   └── branch/
-│       └── tasks.py               # D4/D6/D7/D9: post_process_branch_merge — flag gate, selective dispatch, fallbacks, observability
+│       └── tasks.py               # D4/D6/D7/D9: post_process_branch_merge — flag gate, dispatcher wiring, fallbacks, observability
 ├── proposed_change/
 │   ├── tasks.py                   # D4: generalize predicates + get_field_level_impacted_subscribers to accept a resolved summary + explicit query branch
 │   └── branch_diff.py             # reference for cache shape / get_modified_kinds (reused)
@@ -234,3 +236,24 @@ field, and extracts one shared helper serving two callers. **PASS.**
   real regenerated-output assertions move to the API tier (tasks T039, T044). The representative
   perf A/B (SC-001/SC-004/SC-005) is recorded in `perf-validation.md`; the scale run (SC-002)
   remains deferred pending the profiling-harness dataset (tasks T040, T045).
+
+### Revision: Implementation Sync 2026-07-24
+
+- Reason: reconciled the shipped structure and the direct-merge cascade (Phase 7 / T035).
+  - **Structure**: the selection code shipped as a `core/merge/selective_regen/` package (a
+    `RegenerationSelector` orchestrator, per-kind definition selectors, fallbacks, and a
+    group-scoped generator-output capturer) plus a `core/merge/regeneration_dispatcher.py`
+    that decides and submits the plan; the shared predicates/members/definitions primitives
+    were extracted to a `core/regeneration/` package serving both the merge and proposed-change
+    callers. This supersedes the single planned `selective_regen.py`.
+  - **Cascade (D7)**: the direct-merge cascade is now targeted, not blanket. The dispatcher
+    awaits each after-merge generator, captures the nodes it wrote scoped to that generator's
+    per-member tracking group, and regenerates only the artifacts that read the tracked output.
+    It widens to regenerating every artifact when a generator's tracked set is unresolved or the
+    output cannot be captured, and — on a generator run failure — regenerates all artifacts
+    without re-running the generators. Artifact requests selected by both the merge diff and the
+    generator output are consolidated into one request per definition (member/limit filters
+    unioned; an empty filter subsumes a specific one).
+  - **Config default (D9)**: `selective_execution_after_merge` now ships `default=True`; the
+    T001 caveat (ship `False` until the fallbacks land) is resolved.
+  - **Observability (E8)**: the per-merge selective-vs-fallback line is emitted at debug level.
