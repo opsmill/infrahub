@@ -5,8 +5,12 @@ admission layer (IFC-2886) can serve interactive users first and shed background
 work first under overload.
 
 Contract module: `frontend/app/src/shared/api/priority/index.ts`. Spec:
-`specs/ifc-2890-frontend-request-priority/`. The server side that consumes this header is
-documented in [API Backpressure](../backend/api-backpressure.md).
+`dev/specs/archive/ifc-2890-frontend-request-priority/`. The server side that consumes this header
+is documented in [API Backpressure](../backend/api-backpressure.md).
+
+Why the client declares priority at all (rather than the server inferring it), why the claim is
+trusted, and why the header is stamped at the transport boundary instead of at call sites:
+[ADR 0008](../../adr/0008-client-declared-request-priority.md).
 
 ## The contract
 

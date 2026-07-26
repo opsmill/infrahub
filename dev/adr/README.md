@@ -11,6 +11,10 @@ We document significant architectural decisions using ADRs.
 | [0003](0003-asynchronous-tasks.md) | Asynchronous Tasks Execution with Prefect | Accepted | 2024-12-26 |
 | [0004](0004-message-bus.md) | Message Bus Architecture | Accepted | 2024-12-26 |
 | [0005](0005-account-group-origin-attribute.md) | `origin` Attribute for `CoreAccountGroup` Provenance Tracking | Accepted | 2025-05-13 |
+| [0006](0006-frontend-entity-layers.md) | Frontend Entity Layers: `ui → domain → api` with API-owned Mappers | Accepted | 2026-07-03 |
+| [0007](0007-adaptive-retry-after-under-load.md) | Adaptive `Retry-After` under Sustained Load | Accepted | 2026-07-24 |
+| [0008](0008-client-declared-request-priority.md) | Client-declared Request Priority, Cooperatively Trusted | Accepted | 2026-07-26 |
+| [0009](0009-per-worker-coordination-free-admission.md) | Per-worker, Coordination-free Admission Capacity | Accepted | 2026-07-26 |
 
 ## Creating a New ADR
 

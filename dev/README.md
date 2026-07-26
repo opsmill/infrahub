@@ -61,6 +61,13 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [events.md](knowledge/backend/events.md) - Events system
 - [async-tasks.md](knowledge/backend/async-tasks.md) - Asynchronous tasks (Prefect)
 - [message-bus.md](knowledge/backend/message-bus.md) - Message bus system
+- [api-backpressure.md](knowledge/backend/api-backpressure.md) - Priority-aware load shedding and the database-stress signal
+
+Frontend architecture documentation in [knowledge/frontend/](knowledge/frontend/):
+
+- [architecture.md](knowledge/frontend/architecture.md) - Frontend architecture overview
+- [entities-structure.md](knowledge/frontend/entities-structure.md) - Entity layers (`ui → domain → api`)
+- [request-priority.md](knowledge/frontend/request-priority.md) - The `X-Priority` header the frontend emits
 
 ## Current ADRs
 
@@ -72,6 +79,9 @@ Architecture Decision Records in [adr/](adr/):
 - [0004-message-bus.md](adr/0004-message-bus.md) - Message bus
 - [0005-account-group-origin-attribute.md](adr/0005-account-group-origin-attribute.md) - `origin` attribute for `CoreAccountGroup` provenance
 - [0006-frontend-entity-layers.md](adr/0006-frontend-entity-layers.md) - Frontend entity layers: `ui → domain → api` with api-owned mappers
+- [0007-adaptive-retry-after-under-load.md](adr/0007-adaptive-retry-after-under-load.md) - Adaptive `Retry-After` under sustained load
+- [0008-client-declared-request-priority.md](adr/0008-client-declared-request-priority.md) - Client-declared request priority, cooperatively trusted
+- [0009-per-worker-coordination-free-admission.md](adr/0009-per-worker-coordination-free-admission.md) - Per-worker, coordination-free admission capacity
 
 ## Current Guides
 

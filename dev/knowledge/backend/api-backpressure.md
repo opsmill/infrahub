@@ -55,8 +55,9 @@ Pass-through cases that bypass admission entirely:
 
 - Non-`http` scopes (WebSocket, lifespan).
 - The kill-switch: when `backpressure_enabled` is false, every request passes through.
-- Excluded paths — liveness/scrape/static/docs: `/health`, `/metrics`, `/assets`, `/favicons`,
-  `/docs`, `/api/schema`. Liveness and scraping must never be shed.
+- Excluded paths — liveness/scrape/probe/static/docs: `/health`, `/metrics`, `/api/config`,
+  `/assets`, `/favicons`, `/docs`, `/api/schema`. Liveness, scraping, and the config probe must
+  never be shed.
 - CORS preflights (`OPTIONS` advertising `access-control-request-method`) — see
   [Known limitations](#known-limitations).
 
@@ -138,13 +139,37 @@ climbed past the trigger — a graduated response rather than shedding the whole
 The fraction is applied as a per-request random draw. Until the window holds a minimum number of
 samples the signal is treated as unstressed, so a cold or outlier floor cannot shed traffic.
 
+## The `Retry-After` hint
+
+<!-- Extracted from specs/ifc-2886-priority-api-backpressure on 2026-07-26 -->
+
+Every shed response carries a `Retry-After`, computed by `RetryAfterPolicy` (`retry_policy.py`) on
+two axes and clamped to a maximum kept below the SDK's per-retry cap so first-party clients honour
+it verbatim.
+
+- **Intensity** — the same `stress_tier(ratio, threshold)` primitive that drives the graduated shed
+  fraction returns `0/1/2/3` at `1×/2×/5×` of the class's own trigger, and the tier maps to a
+  configured base (`1s`/`5s`/`10s`). Because the trigger is per class, the advised wait tracks the
+  class. A backstop shed is treated as the top tier; any shed floors at level 1.
+- **Persistence** — a per-worker episode clock counts how long the stress ratio has *continuously*
+  stayed at or above a significant-load line (default `20.0`). Ratios below it are a warm-up zone
+  that never accrues time. The base is multiplied by `×1/×2/×3` as the episode passes `0/60s/300s`.
+
+A single static value was tried first and failed: the SDK honours `Retry-After` verbatim, so a
+fixed `1s` overrode its exponential backoff and collapsed a bounded retry budget to a few seconds —
+background work *failed* under sustained load instead of being merely deprioritised. See
+[ADR 0007](../../adr/0007-adaptive-retry-after-under-load.md).
+
 ## Metrics
 
 All on the existing `/metrics` endpoint.
 
 Admission (`infrahub_admission_*`): `offered_total`, `admitted_total`,
 `rejected_total{priority,reason}` (reason is `stress`, `codel`, or `backstop`), `in_flight`,
-`waiters`, `sojourn_seconds`, `max_concurrency`, `missing_priority_total` (adoption tracking).
+`waiters`, `sojourn_seconds`, `max_concurrency`, `missing_priority_total` (adoption tracking),
+`sustained_load_seconds` (how long this worker has continuously been at or above the
+significant-load ratio — the exact signal driving `Retry-After` escalation, so it can be graphed
+and alerted on).
 
 Stress signal (`infrahub_db_reference_query_*`): `floor_seconds`, `window_min_seconds`,
 `stress_ratio_median`. The floor and window-min gauges aggregate across workers as `min` and the
@@ -156,7 +181,47 @@ the scraped values are meaningful cross-worker figures.
 All knobs are `INFRAHUB_API_BACKPRESSURE_*` plus `INFRAHUB_DB_MAX_CONNECTION_POOL_SIZE`; see the
 [configuration reference](../../../docs/docs/reference/configuration.mdx) for names and defaults.
 `backpressure_enabled` is the kill-switch (default on) and the instant rollback. The slot cap
-follows from the DB pool size × the concurrency factor.
+follows from the DB pool size × the concurrency factor. The `Retry-After` knobs are the per-tier
+bases, the clamp, the significant-load ratio, and the two sustained-load thresholds.
+
+## Why it's built this way
+
+<!-- Extracted from specs/ifc-2886-priority-api-backpressure on 2026-07-26 -->
+
+The two decisions that are hard to walk back — client-declared priority and per-worker,
+coordination-free capacity — have their own ADRs (see [Design record](#design-record)). The
+choices below are rationale rather than constraint: each is swappable behind `AdmissionController`
+without disturbing the rest of the layer, and this section exists so a future change knows what
+was already ruled out.
+
+**Pure-ASGI middleware, registered outermost.** Shedding must happen before any downstream work —
+CORS, telemetry, routing, and the auth dependency all cost something, and a shed request should
+cost none of it. Auth in Infrahub is a FastAPI dependency resolved per route, well after
+middleware, which is *why* the gate can only classify on the header: nothing else is known yet.
+The alternatives were a `@app.middleware("http")` decorator, rejected because it wraps
+`BaseHTTPMiddleware`, which buffers the whole response and interferes with streaming and
+background tasks — a poor fit for a hot admission path; and a FastAPI dependency, rejected because
+it runs after routing and needs per-route wiring instead of one uniform admission point.
+
+**The `429` is built in the middleware, not raised.** Registered exception handlers cannot attach
+`Retry-After`, and the outermost middleware sits outside the exception-handler scope anyway. The
+middleware constructs the response directly, matching the existing error envelope so the wire
+contract stays consistent.
+
+**Delay-based (CoDel) shedding, not a queue-length threshold.** CoDel keys off how long requests
+actually wait, which is the thing that hurts, and it self-adapts with no per-deployment number to
+pick. A fixed queue-length threshold was rejected precisely because it needs that number. Token or
+leaky buckets were rejected as rate-based: they cap throughput at a hand-picked rate rather than
+reacting to real capacity contention, so they shed while the server is idle and admit while it
+drowns.
+
+**A purpose-built slot pool, not a semaphore.** `asyncio.Semaphore` has a single FIFO queue and no
+notion of class, so it cannot hand a freed slot to the highest-priority waiter. An
+`asyncio.PriorityQueue` of waiters was rejected as awkward to make cancellation-safe while also
+guaranteeing within-class FIFO; three semaphores over a shared counter re-introduce the same
+hand-off and cancellation complexity without simplifying anything. Three explicit deques — one per
+class — are clearer and directly testable, with the cancellation path modelled on CPython's
+`asyncio.Semaphore` so a cancelled waiter cannot leak a slot or deadlock the pool.
 
 ## Known limitations
 
@@ -172,7 +237,12 @@ follows from the DB pool size × the concurrency factor.
 
 ## Design record
 
-The design and its rejected alternatives (CoDel vs a fixed threshold, ASGI middleware vs a FastAPI
-dependency, per-worker vs a shared limiter) are captured in the spec at
-`dev/specs/ifc-2886-priority-api-backpressure/`. The database-stress signal was added after that
-spec and is documented here rather than there.
+- [ADR 0007](../../adr/0007-adaptive-retry-after-under-load.md) — adaptive `Retry-After`.
+- [ADR 0008](../../adr/0008-client-declared-request-priority.md) — why the caller declares
+  priority and why the claim is trusted.
+- [ADR 0009](../../adr/0009-per-worker-coordination-free-admission.md) — why capacity is
+  per-worker and derived from the DB pool.
+
+The originating spec is archived at
+`dev/specs/archive/ifc-2886-priority-api-backpressure/`. The database-stress signal was added
+after that spec and is documented here rather than there.
