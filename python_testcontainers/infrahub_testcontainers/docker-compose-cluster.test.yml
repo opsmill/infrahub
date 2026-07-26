@@ -18,6 +18,10 @@ x-neo4j-config-common: &neo4j-config-common
   NEO4J_server_memory_heap_initial__size: ${INFRAHUB_TESTING_DB_HEAP_INITIAL_SIZE}
   NEO4J_server_memory_heap_max__size: ${INFRAHUB_TESTING_DB_HEAP_MAX_SIZE}
   NEO4J_server_memory_pagecache_size: ${INFRAHUB_TESTING_DB_PAGECACHE_SIZE}
+  # Bolt connector worker threads. Neo4j defaults to 400; a wide computed-attribute
+  # fan-out on large datasets can exhaust it (Neo.TransientError.Request.NoThreadsAvailable),
+  # so make it tunable for the heavy perf/dataset runs.
+  NEO4J_server_bolt_thread__pool__max__size: ${INFRAHUB_TESTING_DB_BOLT_THREAD_POOL_MAX_SIZE}
 
 
 services:
