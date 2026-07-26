@@ -593,7 +593,7 @@ class ApiSettings(BaseSettings):
         description="Seconds of continuous significant load after which the advised Retry-After is escalated further.",
     )
     backpressure_max_concurrency_factor: float = Field(
-        default=1.0,
+        default=0.5,
         gt=0,
         allow_inf_nan=False,
         description="Scales the derived maximum admission concurrency.",
