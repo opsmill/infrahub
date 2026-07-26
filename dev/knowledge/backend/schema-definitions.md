@@ -124,6 +124,15 @@ renders two model families from them by filtering each field on its visibility l
 Because both families are generated from the same definitions, a field's classification is
 declared once and both the write contract and the read shape follow automatically.
 
+A field whose valid values are a closed set is generated as a dedicated `(str, Enum)` class in
+`python_sdk/infrahub_sdk/schema/generated/enums.py` and referenced by both families, rather than
+as a bare `str` or an inline `Literal`. The allowed values therefore travel with the model, so a
+client — or an agent reading the contract — can enumerate them without consulting the server.
+
+`version` is required on the write root. The load endpoint has always required it, so the
+generated model requires it too; otherwise offline validation would accept a payload the server
+rejects.
+
 ### Backend → SDK dependency
 
 The generated write/read models are rendered **into the Python SDK**, at
@@ -161,3 +170,5 @@ change; CI fails if the generated artifact is stale.
 
 - [Code Generation](code-generation.md) — How schema definitions become generated code
 - [Database Schema](database-schema.md) — How schemas map to Neo4j graph structure
+- [ADR 0010](../../adr/0010-generated-user-facing-schema-contract.md) — Why the user-facing
+  contract is generated into the SDK, and why submission ignores non-write fields

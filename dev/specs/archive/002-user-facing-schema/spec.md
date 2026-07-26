@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-01
 
-**Status**: Draft
+**Status**: Extracted
 
 **Input**: PRD `PRD-user-facing-schema-separation.md` + resolved field mapping `schema-field-classification.md` (repo root). Jira: INFP-234.
 
