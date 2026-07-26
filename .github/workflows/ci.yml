@@ -1112,6 +1112,10 @@ jobs:
             env:
               INFRAHUB_DB_TYPE: neo4j
               UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+              # Backpressure is on by default, but this legacy suite drives enough concurrent
+              # UI + polling load that interactive requests queue behind lock-holding writes and
+              # time out. The suite is slated for removal; disable admission control just here.
+              INFRAHUB_API_BACKPRESSURE_ENABLED: "false"
           # - name: E2E-testing-playwright-nats
           #   env:
           #     INFRAHUB_DB_TYPE: neo4j
