@@ -403,6 +403,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
 
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     generators = await client.filters(
         kind=CoreGeneratorDefinition,
@@ -1584,6 +1585,7 @@ class DefinitionSelect(IntFlag):
 @flow(name="proposed-changed-pipeline", flow_run_name="Execute proposed changed pipeline")
 async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, context: InfrahubContext) -> None:
     client = get_client()
+    client.request_context = context.to_request_context()
     repositories = await _get_proposed_change_repositories(model=model, client=client)
 
     if model.source_branch_sync_with_git and await _validate_repository_merge_conflicts(
@@ -1619,6 +1621,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
         )
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     diff_summary = await client.get_diff_summary(branch=model.source_branch)
     await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=await get_cache())
@@ -1726,6 +1729,7 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
     log = get_run_logger()
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     definition_information = await client.execute_graphql(
         query=GATHER_ARTIFACT_DEFINITIONS,

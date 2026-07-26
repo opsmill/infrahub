@@ -140,7 +140,9 @@ async def run_generator_definition(
 ) -> None:
     await add_tags(branches=[branch])
 
-    generators = await get_client().filters(
+    client = get_client()
+    client.request_context = context.to_request_context()
+    generators = await client.filters(
         kind=InfrahubKind.GENERATORDEFINITION, prefetch_relationships=True, populate_store=True, branch=branch
     )
 
@@ -188,6 +190,7 @@ async def request_generator_definition_run(
     await add_tags(branches=[model.branch], nodes=[model.generator_definition.definition_id])
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     # Needs to be fetched before fetching group members otherwise `object` relationship would override
     # existing node in client store without the `name` attribute due to #521

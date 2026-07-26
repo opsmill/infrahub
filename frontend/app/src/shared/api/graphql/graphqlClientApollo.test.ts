@@ -1,14 +1,15 @@
-import { Observable } from "@apollo/client";
+import { ApolloLink, execute, gql, Observable } from "@apollo/client";
 import type { GraphQLFormattedError } from "graphql";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ERROR_CODES } from "@/shared/api/errors";
+import { PRIORITY_HEADER } from "@/shared/api/priority";
 import { queryClient } from "@/shared/api/rest/client";
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/api/token-storage";
 import { __navigation } from "@/entities/authentication/domain/use-cases/redirect-to-login";
 
-import { handleGraphQLAuthError } from "./graphqlClientApollo";
+import { handleGraphQLAuthError, priorityLink } from "./graphqlClientApollo";
 
 describe("handleGraphQLAuthError — TOKEN_EXPIRED retry-then-bail loop", () => {
   // Minimal stand-in for Apollo's `Operation`. The handler only touches
@@ -157,5 +158,103 @@ describe("handleGraphQLAuthError — TOKEN_EXPIRED retry-then-bail loop", () => 
     expect(assignSpy).toHaveBeenCalledOnce();
     expect(localStorage.getItem(ACCESS_TOKEN_KEY)).toBeNull();
     expect(forward).not.toHaveBeenCalled();
+  });
+});
+
+describe("priorityLink — outbound X-Priority header", () => {
+  // A terminating capture link records the headers priorityLink produced.
+  function runThroughPriorityLink(context?: Record<string, unknown>) {
+    let captured: Record<string, unknown> | undefined;
+
+    const captureLink = new ApolloLink((operation) => {
+      captured = operation.getContext().headers as Record<string, unknown>;
+      return Observable.of({ data: null });
+    });
+
+    const link = ApolloLink.from([priorityLink, captureLink]);
+
+    return new Promise<Record<string, unknown> | undefined>((resolve, reject) => {
+      execute(link, { query: gql`{ __typename }`, context }).subscribe({
+        complete: () => resolve(captured),
+        error: (err) => reject(err),
+      });
+    });
+  }
+
+  it("stamps X-Priority: high when the operation has no context.priority", async () => {
+    const headers = await runThroughPriorityLink();
+    expect(headers?.[PRIORITY_HEADER]).toBe("high");
+  });
+
+  it("stamps X-Priority: low when the operation declares context.priority = low", async () => {
+    const headers = await runThroughPriorityLink({ priority: "low" });
+    expect(headers?.[PRIORITY_HEADER]).toBe("low");
+  });
+});
+
+describe("retryWithRefreshedToken (via handleGraphQLAuthError) — X-Priority survives 401 replay", () => {
+  // Drive the real handler. It reads localStorage via getAccessToken, so stub
+  // it in node mode; the refresh itself is driven through the fetchQuery spy.
+  const tokenExpiredError = {
+    message: "Token expired",
+    extensions: { code: ERROR_CODES.TOKEN_EXPIRED, http_status: 401, data: {} },
+  } satisfies Partial<GraphQLFormattedError> as GraphQLFormattedError;
+
+  let fetchQuerySpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+      clear: () => {},
+    });
+    fetchQuerySpy = vi.spyOn(queryClient, "fetchQuery");
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  // Mirrors the first-pass state the retry reads: the stamped X-Priority plus
+  // the now-expired auth header.
+  function makeOperationWithPriority() {
+    let ctx: Record<string, unknown> = {
+      headers: { [PRIORITY_HEADER]: "high", authorization: "Bearer old-token" },
+    };
+    return {
+      getContext: () => ctx,
+      setContext: (patch: Record<string, unknown>) => {
+        ctx = { ...ctx, ...patch };
+      },
+    };
+  }
+
+  it("re-carries the original X-Priority after the refresh+replay", async () => {
+    // GIVEN
+    fetchQuerySpy.mockResolvedValue({ access_token: "new-token", refresh_token: "new-refresh" });
+    const operation = makeOperationWithPriority();
+    const forward = vi.fn(() => Observable.of({ data: null }));
+
+    // WHEN
+    const result = handleGraphQLAuthError({
+      graphQLErrors: [tokenExpiredError],
+      operation,
+      forward,
+    } as any);
+
+    await new Promise<void>((resolve, reject) => {
+      (result as Observable<unknown>).subscribe({
+        complete: () => resolve(),
+        error: (err) => reject(err),
+      });
+    });
+
+    // THEN
+    const headers = (operation.getContext() as { headers?: Record<string, string> }).headers;
+    expect(headers?.[PRIORITY_HEADER]).toBe("high");
+    expect(headers?.authorization).toBe("Bearer new-token");
+    expect(forward).toHaveBeenCalledOnce();
   });
 });

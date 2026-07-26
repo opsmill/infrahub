@@ -58,6 +58,7 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 
 - [Testing](testing.md) - Testing infrastructure and patterns
 - [Authentication](authentication.md) - Login flow, SSO group resolution, auto-create groups
+- [API Backpressure](api-backpressure.md) - Priority-aware load shedding (admission layer) and the database-stress signal
 - [Events System](events.md) - Event-driven architecture
 - [Async Tasks](async-tasks.md) - Background task processing
 - [Message Bus](message-bus.md) - Inter-service communication

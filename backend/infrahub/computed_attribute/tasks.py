@@ -137,6 +137,7 @@ async def process_transform_for_node(
     context: EventContext,
 ) -> None:
     client = get_client()
+    client.request_context = context.to_request_context()
 
     repo = await get_initialized_repo(
         client=client,
@@ -193,6 +194,7 @@ async def process_transform(
     all_ids = list({*([object_id] if object_id else []), *(object_ids or [])})
     await add_tags(branches=[branch_name], nodes=all_ids)
     client = get_client()
+    client.request_context = context.to_request_context()
 
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     node_schema = schema_branch.get_node(name=node_kind, duplicate=False)
@@ -254,7 +256,9 @@ async def trigger_update_python_computed_attributes(
 ) -> None:
     await add_tags(branches=[branch_name])
 
-    nodes = await get_client().all(kind=computed_attribute_kind, branch=branch_name)
+    client = get_client()
+    client.request_context = context.to_request_context()
+    nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
     object_ids = [node.id for node in nodes]
 
     if not object_ids:
@@ -299,6 +303,7 @@ async def process_jinja2(
     """
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     filter_id: str | list[str] | None = object_ids if object_ids is not None else object_id
     if not filter_id:
@@ -376,6 +381,7 @@ async def trigger_update_jinja2_computed_attributes(
     await add_tags(branches=[branch_name])
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
     workflow = get_workflow()
@@ -634,7 +640,9 @@ async def query_transform_targets(
 ) -> None:
     await add_tags(branches=[branch_name])
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
-    targets = await get_client().execute_graphql(
+    client = get_client()
+    client.request_context = context.to_request_context()
+    targets = await client.execute_graphql(
         query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS, variables={"members": [object_id]}, branch_name=branch_name
     )
 
