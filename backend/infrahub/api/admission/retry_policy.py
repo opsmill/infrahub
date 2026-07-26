@@ -3,8 +3,6 @@ from __future__ import annotations
 import time
 from typing import Callable
 
-from . import metrics
-
 # Persistence multipliers applied to the per-priority intensity base by how long load has been
 # sustained. The base reflects the current intensity; these stretch a client's bounded retry
 # budget across a longer real-time window when overload does not clear.
@@ -22,9 +20,9 @@ class RetryAfterPolicy:
     ratios below that line are a warm-up zone that never accrues sustained time. The per-tier base
     is multiplied by the persistence factor and clamped to a maximum.
 
-    The sustained-load duration is published as a gauge so operators can see and alert on the
-    exact signal driving escalation. State is per worker on a single event loop, so it takes no
-    lock.
+    The current sustained-load duration is pushed to a registered observer (e.g. a metric gauge)
+    after each observation, so the primitive itself stays free of any metrics dependency. State is
+    per worker on a single event loop, so it takes no lock.
     """
 
     def __init__(
@@ -48,9 +46,18 @@ class RetryAfterPolicy:
         # Monotonic timestamp when the current continuous overload episode began, or None while
         # the ratio is below the significant-load line.
         self._overload_since: float | None = None
+        self._on_sustained_load: Callable[[float], None] | None = None
+
+    def set_observer(self, on_change: Callable[[float], None] | None) -> None:
+        """Register a callback invoked with the current sustained-load seconds after each observation.
+
+        Lets an external sink (e.g. a metric gauge) track the episode without the policy depending
+        on that sink.
+        """
+        self._on_sustained_load = on_change
 
     def observe(self, *, ratio: float) -> None:
-        """Update the overload episode from the latest stress ratio and refresh the gauge.
+        """Update the overload episode from the latest stress ratio and notify the observer.
 
         A ratio at or above the significant-load line starts the episode (if not already running);
         anything below resets it. Ratios in the warm-up zone therefore never accrue sustained time.
@@ -61,7 +68,8 @@ class RetryAfterPolicy:
                 self._overload_since = now
         else:
             self._overload_since = None
-        metrics.SUSTAINED_LOAD_SECONDS.set(self._sustained_seconds(now))
+        if self._on_sustained_load is not None:
+            self._on_sustained_load(self._sustained_seconds(now))
 
     def retry_after(self, *, tier: int) -> int:
         """Seconds to advise a shed request to wait: the per-tier base scaled by sustained load.

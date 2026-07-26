@@ -29,7 +29,7 @@ def _shed_everything_controller() -> AdmissionController:
     """Controller with no slots and no waiter budget: every admitted attempt is shed."""
     return AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=0),
-        codel={
+        codel_priority_map={
             Priority.HIGH: CoDelController(target=0.005 * 4.0, interval=0.1),
             Priority.MEDIUM: CoDelController(target=0.005, interval=0.1),
             Priority.LOW: CoDelController(target=0.005, interval=0.1),

@@ -97,7 +97,7 @@ class AdmissionController:
         self,
         *,
         slot_pool: PrioritySlotPool,
-        codel: dict[Priority, CoDelController],
+        codel_priority_map: dict[Priority, CoDelController],
         backstop_max_waiters: dict[Priority, int],
         stress_signal: LoadSignal,
         stress_thresholds: dict[Priority, float],
@@ -110,14 +110,17 @@ class AdmissionController:
         # waiter count is reflected the moment a request enqueues. The sink is a plain function
         # fed the counts by the pool, so nothing reads back into the pool.
         self._slot_pool.set_observer(_publish_slot_metrics)
+        # Publish the sustained-load gauge the same way: the policy pushes the duration to a plain
+        # sink, so it carries no metrics dependency of its own.
+        self._retry_policy = retry_policy
+        self._retry_policy.set_observer(_publish_sustained_load_metric)
         self._backstop_max_waiters = backstop_max_waiters
         self._stress_signal = stress_signal
         self._stress_thresholds = stress_thresholds
         self._stress_min_samples = stress_min_samples
-        self._retry_policy = retry_policy
         # Source of the [0, 1) draw used to shed a fraction of a stressed class's requests.
         self._rng = rng
-        self._codel = codel
+        self._codel_priority_map = codel_priority_map
 
     async def admit(self, *, priority: Priority) -> AdmissionDecision:
         """Decide whether to admit or shed a request of the given priority.
@@ -157,7 +160,7 @@ class AdmissionController:
         try:
             metrics.SOJOURN_SECONDS.labels(priority=priority.label).observe(acquisition.sojourn)
 
-            if self._codel[priority].should_drop(sojourn=acquisition.sojourn):
+            if self._codel_priority_map[priority].should_drop(sojourn=acquisition.sojourn):
                 self._slot_pool.release(acquisition=acquisition)
                 metrics.REJECTED_TOTAL.labels(priority=priority.label, reason="codel").inc()
                 return Rejected(reason="codel", retry_after=self._retry_policy.retry_after(tier=tier))
@@ -190,6 +193,11 @@ def _publish_slot_metrics(priority: Priority, *, in_flight: int, waiters: int) -
     """Pool observer sink: mirror a class's live in-flight and waiter counts onto the gauges."""
     metrics.IN_FLIGHT.labels(priority=priority.label).set(in_flight)
     metrics.WAITERS.labels(priority=priority.label).set(waiters)
+
+
+def _publish_sustained_load_metric(sustained_seconds: float) -> None:
+    """Retry-policy observer sink: mirror the current sustained-load duration onto the gauge."""
+    metrics.SUSTAINED_LOAD_SECONDS.set(sustained_seconds)
 
 
 def build_admission_controller(settings: config.Settings) -> AdmissionController:
@@ -249,7 +257,7 @@ def build_admission_controller(settings: config.Settings) -> AdmissionController
     )
     return AdmissionController(
         slot_pool=slot_pool,
-        codel=codel,
+        codel_priority_map=codel,
         backstop_max_waiters=backstop_max_waiters,
         stress_signal=tracker,
         stress_thresholds=stress_thresholds,

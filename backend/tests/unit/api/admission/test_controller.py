@@ -60,7 +60,9 @@ def _build(
     codel_clock = _StepClock(step=1.0)
     controller = AdmissionController(
         slot_pool=slot_pool,
-        codel={priority: CoDelController(target=0.005, interval=1.0, clock=codel_clock) for priority in Priority},
+        codel_priority_map={
+            priority: CoDelController(target=0.005, interval=1.0, clock=codel_clock) for priority in Priority
+        },
         backstop_max_waiters=dict.fromkeys(Priority, 1000),
         stress_signal=_FakeLoadSignal(ratio=ratio, samples=samples),
         stress_thresholds=_THRESHOLDS,
