@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-14
 
-**Status**: Draft
+**Status**: Extracted
 
 **Ticket**: [IFC-2890](https://opsmill.atlassian.net/browse/IFC-2890) — relates to backend Story IFC-2886 (server-side admission) and JPD idea INFP-636.
 

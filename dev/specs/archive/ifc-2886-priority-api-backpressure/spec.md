@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-10
 
-**Status**: Draft
+**Status**: Extracted
 
 **Source**: Jira Story [IFC-2886](https://opsmill.atlassian.net/browse/IFC-2886) — implements JPD idea INFP-636 (API Request Prioritization)
 
