@@ -10,7 +10,7 @@
 
 **Input**: PRD "Priority-aware API backpressure (server-side)" from IFC-2886
 
-> **Amendment (post-implementation)**: the middle priority tier was renamed `normal` → `medium` during implementation. This spec predates the rename and calls it `normal` throughout — read `normal` as `medium`. The database-stress signal (which augments CoDel with a reference-query load measurement) was also added after this spec. Both are documented in [dev/knowledge/backend/api-backpressure.md](../../knowledge/backend/api-backpressure.md).
+> **Amendment (post-implementation)**: the middle priority tier was renamed `normal` → `medium` during implementation. This spec predates the rename and calls it `normal` throughout — read `normal` as `medium`. The database-stress signal (which augments CoDel with a reference-query load measurement) was also added after this spec. Both are documented in [dev/knowledge/backend/api-backpressure.md](../../../knowledge/backend/api-backpressure.md).
 
 ## Overview
 
