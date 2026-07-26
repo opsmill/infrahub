@@ -281,6 +281,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'generators/overview' }, // hub
           items: [
             { type: 'doc', id: 'generators/build', label: 'Build a generator' },
+            { type: 'doc', id: 'generators/remove', label: 'Remove a generator' },
             { type: 'doc', id: 'generators/modular', label: 'Modular generators' },
             { type: 'doc', id: 'generators/modular-best-practices', label: 'Modular generator best practices' },
           ],
