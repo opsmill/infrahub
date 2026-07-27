@@ -45,10 +45,8 @@ def build_admission_controller(
     metrics.MAX_CONCURRENCY.set(max_concurrency)
     slot_pool = PrioritySlotPool(max_concurrency=max_concurrency, observers=slot_pool_observers)
 
-    # The stress window lives on the shared tracker; apply the configured length here, where
-    # settings are available, rather than at the tracker's construction.
+    # The database layer feeds this same instance, so the gate reads the signal the queries write.
     tracker = get_reference_query_load_tracker()
-    tracker.window_seconds = settings.api.backpressure_stress_window_seconds
 
     base_backstop = settings.api.backpressure_backstop_max_waiters
     backstop_max_waiters = {

@@ -71,7 +71,7 @@ class ReferenceQueryLoadTracker:
         window_seconds: float = DEFAULT_STRESS_WINDOW_SECONDS,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
-        self.window_seconds = window_seconds
+        self._window_seconds = window_seconds
         self._clock = clock
         self._floor: float | None = None
         # In-window samples in arrival order, so eviction knows which value ages out next.
@@ -122,7 +122,7 @@ class ReferenceQueryLoadTracker:
                 log.warning("database load-signal observer raised; continuing", exc_info=True)
 
     def _evict(self, *, now: float) -> None:
-        horizon = now - self.window_seconds
+        horizon = now - self._window_seconds
         while self._samples and self._samples[0][0] <= horizon:
             _, value = self._samples.popleft()
             del self._sorted[bisect.bisect_left(self._sorted, value)]
@@ -136,6 +136,11 @@ class ReferenceQueryLoadTracker:
         the current time before answering.
         """
         self._evict(now=self._clock())
+
+    @property
+    def window_seconds(self) -> float:
+        """Length of the rolling window, fixed for the tracker's lifetime."""
+        return self._window_seconds
 
     def floor(self) -> float | None:
         """The all-time minimum observation, or ``None`` before any observation."""
