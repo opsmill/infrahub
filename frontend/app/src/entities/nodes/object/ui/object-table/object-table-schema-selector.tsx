@@ -60,7 +60,7 @@ export function ObjectTableSchemaSelector() {
       >
         <ComboboxList shouldFilter>
           <ComboboxItem
-            value={baseSchema.hash}
+            value={baseSchema.hash!}
             selectedValue={selectedSchema.hash}
             onSelect={() => {
               const pruned = removeFiltersNotInSchema(filters, baseSchema);
@@ -78,7 +78,7 @@ export function ObjectTableSchemaSelector() {
               <ComboboxItem
                 keywords={[schema.label!, schema.kind!]}
                 key={schema.hash}
-                value={schema.hash}
+                value={schema.hash!}
                 selectedValue={selectedSchema.hash}
                 onSelect={() => {
                   const pruned = removeFiltersNotInSchema(filters, schema);

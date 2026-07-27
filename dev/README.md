@@ -82,6 +82,7 @@ Architecture Decision Records in [adr/](adr/):
 - [0007-adaptive-retry-after-under-load.md](adr/0007-adaptive-retry-after-under-load.md) - Adaptive `Retry-After` under sustained load
 - [0008-client-declared-request-priority.md](adr/0008-client-declared-request-priority.md) - Client-declared request priority, cooperatively trusted
 - [0009-per-worker-coordination-free-admission.md](adr/0009-per-worker-coordination-free-admission.md) - Per-worker, coordination-free admission capacity
+- [0010-generated-user-facing-schema-contract.md](adr/0010-generated-user-facing-schema-contract.md) - Generated user-facing schema contract, hosted in the SDK
 
 ## Current Guides
 

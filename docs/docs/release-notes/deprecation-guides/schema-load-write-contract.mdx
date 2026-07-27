@@ -1,0 +1,138 @@
+# Schema load validation and the write contract
+
+Infrahub now validates every schema submitted to `POST /api/schema/load` against a
+user-facing **write** contract. The contract defines which fields a user may set, which
+values those fields accept, and which fields are required. Invalid values are reported
+as field-level errors naming the field and the value that was rejected.
+
+Fields a user may not set are **tolerated and dropped**, not rejected, so reading a schema
+back from Infrahub, editing it, and loading it again keeps working without stripping
+anything first.
+
+This guide explains what changed, who is affected, and how to check a payload before
+submitting it.
+
+:::warning
+Two categories of payload that earlier versions accepted are now rejected: a payload whose
+settable values are invalid (out of the allowed set, out of range, or the wrong type), and
+a payload with no `version` key. Extra fields are not one of those categories.
+:::
+
+## What changed
+
+Schema fields are now classified by who may see or set them:
+
+- **write** — fields a user may submit, for example `name`, `namespace`, `attributes`,
+  `relationships`, and each attribute's or relationship's settable properties.
+- **read** — fields Infrahub computes and returns on `GET /api/schema`, but that a user may
+  not set. These include `inherited`, `used_by`, `hierarchy`, and the derived `kind` on a
+  node or generic.
+- **internal** — fields used only inside the backend and never exposed.
+
+`POST /api/schema/load` validates each submitted node, generic, and extension against the
+write contract.
+
+### Extra fields are dropped
+
+Read-only fields, internal fields, and fields the contract does not know about at all — a
+typo, or a field removed in a newer version — are dropped before the schema is applied. This
+happens at every level of the payload: on nodes, generics, extensions, and on their nested
+attributes and relationships. No error is raised, and the dropped values have no effect on
+the loaded schema.
+
+That means the read-back, edit, re-load round trip works as it always did. A schema fetched
+with `GET /api/schema` carries `inherited`, `used_by`, and the derived `kind`; submitting it
+back unchanged is accepted, and Infrahub re-derives those fields itself.
+
+### Invalid values are rejected
+
+What the contract does reject is a field a user *may* set carrying a value it cannot hold:
+
+- A **constrained** field set outside its allowed values, for example a relationship
+  `cardinality` or an attribute `kind`.
+- A value **out of range** or of the wrong type for its field, for example an attribute
+  `name` that is shorter than the minimum length or does not match the allowed pattern.
+- A **missing required** field, for example a node without a `name`, or an attribute without
+  a `kind`.
+- A missing `version` at the root of the payload. `version` is required on the write
+  contract.
+
+Each rejection names the field path and, where applicable, the value received:
+
+```text
+nodes[0].relationships[0].cardinality: Input should be 'one' or 'many' (received: 'several')
+nodes[0].attributes[0].Text.name: String should match pattern '^[a-z0-9\_]+$' (received: 'MyName')
+nodes[0].attributes[0].Text.order_weight: Input should be a valid integer, unable to parse string as an integer (received: 'high')
+nodes[0].name: Field required
+version: Field required
+```
+
+An invalid attribute `kind` is reported on the attribute itself rather than on the `kind`
+field, because `kind` selects which attribute contract applies. The message lists every
+valid kind:
+
+```text
+nodes[0].attributes[0]: Input tag 'NotAKind' found using 'kind' does not match any of the expected tags: <AttributeKind.TEXT: 'Text'>, <AttributeKind.TEXTAREA: 'TextArea'>, <AttributeKind.NUMBER: 'Number'> (…) (received: {'name': 'name', 'kind': 'NotAKind'})
+```
+
+`GET /api/schema` is unchanged: it still returns the read-only fields such as `inherited`
+and `used_by`.
+
+## Who is affected
+
+You are affected if you submit schemas to `POST /api/schema/load` — directly, through
+`infrahubctl schema load`, or through the Python SDK — and your payload sets a value the
+write contract does not accept, or omits `version`. Values that a previous version stored
+without complaint now produce an error instead.
+
+You are not affected by extra fields. A payload that echoes back derived or read-only
+fields, or that contains a field Infrahub no longer recognizes, still loads.
+
+## Check a payload offline
+
+The write contract is published as a committed model inside the Python SDK, in
+`infrahub_sdk.schema.generated.write`. The SDK exposes an offline validator that reproduces
+the server's verdict without a running server, so you can check and correct a payload before
+submitting it.
+
+```python
+from infrahub_sdk.schema.validate import validate_schema
+
+# schema is your schema-root payload: {"version": "1.0", "nodes": [...], "generics": [...]}
+result = validate_schema(schema=schema)
+if not result.valid:
+    for message in result.messages:
+        print(message)
+```
+
+For the payload `{"version": "1.0", "nodes": [{"name": "Widget", "namespace": "Testing",
+"relationships": [{"name": "others", "peer": "TestingOther", "cardinality": "several"}]}]}`
+that prints:
+
+```text
+nodes[0].relationships[0].cardinality: Input should be 'one' or 'many' (received: 'several')
+```
+
+Every entry in `result.errors` carries the field path in `.field` and the full message in
+`.message`. `result.raise_for_status()` raises a `ValueError` joining all the messages when
+the payload is invalid.
+
+To make a rejected payload submittable:
+
+1. Run `validate_schema()` and read the field path in each message to locate the offending
+   value.
+2. Correct the value so it satisfies the contract — pick an allowed value for a constrained
+   field, bring an out-of-range value into range, or supply a missing required field.
+3. Add `version` at the root of the payload if it is absent.
+4. Re-run `validate_schema()` until it returns `valid = True`, then load.
+
+You do not need to remove read-only or unrecognized fields. Leaving them in place is
+harmless.
+
+Because the write model is versioned and shipped inside the SDK package, installing the SDK
+that matches your Infrahub version gives you the exact contract the server enforces.
+
+## Related resources
+
+- [Create and load a schema](../../schema/create-and-load) — the schema loading guide
+- [Node schema reference](../../reference/schema/node) — the schema field reference
