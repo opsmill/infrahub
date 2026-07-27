@@ -645,7 +645,7 @@ async def generate_request_artifact_definition(
     # after the regeneration is dispatched and tolerates individual failures:
     # a stale artifact that cannot be deleted must not block the regeneration
     # of current members.
-    if not model.limit:
+    if model.evaluates_every_member:
         log = get_run_logger()
         for artifact in stale_artifacts:
             try:

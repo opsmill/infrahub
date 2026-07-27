@@ -31,6 +31,17 @@ class RequestArtifactDefinitionGenerate(BaseModel):
         description="Member node ids to generate artifacts for; when populated, only these members are processed.",
     )
 
+    @property
+    def evaluates_every_member(self) -> bool:
+        """Whether this request examines the definition's whole target group.
+
+        A conclusion drawn from the absence of a member -- such as an existing artifact now being
+        orphaned -- only holds for a pass that looked at all of them. Either filter narrows the
+        pass, and a request narrowed by ``members`` leaves ``limit`` empty, so ``limit`` alone does
+        not tell the two apart.
+        """
+        return not self.members and not self.limit
+
     def selects_member(self, *, member_id: str, artifact_id: str | None) -> bool:
         """Whether the member should have its artifact (re)generated under this request's filters.
 

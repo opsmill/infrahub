@@ -89,6 +89,34 @@ def test_selects_member(case: SelectCase) -> None:
     assert request.selects_member(member_id=case.member_id, artifact_id=case.artifact_id) is case.expected
 
 
+@dataclass(frozen=True, kw_only=True)
+class EveryMemberCase:
+    name: str
+    members: list[str]
+    limit: list[str]
+    expected: bool
+
+
+EVERY_MEMBER_CASES = [
+    EveryMemberCase(name="no_filter_evaluates_every_member", members=[], limit=[], expected=True),
+    EveryMemberCase(name="limit_filter_does_not", members=[], limit=[EXISTING_ARTIFACT], expected=False),
+    EveryMemberCase(name="members_filter_does_not", members=[EXISTING_MEMBER], limit=[], expected=False),
+    EveryMemberCase(name="both_filters_do_not", members=[EXISTING_MEMBER], limit=[EXISTING_ARTIFACT], expected=False),
+]
+
+
+@pytest.mark.parametrize("case", EVERY_MEMBER_CASES, ids=lambda case: case.name)
+def test_evaluates_every_member(case: EveryMemberCase) -> None:
+    """Only an unfiltered pass looks at every member.
+
+    Deleting an artifact whose target left the group is sound only when the pass considered the
+    whole group; a pass narrowed by either filter has no standing to conclude anything about the
+    members it never examined. Reading the ``limit`` filter alone would call a ``members``-scoped
+    pass complete, because such a pass leaves ``limit`` empty.
+    """
+    assert _request(members=case.members, limit=case.limit).evaluates_every_member is case.expected
+
+
 def test_members_filter_processes_a_new_member_the_limit_filter_would_drop() -> None:
     # The safety-critical contrast: a group with one existing-artifact member and one artifact-less
     # new member. members=[both] processes both; the limit filter alone would silently drop the new
