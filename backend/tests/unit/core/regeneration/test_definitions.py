@@ -105,9 +105,11 @@ def test_jinja2_transform_carries_its_template_path() -> None:
 
     definition = parsed[0]
     assert definition.transform_kind == InfrahubKind.TRANSFORMJINJA2
-    assert definition.template_path == "templates/config.j2"
-    # The Python-only fields keep their defaults rather than leaking from the other branch.
-    assert (definition.class_name, definition.file_path) == ("", "")
+    assert (definition.template_path, definition.class_name, definition.file_path) == (
+        "templates/config.j2",
+        "",
+        "",
+    )
 
 
 def test_python_transform_carries_its_entry_point() -> None:
@@ -115,7 +117,9 @@ def test_python_transform_carries_its_entry_point() -> None:
 
     definition = parsed[0]
     assert definition.transform_kind == InfrahubKind.TRANSFORMPYTHON
-    assert (definition.class_name, definition.file_path) == ("CarTransform", "transforms/car.py")
+    assert (definition.class_name, definition.file_path, definition.template_path) == (
+        "CarTransform",
+        "transforms/car.py",
+        "",
+    )
     assert definition.convert_query_response is True
-    # The Jinja2-only field keeps its default rather than leaking from the other branch.
-    assert (definition.template_path,) == ("",)
