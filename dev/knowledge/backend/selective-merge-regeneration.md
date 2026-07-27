@@ -31,10 +31,19 @@ The selectors live in `selective_regen/definition_selector/`. The shared loop in
 
 - The **gate** (`gate.py`): the definition is selected when the diff changed its query, the definition node itself (including its `fingerprint` element), a data kind its query reads, or its target group membership.
 - The **member reconciliation** (`impacted.py`, `core/regeneration/members.py`): live group members are fetched on the target branch, impacted subscriber ids are mapped to member ids, new members without a subscriber are force-rendered, and the result is emitted as a member-id filter.
-  - Narrowing to specific subscribers requires the query to target unique nodes **and** every relevant change to sit on a kind the query reads at its root. Unique targeting is a guarantee about the root only, and a node reached by traversing a relationship is never tracked as a query-group member, so a change on such a related node cannot be mapped back to a subscriber by membership lookup. Those changes widen to every member (`ImpactScope.ALL`) rather than narrowing to none.
+  - Narrowing to specific subscribers requires the query to target unique nodes **and** no relevant change to land on a kind the query reaches through a relationship (`QueryImpactClassifier`, `core/regeneration/impact_classifier.py`). Unique targeting is a guarantee about the root only, and a node read through a relationship is never tracked as a query-group member, so it cannot be mapped back to a subscriber by membership lookup. Those changes widen to every member rather than narrowing to none.
+  - A kind read **both** at a root and through a relationship counts as traversed. The requested-read map keys by kind alone, so the two read paths collapse into one entry and a change of that kind cannot be attributed to either; treating it as mappable would narrow away the members reached only by the relationship. This is why the decision keys on `traversed_kinds` rather than on the query's root kinds.
+  - Only entries marked `unchanged` are skipped, at the node and the element level: a diff carries nodes purely as hierarchical context, and hangs an unchanged parent relationship off nodes that did change. A `removed` node stays selected — whatever read it is now stale, so dropping it would under-execute.
+  - The outcome is a single `TargetSelection` whose `ids` are always complete; `widened` records only whether narrowing was abandoned, for the diagnostic line. The caller supplies the set to fall back to, so an empty `ids` unambiguously means *nothing to process* and can never stand for *everything*.
 - The **untrusted-closure fallback** (`fallbacks.py`): a definition with a null or incomplete dependency closure is selected for all its members rather than narrowed. A repository holding any definition with no computed fingerprint is escalated so every definition of that repository regenerates (`repositories_forcing_full_regeneration`).
 
 The predicates and member helpers in `core/regeneration/` are shared with the proposed-change pipeline; the merge path passes a resolved summary and an explicit query branch so both callers run one implementation.
+
+### Narrowed passes must not draw conclusions from absence
+
+Artifact generation also deletes artifacts whose target has left the target group. That conclusion is drawn from a member's *absence*, so it only holds for a pass that examined every member. `RequestArtifactDefinitionGenerate.evaluates_every_member` (`git/models.py`) is the gate: it is true only when neither filter is set. Reading `limit` alone would call a `members`-scoped pass complete, because such a pass leaves `limit` empty — and the cleanup would then delete artifacts it never re-evaluated.
+
+The two filters are a conjunction and key on different things: `members` on the member node id, so a member with no artifact yet is still selected; `limit` on the existing artifact id, so it can only narrow to members that already have one. No caller sets both, and consolidation clears either filter as soon as one side of a merge left it empty.
 
 The dependency closure and `fingerprint` are computed at repository import. The closure is trusted (`dependencies_complete = true`) or not; see [code-generation.md](code-generation.md) and the [proposed changes overview](../../../docs/docs/proposed-changes/overview.mdx) for how a closure is built (Python: the git-tracked files under the entry's directory; Jinja2: the static include/import/extends graph) and how `watch.files` restores a trusted closure.
 
@@ -49,6 +58,14 @@ Generators dispatched by the follow-up write their output after the merge diff w
 The capture widens to regenerating every artifact when any generator's tracked set is unresolved or the output cannot be captured. A generator run failure regenerates every artifact without re-running the generators (which would fail the same way). The merge-diff artifacts are dispatched only after the generator-output capture, so the capture never selects on their own writes.
 
 A proposed-change merge already reflects generator output in its branch diff, so it keeps the plain selective artifact path; the cascade is the direct-merge case, distinguished by `proposed_change_id`.
+
+## Known limitation: content composition
+
+A composite artifact that inlines another artifact's content is **not** refreshed when a merge changes the upstream artifact. The composite keeps the stale inlined section until something else regenerates it.
+
+The selection reads the merge diff and the generators' tracked output; neither carries the fact that one artifact's rendered content is embedded in another, so the composite is never selected. Blanket regeneration did refresh it, which makes this a behaviour change for content composition users now that `selective_execution_after_merge` defaults to on. Setting the flag to `false` restores the refresh along with the rest of the blanket path.
+
+Confirmed live on the demo stack. See [performance-scenarios.md](../../specs/ifc-2704-incremental-merge-regen/performance-scenarios.md) for the full scenario matrix, and [content composition](../../../docs/docs/artifacts/content-composition.mdx) for the user-facing feature.
 
 ## Fallback reasons
 
