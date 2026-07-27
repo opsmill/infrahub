@@ -36,7 +36,8 @@ Everything lives in `backend/infrahub/api/admission/`:
 | File | Responsibility |
 |---|---|
 | `middleware.py` | `AdmissionMiddleware`, the outermost pure-ASGI gate |
-| `controller.py` | `AdmissionController`, the admit/shed decision, and its settings-reading factory |
+| `controller.py` | `AdmissionController`, the admit/shed decision |
+| `factory.py` | `build_admission_controller`, the settings-reading wiring of the object graph |
 | `slot_pool.py` | `PrioritySlotPool`, bounded concurrency with per-class FIFO waiter queues |
 | `codel.py` | `CoDelController`, the pure CoDel state machine |
 | `capacity.py` | `derive_max_concurrency`, the slot-cap derivation |

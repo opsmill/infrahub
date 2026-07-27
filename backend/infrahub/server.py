@@ -20,7 +20,7 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 from infrahub import __version__, config
 from infrahub.api import router as api
-from infrahub.api.admission.controller import build_admission_controller
+from infrahub.api.admission.factory import build_admission_controller
 from infrahub.api.admission.middleware import AdmissionMiddleware
 from infrahub.api.admission.observers import SlotPoolMetricsObserver, SustainedLoadMetricsObserver
 from infrahub.api.exception_handlers import generic_api_exception_handler, log_forwarding_exception_handler

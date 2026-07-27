@@ -5,21 +5,16 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Literal
 
 from infrahub.database.load_signal import UNSTRESSED_RATIO
-from infrahub.database.load_signal_registry import get_reference_query_load_tracker
 
 from . import metrics
-from .capacity import derive_max_concurrency
-from .codel import CoDelController
-from .priority import Priority
-from .retry_policy import RetryAfterPolicy
-from .slot_pool import PrioritySlotPool
 
 if TYPE_CHECKING:
-    from infrahub import config
     from infrahub.database.load_signal import LoadSignal
 
-    from .retry_policy import RetryPolicyObserver
-    from .slot_pool import Acquisition, SlotPoolObserver
+    from .codel import CoDelController
+    from .priority import Priority
+    from .retry_policy import RetryAfterPolicy
+    from .slot_pool import Acquisition, PrioritySlotPool
 
 # Backstop shedding (waiter queue saturated) is unambiguous overload, so its retry-after hint
 # always uses the top intensity tier regardless of the current stress ratio.
@@ -80,9 +75,8 @@ class AdmissionController:
     """Turns a priority class into an admit/shed decision.
 
     Composes the shared slot pool, one CoDel controller per priority class, a per-class
-    waiter backstop, and a database-stress signal. All tuning is passed in, so the class
-    carries no dependency on global settings and is directly testable; the module-level
-    factory wires the defaults.
+    waiter backstop, and a database-stress signal. Every collaborator and tuning value is
+    injected, so the class carries no dependency on global settings and is directly testable.
 
     Two independent signals shed a request. Database stress (how much slower the reference query
     is than its all-time best) sheds a growing fraction of a class as the ratio climbs past that
@@ -182,84 +176,3 @@ class AdmissionController:
         until the next admit.
         """
         self._slot_pool.release(acquisition=acquisition)
-
-
-def build_admission_controller(
-    *,
-    settings: config.Settings,
-    slot_pool_observers: list[SlotPoolObserver],
-    retry_policy_observers: list[RetryPolicyObserver],
-) -> AdmissionController:
-    """Build the default admission controller from the given settings and observers.
-
-    Keeps settings resolution out of ``AdmissionController`` itself: the class stays
-    settings-free and testable while this factory owns the wiring of the defaults.
-
-    The observers arrive as arguments rather than being chosen here, so the concrete sinks are
-    named only by the caller that owns the application's wiring.
-
-    Args:
-        settings: Source of every tuning value the object graph needs.
-        slot_pool_observers: Sinks notified as a class's in-flight and waiter counts change.
-        retry_policy_observers: Sinks notified with the current sustained-load duration.
-
-    """
-    max_concurrency = derive_max_concurrency(
-        pool_size=settings.database.max_connection_pool_size,
-        factor=settings.api.backpressure_max_concurrency_factor,
-    )
-    # Set the gauge wherever the controller is actually built, so it reflects the derived cap
-    # in use rather than being frozen at some earlier import.
-    metrics.MAX_CONCURRENCY.set(max_concurrency)
-    slot_pool = PrioritySlotPool(max_concurrency=max_concurrency, observers=slot_pool_observers)
-
-    # The stress window lives on the shared tracker; apply the configured length here, where
-    # settings are available, rather than at the tracker's construction.
-    tracker = get_reference_query_load_tracker()
-    tracker.window_seconds = settings.api.backpressure_stress_window_seconds
-
-    base_backstop = settings.api.backpressure_backstop_max_waiters
-    backstop_max_waiters = {
-        Priority.HIGH: max(1, int(base_backstop * settings.api.backpressure_backstop_high_multiplier)),
-        Priority.MEDIUM: base_backstop,
-        Priority.LOW: max(1, int(base_backstop * settings.api.backpressure_backstop_low_multiplier)),
-    }
-    stress_thresholds = {
-        Priority.HIGH: settings.api.backpressure_shed_high_stress_ratio,
-        Priority.MEDIUM: settings.api.backpressure_shed_medium_stress_ratio,
-        Priority.LOW: settings.api.backpressure_shed_low_stress_ratio,
-    }
-    # HIGH gets a larger effective target so it sheds last; MEDIUM and LOW share the base target.
-    codel = {
-        Priority.HIGH: CoDelController(
-            target=settings.api.backpressure_codel_target_seconds * settings.api.backpressure_high_target_multiplier,
-            interval=settings.api.backpressure_codel_interval_seconds,
-        ),
-        Priority.MEDIUM: CoDelController(
-            target=settings.api.backpressure_codel_target_seconds,
-            interval=settings.api.backpressure_codel_interval_seconds,
-        ),
-        Priority.LOW: CoDelController(
-            target=settings.api.backpressure_codel_target_seconds,
-            interval=settings.api.backpressure_codel_interval_seconds,
-        ),
-    }
-    retry_policy = RetryAfterPolicy(
-        observers=retry_policy_observers,
-        level1_seconds=settings.api.backpressure_retry_after_level1_seconds,
-        level2_seconds=settings.api.backpressure_retry_after_level2_seconds,
-        level3_seconds=settings.api.backpressure_retry_after_level3_seconds,
-        max_seconds=settings.api.backpressure_retry_after_max_seconds,
-        significant_load_ratio=settings.api.backpressure_significant_load_stress_ratio,
-        sustained_warn_seconds=settings.api.backpressure_sustained_load_warn_seconds,
-        sustained_high_seconds=settings.api.backpressure_sustained_load_high_seconds,
-    )
-    return AdmissionController(
-        slot_pool=slot_pool,
-        codel_priority_map=codel,
-        backstop_max_waiters=backstop_max_waiters,
-        stress_signal=tracker,
-        stress_thresholds=stress_thresholds,
-        stress_min_samples=settings.api.backpressure_stress_min_samples,
-        retry_policy=retry_policy,
-    )

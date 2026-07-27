@@ -12,7 +12,8 @@ from infrahub import config
 from infrahub.api.admission import metrics
 from infrahub.api.admission.capacity import derive_max_concurrency
 from infrahub.api.admission.codel import CoDelController
-from infrahub.api.admission.controller import AdmissionController, build_admission_controller
+from infrahub.api.admission.controller import AdmissionController
+from infrahub.api.admission.factory import build_admission_controller
 from infrahub.api.admission.middleware import AdmissionMiddleware
 from infrahub.api.admission.observers import SlotPoolMetricsObserver, SustainedLoadMetricsObserver
 from infrahub.api.admission.priority import Priority
