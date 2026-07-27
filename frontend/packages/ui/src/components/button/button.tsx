@@ -60,6 +60,11 @@ const buttonVariants = tv({
         "data-hovered:bg-neutral-600/10",
         "data-pressed:bg-neutral-200",
       ],
+      input: [
+        "justify-start border-neutral-200 bg-white text-stone-800",
+        "shadow-[0_2px_4px_rgba(0,0,0,0.04)]",
+        "data-pressed:scale-100",
+      ],
     },
     size: {
       xxs: "h-6 text-xs",
@@ -74,6 +79,7 @@ const buttonVariants = tv({
     },
   },
   compoundVariants: [
+    { variant: "input", class: "rounded-xl" }, // Beat shape=default's rounded-lg to match the input's rounded-xl
     { shape: "default", size: "xxs", class: "gap-1 px-1.5" },
     { shape: "default", size: "xs", class: "gap-1 px-2" },
     { shape: "default", size: "sm", class: "gap-1.5 px-2" },
