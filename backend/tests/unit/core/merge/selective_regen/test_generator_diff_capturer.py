@@ -128,6 +128,9 @@ async def test_capture_widens_to_the_whole_window_when_no_tracking_group_resolve
 
     await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
 
+    # Asserting the widened read alone would also hold if the lookup stopped happening: no query
+    # leaves no ids, which widens too. The queried names separate a miss from a skipped lookup.
+    assert client.queried_names == ["set_description"]
     assert repository.filters_seen == [None]
 
 
@@ -139,6 +142,7 @@ async def test_capture_ignores_groups_whose_name_is_not_a_tracking_group() -> No
 
     await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
 
+    assert client.queried_names == ["set_description"]
     assert repository.filters_seen == [None]
 
 
@@ -150,4 +154,7 @@ async def test_capture_widens_when_any_definition_lacks_a_tracking_group() -> No
 
     await capturer.capture(since=Timestamp(), generator_definition_names=["genA", "genB"])
 
+    # Both names are queried: the widening comes from genB having no group, not from the loop
+    # abandoning the second definition once the first resolved.
+    assert client.queried_names == ["genA", "genB"]
     assert repository.filters_seen == [None]
