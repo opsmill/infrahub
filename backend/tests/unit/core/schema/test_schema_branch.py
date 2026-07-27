@@ -140,6 +140,40 @@ class TestDiffIdenticalBranches:
         assert dest_schema.diff(other=candidate_schema).all == []
 
 
+class TestProcessWithOrphanedTemplate:
+    """A schema holding a generated template whose backing node is gone must reprocess cleanly.
+
+    A registry can hold such an orphan when the node was removed without cleaning up the
+    kinds generated from it; reprocessing must drop the orphan instead of failing.
+    """
+
+    def test_process_removes_orphaned_template_and_profile(self) -> None:
+        schema_root = SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Gadget",
+                    namespace="Testing",
+                    generate_template=True,
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text", unique=True),
+                    ],
+                ),
+            ],
+        )
+        branch = _load_processed_branch(schema_root=schema_root)
+        assert "TemplateTestingGadget" in branch.template_names
+        assert "ProfileTestingGadget" in branch.profile_names
+
+        # Drop the node from the map directly, bypassing the delete() cascade, to mirror
+        # a registry that already holds an orphaned template
+        del branch.nodes["TestingGadget"]
+
+        branch.process()
+
+        assert "TemplateTestingGadget" not in branch.template_names
+        assert "ProfileTestingGadget" not in branch.profile_names
+
+
 class TestHierarchySchemaProcessingSetsCorrectPeerAndHierarchical:
     """Proves that schema processing produces the peer/hierarchical values in an expected manner."""
 
