@@ -80,10 +80,8 @@ SELECT_CASES = [
         artifact_id=EXISTING_ARTIFACT,
         expected=True,
     ),
-    # No caller populates both filters at once -- a request narrowed by members leaves limit empty,
-    # and consolidation clears either filter as soon as one side of a merge left it empty. The cases
-    # below pin the semantics anyway, so a later reading of the two filters as alternatives rather
-    # than as a conjunction cannot pass unnoticed.
+    # No caller populates both filters at once, so these pin the conjunction against a later reading
+    # of the two as alternatives.
     SelectCase(
         name="both_filters_select_member_satisfying_both",
         members=[EXISTING_MEMBER],
