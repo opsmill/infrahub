@@ -80,6 +80,34 @@ SELECT_CASES = [
         artifact_id=EXISTING_ARTIFACT,
         expected=True,
     ),
+    # No caller populates both filters at once -- a request narrowed by members leaves limit empty,
+    # and consolidation clears either filter as soon as one side of a merge left it empty. The cases
+    # below pin the semantics anyway, so a later reading of the two filters as alternatives rather
+    # than as a conjunction cannot pass unnoticed.
+    SelectCase(
+        name="both_filters_select_member_satisfying_both",
+        members=[EXISTING_MEMBER],
+        limit=[EXISTING_ARTIFACT],
+        member_id=EXISTING_MEMBER,
+        artifact_id=EXISTING_ARTIFACT,
+        expected=True,
+    ),
+    SelectCase(
+        name="both_filters_skip_new_member_the_limit_excludes",
+        members=[EXISTING_MEMBER, NEW_MEMBER],
+        limit=[EXISTING_ARTIFACT],
+        member_id=NEW_MEMBER,
+        artifact_id=None,
+        expected=False,
+    ),
+    SelectCase(
+        name="both_filters_skip_member_the_members_filter_excludes",
+        members=[EXISTING_MEMBER],
+        limit=[EXISTING_ARTIFACT],
+        member_id=NEW_MEMBER,
+        artifact_id=EXISTING_ARTIFACT,
+        expected=False,
+    ),
 ]
 
 
