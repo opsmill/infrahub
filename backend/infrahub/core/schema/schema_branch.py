@@ -480,8 +480,10 @@ class SchemaBranch:
     def delete(self, name: str) -> None:
         if name in self.nodes:
             del self.nodes[name]
+            self._delete_generated_kinds(node_kind=name)
         elif name in self.generics:
             del self.generics[name]
+            self._delete_generated_kinds(node_kind=name)
         elif name in self.profiles:
             del self.profiles[name]
         elif name in self.templates:
@@ -490,6 +492,19 @@ class SchemaBranch:
             raise SchemaNotFoundError(
                 branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
             )
+
+    def _delete_generated_kinds(self, node_kind: str) -> None:
+        """Generated profile and template schemas must not outlive the node they derive from."""
+        profile_kind = self._get_profile_kind(node_kind=node_kind)
+        if profile_kind in self.profiles:
+            del self.profiles[profile_kind]
+
+        template_kind = self._get_object_template_kind(node_kind=node_kind)
+        if template_kind in self.templates:
+            del self.templates[template_kind]
+        elif template_kind in self.generics:
+            # The object template generated for a generic is itself a generic
+            del self.generics[template_kind]
 
     def get_by_id(self, id: str, duplicate: bool = True) -> MainSchemaTypes:
         for name in self.all_names:
