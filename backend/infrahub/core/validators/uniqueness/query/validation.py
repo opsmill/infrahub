@@ -393,7 +393,7 @@ CALL (node) {
             )
             params[attr_name_var] = rel_path.attribute_name
             params[attr_value_var] = rel_path.attribute_value
-        query_arrows = rel_path.relationship_schema.get_query_arrows()
+        query_arrows = self.get_query_arrows(direction=rel_path.relationship_schema.direction)
         rel_name_var = f"rel_name_{index}"
         # long path MATCH is required to hit an index on the peer or AttributeValue of the peer
         first_match = (

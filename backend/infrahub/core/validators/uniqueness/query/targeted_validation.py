@@ -158,7 +158,7 @@ CALL (%(source_var)s) {
 
         relationship_schema = element.active_relationship_schema
         rel_identifier_var = f"rel_identifier_{index}"
-        query_arrows = relationship_schema.get_query_arrows()
+        query_arrows = self.get_query_arrows(direction=relationship_schema.direction)
         query = """
 CALL (%(source_var)s) {
     MATCH (%(source_var)s)%(lstart)s[r:IS_RELATED]%(lend)s(rel:Relationship {name: $%(rel_identifier_var)s})
@@ -216,7 +216,7 @@ CALL (%(source_var)s) {
                 "value_var": value_var,
             }
         else:
-            query_arrows = element.active_relationship_schema.get_query_arrows()
+            query_arrows = self.get_query_arrows(direction=element.active_relationship_schema.direction)
             anchor_match = (
                 "MATCH (candidate:%(kind)s)%(lstart)s[:IS_RELATED]%(lend)s"
                 "(:Relationship {name: $rel_identifier_%(index)s})%(rstart)s[:IS_RELATED]%(rend)s(anchor_peer:Node)\n"
