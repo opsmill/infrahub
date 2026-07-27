@@ -26,22 +26,19 @@ class StaleLockCleaner:
         self.cache = cache
         self.component = component
 
-    async def clear_if_holder_dead(self, keys: list[str]) -> list[str]:
-        """Delete each lock key whose holder is not an active worker; return the keys deleted.
+    async def clear_if_holder_dead(self, keys: list[str]) -> None:
+        """Delete each lock key whose holder is not an active worker.
 
         A key with no token, an unparseable token, or a token naming a live worker is left in place.
         """
         active_worker_ids = await self._active_worker_ids()
-        deleted: list[str] = []
         for key in keys:
             token = await self.cache.get(key=key)
             worker_id = get_worker_id_from_lock_token(token)
             if worker_id is None or worker_id in active_worker_ids:
                 continue
             await self.cache.delete(key=key)
-            deleted.append(key)
             log.warning("lock.stale.cleared", key=key, worker_id=worker_id)
-        return deleted
 
     async def _active_worker_ids(self) -> set[str]:
         return await self.component.list_active_worker_ids()

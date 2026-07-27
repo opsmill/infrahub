@@ -26,6 +26,11 @@ def _lock_token(worker_id: str) -> str:
     return f"{Timestamp().to_string()}::{worker_id}"
 
 
+def _remaining_locks(cache: MemoryCache) -> dict[str, str]:
+    # The component's heartbeat shares the cache, so only the lock-prefixed keys are the subject here.
+    return {key: value for key, value in cache.storage.items() if key.startswith(LOCK_PREFIX)}
+
+
 async def _build_cleaner(cache: MemoryCache) -> StaleLockCleaner:
     # list_active_worker_ids reads only the cache heartbeats, so a cache-backed component needs no database.
     db = cast("InfrahubDatabase", None)
@@ -46,15 +51,10 @@ async def test_clears_only_locks_held_by_dead_workers() -> None:
 
     cleaner = await _build_cleaner(cache)
 
-    deleted = await cleaner.clear_if_holder_dead(keys=[DEAD_KEY, LIVE_KEY, TOKENLESS_KEY, MISSING_KEY])
+    await cleaner.clear_if_holder_dead(keys=[DEAD_KEY, LIVE_KEY, TOKENLESS_KEY, MISSING_KEY])
 
-    # Only the dead-worker lock is dropped; the live-worker lock and the unparseable/missing keys stay.
-    assert deleted == [DEAD_KEY]
-    assert await cache.get(DEAD_KEY) is None
-    assert await cache.get(LIVE_KEY) == live_token
-    # The unparseable (empty-token) key is left in place, not deleted.
-    assert TOKENLESS_KEY in cache.storage
-    assert await cache.get(MISSING_KEY) is None
+    # Only the dead-worker lock is dropped; the live-worker lock and the unparseable (empty-token) key stay.
+    assert _remaining_locks(cache) == {LIVE_KEY: live_token, TOKENLESS_KEY: ""}
 
 
 async def test_no_keys_deleted_when_all_holders_live() -> None:
@@ -66,8 +66,6 @@ async def test_no_keys_deleted_when_all_holders_live() -> None:
 
     cleaner = await _build_cleaner(cache)
 
-    deleted = await cleaner.clear_if_holder_dead(keys=[DEAD_KEY, LIVE_KEY])
+    await cleaner.clear_if_holder_dead(keys=[DEAD_KEY, LIVE_KEY])
 
-    assert deleted == []
-    assert await cache.get(DEAD_KEY) == dead_key_token
-    assert await cache.get(LIVE_KEY) == live_key_token
+    assert _remaining_locks(cache) == {DEAD_KEY: dead_key_token, LIVE_KEY: live_key_token}
