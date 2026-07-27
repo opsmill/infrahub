@@ -79,7 +79,7 @@ async def get_field_level_impacted_subscribers(
     classifier = QueryImpactClassifier(
         query_branch=query_branch,
         only_has_unique_targets=query_report.only_has_unique_targets,
-        root_kinds=query_report.root_kinds,
+        traversed_kinds=query_report.traversed_kinds,
         readable_fields_by_kind=readable_fields_by_kind,
     )
     assessment = classifier.assess(diff_summary=diff_summary)
@@ -89,7 +89,7 @@ async def get_field_level_impacted_subscribers(
         f"branch={query_branch} subscriber_kind={subscriber_kind} "
         f"unique_targets={query_report.only_has_unique_targets} "
         f"readable_kinds={sorted(readable_fields_by_kind)} "
-        f"root_kinds={sorted(query_report.root_kinds)} assessment={type(assessment).__name__}"
+        f"traversed_kinds={sorted(query_report.traversed_kinds)} assessment={type(assessment).__name__}"
     )
 
     match assessment:

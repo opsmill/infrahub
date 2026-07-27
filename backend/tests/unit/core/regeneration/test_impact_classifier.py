@@ -19,8 +19,9 @@ if TYPE_CHECKING:
 BRANCH = "feature/regen"
 
 # A query rooted on the device that also reads a field off each of its interfaces. The interface is
-# therefore readable but never a root kind, which is what separates the two narrowing outcomes.
-ROOT_KINDS = {"TestDevice"}
+# therefore readable but reached only by following a relationship, which is what separates the two
+# narrowing outcomes.
+TRAVERSED_KINDS = {"TestInterface"}
 READABLE_FIELDS = {"TestDevice": {"name", "interfaces"}, "TestInterface": {"description"}}
 
 
@@ -30,7 +31,7 @@ class AssessCase:
     only_has_unique_targets: bool
     diff_summary: list[NodeDiff]
     expected: ImpactAssessment
-    root_kinds: set[str] = field(default_factory=lambda: set(ROOT_KINDS))
+    traversed_kinds: set[str] = field(default_factory=lambda: set(TRAVERSED_KINDS))
     readable_fields_by_kind: dict[str, set[str]] = field(default_factory=lambda: dict(READABLE_FIELDS))
 
 
@@ -67,8 +68,16 @@ ASSESS_CASES = [
         only_has_unique_targets=True,
         diff_summary=[node_diff(node_id="car1", kind="TestElectricCar", branch=BRANCH, field_names=["name"])],
         expected=ChangedNodes(node_ids=["car1"]),
-        root_kinds={"TestCar", "TestElectricCar", "TestGazCar"},
+        traversed_kinds=set(),
         readable_fields_by_kind={"TestCar": {"name"}, "TestElectricCar": {"name"}, "TestGazCar": {"name"}},
+    ),
+    AssessCase(
+        name="unique_targets_kind_read_at_root_and_through_a_relationship_widens",
+        only_has_unique_targets=True,
+        diff_summary=[node_diff(node_id="dev2", kind="TestDevice", branch=BRANCH, field_names=["name"])],
+        expected=EveryTarget(),
+        traversed_kinds={"TestDevice"},
+        readable_fields_by_kind={"TestDevice": {"name", "peers"}},
     ),
     AssessCase(
         name="without_unique_targets_relevant_change_widens",
@@ -110,7 +119,7 @@ def test_assess(case: AssessCase) -> None:
     classifier = QueryImpactClassifier(
         query_branch=BRANCH,
         only_has_unique_targets=case.only_has_unique_targets,
-        root_kinds=case.root_kinds,
+        traversed_kinds=case.traversed_kinds,
         readable_fields_by_kind=case.readable_fields_by_kind,
     )
 

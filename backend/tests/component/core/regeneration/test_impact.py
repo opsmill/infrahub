@@ -49,10 +49,9 @@ class TestFieldLevelImpact(TestInfrahubApp):
     the car as its member and the tag as its subscriber, mirroring how a definition's target group is
     recorded in production.
 
-    These cases cover the wiring the routing rule cannot be trusted on by itself: that the real query
-    analysis classifies the owner as read-but-not-a-root, and that a narrowed routing resolves group
-    members to subscribers of the requested kind. The routing rule itself is pinned in isolation by
-    the classifier's unit tests.
+    Only the wiring is covered here: that the real query analysis classifies the owner as traversed,
+    and that a narrowed routing resolves group members to subscribers of the requested kind. The
+    routing rule itself is pinned by the classifier's unit tests, which need no database.
     """
 
     @pytest.fixture(scope="class")
@@ -178,29 +177,3 @@ class TestFieldLevelImpact(TestInfrahubApp):
             ],
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=True)
-
-    async def test_unread_field_change_selects_nothing(
-        self,
-        dataset: dict[str, Any],
-        default_branch: Branch,
-        client: InfrahubClient,
-    ) -> None:
-        """A change confined to a field no part of the query reads selects no subscriber.
-
-        Guards the widening above from degrading into "always regenerate everything": the query reads
-        ``name`` on the owner but never their ``height``.
-        """
-        resolved = await self._resolve(
-            dataset=dataset,
-            default_branch=default_branch,
-            client=client,
-            diff_summary=[
-                node_diff(
-                    node_id=dataset["person_id"],
-                    kind=TestKind.PERSON,
-                    branch=default_branch.name,
-                    field_names=["height"],
-                )
-            ],
-        )
-        assert resolved == TargetSelection(ids=[], widened=False)
