@@ -1,15 +1,50 @@
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.validators.uniqueness.dependent_resolver import UniquenessDependentResolver
 from infrahub.database import InfrahubDatabase
 
+TREE_NODE_KIND = "TestingTreeNode"
+TREE_RELATIONSHIP_IDENTIFIER = "testingtreenode__testingtreenode"
 
-async def _owner_identifier(default_branch: Branch) -> str:
+# a kind whose relationship points at its own kind: `parent` and `children` share one identifier and
+# are told apart only by the direction of the edges around the Relationship vertex
+TREE_NODE = NodeSchema(
+    name="TreeNode",
+    namespace="Testing",
+    generate_profile=False,
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="parent",
+            peer=TREE_NODE_KIND,
+            identifier=TREE_RELATIONSHIP_IDENTIFIER,
+            cardinality=RelationshipCardinality.ONE,
+            direction=RelationshipDirection.OUTBOUND,
+            optional=True,
+        ),
+        RelationshipSchema(
+            name="children",
+            peer=TREE_NODE_KIND,
+            identifier=TREE_RELATIONSHIP_IDENTIFIER,
+            cardinality=RelationshipCardinality.MANY,
+            direction=RelationshipDirection.INBOUND,
+            optional=True,
+        ),
+    ],
+)
+
+
+def _owner_relationship(default_branch: Branch) -> RelationshipSchema:
     car_schema = registry.schema.get("TestCar", branch=default_branch)
-    return car_schema.get_relationship("owner").get_identifier()
+    return car_schema.get_relationship("owner")
 
 
 class TestUniquenessDependentResolver:
@@ -27,7 +62,8 @@ class TestUniquenessDependentResolver:
 
         dependents = await resolver.resolve(
             node_kind="TestCar",
-            relationship_identifier=await _owner_identifier(default_branch),
+            relationship_identifier=_owner_relationship(default_branch).get_identifier(),
+            relationship_direction=_owner_relationship(default_branch).direction,
             peer_uuids=[person_john_main.id],
         )
 
@@ -42,7 +78,8 @@ class TestUniquenessDependentResolver:
 
         dependents = await resolver.resolve(
             node_kind="TestCar",
-            relationship_identifier=await _owner_identifier(default_branch),
+            relationship_identifier=_owner_relationship(default_branch).get_identifier(),
+            relationship_direction=_owner_relationship(default_branch).direction,
             peer_uuids=[],
         )
 
@@ -66,7 +103,8 @@ class TestUniquenessDependentResolver:
 
         dependents = await resolver.resolve(
             node_kind="TestCar",
-            relationship_identifier=await _owner_identifier(default_branch),
+            relationship_identifier=_owner_relationship(default_branch).get_identifier(),
+            relationship_direction=_owner_relationship(default_branch).direction,
             peer_uuids=[person_john_main.id],
         )
 
@@ -93,7 +131,8 @@ class TestUniquenessDependentResolver:
 
         dependents = await resolver.resolve(
             node_kind="TestCar",
-            relationship_identifier=await _owner_identifier(default_branch),
+            relationship_identifier=_owner_relationship(default_branch).get_identifier(),
+            relationship_direction=_owner_relationship(default_branch).direction,
             peer_uuids=[person_john_main.id],
         )
 
@@ -117,7 +156,8 @@ class TestUniquenessDependentResolver:
 
         dependents = await resolver.resolve(
             node_kind="TestCar",
-            relationship_identifier=await _owner_identifier(default_branch),
+            relationship_identifier=_owner_relationship(default_branch).get_identifier(),
+            relationship_direction=_owner_relationship(default_branch).direction,
             peer_uuids=[person_john_main.id],
         )
 
@@ -125,3 +165,51 @@ class TestUniquenessDependentResolver:
         # produce), so accord is excluded; prius keeps its untouched relationship and stays
         assert car_accord_main.id not in dependents
         assert car_prius_main.id in dependents
+
+
+class TestUniquenessDependentResolverSelfReferential:
+    @pytest.fixture
+    async def tree(self, db: InfrahubDatabase, default_branch: Branch) -> dict[str, Node]:
+        registry.schema.register_schema(schema=SchemaRoot(nodes=[TREE_NODE]), branch=default_branch.name)
+
+        root = await Node.init(db=db, schema=TREE_NODE_KIND, branch=default_branch)
+        await root.new(db=db, name="root")
+        await root.save(db=db)
+        middle = await Node.init(db=db, schema=TREE_NODE_KIND, branch=default_branch)
+        await middle.new(db=db, name="middle", parent=root.id)
+        await middle.save(db=db)
+        leaf = await Node.init(db=db, schema=TREE_NODE_KIND, branch=default_branch)
+        await leaf.new(db=db, name="leaf", parent=middle.id)
+        await leaf.save(db=db)
+
+        return {"root": root, "middle": middle, "leaf": leaf}
+
+    async def test_outbound_relationship_resolves_only_the_child_side(
+        self, db: InfrahubDatabase, default_branch: Branch, tree: dict[str, Node]
+    ) -> None:
+        """A change to `middle` implicates the node whose `parent` is `middle`, not `middle`'s parent."""
+        resolver = UniquenessDependentResolver(db=db, branch=default_branch)
+
+        dependents = await resolver.resolve(
+            node_kind=TREE_NODE_KIND,
+            relationship_identifier=TREE_RELATIONSHIP_IDENTIFIER,
+            relationship_direction=RelationshipDirection.OUTBOUND,
+            peer_uuids=[tree["middle"].id],
+        )
+
+        assert dependents == {tree["leaf"].id}
+
+    async def test_inbound_relationship_resolves_only_the_parent_side(
+        self, db: InfrahubDatabase, default_branch: Branch, tree: dict[str, Node]
+    ) -> None:
+        """The same edges seen from `children` implicate the node holding `middle` as a child."""
+        resolver = UniquenessDependentResolver(db=db, branch=default_branch)
+
+        dependents = await resolver.resolve(
+            node_kind=TREE_NODE_KIND,
+            relationship_identifier=TREE_RELATIONSHIP_IDENTIFIER,
+            relationship_direction=RelationshipDirection.INBOUND,
+            peer_uuids=[tree["middle"].id],
+        )
+
+        assert dependents == {tree["root"].id}

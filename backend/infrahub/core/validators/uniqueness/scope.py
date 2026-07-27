@@ -9,6 +9,7 @@ from infrahub.log import get_logger
 LOG = get_logger(__name__)
 
 if TYPE_CHECKING:
+    from infrahub.core.constants import RelationshipDirection
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
     from infrahub.core.schema.basenode_schema import SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -28,6 +29,7 @@ class CrossKindPeerChange:
     """
 
     relationship_identifier: str
+    relationship_direction: RelationshipDirection
     changed_peer_uuids: frozenset[str]
 
 
@@ -98,6 +100,7 @@ class UniquenessConstraintScoper:
             node_uuids |= await self.dependent_resolver.resolve(
                 node_kind=schema.kind,
                 relationship_identifier=peer_change.relationship_identifier,
+                relationship_direction=peer_change.relationship_direction,
                 peer_uuids=sorted(peer_change.changed_peer_uuids),
             )
         if not node_uuids:
@@ -239,6 +242,7 @@ class UniquenessConstraintScoper:
             cross_kind_peer_changes=(
                 CrossKindPeerChange(
                     relationship_identifier=relationship_schema.get_identifier(),
+                    relationship_direction=relationship_schema.direction,
                     changed_peer_uuids=frozenset(
                         self._uuids_for_field(kinds=peer_kinds, field_name=attribute_schema.name, is_relationship=False)
                     ),

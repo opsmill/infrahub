@@ -6,17 +6,22 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
+    from infrahub.core.constants import RelationshipDirection
     from infrahub.database import InfrahubDatabase
 
 
 class AffectedUniquenessDependentsQuery(Query):
     """Return the nodes of a kind related, through a named relationship, to any of a set of peer nodes.
 
+    The path is traversed in the relationship's own direction, so a kind whose relationship points at
+    its own kind resolves only the nodes on the constrained side of the peers, not those on the
+    opposite side.
+
     Considers edges at the timestamp on the input branch, default branch, and global branch, regardless
     of when the input branch forked from the default branch. That is, changes made on the default branch
     after the input branch was created WILL be included in the results.
 
-    Each hop of the path (peer→relationship and relationship→node) is resolved to a single winner
+    Each hop of the path (node→relationship and relationship→peer) is resolved to a single winner
     across the visible branches: the latest edge on the deepest branch decides, so a change on the
     input branch overrides the default branch. The user branch will always override the default
     branch if changes conflict.
@@ -29,12 +34,14 @@ class AffectedUniquenessDependentsQuery(Query):
         self,
         node_kind: str,
         relationship_identifier: str,
+        relationship_direction: RelationshipDirection,
         peer_uuids: list[str],
         default_branch_name: str,
         **kwargs: Any,
     ) -> None:
         self.node_kind = node_kind
         self.relationship_identifier = relationship_identifier
+        self.relationship_direction = relationship_direction
         self.peer_uuids = peer_uuids
         self.default_branch_name = default_branch_name
         super().__init__(**kwargs)
@@ -48,11 +55,12 @@ class AffectedUniquenessDependentsQuery(Query):
             "default_branch": self.default_branch_name,
             "global_branch": GLOBAL_BRANCH_NAME,
         }
+        query_arrows = self.get_query_arrows(direction=self.relationship_direction)
         query = """
 // --------------------
 // start with all possible active Relationship paths on a branch we care about
 // --------------------
-MATCH (peer)-[r1:IS_RELATED]-(rel:Relationship {name: $rel_identifier})-[r2:IS_RELATED]-(node:%(node_kind)s)
+MATCH (node:%(node_kind)s)%(lstart)s[r1:IS_RELATED]%(lend)s(rel:Relationship {name: $rel_identifier})%(rstart)s[r2:IS_RELATED]%(rend)s(peer)
 WHERE peer.uuid IN $peer_uuids
 AND peer <> node
 AND r1.branch IN [$branch, $default_branch, $global_branch]
@@ -67,8 +75,8 @@ WITH DISTINCT peer, rel, node
 // --------------------
 // keep only active edges. the latest edge on the deepest branch wins.
 // --------------------
-CALL (peer, rel) {
-    MATCH (peer)-[r:IS_RELATED]-(rel)
+CALL (node, rel) {
+    MATCH (node)%(lstart)s[r:IS_RELATED]%(lend)s(rel)
     WHERE r.branch IN [$branch, $default_branch, $global_branch]
     AND r.from <= $at
     AND (r.to IS NULL OR r.to >= $at)
@@ -77,10 +85,10 @@ CALL (peer, rel) {
     LIMIT 1
     WITH is_active
     WHERE is_active = TRUE
-    RETURN TRUE AS peer_rel_is_live
+    RETURN TRUE AS node_rel_is_live
 }
-CALL (rel, node) {
-    MATCH (rel)-[r:IS_RELATED]-(node)
+CALL (rel, peer) {
+    MATCH (rel)%(rstart)s[r:IS_RELATED]%(rend)s(peer)
     WHERE r.branch IN [$branch, $default_branch, $global_branch]
     AND r.from <= $at
     AND (r.to IS NULL OR r.to >= $at)
@@ -89,10 +97,14 @@ CALL (rel, node) {
     LIMIT 1
     WITH is_active
     WHERE is_active = TRUE
-    RETURN TRUE AS rel_node_is_live
+    RETURN TRUE AS rel_peer_is_live
 }
         """ % {
             "node_kind": self.node_kind,
+            "lstart": query_arrows.left.start,
+            "lend": query_arrows.left.end,
+            "rstart": query_arrows.right.start,
+            "rend": query_arrows.right.end,
         }
         self.add_to_query(query=query)
         self.return_labels = ["DISTINCT node.uuid AS node_uuid"]

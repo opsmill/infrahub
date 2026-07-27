@@ -4,7 +4,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SchemaPathType
+from infrahub.core.constants import RelationshipDirection, SchemaPathType
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.node import Node
@@ -25,7 +25,13 @@ CHANGED_ELECTRIC_CAR_UUID = "electric-car-1"
 
 
 class _NoDependentsResolver:
-    async def resolve(self, node_kind: str, relationship_identifier: str, peer_uuids: list[str]) -> set[str]:
+    async def resolve(
+        self,
+        node_kind: str,
+        relationship_identifier: str,
+        relationship_direction: RelationshipDirection,
+        peer_uuids: list[str],
+    ) -> set[str]:
         return set()
 
 

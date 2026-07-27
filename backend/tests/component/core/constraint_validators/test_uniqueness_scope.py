@@ -1,5 +1,6 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import RelationshipDirection
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -12,10 +13,16 @@ class _RecordingResolver:
 
     def __init__(self, dependents: set[str]) -> None:
         self.dependents = dependents
-        self.calls: list[tuple[str, str, list[str]]] = []
+        self.calls: list[tuple[str, str, RelationshipDirection, list[str]]] = []
 
-    async def resolve(self, node_kind: str, relationship_identifier: str, peer_uuids: list[str]) -> set[str]:
-        self.calls.append((node_kind, relationship_identifier, peer_uuids))
+    async def resolve(
+        self,
+        node_kind: str,
+        relationship_identifier: str,
+        relationship_direction: RelationshipDirection,
+        peer_uuids: list[str],
+    ) -> set[str]:
+        self.calls.append((node_kind, relationship_identifier, relationship_direction, peer_uuids))
         return set(self.dependents)
 
 
@@ -113,8 +120,10 @@ class TestUniquenessConstraintScoper:
         assert scoper.requires_validation(schema=car_schema) is True
         assert await scoper.affected_node_uuids(schema=car_schema) == ["car-1", "car-2"]
         # the peer change is routed to the resolver as a single call carrying the changed peer uuids
-        owner_identifier = car_schema.get_relationship(name="owner").get_identifier()
-        assert resolver.calls == [("TestCar", owner_identifier, ["person-1"])]
+        owner_relationship = car_schema.get_relationship(name="owner")
+        assert resolver.calls == [
+            ("TestCar", owner_relationship.get_identifier(), owner_relationship.direction, ["person-1"])
+        ]
 
     async def test_cross_kind_without_known_peer_uuids_falls_back_to_full_scan(
         self, car_person_schema: SchemaBranch, default_branch: Branch
