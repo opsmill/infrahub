@@ -15,6 +15,7 @@ from .slot_pool import PrioritySlotPool
 if TYPE_CHECKING:
     from infrahub import config
 
+    from .controller import AdmissionObserver
     from .retry_policy import RetryPolicyObserver
     from .slot_pool import SlotPoolObserver
 
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
 def build_admission_controller(
     *,
     settings: config.Settings,
+    admission_observers: list[AdmissionObserver],
     slot_pool_observers: list[SlotPoolObserver],
     retry_policy_observers: list[RetryPolicyObserver],
 ) -> AdmissionController:
@@ -32,6 +34,7 @@ def build_admission_controller(
 
     Args:
         settings: Source of every tuning value the object graph needs.
+        admission_observers: Sinks notified as each request is offered, admitted, or shed.
         slot_pool_observers: Sinks notified as a class's in-flight and waiter counts change.
         retry_policy_observers: Sinks notified with the current sustained-load duration.
 
@@ -92,4 +95,5 @@ def build_admission_controller(
         stress_thresholds=stress_thresholds,
         stress_min_samples=settings.api.backpressure_stress_min_samples,
         retry_policy=retry_policy,
+        observers=admission_observers,
     )

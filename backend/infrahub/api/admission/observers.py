@@ -5,7 +5,24 @@ from typing import TYPE_CHECKING
 from . import metrics
 
 if TYPE_CHECKING:
+    from .constants import RejectionReason
     from .priority import Priority
+
+
+class AdmissionMetricsObserver:
+    """Mirrors each admission decision onto the Prometheus counters and the sojourn histogram."""
+
+    def on_offered(self, *, priority: Priority) -> None:
+        metrics.OFFERED_TOTAL.labels(priority=priority.label).inc()
+
+    def on_admitted(self, *, priority: Priority) -> None:
+        metrics.ADMITTED_TOTAL.labels(priority=priority.label).inc()
+
+    def on_rejected(self, *, priority: Priority, reason: RejectionReason) -> None:
+        metrics.REJECTED_TOTAL.labels(priority=priority.label, reason=reason).inc()
+
+    def on_sojourn(self, *, priority: Priority, seconds: float) -> None:
+        metrics.SOJOURN_SECONDS.labels(priority=priority.label).observe(seconds)
 
 
 class SlotPoolMetricsObserver:

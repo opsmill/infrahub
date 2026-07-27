@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import random
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Callable, Generator, Protocol
 
 from infrahub.database.load_signal import UNSTRESSED_RATIO
+from infrahub.log import get_logger
 
-from . import metrics
+from .constants import RejectionReason
 
 if TYPE_CHECKING:
     from infrahub.database.load_signal import LoadSignal
@@ -15,6 +17,8 @@ if TYPE_CHECKING:
     from .priority import Priority
     from .retry_policy import RetryAfterPolicy
     from .slot_pool import Acquisition, PrioritySlotPool
+
+log = get_logger()
 
 # Backstop shedding (waiter queue saturated) is unambiguous overload, so its retry-after hint
 # always uses the top intensity tier regardless of the current stress ratio.
@@ -61,11 +65,32 @@ class Admitted:
 class Rejected:
     """Decision to shed the request, with the reason and a Retry-After hint (seconds)."""
 
-    reason: Literal["stress", "codel", "backstop"]
+    reason: RejectionReason
     retry_after: int
 
 
 AdmissionDecision = Admitted | Rejected
+
+
+@contextmanager
+def _contained_observer_failure() -> Generator[None]:
+    """Log whatever one observer raises instead of letting it reach the admission path."""
+    try:
+        yield
+    except Exception:
+        log.warning("admission observer raised; continuing", exc_info=True)
+
+
+class AdmissionObserver(Protocol):
+    """Sink notified as a request moves through the admission decision."""
+
+    def on_offered(self, *, priority: Priority) -> None: ...
+
+    def on_admitted(self, *, priority: Priority) -> None: ...
+
+    def on_rejected(self, *, priority: Priority, reason: RejectionReason) -> None: ...
+
+    def on_sojourn(self, *, priority: Priority, seconds: float) -> None: ...
 
 
 class AdmissionController:
@@ -96,10 +121,12 @@ class AdmissionController:
         stress_thresholds: dict[Priority, float],
         stress_min_samples: int,
         retry_policy: RetryAfterPolicy,
+        observers: list[AdmissionObserver],
         rng: Callable[[], float] = random.random,
     ) -> None:
         self._slot_pool = slot_pool
         self._retry_policy = retry_policy
+        self._observers = observers
         self._backstop_max_waiters = backstop_max_waiters
         self._stress_signal = stress_signal
         self._stress_thresholds = stress_thresholds
@@ -118,7 +145,7 @@ class AdmissionController:
             ``Admitted`` carrying the held slot, or ``Rejected`` with the shed reason.
 
         """
-        metrics.OFFERED_TOTAL.labels(priority=priority.label).inc()
+        self._observe_offered(priority=priority)
 
         # The stress ratio is the shared server-load proxy: it drives the graduated shed decision
         # and, via the retry policy, both the adaptive Retry-After and the sustained-load clock.
@@ -128,34 +155,56 @@ class AdmissionController:
         tier = stress_tier(ratio=ratio, threshold=self._stress_thresholds[priority])
 
         if self._slot_pool.waiters(priority=priority) >= self._backstop_max_waiters[priority]:
-            metrics.REJECTED_TOTAL.labels(priority=priority.label, reason="backstop").inc()
+            self._observe_rejected(priority=priority, reason=RejectionReason.BACKSTOP)
             # A saturated waiter queue is unambiguous overload, so the hint uses the top tier.
-            return Rejected(reason="backstop", retry_after=self._retry_policy.retry_after(tier=_BACKSTOP_TIER))
+            return Rejected(
+                reason=RejectionReason.BACKSTOP, retry_after=self._retry_policy.retry_after(tier=_BACKSTOP_TIER)
+            )
 
         # Database stress is evaluated before the request queues for a slot: a stressed class sheds
         # a random fraction of its requests, and a shed one gets its fast 429 without waiting behind
         # a saturated pool or consuming waiter capacity. CoDel keys off the measured sojourn, so it
         # can only run once a slot is held — a request shed here never reaches it.
         if tier >= 1 and self._rng() < stress_shed_fraction(tier=tier):
-            metrics.REJECTED_TOTAL.labels(priority=priority.label, reason="stress").inc()
-            return Rejected(reason="stress", retry_after=self._retry_policy.retry_after(tier=tier))
+            self._observe_rejected(priority=priority, reason=RejectionReason.STRESS)
+            return Rejected(reason=RejectionReason.STRESS, retry_after=self._retry_policy.retry_after(tier=tier))
 
         acquisition = await self._slot_pool.acquire(priority=priority)
         # Once a slot is held, any exception before returning Admitted would strand it (the
         # caller only releases what it receives), so guard the whole window and release on error.
         try:
-            metrics.SOJOURN_SECONDS.labels(priority=priority.label).observe(acquisition.sojourn)
+            self._observe_sojourn(priority=priority, seconds=acquisition.sojourn)
 
             if self._codel_priority_map[priority].should_drop(sojourn=acquisition.sojourn):
                 self._slot_pool.release(acquisition=acquisition)
-                metrics.REJECTED_TOTAL.labels(priority=priority.label, reason="codel").inc()
-                return Rejected(reason="codel", retry_after=self._retry_policy.retry_after(tier=tier))
+                self._observe_rejected(priority=priority, reason=RejectionReason.CODEL)
+                return Rejected(reason=RejectionReason.CODEL, retry_after=self._retry_policy.retry_after(tier=tier))
 
-            metrics.ADMITTED_TOTAL.labels(priority=priority.label).inc()
+            self._observe_admitted(priority=priority)
             return Admitted(acquisition=acquisition)
         except Exception:
             self._slot_pool.release(acquisition=acquisition)
             raise
+
+    def _observe_offered(self, *, priority: Priority) -> None:
+        for observer in self._observers:
+            with _contained_observer_failure():
+                observer.on_offered(priority=priority)
+
+    def _observe_admitted(self, *, priority: Priority) -> None:
+        for observer in self._observers:
+            with _contained_observer_failure():
+                observer.on_admitted(priority=priority)
+
+    def _observe_rejected(self, *, priority: Priority, reason: RejectionReason) -> None:
+        for observer in self._observers:
+            with _contained_observer_failure():
+                observer.on_rejected(priority=priority, reason=reason)
+
+    def _observe_sojourn(self, *, priority: Priority, seconds: float) -> None:
+        for observer in self._observers:
+            with _contained_observer_failure():
+                observer.on_sojourn(priority=priority, seconds=seconds)
 
     def _current_stress_ratio(self) -> float:
         # Below the sample floor the ratio is unreliable (a cold or outlier floor would distort

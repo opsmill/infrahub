@@ -6,8 +6,10 @@ from dataclasses import dataclass
 import pytest
 
 from infrahub.api.admission.codel import CoDelController
+from infrahub.api.admission.constants import RejectionReason
 from infrahub.api.admission.controller import (
     AdmissionController,
+    AdmissionObserver,
     Admitted,
     Rejected,
     stress_shed_fraction,
@@ -16,6 +18,7 @@ from infrahub.api.admission.controller import (
 from infrahub.api.admission.priority import Priority
 from infrahub.api.admission.retry_policy import RetryAfterPolicy
 from infrahub.api.admission.slot_pool import PrioritySlotPool
+from tests.unit.api.admission.helpers import FailingAdmissionObserver, RecordingAdmissionObserver
 
 # Per-class stress triggers (the ratio at which a class starts shedding).
 _THRESHOLDS = {Priority.HIGH: 100.0, Priority.MEDIUM: 20.0, Priority.LOW: 5.0}
@@ -53,8 +56,14 @@ class _FakeLoadSignal:
         return self._samples
 
 
-def _build(
-    *, ratio: float, samples: int, rng_value: float = 0.0, max_concurrency: int = 1, min_samples: int = 1
+def _build(  # noqa: PLR0913
+    *,
+    ratio: float,
+    samples: int,
+    rng_value: float = 0.0,
+    max_concurrency: int = 1,
+    min_samples: int = 1,
+    observers: list[AdmissionObserver] | None = None,
 ) -> tuple[AdmissionController, PrioritySlotPool]:
     slot_pool = PrioritySlotPool(max_concurrency=max_concurrency, observers=[], clock=_StepClock(step=1.0))
     # Neutralise the per-class CoDel target so nothing but the signal under test differs.
@@ -69,6 +78,7 @@ def _build(
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=min_samples,
         retry_policy=RetryAfterPolicy(observers=[]),
+        observers=observers if observers is not None else [],
         rng=lambda: rng_value,
     )
     return controller, slot_pool
@@ -170,7 +180,7 @@ async def test_stress_sheds_a_fraction_without_queueing(case: _StressCase) -> No
         assert case.expect_shed is False
     else:
         assert case.expect_shed is True
-        assert result.reason == "stress"
+        assert result.reason == RejectionReason.STRESS
 
 
 async def _second_follower(
@@ -207,7 +217,7 @@ async def test_codel_sheds_independent_of_stress() -> None:
     result = await _second_follower(controller, slot_pool, priority=Priority.LOW)
 
     assert isinstance(result, Rejected)
-    assert result.reason == "codel"
+    assert result.reason == RejectionReason.CODEL
 
 
 async def test_retry_after_reflects_per_priority_stress_tier() -> None:
@@ -220,14 +230,14 @@ async def test_retry_after_reflects_per_priority_stress_tier() -> None:
     low_controller, _ = _build(ratio=60.0, samples=100, rng_value=0.0, max_concurrency=10)
     low = await low_controller.admit(priority=Priority.LOW)
     assert isinstance(low, Rejected)
-    assert low.reason == "stress"
+    assert low.reason == RejectionReason.STRESS
     assert low.retry_after == 10
 
     # MEDIUM trigger is 20. Same ratio 60 -> 3x -> moderate (tier 2) -> level-2 base (5s).
     medium_controller, _ = _build(ratio=60.0, samples=100, rng_value=0.0, max_concurrency=10)
     medium = await medium_controller.admit(priority=Priority.MEDIUM)
     assert isinstance(medium, Rejected)
-    assert medium.reason == "stress"
+    assert medium.reason == RejectionReason.STRESS
     assert medium.retry_after == 5
 
 
@@ -248,8 +258,57 @@ async def test_stress_sheds_before_queueing_for_a_slot() -> None:
     result = await controller.admit(priority=Priority.LOW)
 
     assert isinstance(result, Rejected)
-    assert result.reason == "stress"
+    assert result.reason == RejectionReason.STRESS
     # The shed took the fast path: the request never enqueued behind the held slot.
     assert slot_pool.waiters(priority=Priority.LOW) == 0
 
     controller.release(acquisition=holder.acquisition)
+
+
+async def test_admitted_request_emits_offered_sojourn_admitted() -> None:
+    observer = RecordingAdmissionObserver()
+    controller, _ = _build(ratio=1.0, samples=100, max_concurrency=1, observers=[observer])
+
+    assert isinstance(await controller.admit(priority=Priority.MEDIUM), Admitted)
+
+    assert observer.events == [
+        ("offered", Priority.MEDIUM),
+        ("sojourn", Priority.MEDIUM),
+        ("admitted", Priority.MEDIUM),
+    ]
+    # The fast path acquires without waiting, so the reported sojourn is zero rather than absent.
+    assert observer.sojourns == [0.0]
+
+
+async def test_shed_request_emits_offered_then_rejected_only() -> None:
+    observer = RecordingAdmissionObserver()
+    # LOW's trigger is 5; at 10x that is tier 2 (a 50% fraction) and the draw is forced below it.
+    controller, _ = _build(ratio=50.0, samples=100, rng_value=0.0, max_concurrency=1, observers=[observer])
+
+    assert isinstance(await controller.admit(priority=Priority.LOW), Rejected)
+
+    # A request shed before it reaches the pool has no sojourn to report and was never admitted.
+    assert observer.events == [("offered", Priority.LOW), ("rejected:stress", Priority.LOW)]
+    assert observer.sojourns == []
+
+
+async def test_failing_observer_does_not_affect_the_decision() -> None:
+    survivor = RecordingAdmissionObserver()
+    # The failing sink is ordered first, so a shared guard would swallow the survivor too.
+    controller, slot_pool = _build(
+        ratio=1.0, samples=100, max_concurrency=1, observers=[FailingAdmissionObserver(), survivor]
+    )
+
+    result = await controller.admit(priority=Priority.HIGH)
+
+    assert isinstance(result, Admitted)
+    # Isolation is per observer: the sink behind the failing one saw every event.
+    assert survivor.events == [
+        ("offered", Priority.HIGH),
+        ("sojourn", Priority.HIGH),
+        ("admitted", Priority.HIGH),
+    ]
+
+    # A failing sink mid-decision must not strand the slot it was holding.
+    controller.release(acquisition=result.acquisition)
+    assert slot_pool.available == slot_pool.max_concurrency

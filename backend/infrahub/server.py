@@ -22,7 +22,11 @@ from infrahub import __version__, config
 from infrahub.api import router as api
 from infrahub.api.admission.factory import build_admission_controller
 from infrahub.api.admission.middleware import AdmissionMiddleware
-from infrahub.api.admission.observers import SlotPoolMetricsObserver, SustainedLoadMetricsObserver
+from infrahub.api.admission.observers import (
+    AdmissionMetricsObserver,
+    SlotPoolMetricsObserver,
+    SustainedLoadMetricsObserver,
+)
 from infrahub.api.exception_handlers import generic_api_exception_handler, log_forwarding_exception_handler
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
@@ -63,6 +67,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     # naming the metric sinks here keeps them out of the admission internals' import chain.
     application.state.admission_controller = build_admission_controller(
         settings=config.SETTINGS.active_settings,
+        admission_observers=[AdmissionMetricsObserver()],
         slot_pool_observers=[SlotPoolMetricsObserver()],
         retry_policy_observers=[SustainedLoadMetricsObserver()],
     )
