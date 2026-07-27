@@ -114,6 +114,6 @@ def build_recovery(
         cache=cache,
         rollbacker=GraphRollbacker(db=db),
         schema_manager=registry.schema,
-        lock_cleaner=StaleLockCleaner(cache=cache, component=component),
+        lock_cleaner=StaleLockCleaner(cache=cache, worker_liveness=component),
         diff_locker=DiffLocker(),
     )

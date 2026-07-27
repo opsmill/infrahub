@@ -1,23 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
-
-from infrahub.components import ComponentType
 from infrahub.core.timestamp import Timestamp
 from infrahub.lock import LOCK_PREFIX
 from infrahub.locks.cleaner import StaleLockCleaner
-from infrahub.services.component import InfrahubComponent
-from infrahub.worker import WORKER_IDENTITY
 from tests.adapters.cache import MemoryCache
-from tests.adapters.message_bus import BusRecorder
+from tests.adapters.worker_liveness import StaticWorkerLiveness
 
-if TYPE_CHECKING:
-    from infrahub.database import InfrahubDatabase
-
+LIVE_WORKER = "live-worker"
 DEAD_WORKER = "dead-worker"
 
-DEAD_KEY = f"{LOCK_PREFIX}.global.graph"
-LIVE_KEY = f"{LOCK_PREFIX}.global.schema"
+GRAPH_LOCK_KEY = f"{LOCK_PREFIX}.global.graph"
+SCHEMA_LOCK_KEY = f"{LOCK_PREFIX}.global.schema"
 TOKENLESS_KEY = f"{LOCK_PREFIX}.diff-update.main__feature"
 MISSING_KEY = f"{LOCK_PREFIX}.diff-update.main__feature__incremental"
 
@@ -26,46 +19,35 @@ def _lock_token(worker_id: str) -> str:
     return f"{Timestamp().to_string()}::{worker_id}"
 
 
-def _remaining_locks(cache: MemoryCache) -> dict[str, str]:
-    # The component's heartbeat shares the cache, so only the lock-prefixed keys are the subject here.
-    return {key: value for key, value in cache.storage.items() if key.startswith(LOCK_PREFIX)}
-
-
-async def _build_cleaner(cache: MemoryCache) -> StaleLockCleaner:
-    # list_active_worker_ids reads only the cache heartbeats, so a cache-backed component needs no database.
-    db = cast("InfrahubDatabase", None)
-    component = InfrahubComponent(
-        cache=cache, db=db, message_bus=BusRecorder(), component_type=ComponentType.API_SERVER
-    )
-    await component.refresh_heartbeat()  # marks WORKER_IDENTITY active in the cache
-    return StaleLockCleaner(cache=cache, component=component)
+def _build_cleaner(cache: MemoryCache) -> StaleLockCleaner:
+    return StaleLockCleaner(cache=cache, worker_liveness=StaticWorkerLiveness(active_worker_ids={LIVE_WORKER}))
 
 
 async def test_clears_only_locks_held_by_dead_workers() -> None:
     cache = MemoryCache()
-    live_token = _lock_token(WORKER_IDENTITY)
-    await cache.set(DEAD_KEY, _lock_token(DEAD_WORKER))
-    await cache.set(LIVE_KEY, live_token)
+    live_token = _lock_token(LIVE_WORKER)
+    await cache.set(GRAPH_LOCK_KEY, _lock_token(DEAD_WORKER))
+    await cache.set(SCHEMA_LOCK_KEY, live_token)
     await cache.set(TOKENLESS_KEY, "")
     # MISSING_KEY is intentionally never set.
 
-    cleaner = await _build_cleaner(cache)
+    cleaner = _build_cleaner(cache)
 
-    await cleaner.clear_if_holder_dead(keys=[DEAD_KEY, LIVE_KEY, TOKENLESS_KEY, MISSING_KEY])
+    await cleaner.clear_if_holder_dead(keys=[GRAPH_LOCK_KEY, SCHEMA_LOCK_KEY, TOKENLESS_KEY, MISSING_KEY])
 
     # Only the dead-worker lock is dropped; the live-worker lock and the unparseable (empty-token) key stay.
-    assert _remaining_locks(cache) == {LIVE_KEY: live_token, TOKENLESS_KEY: ""}
+    assert cache.storage == {SCHEMA_LOCK_KEY: live_token, TOKENLESS_KEY: ""}
 
 
 async def test_no_keys_deleted_when_all_holders_live() -> None:
     cache = MemoryCache()
-    dead_key_token = _lock_token(WORKER_IDENTITY)
-    live_key_token = _lock_token(WORKER_IDENTITY)
-    await cache.set(DEAD_KEY, dead_key_token)
-    await cache.set(LIVE_KEY, live_key_token)
+    graph_token = _lock_token(LIVE_WORKER)
+    schema_token = _lock_token(LIVE_WORKER)
+    await cache.set(GRAPH_LOCK_KEY, graph_token)
+    await cache.set(SCHEMA_LOCK_KEY, schema_token)
 
-    cleaner = await _build_cleaner(cache)
+    cleaner = _build_cleaner(cache)
 
-    await cleaner.clear_if_holder_dead(keys=[DEAD_KEY, LIVE_KEY])
+    await cleaner.clear_if_holder_dead(keys=[GRAPH_LOCK_KEY, SCHEMA_LOCK_KEY])
 
-    assert _remaining_locks(cache) == {DEAD_KEY: dead_key_token, LIVE_KEY: live_key_token}
+    assert cache.storage == {GRAPH_LOCK_KEY: graph_token, SCHEMA_LOCK_KEY: schema_token}
