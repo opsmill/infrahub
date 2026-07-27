@@ -128,105 +128,44 @@ async def test_get_proposed_change_schema_integrity_constraints(
 ) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     constraints = await _get_proposed_change_schema_integrity_constraints(
-        schema=schema, diff_summary=branch_diff_01_summary
+        db=db, schema=schema, diff_summary=branch_diff_01_summary, branch=default_branch
     )
-    non_generate_profile_constraints = [c for c in constraints if c.constraint_name != "node.generate_profile.update"]
-    assert len(constraints) == 12
-    assert len(non_generate_profile_constraints) == 12
-    # node-level property constraints must be scoped to the kinds present in the diff
-    node_constraint_kinds = {c.path.schema_kind for c in constraints if c.path.path_type is SchemaPathType.NODE}
-    assert node_constraint_kinds == {"TestPerson"}
-    dumped_constraints = [c.model_dump() for c in non_generate_profile_constraints]
-    assert {
-        "constraint_name": "relationship.optional.update",
-        "path": {
-            "field_name": "cars",
-            "path_type": SchemaPathType.RELATIONSHIP,
-            "property_name": "optional",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "relationship.peer.update",
-        "path": {
-            "field_name": "cars",
-            "path_type": SchemaPathType.RELATIONSHIP,
-            "property_name": "peer",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "relationship.cardinality.update",
-        "path": {
-            "field_name": "cars",
-            "path_type": SchemaPathType.RELATIONSHIP,
-            "property_name": "cardinality",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "relationship.min_count.update",
-        "path": {
-            "field_name": "cars",
-            "path_type": SchemaPathType.RELATIONSHIP,
-            "property_name": "min_count",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "relationship.max_count.update",
-        "path": {
-            "field_name": "cars",
-            "path_type": SchemaPathType.RELATIONSHIP,
-            "property_name": "max_count",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "attribute.optional.update",
-        "path": {
-            "field_name": "height",
-            "path_type": SchemaPathType.ATTRIBUTE,
-            "property_name": "optional",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "attribute.unique.update",
-        "path": {
-            "field_name": "height",
-            "path_type": SchemaPathType.ATTRIBUTE,
-            "property_name": "unique",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "attribute.optional.update",
-        "path": {
-            "field_name": "name",
-            "path_type": SchemaPathType.ATTRIBUTE,
-            "property_name": "optional",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "attribute.unique.update",
-        "path": {
-            "field_name": "name",
-            "path_type": SchemaPathType.ATTRIBUTE,
-            "property_name": "unique",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
+    # the diff changes name on one TestPerson and height+cars on another; only name participates in
+    # uniqueness, so the uniqueness check is scoped to just the node that changed name, while every
+    # field-level check spans the population (node_uuids=None)
+    name_changed_person_uuids = ("11111111-1111-1111-1111-111111111111",)
+    actual = {
+        (
+            c.constraint_name,
+            c.path.schema_kind,
+            c.path.field_name,
+            c.path.property_name,
+            c.path.path_type,
+            tuple(c.node_uuids) if c.node_uuids is not None else None,
+        )
+        for c in constraints
+    }
+    assert actual == {
+        ("attribute.kind.update", "TestPerson", "name", "kind", SchemaPathType.ATTRIBUTE, None),
+        ("attribute.kind.update", "TestPerson", "height", "kind", SchemaPathType.ATTRIBUTE, None),
+        ("attribute.optional.update", "TestPerson", "name", "optional", SchemaPathType.ATTRIBUTE, None),
+        ("attribute.optional.update", "TestPerson", "height", "optional", SchemaPathType.ATTRIBUTE, None),
+        ("attribute.unique.update", "TestPerson", "name", "unique", SchemaPathType.ATTRIBUTE, None),
+        ("attribute.unique.update", "TestPerson", "height", "unique", SchemaPathType.ATTRIBUTE, None),
+        ("relationship.optional.update", "TestPerson", "cars", "optional", SchemaPathType.RELATIONSHIP, None),
+        ("relationship.peer.update", "TestPerson", "cars", "peer", SchemaPathType.RELATIONSHIP, None),
+        ("relationship.cardinality.update", "TestPerson", "cars", "cardinality", SchemaPathType.RELATIONSHIP, None),
+        ("relationship.min_count.update", "TestPerson", "cars", "min_count", SchemaPathType.RELATIONSHIP, None),
+        ("relationship.max_count.update", "TestPerson", "cars", "max_count", SchemaPathType.RELATIONSHIP, None),
+        (
+            "node.uniqueness_constraints.update",
+            "TestPerson",
+            "uniqueness_constraints",
+            "uniqueness_constraints",
+            SchemaPathType.NODE,
+            name_changed_person_uuids,
+        ),
+    }
 
 
 async def test_schema_integrity(

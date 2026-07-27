@@ -15,20 +15,19 @@ def test_query_before_initialize_raises() -> None:
     with pytest.raises(RuntimeError, match=match):
         index.has_relationship_diff(kind="TestCar", name="owner")
     with pytest.raises(RuntimeError, match=match):
-        index.uuids_for_kinds({"TestCar"})
+        index.get_uuids_for_attribute(kind="TestCar", name="name")
 
 
-def test_indexes_fields_and_uuids_per_kind() -> None:
+def test_indexes_fields_and_uuids_per_field() -> None:
     index = NodeDiffIndex()
     index.initialize(
         [
             NodeDiffFieldSummary(
                 kind="TestCar",
-                attribute_names={"name", "color"},
-                relationship_names={"owner"},
-                node_uuids={"c1", "c2"},
+                attribute_node_uuids={"name": {"c1", "c2"}, "color": {"c1"}},
+                relationship_node_uuids={"owner": {"c2"}},
             ),
-            NodeDiffFieldSummary(kind="TestPerson", attribute_names={"height"}, node_uuids={"p1"}),
+            NodeDiffFieldSummary(kind="TestPerson", attribute_node_uuids={"height": {"p1"}}),
         ]
     )
 
@@ -38,32 +37,37 @@ def test_indexes_fields_and_uuids_per_kind() -> None:
     assert not index.has_attribute_diff(kind="Unknown", name="name")
     assert index.has_relationship_diff(kind="TestCar", name="owner")
     assert not index.has_relationship_diff(kind="TestPerson", name="owner")
-    assert index.uuids_for_kinds({"TestCar", "TestPerson"}) == {"c1", "c2", "p1"}
-    assert index.uuids_for_kinds({"Unknown"}) == set()
+    # uuids are scoped to the specific field, not merged across the kind
+    assert index.get_uuids_for_attribute(kind="TestCar", name="name") == {"c1", "c2"}
+    assert index.get_uuids_for_attribute(kind="TestCar", name="color") == {"c1"}
+    assert index.get_uuids_for_relationship(kind="TestCar", name="owner") == {"c2"}
+    assert index.get_uuids_for_attribute(kind="TestPerson", name="height") == {"p1"}
+    assert index.get_uuids_for_attribute(kind="Unknown", name="name") == set()
 
 
 def test_summaries_for_same_kind_are_merged() -> None:
     index = NodeDiffIndex()
     index.initialize(
         [
-            NodeDiffFieldSummary(kind="TestCar", attribute_names={"name"}, node_uuids={"c1"}),
-            NodeDiffFieldSummary(kind="TestCar", attribute_names={"color"}, node_uuids={"c2"}),
+            NodeDiffFieldSummary(kind="TestCar", attribute_node_uuids={"name": {"c1"}}),
+            NodeDiffFieldSummary(kind="TestCar", attribute_node_uuids={"name": {"c2"}, "color": {"c3"}}),
         ]
     )
 
     assert index.has_attribute_diff(kind="TestCar", name="name")
     assert index.has_attribute_diff(kind="TestCar", name="color")
-    assert index.uuids_for_kinds({"TestCar"}) == {"c1", "c2"}
+    assert index.get_uuids_for_attribute(kind="TestCar", name="name") == {"c1", "c2"}
+    assert index.get_uuids_for_attribute(kind="TestCar", name="color") == {"c3"}
 
 
 def test_initialize_resets_prior_state() -> None:
     index = NodeDiffIndex()
-    index.initialize([NodeDiffFieldSummary(kind="A", attribute_names={"x"}, node_uuids={"a1"})])
-    index.initialize([NodeDiffFieldSummary(kind="B", attribute_names={"y"}, node_uuids={"b1"})])
+    index.initialize([NodeDiffFieldSummary(kind="A", attribute_node_uuids={"x": {"a1"}})])
+    index.initialize([NodeDiffFieldSummary(kind="B", attribute_node_uuids={"y": {"b1"}})])
 
     assert index.kinds == {"B"}
     assert not index.has_attribute_diff(kind="A", name="x")
-    assert index.uuids_for_kinds({"A"}) == set()
+    assert index.get_uuids_for_attribute(kind="A", name="x") == set()
 
 
 def test_empty_diff() -> None:
@@ -72,4 +76,4 @@ def test_empty_diff() -> None:
 
     assert index.kinds == set()
     assert not index.has_attribute_diff(kind="A", name="x")
-    assert index.uuids_for_kinds({"A"}) == set()
+    assert index.get_uuids_for_attribute(kind="A", name="x") == set()

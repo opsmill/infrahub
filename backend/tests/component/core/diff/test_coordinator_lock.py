@@ -19,6 +19,7 @@ from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import get_component_registry
 
@@ -205,7 +206,12 @@ class TestDiffCoordinatorLocks:
                 diff_repository=diff_repository,
                 schema_manager=registry.schema,
             ),
-            constraint_validator=MergeConstraintValidator(db=db, branch=diff_branch, diff_repository=diff_repository),
+            constraint_validator=MergeConstraintValidator(
+                db=db,
+                branch=diff_branch,
+                diff_repository=diff_repository,
+                migration_validator=schema_validate_migrations,
+            ),
         )
 
         results = await asyncio.gather(
@@ -258,7 +264,10 @@ class TestDiffCoordinatorLocks:
                 schema_manager=registry.schema,
             ),
             constraint_validator=MergeConstraintValidator(
-                db=db2, branch=diff_branch, diff_repository=diff_repository_2
+                db=db2,
+                branch=diff_branch,
+                diff_repository=diff_repository_2,
+                migration_validator=schema_validate_migrations,
             ),
         )
 

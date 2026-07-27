@@ -1,9 +1,9 @@
 import pytest
 
-from infrahub.computed_attribute.tasks import _chunk_ids
+from infrahub.utilities.chunks import chunked
 
 
-def test_chunk_ids_rejects_zero_chunk_size() -> None:
+def test_chunked_rejects_zero_chunk_size() -> None:
     """A zero chunk size is invalid and must never reach the chunker."""
     with pytest.raises(ValueError, match="must not be zero"):
-        _chunk_ids(["a", "b"], 0)
+        list(chunked(["a", "b"], 0))

@@ -21,6 +21,7 @@ from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001 
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
+from infrahub.utilities.chunks import chunked
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
@@ -52,10 +53,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.analyzer import GraphQLQueryReport
-
-
-def _chunk_ids(ids: list[str], chunk_size: int) -> list[list[str]]:
-    return [ids[i : i + chunk_size] for i in range(0, len(ids), chunk_size)]
 
 
 async def _reconcile_python_computed_attribute_automations(db: InfrahubDatabase) -> None:
@@ -261,7 +258,7 @@ async def trigger_update_python_computed_attributes(
         return
 
     chunk_size = get_submission_chunk_size()
-    for chunk in _chunk_ids(object_ids, chunk_size):
+    for chunk in chunked(object_ids, chunk_size):
         await get_workflow().submit_workflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
             context=context,
@@ -658,7 +655,7 @@ async def query_transform_targets(
 
     chunk_size = get_submission_chunk_size()
     for (kind, attribute_name), batch_object_ids in batches.items():
-        for chunk in _chunk_ids(batch_object_ids, chunk_size):
+        for chunk in chunked(batch_object_ids, chunk_size):
             await get_workflow().submit_workflow(
                 workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
                 context=context,

@@ -2902,6 +2902,7 @@ async def test_schema_branch_validate_check_missing(
                     "schema_id": None,
                     "schema_kind": "TestingCriticality",
                 },
+                "node_uuids": None,
             },
         ],
         "enforce_update_support": True,
@@ -3003,6 +3004,7 @@ async def test_schema_branch_validate_add_node_relationships(
                     "schema_id": None,
                     "schema_kind": "TestingCriticality",
                 },
+                "node_uuids": None,
             },
             {
                 "constraint_name": "node.relationship.add",
@@ -3013,6 +3015,7 @@ async def test_schema_branch_validate_add_node_relationships(
                     "schema_id": None,
                     "schema_kind": "TestingCriticality",
                 },
+                "node_uuids": None,
             },
         ],
         "enforce_update_support": True,
