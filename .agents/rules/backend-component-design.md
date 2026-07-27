@@ -22,6 +22,8 @@ The single exception is editing existing code where adding a required parameter 
 
 Construct components as close to the application entry point as possible. Use a builder class or factory function when wiring is non-trivial, and inject each sub-component rather than constructing it inside a parent component's `__init__`.
 
+Prefect `@flow` functions are application entry points: resolve singleton getters (`get_database()`, `get_workflow()`, …) at the top of the flow only — never inside helpers or component internals — then build the component and delegate to it. The flow body stays a thin composition root; the business logic lives in the component.
+
 ## Single entry point, operating on arguments
 
 A component should generally expose a single entry point method (occasionally more, when justified by cohesive responsibility). That method only accepts the entities being operated on as arguments — it should not require additional dependencies to be passed in alongside the work payload.
