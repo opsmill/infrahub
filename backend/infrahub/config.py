@@ -554,13 +554,22 @@ class ApiSettings(BaseSettings):
         description="Kill-switch for priority-aware API backpressure; when disabled every request passes through.",
     )
     backpressure_codel_target_seconds: float = Field(
-        default=0.005, gt=0, description="CoDel target sojourn in seconds before shedding is considered."
+        default=0.005,
+        gt=0,
+        allow_inf_nan=False,
+        description="CoDel target sojourn in seconds before shedding is considered.",
     )
     backpressure_codel_interval_seconds: float = Field(
-        default=0.1, gt=0, description="CoDel interval in seconds the sojourn must stay above target before dropping."
+        default=0.1,
+        gt=0,
+        allow_inf_nan=False,
+        description="CoDel interval in seconds the sojourn must stay above target before dropping.",
     )
     backpressure_high_target_multiplier: float = Field(
-        default=4.0, ge=1, description="Multiplier applied to the CoDel target for the high-priority class."
+        default=4.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Multiplier applied to the CoDel target for the high-priority class.",
     )
     backpressure_backstop_max_waiters: int = Field(
         default=1000, ge=1, description="Per-class hard cap on queued waiters before requests are rejected."
@@ -606,6 +615,7 @@ class ApiSettings(BaseSettings):
     backpressure_stress_window_seconds: float = Field(
         default=20.0,
         gt=0,
+        allow_inf_nan=False,
         description="Rolling window, in seconds, over which the database-stress signal is measured.",
     )
     backpressure_stress_min_samples: int = Field(
@@ -616,28 +626,58 @@ class ApiSettings(BaseSettings):
     backpressure_shed_low_stress_ratio: float = Field(
         default=10.0,
         ge=1,
+        allow_inf_nan=False,
         description="Database-stress ratio at or above which low-priority requests become eligible for shedding.",
     )
     backpressure_shed_medium_stress_ratio: float = Field(
         default=25.0,
         ge=1,
+        allow_inf_nan=False,
         description="Database-stress ratio at or above which medium-priority requests become eligible for shedding.",
     )
     backpressure_shed_high_stress_ratio: float = Field(
         default=100.0,
         ge=1,
+        allow_inf_nan=False,
         description="Database-stress ratio at or above which high-priority requests become eligible for shedding.",
     )
     backpressure_backstop_low_multiplier: float = Field(
         default=0.5,
         gt=0,
+        le=1,
+        allow_inf_nan=False,
         description="Scales the base backstop waiter cap for the low-priority class.",
     )
     backpressure_backstop_high_multiplier: float = Field(
         default=4.0,
-        gt=0,
+        ge=1,
+        allow_inf_nan=False,
         description="Scales the base backstop waiter cap for the high-priority class.",
     )
+
+    @model_validator(mode="after")
+    def validate_shed_stress_ratios_ordered_by_priority(self) -> Self:
+        """Require each class to start shedding no earlier than the one below it.
+
+        A class sheds once the database-stress ratio reaches its own trigger, so the whole point of
+        the feature — interactive traffic surviving longest — inverts silently if a higher-priority
+        class is given a lower trigger.
+
+        Raises:
+            ValueError: If the triggers are not ordered from low to high priority.
+
+        """
+        if not (
+            self.backpressure_shed_low_stress_ratio
+            <= self.backpressure_shed_medium_stress_ratio
+            <= self.backpressure_shed_high_stress_ratio
+        ):
+            raise ValueError(
+                "'backpressure_shed_low_stress_ratio' must not exceed "
+                "'backpressure_shed_medium_stress_ratio', which must not exceed "
+                "'backpressure_shed_high_stress_ratio', so lower-priority traffic sheds first"
+            )
+        return self
 
 
 class GitSettings(BaseSettings):
