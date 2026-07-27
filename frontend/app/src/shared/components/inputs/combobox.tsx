@@ -54,7 +54,7 @@ export function Combobox({
   return (
     <PopoverTrigger isOpen={open} onOpenChange={setOpen}>
       <Button
-        variant="outline"
+        variant="input"
         size="sm"
         aria-label={label}
         aria-describedby={ariaDescribedBy}

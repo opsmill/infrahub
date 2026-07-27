@@ -86,6 +86,10 @@ self.add_to_query("MATCH (n { uuid: $uuid })")
 self.add_to_query(f"MATCH (n {{ uuid: '{user_provided_id}' }})")
 ```
 
+### Keep Cypher readable inline
+
+Readability of the raw query outranks deduplication. Do not extract repeated Cypher blocks into shared Python string-building helpers or fragment formatters just to avoid duplication — a query assembled from indirected fragments is much harder to read, review, and paste into a Neo4j console. Duplicating a few similar Cypher blocks inline is the accepted trade-off.
+
 ### Return Labels
 
 The RETURN clause is automatically generated from `return_labels`. Call `update_return_labels()` to specify what to return.
@@ -124,6 +128,11 @@ class MyQuery(Query):
 Pagination (`LIMIT`/`OFFSET`) is automatically appended based on constructor parameters. To write pagination directly in your query, set `insert_limit = False`:
 
 > **List reads default to a page limit (e.g. `Branch.get_list` defaults to `limit=1000`).** Any check that must reason over *all* matching rows — "is any branch merging?", "are there duplicates?" — must not rely on an unbounded read of a default page. Narrow the query with a filter (a status/kind predicate) or paginate explicitly; otherwise the check silently ignores everything past the first page once the table grows.
+>
+> Two corollaries:
+>
+> - **Never derive a count with `len()` on a list read.** `len(Branch.get_list(...))` caps at the page limit and silently under-reports. Use the dedicated count method (`Branch.get_list_count`) or add one — a count query is also far cheaper than materializing the rows.
+> - **A "pick the newest/best from a filtered list" reduction must page through *all* results first.** This applies to any paginated API, not just our Query classes (e.g. Prefect artifact listings): reducing over only the first page silently returns a stale or missing winner once results exceed the page size.
 
 ```python
 class MyQuery(Query):

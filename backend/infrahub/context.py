@@ -5,7 +5,7 @@ from typing_extensions import Self
 from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
-from infrahub.events.models import EventBranchContext, EventContext
+from infrahub.events.models import EventBranchContext, EventContext, workflow_priority_to_request_priority
 from infrahub.workflows.constants import WorkflowPriority
 
 
@@ -31,7 +31,11 @@ class InfrahubContext(BaseModel):
         return EventContext(
             branch=EventBranchContext(name=self.branch.name, id=self.branch.id),
             account_id=self.account.account_id,
+            priority=self.priority,
         )
 
     def to_request_context(self) -> RequestContext:
-        return RequestContext(account=ContextAccount(id=self.account.account_id))
+        return RequestContext(
+            account=ContextAccount(id=self.account.account_id),
+            priority=workflow_priority_to_request_priority(self.priority),
+        )

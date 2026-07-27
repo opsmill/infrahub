@@ -20,6 +20,8 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 from infrahub import __version__, config
 from infrahub.api import router as api
+from infrahub.api.admission.controller import build_admission_controller
+from infrahub.api.admission.middleware import AdmissionMiddleware
 from infrahub.api.exception_handlers import generic_api_exception_handler, log_forwarding_exception_handler
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
@@ -53,6 +55,12 @@ CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 async def app_initialization(application: FastAPI, enable_scheduler: bool = True) -> None:
     config.SETTINGS.initialize_and_exit()
     _validate_feature_selection(configuration=config.SETTINGS.active_settings)
+
+    # Build the admission controller once here, at startup, and publish it (with the kill-switch)
+    # on app.state for the outermost AdmissionMiddleware to read. Constructing it at the app entry
+    # point keeps settings resolution and the controller's object graph out of the middleware.
+    application.state.admission_controller = build_admission_controller(settings=config.SETTINGS.active_settings)
+    application.state.admission_enabled = config.SETTINGS.api.backpressure_enabled
 
     # Initialize trace
     if config.SETTINGS.trace.enable:
@@ -213,6 +221,11 @@ app.add_middleware(
         "/api/schema",
     ),
 )
+
+# Registered last so it is the outermost middleware: load is shed before any downstream work
+# runs. Its controller and kill-switch are built during startup (see app_initialization) and read
+# from app.state per request, so the middleware itself builds nothing and depends on no settings.
+app.add_middleware(AdmissionMiddleware)
 
 app.add_exception_handler(ForwardableError, log_forwarding_exception_handler)
 app.add_exception_handler(Error, generic_api_exception_handler)

@@ -20,6 +20,7 @@ from infrahub.config import (
     Settings,
     StorageSettings,
     UserInfoMethod,
+    default_cors_allow_headers,
     load,
 )
 from tests.conftest import TestHelper
@@ -42,6 +43,11 @@ def test_load_sso_config(helper: TestHelper) -> None:
     assert oauth_provider2.userinfo_method == UserInfoMethod.GET
     assert oidc_provider1.userinfo_method == UserInfoMethod.POST
     assert oidc_provider2.userinfo_method == UserInfoMethod.GET
+
+
+def test_default_cors_allow_headers_includes_x_priority() -> None:
+    """The shipped CORS allow-list lets cross-origin browsers send the X-Priority header."""
+    assert "x-priority" in default_cors_allow_headers()
 
 
 def test_valid_git_settings__sync_branch_names() -> None:

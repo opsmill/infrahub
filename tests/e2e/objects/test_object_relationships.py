@@ -131,13 +131,13 @@ class TestObjectRelationships:
         # Navigates to North America and checks the children
         await admin_page.goto(f"/objects/LocationContinent?branch={branch}")
         await admin_page.get_by_role("link", name="North America").first.click()
-        await admin_page.get_by_text("Children2").click()
+        await admin_page.get_by_text("Country2").click()
         await expect(admin_page.get_by_role("link", name="Canada")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="United States of America")).to_be_visible()
 
         # Navigates to the USA and checks the children
         await admin_page.get_by_role("link", name="United States of America").click()
-        await admin_page.get_by_text("Children5").click()
+        await admin_page.get_by_text("Site5").click()
         await expect(admin_page.get_by_role("link", name="atl1")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="den1")).to_be_visible()
         await expect(admin_page.get_by_text("Bailey Li")).to_be_visible()

@@ -1,0 +1,1 @@
+The `/api/schema/load` endpoint now tolerates read-only, internal, and unknown fields on a submitted schema (for example a schema read back from Infrahub, or an exported schema), dropping them silently before applying the write contract instead of rejecting the payload. Constrained values and structural requirements are still validated.

@@ -29,7 +29,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from tests.component.core.diff.factories import EnrichedNodeFactory, EnrichedRootFactory
+from tests.helpers.diff_factories import EnrichedNodeFactory, EnrichedRootFactory
 
 
 class TestMigration061:

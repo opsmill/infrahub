@@ -7,6 +7,7 @@ import { Link } from "@/shared/components/ui/link";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 import { ComputedAttributeDisplay } from "./computed-attribute-display";
 import { AccordionStyled, NullDisplay, PropertyRow, PropertyTitle } from "./styled";
@@ -16,7 +17,7 @@ export const AttributeDisplay = ({
   onKindClick,
   defaultOpen = false,
 }: {
-  attribute: components["schemas"]["AttributeSchema-Output"];
+  attribute: AttributeSchema;
   onKindClick?: (kind: string) => void;
   defaultOpen?: boolean;
 }) => {
@@ -80,7 +81,7 @@ export const AttributeDisplay = ({
 const ChoicesRow = ({
   choices,
 }: {
-  choices: components["schemas"]["DropdownChoice"][] | null | undefined;
+  choices: components["schemas"]["DropdownChoiceRead"][] | null | undefined;
 }) => {
   if (choices === undefined) return null;
   if (choices === null) return <NullDisplay />;
@@ -112,13 +113,9 @@ const ChoicesRow = ({
   );
 };
 
-const AttributeParameters = ({
-  attribute,
-}: {
-  attribute: components["schemas"]["AttributeSchema-Output"];
-}) => {
+const AttributeParameters = ({ attribute }: { attribute: AttributeSchema }) => {
   if (attribute.kind === "Text") {
-    const parameters = attribute.parameters as components["schemas"]["TextAttributeParameters"];
+    const parameters = attribute.parameters as components["schemas"]["TextAttributeParametersRead"];
     return (
       <div>
         <PropertyTitle title="Parameters" />
@@ -133,7 +130,8 @@ const AttributeParameters = ({
   }
 
   if (attribute.kind === "Number") {
-    const parameters = attribute.parameters as components["schemas"]["NumberAttributeParameters"];
+    const parameters =
+      attribute.parameters as components["schemas"]["NumberAttributeParametersRead"];
     return (
       <div>
         <PropertyTitle title="Parameters" />
@@ -148,7 +146,7 @@ const AttributeParameters = ({
   }
 
   if (attribute.kind === "NumberPool") {
-    const parameters = attribute.parameters as components["schemas"]["NumberPoolParameters"];
+    const parameters = attribute.parameters as components["schemas"]["NumberPoolParametersRead"];
     return (
       <div>
         <PropertyTitle title="Parameters" />

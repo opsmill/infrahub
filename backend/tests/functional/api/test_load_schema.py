@@ -4,7 +4,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.schema import GenericSchemaAPI as SDKGenericSchema
+from infrahub_sdk.schema import validate_schema
+from infrahub_sdk.uuidt import UUIDT
 
+from infrahub.core.initialization import create_account
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.query.node import MetadataOptions
@@ -26,6 +29,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
     from tests.conftest import TestHelper
+    from tests.helpers.test_client import InfrahubTestClient
 
 
 class TestLoadSchemaAPI(TestInfrahubApp):
@@ -596,3 +600,366 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert schema.documentation is None
         assert schema.parent == "TestLocation"
         assert schema.children == "TestLocation"
+
+    async def test_schema_load_tolerates_non_write_and_unknown_fields(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        """Accept a payload carrying a read-level field plus an unknown field."""
+        payload = {
+            "schemas": [
+                {
+                    "version": "1.0",
+                    "nodes": [
+                        {
+                            "name": "Device",
+                            "namespace": "Test",
+                            "attributes": [
+                                {
+                                    "name": "name",
+                                    "kind": "Text",
+                                    "inherited": True,
+                                    "not_a_real_field": "value",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+
+        response = await test_client.post(
+            "/api/schema/load",
+            json=payload,
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+
+        assert response.status_code == 200
+
+    async def test_schema_load_rejects_out_of_enum_attribute_kind(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        """Reject a payload setting attribute `kind` to a non-existent value, naming field and value."""
+        payload = {
+            "schemas": [
+                {
+                    "version": "1.0",
+                    "nodes": [
+                        {
+                            "name": "Device",
+                            "namespace": "Test",
+                            "attributes": [{"name": "name", "kind": "NotARealKind"}],
+                        }
+                    ],
+                }
+            ]
+        }
+
+        response = await test_client.post(
+            "/api/schema/load",
+            json=payload,
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+
+        assert response.status_code == 422
+        messages = [item["msg"] for item in response.json()["detail"]]
+        assert len(messages) == 1, messages
+        message = messages[0]
+        # The invalid kind fails the attribute discriminator, so the path stops at the attribute.
+        assert "nodes[0].attributes[0]:" in message, message
+        assert "Input tag 'NotARealKind' found using 'kind' does not match any of the expected tags" in message, message
+        assert "(received: {'name': 'name', 'kind': 'NotARealKind'})" in message, message
+
+    async def test_schema_load_tolerates_non_write_and_unknown_fields_in_extensions(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        """Accept an extension attribute carrying a read-level field and an unknown field."""
+        # Define a fresh node (no existing instances) so the extension is applicable, then extend it
+        # with an optional attribute carrying a read-level field and an unknown field.
+        base = {
+            "schemas": [
+                {
+                    "version": "1.0",
+                    "nodes": [
+                        {"name": "Gadget", "namespace": "Test", "attributes": [{"name": "name", "kind": "Text"}]}
+                    ],
+                }
+            ]
+        }
+        base_response = await test_client.post(
+            "/api/schema/load",
+            json=base,
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+        assert base_response.status_code == 200
+
+        payload = {
+            "schemas": [
+                {
+                    "version": "1.0",
+                    "extensions": {
+                        "nodes": [
+                            {
+                                "kind": "TestGadget",
+                                "attributes": [
+                                    {
+                                        "name": "extra",
+                                        "kind": "Text",
+                                        "optional": True,
+                                        "inherited": True,
+                                        "not_a_real_field": "value",
+                                    }
+                                ],
+                            }
+                        ]
+                    },
+                }
+            ]
+        }
+
+        response = await test_client.post(
+            "/api/schema/load",
+            json=payload,
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+
+        assert response.status_code == 200
+
+    async def test_schema_load_rejects_out_of_enum_relationship_cardinality(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        """Reject a relationship whose `cardinality` is outside its allowed set, naming field and value."""
+        payload = {
+            "schemas": [
+                {
+                    "version": "1.0",
+                    "nodes": [
+                        {
+                            "name": "Device",
+                            "namespace": "Test",
+                            "attributes": [{"name": "name", "kind": "Text"}],
+                            "relationships": [
+                                {"name": "peers", "peer": "TestDevice", "cardinality": "both", "optional": True}
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+
+        response = await test_client.post(
+            "/api/schema/load",
+            json=payload,
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+
+        assert response.status_code == 422
+        messages = [item["msg"] for item in response.json()["detail"]]
+        assert len(messages) == 1, messages
+        message = messages[0]
+        assert "nodes[0].relationships[0].cardinality:" in message, message
+        assert "Input should be 'one' or 'many'" in message, message
+        assert "(received: 'both')" in message, message
+
+    async def test_stored_schema_with_read_level_field_reads_back(
+        self,
+        initial_dataset: str,
+        client: InfrahubClient,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+        default_branch: Branch,
+    ) -> None:
+        """A stored schema containing now-`read` fields reads back without error.
+
+        Loading a generic and a node that inherits from it produces read-level fields the user
+        never submitted (`used_by` on the generic, `inherited` on the node's inherited attribute).
+        Reading the stored schema back must succeed and expose those fields.
+        """
+        schema_dict = {
+            "version": "1.0",
+            "generics": [
+                {
+                    "name": "Animal",
+                    "namespace": "Test",
+                    "attributes": [{"name": "name", "kind": "Text"}],
+                }
+            ],
+            "nodes": [
+                {
+                    "name": "Dog",
+                    "namespace": "Test",
+                    "inherit_from": ["TestAnimal"],
+                    "attributes": [{"name": "breed", "kind": "Text", "optional": True}],
+                }
+            ],
+        }
+        creation = await client.schema.load(schemas=[schema_dict])
+        assert not creation.errors
+
+        response = await test_client.get("/api/schema", headers={"X-INFRAHUB-KEY": api_admin_token})
+        assert response.status_code == 200
+        schema = response.json()
+
+        generics = {item["kind"]: item for item in schema["generics"]}
+        assert generics["TestAnimal"]["used_by"] == ["TestDog"]
+
+        nodes = {item["kind"]: item for item in schema["nodes"]}
+        dog = nodes["TestDog"]
+        inherited_attributes = {attr["name"] for attr in dog["attributes"] if attr["inherited"]}
+        assert inherited_attributes == {"name"}
+        assert {attr["name"] for attr in dog["attributes"]} == {"name", "breed"}
+
+    async def test_schema_load_id_cannot_bypass_authorization(
+        self,
+        initial_dataset: str,
+        client: InfrahubClient,
+        test_client: InfrahubTestClient,
+        helper: TestHelper,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+    ) -> None:
+        """An `id` in a payload cannot rename/delete an object the caller may not modify.
+
+        A caller without schema-management permission cannot mutate an existing object by
+        carrying its `id`: authorization is enforced before any id-driven mutation, so the
+        object is neither renamed nor deleted regardless of the id supplied.
+        """
+        # Seed an object as admin so there is an existing object with a stable id.
+        await client.schema.load(schemas=[helper.schema_file("infra_simple_01.json")])
+        existing = registry.schema.get(name="TestDevice", branch=default_branch.name)
+        existing_id = existing.id
+        assert existing_id
+
+        # A fresh account in no group has no schema-management permission.
+        unprivileged_token = str(UUIDT())
+        await create_account(db=db, name="no_schema_perm", password="testing_password", token_value=unprivileged_token)
+
+        payload = {
+            "schemas": [
+                {
+                    "version": "1.0",
+                    "nodes": [
+                        {
+                            "id": existing_id,
+                            "name": "DeviceRenamed",
+                            "namespace": "Test",
+                            "attributes": [{"name": "name", "kind": "Text"}],
+                        }
+                    ],
+                }
+            ]
+        }
+        response = await test_client.post(
+            "/api/schema/load",
+            json=payload,
+            headers={"X-INFRAHUB-KEY": unprivileged_token},
+        )
+
+        assert response.status_code == 403
+        assert response.json()["errors"][0]["message"] == "You are not allowed to manage the schema"
+
+        # The targeted object was neither renamed nor deleted.
+        still_present = registry.schema.get(name="TestDevice", branch=default_branch.name)
+        assert still_present.id == existing_id
+        assert still_present.name == "Device"
+        assert still_present.namespace == "Test"
+        assert not registry.schema.has(name="TestDeviceRenamed", branch=default_branch.name)
+
+    async def test_write_contract_parity_sdk_offline_vs_load_endpoint(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        """The same payload yields the same verdict offline (SDK) and via POST /api/schema/load.
+
+        A valid payload passes both; a payload carrying only non-write/unknown fields is tolerated by
+        both (the extra fields are dropped); an out-of-enum value is rejected by both, and the invalid
+        value the SDK names offline appears in the server's rejection response.
+        """
+        valid_schema_root = {
+            "version": "1.0",
+            "nodes": [
+                {
+                    "name": "Device",
+                    "namespace": "Test",
+                    "attributes": [{"name": "name", "kind": "Text"}],
+                }
+            ],
+        }
+        tolerated_schema_root = {
+            "version": "1.0",
+            "nodes": [
+                {
+                    "name": "Device",
+                    "namespace": "Test",
+                    "attributes": [
+                        {
+                            "name": "name",
+                            "kind": "Text",
+                            "inherited": True,
+                            "not_a_real_field": "value",
+                        }
+                    ],
+                }
+            ],
+        }
+        invalid_schema_root = {
+            "version": "1.0",
+            "nodes": [
+                {
+                    "name": "Device",
+                    "namespace": "Test",
+                    "attributes": [{"name": "name", "kind": "NotARealKind"}],
+                }
+            ],
+        }
+
+        # Valid payload: SDK offline verdict is "valid" and the server accepts it.
+        offline_valid = validate_schema(schema=valid_schema_root)
+        assert offline_valid.valid is True
+        response_valid = await test_client.post(
+            "/api/schema/load",
+            json={"schemas": [valid_schema_root]},
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+        assert response_valid.status_code == 200
+
+        # Non-write/unknown fields: tolerated offline and accepted by the server (the fields are dropped).
+        offline_tolerated = validate_schema(schema=tolerated_schema_root)
+        assert offline_tolerated.valid is True
+        response_tolerated = await test_client.post(
+            "/api/schema/load",
+            json={"schemas": [tolerated_schema_root]},
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+        assert response_tolerated.status_code == 200
+
+        # Out-of-enum value: SDK offline verdict is "invalid" and the server rejects it (422),
+        # naming the invalid value the SDK named offline.
+        offline_invalid = validate_schema(schema=invalid_schema_root)
+        assert offline_invalid.valid is False
+        assert len(offline_invalid.messages) == 1, offline_invalid.messages
+        offline_message = offline_invalid.messages[0]
+        assert offline_message.startswith("nodes[0].attributes[0]:"), offline_message
+        assert "NotARealKind" in offline_message, offline_message
+        response_invalid = await test_client.post(
+            "/api/schema/load",
+            json={"schemas": [invalid_schema_root]},
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+        assert response_invalid.status_code == 422
+        server_messages = [item["msg"] for item in response_invalid.json()["detail"]]
+        assert len(server_messages) == 1, server_messages
+        assert offline_message in server_messages[0], (offline_message, server_messages)

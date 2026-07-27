@@ -21,6 +21,7 @@ import type {
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
+import { getRelationshipLabel } from "@/entities/schema/domain/rules/get-relationship-label";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -53,7 +54,7 @@ function GroupedSortableRelationshipMenuItem({
   const sortableAttributes = getAvailablePeerAttributes(peerSchema, relationship, activeFields);
   if (sortableAttributes.length === 0) return null;
 
-  const relationshipLabel = relationship.label ?? relationship.name;
+  const relationshipLabel = getRelationshipLabel(relationship, peerSchema);
 
   return (
     <SubmenuTrigger>
