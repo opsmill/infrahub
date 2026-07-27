@@ -1,0 +1,35 @@
+---
+title: Release 1.10.6
+release_date: 2026-07-27
+release_type: patch
+description: "Speeds up node creation by avoiding a redundant peer query for empty relationships, and fixes repository cascade deletion, IPAM namespace link navigation, git-sync import, and diff-tree rendering."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.10.6</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>July 27th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.10.6](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.10.6)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Changed
+
+- Node creation no longer issues a redundant database query to resolve peers for empty many-cardinality relationships, since a newly created node has none stored yet. This removes hundreds of round-trips during the first-time database initialization and speeds up node creation.
+
+### Fixed
+
+- Deleting a repository now cascades to the objects it manages (transforms, checks, GraphQL queries, generators, and their artifact definitions, artifacts, and validators), so a repository can be removed in a single operation instead of deleting each dependent object by hand. ([#3076](https://github.com/opsmill/infrahub/issues/3076))
+- Following an IP prefix or address link from the relationship tabs of an IPAM namespace now keeps you in that namespace, instead of redirecting to the default namespace. ([#9892](https://github.com/opsmill/infrahub/issues/9892))
+- Fixed git-sync repository import getting stuck on the previous commit when a check definition removed from the repository was still referenced by a proposed change. ([#9934](https://github.com/opsmill/infrahub/issues/9934))
+- Fixed the branch and proposed change diff view not showing changed objects in the tree when their parent object had no changes of its own. ([#10010](https://github.com/opsmill/infrahub/issues/10010))
+- Fixed the object creation form when adding a component from its parent's tab (e.g. adding an interface from a device): the parent is now pre-selected and the create form opens directly, even when the component's parent relationship points to a generic rather than a concrete node.
+- The proposed changes list is now ordered by creation date with the newest first, on both the open and closed tabs.
