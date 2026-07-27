@@ -38,9 +38,9 @@ exports[`fix ts error`] = {
       [354, 22, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
       [356, 32, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
     ],
-    "src/entities/diff/ui/node-diff/index.tsx:3336968364": [
+    "src/entities/diff/ui/node-diff/index.tsx:1183151977": [
       [88, 8, 15, "tsc: Type \'unknown\' is not assignable to type \'Date\'.", "140489382"],
-      [114, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
+      [122, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
     ],
     "src/entities/diff/ui/node-diff/node-property.tsx:3639994513": [
       [27, 22, 17, "tsc: Property \'base_branch_label\' does not exist on type \'DiffConflict\'. Did you mean \'base_branch_value\'?", "1959743778"],
@@ -53,9 +53,6 @@ exports[`fix ts error`] = {
       [101, 20, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"],
       [137, 22, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
       [141, 22, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"]
-    ],
-    "src/entities/diff/utils/build-diff-tree-items.ts:3247801260": [
-      [73, 66, 24, "tsc: Not all code paths return a value.", "3673565821"]
     ],
     "src/entities/events/ui/filters/global-branch-filter.tsx:4154549494": [
       [82, 14, 7, "tsc: Type \'{ label: string; name: string; }[]\' is not assignable to type \'\\"absent\\"; name: string; description?: string | null | null | null | null | undefined; color?: string | undefined; label?: string | undefined; state: \\"present\\" | undefined; }[] | { id?: string\'.\\n  Property \'state\' is missing in type \'{ label: string; name: string; }\' but required in type \'\\"absent\\"; name: string; description?: string | null | null | null | null | undefined; color?: string | undefined; label?: string | undefined; state: \\"present\\" | undefined; } | { id?: string\'.", "3821181085"]

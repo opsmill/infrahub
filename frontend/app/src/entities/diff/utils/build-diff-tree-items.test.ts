@@ -225,6 +225,120 @@ describe("buildDiffTreeItems", () => {
     expect(result).toEqual(treeItems);
   });
 
+  it("attaches nodes to a multi-level parent chain regardless of input order", () => {
+    // GIVEN a grandchild listed before its parent, itself listed before the root
+    const nodes: Array<DiffNode> = [
+      {
+        uuid: "3",
+        kind: "TestNode2",
+        label: "Grandchild Node",
+        status: "ADDED",
+        attributes: [],
+        relationships: [],
+        contains_conflict: false,
+        conflict: null,
+        path_identifier: "grandchild",
+        parent: {
+          uuid: "2",
+          relationship_name: "rel2",
+          kind: "TestNode2",
+        },
+      },
+      {
+        uuid: "2",
+        kind: "TestNode2",
+        label: "Child Node",
+        status: "UPDATED",
+        attributes: [],
+        relationships: [],
+        contains_conflict: false,
+        conflict: null,
+        path_identifier: "child",
+        parent: {
+          uuid: "1",
+          relationship_name: "rel1",
+          kind: "TestNode",
+        },
+      },
+      {
+        uuid: "1",
+        kind: "TestNode",
+        label: "Root Node",
+        status: "UNCHANGED",
+        attributes: [],
+        relationships: [],
+        contains_conflict: false,
+        conflict: null,
+        path_identifier: "root",
+        parent: null,
+      },
+    ];
+
+    // WHEN
+    const result = buildDiffTreeItems(nodes);
+
+    // THEN
+    const treeItems: Array<DiffTreeItem> = [
+      {
+        id: "TestNode",
+        label: "Test Node",
+        kind: "TestNode",
+        icon: "mdi:tag-multiple",
+        isNode: false,
+        children: [
+          {
+            isNode: true,
+            id: "1",
+            kind: "TestNode",
+            label: "Root Node",
+            status: "UNCHANGED",
+            hasConflicts: false,
+            children: [
+              {
+                isNode: false,
+                id: "1-rel1",
+                kind: "TestNode2",
+                label: "rel1",
+                icon: "mdi:tag-multiple",
+                children: [
+                  {
+                    isNode: true,
+                    id: "2",
+                    kind: "TestNode2",
+                    label: "Child Node",
+                    status: "UPDATED",
+                    hasConflicts: false,
+                    children: [
+                      {
+                        isNode: false,
+                        id: "2-rel2",
+                        kind: "TestNode2",
+                        label: "rel2",
+                        icon: "mdi:tag-multiple",
+                        children: [
+                          {
+                            isNode: true,
+                            id: "3",
+                            kind: "TestNode2",
+                            label: "Grandchild Node",
+                            status: "ADDED",
+                            hasConflicts: false,
+                            children: [],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    expect(result).toEqual(treeItems);
+  });
+
   it("returns tree items for nodes with parent relationships", () => {
     // GIVEN
     const nodes: Array<DiffNode> = [
