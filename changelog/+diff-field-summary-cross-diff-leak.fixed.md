@@ -1,0 +1,1 @@
+Branch rebase and merge no longer validate schema constraints for attributes and relationships that were not actually modified on the branch. The query collecting the changed fields of a diff could match nodes belonging to other branches' diffs and to already-merged diffs, which would inflate the set of constraints to check.
