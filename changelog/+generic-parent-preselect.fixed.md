@@ -1,0 +1,1 @@
+Fixed the object creation form when adding a component from its parent's tab (e.g. adding an interface from a device): the parent is now pre-selected and the create form opens directly, even when the component's parent relationship points to a generic rather than a concrete node.
