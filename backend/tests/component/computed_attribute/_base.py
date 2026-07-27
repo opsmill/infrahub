@@ -121,8 +121,7 @@ class ScopedRecomputeTestBase(TestInfrahubAppBase):
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:
-        workflow_recorder.execute_calls.clear()
-        workflow_recorder.submit_calls.clear()
+        workflow_recorder.reset()
 
     @staticmethod
     def _context(admin_account: CoreAccount, branch: Branch) -> EventContext:

@@ -216,6 +216,11 @@ class MainSettings(BaseSettings):
         default=False,
         description="When enabled, the Infrahub branch is automatically deleted after a successful merge.",
     )
+    selective_execution_after_merge: bool = Field(
+        default=True,
+        description="When enabled, only the generators and artifact definitions affected by a merge "
+        "are re-executed; when disabled, every generator and artifact definition is re-executed.",
+    )
     merge_failure_grace_period_seconds: int = Field(
         default=180,
         ge=0,

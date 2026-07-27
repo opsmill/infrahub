@@ -5120,6 +5120,12 @@
                         "description": "When enabled, the Infrahub branch is automatically deleted after a successful merge.",
                         "default": false
                     },
+                    "selective_execution_after_merge": {
+                        "type": "boolean",
+                        "title": "Selective Execution After Merge",
+                        "description": "When enabled, only the generators and artifact definitions affected by a merge are re-executed; when disabled, every generator and artifact definition is re-executed.",
+                        "default": true
+                    },
                     "merge_failure_grace_period_seconds": {
                         "type": "integer",
                         "minimum": 0.0,

@@ -1,13 +1,27 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import uuid
+from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.diff import NodeDiff, NodeDiffElement
 
 from infrahub.core.constants import InfrahubKind
-from infrahub.message_bus.types import ProposedChangeArtifactDefinition, ProposedChangeRepository
-from infrahub.proposed_change.tasks import _definition_changed, _query_changed, _transform_changed
+from infrahub.core.regeneration.predicates import (
+    definition_changed,
+    query_changed,
+    repo_diff_or_none,
+    transform_changed,
+)
+from infrahub.message_bus.types import (
+    ProposedChangeArtifactDefinition,
+    ProposedChangeBranchDiff,
+    ProposedChangeRepository,
+)
+from tests.helpers.diff_summary import node_diff, node_diff_element
+from tests.unit.core.regeneration.conftest import DiffCase, TransformChangedCase
+
+if TYPE_CHECKING:
+    from infrahub_sdk.diff import NodeDiff, NodeDiffElement
 
 QUERY_ID = "11111111-1111-1111-1111-111111111111"
 DEFINITION_ID = "22222222-2222-2222-2222-222222222222"
@@ -65,63 +79,46 @@ def _node_diff(
     action: str = "UPDATED",
     elements: list[NodeDiffElement] | None = None,
 ) -> NodeDiff:
-    # ``action`` is the uppercase GraphQL enum name as emitted by ``get_diff_summary``
-    # (e.g. "UPDATED"/"ADDED"), NOT the lowercase ``DiffAction.*.value``. Fixtures must
-    # mirror production casing or the predicates' case-insensitive match goes untested.
-    return NodeDiff(
-        branch="main",
-        kind=kind,
-        id=node_id,
-        action=action,
-        display_label="some-node",
-        elements=elements if elements is not None else [],
-    )
+    return node_diff(node_id=node_id, kind=kind, action=action, display_label="some-node", elements=elements)
 
 
-@dataclass(frozen=True, kw_only=True)
-class QueryChangedCase:
-    name: str
-    diff: list[NodeDiff]
-    expected: bool
-
-
-QUERY_CHANGED_CASES: list[QueryChangedCase] = [
-    QueryChangedCase(
+QUERY_CHANGED_CASES: list[DiffCase] = [
+    DiffCase(
         name="empty_diff_is_false",
         diff=[],
         expected=False,
     ),
-    QueryChangedCase(
+    DiffCase(
         name="updated_query_is_true",
         diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="UPDATED")],
         expected=True,
     ),
-    QueryChangedCase(
+    DiffCase(
         name="added_query_is_true",
         diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="ADDED")],
         expected=True,
     ),
-    QueryChangedCase(
+    DiffCase(
         name="unchanged_action_is_false",
         diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="UNCHANGED")],
         expected=False,
     ),
-    QueryChangedCase(
+    DiffCase(
         name="removed_action_is_false",
         diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="REMOVED")],
         expected=False,
     ),
-    QueryChangedCase(
+    DiffCase(
         name="mismatched_id_is_false",
         diff=[_node_diff(node_id=OTHER_ID, kind="CoreGraphQLQuery")],
         expected=False,
     ),
-    QueryChangedCase(
+    DiffCase(
         name="definition_id_alone_is_false",
         diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition")],
         expected=False,
     ),
-    QueryChangedCase(
+    DiffCase(
         name="query_match_among_other_entries",
         diff=[
             _node_diff(node_id=OTHER_ID, kind="TestNetworkDevice"),
@@ -134,7 +131,7 @@ QUERY_CHANGED_CASES: list[QueryChangedCase] = [
 
 
 @pytest.mark.parametrize("case", [pytest.param(c, id=c.name) for c in QUERY_CHANGED_CASES])
-def test_query_changed(case: QueryChangedCase) -> None:
+def test_query_changed(case: DiffCase) -> None:
     """The predicate fires exactly when a node modification carries the query's id.
 
     The SDK inlines GraphQL fragment bodies into the stored ``query`` attribute
@@ -149,53 +146,46 @@ def test_query_changed(case: QueryChangedCase) -> None:
     nothing to regenerate against.
     """
     definition = _build_definition()
-    assert _query_changed(definition=definition, diff_summary=case.diff).matched is case.expected
+    assert query_changed(definition=definition, diff_summary=case.diff).matched is case.expected
 
 
-@dataclass(frozen=True, kw_only=True)
-class DefinitionChangedCase:
-    name: str
-    diff: list[NodeDiff]
-    expected: bool
-
-
-DEFINITION_CHANGED_CASES: list[DefinitionChangedCase] = [
-    DefinitionChangedCase(
+DEFINITION_CHANGED_CASES: list[DiffCase] = [
+    DiffCase(
         name="empty_diff_is_false",
         diff=[],
         expected=False,
     ),
-    DefinitionChangedCase(
+    DiffCase(
         name="mismatched_id_is_false",
         diff=[_node_diff(node_id=OTHER_ID, kind="CoreArtifactDefinition")],
         expected=False,
     ),
-    DefinitionChangedCase(
+    DiffCase(
         name="query_id_alone_is_false",
         diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery")],
         expected=False,
     ),
-    DefinitionChangedCase(
+    DiffCase(
         name="updated_definition_is_true",
         diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="UPDATED")],
         expected=True,
     ),
-    DefinitionChangedCase(
+    DiffCase(
         name="added_definition_is_true",
         diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="ADDED")],
         expected=True,
     ),
-    DefinitionChangedCase(
+    DiffCase(
         name="unchanged_action_is_false",
         diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="UNCHANGED")],
         expected=False,
     ),
-    DefinitionChangedCase(
+    DiffCase(
         name="removed_action_is_false",
         diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="REMOVED")],
         expected=False,
     ),
-    DefinitionChangedCase(
+    DiffCase(
         name="definition_match_among_other_entries",
         diff=[
             _node_diff(node_id=OTHER_ID, kind="TestNetworkDevice"),
@@ -208,7 +198,7 @@ DEFINITION_CHANGED_CASES: list[DefinitionChangedCase] = [
 
 
 @pytest.mark.parametrize("case", [pytest.param(c, id=c.name) for c in DEFINITION_CHANGED_CASES])
-def test_definition_changed(case: DefinitionChangedCase) -> None:
+def test_definition_changed(case: DiffCase) -> None:
     """The predicate fires exactly when the definition node itself is modified.
 
     Any attribute change or relationship repoint on ``CoreArtifactDefinition``
@@ -222,18 +212,66 @@ def test_definition_changed(case: DefinitionChangedCase) -> None:
     definition list is sourced from the source branch's current state.
     """
     definition = _build_definition()
-    assert _definition_changed(definition=definition, diff_summary=case.diff).matched is case.expected
+    assert definition_changed(definition=definition, diff_summary=case.diff).matched is case.expected
 
 
-@dataclass(frozen=True, kw_only=True)
-class TransformChangedCase:
-    name: str
-    dependencies: list[str] | None
-    dependencies_complete: bool | None
-    files_added: list[str] = field(default_factory=list)
-    files_changed: list[str] = field(default_factory=list)
-    files_removed: list[str] = field(default_factory=list)
-    expected: bool
+def _element(*, name: str, action: str = "UPDATED") -> NodeDiffElement:
+    return node_diff_element(name=name, action=action)
+
+
+def test_definition_changed_on_fingerprint_reports_a_code_change() -> None:
+    definition = _build_definition()
+    diff = [
+        _node_diff(
+            node_id=DEFINITION_ID,
+            kind="CoreArtifactDefinition",
+            action="UPDATED",
+            elements=[_element(name="fingerprint")],
+        )
+    ]
+
+    outcome = definition_changed(definition=definition, diff_summary=diff)
+
+    assert outcome.matched is True
+    assert outcome.reason == (
+        f"Definition artifact-def ({DEFINITION_ID}): definition node was modified (fingerprint); "
+        f"the fingerprint moved, so the definition's code inputs changed - "
+        f"all artifacts of this definition will regenerate."
+    )
+
+
+def test_definition_changed_without_fingerprint_omits_the_code_change_note() -> None:
+    definition = _build_definition()
+    diff = [
+        _node_diff(
+            node_id=DEFINITION_ID,
+            kind="CoreArtifactDefinition",
+            action="UPDATED",
+            elements=[_element(name="artifact_name")],
+        )
+    ]
+
+    outcome = definition_changed(definition=definition, diff_summary=diff)
+
+    assert outcome.matched is True
+    assert outcome.reason == (
+        f"Definition artifact-def ({DEFINITION_ID}): definition node was modified (artifact_name) - "
+        f"all artifacts of this definition will regenerate."
+    )
+
+
+def test_definition_changed_matches_once_despite_a_repeated_signal() -> None:
+    definition = _build_definition()
+    entry = _node_diff(
+        node_id=DEFINITION_ID,
+        kind="CoreArtifactDefinition",
+        action="UPDATED",
+        elements=[_element(name="fingerprint")],
+    )
+
+    outcome = definition_changed(definition=definition, diff_summary=[entry, entry])
+
+    assert outcome.matched is True
 
 
 TRANSFORM_CHANGED_CASES: list[TransformChangedCase] = [
@@ -335,4 +373,21 @@ def test_transform_changed(case: TransformChangedCase) -> None:
         files_changed=case.files_changed,
         files_removed=case.files_removed,
     )
-    assert _transform_changed(definition=definition, repo_diff=repo_diff).matched is case.expected
+    assert transform_changed(definition=definition, repo_diff=repo_diff).matched is case.expected
+
+
+def test_repo_diff_or_none_returns_matching_repository() -> None:
+    repo_diff = _build_repo_diff()
+    branch_diff = ProposedChangeBranchDiff(repositories=[repo_diff], pipeline_id=uuid.uuid4())
+    assert repo_diff_or_none(branch_diff, repo_diff.repository_id) is repo_diff
+
+
+def test_repo_diff_or_none_returns_none_for_absent_repository() -> None:
+    """A definition may reference a repository with no entry in the branch diff.
+
+    The lookup must degrade to ``None`` so the caller can skip the file-diff
+    predicate, rather than letting the missing-repository exception escape and
+    abort the regeneration task.
+    """
+    branch_diff = ProposedChangeBranchDiff(repositories=[_build_repo_diff()], pipeline_id=uuid.uuid4())
+    assert repo_diff_or_none(branch_diff, "00000000-0000-0000-0000-000000000000") is None

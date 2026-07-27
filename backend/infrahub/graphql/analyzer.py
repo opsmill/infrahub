@@ -298,6 +298,26 @@ class GraphQLQueryReport:
 
         return access
 
+    @cached_property
+    def traversed_kinds(self) -> set[str]:
+        """Return the kinds this query reaches by following a relationship.
+
+        A kind is reported here even when a root query also resolves to it. Both read paths share
+        one entry in the requested-read map, so a caller given a changed node of that kind cannot
+        tell which path saw it; reporting the kind as traversed keeps that ambiguity visible rather
+        than resolving it optimistically.
+
+        The concrete kinds standing behind a generic or interface peer are included, because a data
+        change is reported against the concrete kind.
+        """
+        kinds: set[str] = set()
+        for query in self.queries:
+            for query_model in query.get_models():
+                if not query_model.root:
+                    kinds.add(query_model.model.kind)
+
+        return kinds
+
     def fields_by_kind(self, kind: str) -> list[str]:
         fields: list[str] = []
         if access := self.requested_read.get(kind):

@@ -38,6 +38,7 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_SCHEMA_STRICT_MODE` | Enable strict schema validation. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes. | boolean | True |
 | `INFRAHUB_DIFF_UPDATE_AFTER_MERGE` | When enabled, diff updates are triggered for active branches after a branch merge. | boolean | True |
 | `INFRAHUB_DELETE_BRANCH_AFTER_MERGE` | When enabled, the Infrahub branch is automatically deleted after a successful merge. | boolean | False |
+| `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE` | When enabled, only the generators and artifact definitions affected by a merge are re-executed; when disabled, every generator and artifact definition is re-executed. | boolean | True |
 | `INFRAHUB_MERGE_FAILURE_GRACE_PERIOD_SECONDS` | How long a branch may stay in MERGING with a dead merge-lock holder before it is flagged MERGE_FAILED. | integer | 180 |
 
 ## Api

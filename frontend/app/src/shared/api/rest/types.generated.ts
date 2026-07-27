@@ -1791,6 +1791,12 @@ export interface components {
              */
             delete_branch_after_merge: boolean;
             /**
+             * Selective Execution After Merge
+             * @description When enabled, only the generators and artifact definitions affected by a merge are re-executed; when disabled, every generator and artifact definition is re-executed.
+             * @default true
+             */
+            selective_execution_after_merge: boolean;
+            /**
              * Merge Failure Grace Period Seconds
              * @description How long a branch may stay in MERGING with a dead merge-lock holder before it is flagged MERGE_FAILED.
              * @default 180
