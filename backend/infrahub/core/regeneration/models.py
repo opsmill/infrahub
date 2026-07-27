@@ -106,7 +106,7 @@ class DefinitionSelect(IntFlag):
             change_types.append("changes to the GraphQL query")
 
         if DefinitionSelect.DEFINITION_CHANGED in self:
-            change_types.append("changes to the artifact definition")
+            change_types.append("changes to the definition")
 
         if DefinitionSelect.FILE_CHANGES in self:
             change_types.append("file changes affecting the transform's dependencies")

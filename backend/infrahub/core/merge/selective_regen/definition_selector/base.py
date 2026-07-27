@@ -100,14 +100,16 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                 definition=definition, target_branch=target_branch
             )
             member_ids = await self._fetch_member_ids(definition=definition, target_branch=target_branch)
-            selection = await self.impacted_resolver.resolve(
-                query_payload=definition.query_payload,
-                diff_summary=diff_summary,
-                target_branch=target_branch,
-                subscriber_kind=self.subscriber_kind,
-                every_target=list(subscriber_by_member.values()),
-            )
-            impacted = selection.ids
+            impacted: list[str] = []
+            if not regenerate_all_members:
+                selection = await self.impacted_resolver.resolve(
+                    query_payload=definition.query_payload,
+                    diff_summary=diff_summary,
+                    target_branch=target_branch,
+                    subscriber_kind=self.subscriber_kind,
+                    every_target=list(subscriber_by_member.values()),
+                )
+                impacted = selection.ids
 
             rendered_members = [
                 member_id

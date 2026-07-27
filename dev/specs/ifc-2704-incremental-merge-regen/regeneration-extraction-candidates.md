@@ -40,7 +40,7 @@ checks, `cancel_*`, `repository_checks`, `run_proposed_change_user_tests`, and t
 
 ## Recommendation
 
-- **Phase 1 as-planned + B1/B2** (predicates are incomplete without `_transform_changed`).
+- **Phase 1 as-planned + B1/B2** (predicates are incomplete without `transform_changed`).
 - **Discuss** B3, B5, B6 before this branch grows.
 - **B4 is the actual convergence** (one selection engine for PC + merge) — its own increment, not
   folded into the cycle-break.

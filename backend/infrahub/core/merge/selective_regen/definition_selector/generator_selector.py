@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+from infrahub_sdk.protocols import CoreGeneratorDefinition
+
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.regeneration.members import run_generator
-from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
+from infrahub.generators.models import (
+    ProposedChangeGeneratorDefinition,
+    RequestGeneratorDefinitionRun,
+    build_generator_definition,
+)
 from infrahub.git.utils import fetch_proposed_change_generator_definition_targets
 
 from ..models import LoadedDefinition
@@ -18,7 +24,7 @@ class GeneratorSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition
         self, *, target_branch: str
     ) -> list[LoadedDefinition[ProposedChangeGeneratorDefinition]]:
         generators = await self.client.filters(
-            kind=InfrahubKind.GENERATORDEFINITION,
+            kind=CoreGeneratorDefinition,
             prefetch_relationships=True,
             populate_store=True,
             branch=target_branch,
@@ -27,25 +33,7 @@ class GeneratorSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition
         for generator in generators:
             if not generator.execute_after_merge.value:
                 continue
-            definition = ProposedChangeGeneratorDefinition(
-                definition_id=generator.id,
-                definition_name=generator.name.value,
-                class_name=generator.class_name.value,
-                file_path=generator.file_path.value,
-                query_name=generator.query.peer.name.value,
-                query_id=generator.query.peer.id,
-                query_models=generator.query.peer.models.value,
-                query_payload=generator.query.peer.query.value,
-                repository_id=generator.repository.peer.id,
-                parameters=generator.parameters.value,
-                group_id=generator.targets.peer.id,
-                convert_query_response=generator.convert_query_response.value,
-                execute_in_proposed_change=generator.execute_in_proposed_change.value,
-                execute_after_merge=generator.execute_after_merge.value,
-                dependencies=generator.dependencies.value,
-                dependencies_complete=generator.dependencies_complete.value,
-                fingerprint=generator.fingerprint.value,
-            )
+            definition = build_generator_definition(generator)
             definitions.append(LoadedDefinition(definition=definition, group_id=definition.group_id))
         return definitions
 

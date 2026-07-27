@@ -76,7 +76,7 @@ from infrahub.exceptions import (
     SchemaNotFoundError,
     ValidationError,
 )
-from infrahub.generators.models import ProposedChangeGeneratorDefinition
+from infrahub.generators.models import build_generator_definition
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
@@ -415,26 +415,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
     )
 
     generator_definitions = [
-        ProposedChangeGeneratorDefinition(
-            definition_id=generator.id,
-            definition_name=generator.name.value,
-            class_name=generator.class_name.value,
-            file_path=generator.file_path.value,
-            query_name=generator.query.peer.name.value,
-            query_id=generator.query.peer.id,
-            query_models=generator.query.peer.models.value,
-            query_payload=generator.query.peer.query.value,
-            repository_id=generator.repository.peer.id,
-            parameters=generator.parameters.value,
-            group_id=generator.targets.peer.id,
-            convert_query_response=generator.convert_query_response.value,
-            execute_in_proposed_change=generator.execute_in_proposed_change.value,
-            execute_after_merge=generator.execute_after_merge.value,
-            dependencies=generator.dependencies.value,
-            dependencies_complete=generator.dependencies_complete.value,
-        )
-        for generator in generators
-        if generator.execute_in_proposed_change.value
+        build_generator_definition(generator) for generator in generators if generator.execute_in_proposed_change.value
     ]
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
