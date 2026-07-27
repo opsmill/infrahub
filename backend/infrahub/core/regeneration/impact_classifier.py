@@ -13,8 +13,8 @@ if TYPE_CHECKING:
 class EveryTarget:
     """The changed nodes cannot be traced back to specific targets, so every one must be processed.
 
-    The alternative to an enumerated set rather than one more member of it: the affected targets
-    are unknown here, not known-and-listed.
+    Carries no ids because there are none to carry: the affected targets are unknown at this point,
+    which is why the caller has to fall back to its own full set.
     """
 
 
