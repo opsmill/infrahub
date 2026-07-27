@@ -92,9 +92,7 @@ class UniquenessConstraintScoper:
         """Return the diffed kinds where `field_name` changed, on `schema` or a kind that inherits it.
 
         An inherited field keeps its name on the implementing kind, so a generic-level constraint
-        is implicated when an implementation's copy of the field is what changed in the diff. A
-        generic knows its implementing kinds through `used_by`; the diff check then keeps only the
-        kinds actually present in the diff.
+        is implicated when an implementation's copy of the field is what changed in the diff.
         """
         kinds = {schema.kind}
         if isinstance(schema, GenericSchema):
