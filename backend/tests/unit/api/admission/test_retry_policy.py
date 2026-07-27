@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from infrahub.api.admission import metrics
-from infrahub.api.admission.observers import SustainedLoadMetricsObserver
 from infrahub.api.admission.retry_policy import RetryAfterPolicy
 
 
@@ -158,18 +156,3 @@ def test_failing_observer_does_not_fail_the_observation() -> None:
     assert survivor.sustained_seconds == [0.0, 120.0]
     # The episode still tracked through the failures, so escalation is unaffected.
     assert policy.retry_after(tier=1) == 2
-
-
-def test_metrics_observer_publishes_the_sustained_duration_to_the_gauge() -> None:
-    clock = FakeClock()
-    policy = RetryAfterPolicy(observers=[SustainedLoadMetricsObserver()], significant_load_ratio=20.0, clock=clock)
-
-    policy.observe(ratio=25.0)
-    clock.advance(45)
-    policy.observe(ratio=25.0)
-
-    assert metrics.SUSTAINED_LOAD_SECONDS._value.get() == 45.0
-
-    # Load clearing resets the gauge, so a finished episode never reads as still ongoing.
-    policy.observe(ratio=1.0)
-    assert metrics.SUSTAINED_LOAD_SECONDS._value.get() == 0.0

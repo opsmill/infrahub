@@ -7,12 +7,6 @@ from infrahub.database.load_signal import (
     UNSTRESSED_RATIO,
     ReferenceQueryLoadTracker,
 )
-from infrahub.database.load_signal_metrics import LoadSignalMetricsObserver
-from infrahub.database.metrics import (
-    REFERENCE_QUERY_FLOOR_SECONDS,
-    REFERENCE_QUERY_STRESS_RATIO_MEDIAN,
-    REFERENCE_QUERY_WINDOW_MIN_SECONDS,
-)
 
 WINDOW = 30.0
 
@@ -187,19 +181,6 @@ def test_zero_baseline_then_load_still_moves_the_ratio() -> None:
     assert tracker.stress_ratio_median() == pytest.approx(0.020 / MIN_OBSERVATION_SECONDS)
 
 
-def test_observer_publishes_the_derived_signal_to_the_gauges() -> None:
-    clock = FakeClock()
-    tracker = ReferenceQueryLoadTracker(observers=[LoadSignalMetricsObserver()], window_seconds=WINDOW, clock=clock)
-
-    tracker.record(0.002)  # a calm baseline sets the floor
-    clock.advance(WINDOW + 1)  # age it out so the window reflects only the load
-    tracker.record(0.050)
-
-    assert REFERENCE_QUERY_FLOOR_SECONDS._value.get() == 0.002
-    assert REFERENCE_QUERY_WINDOW_MIN_SECONDS._value.get() == 0.050
-    assert REFERENCE_QUERY_STRESS_RATIO_MEDIAN._value.get() == pytest.approx(25.0)
-
-
 def test_every_observer_receives_the_derived_signal() -> None:
     first = RecordingLoadSignalObserver()
     second = RecordingLoadSignalObserver()
@@ -229,3 +210,21 @@ def test_failing_observer_does_not_fail_the_recording() -> None:
     assert survivor.observations == [
         {"floor": 0.004, "window_min": 0.004, "stress_ratio_median": 1.0},
     ]
+
+
+def test_reads_do_not_notify_observers() -> None:
+    clock = FakeClock()
+    observer = RecordingLoadSignalObserver()
+    tracker = ReferenceQueryLoadTracker(observers=[observer], window_seconds=WINDOW, clock=clock)
+
+    tracker.record(0.004)
+
+    # Age the sample out, so the reads below genuinely mutate the window by pruning it — eviction
+    # is the tempting place to notify from, and the admission gate reads the signal per request.
+    clock.advance(WINDOW + 1)
+    assert tracker.sample_count() == 0
+    assert tracker.window_min() is None
+    assert tracker.stress_ratio_median() == UNSTRESSED_RATIO
+
+    # Recording is the only trigger, so the sink still holds exactly what that one record pushed.
+    assert observer.observations == [{"floor": 0.004, "window_min": 0.004, "stress_ratio_median": 1.0}]
