@@ -11,12 +11,12 @@ two message-model changes. Entities below are the data the selection path reads 
 The authoritative "what changed" record for a merge, serialized into the SDK `NodeDiff` shape
 so the existing selection predicates consume it unchanged.
 
-- **Shape**: `list[NodeDiff]` (`python_sdk/infrahub_sdk/diff.py:11-36`).
+- **Shape**: `list[NodeDiff]` (`python_sdk/infrahub_sdk/diff.py`).
 - **Element**: `NodeDiff = {branch: str, kind: str, id: str, action: str, display_label: str, elements: list[NodeDiffElement]}`.
   - `NodeDiffElement = {name: str, element_type: str, action: str, summary: {added,updated,removed}, peers?: list[NodeDiffPeer]}`.
   - `element_type ∈ {"ATTRIBUTE", "RELATIONSHIP_ONE", "RELATIONSHIP_MANY"}`.
   - `action` is the **uppercase** GraphQL enum name (`"ADDED" | "UPDATED" | "REMOVED"`).
-- **Source**: `EnrichedDiffRoot.nodes` (`backend/infrahub/core/diff/model/path.py:497`), filtered
+- **Source**: `EnrichedDiffRoot.nodes` (`backend/infrahub/core/diff/model/path.py`), filtered
   to `node.action != DiffAction.UNCHANGED`, including relationship/membership changes.
 - **Validation rules**:
   - Nodes with `action == UNCHANGED` are excluded.
@@ -30,7 +30,7 @@ so the existing selection predicates consume it unchanged.
 
 - **Key**: `branch_merge:diff_id:{diff_root_uuid}:diff_summary` (parallel to the PC key
   `proposed_change:pipeline:pipeline_id:{pipeline_id}:diff_summary`).
-- **`diff_root_uuid`**: `EnrichedDiffRootMetadata.uuid` (`path.py:463`) — stable across the
+- **`diff_root_uuid`**: `EnrichedDiffRootMetadata.uuid` (`path.py`) — stable across the
   merged/frozen marking, unlike the tracking id.
 - **Value**: `json.dumps(list[NodeDiff])`.
 - **Cache-miss semantics**: absence (expired / never written / capture failed) → full
@@ -46,9 +46,9 @@ so the existing selection predicates consume it unchanged.
 
 ## 4. Regeneration definition (reused, in-memory)
 
-Structural `RegenerationDefinition` protocol (`proposed_change/tasks.py:1383-1404`), satisfied
+Structural `RegenerationDefinition` protocol (`core/regeneration/models.py`), satisfied
 by `ProposedChangeArtifactDefinition` and `ProposedChangeGeneratorDefinition`
-(`generators/models.py:75`). Fields read by the gates:
+(`generators/models.py`). Fields read by the gates:
 
 | Field | Type | Used by |
 |---|---|---|
@@ -67,11 +67,16 @@ FILE_CHANGES | QUERY_CHANGED | DEFINITION_CHANGED`; truthy → the definition is
 
 ## 5. Impacted subscribers (reused, in-memory)
 
-`ImpactedSubscribers` (`proposed_change/tasks.py:753-764`):
+`TargetSelection` (`core/regeneration/models.py`):
 
-- `scope: ImpactScope` — `ALL` | `NONE` | `SPECIFIC`.
-- `ids: list[str]` — for `SPECIFIC`, the **existing** subscriber (artifact/generator-instance)
-  ids whose read fields intersect the changed elements.
+- `ids: list[str]` — the **existing** subscriber (artifact/generator-instance) ids to process.
+  Always complete and authoritative, so a caller needs nothing else to act on it.
+- `widened: bool` — whether narrowing had to be abandoned. Diagnostic only; it carries no meaning
+  of its own and exists so a caller can report the lost precision.
+
+The caller passes the set to fall back to (`every_target`), so "process everything" is resolved
+before the result is returned rather than described by it. An empty `ids` therefore means *nothing
+to process*, unambiguously — it can never stand for *everything*.
 
 **Member-selection rule** (merge path — reconciled against the live group, research D4a).
 `ids` are **subscriber** (artifact/instance) ids and are never placed in a member filter
@@ -79,20 +84,22 @@ directly. Per selected definition, fetch live group members on the **target bran
 `member.id → subscriber_id` map, and decide render per member:
 
 ```
-render(member) = managed_branch                      # query/definition/fingerprint/code change
+render(member) = managed_branch                       # query/definition/fingerprint/code change
               or subscriber_of(member) is None        # new member (no existing subscriber)
-              or scope == ALL
-              or subscriber_of(member) in impacted.ids # SPECIFIC, mapped via the live-group map
+              or subscriber_of(member) in selection.ids
 ```
+
+A widened selection needs no clause of its own: its `ids` already hold every existing subscriber,
+so the membership test admits every member that has one.
 
 The dispatch filter (`target_members` / `members`) is then the **member ids** of the rendered
 members, or an empty list when every member renders (= all).
 
-| `scope` | Result (after reconciliation) |
+| Selection | Result (after reconciliation) |
 |---|---|
-| `ALL` | all live members render (empty filter) |
-| `NONE` | only new members render; if none, definition dispatches nothing |
-| `SPECIFIC` | members whose subscriber ∈ `ids`, **plus** all new members, **plus** all when `managed_branch` |
+| widened | all live members render (empty filter) |
+| empty `ids` | only new members render; if none, definition dispatches nothing |
+| narrowed | members whose subscriber ∈ `ids`, **plus** all new members, **plus** all when `managed_branch` |
 
 New members are covered by the `subscriber_of(member) is None` short-circuit, not by the diff
 (Decision 4a / critique E1, E2). A definition is additionally selected at the definition level
@@ -101,17 +108,17 @@ addition still reaches this reconciliation.
 
 ## 6. Dispatch payloads (message models)
 
-- **`RequestGeneratorDefinitionRun`** (`generators/models.py:31-38`) — unchanged. `target_members:
-  list[str]` filters on member node id (`generators/tasks.py:224-228`); safe for new members.
-- **`RequestArtifactDefinitionGenerate`** (`git/models.py:19-28`) — **add** `members: list[str]
+- **`RequestGeneratorDefinitionRun`** (`generators/models.py`) — unchanged. `target_members:
+  list[str]` filters on member node id (`generators/tasks.py`); safe for new members.
+- **`RequestArtifactDefinitionGenerate`** (`git/models.py`) — **add** `members: list[str]
   = Field(default_factory=list)` (member node ids). Consumed in
-  `generate_request_artifact_definition` (`git/tasks.py:594-598`) by filtering on `member.id`,
+  `generate_request_artifact_definition` (`git/tasks.py`) by filtering on `member.id`,
   mirroring `target_members`. Existing `limit` (keyed on existing artifact ids) is retained for
   current callers and unused by the merge path.
 
 ## 7. Config setting
 
-`MainSettings.selective_execution_after_merge: bool = True` (`config.py:183`). Env var
+`MainSettings.selective_execution_after_merge: bool = True` (`backend/infrahub/config.py`). Env var
 `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE`. Read at follow-up time via
 `config.SETTINGS.main.selective_execution_after_merge`.
 
