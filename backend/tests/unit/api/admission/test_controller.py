@@ -11,6 +11,7 @@ from infrahub.api.admission.controller import (
     Admitted,
     Rejected,
     stress_shed_fraction,
+    stress_tier,
 )
 from infrahub.api.admission.priority import Priority
 from infrahub.api.admission.retry_policy import RetryAfterPolicy
@@ -74,29 +75,34 @@ def _build(
 
 
 @dataclass
-class _FractionCase:
+class _TierCase:
     name: str
     ratio: float
     threshold: float
-    expected: float
+    expected: int
 
 
-_FRACTION_CASES = [
-    _FractionCase(name="below_trigger_sheds_nothing", ratio=0.5, threshold=1.0, expected=0.0),
-    _FractionCase(name="at_trigger_is_mild", ratio=1.0, threshold=1.0, expected=0.20),
-    _FractionCase(name="just_under_2x_is_mild", ratio=1.9, threshold=1.0, expected=0.20),
-    _FractionCase(name="at_2x_is_moderate", ratio=2.0, threshold=1.0, expected=0.50),
-    _FractionCase(name="just_under_5x_is_moderate", ratio=4.9, threshold=1.0, expected=0.50),
-    _FractionCase(name="at_5x_is_severe", ratio=5.0, threshold=1.0, expected=0.80),
-    _FractionCase(name="far_past_trigger_is_severe", ratio=100.0, threshold=1.0, expected=0.80),
-    _FractionCase(name="scales_with_threshold", ratio=40.0, threshold=20.0, expected=0.50),
-    _FractionCase(name="non_positive_threshold_sheds_nothing", ratio=10.0, threshold=0.0, expected=0.0),
+_TIER_CASES = [
+    _TierCase(name="below_trigger_is_untiered", ratio=0.5, threshold=1.0, expected=0),
+    _TierCase(name="at_trigger_is_mild", ratio=1.0, threshold=1.0, expected=1),
+    _TierCase(name="just_under_2x_is_mild", ratio=1.9, threshold=1.0, expected=1),
+    _TierCase(name="at_2x_is_moderate", ratio=2.0, threshold=1.0, expected=2),
+    _TierCase(name="just_under_5x_is_moderate", ratio=4.9, threshold=1.0, expected=2),
+    _TierCase(name="at_5x_is_severe", ratio=5.0, threshold=1.0, expected=3),
+    _TierCase(name="far_past_trigger_is_severe", ratio=100.0, threshold=1.0, expected=3),
+    _TierCase(name="scales_with_threshold", ratio=40.0, threshold=20.0, expected=2),
+    _TierCase(name="non_positive_threshold_is_untiered", ratio=10.0, threshold=0.0, expected=0),
 ]
 
 
-@pytest.mark.parametrize("case", _FRACTION_CASES, ids=[case.name for case in _FRACTION_CASES])
-def test_stress_shed_fraction(case: _FractionCase) -> None:
-    assert stress_shed_fraction(ratio=case.ratio, threshold=case.threshold) == case.expected
+@pytest.mark.parametrize("case", _TIER_CASES, ids=[case.name for case in _TIER_CASES])
+def test_stress_tier(case: _TierCase) -> None:
+    assert stress_tier(ratio=case.ratio, threshold=case.threshold) == case.expected
+
+
+def test_shed_fraction_escalates_by_tier() -> None:
+    # The whole schedule, so an accidental edit to one entry fails rather than passing silently.
+    assert {tier: stress_shed_fraction(tier=tier) for tier in (0, 1, 2, 3)} == {0: 0.0, 1: 0.20, 2: 0.50, 3: 0.80}
 
 
 @dataclass

@@ -45,12 +45,9 @@ def stress_tier(*, ratio: float, threshold: float) -> int:
     return 3
 
 
-def stress_shed_fraction(*, ratio: float, threshold: float) -> float:
-    """Fraction of requests to shed for a class given the stress ratio and the class's trigger.
-
-    Returns ``0.0`` below the trigger, then steps up as the ratio climbs to 2x, 5x, and beyond.
-    """
-    return _SHED_FRACTION_BY_TIER[stress_tier(ratio=ratio, threshold=threshold)]
+def stress_shed_fraction(*, tier: int) -> float:
+    """Fraction of a class's requests to shed at a given severity tier."""
+    return _SHED_FRACTION_BY_TIER[tier]
 
 
 @dataclass(frozen=True)
@@ -139,7 +136,7 @@ class AdmissionController:
         # a random fraction of its requests, and a shed one gets its fast 429 without waiting behind
         # a saturated pool or consuming waiter capacity. CoDel keys off the measured sojourn, so it
         # can only run once a slot is held — a request shed here never reaches it.
-        if tier >= 1 and self._rng() < _SHED_FRACTION_BY_TIER[tier]:
+        if tier >= 1 and self._rng() < stress_shed_fraction(tier=tier):
             metrics.REJECTED_TOTAL.labels(priority=priority.label, reason="stress").inc()
             return Rejected(reason="stress", retry_after=self._retry_policy.retry_after(tier=tier))
 
