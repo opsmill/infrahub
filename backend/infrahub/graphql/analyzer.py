@@ -298,6 +298,23 @@ class GraphQLQueryReport:
 
         return access
 
+    @cached_property
+    def root_kinds(self) -> set[str]:
+        """Return the kinds a root query resolves to directly.
+
+        Includes the concrete kinds standing behind a generic or interface root, because a data
+        change is reported against the concrete kind. Kinds reached only by traversing a
+        relationship are excluded, so a caller can tell a query's own targets apart from the
+        related nodes it merely reads.
+        """
+        kinds: set[str] = set()
+        for query in self.queries:
+            for query_model in query.get_models():
+                if query_model.root:
+                    kinds.add(query_model.model.kind)
+
+        return kinds
+
     def fields_by_kind(self, kind: str) -> list[str]:
         fields: list[str] = []
         if access := self.requested_read.get(kind):

@@ -42,7 +42,7 @@ class RelevantChangeCase:
     name: str
     diff_summary: list[NodeDiff]
     readable_fields_by_kind: dict[str, set[str]]
-    expected_ids: set[str]
+    expected_ids: list[str]
     source_branch: str = BRANCH
 
 
@@ -51,49 +51,61 @@ RELEVANT_CHANGE_CASES = [
         name="attribute_read_field_changed_is_included",
         diff_summary=[_node_diff("dev1", "TestDevice", ["name"])],
         readable_fields_by_kind={"TestDevice": {"name", "color"}},
-        expected_ids={"dev1"},
+        expected_ids=["dev1"],
     ),
     RelevantChangeCase(
         name="attribute_unread_field_changed_is_excluded",
         diff_summary=[_node_diff("dev1", "TestDevice", ["description"])],
         readable_fields_by_kind={"TestDevice": {"name", "color"}},
-        expected_ids=set(),
+        expected_ids=[],
     ),
     RelevantChangeCase(
         name="kind_not_read_is_excluded",
         diff_summary=[_node_diff("tag1", "BuiltinTag", ["name"])],
         readable_fields_by_kind={"TestDevice": {"name"}},
-        expected_ids=set(),
+        expected_ids=[],
     ),
     RelevantChangeCase(
         name="kind_with_no_readable_fields_is_excluded",
         diff_summary=[_node_diff("dev1", "TestDevice", ["name"])],
         readable_fields_by_kind={"TestDevice": set()},
-        expected_ids=set(),
+        expected_ids=[],
     ),
     RelevantChangeCase(
         name="read_relationship_flip_is_included",
         diff_summary=[_node_diff("dev1", "TestDevice", ["tags"], element_type="RELATIONSHIP_MANY")],
         readable_fields_by_kind={"TestDevice": {"name", "tags"}},
-        expected_ids={"dev1"},
+        expected_ids=["dev1"],
     ),
     RelevantChangeCase(
         name="unread_relationship_flip_is_excluded",
         diff_summary=[_node_diff("dev1", "TestDevice", ["tags"], element_type="RELATIONSHIP_MANY")],
         readable_fields_by_kind={"TestDevice": {"name", "color"}},
-        expected_ids=set(),
+        expected_ids=[],
     ),
     RelevantChangeCase(
         name="change_on_other_branch_is_excluded",
         diff_summary=[_node_diff("dev1", "TestDevice", ["name"], branch="some/other-branch")],
         readable_fields_by_kind={"TestDevice": {"name"}},
-        expected_ids=set(),
+        expected_ids=[],
     ),
     RelevantChangeCase(
         name="node_with_one_read_and_one_unread_field_is_included",
         diff_summary=[_node_diff("dev1", "TestDevice", ["description", "name"])],
         readable_fields_by_kind={"TestDevice": {"name"}},
-        expected_ids={"dev1"},
+        expected_ids=["dev1"],
+    ),
+    RelevantChangeCase(
+        name="empty_diff_summary_returns_nothing",
+        diff_summary=[],
+        readable_fields_by_kind={"TestDevice": {"name"}},
+        expected_ids=[],
+    ),
+    RelevantChangeCase(
+        name="node_without_elements_is_excluded",
+        diff_summary=[_node_diff("dev1", "TestDevice", [])],
+        readable_fields_by_kind={"TestDevice": {"name"}},
+        expected_ids=[],
     ),
     RelevantChangeCase(
         name="mixed_nodes_returns_only_relevant",
@@ -103,7 +115,7 @@ RELEVANT_CHANGE_CASES = [
             _node_diff("dev3", "TestDevice", ["color"]),
         ],
         readable_fields_by_kind={"TestDevice": {"name", "color"}},
-        expected_ids={"dev1", "dev3"},
+        expected_ids=["dev1", "dev3"],
     ),
 ]
 
@@ -115,4 +127,4 @@ def test_relevant_node_changes(case: RelevantChangeCase) -> None:
         query_branch=case.source_branch,
         readable_fields_by_kind=case.readable_fields_by_kind,
     )
-    assert set(result) == case.expected_ids
+    assert sorted(result) == case.expected_ids

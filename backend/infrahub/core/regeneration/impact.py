@@ -11,8 +11,8 @@ from infrahub.log import get_logger
 from infrahub.message_bus.types import ProposedChangeSubscriber
 from infrahub.workers.dependencies import get_database
 
+from .impact_classifier import QueryImpactClassifier
 from .models import ImpactedSubscribers, ImpactScope
-from .predicates import relevant_node_changes
 
 log = get_logger()
 
@@ -77,40 +77,31 @@ async def get_field_level_impacted_subscribers(
     ).query_report
 
     readable_fields_by_kind = {kind: access.fields for kind, access in query_report.requested_read.items()}
-    changed_node_ids = relevant_node_changes(
-        diff_summary=diff_summary, query_branch=query_branch, readable_fields_by_kind=readable_fields_by_kind
+    classifier = QueryImpactClassifier(
+        query_branch=query_branch,
+        only_has_unique_targets=query_report.only_has_unique_targets,
+        root_kinds=query_report.root_kinds,
+        readable_fields_by_kind=readable_fields_by_kind,
     )
+    assessment = classifier.assess(diff_summary=diff_summary)
 
-    # only_has_unique_targets is True when the query is guaranteed to return results for a
-    # specific set of nodes -- e.g. it uses an `ids` argument or a uniqueness constraint. When
-    # False, the query may return any number of nodes and we cannot map a changed node back to a
-    # specific subscriber without re-processing every target.
     log.debug(
         "SELECTIVE_REGEN field-impact: "
         f"branch={query_branch} subscriber_kind={subscriber_kind} "
         f"unique_targets={query_report.only_has_unique_targets} "
-        f"readable_kinds={sorted(readable_fields_by_kind)} changed_nodes={len(changed_node_ids)}"
+        f"readable_kinds={sorted(readable_fields_by_kind)} "
+        f"root_kinds={sorted(query_report.root_kinds)} scope={assessment.scope.value}"
     )
 
-    if query_report.only_has_unique_targets:
-        # The query targets specific nodes by id or unique constraint, so we can look up exactly
-        # which subscribers are linked to the changed nodes and limit processing to only those.
-        subscribers = await _get_subscribers_for_nodes(node_ids=changed_node_ids, branch=query_branch, client=client)
-        ids = [subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == subscriber_kind]
-        log.debug(f"SELECTIVE_REGEN field-impact result: scope=SPECIFIC ids={len(ids)}")
-        return ImpactedSubscribers(scope=ImpactScope.SPECIFIC, ids=ids)
+    if assessment.scope is not ImpactScope.SPECIFIC:
+        return ImpactedSubscribers(scope=assessment.scope)
 
-    if changed_node_ids:
-        # The query does not guarantee unique targets, so we cannot determine which specific
-        # subscribers are affected. At least one relevant field changed, so the caller must fall
-        # back to processing all targets to be safe.
-        log.debug("SELECTIVE_REGEN field-impact result: scope=ALL")
-        return ImpactedSubscribers(scope=ImpactScope.ALL)
-
-    # No node of a queried kind had any of its queried fields modified, so no subscriber can be
-    # stale regardless of query targeting capability.
-    log.debug("SELECTIVE_REGEN field-impact result: scope=NONE")
-    return ImpactedSubscribers(scope=ImpactScope.NONE)
+    subscribers = await _get_subscribers_for_nodes(
+        node_ids=assessment.changed_node_ids, branch=query_branch, client=client
+    )
+    ids = [subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == subscriber_kind]
+    log.debug(f"SELECTIVE_REGEN field-impact resolved subscribers: {len(ids)}")
+    return ImpactedSubscribers(scope=assessment.scope, ids=ids)
 
 
 async def _get_subscribers_for_nodes(

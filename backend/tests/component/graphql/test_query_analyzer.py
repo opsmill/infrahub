@@ -190,6 +190,46 @@ async def test_get_models_in_use(
     assert gqa.query_report.requested_read[InfrahubKind.GENERICGROUP].relationships == set()
 
 
+async def test_root_kinds(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    query_01: str,
+    car_person_schema_generics: SchemaRoot,
+) -> None:
+    """Root kinds cover what a root query resolves to, not every kind the query reads.
+
+    A caller mapping a data change back to the query's own targets needs the two apart: a kind
+    reached by traversing a relationship is read by the query without ever being one of its targets.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    traversing = InfrahubGraphQLQueryAnalyzer(
+        query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    assert set(traversing.query_report.requested_read) == {"TestPerson", "TestCar", "TestElectricCar", "TestGazCar"}
+    assert traversing.query_report.root_kinds == {"TestPerson"}
+
+    generic_root_query = """
+    query {
+        TestCar {
+            edges {
+                node {
+                    name { value }
+                }
+            }
+        }
+    }
+    """
+    generic_root = InfrahubGraphQLQueryAnalyzer(
+        query=generic_root_query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    # A generic root resolves to each of its concrete kinds, and a data change is reported against
+    # the concrete kind, so all three have to count as roots.
+    assert generic_root.query_report.root_kinds == {"TestCar", "TestElectricCar", "TestGazCar"}
+
+
 async def test_query_report(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
 ) -> None:
