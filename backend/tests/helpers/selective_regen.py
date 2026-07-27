@@ -7,6 +7,7 @@ from infrahub.core.merge.selective_regen.definition_selector.base import Definit
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
 from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
 from infrahub.core.merge.selective_regen.models import DefinitionModel, GateResult, LoadedDefinition
+from infrahub.core.regeneration.models import TargetSelection
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
@@ -40,9 +41,9 @@ class NoImpactResolver(ImpactedSubscriberResolver):
         diff_summary: list[NodeDiff],
         target_branch: str,
         subscriber_kind: str,
-        existing_subscribers: list[str],
-    ) -> list[str]:
-        return []
+        every_target: list[str],
+    ) -> TargetSelection:
+        return TargetSelection(ids=[], widened=False)
 
 
 class ForcingTemplateSelector[DefinitionT: DefinitionModel, RequestT](DefinitionSelectorBase[DefinitionT, RequestT]):

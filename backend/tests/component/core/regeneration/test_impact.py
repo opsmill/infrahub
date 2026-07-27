@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
 from infrahub.core.node import Node
+from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
+from infrahub.core.regeneration.models import TargetSelection
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -115,14 +116,14 @@ class TestFieldLevelImpact(TestInfrahubApp):
         default_branch: Branch,
         client: InfrahubClient,
         diff_summary: list[NodeDiff],
-    ) -> list[str]:
-        resolver = ImpactedSubscriberResolver(client=client)
-        return await resolver.resolve(
+    ) -> TargetSelection:
+        return await get_field_level_impacted_subscribers(
             query_payload=QUERY_CAR_WITH_OWNER,
             diff_summary=diff_summary,
-            target_branch=default_branch.name,
+            query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
-            existing_subscribers=[dataset["subscriber_id"]],
+            every_target=[dataset["subscriber_id"]],
+            client=client,
         )
 
     async def test_root_node_change_selects_subscriber(
@@ -149,7 +150,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
-        assert resolved == [dataset["subscriber_id"]]
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
 
     async def test_related_node_change_selects_subscriber(
         self,
@@ -176,7 +177,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
-        assert resolved == [dataset["subscriber_id"]]
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=True)
 
     async def test_unread_field_change_selects_nothing(
         self,
@@ -202,4 +203,4 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
-        assert resolved == []
+        assert resolved == TargetSelection(ids=[], widened=False)

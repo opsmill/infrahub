@@ -5,8 +5,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.regeneration.impact_classifier import QueryImpactClassifier
-from infrahub.core.regeneration.models import ImpactScope
+from infrahub.core.regeneration.impact_classifier import (
+    ChangedNodes,
+    EveryTarget,
+    ImpactAssessment,
+    QueryImpactClassifier,
+)
 from tests.helpers.diff_summary import node_diff
 
 if TYPE_CHECKING:
@@ -25,8 +29,7 @@ class AssessCase:
     name: str
     only_has_unique_targets: bool
     diff_summary: list[NodeDiff]
-    expected_scope: ImpactScope
-    expected_node_ids: list[str] = field(default_factory=list)
+    expected: ImpactAssessment
     root_kinds: set[str] = field(default_factory=lambda: set(ROOT_KINDS))
     readable_fields_by_kind: dict[str, set[str]] = field(default_factory=lambda: dict(READABLE_FIELDS))
 
@@ -36,14 +39,13 @@ ASSESS_CASES = [
         name="unique_targets_root_change_narrows_to_that_node",
         only_has_unique_targets=True,
         diff_summary=[node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["name"])],
-        expected_scope=ImpactScope.SPECIFIC,
-        expected_node_ids=["dev1"],
+        expected=ChangedNodes(node_ids=["dev1"]),
     ),
     AssessCase(
         name="unique_targets_related_change_widens",
         only_has_unique_targets=True,
         diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"])],
-        expected_scope=ImpactScope.ALL,
+        expected=EveryTarget(),
     ),
     AssessCase(
         name="unique_targets_root_and_related_change_widens",
@@ -52,20 +54,19 @@ ASSESS_CASES = [
             node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["name"]),
             node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"]),
         ],
-        expected_scope=ImpactScope.ALL,
+        expected=EveryTarget(),
     ),
     AssessCase(
         name="unique_targets_unread_field_narrows_to_nothing",
         only_has_unique_targets=True,
         diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["name"])],
-        expected_scope=ImpactScope.SPECIFIC,
+        expected=ChangedNodes(node_ids=[]),
     ),
     AssessCase(
         name="unique_targets_concrete_kind_behind_generic_root_narrows",
         only_has_unique_targets=True,
         diff_summary=[node_diff(node_id="car1", kind="TestElectricCar", branch=BRANCH, field_names=["name"])],
-        expected_scope=ImpactScope.SPECIFIC,
-        expected_node_ids=["car1"],
+        expected=ChangedNodes(node_ids=["car1"]),
         root_kinds={"TestCar", "TestElectricCar", "TestGazCar"},
         readable_fields_by_kind={"TestCar": {"name"}, "TestElectricCar": {"name"}, "TestGazCar": {"name"}},
     ),
@@ -73,25 +74,25 @@ ASSESS_CASES = [
         name="without_unique_targets_relevant_change_widens",
         only_has_unique_targets=False,
         diff_summary=[node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["name"])],
-        expected_scope=ImpactScope.ALL,
+        expected=EveryTarget(),
     ),
     AssessCase(
         name="without_unique_targets_related_change_widens",
         only_has_unique_targets=False,
         diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"])],
-        expected_scope=ImpactScope.ALL,
+        expected=EveryTarget(),
     ),
     AssessCase(
         name="without_unique_targets_unread_field_selects_nothing",
         only_has_unique_targets=False,
         diff_summary=[node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["description"])],
-        expected_scope=ImpactScope.NONE,
+        expected=ChangedNodes(node_ids=[]),
     ),
     AssessCase(
         name="without_unique_targets_empty_diff_selects_nothing",
         only_has_unique_targets=False,
         diff_summary=[],
-        expected_scope=ImpactScope.NONE,
+        expected=ChangedNodes(node_ids=[]),
     ),
     AssessCase(
         name="change_on_another_branch_is_ignored",
@@ -99,7 +100,7 @@ ASSESS_CASES = [
         diff_summary=[
             node_diff(node_id="intf1", kind="TestInterface", branch="other/branch", field_names=["description"])
         ],
-        expected_scope=ImpactScope.SPECIFIC,
+        expected=ChangedNodes(node_ids=[]),
     ),
 ]
 
@@ -115,5 +116,4 @@ def test_assess(case: AssessCase) -> None:
 
     assessment = classifier.assess(diff_summary=case.diff_summary)
 
-    assert assessment.scope == case.expected_scope
-    assert assessment.changed_node_ids == case.expected_node_ids
+    assert assessment == case.expected

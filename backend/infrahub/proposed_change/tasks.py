@@ -55,7 +55,7 @@ from infrahub.core.regeneration.members import (
     run_generator,
     should_render_artifact,
 )
-from infrahub.core.regeneration.models import DefinitionSelect, ImpactScope
+from infrahub.core.regeneration.models import DefinitionSelect
 from infrahub.core.regeneration.predicates import (
     definition_changed,
     query_changed,
@@ -818,28 +818,24 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    impacted = await get_field_level_impacted_subscribers(
+    selection = await get_field_level_impacted_subscribers(
         query_payload=model.artifact_definition.query_payload,
         diff_summary=diff_summary,
         query_branch=model.source_branch,
         subscriber_kind=InfrahubKind.ARTIFACT,
+        every_target=list(artifacts_by_member.values()),
         client=client,
     )
-    if impacted.scope is ImpactScope.ALL:
-        # The query does not guarantee unique targets but a relevant field changed, so we must
-        # fall back to regenerating all artifacts for this definition to be safe.
-        impacted_artifacts = list(artifacts_by_member.values())
+    impacted_artifacts = selection.ids
+    if selection.widened:
         log.warning(
             f"Artifact definition {artifact_definition.name.value} query does not guarantee unique targets. All targets will be processed."
         )
-    elif impacted.scope is ImpactScope.NONE:
-        # No node of a queried kind had any of its queried fields modified.
-        impacted_artifacts = []
+    elif not impacted_artifacts:
         log.info(
-            f"Artifact definition {artifact_definition.name.value} has no applicable node changes. Existing artifacts will not be re-rendered."
+            f"Artifact definition {artifact_definition.name.value} has no applicable node changes. "
+            "Existing artifacts will not be re-rendered."
         )
-    else:
-        impacted_artifacts = impacted.ids
 
     repo_diff_for_definition = repo_diff_or_none(
         branch_diff=model.branch_diff, repository_id=model.artifact_definition.repository_id
@@ -1112,29 +1108,24 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     requested_instances = 0
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    impacted = await get_field_level_impacted_subscribers(
+    selection = await get_field_level_impacted_subscribers(
         query_payload=model.generator_definition.query_payload,
         diff_summary=diff_summary,
         query_branch=model.source_branch,
         subscriber_kind=InfrahubKind.GENERATORINSTANCE,
+        every_target=list(instance_by_member.values()),
         client=client,
     )
     definition_name = model.generator_definition.definition_name
-    if impacted.scope is ImpactScope.ALL:
-        # The query does not guarantee unique targets but a relevant field changed, so we cannot
-        # map the change to specific instances and must run every existing instance to be safe.
-        impacted_instances = list(instance_by_member.values())
+    impacted_instances = selection.ids
+    if selection.widened:
         log.warning(
             f"Generator definition {definition_name} query does not guarantee unique targets. All targets will be processed."
         )
-    elif impacted.scope is ImpactScope.NONE:
-        # No node of a queried kind had any of its queried fields modified.
-        impacted_instances = []
+    elif not impacted_instances:
         log.info(
             f"Generator definition {definition_name} has no applicable node changes. Existing instances will not be re-run."
         )
-    else:
-        impacted_instances = impacted.ids
 
     repo_diff_for_definition = repo_diff_or_none(
         branch_diff=model.branch_diff, repository_id=model.generator_definition.repository_id

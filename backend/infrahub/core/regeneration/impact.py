@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
@@ -11,8 +11,8 @@ from infrahub.log import get_logger
 from infrahub.message_bus.types import ProposedChangeSubscriber
 from infrahub.workers.dependencies import get_database
 
-from .impact_classifier import QueryImpactClassifier
-from .models import ImpactedSubscribers, ImpactScope
+from .impact_classifier import ChangedNodes, EveryTarget, QueryImpactClassifier
+from .models import TargetSelection
 
 log = get_logger()
 
@@ -46,8 +46,9 @@ async def get_field_level_impacted_subscribers(
     diff_summary: list[NodeDiff],
     query_branch: str,
     subscriber_kind: str,
+    every_target: list[str],
     client: InfrahubClient,
-) -> ImpactedSubscribers:
+) -> TargetSelection:
     """Map data changes on a branch to the subscribers a GraphQL query actually depends on.
 
     A change is relevant only when at least one field that was modified is also read by the
@@ -57,12 +58,10 @@ async def get_field_level_impacted_subscribers(
     which the changed data lives (the source branch for a proposed change, the merge target branch
     for a merge follow-up).
 
-    Returns an `ImpactedSubscribers` whose scope is:
-        SPECIFIC -- the query guarantees unique targets, so `ids` lists exactly the subscribers of
-                    `subscriber_kind` linked to the changed nodes (possibly empty).
-        ALL      -- the query does not guarantee unique targets but a relevant field changed, so the
-                    caller cannot map the change to specific targets and must process every target.
-        NONE     -- no node of a queried kind had any of its queried fields modified; nothing to do.
+    `every_target` is what the caller must fall back to when a change cannot be traced to specific
+    subscribers. Taking it as an argument keeps that fallback out of the return type: the caller
+    always receives one authoritative list and never has to resolve a "process everything" case.
+    Only the narrowed outcome costs a subscriber lookup.
     """
     query_schema_branch = registry.schema.get_schema_branch(name=query_branch)
     query_branch_obj = registry.get_branch_from_registry(branch=query_branch)
@@ -90,18 +89,19 @@ async def get_field_level_impacted_subscribers(
         f"branch={query_branch} subscriber_kind={subscriber_kind} "
         f"unique_targets={query_report.only_has_unique_targets} "
         f"readable_kinds={sorted(readable_fields_by_kind)} "
-        f"root_kinds={sorted(query_report.root_kinds)} scope={assessment.scope.value}"
+        f"root_kinds={sorted(query_report.root_kinds)} assessment={type(assessment).__name__}"
     )
 
-    if assessment.scope is not ImpactScope.SPECIFIC:
-        return ImpactedSubscribers(scope=assessment.scope)
-
-    subscribers = await _get_subscribers_for_nodes(
-        node_ids=assessment.changed_node_ids, branch=query_branch, client=client
-    )
-    ids = [subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == subscriber_kind]
-    log.debug(f"SELECTIVE_REGEN field-impact resolved subscribers: {len(ids)}")
-    return ImpactedSubscribers(scope=assessment.scope, ids=ids)
+    match assessment:
+        case EveryTarget():
+            return TargetSelection(ids=every_target, widened=True)
+        case ChangedNodes(node_ids=node_ids):
+            subscribers = await _get_subscribers_for_nodes(node_ids=node_ids, branch=query_branch, client=client)
+            ids = [subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == subscriber_kind]
+            log.debug(f"SELECTIVE_REGEN field-impact resolved subscribers: {len(ids)}")
+            return TargetSelection(ids=ids, widened=False)
+        case _ as unreachable:
+            assert_never(unreachable)
 
 
 async def _get_subscribers_for_nodes(

@@ -1,25 +1,34 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .models import ImpactScope
 from .predicates import relevant_node_changes
 
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
 
 
-@dataclass(frozen=True, kw_only=True, slots=True)
-class ImpactAssessment:
-    """How a diff routes, plus the changed nodes a narrowed routing still has to resolve.
+@dataclass(frozen=True, slots=True)
+class EveryTarget:
+    """The changed nodes cannot be traced back to specific targets, so every one must be processed.
 
-    ``changed_node_ids`` is meaningful only for ``ImpactScope.SPECIFIC``, where the caller maps
-    those nodes to the subscribers tracking them. The other scopes need no id resolution.
+    The alternative to an enumerated set rather than one more member of it: the affected targets
+    are unknown here, not known-and-listed.
     """
 
-    scope: ImpactScope
-    changed_node_ids: list[str] = field(default_factory=list)
+
+@dataclass(frozen=True, slots=True)
+class ChangedNodes:
+    """These changed nodes map onto group members, so their subscribers can be resolved.
+
+    Empty means no queried field changed, which resolves to no subscriber.
+    """
+
+    node_ids: list[str]
+
+
+type ImpactAssessment = EveryTarget | ChangedNodes
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -44,20 +53,21 @@ class QueryImpactClassifier:
 
     def assess(self, diff_summary: list[NodeDiff]) -> ImpactAssessment:
         changed_node_ids = self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
+        if self._must_widen(diff_summary=diff_summary, changed_node_ids=changed_node_ids):
+            return EveryTarget()
 
-        if self.only_has_unique_targets:
-            related_fields_by_kind = {
-                kind: fields for kind, fields in self.readable_fields_by_kind.items() if kind not in self.root_kinds
-            }
-            if self._changed_node_ids(diff_summary=diff_summary, kinds=related_fields_by_kind):
-                return ImpactAssessment(scope=ImpactScope.ALL)
+        return ChangedNodes(node_ids=changed_node_ids)
 
-            return ImpactAssessment(scope=ImpactScope.SPECIFIC, changed_node_ids=changed_node_ids)
+    def _must_widen(self, *, diff_summary: list[NodeDiff], changed_node_ids: list[str]) -> bool:
+        if not self.only_has_unique_targets:
+            # Any number of objects can answer the query, so a changed node cannot be traced back to
+            # the targets reading it.
+            return bool(changed_node_ids)
 
-        if changed_node_ids:
-            return ImpactAssessment(scope=ImpactScope.ALL)
-
-        return ImpactAssessment(scope=ImpactScope.NONE)
+        related_fields_by_kind = {
+            kind: fields for kind, fields in self.readable_fields_by_kind.items() if kind not in self.root_kinds
+        }
+        return bool(self._changed_node_ids(diff_summary=diff_summary, kinds=related_fields_by_kind))
 
     def _changed_node_ids(self, *, diff_summary: list[NodeDiff], kinds: dict[str, set[str]]) -> list[str]:
         return relevant_node_changes(

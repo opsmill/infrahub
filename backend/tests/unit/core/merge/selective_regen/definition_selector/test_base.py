@@ -11,6 +11,7 @@ from infrahub.core.merge.selective_regen.fallbacks import repositories_forcing_f
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
 from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
 from infrahub.core.merge.selective_regen.models import GateResult, LoadedDefinition
+from infrahub.core.regeneration.models import TargetSelection
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 
 if TYPE_CHECKING:
@@ -103,9 +104,9 @@ class _StubImpactedResolver(ImpactedSubscriberResolver):
         diff_summary: list[NodeDiff],
         target_branch: str,
         subscriber_kind: str,
-        existing_subscribers: list[str],
-    ) -> list[str]:
-        return self.impacted
+        every_target: list[str],
+    ) -> TargetSelection:
+        return TargetSelection(ids=self.impacted, widened=False)
 
 
 class _StubSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun]):

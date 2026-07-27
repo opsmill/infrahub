@@ -1,22 +1,21 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum, IntFlag, StrEnum
+from dataclasses import dataclass
+from enum import IntFlag, StrEnum
 from typing import Protocol
 
 
-class ImpactScope(Enum):
-    """How a data change maps onto the subscribers (artifacts or generator instances) to process."""
+@dataclass(frozen=True, slots=True)
+class TargetSelection:
+    """The targets to process, and whether narrowing had to be abandoned to arrive at them.
 
-    ALL = "all"  # the change cannot be mapped to specific targets; every target must be processed
-    NONE = "none"  # no queried field changed; no target needs processing
-    SPECIFIC = "specific"  # only the subscribers in `ids` are affected
+    ``ids`` is always the authoritative, complete list, so a caller needs nothing else to act.
+    ``widened`` explains only how that list was reached -- it carries no meaning of its own and
+    exists so a caller can report the lost precision without re-deriving it.
+    """
 
-
-@dataclass
-class ImpactedSubscribers:
-    scope: ImpactScope
-    ids: list[str] = field(default_factory=list)
+    ids: list[str]
+    widened: bool
 
 
 class RegenerationReason(StrEnum):
