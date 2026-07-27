@@ -102,12 +102,10 @@ class BranchMergeOrchestrator:
         schema_updated_hash: str | None = None
 
         try:
+            self.log.info("Acquiring global graph lock for merge")
             async with lock.registry.global_graph_lock():
-                # Record when the merge started so a recovery can roll back from this point.
-                self.source_branch.status = BranchStatus.MERGING
-                self.source_branch.merge_started_at = merge_at.to_string()
-                await self.source_branch.save(db=self.db, user_id=user_id)
-                registry.branch[self.source_branch.name] = self.source_branch
+                self.log.info("Global graph lock acquired for merge")
+                await self._record_merge_start(merge_at=merge_at, user_id=user_id)
                 await self.graph_merger.merge(at=merge_at)
 
             self.log.info("Loading enriched diff for changelog collection")
@@ -195,6 +193,19 @@ class BranchMergeOrchestrator:
             schema_diff=schema_diff,
             schema_hash=schema_updated_hash,
         )
+
+    async def _record_merge_start(self, *, merge_at: Timestamp, user_id: str) -> None:
+        """Persist the merge-start markers a recovery depends on.
+
+        ``merge_started_at`` gives an out-of-process recovery the point to roll the graph back from, and
+        the destination's pre-merge ``schema_changed_at`` is captured alongside so recovery can restore
+        it after the rollback.
+        """
+        self.source_branch.status = BranchStatus.MERGING
+        self.source_branch.merge_started_at = merge_at.to_string()
+        self.source_branch.pre_merge_destination_schema_changed_at = self.destination_branch.schema_changed_at
+        await self.source_branch.save(db=self.db, user_id=user_id)
+        registry.branch[self.source_branch.name] = self.source_branch
 
     async def _cache_diff_summary(self, branch_diff: EnrichedDiffRoot) -> str | None:
         """Serialize the merge diff and persist its summary to the cache, returning the cache key.

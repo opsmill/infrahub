@@ -336,7 +336,9 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
     async with database.start_session() as db:
         # Hold the global merge lock for the whole flow and load the branch under it, so the merge
         # decision and the orchestrator operate on branch state that cannot change mid-merge.
+        log.info("Acquiring global merge lock")
         async with MergeLocker().acquire_global_lock():
+            log.info("Global merge lock acquired")
             source_branch = await Branch.get_by_name(db=db, name=branch)
             if source_branch.status != BranchStatus.OPEN:
                 log.info(f"Branch '{branch}' is not open (status={source_branch.status}), skipping merge")

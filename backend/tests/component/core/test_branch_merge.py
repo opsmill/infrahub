@@ -1,6 +1,6 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import HashableModelState, InfrahubKind
+from infrahub.core.constants import HashableModelState, InfrahubKind, SchemaPathType
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -9,7 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
-from infrahub.core.path import SchemaPath, SchemaPathType
+from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
