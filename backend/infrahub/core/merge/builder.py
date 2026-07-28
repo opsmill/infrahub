@@ -12,6 +12,7 @@ from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.registry import registry
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
+from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.workers.dependencies import get_cache, get_event_service, get_workflow
 
@@ -63,7 +64,12 @@ async def build_branch_merge_orchestrator(
         diff_repository=diff_repository,
         schema_manager=registry.schema,
     )
-    constraint_validator = MergeConstraintValidator(db=db, branch=source_branch, diff_repository=diff_repository)
+    constraint_validator = MergeConstraintValidator(
+        db=db,
+        branch=source_branch,
+        diff_repository=diff_repository,
+        migration_validator=schema_validate_migrations,
+    )
     graph_merger = GraphMerger(
         db=db,
         source_branch=source_branch,

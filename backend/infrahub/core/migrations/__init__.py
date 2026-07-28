@@ -1,3 +1,5 @@
+from infrahub.core.validators.enum import ConstraintIdentifier
+
 from .schema.attribute_kind_update import AttributeKindUpdateMigration
 from .schema.attribute_name_update import AttributeNameUpdateMigration
 from .schema.attribute_supports_generated_schema import AttributeSupportsGeneratedSchemaMigration
@@ -18,7 +20,7 @@ MIGRATION_MAP: dict[str, type[SchemaMigration] | None] = {
     "node.name.update": NodeKindUpdateMigration,
     "node.namespace.update": NodeKindUpdateMigration,
     "node.relationship.remove": NodeRelationshipRemoveMigration,
-    "node.uniqueness_constraints.update": NodeUniquenessConstraintsUpdateMigration,
+    ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value: NodeUniquenessConstraintsUpdateMigration,
     "attribute.name.update": AttributeNameUpdateMigration,
     "attribute.branch.update": None,
     "attribute.kind.update": AttributeKindUpdateMigration,

@@ -150,7 +150,7 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
         self.params["parent_relationship_id"] = self.parent_relationship.identifier
         self.params["peer_parent_relationship_id"] = self.peer_parent_relationship.identifier
 
-        parent_arrows = self.parent_relationship.get_query_arrows()
+        parent_arrows = self.get_query_arrows(direction=self.parent_relationship.direction)
         parent_match = (
             "MATCH (active_node)%(lstart)s[r1:IS_RELATED]%(lend)s"
             "(rel:Relationship { name: $parent_relationship_id })%(rstart)s[r2:IS_RELATED]%(rend)s(parent:Node)"
@@ -161,7 +161,7 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
             "rend": parent_arrows.right.end,
         }
 
-        peer_parent_arrows = self.relationship.get_query_arrows()
+        peer_parent_arrows = self.get_query_arrows(direction=self.relationship.direction)
         peer_match = (
             "MATCH (active_node)%(lstart)s[r1:IS_RELATED]%(lend)s"
             "(r:Relationship {name: $peer_relationship_id })%(rstart)s[r2:IS_RELATED]%(rend)s(peer:Node)"
@@ -172,7 +172,7 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
             "rend": peer_parent_arrows.right.end,
         }
 
-        peer_parent_arrows = self.peer_parent_relationship.get_query_arrows()
+        peer_parent_arrows = self.get_query_arrows(direction=self.peer_parent_relationship.direction)
         peer_parent_match = (
             "MATCH (peer:Node)%(lstart)s[r1:IS_RELATED]%(lend)s"
             "(r:Relationship {name: $peer_parent_relationship_id})%(rstart)s[r2:IS_RELATED]%(rend)s(peer_parent:Node)"

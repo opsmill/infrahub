@@ -64,7 +64,8 @@ from infrahub.core.regeneration.predicates import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.checks_runner import run_checks_and_update_validator
-from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
+from infrahub.core.validators.constraint_merge import build_constraint_info_merger
+from infrahub.core.validators.determiner import build_constraint_validator_determiner
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
@@ -509,6 +510,8 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
+    database = await get_database()
+
     source_schema = registry.schema.get_schema_branch(name=model.source_branch).duplicate()
     dest_schema = registry.schema.get_schema_branch(name=model.destination_branch).duplicate()
 
@@ -522,7 +525,6 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
         parts = error_msg.split(":", 1)
         kind = parts[0].strip() if len(parts) > 1 and parts[0].strip() else "Unknown"
         schema_path = f"schema/{kind}"
-        database = await get_database()
         async with database.start_transaction() as db:
             object_conflict_validator_recorder = _build_schema_integrity_validator_recorder(db=db)
             await object_conflict_validator_recorder.record_conflicts(
@@ -545,11 +547,13 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     validation_result = dest_schema.validate_update(other=candidate_schema, diff=schema_diff)
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
+    source_branch = registry.get_branch_from_registry(branch=model.source_branch)
     constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
-        schema=candidate_schema, diff_summary=diff_summary
+        db=database, schema=candidate_schema, diff_summary=diff_summary, branch=source_branch
     )
     constraints_from_schema_diff = validation_result.constraints
-    constraints = set(constraints_from_data_diff + constraints_from_schema_diff)
+    merger = build_constraint_info_merger(schema_branch=candidate_schema)
+    constraints = merger.merge(constraints_from_data_diff, constraints_from_schema_diff)
 
     if not constraints:
         return
@@ -557,15 +561,13 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     # ----------------------------------------------------------
     # Validate if the new schema is valid with the content of the database
     # ----------------------------------------------------------
-    source_branch = registry.get_branch_from_registry(branch=model.source_branch)
     responses = await schema_validate_migrations(
         message=SchemaValidateMigrationData(
-            branch=source_branch, schema_branch=candidate_schema, constraints=list(constraints)
+            branch=source_branch, schema_branch=candidate_schema, constraints=constraints
         )
     )
 
     component_registry = get_component_registry()
-    database = await get_database()
     async with database.start_session() as db:
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
         conflicted_fields = await gather_conflicted_fields(
@@ -585,7 +587,7 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
 
 
 async def _get_proposed_change_schema_integrity_constraints(
-    schema: SchemaBranch, diff_summary: list[NodeDiff]
+    db: InfrahubDatabase, schema: SchemaBranch, diff_summary: list[NodeDiff], branch: Branch
 ) -> list[SchemaUpdateConstraintInfo]:
     node_diff_field_summary_map: dict[str, NodeDiffFieldSummary] = {}
 
@@ -594,18 +596,20 @@ async def _get_proposed_change_schema_integrity_constraints(
         if node_kind not in node_diff_field_summary_map:
             node_diff_field_summary_map[node_kind] = NodeDiffFieldSummary(kind=node_kind)
         field_summary = node_diff_field_summary_map[node_kind]
+        node_id = node_diff["id"]
         for element in node_diff["elements"]:
             element_name = element["name"]
             # The SDK diff summary reports element_type using the DiffElementType member name
             # (e.g. "RELATIONSHIP_ONE"), not its value ("RelationshipOne").
             element_type = element["element_type"]
             if element_type in (DiffElementType.RELATIONSHIP_MANY.name, DiffElementType.RELATIONSHIP_ONE.name):
-                field_summary.relationship_names.add(element_name)
+                field_summary.add_relationship_node_uuid(name=element_name, node_uuid=node_id)
             elif element_type == DiffElementType.ATTRIBUTE.name:
-                field_summary.attribute_names.add(element_name)
+                field_summary.add_attribute_node_uuid(name=element_name, node_uuid=node_id)
 
-    determiner = ConstraintValidatorDeterminer(schema_branch=schema)
-    return await determiner.get_constraints(node_diffs=list(node_diff_field_summary_map.values()))
+    async with db.start_session(read_only=True) as session_db:
+        determiner = build_constraint_validator_determiner(db=session_db, branch=branch, schema_branch=schema)
+        return await determiner.get_constraints(node_diffs=list(node_diff_field_summary_map.values()))
 
 
 @flow(name="proposed-changed-repository-checks", flow_run_name="Process user defined checks")

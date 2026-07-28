@@ -7,12 +7,12 @@ from infrahub.core.graph.schema import GraphAttributeValueIndexedNode, GraphAttr
 from infrahub.core.query import Query, QueryType
 from infrahub.types import is_large_attribute_type
 
-from .model import QueryAttributePathValued, QueryRelationshipPathValued
+from ..model import QueryAttributePathValued, QueryRelationshipPathValued
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
-    from .model import NodeUniquenessQueryRequest, NodeUniquenessQueryRequestValued
+    from ..model import NodeUniquenessQueryRequest, NodeUniquenessQueryRequestValued
 
 
 class NodeUniqueAttributeConstraintQuery(Query):
@@ -350,7 +350,7 @@ CALL (node) {
         params: dict[str, str | int | float | bool] = {}
         rel_attr_query = ""
         rel_attr_match = ""
-        if rel_path.attribute_name and rel_path.attribute_value:
+        if rel_path.attribute_name is not None and rel_path.attribute_value is not None:
             attr_name_var = f"attr_name_{index}"
             attr_value_var = f"attr_value_{index}"
 
@@ -393,7 +393,7 @@ CALL (node) {
             )
             params[attr_name_var] = rel_path.attribute_name
             params[attr_value_var] = rel_path.attribute_value
-        query_arrows = rel_path.relationship_schema.get_query_arrows()
+        query_arrows = self.get_query_arrows(direction=rel_path.relationship_schema.direction)
         rel_name_var = f"rel_name_{index}"
         # long path MATCH is required to hit an index on the peer or AttributeValue of the peer
         first_match = (

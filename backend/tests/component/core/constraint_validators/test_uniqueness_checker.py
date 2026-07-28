@@ -8,7 +8,6 @@ from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.schema import MainSchemaTypes, SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
-from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.database import InfrahubDatabase
@@ -16,14 +15,14 @@ from infrahub.database import InfrahubDatabase
 
 class TestUniquenessChecker:
     async def __call_system_under_test(self, db: InfrahubDatabase, branch: Branch, schema: MainSchemaTypes):
-        checker = UniquenessChecker(db, branch)
+        checker = UniquenessChecker(db)
         schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind=schema.kind)
         request = SchemaConstraintValidatorRequest(
             branch=branch,
             constraint_name="node.uniqueness_constraints.update",
             node_schema=schema,
             schema_path=schema_path,
-            schema_branch=SchemaBranch(cache={}, name="test"),
+            schema_branch=db.schema.get_schema_branch(name=branch.name),
         )
         return await checker.check(request)
 
