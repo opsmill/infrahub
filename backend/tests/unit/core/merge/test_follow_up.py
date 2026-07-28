@@ -33,3 +33,18 @@ def test_merge_follow_up_guard_no_error_stays_silent(caplog: pytest.LogCaptureFi
 
     assert calls == ["ran"]
     assert caplog.records == []
+
+
+def test_merge_follow_up_guard_isolates_each_iteration(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.ERROR)
+    log = logging.getLogger("test_merge_follow_up_guard")
+    attempted: list[str] = []
+
+    for item in ["a", "b", "c"]:
+        with merge_follow_up_guard(log, f"follow-up '{item}' failed"):
+            attempted.append(item)
+            if item == "b":
+                raise RuntimeError("boom")
+
+    assert attempted == ["a", "b", "c"]
+    assert [record.message for record in caplog.records] == ["follow-up 'b' failed"]
