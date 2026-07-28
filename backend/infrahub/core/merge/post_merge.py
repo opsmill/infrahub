@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import MutationAction
+from infrahub.core.merge.follow_up import merge_follow_up_guard
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
@@ -74,10 +75,8 @@ class PostMergeDispatcher:
     ) -> None:
         # The repository merge issues a GraphQL write to the default branch, so it must run after the
         # write block is lifted; while protected it would be rejected as a write to the merging branch.
-        try:
+        with merge_follow_up_guard(self.log, "Repository merge failed after branch merge committed"):
             await self.repository_merge_dispatcher.merge_repositories()
-        except Exception:
-            self.log.exception("Repository merge failed after branch merge committed")
 
         # The user-visible merge is already done, so the follow-up trees must not inherit its
         # priority from the caller's context: each runs from a context stamped with its own lane,
@@ -172,20 +171,16 @@ class PostMergeDispatcher:
         # The merge is already committed by the time events are dispatched, so a failed send must not
         # surface as a merge failure: log it and continue, like the other post-merge follow-ups.
         for event in events:
-            try:
+            with merge_follow_up_guard(self.log, f"Failed to send post-merge event '{type(event).__name__}'"):
                 await self.event_service.send(event=event)
-            except Exception:
-                self.log.exception("Failed to send post-merge event '%s'", type(event).__name__)
 
-        try:
+        with merge_follow_up_guard(self.log, "Failed to submit the coalesced post-merge recompute"):
             schema_branch = registry.schema.get_schema_branch(name=self.default_branch.name)
             coordinator = MergeRecomputeCoordinator(
                 builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
                 submitter=CoalescedRecomputeSubmitter(workflow=self.workflow),
             )
             await coordinator.run(changes=changes, branch=self.default_branch.name, context=event_context)
-        except Exception:
-            self.log.exception("Failed to submit the coalesced post-merge recompute")
 
     async def _submit_workflow(
         self,
@@ -194,7 +189,5 @@ class PostMergeDispatcher:
         workflow_definition: WorkflowDefinition,
         parameters: dict[str, Any],
     ) -> None:
-        try:
+        with merge_follow_up_guard(self.log, f"Failed to enqueue post-merge workflow '{workflow_definition.name}'"):
             await self.workflow.submit_workflow(workflow=workflow_definition, context=context, parameters=parameters)
-        except Exception:
-            self.log.exception("Failed to enqueue post-merge workflow '%s'", workflow_definition.name)
