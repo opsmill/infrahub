@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
 from infrahub import config, lock
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector
 from infrahub.core.diff.model.path import BranchTrackingId
+from infrahub.core.diff.summary_bounds import OversizedDiffSummary, SerializedDiffSummary
 from infrahub.core.registry import registry
 from infrahub.core.schema.update_coordinator import MigrationExecutor
 from infrahub.core.timestamp import Timestamp
@@ -21,8 +22,8 @@ if TYPE_CHECKING:
     from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
     from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
+    from infrahub.core.diff.summary_bounds import BoundedDiffSummaryBuilder
     from infrahub.core.diff.summary_cache import DiffSummaryCache
-    from infrahub.core.diff.summary_serializer import DiffSummarySerializer
     from infrahub.core.models import SchemaDiff
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
@@ -53,7 +54,7 @@ class BranchMergeOrchestrator:
         merge_write_blocker: MergeWriteBlocker,
         ipam_diff_parser: IpamDiffParser,
         diff_repository: DiffRepository,
-        diff_serializer: DiffSummarySerializer,
+        diff_summary_builder: BoundedDiffSummaryBuilder,
         diff_summary_cache: DiffSummaryCache,
         logger: InfrahubLogger | None = None,
     ) -> None:
@@ -69,7 +70,7 @@ class BranchMergeOrchestrator:
         self.merge_write_blocker = merge_write_blocker
         self.ipam_diff_parser = ipam_diff_parser
         self.diff_repository = diff_repository
-        self.diff_serializer = diff_serializer
+        self.diff_summary_builder = diff_summary_builder
         self.diff_summary_cache = diff_summary_cache
         self.log = logger or get_logger()
 
@@ -210,20 +211,32 @@ class BranchMergeOrchestrator:
     async def _cache_diff_summary(self, branch_diff: EnrichedDiffRoot) -> str | None:
         """Serialize the merge diff and persist its summary to the cache, returning the cache key.
 
-        Returns None when selective execution is disabled, or when serialization or the cache write fails.
+        Returns None when selective execution is disabled, when the diff exceeds a cache-size ceiling,
+        or when serialization or the cache write fails; every None makes the follow-up regenerate
+        every definition.
         """
         if not config.SETTINGS.main.selective_execution_after_merge:
             return None
         try:
-            diff_summary = self.diff_serializer.serialize(
+            outcome = self.diff_summary_builder.build(
                 root=branch_diff, target_branch_name=self.destination_branch.name
             )
         except Exception:
             self.log.exception("Failed to serialize merge diff summary; falling back to full regeneration")
             return None
-        try:
-            await self.diff_summary_cache.set(diff_id=branch_diff.uuid, diff_summary=diff_summary)
-            return branch_diff.uuid
-        except Exception:
-            self.log.exception("Failed to cache merge diff summary; falling back to full regeneration")
-            return None
+
+        match outcome:
+            case OversizedDiffSummary(node_count=node_count, byte_size=byte_size):
+                self.log.debug(
+                    f"Merge diff summary too large to cache (nodes={node_count}, bytes={byte_size}); "
+                    "falling back to full regeneration"
+                )
+                return None
+            case SerializedDiffSummary(payload=payload):
+                try:
+                    await self.diff_summary_cache.set_payload(diff_id=branch_diff.uuid, payload=payload)
+                    return branch_diff.uuid
+                except Exception:
+                    self.log.exception("Failed to cache merge diff summary; falling back to full regeneration")
+                    return None
+        assert_never(outcome)

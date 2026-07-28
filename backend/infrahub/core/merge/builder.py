@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub import config
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.diff.summary_bounds import BoundedDiffSummaryBuilder
 from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.registry import registry
@@ -48,6 +50,11 @@ async def build_branch_merge_orchestrator(
     cache = await get_cache()
     merge_write_blocker = MergeWriteBlocker(cache=cache)
     diff_summary_serializer = DiffSummarySerializer()
+    diff_summary_builder = BoundedDiffSummaryBuilder(
+        serializer=diff_summary_serializer,
+        max_nodes=config.SETTINGS.main.selective_merge_diff_max_nodes,
+        max_bytes=config.SETTINGS.main.selective_merge_diff_max_bytes,
+    )
 
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=source_branch)
@@ -121,7 +128,7 @@ async def build_branch_merge_orchestrator(
         merge_write_blocker=merge_write_blocker,
         ipam_diff_parser=ipam_diff_parser,
         diff_repository=diff_repository,
-        diff_serializer=diff_summary_serializer,
+        diff_summary_builder=diff_summary_builder,
         diff_summary_cache=DiffSummaryCache(
             cache=cache, serializer=diff_summary_serializer, key_namespace="branch_merge"
         ),
