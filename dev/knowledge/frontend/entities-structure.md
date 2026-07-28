@@ -361,8 +361,8 @@ See `dev/guidelines/frontend/naming-conventions.md` for the full naming conventi
 
 `@urql/core` is the GraphQL transport (auth, error routing, token refresh, uploads) only — there is no GraphQL-layer cache and there are no GraphQL hooks. All server-state hooks are TanStack Query.
 
-- `@urql/core` imports are allowed **only** in `src/shared/api/graphql/client.ts`. There is no provider to wrap the app in — the client is used imperatively.
-- Everything else imports `graphql` (typed documents), `gql` (runtime-assembled strings) and `graphqlClient` from `@/shared/api/graphql/client`, so the transport library stays swappable.
+- `@urql/core` imports are allowed **only** in `src/shared/api/graphql/client.ts` (tests may import it to build documents). There is no provider to wrap the app in — the client is used imperatively.
+- Everything else imports `graphql` and `graphqlClient` from `@/shared/api/graphql/client`, so the transport library stays swappable. `graphql()` covers both cases: a template literal gives a typed document, and a runtime-assembled string (the `jsonToGraphQLQuery` sites) gives an untyped one.
 - Use `useQuery` / `useMutation` from `@tanstack/react-query` (typically via the pattern in `ui/queries/`) for all data fetching.
 
 ### Mutation invalidation

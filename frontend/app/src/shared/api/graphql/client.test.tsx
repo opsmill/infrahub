@@ -335,8 +335,7 @@ describe("graphqlClient — token refresh integration", () => {
     await expect(querying).rejects.toThrow("partial");
   });
 
-  // Queries resolve with errors, mutations reject: use-cases await a mutation without checking
-  // `errors`, so resolving would run their onSuccess after a failed write.
+  // Both queries and mutations reject when the response carries GraphQL errors: use-cases await a mutation without checking
   it("rejects when a mutation responds with GraphQL errors", async () => {
     // GIVEN a mutation whose response carries a GraphQL error
     fetchSpy.mockResolvedValueOnce(
