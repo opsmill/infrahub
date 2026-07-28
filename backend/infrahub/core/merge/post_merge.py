@@ -168,8 +168,6 @@ class PostMergeDispatcher:
                 )
             )
 
-        # The merge is already committed by the time events are dispatched, so a failed send must not
-        # surface as a merge failure: log it and continue, like the other post-merge follow-ups.
         for event in events:
             with merge_follow_up_guard(self.log, f"Failed to send post-merge event '{type(event).__name__}'"):
                 await self.event_service.send(event=event)

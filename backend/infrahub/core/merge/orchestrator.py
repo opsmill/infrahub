@@ -210,7 +210,9 @@ class BranchMergeOrchestrator:
     async def _cache_diff_summary(self, branch_diff: EnrichedDiffRoot) -> str | None:
         """Serialize the merge diff and persist its summary to the cache, returning the cache key.
 
-        Returns None when selective execution is disabled, or when serialization or the cache write fails.
+        Returns None when selective execution is disabled, or when serialization or the cache write
+        fails. A None return makes the follow-up regenerate every definition, so both failures are
+        caught broadly on purpose: over-regenerating is acceptable, leaving an artifact stale is not.
         """
         if not config.SETTINGS.main.selective_execution_after_merge:
             return None
