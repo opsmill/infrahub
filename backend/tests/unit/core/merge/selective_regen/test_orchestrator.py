@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from infrahub.core.merge.selective_regen.definition_selector.base import DefinitionSelectorBase
 from infrahub.core.merge.selective_regen.models import (
     CascadeRole,
@@ -16,7 +18,7 @@ from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, REQUEST_GENERATOR_DEFINITION_RUN
 from tests.helpers.diff_summary import node_diff
-from tests.helpers.selective_regen import ArtifactForcingSelector, GeneratorForcingSelector
+from tests.helpers.selective_regen import ArtifactForcingSelector, GeneratorForcingSelector, StubCascadeSourceOutput
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -25,18 +27,10 @@ if TYPE_CHECKING:
 
     from infrahub.core.merge.selective_regen.models import CascadeSourceOutput
     from infrahub.core.regeneration.models import RegenerationTrigger
-    from infrahub.core.timestamp import Timestamp
     from infrahub.workflows.models import WorkflowDefinition
 
 TARGET_BRANCH = "main"
 REPOSITORY_ID = "repo-1"
-
-
-class _StubOutput:
-    """A CascadeSourceOutput sentinel; identity is what the wiring assertions check."""
-
-    async def capture(self, *, since: Timestamp) -> list[NodeDiff]:
-        return []
 
 
 class _RecordingSelector[DefinitionT: DefinitionModel, RequestT](DefinitionSelectorBase[DefinitionT, RequestT]):
@@ -111,6 +105,49 @@ def test_for_role_returns_the_entries_playing_that_role_in_order() -> None:
     assert plan.for_role(CascadeRole.TERMINAL) == [first_terminal, second_terminal]
 
 
+async def test_build_plan_rejects_a_cascade_source_without_an_output_capture() -> None:
+    """A SOURCE that produces no output capture would silently skip the cascade, so the plan is rejected.
+
+    Failing fast at plan construction turns a misconfigured new source into a caught error and safe full
+    regeneration, rather than a source that runs but whose terminals are never reselected.
+    """
+    source_without_output = _RecordingSelector[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun](
+        result=[], workflow=REQUEST_GENERATOR_DEFINITION_RUN, cascade_role=CascadeRole.SOURCE, output=None
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"^cascade source 'request-generator-definition-run' produced no output capture; "
+            r"a source must capture the output its terminals reselect from$"
+        ),
+    ):
+        await MergeSelectiveRegeneration(selectors=[source_without_output]).build_plan(
+            diff_summary=[], target_branch=TARGET_BRANCH
+        )
+
+
+async def test_build_plan_rejects_a_cascade_terminal_carrying_an_output_capture() -> None:
+    """A TERMINAL that captures output is a wiring error, since only a source feeds the cascade."""
+    terminal_with_output = _RecordingSelector[ProposedChangeArtifactDefinition, RequestArtifactDefinitionGenerate](
+        result=[],
+        workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+        cascade_role=CascadeRole.TERMINAL,
+        output=StubCascadeSourceOutput(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"^cascade terminal 'request_artifact_definitions_generate' produced an output capture; "
+            r"only a source feeds the cascade$"
+        ),
+    ):
+        await MergeSelectiveRegeneration(selectors=[terminal_with_output]).build_plan(
+            diff_summary=[], target_branch=TARGET_BRANCH
+        )
+
+
 async def test_build_plan_shares_modified_kinds_and_assembles_plan() -> None:
     """build_plan computes the modified kinds once and returns one entry per selector, in order."""
     diff_summary = [
@@ -122,8 +159,7 @@ async def test_build_plan_shares_modified_kinds_and_assembles_plan() -> None:
     artifact_request = RequestArtifactDefinitionGenerate(
         artifact_definition_id="art-1", artifact_definition_name="art", branch=TARGET_BRANCH, members=["m1"]
     )
-    generator_output = _StubOutput()
-    artifact_output = _StubOutput()
+    generator_output = StubCascadeSourceOutput()
     generator_selector = _RecordingSelector[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun](
         result=[], workflow=REQUEST_GENERATOR_DEFINITION_RUN, cascade_role=CascadeRole.SOURCE, output=generator_output
     )
@@ -131,7 +167,6 @@ async def test_build_plan_shares_modified_kinds_and_assembles_plan() -> None:
         result=[artifact_request],
         workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
         cascade_role=CascadeRole.TERMINAL,
-        output=artifact_output,
     )
 
     plan = await MergeSelectiveRegeneration(selectors=[generator_selector, artifact_selector]).build_plan(
@@ -140,7 +175,7 @@ async def test_build_plan_shares_modified_kinds_and_assembles_plan() -> None:
 
     assert [(entry.workflow, entry.cascade_role, entry.requests, entry.output) for entry in plan.entries] == [
         (REQUEST_GENERATOR_DEFINITION_RUN, CascadeRole.SOURCE, [], generator_output),
-        (REQUEST_ARTIFACT_DEFINITION_GENERATE, CascadeRole.TERMINAL, [artifact_request], artifact_output),
+        (REQUEST_ARTIFACT_DEFINITION_GENERATE, CascadeRole.TERMINAL, [artifact_request], None),
     ]
 
     # modified_kinds is computed once off the target branch (the other-branch entry is excluded) and

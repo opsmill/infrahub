@@ -8,6 +8,7 @@ from infrahub.core.merge.selective_regen.gate import DefinitionGate
 from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
 from infrahub.core.merge.selective_regen.models import (
     CascadeRole,
+    CascadeSourceOutput,
     DefinitionModel,
     GateResult,
     LoadedDefinition,
@@ -19,9 +20,18 @@ from infrahub.message_bus.types import ProposedChangeArtifactDefinition
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, REQUEST_GENERATOR_DEFINITION_RUN
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub_sdk.diff import NodeDiff
 
     from infrahub.core.timestamp import Timestamp
+
+
+class StubCascadeSourceOutput:
+    """A CascadeSourceOutput that captures nothing, for source doubles that only exercise selection."""
+
+    async def capture(self, *, since: Timestamp) -> list[NodeDiff]:
+        return []
 
 
 class RecordingGeneratorDiffCapturer:
@@ -103,6 +113,9 @@ class GeneratorForcingSelector(
 ):
     workflow = REQUEST_GENERATOR_DEFINITION_RUN
     cascade_role = CascadeRole.SOURCE
+
+    def output_capture(self, requests: Sequence[RequestGeneratorDefinitionRun]) -> CascadeSourceOutput:
+        return StubCascadeSourceOutput()
 
     def _build_request(
         self, *, definition: ProposedChangeGeneratorDefinition, target_branch: str, members: list[str]

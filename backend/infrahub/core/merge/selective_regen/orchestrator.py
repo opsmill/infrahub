@@ -68,14 +68,7 @@ class MergeSelectiveRegeneration:
                 target_branch=target_branch,
                 modified_kinds=modified_kinds,
             )
-            entries.append(
-                PlannedRegeneration(
-                    workflow=selector.workflow,
-                    cascade_role=selector.cascade_role,
-                    requests=requests,
-                    output=selector.output_capture(requests),
-                )
-            )
+            entries.append(self._plan_entry(selector, requests))
         return SelectiveRegenerationPlan(entries=entries)
 
     async def reselect_from_cascade_output(
@@ -110,15 +103,39 @@ class MergeSelectiveRegeneration:
                 target_branch=target_branch,
                 modified_kinds=modified_kinds,
             )
-            entries.append(
-                PlannedRegeneration(
-                    workflow=selector.workflow,
-                    cascade_role=selector.cascade_role,
-                    requests=requests,
-                    output=selector.output_capture(requests),
-                )
-            )
+            entries.append(self._plan_entry(selector, requests))
         return entries
+
+    def _plan_entry(
+        self, selector: DefinitionSelectorBase[Any, Any], requests: Sequence[RegenerationRequest]
+    ) -> PlannedRegeneration:
+        """Build the entry for one selector's requests, enforcing that only a source carries cascade output.
+
+        A source feeds the cascade, so it must capture output for its terminals to reselect from; a
+        terminal ends the chain, so it must not. A mismatch is a wiring error caught here rather than a
+        source that runs but whose terminals are silently never reselected.
+
+        Raises:
+            ValueError: When a source carries no output capture, or a terminal carries one.
+
+        """
+        output = selector.output_capture(requests)
+        if selector.cascade_role is CascadeRole.SOURCE and output is None:
+            raise ValueError(
+                f"cascade source {selector.workflow.name!r} produced no output capture; "
+                "a source must capture the output its terminals reselect from"
+            )
+        if selector.cascade_role is CascadeRole.TERMINAL and output is not None:
+            raise ValueError(
+                f"cascade terminal {selector.workflow.name!r} produced an output capture; "
+                "only a source feeds the cascade"
+            )
+        return PlannedRegeneration(
+            workflow=selector.workflow,
+            cascade_role=selector.cascade_role,
+            requests=requests,
+            output=output,
+        )
 
     def consolidate_submissions(self, entries: Sequence[PlannedRegeneration]) -> list[PlannedRegeneration]:
         """Combine the given entries' requests through the selector that owns each, one batch per selector.
