@@ -86,16 +86,21 @@ class SingleRelationshipResolver:
         response: dict[str, Any] = {"node": None, "properties": {}}
 
         # The cardinality-one peer ID is already loaded on the parent, so
-        # avoid hydrating a full peer just to serialize that same ID.
+        # avoid hydrating a full peer just to serialize that same ID. This is
+        # only safe when the peer is a concrete node: a generic peer resolves
+        # to a GraphQL interface whose type resolution needs the peer kind,
+        # which the preloaded parent data does not carry.
         if set(node_fields) == {"id"} and not property_fields and not any(metadata_fields.values()):
-            try:
-                peer_id: str = parent[node_rel.name][0]["node"]["id"]
-            except (KeyError, IndexError):
+            schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)
+            if node_rel.peer not in schema_branch.generics:
+                try:
+                    peer_id: str = parent[node_rel.name][0]["node"]["id"]
+                except (KeyError, IndexError):
+                    return response
+                response["node"] = {"id": peer_id}
+                if graphql_context.related_node_ids is not None:
+                    graphql_context.related_node_ids.add(peer_id)
                 return response
-            response["node"] = {"id": peer_id}
-            if graphql_context.related_node_ids is not None:
-                graphql_context.related_node_ids.add(peer_id)
-            return response
 
         relationship: Relationship | None = None
         peer_node: Node | None = None
