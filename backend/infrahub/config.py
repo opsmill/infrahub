@@ -221,6 +221,20 @@ class MainSettings(BaseSettings):
         description="When enabled, only the generators and artifact definitions affected by a merge "
         "are re-executed; when disabled, every generator and artifact definition is re-executed.",
     )
+    selective_merge_diff_max_nodes: int = Field(
+        default=10000,
+        ge=0,
+        description="Maximum number of changed nodes a merge diff may hold to remain eligible for "
+        "selective post-merge execution; a larger merge falls back to regenerating every generator "
+        "and artifact definition.",
+    )
+    selective_merge_diff_max_bytes: int = Field(
+        default=500000,
+        ge=0,
+        description="Maximum serialized size, in bytes, of the merge diff summary cached for selective "
+        "post-merge execution; a larger summary falls back to regenerating every generator and artifact "
+        "definition. Keep it below the cache backend's per-value limit.",
+    )
     merge_failure_grace_period_seconds: int = Field(
         default=180,
         ge=0,

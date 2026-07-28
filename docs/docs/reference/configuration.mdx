@@ -39,6 +39,8 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_DIFF_UPDATE_AFTER_MERGE` | When enabled, diff updates are triggered for active branches after a branch merge. | boolean | True |
 | `INFRAHUB_DELETE_BRANCH_AFTER_MERGE` | When enabled, the Infrahub branch is automatically deleted after a successful merge. | boolean | False |
 | `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE` | When enabled, only the generators and artifact definitions affected by a merge are re-executed; when disabled, every generator and artifact definition is re-executed. | boolean | True |
+| `INFRAHUB_SELECTIVE_MERGE_DIFF_MAX_NODES` | Maximum number of changed nodes a merge diff may hold to remain eligible for selective post-merge execution; a larger merge falls back to regenerating every generator and artifact definition. | integer | 10000 |
+| `INFRAHUB_SELECTIVE_MERGE_DIFF_MAX_BYTES` | Maximum serialized size, in bytes, of the merge diff summary cached for selective post-merge execution; a larger summary falls back to regenerating every generator and artifact definition. Keep it below the cache backend's per-value limit. | integer | 500000 |
 | `INFRAHUB_MERGE_FAILURE_GRACE_PERIOD_SECONDS` | How long a branch may stay in MERGING with a dead merge-lock holder before it is flagged MERGE_FAILED. | integer | 180 |
 
 ## Api
