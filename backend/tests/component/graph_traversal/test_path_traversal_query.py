@@ -266,6 +266,8 @@ async def test_exhaustive_handles_same_uuid_vertices_after_kind_migration(
     candidate_schema.delete(name="TestHub")
     hub_schema.inherit_from = ["TestGrouping"]
     candidate_schema.set(name="TestHub", schema=hub_schema)
+    # Reprocess to remove generated schemas based on the deleted kind
+    candidate_schema.process()
 
     migration_at = Timestamp()
     migration = NodeKindUpdateMigration(
