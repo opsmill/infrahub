@@ -494,18 +494,18 @@ async def _build_post_merge_regeneration_dispatcher(
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    output_capturer = GeneratorTrackingGroupDiffCapturer(
+        diff_coordinator=diff_coordinator,
+        diff_repository=diff_repository,
+        serializer=DiffSummarySerializer(),
+        client=get_client(),
+        branch=branch,
+    )
     return PostMergeRegenerationDispatcher(
         workflow=get_workflow(),
-        selector=build_merge_selective_regeneration(client=get_client(), log=log),
+        selector=build_merge_selective_regeneration(client=get_client(), log=log, output_capturer=output_capturer),
         summary_cache=DiffSummaryCache(
             cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
-        ),
-        generator_diff_capturer=GeneratorTrackingGroupDiffCapturer(
-            diff_coordinator=diff_coordinator,
-            diff_repository=diff_repository,
-            serializer=DiffSummarySerializer(),
-            client=get_client(),
-            branch=branch,
         ),
         log=log,
     )

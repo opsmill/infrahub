@@ -5,12 +5,11 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from infrahub import config
+from infrahub.core.merge.selective_regen.models import CascadeRole
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ResourceNotFoundError
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.workflows.catalogue import (
-    REQUEST_ARTIFACT_DEFINITION_GENERATE,
-    REQUEST_GENERATOR_DEFINITION_RUN,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
     TRIGGER_GENERATOR_DEFINITION_RUN,
 )
@@ -18,13 +17,13 @@ from infrahub.workflows.catalogue import (
 if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
 
+    from infrahub_sdk.diff import NodeDiff
+
     from infrahub.context import InfrahubContext
     from infrahub.core.diff.summary_cache import DiffSummaryCache
-    from infrahub.git.models import RequestArtifactDefinitionGenerate
     from infrahub.services.adapters.workflow import InfrahubWorkflow
 
-    from .selective_regen.generator_diff_capturer import GeneratorMutationDiffCapturer
-    from .selective_regen.models import SelectiveRegenerationPlan
+    from .selective_regen.models import PlannedRegeneration, SelectiveRegenerationPlan
     from .selective_regen.orchestrator import RegenerationSelector
 
 
@@ -49,26 +48,6 @@ async def submit_full_regeneration(*, workflow: InfrahubWorkflow, context: Infra
     )
 
 
-def _consolidate_artifact_generates(
-    artifact_generates: list[RequestArtifactDefinitionGenerate],
-) -> list[RequestArtifactDefinitionGenerate]:
-    """Merge requests for the same artifact definition into one, unioning their member/limit filters.
-
-    An artifact selected from both the merge diff and a generator's output would otherwise be dispatched
-    twice; an empty filter means "all members", so it subsumes any specific filter.
-    """
-    consolidated: dict[str, RequestArtifactDefinitionGenerate] = {}
-    for request in artifact_generates:
-        merged = consolidated.get(request.artifact_definition_id)
-        if merged is None:
-            consolidated[request.artifact_definition_id] = request
-            continue
-        members = [] if not merged.members or not request.members else sorted({*merged.members, *request.members})
-        limit = [] if not merged.limit or not request.limit else sorted({*merged.limit, *request.limit})
-        consolidated[request.artifact_definition_id] = merged.model_copy(update={"members": members, "limit": limit})
-    return list(consolidated.values())
-
-
 class PostMergeRegenerationDispatcher:
     """Decide and submit which generators and artifacts a committed merge should regenerate.
 
@@ -83,13 +62,11 @@ class PostMergeRegenerationDispatcher:
         workflow: InfrahubWorkflow,
         selector: RegenerationSelector,
         summary_cache: DiffSummaryCache,
-        generator_diff_capturer: GeneratorMutationDiffCapturer,
         log: Logger | LoggerAdapter[Logger],
     ) -> None:
         self.workflow = workflow
         self.selector = selector
         self.summary_cache = summary_cache
-        self.generator_diff_capturer = generator_diff_capturer
         self.log = log
 
     async def dispatch(
@@ -141,29 +118,33 @@ class PostMergeRegenerationDispatcher:
         target_branch: str,
         plan: SelectiveRegenerationPlan,
     ) -> None:
-        generator_cascade = bool(plan.generator_runs)
+        sources = plan.for_role(CascadeRole.SOURCE)
+        terminals = plan.for_role(CascadeRole.TERMINAL)
+        source_runs = [request for entry in sources for request in entry.requests]
+        generator_cascade = bool(source_runs)
         cascade_started_at = Timestamp() if generator_cascade else None
 
         self.log.debug(
-            f"Selective post-merge execution: {len(plan.generator_runs)} generator run(s), "
-            f"{len(plan.artifact_generates)} artifact generation(s)"
+            f"Selective post-merge execution: {len(source_runs)} cascade-source run(s), "
+            f"{sum(len(entry.requests) for entry in terminals)} terminal generation(s)"
             + ("; generator cascade engaged" if generator_cascade else "")
         )
 
         if cascade_started_at is None:
-            await self._submit_artifacts(context=context, artifact_generates=plan.artifact_generates)
+            await self._submit(context=context, entries=terminals)
             return
 
         generator_failed = False
-        for generator_run in plan.generator_runs:
-            try:
-                # Await each generator so its writes have landed before they are captured.
-                await self.workflow.execute_workflow(
-                    workflow=REQUEST_GENERATOR_DEFINITION_RUN, context=context, parameters={"model": generator_run}
-                )
-            except Exception:
-                generator_failed = True
-                self.log.exception("Post-merge generator run failed")
+        for entry in sources:
+            for run in entry.requests:
+                try:
+                    # Await each generator so its writes have landed before they are captured.
+                    await self.workflow.execute_workflow(
+                        workflow=entry.workflow, context=context, parameters={"model": run}
+                    )
+                except Exception:
+                    generator_failed = True
+                    self.log.exception("Post-merge generator run failed")
 
         if generator_failed:
             # A failed generator's consuming artifacts cannot be selected from its output, so regenerate
@@ -171,50 +152,51 @@ class PostMergeRegenerationDispatcher:
             await self._submit_full_artifact_regeneration(context=context, target_branch=target_branch)
             return
 
-        targeted = await self._artifacts_from_generator_output(
-            context=context,
-            target_branch=target_branch,
-            since=cascade_started_at,
-            generator_definition_names=[run.generator_definition.definition_name for run in plan.generator_runs],
+        targeted = await self._reselect_from_cascade_output(
+            context=context, target_branch=target_branch, sources=sources, since=cascade_started_at
         )
         if targeted is None:
             # Every artifact was already regenerated wholesale, which covers the merge-diff selection too.
             return
-        # Dispatched only after the capture, so the capture window never sees these artifact generations'
-        # own writes.
-        await self._submit_artifacts(context=context, artifact_generates=[*plan.artifact_generates, *targeted])
+        # Dispatched only after the capture, so the capture window never sees these generations' own writes.
+        await self._submit(context=context, entries=[*terminals, *targeted])
 
-    async def _submit_artifacts(
-        self, *, context: InfrahubContext, artifact_generates: list[RequestArtifactDefinitionGenerate]
-    ) -> None:
-        for artifact_generate in _consolidate_artifact_generates(artifact_generates):
-            await self.workflow.submit_workflow(
-                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, context=context, parameters={"model": artifact_generate}
-            )
+    async def _submit(self, *, context: InfrahubContext, entries: list[PlannedRegeneration]) -> None:
+        """Submit each fire-and-forget request, letting the owning selector consolidate its own kind."""
+        for entry in self.selector.consolidate_submissions(entries):
+            for request in entry.requests:
+                await self.workflow.submit_workflow(
+                    workflow=entry.workflow, context=context, parameters={"model": request}
+                )
 
-    async def _artifacts_from_generator_output(
+    async def _reselect_from_cascade_output(
         self,
         *,
         context: InfrahubContext,
         target_branch: str,
+        sources: list[PlannedRegeneration],
         since: Timestamp,
-        generator_definition_names: list[str],
-    ) -> list[RequestArtifactDefinitionGenerate] | None:
-        """Select the artifacts the just-run generators' writes require be regenerated.
+    ) -> list[PlannedRegeneration] | None:
+        """Reselect the fire-and-forget generations the just-run sources' own output requires.
 
-        Returns ``None`` after regenerating every artifact wholesale when the generator output cannot be
-        captured or selected, so a generator's writes can never leave a consuming artifact stale.
+        Each source captures its own output; the terminals that read it are then reselected from the
+        combined diff. Returns ``None`` after regenerating every artifact wholesale when that output
+        cannot be captured or selected, so a source's writes can never leave a consuming artifact stale.
         """
         try:
-            generator_diff = await self.generator_diff_capturer.capture(
-                since=since, generator_definition_names=generator_definition_names
+            captured: list[NodeDiff] = []
+            for entry in sources:
+                if entry.output is not None:
+                    captured.extend(await entry.output.capture(since=since))
+            targeted = await self.selector.reselect_from_cascade_output(
+                diff_summary=captured, target_branch=target_branch
             )
-            targeted = await self.selector.select_artifacts(diff_summary=generator_diff, target_branch=target_branch)
         except Exception:
             self.log.exception("Failed to target artifacts from generator output; regenerating all artifacts instead")
             await self._submit_full_artifact_regeneration(context=context, target_branch=target_branch)
             return None
-        self.log.debug(f"Targeted {len(targeted)} artifact definition(s) from generator output")
+        targeted_count = sum(len(entry.requests) for entry in targeted)
+        self.log.debug(f"Targeted {targeted_count} artifact definition(s) from generator output")
         return targeted
 
     async def _full_regeneration(
