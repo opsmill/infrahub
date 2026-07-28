@@ -37,6 +37,21 @@ class GeneratorMutationDiffCapturer(Protocol):
     async def capture(self, *, since: Timestamp, generator_definition_names: list[str]) -> list[NodeDiff]: ...
 
 
+class GeneratorTrackingOutput:
+    """The cascade output of a set of generators, captured through their per-member tracking groups.
+
+    Binds the generators' definition names to the capturer so the follow-up can capture their output
+    without handling the names itself.
+    """
+
+    def __init__(self, *, capturer: GeneratorMutationDiffCapturer, definition_names: list[str]) -> None:
+        self._capturer = capturer
+        self._definition_names = definition_names
+
+    async def capture(self, *, since: Timestamp) -> list[NodeDiff]:
+        return await self._capturer.capture(since=since, generator_definition_names=self._definition_names)
+
+
 class GeneratorTrackingGroupDiffCapturer:
     """Capture a post-merge generator's own writes, scoped to the nodes it tracked.
 

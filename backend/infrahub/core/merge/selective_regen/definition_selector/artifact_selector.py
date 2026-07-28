@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from infrahub_sdk.protocols import CoreArtifactDefinition
 
 from infrahub.core.constants import InfrahubKind
@@ -8,15 +10,42 @@ from infrahub.core.regeneration.members import should_render_artifact
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.git.utils import fetch_artifact_definition_targets
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
+from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 
-from ..models import LoadedDefinition
+from ..models import CascadeRole, LoadedDefinition
 from .base import DefinitionSelectorBase
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class ArtifactSelector(DefinitionSelectorBase[ProposedChangeArtifactDefinition, RequestArtifactDefinitionGenerate]):
     """Selects the artifact definitions a merge changed, narrowed to the members it affects."""
 
     subscriber_kind = InfrahubKind.ARTIFACT
+    workflow = REQUEST_ARTIFACT_DEFINITION_GENERATE
+    cascade_role = CascadeRole.TERMINAL
+
+    def consolidate(
+        self, requests: Sequence[RequestArtifactDefinitionGenerate]
+    ) -> list[RequestArtifactDefinitionGenerate]:
+        """Merge requests for the same artifact definition, unioning their member/limit filters.
+
+        An artifact selected from both the merge diff and a generator's output would otherwise be
+        dispatched twice; an empty filter means "all members", so it subsumes any specific filter.
+        """
+        consolidated: dict[str, RequestArtifactDefinitionGenerate] = {}
+        for request in requests:
+            merged = consolidated.get(request.artifact_definition_id)
+            if merged is None:
+                consolidated[request.artifact_definition_id] = request
+                continue
+            members = [] if not merged.members or not request.members else sorted({*merged.members, *request.members})
+            limit = [] if not merged.limit or not request.limit else sorted({*merged.limit, *request.limit})
+            consolidated[request.artifact_definition_id] = merged.model_copy(
+                update={"members": members, "limit": limit}
+            )
+        return list(consolidated.values())
 
     async def load_definitions(self, *, target_branch: str) -> list[LoadedDefinition[ProposedChangeArtifactDefinition]]:
         definition_information = await self.client.execute_graphql(
