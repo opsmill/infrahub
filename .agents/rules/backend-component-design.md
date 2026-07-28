@@ -18,11 +18,20 @@ Constructor dependencies for new code are required parameters - not `collaborato
 
 The single exception is editing existing code where adding a required parameter would force a large change across many call sites. There, an optional parameter is a transitional compromise to keep the change small - not the target shape for new components.
 
+Late registration is the same anti-pattern in another shape. `set_collaborator(x)`, `register_handler(fn)`, or assigning `obj.on_change = fn` after construction hides the dependency at construction, lets a caller skip wiring it, lets a second caller silently clobber the first's, and forces a `None` check at every use site. Pass it to `__init__`. When the component feeds zero or more collaborators rather than exactly one, that argument is a required `list[...]`, and callers with nothing to wire pass `[]` explicitly.
+
 ## Build components near the application entry point
 
 Construct components as close to the application entry point as possible. Use a builder class or factory function when wiring is non-trivial, and inject each sub-component rather than constructing it inside a parent component's `__init__`.
 
 Prefect `@flow` functions are application entry points: resolve singleton getters (`get_database()`, `get_workflow()`, …) at the top of the flow only — never inside helpers or component internals — then build the component and delegate to it. The flow body stays a thin composition root; the business logic lives in the component.
+
+Anything that comes from outside the component's own domain — loaded settings, an external service client, a telemetry sink — is resolved at that entry point, never inside the component:
+
+- **Settings resolve in the factory, not the component.** A component takes plain values (`window_seconds: float`, `max_retries: int`), never a `Settings` object and never a module-global read. The factory is then the only place that knows a value came from configuration, which is also what makes the component directly testable with hand-picked values.
+- **The factory takes its out-of-domain collaborators as parameters too**, rather than choosing them. A factory that both reads settings *and* picks the concrete adapters has only moved the coupling one level out; take them as arguments so the entry point names them and the factory stays reusable with different ones.
+- **Configure at construction, never by assignment afterwards.** Reaching into a built object to finish setting it up leaves a window in which it is misconfigured, makes a fixed value look mutable, and scatters the wiring across two places. Pass it to `__init__`, and expose it through a read-only property if callers need to read it back.
+- **A lazily-built process-global lives in its own registry module**, separate from the component it builds, so importing the component never drags the wiring — and the dependencies behind it — into the import chain. Build on first use rather than at import, so the settings read happens after configuration is loaded and importing the module stays free of side effects.
 
 ## Single entry point, operating on arguments
 
@@ -56,6 +65,22 @@ When more than one implementation of a component is required (e.g. real vs. in-m
 A single implementation does not need an interface yet; introduce one when the second implementation arrives. Note that the second implementation
 can be either a no-op version (such as in the case of an enterprise-only feature) or a testing version of a component (such as in the case of an
 in-memory version of a component typically backed by the database).
+
+## Interfaces to keep an out-of-domain dependency out
+
+The other reason to declare a `Protocol` is to invert a dependency direction, and there **one implementation is enough**. The situation: a component's logic has no business knowing about some out-of-domain concern — metrics, tracing, analytics, an audit trail, a notification service — but something has to feed that concern from inside the component's flow. Importing the client directly is what you are avoiding: it makes the dependency viral, drags a third-party package into the import chain of pure logic, and means the component can no longer be constructed in a test without it.
+
+Split it in three:
+
+- **Use a `Protocol`, not an ABC, and declare it beside the component that depends on it.** Structural typing is what makes this work: the adapter satisfies the protocol by having matching signatures, so it never imports the protocol's module and the dependency does not run backwards. An ABC does not have that property — the adapter must subclass it, and therefore import whatever module it lives in. If you genuinely need an ABC, it goes in a module of its own that both sides import, never in the consumer's module.
+- **Name the methods in the depending component's vocabulary**, not the adapter's — `on_depth_changed(*, queued: int, running: int)`, not `set_gauges(...)` — and pass the values as arguments rather than handing over `self`, so the adapter can never read back into the component. The component then depends on a shape it defined, has no idea what is on the other side, and stays free to change its internals.
+- **Put the concrete adapter in a separate, purpose-named module** that is the only place importing the library, and **let only the wiring layer import both** (see "Build components near the application entry point").
+
+The acceptance test is an import-graph one: after this, the library is reachable from the entry point and from the adapter module, and from nowhere in the logic. Verify it by grepping for the package name — if it appears anywhere under the component's own package, the split is incomplete.
+
+This is the deliberate exception to "a single implementation does not need an interface yet" above. The interface earns its place by fixing which way the dependency points, not by abstracting over variants — and in practice the test doubles become the second and third implementations anyway.
+
+`backend/infrahub/api/admission/` is a worked example: the decision logic, its protocols, the concrete sinks, and the factory that names them are four separate concerns in four modules.
 
 ## Dispatching across implementations
 
