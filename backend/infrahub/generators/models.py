@@ -104,7 +104,11 @@ class ProposedChangeGeneratorDefinition(GeneratorDefinitionModel):
         return "instances"
 
     def reads_kind(self, kind: str) -> bool:
-        """Whether a data change to ``kind`` is relevant because the query reads that kind."""
+        """Whether a data change to ``kind`` is relevant because the query reads that kind.
+
+        Profile changes are matched by widening the changed kinds to the profiled node kind before
+        this check, so a profile read need not be reconstructed here.
+        """
         return kind in self.query_models
 
 

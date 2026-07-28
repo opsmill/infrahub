@@ -140,11 +140,10 @@ class ProposedChangeArtifactDefinition(BaseModel):
     def reads_kind(self, kind: str) -> bool:
         """Whether a data change to ``kind`` is relevant because the query reads that kind.
 
-        An artifact query may read a kind through its Profile, so the profile-stripped kind matches too.
+        Profile changes are matched by widening the changed kinds to the profiled node kind before
+        this check, so a profile read need not be reconstructed here.
         """
-        return kind in self.query_models or (
-            kind.startswith("Profile") and kind.replace("Profile", "", 1) in self.query_models
-        )
+        return kind in self.query_models
 
     @property
     def transform_location(self) -> str:
