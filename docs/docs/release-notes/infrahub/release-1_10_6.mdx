@@ -1,6 +1,6 @@
 ---
 title: Release 1.10.6
-release_date: 2026-07-27
+release_date: 2026-07-28
 release_type: patch
 description: "Speeds up node creation by avoiding a redundant peer query for empty relationships, and fixes repository cascade deletion, IPAM namespace link navigation, git-sync import, and diff-tree rendering."
 ---
@@ -12,7 +12,7 @@ description: "Speeds up node creation by avoiding a redundant peer query for emp
     </tr>
     <tr>
       <th>Release Date</th>
-      <td>July 27th, 2026</td>
+      <td>July 28th, 2026</td>
     </tr>
     <tr>
       <th>Tag</th>
@@ -33,3 +33,5 @@ description: "Speeds up node creation by avoiding a redundant peer query for emp
 - Fixed the branch and proposed change diff view not showing changed objects in the tree when their parent object had no changes of its own. ([#10010](https://github.com/opsmill/infrahub/issues/10010))
 - Fixed the object creation form when adding a component from its parent's tab (e.g. adding an interface from a device): the parent is now pre-selected and the create form opens directly, even when the component's parent relationship points to a generic rather than a concrete node.
 - The proposed changes list is now ordered by creation date with the newest first, on both the open and closed tabs.
+- Fixed schema updates that remove a node with an object template leaving the branch schema permanently out of sync across workers ([#10049](https://github.com/opsmill/infrahub/issues/10049))
+- Branch rebase and merge no longer validate schema constraints for attributes and relationships that were not actually modified on the branch. The query collecting the changed fields of a diff could match nodes belonging to other branches' diffs and to already-merged diffs, which would inflate the set of constraints to check.
