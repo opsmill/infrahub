@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 const GET_OBJECT_THREAD_COMMENTS = graphql(`
   query GET_OBJECT_THREAD_COMMENTS($changeIds: [ID!], $objectPath: String) {

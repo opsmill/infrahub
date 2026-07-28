@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 const GET_ARTIFACT_THREADS = graphql(`
   query GET_ARTIFACT_THREADS($changeIds: [ID!]) {

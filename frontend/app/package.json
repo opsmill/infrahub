@@ -32,7 +32,6 @@
     "check:error-bindings": "node scripts/generate-error-bindings.mjs --check"
   },
   "dependencies": {
-    "@apollo/client": "3.13.8",
     "@codemirror/commands": "^6.10.4",
     "@codemirror/lang-markdown": "^6.5.0",
     "@codemirror/language": "^6.12.4",
@@ -58,8 +57,9 @@
     "@tanstack/react-query-devtools": "^5.101.1",
     "@tanstack/react-table": "^8.21.3",
     "@uiw/react-color": "^2.10.3",
+    "@urql/core": "^6.0.3",
+    "@urql/exchange-auth": "^3.0.0",
     "@xyflow/react": "^12.11.1",
-    "apollo-upload-client": "18.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cm6-graphql": "^0.2.1",
@@ -114,7 +114,6 @@
     "@playwright/test": "1.61.1",
     "@rolldown/plugin-babel": "^0.2.3",
     "@tailwindcss/vite": "catalog:",
-    "@types/apollo-upload-client": "18.0.1",
     "@types/dagre": "^0.7.54",
     "@types/node": "catalog:",
     "@types/prismjs": "^1.26.6",

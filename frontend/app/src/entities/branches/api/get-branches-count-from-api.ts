@@ -1,6 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 
 const GET_BRANCHES_COUNT = graphql(`
   query GetBranchesCount($nameValue: String, $partialMatch: Boolean, $statusValue: BranchStatus, $createdById: ID, $branchedFromAfter: DateTime, $branchedFromBefore: DateTime, $createdAtAfter: DateTime, $createdAtBefore: DateTime, $updatedAtAfter: DateTime, $updatedAtBefore: DateTime) {

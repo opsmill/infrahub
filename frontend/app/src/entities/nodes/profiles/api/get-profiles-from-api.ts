@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import type { ContextParams } from "@/shared/api/types";
 
@@ -45,7 +44,7 @@ export function getProfilesFromApi({
   const getProfilesQueryString = buildGetProfilesQuery(profileSchemas);
 
   return graphqlClient.query({
-    query: gql(getProfilesQueryString),
+    query: graphql(getProfilesQueryString),
     context: {
       branch: branchName,
       date: atDate,

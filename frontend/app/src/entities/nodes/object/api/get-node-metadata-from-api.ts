@@ -1,8 +1,7 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import { nodeMetadataFragment } from "@/shared/api/graphql/fragments";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
 export interface GetNodeMetadataQueryParams {
@@ -23,7 +22,7 @@ const getNodeMetadataQuery = ({ objectId, objectKind }: GetNodeMetadataQueryPara
     },
   };
 
-  return gql(jsonToGraphQLQuery(query));
+  return graphql(jsonToGraphQLQuery(query));
 };
 
 export interface GetNodeMetadataFromApiParams extends ContextParams {
