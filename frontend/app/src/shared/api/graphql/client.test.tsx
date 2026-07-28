@@ -159,6 +159,12 @@ describe("graphqlClient — token refresh integration", () => {
     }
   `;
 
+  const PING_MUTATION = gql`
+    mutation Ping {
+      __typename
+    }
+  `;
+
   function jsonResponse(body: unknown) {
     return new Response(JSON.stringify(body), {
       status: 200,
@@ -295,17 +301,17 @@ describe("graphqlClient — token refresh integration", () => {
     fetchQuerySpy.mockResolvedValue({ access_token: "new-token", refresh_token: "new-refresh" });
 
     // WHEN
-    const result = await graphqlClient.query({ query: PING });
+    const querying = graphqlClient.query({ query: PING });
 
     // THEN — only ONE replay (2 fetches), one refresh, and the persistent expiry
     // routes to /login.
+    await expect(querying).rejects.toThrow("Token expired");
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(fetchQuerySpy).toHaveBeenCalledOnce();
     expect(assignSpy).toHaveBeenCalled();
-    expect(result.errors?.[0]?.message).toBe("Token expired");
   });
 
-  it("returns partial data alongside errors (errorPolicy: all parity)", async () => {
+  it("rejects a query on GraphQL errors even when the response carries data", async () => {
     // GIVEN a response with both data and a (non-auth) error.
     fetchSpy.mockResolvedValueOnce(
       jsonResponse({
@@ -320,13 +326,38 @@ describe("graphqlClient — token refresh integration", () => {
     );
 
     // WHEN
-    const result = await graphqlClient.query({
+    const querying = graphqlClient.query({
       query: PING,
       context: { processErrorMessage: () => {} },
     });
 
-    // THEN — data retained, errors surfaced, errors is a non-empty array
-    expect(result.data).toEqual({ __typename: "Query" });
-    expect(result.errors).toHaveLength(1);
+    // THEN — callers never have to decide what a half-failed read means
+    await expect(querying).rejects.toThrow("partial");
+  });
+
+  // Queries resolve with errors, mutations reject: use-cases await a mutation without checking
+  // `errors`, so resolving would run their onSuccess after a failed write.
+  it("rejects when a mutation responds with GraphQL errors", async () => {
+    // GIVEN a mutation whose response carries a GraphQL error
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse({
+        data: null,
+        errors: [
+          {
+            message: "Cannot delete Device 'x'.",
+            extensions: { code: ERROR_CODES.UNDEFINED_ERROR, http_status: 500, data: {} },
+          },
+        ],
+      })
+    );
+
+    // WHEN
+    const mutating = graphqlClient.mutate({
+      mutation: PING_MUTATION,
+      context: { processErrorMessage: () => {} },
+    });
+
+    // THEN the caller sees a rejection carrying the backend message, unprefixed
+    await expect(mutating).rejects.toThrow("Cannot delete Device 'x'.");
   });
 });

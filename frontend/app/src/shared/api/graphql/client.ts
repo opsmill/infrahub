@@ -92,11 +92,11 @@ function toGraphQLResult<TData>(
     throw error.networkError;
   }
 
-  const errors = error?.graphQLErrors?.length
-    ? error.graphQLErrors.map((e) => ({ message: e.message }))
-    : undefined;
+  if (error?.graphQLErrors?.length) {
+    throw new Error(error.graphQLErrors.map((e) => e.message).join("; "), { cause: error });
+  }
 
-  return { data: data as TData, error: errors ? error : undefined, errors };
+  return { data: data as TData };
 }
 
 interface QueryArgs<TData, TVars extends AnyVariables> {
