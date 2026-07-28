@@ -101,16 +101,28 @@ GATE_CASES = [
         expected=GateResult(regenerate_all_members=False, selected=False),
     ),
     GateCase(
-        name="artifact_matches_profile_stripped_kind",
+        name="artifact_does_not_match_profile_kind_without_widening",
         is_artifact=True,
         modified_kinds=["ProfileTestDevice"],
-        expected=GateResult(regenerate_all_members=False, selected=True),
+        expected=GateResult(regenerate_all_members=False, selected=False),
     ),
     GateCase(
-        name="generator_ignores_profile_stripped_kind",
+        name="generator_does_not_match_profile_kind_without_widening",
         is_artifact=False,
         modified_kinds=["ProfileTestDevice"],
         expected=GateResult(regenerate_all_members=False, selected=False),
+    ),
+    GateCase(
+        name="widened_profile_base_kind_selects_artifact",
+        is_artifact=True,
+        modified_kinds=["ProfileTestDevice", "TestDevice"],
+        expected=GateResult(regenerate_all_members=False, selected=True),
+    ),
+    GateCase(
+        name="widened_profile_base_kind_selects_generator",
+        is_artifact=False,
+        modified_kinds=["ProfileTestDevice", "TestDevice"],
+        expected=GateResult(regenerate_all_members=False, selected=True),
     ),
 ]
 
