@@ -12,8 +12,10 @@ from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.merge.selective_regen.generator_diff_capturer import (
     CAPTURE_DIFF_NAME_PREFIX,
     GeneratorTrackingGroupDiffCapturer,
+    GeneratorTrackingOutput,
 )
 from infrahub.core.timestamp import Timestamp
+from tests.helpers.selective_regen import RecordingGeneratorDiffCapturer
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -179,3 +181,15 @@ async def test_capture_marks_the_saved_diff_so_it_can_be_identified_later() -> N
 
     assert len(coordinator.names) == 1
     assert coordinator.names[0].startswith(CAPTURE_DIFF_NAME_PREFIX)
+
+
+async def test_generator_tracking_output_forwards_its_names_and_since_to_the_capturer() -> None:
+    """GeneratorTrackingOutput binds the generator names to the capturer and forwards the since and diff."""
+    capturer = RecordingGeneratorDiffCapturer()
+    output = GeneratorTrackingOutput(capturer=capturer, definition_names=["gen-a", "gen-b"])
+    since = Timestamp()
+
+    captured = await output.capture(since=since)
+
+    assert capturer.calls == [(since, ["gen-a", "gen-b"])]
+    assert captured is capturer.result
