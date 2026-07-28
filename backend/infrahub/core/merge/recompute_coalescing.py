@@ -238,7 +238,7 @@ class CoalescedRecomputeBuilder:
                     kind=signature.kind, fields=None, include_self=True, include_cross=True, precise=False
                 )
                 return
-            # Cross-node readers only; the node refreshed its own values inline on the save.
+            # The node refreshed its own values inline on the save; only cross-node readers remain.
             yield from self._derive_family_targets(
                 kind=signature.kind,
                 fields=signature.changed_fields,
@@ -246,8 +246,8 @@ class CoalescedRecomputeBuilder:
                 include_cross=True,
                 precise=True,
             )
-            # A deleted peer closes the edge without saving the reader, so nothing recomputed it inline;
-            # recompute the reader's own values across the relationship, by its own id.
+            # A relationship change that doesn't save the reader (e.g. a peer deleted on another branch)
+            # skips the reader's inline recompute, so refresh its own values here.
             relationship_fields = self._changed_relationship_fields(
                 kind=signature.kind, changed_fields=signature.changed_fields
             )
@@ -263,8 +263,14 @@ class CoalescedRecomputeBuilder:
         raise ValueError(f"Unknown change action: {signature.action!r}")
 
     def _changed_relationship_fields(self, *, kind: str, changed_fields: frozenset[str]) -> frozenset[str] | None:
-        """Return the changed fields that name a relationship on ``kind`` (None if none)."""
-        node_schema = self.schema_branch.get_node(name=kind, duplicate=False)
+        """Return the changed fields that name a relationship on ``kind`` (None if none).
+
+        Any node-like kind (profiles and templates included) carries relationships, and a kind absent
+        from the branch yields None instead of raising.
+        """
+        if not self.schema_branch.has(name=kind):
+            return None
+        node_schema = self.schema_branch.get(name=kind, duplicate=False)
         matched = changed_fields & {relationship.name for relationship in node_schema.relationships}
         return frozenset(matched) or None
 

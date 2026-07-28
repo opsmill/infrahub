@@ -308,7 +308,8 @@ class TestMergeRecompute(TestInfrahubDockerClient):
         schema = build_profile_schema_dict()
         node_schema = schema["nodes"][1]
         node_schema["relationships"][0]["optional"] = True
-        # Self-only display label: refreshing a cross-relationship display label is handled separately.
+        # Local display label: this test asserts the computed attribute's refresh, not the separate
+        # missing-peer diff crash for a cross-relationship label, which is fixed on its own path.
         node_schema["display_label"] = "{{ name__value }}"
         await client.schema.load(schemas=[schema], wait_until_converged=True)
 
