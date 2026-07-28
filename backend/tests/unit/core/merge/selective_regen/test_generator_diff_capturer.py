@@ -9,8 +9,12 @@ from infrahub.core.diff.model.path import EnrichedDiffRoot, EnrichedDiffRootMeta
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
-from infrahub.core.merge.selective_regen.generator_diff_capturer import GeneratorTrackingGroupDiffCapturer
+from infrahub.core.merge.selective_regen.generator_diff_capturer import (
+    GeneratorTrackingGroupDiffCapturer,
+    GeneratorTrackingOutput,
+)
 from infrahub.core.timestamp import Timestamp
+from tests.helpers.selective_regen import RecordingGeneratorDiffCapturer
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -158,3 +162,15 @@ async def test_capture_widens_when_any_definition_lacks_a_tracking_group() -> No
     # abandoning the second definition once the first resolved.
     assert client.queried_names == ["genA", "genB"]
     assert repository.filters_seen == [None]
+
+
+async def test_generator_tracking_output_forwards_its_names_and_since_to_the_capturer() -> None:
+    """GeneratorTrackingOutput binds the generator names to the capturer and forwards the since and diff."""
+    capturer = RecordingGeneratorDiffCapturer()
+    output = GeneratorTrackingOutput(capturer=capturer, definition_names=["gen-a", "gen-b"])
+    since = Timestamp()
+
+    captured = await output.capture(since=since)
+
+    assert capturer.calls == [(since, ["gen-a", "gen-b"])]
+    assert captured is capturer.result

@@ -9,6 +9,7 @@ from infrahub.core.merge.selective_regen.definition_selector.artifact_selector i
 from infrahub.core.merge.selective_regen.definition_selector.generator_selector import GeneratorSelector
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
 from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
+from tests.helpers.selective_regen import RecordingGeneratorDiffCapturer
 
 
 @pytest.fixture
@@ -39,7 +40,18 @@ def artifact_selector(
 
 
 @pytest.fixture
+def output_capturer() -> RecordingGeneratorDiffCapturer:
+    return RecordingGeneratorDiffCapturer()
+
+
+@pytest.fixture
 def generator_selector(
-    client: InfrahubClient, gate: DefinitionGate, impacted_resolver: ImpactedSubscriberResolver, log: logging.Logger
+    client: InfrahubClient,
+    gate: DefinitionGate,
+    impacted_resolver: ImpactedSubscriberResolver,
+    log: logging.Logger,
+    output_capturer: RecordingGeneratorDiffCapturer,
 ) -> GeneratorSelector:
-    return GeneratorSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log)
+    return GeneratorSelector(
+        client=client, gate=gate, impacted_resolver=impacted_resolver, log=log, output_capturer=output_capturer
+    )

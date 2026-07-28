@@ -6,14 +6,34 @@ from typing import TYPE_CHECKING
 from infrahub.core.merge.selective_regen.definition_selector.base import DefinitionSelectorBase
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
 from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
-from infrahub.core.merge.selective_regen.models import DefinitionModel, GateResult, LoadedDefinition
+from infrahub.core.merge.selective_regen.models import (
+    CascadeRole,
+    DefinitionModel,
+    GateResult,
+    LoadedDefinition,
+)
 from infrahub.core.regeneration.models import TargetSelection
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
+from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, REQUEST_GENERATOR_DEFINITION_RUN
 
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
+
+    from infrahub.core.timestamp import Timestamp
+
+
+class RecordingGeneratorDiffCapturer:
+    """A GeneratorMutationDiffCapturer double: records its calls and returns its diff unchanged."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[Timestamp, list[str]]] = []
+        self.result: list[NodeDiff] = []
+
+    async def capture(self, *, since: Timestamp, generator_definition_names: list[str]) -> list[NodeDiff]:
+        self.calls.append((since, generator_definition_names))
+        return self.result
 
 
 class RejectingGate(DefinitionGate):
@@ -81,6 +101,9 @@ class ForcingTemplateSelector[DefinitionT: DefinitionModel, RequestT](Definition
 class GeneratorForcingSelector(
     ForcingTemplateSelector[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun]
 ):
+    workflow = REQUEST_GENERATOR_DEFINITION_RUN
+    cascade_role = CascadeRole.SOURCE
+
     def _build_request(
         self, *, definition: ProposedChangeGeneratorDefinition, target_branch: str, members: list[str]
     ) -> RequestGeneratorDefinitionRun:
@@ -92,6 +115,9 @@ class GeneratorForcingSelector(
 class ArtifactForcingSelector(
     ForcingTemplateSelector[ProposedChangeArtifactDefinition, RequestArtifactDefinitionGenerate]
 ):
+    workflow = REQUEST_ARTIFACT_DEFINITION_GENERATE
+    cascade_role = CascadeRole.TERMINAL
+
     def _build_request(
         self, *, definition: ProposedChangeArtifactDefinition, target_branch: str, members: list[str]
     ) -> RequestArtifactDefinitionGenerate:
