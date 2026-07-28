@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol
 
+from infrahub.core.regeneration.profiles import SchemaProfileExpander
 from infrahub.proposed_change.branch_diff import get_modified_kinds
 
 from .definition_selector.artifact_selector import ArtifactSelector
@@ -18,6 +19,8 @@ if TYPE_CHECKING:
 
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
+
+    from infrahub.core.regeneration.profiles import ModifiedKindsExpander
 
     from .models import CascadeSourceOutput, DefinitionModel, FullRegeneration, RegenerationRequest
     from .participant import CascadeParticipant
@@ -53,8 +56,9 @@ class MergeSelectiveRegeneration(RegenerationPlanner):
     dispatch. Adding a definition kind is one new participant in the injected list, with no change here.
     """
 
-    def __init__(self, participants: Sequence[CascadeParticipant[Any]]) -> None:
+    def __init__(self, participants: Sequence[CascadeParticipant[Any]], kinds_expander: ModifiedKindsExpander) -> None:
         self.participants = participants
+        self.kinds_expander = kinds_expander
 
     async def build_plan(self, diff_summary: list[NodeDiff], target_branch: str) -> SelectiveRegenerationPlan:
         entries = await self._plan(self.participants, diff_summary=diff_summary, target_branch=target_branch)
@@ -75,7 +79,10 @@ class MergeSelectiveRegeneration(RegenerationPlanner):
     async def _plan(
         self, participants: Sequence[CascadeParticipant[Any]], *, diff_summary: list[NodeDiff], target_branch: str
     ) -> list[PlannedRegeneration]:
-        modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=target_branch)
+        modified_kinds = self.kinds_expander.expand(
+            modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=target_branch),
+            branch=target_branch,
+        )
         loaded_by_participant = [
             (participant, await participant.load(target_branch=target_branch)) for participant in participants
         ]
@@ -146,5 +153,6 @@ def build_merge_selective_regeneration(
                 output=generator_output,
             ),
             CascadeTerminal(ArtifactSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log)),
-        ]
+        ],
+        kinds_expander=SchemaProfileExpander(),
     )
