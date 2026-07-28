@@ -1,13 +1,9 @@
 import type { CombinedError } from "@urql/core";
 
-import type { RequestPriority } from "@/shared/api/priority";
-
 // Kept separate from urql's `OperationContext` so callers don't depend on the transport lib.
 export interface GraphQLRequestContext {
   branch?: string | null;
-  // Some callers thread a loosely-typed date; it is normalized to a Date before use.
-  date?: Date | string | null;
-  priority?: RequestPriority;
+  date?: Date | null;
   processErrorMessage?: (message: string) => void;
 }
 

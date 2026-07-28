@@ -50,6 +50,5 @@ export function getArtifactContentDiffFromApi(params: GetArtifactContentDiffFrom
     variables: {
       changeIds: [params.proposedChangeId],
     },
-    fetchPolicy: "no-cache",
   });
 }

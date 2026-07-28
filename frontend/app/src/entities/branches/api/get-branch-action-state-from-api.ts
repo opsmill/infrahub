@@ -23,6 +23,5 @@ export function getBranchActionStateFromApi(params: GetBranchActionStateFromApiP
       workflow: [...params.workflow],
       state: [...params.state],
     },
-    fetchPolicy: "no-cache",
   });
 }

@@ -9,7 +9,7 @@ import { CONFIG } from "@/shared/config/config";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/api/token-storage";
 import { __navigation } from "@/entities/authentication/domain/use-cases/redirect-to-login";
 
-import { buildOperationContext, graphqlClient } from "./client";
+import { graphqlClient } from "./client";
 import { handleGraphQLErrors } from "./error-handling";
 
 // Build a CombinedError carrying a single catalogue-coded GraphQL error.
@@ -19,37 +19,58 @@ function combinedError(code: string, message = "boom") {
   });
 }
 
-describe("buildOperationContext — endpoint + X-Priority", () => {
-  it("stamps X-Priority: high and targets the default branch when no context", () => {
-    // WHEN
-    const ctx = buildOperationContext();
+describe("graphqlClient — endpoint targeting", () => {
+  let fetchSpy: ReturnType<typeof vi.fn>;
 
-    // THEN
-    const headers = (ctx.fetchOptions as RequestInit)?.headers as Record<string, string>;
-    expect(headers[PRIORITY_HEADER]).toBe("high");
-    expect(ctx.url).toBe(CONFIG.GRAPHQL_URL());
+  const PING = gql`
+    query Ping {
+      __typename
+    }
+  `;
+
+  beforeEach(() => {
+    fetchSpy = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ data: { __typename: "Query" } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    );
+    vi.stubGlobal("fetch", fetchSpy);
   });
 
-  it("stamps X-Priority: low when the operation declares context.priority = low", () => {
-    // WHEN
-    const ctx = buildOperationContext({ priority: "low" });
-
-    // THEN
-    const headers = (ctx.fetchOptions as RequestInit)?.headers as Record<string, string>;
-    expect(headers[PRIORITY_HEADER]).toBe("low");
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
-  it("resolves the endpoint per-operation from branch and date", () => {
+  it("targets the default branch when the operation declares no context", async () => {
+    // WHEN
+    await graphqlClient.query({ query: PING });
+
+    // THEN
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(CONFIG.GRAPHQL_URL());
+  });
+
+  it("targets the branch and point in time the operation declares", async () => {
     // GIVEN
     const date = new Date("2026-01-01T00:00:00.000Z");
 
     // WHEN
-    const ctx = buildOperationContext({ branch: "feature", date });
+    await graphqlClient.query({ query: PING, context: { branch: "feature", date } });
 
     // THEN
-    expect(ctx.url).toBe(CONFIG.GRAPHQL_URL("feature", date));
-    expect(ctx.url).toContain("/graphql/feature");
-    expect(ctx.url).toContain("at=2026-01-01");
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(CONFIG.GRAPHQL_URL("feature", date));
+  });
+
+  it("stamps X-Priority: high on every operation", async () => {
+    // WHEN
+    await graphqlClient.query({ query: PING });
+
+    // THEN
+    const init = fetchSpy.mock.calls[0]?.[1] as RequestInit;
+    expect(new Headers(init.headers).get(PRIORITY_HEADER)).toBe("high");
   });
 });
 

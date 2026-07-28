@@ -80,6 +80,5 @@ export async function getObjectForEditingFromApi({
       branch: branchName,
       date: atDate,
     },
-    fetchPolicy: "no-cache",
   });
 }

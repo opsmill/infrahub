@@ -48,6 +48,5 @@ export function getDiffCommentsFromApi(params: GetDiffCommentsFromApiParams) {
       changeIds: [params.proposedChangeId],
       objectPath: params.objectPath,
     },
-    fetchPolicy: "no-cache",
   });
 }

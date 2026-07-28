@@ -58,6 +58,5 @@ export function getFileContentDiffFromApi(params: GetFileContentDiffFromApiParam
     variables: {
       changeIds: [params.proposedChangeId],
     },
-    fetchPolicy: "no-cache",
   });
 }
