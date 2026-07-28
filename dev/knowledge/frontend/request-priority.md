@@ -21,8 +21,9 @@ trusted, and why the header is stamped at the transport boundary instead of at c
 - `PRIORITY_HEADER = 'X-Priority'`.
 - `resolvePriority(value)` — normalizes an untyped per-request value: returns `'low'`
   only for exactly `'low'`, everything else (`'medium'`, `undefined`, garbage) → `'high'`.
-  Each transport runs its value through this before writing the header, so a stray or
-  legacy value cannot leak an out-of-contract priority.
+  Any transport that accepts a per-request priority runs its value through this before
+  writing the header, so a stray or legacy value cannot leak an out-of-contract priority.
+  A transport that only ever emits the default writes `DEFAULT_PRIORITY` directly.
 
 ## Four injection points (default `high`)
 
