@@ -52,19 +52,7 @@ declare it at the call site using its transport's idiom:
 - **REST** — pre-set the header via `params: { header: { 'X-Priority': 'low' } }`
   (openapi-fetch's `options` is read-only and exposes no custom field, so the header
   itself is the opt-in surface).
-- **Raw fetch** — the `{ priority: 'low' }` option argument to `fetchUrl`.
-
-**GraphQL has no per-operation opt-down.** It once accepted `context: { priority: 'low' }`, but
-no production caller ever used it, so the urql migration made the header a client-level constant
-and dropped `priority` from `GraphQLRequestContext` rather than keep a knob that only tests
-exercised. To demote a GraphQL operation, reinstate the seam: add `priority` back to
-`GraphQLRequestContext` and pass `resolvePriority(context?.priority)` as per-operation
-`fetchOptions` instead of the client-level default. This narrows [ADR
-0008](../../adr/0008-client-declared-request-priority.md) in reach but not in substance — the
-client still declares priority on every request and the server still trusts it.
-
-No helper wraps the remaining two: the `low` set is still empty (no production caller demotes),
-so a helper would serve only tests (YAGNI).
+- **GraphQL** has no per-operation opt-down.
 
 ## Watched status stays `high`
 
