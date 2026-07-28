@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol
 
+from infrahub.core.regeneration.profiles import SchemaProfileExpander
 from infrahub.proposed_change.branch_diff import get_modified_kinds
 
 from .definition_selector.artifact_selector import ArtifactSelector
@@ -17,6 +18,8 @@ if TYPE_CHECKING:
 
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
+
+    from infrahub.core.regeneration.profiles import ModifiedKindsExpander
 
     from .definition_selector.base import DefinitionSelectorBase
     from .generator_diff_capturer import GeneratorMutationDiffCapturer
@@ -43,11 +46,20 @@ class MergeSelectiveRegeneration:
     Adding a definition kind is one new selector in the injected list, with no change here.
     """
 
-    def __init__(self, selectors: Sequence[DefinitionSelectorBase[Any, Any]]) -> None:
+    def __init__(
+        self,
+        selectors: Sequence[DefinitionSelectorBase[Any, Any]],
+        kinds_expander: ModifiedKindsExpander,
+    ) -> None:
         self.selectors = selectors
+        self.kinds_expander = kinds_expander
+
+    def _modified_kinds(self, *, diff_summary: list[NodeDiff], target_branch: str) -> list[str]:
+        modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=target_branch)
+        return self.kinds_expander.expand(modified_kinds=modified_kinds, branch=target_branch)
 
     async def build_plan(self, diff_summary: list[NodeDiff], target_branch: str) -> SelectiveRegenerationPlan:
-        modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=target_branch)
+        modified_kinds = self._modified_kinds(diff_summary=diff_summary, target_branch=target_branch)
         loaded_by_selector = [
             (selector, await selector.load_definitions(target_branch=target_branch)) for selector in self.selectors
         ]
@@ -80,7 +92,7 @@ class MergeSelectiveRegeneration:
         the definitions that read that output are regenerated. The sources are excluded on purpose:
         they produced this diff, so re-running them on it would repeat runs already completed.
         """
-        modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=target_branch)
+        modified_kinds = self._modified_kinds(diff_summary=diff_summary, target_branch=target_branch)
         loaded_by_selector = [
             (selector, await selector.load_definitions(target_branch=target_branch))
             for selector in self.selectors
@@ -182,5 +194,6 @@ def build_merge_selective_regeneration(
                 output_capturer=output_capturer,
             ),
             ArtifactSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log),
-        ]
+        ],
+        kinds_expander=SchemaProfileExpander(),
     )

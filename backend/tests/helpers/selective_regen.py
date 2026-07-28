@@ -140,3 +140,20 @@ class ArtifactForcingSelector(
             artifact_definition_name=definition.definition_name,
             members=members,
         )
+
+
+class PassthroughExpander:
+    """A ModifiedKindsExpander that returns the changed kinds unchanged, isolating schema-driven widening."""
+
+    def expand(self, *, modified_kinds: list[str], branch: str) -> list[str]:
+        return modified_kinds
+
+
+class AppendingExpander:
+    """A ModifiedKindsExpander that widens the changed kinds with one extra kind, so its use is observable."""
+
+    def __init__(self, extra_kind: str) -> None:
+        self.extra_kind = extra_kind
+
+    def expand(self, *, modified_kinds: list[str], branch: str) -> list[str]:
+        return [*modified_kinds, self.extra_kind]
