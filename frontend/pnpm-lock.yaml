@@ -193,11 +193,7 @@ importers:
         version: 1.8.0(graphql@16.14.2)(monaco-editor@0.52.2)(prettier@3.8.4)
       nuqs:
         specifier: ^2.8.9
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
         version: 2.8.9(react-router@7.18.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
-=======
-        version: 2.8.9(react-router@8.3.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
       openapi-fetch:
         specifier: ^0.17.0
         version: 0.17.0
@@ -232,19 +228,11 @@ importers:
         specifier: ^8.3.0
         version: 8.3.0(react@19.2.8)
       react-router:
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
         specifier: ^7.18.0
         version: 7.18.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react-scan:
         specifier: ^0.5.7
         version: 0.5.7(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@types/react@19.2.17)(esbuild@0.28.1)(eslint@10.4.1(jiti@2.7.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-=======
-        specifier: ^8.3.0
-        version: 8.3.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      react-scan:
-        specifier: ^0.5.7
-        version: 0.5.7(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@types/react@19.2.17)(esbuild@0.28.0)(eslint@10.4.1(jiti@2.7.0))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
       react-simple-code-editor:
         specifier: ^0.14.1
         version: 0.14.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -362,7 +350,6 @@ importers:
         version: 5.9.3
       ultracite:
         specifier: ^7.8.3
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
         version: 7.8.3(oxfmt@0.60.0)(oxlint@1.75.0)
       vite:
         specifier: 'catalog:'
@@ -373,9 +360,6 @@ importers:
       vite-plugin-svgr:
         specifier: ^5.2.0
         version: 5.2.0(typescript@5.9.3)(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
-=======
-        version: 7.8.3(oxlint@1.74.0)
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
       vitest:
         specifier: ^4.1.9
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@26.1.1)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -645,22 +629,16 @@ packages:
       graphql: ^15.5.0 || ^16.0.0 || ^17.0.0
       typescript: ^5.0.0 || ^6.0.0
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@adobe/css-tools@4.5.0':
     resolution: {integrity: sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q==}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   '@alcalzone/ansi-tokenize@0.3.0':
     resolution: {integrity: sha512-p+CMKJ93HFmLkjXKlXiVGlMQEuRb6H0MokBSwUsX+S6BRX8eV5naFZpQJFfJHjRZY0Hmnqy1/r6UWl3x+19zYA==}
     engines: {node: '>=18'}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@antfu/install-pkg@1.1.0':
     resolution: {integrity: sha512-MGQsmw10ZyI+EJo45CdSER4zEb+p31LpDAFp2Z3gkSd1yqVZGi0Ebx++YTEMonJy4oChEMLsxZ64j8FH6sSqtQ==}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   '@apm-js-collab/code-transformer-bundler-plugins@0.7.1':
     resolution: {integrity: sha512-Yidf5GOl60db80UxUtNdKK3pnY7obU/gs0xOfA0SCdnvVLMCvfYIer/egC3TqpPiT0Jg22eg3RlzcO+zKfPMcA==}
     engines: {node: '>=18.0.0'}
@@ -1002,12 +980,9 @@ packages:
     resolution: {integrity: sha512-mepCf/e9+SKYy1d02/UkvSy6+6MoyXhVxP8lLDfA7BPE1X1d4dR0sZznmbM8/XVJ1GPM+Svnx7Xj6ZweByWUkw==}
     engines: {node: '>17.0.0'}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@date-fns/tz@1.5.0':
     resolution: {integrity: sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   '@emnapi/core@1.11.0':
     resolution: {integrity: sha512-l9Oo58x0HOP5znGzVhYW9U3e5wVuA4LAZU2AGezTmkhO1CgQRFDhDg4nneHsu/t3WniXg9QrG2nIXL/ZS8ln8Q==}
 
@@ -1016,12 +991,9 @@ packages:
 
   '@emnapi/core@1.11.2':
     resolution: {integrity: sha512-TC8MkTuZUtcTSiFeuC0ksCh9QIJ5+F21MvZ4Wn4ORfYaFJ/0dsiudv5tVkejgwZlwQ39jL9WWDe2lz8x0WglOA==}
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@emnapi/core@1.9.2':
     resolution: {integrity: sha512-UC+ZhH3XtczQYfOlu3lNEkdW/p4dsJ1r/bP7H8+rhao3TTTMO1ATq/4DdIi23XuGoFY+Cz0JmCbdVl0hz9jZcA==}
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@emnapi/runtime@1.11.0':
     resolution: {integrity: sha512-55coeOFKHv1ywEcUXJtWU5f+Jr/W5tZDvZig8DLKSwUN1JpROQ4rk/SNOQiFWmaR/VKF4zuFyW1B8JduOSv6Pg==}
@@ -1031,15 +1003,12 @@ packages:
 
   '@emnapi/runtime@1.11.2':
     resolution: {integrity: sha512-kyOl3X0DuTiT1h2ft8r2fYO8JYtU9a9Xis/zBSiGArNaagCOWx90N1k2wxp18czFDH+OgcWGb5ZP/XMt3dcyPA==}
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@emnapi/runtime@1.9.2':
     resolution: {integrity: sha512-3U4+MIWHImeyu1wnmVygh5WlgfYDtyf0k8AbLhMFxOipihf6nrWC4syIm/SwEeec0mNSafiiNnMJwbza/Is6Lw==}
 
   '@emnapi/wasi-threads@1.2.1':
     resolution: {integrity: sha512-uTII7OYF+/Mes/MrcIOYp5yOtSMLBWSIoLPpcgwipoiKbli6k322tcoFsxoIIxPDqW01SQGAgko4EzZi2BNv2w==}
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@emnapi/wasi-threads@1.2.2':
     resolution: {integrity: sha512-c95qOXkHdydNKhscBTebqEC1CVAZpyqOfVfBzQ1qgzyl3gfeldUjIggDbIZgDKsHLgnsM+igH7TJ/eAasaVuMA==}
@@ -1362,15 +1331,12 @@ packages:
     cpu: [x64]
     os: [win32]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@esbuild/win32-x64@0.28.1':
     resolution: {integrity: sha512-bm4Mowrv+GXMlpWX++EcXw/iLyd1o3+bJkC2DkWXYVvgZCqD/bSj9ctZeAMC3cIxgjRVR2Dufaiu4YPxr5gW1A==}
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   '@eslint-community/eslint-utils@4.10.1':
     resolution: {integrity: sha512-cuadcxVFE8sDK6iWJbs8Sn0av2Nrh2QSGQhVlBW9AaAHqHwjWsZHT8LJ4hFGPh7ASBV2deFdM7H/DPjulmh8rg==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
@@ -2047,15 +2013,12 @@ packages:
     resolution: {integrity: sha512-eSYWTm620tTk45EKSedaUL8MFYI8hW164hIXsgIHyxu3VobUB3fFCu5t0hQby6OoWRPsG1KkKUG2M5UadiLiVg==}
     engines: {node: '>=14'}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxc-parser/binding-android-arm-eabi@0.127.0':
     resolution: {integrity: sha512-0LC7ye4hvqbIKxAzThzvswgHLFu2AURKzYLeSVvLdu2TBOYWQDmHnTqPLeA597BcUCxiLqLsS4CJ5uoI5WYWCQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [android]
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   '@oxc-parser/binding-android-arm-eabi@0.137.0':
     resolution: {integrity: sha512-KDs+0VPdEmasOkpuJHW9V5WCF+cvYdMQv2Jd+aJXt+cxIx12NToRQRbXaRwUEDsZw+/jMk81Ve8ZFbjUkJTOwA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2066,15 +2029,12 @@ packages:
     resolution: {integrity: sha512-jk7086MFvR/T4DG9IY7MKBVt1PMxvSZoz/TvnifodvS0pjghVwJHRttnAExhlwdMOgHv1TmLdENnbNpYk2zjvA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     os: [android]
 
   '@oxc-parser/binding-android-arm64@0.127.0':
     resolution: {integrity: sha512-b5jtVTH6AU5CJXHNdj7Jj9IEiR9yVjjnwHzPJhGyHGPdcsZSzBCkS9GBbV33niRMvKthDwQRFRJfI4a+k4PvYg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     os: [android]
 
   '@oxc-parser/binding-android-arm64@0.137.0':
@@ -2088,15 +2048,12 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [android]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-parser/binding-darwin-arm64@0.127.0':
     resolution: {integrity: sha512-obCE8B7ISKkJidjlhv9xRGJPOSDG2Yu6PRga9Ruaz35uintHxbp1Ki/Yc71wx4rj3Edrm0a1kzG1TAwit0wFpg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [darwin]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-parser/binding-darwin-arm64@0.137.0':
     resolution: {integrity: sha512-bFPr5hgmNMOMoyPTGtdsK4Ug21RovIPojRMgDDhSp1LtCnc/DkLwGONKjgRjszg677RlGnkYSviQ8hHaUPOVYA==}
@@ -2108,15 +2065,12 @@ packages:
     resolution: {integrity: sha512-m/kVk6rzYmBeHYnz+1Y5fod00AVTTxMbC71azFfm/zjx1j9XxwKtA0+VfkKuVMC8rbghb9TtfevnuWZa9OuPEg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     os: [darwin]
 
   '@oxc-parser/binding-darwin-x64@0.127.0':
     resolution: {integrity: sha512-JL6Xb5IwPQT8rUzlpsX7E+AgfcdNklXNPFp8pjCQQ5MQOQo5rtEB2ui+3Hgg9Sn7Y9Egj6YOLLiHhLpdAe12Aw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     os: [darwin]
 
   '@oxc-parser/binding-darwin-x64@0.137.0':
@@ -2130,15 +2084,12 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [darwin]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-parser/binding-freebsd-x64@0.127.0':
     resolution: {integrity: sha512-SDQ/3MQFw58fqQz3Z1PhSKFF3JoCF4gmlNjziDm8X02tTahCw0qJbd7FGPDKw1i4VTBZene9JPyC3mHtSvi+wA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [freebsd]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-parser/binding-freebsd-x64@0.137.0':
     resolution: {integrity: sha512-79h8rYGnSlKPGWo7mHr2ixO6ea7aW8B0CT965SZ8SLbNnCOH5aOYBTeVXUY6eMvEaiLyWr8Skuiugr5pDYgLGw==}
@@ -2151,15 +2102,12 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [freebsd]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-arm-gnueabihf@0.127.0':
     resolution: {integrity: sha512-Av+D1MIqzV0YMGPT9we2SIZaMKD7Cxs4CvXSx/yxaWHewZjYEjScpOf5igc8IILASViw4WTnjlwUdI1KzVtDHQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-arm-gnueabihf@0.137.0':
     resolution: {integrity: sha512-ASgmlSimhGyr0lksgVIo6hibz1obnDq4qJbiMX/AzltfgPnanRrzG1Q+23g8ljOHOjv6dsznkUuCYL3gg0sY1Q==}
@@ -2169,15 +2117,12 @@ packages:
 
   '@oxc-parser/binding-linux-arm-gnueabihf@0.141.0':
     resolution: {integrity: sha512-g3dtbJa8zeOGK36Sr9cQavsdi5H/ie2hVjrSjIxsNAR1qZA40ZYVXnfdfoMAlq8CmB9qFL1yhsSCUHeNmdmt8w==}
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
 
   '@oxc-parser/binding-linux-arm-musleabihf@0.127.0':
     resolution: {integrity: sha512-Cs2fdJ8cPpFdeebj6p4dag8A4+56hPvZ0AhQQzlaLswGz1tz7bXt1nETLeorrM9+AMcWFFkqxcXwDGfTVidY8g==}
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
@@ -2193,7 +2138,6 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-arm64-gnu@0.127.0':
     resolution: {integrity: sha512-qdOfTcT6SY8gsJrrV92uyEUyjqMGPpIB5JZUG6QN5dukYd+7/j0kX6MwK1DgQj39jtUYixxPiaRUiEN1+0CXgQ==}
@@ -2201,8 +2145,6 @@ packages:
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-arm64-gnu@0.137.0':
     resolution: {integrity: sha512-GdEtiG89yMr7XkUGxifgodXEEm2f+xW2f9CpDjlgAnBOwhTmrpQMvhOGobLVKUyzf/qHBXW16smk5zbF3nZU6w==}
@@ -2217,7 +2159,6 @@ packages:
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-arm64-musl@0.127.0':
     resolution: {integrity: sha512-EoTCZneNFU/P2qrpEM+RHmQwt+CvDkyGESG6qhr7KaegXLZwePfbrkCDfAk8/rhxbDUVGsZILX+2tqPzFtoFWA==}
@@ -2225,8 +2166,6 @@ packages:
     cpu: [arm64]
     os: [linux]
     libc: [musl]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-arm64-musl@0.137.0':
     resolution: {integrity: sha512-EGJ+Bs8iXx8KBH8DQ5BLoEm5lnHaYjlh4/8j8vFhrr/6z4tqONy5BZDzLpKmmNWlN6Hlc5r8YOuBVHqZ9vRFEQ==}
@@ -2241,7 +2180,6 @@ packages:
     cpu: [arm64]
     os: [linux]
     libc: [musl]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-ppc64-gnu@0.127.0':
     resolution: {integrity: sha512-zALjmZYgxFLHjXeudcDF0xFGNydTAtkAeXAr2EuC17ywCyFxcmQra4w0BMde0Yi/re4Bi4iwEoEXtYN7l6eBLQ==}
@@ -2249,8 +2187,6 @@ packages:
     cpu: [ppc64]
     os: [linux]
     libc: [glibc]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-ppc64-gnu@0.137.0':
     resolution: {integrity: sha512-vzFUQENy/fnbSe5DZWovq6tIBc1uhuMztanSW6rz1e9WdQE4gHwYuD7ZII6JnrJifd1R3RSoqiZbgRFlVL2tYQ==}
@@ -2263,7 +2199,6 @@ packages:
     resolution: {integrity: sha512-vo+MR+n3zQJ6Mq92hiP084NZcgDv5iJlVR02gMf28neMvVT1tKVm7VeiW/DxhdqOi3QLeaXIk9cUcLL1qrkngw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ppc64]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     os: [linux]
     libc: [glibc]
 
@@ -2271,8 +2206,6 @@ packages:
     resolution: {integrity: sha512-fPP8M6zQLS7Jz7o9d5ArUSuAuSK3e+WCYVrCpdzeCOejidtZExJ9tjhDrAd3HEPqARBCPmdpqxESPFqy44vkBQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [riscv64]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     os: [linux]
     libc: [glibc]
 
@@ -2289,7 +2222,6 @@ packages:
     cpu: [riscv64]
     os: [linux]
     libc: [glibc]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-riscv64-musl@0.127.0':
     resolution: {integrity: sha512-7IcC4Ao02oGpfnjt+X/oF4U2mllo2qoSkw5xxiXNKL9MCTsTiAC6616beOuehdxGcnz1bRoPC1RQ2f1GQDdN+g==}
@@ -2297,8 +2229,6 @@ packages:
     cpu: [riscv64]
     os: [linux]
     libc: [musl]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-riscv64-musl@0.137.0':
     resolution: {integrity: sha512-e7Ppy4FCIFNQxT/ikSeIWFoQ0l+N9vgtRBtLcyZXeolTzApyVoPqEXsYPrcdM/9i0Bwk8knvYd37vaEMxHyi6g==}
@@ -2313,7 +2243,6 @@ packages:
     cpu: [riscv64]
     os: [linux]
     libc: [musl]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-s390x-gnu@0.127.0':
     resolution: {integrity: sha512-pbXIhiNFHoqWeqDNLiJ9JkpHz1IM9k4DXa66x+1GTWMG7iLxtkXgE53iiuKSXwmk3zIYmaPVfBvgcAhS583K4Q==}
@@ -2321,8 +2250,6 @@ packages:
     cpu: [s390x]
     os: [linux]
     libc: [glibc]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-s390x-gnu@0.137.0':
     resolution: {integrity: sha512-Bho5qFwdhqsIFR7gipYEUlqvi3SRrY8sugxXig380MIaakBB1PyU9+7dBiBVScfImTNWhijUxdBwqrprGdq5WA==}
@@ -2335,7 +2262,6 @@ packages:
     resolution: {integrity: sha512-3wnwk/l1CvszVE5TJR1wSl/zSEfydRqrNhn6s7Vr9IzSJpUQIroqVsIoPARHRFA+FQwkxAFDAHDAasa7v8OobQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [s390x]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     os: [linux]
     libc: [glibc]
 
@@ -2343,8 +2269,6 @@ packages:
     resolution: {integrity: sha512-MYCguB9RvBvlSd6gbuNI7QwiLoCCAlGnlRJFPrzLI6U1/9wkC/WK6LtBAUln55H1Ctqw45PWmqrobKoMhsYQzQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     os: [linux]
     libc: [glibc]
 
@@ -2361,7 +2285,6 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [glibc]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-x64-musl@0.127.0':
     resolution: {integrity: sha512-5eY0B/bxf1xIUxb4NOTvOI3KWtBQfPWYyKAzgcrCt0mDibSZygVpO1Pz8bkeiSZ5Jj9+M09dkggG3H8I5d0Uyg==}
@@ -2369,8 +2292,6 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [musl]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-parser/binding-linux-x64-musl@0.137.0':
     resolution: {integrity: sha512-/Jqx6+N7A44n2BdvUr7pXhVr2vFjs6WGH3unZRczwrfiH0H1zY0QwKQMG/dtRiTlKGDKGukznPT8lx84/oEsZg==}
@@ -2385,15 +2306,12 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [musl]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-parser/binding-openharmony-arm64@0.127.0':
     resolution: {integrity: sha512-Gld0ajrFTUXNtdw20fVBuTQx66FA75nIVg+//pPfR3sXkuABB4mTBhl3r9JNzrJpgW//qiwxf0nWXUWGJSL3UQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [openharmony]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-parser/binding-openharmony-arm64@0.137.0':
     resolution: {integrity: sha512-9Uj0qHNNl+OgT1UTGwF7ixIXU6T1u2SbMidmgPy/h1h/fl2gRS6YpAxxY1gwHofcWjoTwkoMFd8xs5Vuj6GOFA==}
@@ -2406,14 +2324,11 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [openharmony]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-parser/binding-wasm32-wasi@0.127.0':
     resolution: {integrity: sha512-T6KVD7rhLzFlwGRXMnxUFfkCZD8FHnb968wVXW1mXzgRFc5RNXOBY2mPPDZ77x5Ln76ltLMgtPg0cOkU1NSrEQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [wasm32]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-parser/binding-wasm32-wasi@0.137.0':
     resolution: {integrity: sha512-gW2vfkytNGgMVADiuzdvOfw0mWG9za20F/1fCJsif5aBMAvWJTSbpIXbIe0XkOe0VENk+PadpQ7cZgUy2sUJcA==}
@@ -2424,15 +2339,12 @@ packages:
     resolution: {integrity: sha512-HggH++Fkn3OilBn+bs3jpgIFQa34oMAyUUHy0vpGum+gt1Eb5nyLc8dNU/RAPSw6lsLrx7ncKtHSZE+3Sp0l2g==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [wasm32]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-parser/binding-win32-arm64-msvc@0.127.0':
     resolution: {integrity: sha512-Ujvw4X+LD1CCGULcsQcvb4YNVoBGqt+JHgNNzGGaCImELiZLk477ifUH53gIbE7EKd933NdTi25JWEr9K2HwXw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [win32]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-parser/binding-win32-arm64-msvc@0.137.0':
     resolution: {integrity: sha512-x+pFANF0yL5uK/6T7lu6SlR5qid6sp//eZXKLq5iNsIE+EQg6EaS8/wsW7E91nXXjpnPhSoMOHXShSVhGRdn8w==}
@@ -2444,15 +2356,12 @@ packages:
     resolution: {integrity: sha512-KLSEH9GwgbrqbJOjtGHt9STw96s+78yDzp7IDN8Lno+7Ut9sNBfZ4jYZIz4mD50qmWUjoOI7i9I6UENbhNbMZQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     os: [win32]
 
   '@oxc-parser/binding-win32-ia32-msvc@0.127.0':
     resolution: {integrity: sha512-0cwxKO7KHQQQfo4Uf4B2SQrhgm+cJaP9OvFFhx52Tkg4bezsacu83GB2/In5bC415Ueeym+kXdnge/57rbSfTw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ia32]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     os: [win32]
 
   '@oxc-parser/binding-win32-ia32-msvc@0.137.0':
@@ -2465,15 +2374,12 @@ packages:
     resolution: {integrity: sha512-9UVWUOOCI/1YkiSSNjg2zyBJYM9E/t1A/8GNobd48JDn/fQ6mzxcVO3H08jb3rAaW/B1VBf8eCORTvSsO9T08g==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ia32]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     os: [win32]
 
   '@oxc-parser/binding-win32-x64-msvc@0.127.0':
     resolution: {integrity: sha512-rOrnSQSCbhI2kowr9XxE7m9a8oQXnBHjnS6j95LxxAnEZ0+Fz20WlRXG4ondQb+ejjt2KOsa65sE6++L6kUd+w==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     os: [win32]
 
   '@oxc-parser/binding-win32-x64-msvc@0.137.0':
@@ -2487,22 +2393,16 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-project/types@0.127.0':
     resolution: {integrity: sha512-aIYXQBo4lCbO4z0R3FHeucQHpF46l2LbMdxRvqvuRuW2OxdnSkcng5B8+K12spgLDj93rtN3+J2Vac/TIO+ciQ==}
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-project/types@0.137.0':
     resolution: {integrity: sha512-WT+Gb24i8hmvo85AIv2oEYouEXkRlKAlT9WaCa3TfLgNCN+GhrJOGZuIlMouAh38Qe4QOx26eUOVsq70qXrywA==}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxc-project/types@0.139.0':
     resolution: {integrity: sha512-r9gHphtCs+1M7J0pw6Sn/hh/Wpa/iQrOOkrNAlVLF/gHq+/CJmHIWKKUUhdWjcD6CIa8idarspCsASiXCXvFUw==}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   '@oxc-project/types@0.141.0':
     resolution: {integrity: sha512-S4as7z0j0xQkXcJlyY5ehntwK8/wRkQb9Cyqw+J/N2rkWGQGK0SxD6X6DhQTc7qsxVTBxXbxZtBJh3mr3PtIzQ==}
 
@@ -2712,18 +2612,12 @@ packages:
     cpu: [x64]
     os: [win32]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-android-arm-eabi@0.55.0':
     resolution: {integrity: sha512-+rFDOqQe5LOWgxrAJaZgLRudr6GQm0wGI6gtu7vVkrdLGjNMUSGbAlaCr8j7F2H2Er97vYQCU8WDb30onqMM1g==}
-=======
-  '@oxlint/binding-android-arm-eabi@1.74.0':
-    resolution: {integrity: sha512-+gHd12muVI9ZLBaWLPkHt3Fj7jihFjgQ1MGtBaRL8vWrWrI0P7dLUty/cHrHS0oqPYIRgQUJsPu2CExQuMcwNw==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [android]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-android-arm-eabi@0.60.0':
     resolution: {integrity: sha512-1q4q4Jc8FlOMVojEisyFAVyl8h1yawNv6phjgmhGVEDeyeOdsSnSr9x0+D4mOnEKvpO5L4mxKZ/DP9X6U3A/Mw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2732,15 +2626,10 @@ packages:
 
   '@oxfmt/binding-android-arm64@0.55.0':
     resolution: {integrity: sha512-ctulLq8s3x8Zmvw6+iccB09TIKERAklRSmbJ10gk8mlAn05qZxoyo52dj3Hi9IJcmDSwF54fQaTVh2CbL6PInw==}
-=======
-  '@oxlint/binding-android-arm64@1.74.0':
-    resolution: {integrity: sha512-xjKdoMB+H+RCOByv/7l7nfIGW9mlOisqYdcyC75UqYuQecLpReAeEYUf2CNeDEI3KtmUgxpRw/+c63y4AeF/Bw==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [android]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-android-arm64@0.60.0':
     resolution: {integrity: sha512-tD41I6nCt9k8SQXft0CSjjU9jg6SwG7uMu7PxodSEHXl+GDW0868oy6tTtoJkyUze8YKFgTpz/k5LuPUnFiGLw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2749,15 +2638,10 @@ packages:
 
   '@oxfmt/binding-darwin-arm64@0.55.0':
     resolution: {integrity: sha512-xDQczLH9pw/RBk1h/GH0qcGMm8hQtmtVHBNLSH3lk1gEIR09hZ4L+mJQl4VqiVAvPK9VG9PYrWWuSQLt7xTbiA==}
-=======
-  '@oxlint/binding-darwin-arm64@1.74.0':
-    resolution: {integrity: sha512-iUK7wvc6sejMKsC+Pt67mntoF5weFcyEunhZfLJceU6gL419mexz5wBkSx/EnkFBExMLNtOi9fnDSc5xfK0IzQ==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [darwin]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-darwin-arm64@0.60.0':
     resolution: {integrity: sha512-TTpzPug96Zxdyb46KvTyIUQDdsqbumXh2TKG9C23PCT0kF7JkW56Z/quPuG9rqOFKQIi1gpRNZ7DX18LwxXPnw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2766,15 +2650,10 @@ packages:
 
   '@oxfmt/binding-darwin-x64@0.55.0':
     resolution: {integrity: sha512-JaNoFCkF2CJdGgpPSMbuO9HVyXyoNGIhMHPvp6NYAjeVKw9XEYc0HcUWJLPQa3Q69WV5wMa9m5jPMJPtbLtcRg==}
-=======
-  '@oxlint/binding-darwin-x64@1.74.0':
-    resolution: {integrity: sha512-ggKc/tn5SJ1u2yG2izC6VKODfYKV8MQ2AicJlNzOjuyrC29udvOef6/JzK2r32xqCnBDLFouR1VCkjzEI0/N9Q==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [darwin]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-darwin-x64@0.60.0':
     resolution: {integrity: sha512-CnOoWgQ7L+JL/YQaRJ+NyATciSfcftncm7y3kqyte1cGtFEGnStaCd1TAyrinkfQ7nRBfHrTs1/vTwUJr3WF2Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2783,15 +2662,10 @@ packages:
 
   '@oxfmt/binding-freebsd-x64@0.55.0':
     resolution: {integrity: sha512-DNbszhpg6S2MIzax5azdHFTTBIVkR5xr8yyRZuA4yoDAwOkzIp3tmldgKZM2+VlT+hJIG0xUksA+elISzMEAfA==}
-=======
-  '@oxlint/binding-freebsd-x64@1.74.0':
-    resolution: {integrity: sha512-u++dH/43jy9hTLbneaWlS0gla/Bp1JdwJ2zgevCl8nDFUh6qRCGMxcL0f0lb7By3A9p/LfFr+7cG4HU1hG856g==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [freebsd]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-freebsd-x64@0.60.0':
     resolution: {integrity: sha512-ychJo7S3hZxdO6eDZ9zM6F2lM9fpJS3EKS5CAUSWyprdLYxTu4gbaUKV/VBPTcMJwQa2Bpo+643y3OJ537pihA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2800,26 +2674,16 @@ packages:
 
   '@oxfmt/binding-linux-arm-gnueabihf@0.55.0':
     resolution: {integrity: sha512-2snoaoRfFFyGnbOcKUK36rREBYxe/Xgz3uHbiA5zbCB/s6R4DQj4mHqYAaWWhgizCUSDxV8cE9zAZ0XleNpKGw==}
-=======
-  '@oxlint/binding-linux-arm-gnueabihf@1.74.0':
-    resolution: {integrity: sha512-Sj1zmtFDVTPeIbIz4ZfcXAbFHqCmKCXdCUlAJzvTF7I20NTH1RDpoF2PhkqNODutJzVhJYmm3oz0GwgY+tvE2g==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-linux-arm-gnueabihf@0.60.0':
     resolution: {integrity: sha512-36IH5o55T2Fx7E0feDttt+mifxN6yk9pWv4KfhAIsP0dFnUq27331OwbpOsZdoXF9soOLWm7mQUz5+UUmyec4g==}
-=======
-  '@oxlint/binding-linux-arm-musleabihf@1.74.0':
-    resolution: {integrity: sha512-//PKyQb/tQXcHArx2f7z+oVI/eMS2Jpv+edNuAtOrgIhWdGcpHxogveAxzmF2rpH1AIHp4Hq04RF/rgJdiICnQ==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-linux-arm-musleabihf@0.55.0':
     resolution: {integrity: sha512-q1aktHF/WRpSK81BX1dE/9vWrS2jGw1Nax2kb4DBLGAewubCLcoNyp4Zl/NSMgbv3vUS46Z33wIQkBVYOP3PYg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2834,16 +2698,11 @@ packages:
 
   '@oxfmt/binding-linux-arm64-gnu@0.55.0':
     resolution: {integrity: sha512-VD0y36aENezl/3tsclA/4G53Cc7iV+7Uoh7gz4yvcOTaEYBtJpQsE6PKDGTtUtOvGS4kv51ybfXY/nWZejO5IA==}
-=======
-  '@oxlint/binding-linux-arm64-gnu@1.74.0':
-    resolution: {integrity: sha512-/k1Me+aX2tjuH10K62mLS0y8cLkJBHX6Ce0xPK+eWeel4bSdEGZ8dv4+hYMzg0GrSmjwy4yAYsDPeEeKBft/2w==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-linux-arm64-gnu@0.60.0':
     resolution: {integrity: sha512-LTQdRBf6uzj/h7Xk6lKzbGD2hrF/fK4YI9LIN1c0509tPUn8wRa3mCmrFQpEWJPLYGFrLFFMTYW1Ljj6VqW2Hw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2853,16 +2712,11 @@ packages:
 
   '@oxfmt/binding-linux-arm64-musl@0.55.0':
     resolution: {integrity: sha512-r8xlKJFcsRmn0H5jZrdORae6RX9jDBrZVvOoxF+bCQtampQJClv80aZEHsv+NsLsp2KCE5ql79O7DpPVzYWpXA==}
-=======
-  '@oxlint/binding-linux-arm64-musl@1.74.0':
-    resolution: {integrity: sha512-3tFSjBxc5D8/zvjEuLvOqcA8ZXKD0+6NuaVO/edeamNc49MoAsbfaC9s1UiwODwgF6slGaF8yJA2TPkukd77tg==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-linux-arm64-musl@0.60.0':
     resolution: {integrity: sha512-2JMo3XPxMPx3hiqddSZYyaH+fKJm6cz0u8n1naYjP/CdOQOZW34i8lKBUfmbWiuFvd6KoYXLmhAyBuvojsYS7Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2872,16 +2726,11 @@ packages:
 
   '@oxfmt/binding-linux-ppc64-gnu@0.55.0':
     resolution: {integrity: sha512-GRKv/HXHcwIVld/WU61rF0g0R16hl5EJ+ScKdpjevT57lnLnagj/U2YUbXf2mT+2Pg1uCzWC+mvGicPV3CDdLQ==}
-=======
-  '@oxlint/binding-linux-ppc64-gnu@1.74.0':
-    resolution: {integrity: sha512-9QggtPkSPXOCTu8Szis7auOK/sC7KdQaN+/TujP7YVVhzCAOhgdRfgv8uEz0r2tk5xdgus5rLYUrCDoZNtiRUw==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ppc64]
     os: [linux]
     libc: [glibc]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-linux-ppc64-gnu@0.60.0':
     resolution: {integrity: sha512-L3C+nBD13lr306tr/PjM3RMll+BVqgFrIgUyoeHuai5oueJrRLgO3j+GO5/Cbhtkf5PSlHYTI1JY7iqBd1qa6A==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2891,16 +2740,11 @@ packages:
 
   '@oxfmt/binding-linux-riscv64-gnu@0.55.0':
     resolution: {integrity: sha512-rdv57enTiPtpSYRMKfAiEbQb0Puw5t9N7isVinDoo5qeLDScro2gznmZqSgSWbVZRzLisTeCTW8Qwgw0bOHv3A==}
-=======
-  '@oxlint/binding-linux-riscv64-gnu@1.74.0':
-    resolution: {integrity: sha512-VM5VPUJ4DJIWiK+AZn8FScUqMr6OFrCAYybMYjEEi7W13ParI64MByiXTkKMqZpBmvQ9zxl9Ebq2VUOiZRJYUg==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [riscv64]
     os: [linux]
     libc: [glibc]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-linux-riscv64-gnu@0.60.0':
     resolution: {integrity: sha512-M4MsmvqlxFiPtSRGyBYQSZxchEf463AOyd+Dh4/9xDpjWBsRtDUTDMFN5EdHinjVK1/eDJQ8MLpcYjpYayaCnA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2910,16 +2754,11 @@ packages:
 
   '@oxfmt/binding-linux-riscv64-musl@0.55.0':
     resolution: {integrity: sha512-7v1nNrlD43VY6+sYQ6efYyb3lE6QY182304PD/768ZxTjOmFd/3dQa3u/nGBUAXYdGSWOQc5N3PnS0QzUXyEIA==}
-=======
-  '@oxlint/binding-linux-riscv64-musl@1.74.0':
-    resolution: {integrity: sha512-SaDY1gh9rOA592J54g+gu5hkOFFQBZsMmIYHs+NRHG+Uq0OxtuuCXMWQ3vu1830Eugv5uMXyjG+bv2Z9y4IXjw==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [riscv64]
     os: [linux]
     libc: [musl]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-linux-riscv64-musl@0.60.0':
     resolution: {integrity: sha512-OH+9UskYuxRB+GxqdGkVN8f5UpwhqG8YscNo1wl8+KJ62cd7wZdGga6iGLJIf8kibF1WBwvlfDUx3cez/VXwFg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2929,16 +2768,11 @@ packages:
 
   '@oxfmt/binding-linux-s390x-gnu@0.55.0':
     resolution: {integrity: sha512-f4lJLUSPOgScjFl9LiflKCTocyNRwE25JmTMbN4XQdDjoZzEHjqf3wA3VESF1/csg7i8m7+EQLbrZyYDqe10UQ==}
-=======
-  '@oxlint/binding-linux-s390x-gnu@1.74.0':
-    resolution: {integrity: sha512-ZATQeHZCyr6MbDveg0obD5sxLHFOghtOdC5jwVwYlvFWqtFOxctgFEG6Ef/64hYvZrWyhyCckB10AelqLopeDA==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [s390x]
     os: [linux]
     libc: [glibc]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-linux-s390x-gnu@0.60.0':
     resolution: {integrity: sha512-y7AAFutt9wFWBFOAn6+BHaV39usZmcr3YYH2385f+NHgPNpIF9HpqKp0jgUxPaUOCyG3oaX5VhJduL1Nw164rw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2948,16 +2782,11 @@ packages:
 
   '@oxfmt/binding-linux-x64-gnu@0.55.0':
     resolution: {integrity: sha512-MihqiPziJNoWy4MqNSV+jVA1g+07iQDjZiR0vaCaDoPgFEiJpCMsxamktzLV07cEeQsSJ04vQaU4CzCQwIvtDA==}
-=======
-  '@oxlint/binding-linux-x64-gnu@1.74.0':
-    resolution: {integrity: sha512-+aIvJyrdeD7LwCQ2WYLMUWNmnbeDRSPb40aBYtPjD9+PTqUwgJnk+HK5yLfSMeqXrMrDhE9uTmtt2y50tvjhHw==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-linux-x64-gnu@0.60.0':
     resolution: {integrity: sha512-yKZ9+CXAI+1RO5nH/4Z/9M6DAsfOzd5bw/gtWk81KB4mpalMaRRSXfouc5/tHxazDmBek55HNPepNYBgaCew0Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2967,16 +2796,11 @@ packages:
 
   '@oxfmt/binding-linux-x64-musl@0.55.0':
     resolution: {integrity: sha512-Yqghym7KYAVjP9MmSrNZiDeerMuoejNjo0r3ox5H3GDKk8eAfl8VyJm9i+pWCLDCTnAbcTUMMN2ZKjUYXH1v3g==}
-=======
-  '@oxlint/binding-linux-x64-musl@1.74.0':
-    resolution: {integrity: sha512-XyktaR8lhK2qWiCK0Tk8oYD+/cgn+oHA6ddRnxSSXUKkkojkV78CmShZUxQF+yrBFs0SuW+JBOPG6hecyc/iZg==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
     libc: [musl]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-linux-x64-musl@0.60.0':
     resolution: {integrity: sha512-bCUGaF6hJOYnQzLJdHLZbvGsOd5oSvGAyJhPAKum2uyLYUuXmP8vqg690DWi2hqcnIoYpqSqCrjzE5aiUAgwQg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2986,15 +2810,10 @@ packages:
 
   '@oxfmt/binding-openharmony-arm64@0.55.0':
     resolution: {integrity: sha512-s5SDvVVSbyQl1V5UU3Yl12M+XLUQ3rl5SglNqgAA2K4PXUtQhyNSS00wivONPEnNo5W01rCou8WkDNyvI/RGHg==}
-=======
-  '@oxlint/binding-openharmony-arm64@1.74.0':
-    resolution: {integrity: sha512-mzbjrPl4neaVUiJ1fUiEUxTGaSZBoiKtaoB6jmIpz9S+VOA2vDYmJpihQ82w6178V5jxziclTg8Cgj5yF6tTDg==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [openharmony]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-openharmony-arm64@0.60.0':
     resolution: {integrity: sha512-GrUeZOvzP30ExxfCuQiyofuUGI+OmvAgFwOO5w5p9mGPlxcyuqI+6Sy9fAKFFfLQrqKYWFgc5sYA2Unj/29nPg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3003,15 +2822,10 @@ packages:
 
   '@oxfmt/binding-win32-arm64-msvc@0.55.0':
     resolution: {integrity: sha512-7p9FB5R32tw2KyyNX3wpQrR2WHwEHvMEiBlGXxeTCaRMCVNx3UtFMAUbaQ/pRNWIrEUZmYhJ6tcUH52uPTRYjQ==}
-=======
-  '@oxlint/binding-win32-arm64-msvc@1.74.0':
-    resolution: {integrity: sha512-vUAe9okpS2Oa5+lX67lqHMuNUvfkleRKwrUDJ/WJBsgmddvZ1mrsh2HVmuFDRzqFELhaJhFaCNOuR6a7L3rtIA==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [win32]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-win32-arm64-msvc@0.60.0':
     resolution: {integrity: sha512-WD4Q954kUl2TDJV/6q7UnE2rlKk047kXLJsr4bJ2mXRaAqNXcmV3nwKUsGCc3mz/jYDBnXtJEaBErJEybK8iQQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3020,15 +2834,10 @@ packages:
 
   '@oxfmt/binding-win32-ia32-msvc@0.55.0':
     resolution: {integrity: sha512-ZYqj3fDnOT1IaVGMP5kpmkQl4F3tQIm2ZyAxvqkJYmI0xgWWak4ss4XYwv3VDfM+TWXeC9K4uQ/wW5jm/5XABA==}
-=======
-  '@oxlint/binding-win32-ia32-msvc@1.74.0':
-    resolution: {integrity: sha512-yyXXJyYYSXL4I8K8jAWjJs+J3fa9gH2JmEbo4f5adm+1tNC9itseicBNuwK7BDHvqQ5J534s+yDULu89vYL2ZQ==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ia32]
     os: [win32]
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-win32-ia32-msvc@0.60.0':
     resolution: {integrity: sha512-HqDekjr8JXzVDUP1YthDZ1Y3CBEcuZT4WX3B+1kaxj8CvZA8Y2YhcEsXqoSop3tVsgjACxjnFQFDkBo0r/jq1Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3409,10 +3218,6 @@ packages:
 
   '@oxlint/binding-win32-x64-msvc@1.75.0':
     resolution: {integrity: sha512-DSxnNkBUAYARPwJtR12Ig3deWr8w0H997xP6jy33i+e0SyYJw8FKuz4+cZtpmPEhQmvlPJE3X/2vNxDmLkd/rA==}
-=======
-  '@oxlint/binding-win32-x64-msvc@1.74.0':
-    resolution: {integrity: sha512-VTC9IYTIMrVUk/i6Ms1ohzzDKZFkWn0KU2OBbPBzgmVZ2V30165T/zK4LztTr0Xgp9fZ1qQZ1rsZAu/rEmySlA==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
@@ -5685,14 +5490,9 @@ packages:
     resolution: {integrity: sha512-rcQ1bsQO9799wq24uE5AM2tAILy4gXGIK/njFWcVQkGNZ96edlpY+A7bjwvzjYvLDyzmG1MmMLZhpcsb+klNMQ==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   cookie@1.1.1:
     resolution: {integrity: sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==}
     engines: {node: '>=18'}
-=======
-  cookie-es@3.1.1:
-    resolution: {integrity: sha512-UaXxwISYJPTr9hwQxMFYZ7kNhSXboMXP+Z3TRX6f1/NyaGPfuNUZOWP1pUEb75B2HjfklIYLVRfWiFZJyC6Npg==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   core-js@3.49.0:
     resolution: {integrity: sha512-es1U2+YTtzpwkxVLwAFdSpaIMyQaq0PBgm3YD1W3Qpsn1NAmO3KSgZfu+oGSWVu6NvLHoHCV/aYcsE5wiB7ALg==}
@@ -6076,16 +5876,8 @@ packages:
   es-module-lexer@2.3.1:
     resolution: {integrity: sha512-shc1dbU90Yl/xq1QrC7QRtfcwURZuVRfPhZbDoldJ1cn1gzDvBaBWlv0eFolj5+0znnPJz5TXLxsN77X/12KTA==}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   es-toolkit@1.45.1:
     resolution: {integrity: sha512-/jhoOj/Fx+A+IIyDNOvO3TItGmlMKhtX8ISAHKE90c4b/k1tqaqEZ+uUqfpU8DMnW5cgNJv606zS55jGvza0Xw==}
-
-  es-toolkit@1.50.0:
-    resolution: {integrity: sha512-OyZKhUVvEep9ITEiwHn8GKnMRQIVqoSIX7WnRbkWgJkllCujilqP2rD0u979tkl8wqyc8ICwlc1UBVv/Sl1G6w==}
-=======
-  es-toolkit@1.49.0:
-    resolution: {integrity: sha512-G5iZ6Pc/FNRY/soKZHC+TxGDD83rHUDXxzaWhGCX44vAv/tMs56WMusnm/KMNK+luUPsgA9U28cGr4RDlSzL2g==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   es-toolkit@1.50.0:
     resolution: {integrity: sha512-OyZKhUVvEep9ITEiwHn8GKnMRQIVqoSIX7WnRbkWgJkllCujilqP2rD0u979tkl8wqyc8ICwlc1UBVv/Sl1G6w==}
@@ -6553,13 +6345,10 @@ packages:
     resolution: {integrity: sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA==}
     engines: {node: '>=0.8.19'}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   indent-string@4.0.0:
     resolution: {integrity: sha512-EdDDZu4A2OyIK7Lr/2zG+w5jmbuk1DVBnEwREQvBzspBJkCEbRa8GxU1lghYcaGJCnRWibjDXlq779X1/y5xwg==}
     engines: {node: '>=8'}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   indent-string@5.0.0:
     resolution: {integrity: sha512-m6FAo/spmsW2Ab2fU35JTYwtOKa2yAwXSwgjSv1TJzh4Mh7mC3lzAOVLBprb72XsTrgkEIsl7YrFNAiDiRhIGg==}
     engines: {node: '>=12'}
@@ -6567,26 +6356,6 @@ packages:
   index-to-position@1.2.0:
     resolution: {integrity: sha512-Yg7+ztRkqslMAS2iFaU+Oa4KTSidr63OsFGlOrJoW981kIYO3CGCS3wA95P1mUi/IVSJkn0D479KTJpVpvFNuw==}
     engines: {node: '>=18'}
-
-  ink-spinner@5.0.0:
-    resolution: {integrity: sha512-EYEasbEjkqLGyPOUc8hBJZNuC5GvXGMLu0w5gdTNskPc7Izc5vO3tdQEYnzvshucyGCBXc86ig0ujXPMWaQCdA==}
-    engines: {node: '>=14.16'}
-    peerDependencies:
-      ink: '>=4.0.0'
-      react: '>=18.0.0'
-
-  ink@7.1.1:
-    resolution: {integrity: sha512-Y43xxa1ZSPvpmfLHcN5o+OdP8Rf8ykkNJEuKYOUNZKT8wXVNLFTtEm1nSDMQkfBH+YANF4Xuu0hhZ4ejqAtN2w==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      '@types/react': '>=19.2.0'
-      react: '>=19.2.0'
-      react-devtools-core: '>=6.1.2'
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-      react-devtools-core:
-        optional: true
 
   ink-spinner@5.0.0:
     resolution: {integrity: sha512-EYEasbEjkqLGyPOUc8hBJZNuC5GvXGMLu0w5gdTNskPc7Izc5vO3tdQEYnzvshucyGCBXc86ig0ujXPMWaQCdA==}
@@ -6670,14 +6439,11 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   is-inside-container@1.0.0:
     resolution: {integrity: sha512-KIYLCCJghfHZxqjYBE7rEy0OBuTd5xCHS7tHVgvCLkx7StIoaxwNW3hCALgEUjFfeRk+MG/Qxmp/vtETEF3tRA==}
     engines: {node: '>=14.16'}
     hasBin: true
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   is-interactive@2.0.0:
     resolution: {integrity: sha512-qP1vozQRI+BMOPcjFzrjXuQvdak2pHNUMZoeG2eRbiSqyvbEf/wQtEOTOX1guk6E3t36RkaqiSt8A/6YElNxLQ==}
     engines: {node: '>=12'}
@@ -7354,13 +7120,10 @@ packages:
     resolution: {integrity: sha512-9miFgM2OFba7hB+pRgvtV84pYTBaoTHohvmIgiRt6dRIzbwEOIaNaP+dIlGs2fNFoB0SeISs0Jz5WFVRid6Xyg==}
     engines: {node: '>=12.20.0'}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   obug@2.1.4:
     resolution: {integrity: sha512-4a+OsYv9UktOJKE+l1A4OufDgdRF9PifWj+tJnHURo/P+WOxpG4GzUFL9qCalmWauao6ogiG+QvnCovwPoyAWA==}
     engines: {node: '>=12.20.0'}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   onetime@5.1.2:
     resolution: {integrity: sha512-kbpaSSGJTWdAY5KPVeMOKXSrPtr8C8C7wodJbcsd51jRnmD+GZu8Y0VoU6Dm5Z4vWr0Ig/1NKuWRKf7j5aaYSg==}
     engines: {node: '>=6'}
@@ -7396,13 +7159,10 @@ packages:
     resolution: {integrity: sha512-6VlU9MLXbjVQD04AZCMX28hVtA5bUoadvUqO76MUCVA0ilwJbMiHsITRPfyVm6p/BC0Av/BXMujx39WCe1LEqw==}
     engines: {node: '>=20'}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   oxc-parser@0.127.0:
     resolution: {integrity: sha512-bkgD4qHlN7WxLdX8bLXdaU54TtQtAIg/ZBAfm0aje/mo3MRDo3P0hZSgr4U7O3xfX+fQmR5AP04JS/TGcZLcFA==}
     engines: {node: ^20.19.0 || >=22.12.0}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   oxc-parser@0.137.0:
     resolution: {integrity: sha512-yFImD+WLElJpLKy8llG1qe4DCmMsL18peRp8XP1JKfig/gISbJkglnpDtX2aTmAn10kZF7164HbN2H8QPsXxGg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -7417,7 +7177,6 @@ packages:
   oxc-resolver@11.24.2:
     resolution: {integrity: sha512-FY91FiDBj7ls5MsFS9jN3tjz2o0/zsdSsymlakySaBwVJZorHhkWyICLZMKxlu1R9vYo+sd3z1jwb4J8x7bNDw==}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   oxfmt@0.55.0:
     resolution: {integrity: sha512-jSj2wCTakwgPMxkfiVZX0jf+nX+Nz6xlyAZjqNE0qXTFdCBPYlP6JAN+ODjmealw7DXBjOzYbdsqwBMAZnPZ6A==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -7444,13 +7203,10 @@ packages:
       vite-plus:
         optional: true
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   oxlint-plugin-react-doctor@0.9.2:
     resolution: {integrity: sha512-fTciSOgAGe/KAgvFDKLz9crjxHyAuu0BvT5sXfSdo2B5QmY5Y/j3nliqX6FaGr7Wud1SYvkAky+/m+58b6K6fQ==}
     engines: {node: ^20.19.0 || >=22.13.0}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   oxlint@1.70.0:
     resolution: {integrity: sha512-D6JgHtzkhRwvEC+A0Nw5AEc5bk8x5i1pHzvZIEf/a0C4hOzmAACNGtkDGPyFaxxX3ZVGxCPeig3P3rMM8XU3/g==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -7483,14 +7239,6 @@ packages:
     hasBin: true
     peerDependencies:
       oxlint-tsgolint: '>=7.0.2001'
-=======
-  oxlint@1.74.0:
-    resolution: {integrity: sha512-odGl2s2x5IOJoj3A0v1k0PGBXVFBZeZ2+AK/+K2MJur7Ghi3bkyX5NuLUWHKqa4js1wjep3hJeuTQJOlr+4+dA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    hasBin: true
-    peerDependencies:
-      oxlint-tsgolint: '>=0.24.0'
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
       vite-plus: '*'
     peerDependenciesMeta:
       oxlint-tsgolint:
@@ -7536,22 +7284,16 @@ packages:
     resolution: {integrity: sha512-ybiGyvspI+fAoRQbIPRddCcSTV9/LsJbf0e/S85VLowVGzRmokfneg2kwVW/KU5rOXrPSbF1qAKPMgNTqqROQQ==}
     engines: {node: '>=18'}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   parse5@7.3.0:
     resolution: {integrity: sha512-IInvU7fabl34qmi9gY8XOVxhYyMyuH2xUNpb2q8/Y+7552KlejkRvqvD19nMoUW/uQGGbqNpA6Tufu5FL5BZgw==}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   patch-console@2.0.0:
     resolution: {integrity: sha512-0YNdUceMdaQwoKce1gatDScmMo5pu/tfABfnzEqeG0gtTmd7mh/WcwgUjtAeOU7N8nFFlbQBnFK2gXW5fGvmMA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   path-data-parser@0.1.0:
     resolution: {integrity: sha512-NOnmBpt5Y2RWbuv0LMzsayp3lVylAHLPUTut412ZA3l+C4uw4ZVkQbjShYCQ8TCpUMdPapr4YjUqLYD6v68j+w==}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   path-exists@4.0.0:
     resolution: {integrity: sha512-ak9Qy5Q7jYb2Wwcey5Fpvg2KoAc/ZIhLSLOSBmRmygPsGwkVVt0fZa0qrtMz+m6tJTAHfZQ8FnmB4MG4LWy7/w==}
     engines: {node: '>=8'}
@@ -7729,7 +7471,6 @@ packages:
     peerDependencies:
       react: '>=16.14.0'
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   react-docgen-typescript@2.4.0:
     resolution: {integrity: sha512-ZtAp5XTO5HRzQctjPU0ybY0RRCQO19X/8fxn3w7y2VVTUbGHDKULPTL4ky3vB05euSgG5NpALhEhDPvQ56wvXg==}
     peerDependencies:
@@ -7739,8 +7480,6 @@ packages:
     resolution: {integrity: sha512-aEZ9qP+/M+58x2qgfSFEWH1BxLyHe5+qkLNJOZQb5iGS017jpbRnoKhNRrXPeA6RfBrZO5wZrT9DMC1UqE1f1w==}
     engines: {node: ^20.9.0 || >=22}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   react-doctor@0.9.2:
     resolution: {integrity: sha512-A/e21t0y3j7zUTS8lJyNI2pKMfYLDH+zZwqAC7+MQW1vCD3xqWc2x8XCCWKnrQQwtFd6dwSZw2017x1iSLnGTA==}
     engines: {node: ^20.19.0 || >=22.13.0}
@@ -7794,13 +7533,8 @@ packages:
     peerDependencies:
       react: ^19.2.0
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   react-redux@9.2.0:
     resolution: {integrity: sha512-ROY9fvHhwOD9ySfrF0wmvu//bKCQ6AeZZq1nJNtbDC+kk5DuSuNX/n6YWYF/SYy7bSba4D4FSz8DJeKY/S/r+g==}
-=======
-  react-redux@9.3.0:
-    resolution: {integrity: sha512-KQopgqFo/p/fgmAs5qz6p5RWaNAzq40WAu7fJIXnQpYxFPbJYtsJPWvGeF2rOBaY/kEuV77AVsX8TsQzKm+A/g==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     peerDependencies:
       '@types/react': ^18.2.25 || ^19
       react: ^18.0 || ^19
@@ -7837,12 +7571,12 @@ packages:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
 
-  react-router@8.3.0:
-    resolution: {integrity: sha512-qyPMvW83jGIct3yiieisxdk9M745anqhpIMKN5m1t6yBMfgVPpt77aHOqs5fUlEJRMCGffg9BaQLH9oPVOL7xQ==}
-    engines: {node: '>=22.22.0'}
+  react-router@7.18.0:
+    resolution: {integrity: sha512-pTTGt8J+ji1NOmYnjzT+bAJy/1zD+Jp4ziO6cL7T3ZLvXKtusO7BpFqlRXitqpcPVqllsIXFHRMt+2/k3Xn6HQ==}
+    engines: {node: '>=20.0.0'}
     peerDependencies:
-      react: '>=19.2.7'
-      react-dom: '>=19.2.7'
+      react: '>=18'
+      react-dom: '>=18'
     peerDependenciesMeta:
       react-dom:
         optional: true
@@ -7901,7 +7635,6 @@ packages:
       react: '>=16'
       react-dom: '>=16'
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   react-zoom-pan-pinch@4.0.3:
     resolution: {integrity: sha512-N2Hi6L78fFmhRra+ORpFSW7WST5x6kxpOPplIvtB0b7b+U2anpo1z1wLgaWRPS2kUSqcraRG+JgBCIlDJnqqAg==}
     engines: {node: '>=8', npm: '>=5'}
@@ -7909,19 +7642,12 @@ packages:
       react: '*'
       react-dom: '*'
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   react@19.2.5:
     resolution: {integrity: sha512-llUJLzz1zTUBrskt2pwZgLq59AemifIftw4aB7JxOqf1HY2FDaGDxgwpAPVzHU1kdWabH7FauP4i1oEeer2WCA==}
     engines: {node: '>=0.10.0'}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   react@19.2.8:
     resolution: {integrity: sha512-PWaYA1L/q9u2u7xYQi+Y3L3Yfnie7XyLeaJICV1MGD6LprsBxcAqGjYyr0eY3p+QdsA+x/Irkt4Qif8D63+Sbw==}
-=======
-  react@19.2.7:
-    resolution: {integrity: sha512-HNe9WslTbXmFK8o8cmwgAeJFSBvt1bPdHCVKtaaV+WlAN36mpT4hcRpwbf3fY56ar2oIXzsBpOAiIRHAdY0OlQ==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: '>=0.10.0'}
 
   readdirp@3.6.0:
@@ -8028,14 +7754,11 @@ packages:
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   resolve@1.22.12:
     resolution: {integrity: sha512-TyeJ1zif53BPfHootBGwPRYT1RUt6oGWsaQr8UyZW/eAm9bKoijtvruSDEmZHm92CwS9nj7/fWttqPCgzep8CA==}
     engines: {node: '>= 0.4'}
     hasBin: true
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   restore-cursor@4.0.0:
     resolution: {integrity: sha512-I9fPXU9geO9bHOt9pHHOhOkYerIMsmVaWB0rA2AI9ERh/+x/i7MV5HKBNrg+ljO5eoPVgCcnFuRjJ9uH6I/3eg==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
@@ -8095,6 +7818,9 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  set-cookie-parser@2.7.2:
+    resolution: {integrity: sha512-oeM1lpU/UvhTxw+g3cIfxXHyJRc/uidd3yK1P242gzHds0udQBYzs3y8j4gCCW+ZJ7ad0yctld8RYO+bdurlvw==}
+
   set-value@4.1.0:
     resolution: {integrity: sha512-zTEg4HL0RwVrqcWs3ztF+x1vkxfm0lP+MQQFPiMJTKVceBwEV0A569Ou8l9IYQG8jOZdMVI1hGsc0tmeD2o/Lw==}
     engines: {node: '>=11.0'}
@@ -8153,13 +7879,8 @@ packages:
     resolution: {integrity: sha512-SO/3iYL5S3W57LLEniscOGPZgOqZUPCx6d3dB+52B80yJ0XstzsC/eV8gnA4tM3MHDrKz+OCFSLNjswdSC+/bA==}
     engines: {node: '>=22'}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   smol-toml@1.6.1:
     resolution: {integrity: sha512-dWUG8F5sIIARXih1DTaQAX4SsiTXhInKf1buxdY9DIg4ZYPZK5nGM1VRIYmEbDbsHt7USo99xSLFu5Q1IqTmsg==}
-=======
-  smol-toml@1.7.0:
-    resolution: {integrity: sha512-aqVvWoyO21L23mb+drl4RmMXbf6N7FdHjAhTRA9ZBL7apWBgfWC16KjrASI+1p9GAroljyMHj6fK67i0UiTNvQ==}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     engines: {node: '>= 18'}
 
   snake-case@3.0.4:
@@ -8452,6 +8173,11 @@ packages:
 
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+  typescript@6.0.3:
+    resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -8836,13 +8562,10 @@ packages:
       utf-8-validate:
         optional: true
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   wsl-utils@0.1.0:
     resolution: {integrity: sha512-h3Fbisa2nKGPxCpm89Hk33lBLsnaGBvctQopaBSOW/uIs6FTe1ATyAnKFJrzVs9vpGdsTe73WF3V4lIsk4Gacw==}
     engines: {node: '>=18'}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
     engines: {node: '>=10'}
@@ -8948,24 +8671,18 @@ snapshots:
       graphql: 16.14.2
       typescript: 5.9.3
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@adobe/css-tools@4.5.0': {}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   '@alcalzone/ansi-tokenize@0.3.0':
     dependencies:
       ansi-styles: 6.2.3
       is-fullwidth-code-point: 5.1.0
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@antfu/install-pkg@1.1.0':
     dependencies:
       package-manager-detector: 1.8.0
       tinyexec: 1.2.4
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   '@apm-js-collab/code-transformer-bundler-plugins@0.7.1':
     dependencies:
       '@apm-js-collab/code-transformer': 0.18.1
@@ -9401,11 +9118,8 @@ snapshots:
 
   '@dagrejs/graphlib@2.2.4': {}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@date-fns/tz@1.5.0': {}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   '@emnapi/core@1.11.0':
     dependencies:
       '@emnapi/wasi-threads': 1.2.2
@@ -9421,15 +9135,12 @@ snapshots:
   '@emnapi/core@1.11.2':
     dependencies:
       '@emnapi/wasi-threads': 1.2.2
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
       tslib: 2.8.1
     optional: true
 
   '@emnapi/core@1.9.2':
     dependencies:
       '@emnapi/wasi-threads': 1.2.1
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
       tslib: 2.8.1
     optional: true
 
@@ -9444,7 +9155,6 @@ snapshots:
     optional: true
 
   '@emnapi/runtime@1.11.2':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     dependencies:
       tslib: 2.8.1
     optional: true
@@ -9455,8 +9165,6 @@ snapshots:
     optional: true
 
   '@emnapi/wasi-threads@1.2.1':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     dependencies:
       tslib: 2.8.1
     optional: true
@@ -9636,12 +9344,9 @@ snapshots:
   '@esbuild/win32-x64@0.28.0':
     optional: true
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   '@eslint-community/eslint-utils@4.10.1(eslint@10.4.1(jiti@2.7.0))':
     dependencies:
       eslint: 10.4.1(jiti@2.7.0)
@@ -10452,7 +10157,6 @@ snapshots:
 
   '@n1ru4l/push-pull-async-iterable-iterator@3.2.0': {}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@napi-rs/wasm-runtime@1.1.4(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)':
     dependencies:
       '@emnapi/core': 1.9.2
@@ -10461,9 +10165,6 @@ snapshots:
     optional: true
 
   '@napi-rs/wasm-runtime@1.1.5(@emnapi/core@1.11.0)(@emnapi/runtime@1.11.0)':
-=======
-  '@napi-rs/wasm-runtime@1.1.6(@emnapi/core@1.11.0)(@emnapi/runtime@1.11.0)':
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     dependencies:
       '@emnapi/core': 1.11.0
       '@emnapi/runtime': 1.11.0
@@ -10545,198 +10246,149 @@ snapshots:
       '@opentelemetry/semantic-conventions': 1.43.0
 
   '@opentelemetry/semantic-conventions@1.43.0': {}
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-parser/binding-android-arm-eabi@0.127.0':
     optional: true
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   '@oxc-parser/binding-android-arm-eabi@0.137.0':
     optional: true
 
   '@oxc-parser/binding-android-arm-eabi@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-android-arm64@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-android-arm64@0.137.0':
     optional: true
 
   '@oxc-parser/binding-android-arm64@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-darwin-arm64@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-darwin-arm64@0.137.0':
     optional: true
 
   '@oxc-parser/binding-darwin-arm64@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-darwin-x64@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-darwin-x64@0.137.0':
     optional: true
 
   '@oxc-parser/binding-darwin-x64@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-freebsd-x64@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-freebsd-x64@0.137.0':
     optional: true
 
   '@oxc-parser/binding-freebsd-x64@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-arm-gnueabihf@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-arm-gnueabihf@0.137.0':
     optional: true
 
   '@oxc-parser/binding-linux-arm-gnueabihf@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-arm-musleabihf@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-arm-musleabihf@0.137.0':
     optional: true
 
   '@oxc-parser/binding-linux-arm-musleabihf@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-arm64-gnu@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-arm64-gnu@0.137.0':
     optional: true
 
   '@oxc-parser/binding-linux-arm64-gnu@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-arm64-musl@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-arm64-musl@0.137.0':
     optional: true
 
   '@oxc-parser/binding-linux-arm64-musl@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-ppc64-gnu@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-ppc64-gnu@0.137.0':
     optional: true
 
   '@oxc-parser/binding-linux-ppc64-gnu@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-riscv64-gnu@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-riscv64-gnu@0.137.0':
     optional: true
 
   '@oxc-parser/binding-linux-riscv64-gnu@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-riscv64-musl@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-riscv64-musl@0.137.0':
     optional: true
 
   '@oxc-parser/binding-linux-riscv64-musl@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-s390x-gnu@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-s390x-gnu@0.137.0':
     optional: true
 
   '@oxc-parser/binding-linux-s390x-gnu@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-x64-gnu@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-x64-gnu@0.137.0':
     optional: true
 
   '@oxc-parser/binding-linux-x64-gnu@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-x64-musl@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-linux-x64-musl@0.137.0':
     optional: true
 
   '@oxc-parser/binding-linux-x64-musl@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-openharmony-arm64@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-openharmony-arm64@0.137.0':
     optional: true
 
   '@oxc-parser/binding-openharmony-arm64@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-wasm32-wasi@0.127.0':
@@ -10744,8 +10396,6 @@ snapshots:
       '@emnapi/core': 1.9.2
       '@emnapi/runtime': 1.9.2
       '@napi-rs/wasm-runtime': 1.1.4(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-wasm32-wasi@0.137.0':
@@ -10760,36 +10410,27 @@ snapshots:
       '@emnapi/core': 1.11.2
       '@emnapi/runtime': 1.11.2
       '@napi-rs/wasm-runtime': 1.1.6(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-win32-arm64-msvc@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-win32-arm64-msvc@0.137.0':
     optional: true
 
   '@oxc-parser/binding-win32-arm64-msvc@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-win32-ia32-msvc@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-win32-ia32-msvc@0.137.0':
     optional: true
 
   '@oxc-parser/binding-win32-ia32-msvc@0.141.0':
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-win32-x64-msvc@0.127.0':
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@oxc-parser/binding-win32-x64-msvc@0.137.0':
@@ -10797,7 +10438,6 @@ snapshots:
 
   '@oxc-parser/binding-win32-x64-msvc@0.141.0':
     optional: true
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   '@oxc-project/types@0.127.0': {}
 
@@ -10805,11 +10445,6 @@ snapshots:
 
   '@oxc-project/types@0.139.0': {}
 
-=======
-
-  '@oxc-project/types@0.137.0': {}
-
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   '@oxc-project/types@0.141.0': {}
 
   '@oxc-resolver/binding-android-arm-eabi@11.21.3':
@@ -10922,13 +10557,6 @@ snapshots:
       '@napi-rs/wasm-runtime': 1.1.6(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)
     optional: true
 
-  '@oxc-resolver/binding-wasm32-wasi@11.24.2':
-    dependencies:
-      '@emnapi/core': 1.11.2
-      '@emnapi/runtime': 1.11.2
-      '@napi-rs/wasm-runtime': 1.1.6(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)
-    optional: true
-
   '@oxc-resolver/binding-win32-arm64-msvc@11.21.3':
     optional: true
 
@@ -10941,7 +10569,6 @@ snapshots:
   '@oxc-resolver/binding-win32-x64-msvc@11.24.2':
     optional: true
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   '@oxfmt/binding-android-arm-eabi@0.55.0':
     optional: true
 
@@ -11225,63 +10852,6 @@ snapshots:
     optional: true
 
   '@oxlint/binding-win32-x64-msvc@1.75.0':
-=======
-  '@oxlint/binding-android-arm-eabi@1.74.0':
-    optional: true
-
-  '@oxlint/binding-android-arm64@1.74.0':
-    optional: true
-
-  '@oxlint/binding-darwin-arm64@1.74.0':
-    optional: true
-
-  '@oxlint/binding-darwin-x64@1.74.0':
-    optional: true
-
-  '@oxlint/binding-freebsd-x64@1.74.0':
-    optional: true
-
-  '@oxlint/binding-linux-arm-gnueabihf@1.74.0':
-    optional: true
-
-  '@oxlint/binding-linux-arm-musleabihf@1.74.0':
-    optional: true
-
-  '@oxlint/binding-linux-arm64-gnu@1.74.0':
-    optional: true
-
-  '@oxlint/binding-linux-arm64-musl@1.74.0':
-    optional: true
-
-  '@oxlint/binding-linux-ppc64-gnu@1.74.0':
-    optional: true
-
-  '@oxlint/binding-linux-riscv64-gnu@1.74.0':
-    optional: true
-
-  '@oxlint/binding-linux-riscv64-musl@1.74.0':
-    optional: true
-
-  '@oxlint/binding-linux-s390x-gnu@1.74.0':
-    optional: true
-
-  '@oxlint/binding-linux-x64-gnu@1.74.0':
-    optional: true
-
-  '@oxlint/binding-linux-x64-musl@1.74.0':
-    optional: true
-
-  '@oxlint/binding-openharmony-arm64@1.74.0':
-    optional: true
-
-  '@oxlint/binding-win32-arm64-msvc@1.74.0':
-    optional: true
-
-  '@oxlint/binding-win32-ia32-msvc@1.74.0':
-    optional: true
-
-  '@oxlint/binding-win32-x64-msvc@1.74.0':
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optional: true
 
   '@phenomnomnominal/tsquery@6.2.0(typescript@5.9.3)':
@@ -13447,10 +13017,6 @@ snapshots:
     dependencies:
       react: 19.2.8
 
-  bippy@0.6.1(react@19.2.7):
-    dependencies:
-      react: 19.2.7
-
   brace-expansion@2.1.0:
     dependencies:
       balanced-match: 1.0.2
@@ -13669,11 +13235,7 @@ snapshots:
 
   convert-to-spaces@2.0.1: {}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   cookie@1.1.1: {}
-=======
-  cookie-es@3.1.1: {}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   core-js@3.49.0: {}
 
@@ -14044,13 +13606,7 @@ snapshots:
 
   es-module-lexer@2.3.1: {}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   es-toolkit@1.45.1: {}
-
-  es-toolkit@1.50.0: {}
-=======
-  es-toolkit@1.49.0: {}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   es-toolkit@1.50.0: {}
 
@@ -14621,54 +14177,11 @@ snapshots:
 
   imurmurhash@0.1.4: {}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   indent-string@4.0.0: {}
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   indent-string@5.0.0: {}
 
   index-to-position@1.2.0: {}
-
-  ink-spinner@5.0.0(ink@7.1.1(@types/react@19.2.17)(react@19.2.5))(react@19.2.5):
-    dependencies:
-      cli-spinners: 2.9.2
-      ink: 7.1.1(@types/react@19.2.17)(react@19.2.5)
-      react: 19.2.5
-
-  ink@7.1.1(@types/react@19.2.17)(react@19.2.5):
-    dependencies:
-      '@alcalzone/ansi-tokenize': 0.3.0
-      ansi-escapes: 7.3.0
-      ansi-styles: 6.2.3
-      auto-bind: 5.0.1
-      chalk: 5.6.2
-      cli-boxes: 4.0.1
-      cli-cursor: 4.0.0
-      cli-truncate: 6.1.1
-      code-excerpt: 4.0.0
-      es-toolkit: 1.50.0
-      indent-string: 5.0.0
-      is-in-ci: 2.0.0
-      patch-console: 2.0.0
-      react: 19.2.5
-      react-reconciler: 0.33.0(react@19.2.5)
-      scheduler: 0.27.0
-      signal-exit: 3.0.7
-      slice-ansi: 9.0.0
-      stack-utils: 2.0.6
-      string-width: 8.2.2
-      terminal-size: 4.0.1
-      type-fest: 5.8.0
-      widest-line: 6.0.0
-      wrap-ansi: 10.0.0
-      ws: 8.21.1
-      yoga-layout: 3.2.1
-    optionalDependencies:
-      '@types/react': 19.2.17
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
 
   ink-spinner@5.0.0(ink@7.1.1(@types/react@19.2.17)(react@19.2.5))(react@19.2.5):
     dependencies:
@@ -14760,13 +14273,10 @@ snapshots:
 
   is-in-ci@2.0.0: {}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   is-inside-container@1.0.0:
     dependencies:
       is-docker: 3.0.0
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   is-interactive@2.0.0: {}
 
   is-number@7.0.0: {}
@@ -15542,20 +15052,12 @@ snapshots:
 
   nullthrows@1.1.1: {}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   nuqs@2.8.9(react-router@7.18.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8):
-=======
-  nuqs@2.8.9(react-router@8.3.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7):
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     dependencies:
       '@standard-schema/spec': 1.0.0
       react: 19.2.8
     optionalDependencies:
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
       react-router: 7.18.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-=======
-      react-router: 8.3.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   nypm@0.6.7:
     dependencies:
@@ -15569,12 +15071,9 @@ snapshots:
 
   obug@2.1.3: {}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   obug@2.1.4:
     optional: true
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   onetime@5.1.2:
     dependencies:
       mimic-fn: 2.1.0
@@ -15632,7 +15131,6 @@ snapshots:
       log-symbols: 7.0.1
       stdin-discarder: 0.3.2
       string-width: 8.2.2
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   oxc-parser@0.127.0:
     dependencies:
@@ -15658,8 +15156,6 @@ snapshots:
       '@oxc-parser/binding-win32-arm64-msvc': 0.127.0
       '@oxc-parser/binding-win32-ia32-msvc': 0.127.0
       '@oxc-parser/binding-win32-x64-msvc': 0.127.0
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   oxc-parser@0.137.0:
     dependencies:
@@ -15755,7 +15251,6 @@ snapshots:
       '@oxc-resolver/binding-win32-arm64-msvc': 11.24.2
       '@oxc-resolver/binding-win32-x64-msvc': 11.24.2
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   oxfmt@0.55.0:
     dependencies:
       tinypool: 2.1.0
@@ -15806,17 +15301,12 @@ snapshots:
 
   oxlint-plugin-react-doctor@0.9.2:
     dependencies:
-=======
-  oxlint-plugin-react-doctor@0.9.2:
-    dependencies:
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
       '@shaderfrog/glsl-parser': 7.0.1
       '@typescript-eslint/types': 8.65.0
       eslint-scope: 9.1.2
       eslint-visitor-keys: 5.0.1
       oxc-parser: 0.141.0
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   oxlint@1.70.0:
     optionalDependencies:
       '@oxlint/binding-android-arm-eabi': 1.70.0
@@ -15841,10 +15331,6 @@ snapshots:
 
   oxlint@1.74.0:
     optionalDependencies:
-=======
-  oxlint@1.74.0:
-    optionalDependencies:
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
       '@oxlint/binding-android-arm-eabi': 1.74.0
       '@oxlint/binding-android-arm64': 1.74.0
       '@oxlint/binding-darwin-arm64': 1.74.0
@@ -15864,7 +15350,6 @@ snapshots:
       '@oxlint/binding-win32-arm64-msvc': 1.74.0
       '@oxlint/binding-win32-ia32-msvc': 1.74.0
       '@oxlint/binding-win32-x64-msvc': 1.74.0
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
 
   oxlint@1.75.0:
     optionalDependencies:
@@ -15887,8 +15372,6 @@ snapshots:
       '@oxlint/binding-win32-arm64-msvc': 1.75.0
       '@oxlint/binding-win32-ia32-msvc': 1.75.0
       '@oxlint/binding-win32-x64-msvc': 1.75.0
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   p-limit@3.1.0:
     dependencies:
@@ -15941,7 +15424,6 @@ snapshots:
       index-to-position: 1.2.0
       type-fest: 4.41.0
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   parse5@7.3.0:
     dependencies:
       entities: 6.0.1
@@ -15950,10 +15432,6 @@ snapshots:
 
   path-data-parser@0.1.0: {}
 
-=======
-  patch-console@2.0.0: {}
-
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   path-exists@4.0.0: {}
 
   path-exists@5.0.0: {}
@@ -16135,7 +15613,6 @@ snapshots:
       shallow-equal: 3.1.0
       warning: 4.0.3
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   react-docgen-typescript@2.4.0(typescript@5.9.3):
     dependencies:
       typescript: 5.9.3
@@ -16159,8 +15636,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   react-doctor@0.9.2(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@types/react@19.2.17)(eslint@10.4.1(jiti@2.7.0)):
     dependencies:
       '@babel/code-frame': 7.29.7
@@ -16206,17 +15681,10 @@ snapshots:
     dependencies:
       react: 19.2.8
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   react-grab@0.1.50(react@19.2.8):
     dependencies:
       '@react-grab/cli': 0.1.50
       bippy: 0.6.1(react@19.2.8)
-=======
-  react-grab@0.1.50(react@19.2.7):
-    dependencies:
-      '@react-grab/cli': 0.1.50
-      bippy: 0.6.1(react@19.2.7)
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optionalDependencies:
       react: 19.2.8
 
@@ -16256,11 +15724,7 @@ snapshots:
       react: 19.2.5
       scheduler: 0.27.0
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   react-redux@9.2.0(@types/react@19.2.17)(react@19.2.8)(redux@5.0.1):
-=======
-  react-redux@9.3.0(@types/react@19.2.17)(react@19.2.7)(redux@5.0.1):
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     dependencies:
       '@types/use-sync-external-store': 0.0.6
       react: 19.2.8
@@ -16293,26 +15757,15 @@ snapshots:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   react-router@7.18.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       cookie: 1.1.1
       react: 19.2.8
       set-cookie-parser: 2.7.2
-=======
-  react-router@8.3.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
-    dependencies:
-      cookie-es: 3.1.1
-      react: 19.2.7
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optionalDependencies:
       react-dom: 19.2.8(react@19.2.8)
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   react-scan@0.5.7(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@types/react@19.2.17)(esbuild@0.28.1)(eslint@10.4.1(jiti@2.7.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
-=======
-  react-scan@0.5.7(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@types/react@19.2.17)(esbuild@0.28.0)(eslint@10.4.1(jiti@2.7.0))(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     dependencies:
       '@babel/core': 7.29.7
       '@babel/types': 7.29.7
@@ -16323,17 +15776,10 @@ snapshots:
       picocolors: 1.1.1
       preact: 10.29.2
       prompts: 2.4.2
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
       react: 19.2.8
       react-doctor: 0.9.2(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@types/react@19.2.17)(eslint@10.4.1(jiti@2.7.0))
       react-dom: 19.2.8(react@19.2.8)
       react-grab: 0.1.50(react@19.2.8)
-=======
-      react: 19.2.7
-      react-doctor: 0.9.2(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@types/react@19.2.17)(eslint@10.4.1(jiti@2.7.0))
-      react-dom: 19.2.7(react@19.2.7)
-      react-grab: 0.1.50(react@19.2.7)
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     optionalDependencies:
       esbuild: 0.28.1
       unplugin: 3.0.0
@@ -16409,7 +15855,6 @@ snapshots:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   react-zoom-pan-pinch@4.0.3(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       react: 19.2.8
@@ -16418,11 +15863,6 @@ snapshots:
   react@19.2.5: {}
 
   react@19.2.8: {}
-=======
-  react@19.2.5: {}
-
-  react@19.2.7: {}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   readdirp@3.6.0:
     dependencies:
@@ -16566,7 +16006,6 @@ snapshots:
 
   resolve-pkg-maps@1.0.0: {}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   resolve@1.22.12:
     dependencies:
       es-errors: 1.3.0
@@ -16574,8 +16013,6 @@ snapshots:
       path-parse: 1.0.7
       supports-preserve-symlinks-flag: 1.0.0
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   restore-cursor@4.0.0:
     dependencies:
       onetime: 5.1.2
@@ -16640,6 +16077,8 @@ snapshots:
 
   semver@7.8.5: {}
 
+  set-cookie-parser@2.7.2: {}
+
   set-value@4.1.0:
     dependencies:
       is-plain-object: 2.0.4
@@ -16701,11 +16140,7 @@ snapshots:
       ansi-styles: 6.2.3
       is-fullwidth-code-point: 5.1.0
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   smol-toml@1.6.1: {}
-=======
-  smol-toml@1.7.0: {}
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   snake-case@3.0.4:
     dependencies:
@@ -16963,15 +16398,13 @@ snapshots:
 
   typescript@5.9.3: {}
 
+  typescript@6.0.3: {}
+
   uc.micro@2.1.0: {}
 
   uint8array-extras@1.5.0: {}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   ultracite@7.8.3(oxfmt@0.60.0)(oxlint@1.75.0):
-=======
-  ultracite@7.8.3(oxlint@1.74.0):
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
     dependencies:
       '@clack/prompts': 1.5.1
       commander: 15.0.0
@@ -16983,12 +16416,8 @@ snapshots:
       yaml: 2.9.0
       zod: 4.4.3
     optionalDependencies:
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
       oxfmt: 0.60.0
       oxlint: 1.75.0
-=======
-      oxlint: 1.74.0
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
 
   unbash@4.0.1: {}
 
@@ -17353,13 +16782,10 @@ snapshots:
 
   ws@8.21.1: {}
 
-<<<<<<< HEAD:frontend/pnpm-lock.yaml
   wsl-utils@0.1.0:
     dependencies:
       is-wsl: 3.1.1
 
-=======
->>>>>>> origin/stable:frontend/app/pnpm-lock.yaml
   y18n@5.0.8: {}
 
   yallist@3.1.1: {}

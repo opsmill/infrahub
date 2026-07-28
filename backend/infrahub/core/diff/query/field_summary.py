@@ -60,15 +60,9 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
             WHERE attr_name IS NOT NULL
             RETURN collect({name: attr_name, node_uuids: attr_node_uuids}) AS attr_name_uuids
         }
-<<<<<<< HEAD
-        WITH kind, attr_name_uuids
-        CALL (kind) {
-            OPTIONAL MATCH (n:DiffNode {kind: kind})-[:DIFF_HAS_RELATIONSHIP]->(r:DiffRelationship)
-=======
-        WITH diff_root, kind, attr_names
+        WITH diff_root, kind, attr_name_uuids
         CALL (diff_root, kind) {
             OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(n:DiffNode {kind: kind})-[:DIFF_HAS_RELATIONSHIP]->(r:DiffRelationship)
->>>>>>> origin/stable
             WHERE n.action <> $unchanged_str
             AND r.action <> $unchanged_str
             WITH r.name AS rel_name, collect(DISTINCT n.uuid) AS rel_node_uuids

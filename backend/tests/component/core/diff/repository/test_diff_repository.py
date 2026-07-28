@@ -15,6 +15,7 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffs,
     FrozenTrackingId,
     NameTrackingId,
+    NodeDiffFieldSummary,
 )
 from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
@@ -604,7 +605,6 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             await diff_repository.get_one(diff_branch_name=self.diff_branch_name)
         assert not issubclass(ResourceMultipleFoundError, ResourceNotFoundError)
 
-<<<<<<< HEAD
     async def test_get_node_field_summaries(self, diff_repository: DiffRepository) -> None:
         diff_nodes = self._build_nodes(num_nodes=5, num_sub_fields=2)
         for diff_node in list(diff_nodes)[:3]:
@@ -650,8 +650,6 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved_map = {summary.kind: summary for summary in retrieved_node_field_summaries}
         assert expected_map == retrieved_map
 
-=======
->>>>>>> origin/stable
     async def test_merge_tracking_ids(self, diff_repository: DiffRepository, reset_database: None) -> None:
         base_branch_name = "main"
         tracking_id_diff_1 = EnrichedRootFactory.build(base_branch_name=base_branch_name)
