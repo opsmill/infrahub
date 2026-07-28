@@ -88,14 +88,21 @@ class MergeSelectiveRegeneration:
         they produced this diff, so re-running them on it would repeat runs already completed.
         """
         modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=target_branch)
+        loaded_by_selector = [
+            (selector, await selector.load_definitions(target_branch=target_branch))
+            for selector in self.selectors
+            if selector.cascade_role is not CascadeRole.SOURCE
+        ]
+
+        # Aggregated over every non-source selector so a repository escalated by any missing fingerprint
+        # regenerates all of its definitions, not only the kind that carried the null fingerprint.
+        all_definitions: list[DefinitionModel] = [
+            loaded.definition for _, loaded_definitions in loaded_by_selector for loaded in loaded_definitions
+        ]
+        forced_repositories = repositories_forcing_full_regeneration(definitions=all_definitions)
+
         entries: list[PlannedRegeneration] = []
-        for selector in self.selectors:
-            if selector.cascade_role is CascadeRole.SOURCE:
-                continue
-            loaded_definitions = await selector.load_definitions(target_branch=target_branch)
-            forced_repositories = repositories_forcing_full_regeneration(
-                definitions=[loaded.definition for loaded in loaded_definitions]
-            )
+        for selector, loaded_definitions in loaded_by_selector:
             requests = await selector.select(
                 loaded_definitions=loaded_definitions,
                 forced_repositories=forced_repositories,

@@ -180,6 +180,26 @@ async def test_reselect_from_cascade_output_excludes_cascade_sources() -> None:
     ]
 
 
+async def test_reselect_from_cascade_output_escalates_across_terminals_sharing_a_repository() -> None:
+    """A null-fingerprint terminal escalates its whole repository, including a sibling terminal.
+
+    The missing-fingerprint set is aggregated over every non-source selector before selection, so it
+    keeps the repository-wide fallback build_plan applies rather than escalating each kind in isolation.
+    """
+    unpopulated_terminal = ArtifactForcingSelector(
+        definitions=[_artifact(fingerprint=None)], member_ids=["m1"], subscriber_by_member={"m1": "s1"}
+    )
+    populated_terminal = ArtifactForcingSelector(
+        definitions=[_artifact(fingerprint="fp")], member_ids=["m2"], subscriber_by_member={"m2": "s2"}
+    )
+
+    entries = await MergeSelectiveRegeneration(
+        selectors=[unpopulated_terminal, populated_terminal]
+    ).reselect_from_cascade_output(diff_summary=[], target_branch=TARGET_BRANCH)
+
+    assert [len(entry.requests) for entry in entries] == [1, 1]
+
+
 async def test_consolidate_submissions_routes_each_workflow_to_its_selector() -> None:
     """Each entry's requests are consolidated by the selector that owns its workflow, then tagged back."""
     generator_selector = _RecordingSelector[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun](
