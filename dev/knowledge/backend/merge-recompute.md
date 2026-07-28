@@ -4,7 +4,7 @@
 
 A live edit recomputes derived values one node at a time (see [computed-attributes.md](computed-attributes.md)). A merge or rebase can change many nodes at once, so it uses a different path: one coalesced recompute for the whole change set, written in bulk, then chained to any value that reads what was written.
 
-This covers three derived-value families: Jinja2 computed attributes, display labels, and human-friendly ids. Python-transform computed attributes and profile refresh stay on the per-node path and are not part of this. Generator and artifact regeneration on merge takes its own selective path, described in [selective-merge-regeneration.md](selective-merge-regeneration.md).
+This covers three derived-value families: Jinja2 computed attributes, display labels, and human-friendly ids. Python-transform computed attributes and profile refresh are not part of this coalesced pass; they are dispatched by their own automations, though the Python transforms process their fan-out as batches persisted through the same bulk writer (see [computed-attributes.md](computed-attributes.md)). Generator and artifact regeneration on merge takes its own selective path, described in [selective-merge-regeneration.md](selective-merge-regeneration.md).
 
 ## Why a separate path
 

@@ -151,6 +151,8 @@ Workflows receive metadata tags for organization and filtering:
 | Workflow Type | `infrahub.app/workflow-type/{type}` | Categorize by type |
 | Database Change | `infrahub.app/database-change` | Flag database-modifying workflows |
 
+Tags come from two moments, and the difference matters: tags present at run creation (the deployment's static tags plus any `tags=` passed to `submit_workflow`) survive for the run's lifetime, while tags added mid-run via `add_tags` are rebuilt from the tags known at flow start, so a later in-flow tag update drops anything another in-flow update added before it. A tag that filtering depends on (the branch tag for branch-filtered task queries, for example) must therefore be passed at submission, not added from inside the flow.
+
 ## Execution Flow
 
 1. **Registration**: Workflows defined in `catalogue.py` are registered on startup

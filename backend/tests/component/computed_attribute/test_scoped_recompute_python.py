@@ -13,6 +13,7 @@ from tests.component.computed_attribute._base import (
     CAR_PERSON_PYTHON_SCHEMA,
     ScopedRecomputeCase,
     ScopedRecomputeTestBase,
+    create_transform01,
 )
 from tests.helpers.schema import load_schema
 
@@ -53,28 +54,7 @@ class TestScopedRecomputePython(ScopedRecomputeTestBase):
         client: InfrahubClient,
         admin_account: CoreAccount,
     ) -> None:
-        # The transform query reads only TestCar.name, so that is the single "related" field.
-        # The edges/node structure is required for the analyzer to record the field as a read.
-        query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
-        await query.new(
-            db=db,
-            name="query01",
-            query="query { TestCar { edges { node { name { value } } } } }",
-            models=["TestCar", "TestPerson"],
-        )
-        await query.save(db=db)
-
-        repo = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY)
-        await repo.new(
-            db=db, name="repo01", ref=default_branch.name, commit="commit01", location="location01", queries=[query]
-        )
-        await repo.save(db=db)
-
-        transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON)
-        await transform.new(
-            db=db, name="transform01", file_path="transform.py", class_name="Transform", query=query, repository=repo
-        )
-        await transform.save(db=db)
+        repo = await create_transform01(db=db, branch_name=default_branch.name)
 
         # A query reading the display label cannot be mapped to precise backing fields,
         # so its attribute is always recomputed (the conservative, opaque case).
