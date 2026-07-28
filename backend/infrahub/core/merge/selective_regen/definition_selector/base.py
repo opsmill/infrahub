@@ -10,15 +10,17 @@ from ..models import DefinitionModel
 
 if TYPE_CHECKING:
     import logging
+    from collections.abc import Sequence
 
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
     from infrahub.core.regeneration.models import RegenerationTrigger
+    from infrahub.workflows.models import WorkflowDefinition
 
     from ..gate import DefinitionGate
     from ..impacted import ImpactedSubscriberResolver
-    from ..models import LoadedDefinition
+    from ..models import CascadeRole, CascadeSourceOutput, LoadedDefinition
 
 
 def _narrow_members_filter(rendered_members: list[str], total_members: int) -> list[str]:
@@ -42,6 +44,10 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
     """
 
     subscriber_kind: str
+    workflow: WorkflowDefinition
+    """The workflow that runs this selector's requests."""
+    cascade_role: CascadeRole
+    """This selector's role in the merge regeneration cascade, which orders how it runs."""
 
     def __init__(
         self,
@@ -130,6 +136,23 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                 continue
             members = _narrow_members_filter(rendered_members, len(member_ids))
             requests.append(self._build_request(definition=definition, target_branch=target_branch, members=members))
+        return requests
+
+    def output_capture(self, requests: Sequence[RequestT]) -> CascadeSourceOutput | None:  # noqa: ARG002
+        """Return how to capture this selector's output for the cascade, or None if it is not a source.
+
+        Overridden by cascade-source selectors, which know their concrete request type and so can build
+        the capture without the follow-up narrowing it.
+        """
+        return None
+
+    def consolidate(self, requests: Sequence[RequestT]) -> Sequence[RequestT]:
+        """Combine this selector's requests before dispatch; by default each is dispatched as-is.
+
+        Overridden where several requests can target the same definition (an artifact selected by both
+        the merge diff and a generator's output), so the follow-up submits one request per definition
+        without knowing how to merge them.
+        """
         return requests
 
     async def _map_subscribers_by_member(self, *, definition: DefinitionT, target_branch: str) -> dict[str, str]:
