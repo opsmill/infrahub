@@ -3505,3 +3505,55 @@ async def test_hierarchical_groups_descendants(
         "tag-13",
     ]
     assert grp1["members"]["count"] == 14
+
+
+async def test_single_relationship_id_only_uses_preloaded_peer_id(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    animal_person_schema: SchemaBranch,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person.new(db=db, name="Jack")
+    await person.save(db=db)
+
+    dog = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog.new(db=db, name="Rocky", breed="Labrador", owner=person)
+    await dog.save(db=db)
+
+    async def fail_node_load(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("the ID-only relationship unexpectedly used NodeDataLoader")
+
+    monkeypatch.setattr(
+        "infrahub.graphql.resolvers.single_relationship.NodeDataLoader.load",
+        fail_node_load,
+    )
+
+    query = """
+    query {
+        TestDog {
+            edges {
+                node {
+                    id
+                    owner { node { id } }
+                }
+            }
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data == {"TestDog": {"edges": [{"node": {"id": dog.id, "owner": {"node": {"id": person.id}}}}]}}
+    assert gql_params.context.related_node_ids == {dog.id, person.id}
