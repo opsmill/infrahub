@@ -4,7 +4,7 @@ import asyncio
 
 from infrahub.api.admission.priority import Priority
 from infrahub.api.admission.slot_pool import PrioritySlotPool
-from tests.unit.api.admission.helpers import FakeClock
+from tests.unit.api.admission.helpers import FailingSlotPoolObserver, FakeClock, RecordingSlotPoolObserver
 
 
 async def _wait_until_waiting(pool: PrioritySlotPool, *, priority: Priority, count: int) -> None:
@@ -23,7 +23,7 @@ async def _wait_until_waiting(pool: PrioritySlotPool, *, priority: Priority, cou
 
 
 async def test_freed_slot_goes_to_highest_priority_waiter() -> None:
-    pool = PrioritySlotPool(max_concurrency=1)
+    pool = PrioritySlotPool(max_concurrency=1, observers=[])
     events: list[str] = []
 
     holder = await pool.acquire(priority=Priority.MEDIUM)
@@ -51,7 +51,7 @@ async def test_freed_slot_goes_to_highest_priority_waiter() -> None:
 
 
 async def test_within_class_fifo() -> None:
-    pool = PrioritySlotPool(max_concurrency=1)
+    pool = PrioritySlotPool(max_concurrency=1, observers=[])
     events: list[str] = []
 
     holder = await pool.acquire(priority=Priority.MEDIUM)
@@ -75,7 +75,7 @@ async def test_within_class_fifo() -> None:
 
 async def test_cancelled_waiter_leaks_no_slot() -> None:
     clock = FakeClock()
-    pool = PrioritySlotPool(max_concurrency=1, clock=clock)
+    pool = PrioritySlotPool(max_concurrency=1, observers=[], clock=clock)
 
     holder = await pool.acquire(priority=Priority.MEDIUM)
 
@@ -117,9 +117,8 @@ async def test_cancelled_waiter_leaks_no_slot() -> None:
 
 
 async def test_observer_reflects_waiters_while_still_queued() -> None:
-    pool = PrioritySlotPool(max_concurrency=1)
-    observed: dict[Priority, int] = dict.fromkeys(Priority, 0)
-    pool.set_observer(lambda priority, **counts: observed.__setitem__(priority, counts["waiters"]))
+    observer = RecordingSlotPoolObserver()
+    pool = PrioritySlotPool(max_concurrency=1, observers=[observer])
 
     holder = await pool.acquire(priority=Priority.MEDIUM)
 
@@ -132,18 +131,33 @@ async def test_observer_reflects_waiters_while_still_queued() -> None:
 
     # The observer must see the queue depth build up while the tasks are still parked,
     # before any slot is released — not only once a waiter is later dequeued.
-    assert observed[Priority.LOW] == 3
+    assert observer.waiters[Priority.LOW] == 3
 
     pool.release(acquisition=holder)
     await asyncio.gather(*tasks)
     # Draining brings the observed depth back to zero.
-    assert observed[Priority.LOW] == 0
+    assert observer.waiters[Priority.LOW] == 0
+
+
+async def test_every_observer_receives_the_counts() -> None:
+    first = RecordingSlotPoolObserver()
+    second = RecordingSlotPoolObserver()
+    pool = PrioritySlotPool(max_concurrency=2, observers=[first, second])
+
+    holder = await pool.acquire(priority=Priority.HIGH)
+
+    # Both sinks track the same transition: the pool fans out rather than keeping one slot.
+    assert first.in_flight[Priority.HIGH] == 1
+    assert second.in_flight[Priority.HIGH] == 1
+
+    pool.release(acquisition=holder)
+    assert first.in_flight[Priority.HIGH] == 0
+    assert second.in_flight[Priority.HIGH] == 0
 
 
 async def test_observer_reflects_cancelled_waiter_leaving_queue() -> None:
-    pool = PrioritySlotPool(max_concurrency=1)
-    observed: dict[Priority, int] = dict.fromkeys(Priority, 0)
-    pool.set_observer(lambda priority, **counts: observed.__setitem__(priority, counts["waiters"]))
+    observer = RecordingSlotPoolObserver()
+    pool = PrioritySlotPool(max_concurrency=1, observers=[observer])
 
     holder = await pool.acquire(priority=Priority.MEDIUM)
 
@@ -152,27 +166,25 @@ async def test_observer_reflects_cancelled_waiter_leaving_queue() -> None:
 
     victim = asyncio.create_task(cancellable())
     await _wait_until_waiting(pool, priority=Priority.LOW, count=1)
-    assert observed[Priority.LOW] == 1
+    assert observer.waiters[Priority.LOW] == 1
 
     victim.cancel()
     results = await asyncio.gather(victim, return_exceptions=True)
     assert isinstance(results[0], asyncio.CancelledError)
 
     # Leaving the queue via cancellation must refresh the observer, not leave it stale at 1.
-    assert observed[Priority.LOW] == 0
+    assert observer.waiters[Priority.LOW] == 0
     pool.release(acquisition=holder)
 
 
 async def test_failing_observer_does_not_corrupt_admission_state() -> None:
-    pool = PrioritySlotPool(max_concurrency=1)
+    survivor = RecordingSlotPoolObserver()
+    # The failing sink is ordered first, so a shared guard would swallow the survivor too.
+    pool = PrioritySlotPool(max_concurrency=1, observers=[FailingSlotPoolObserver(), survivor])
 
-    def boom(priority: Priority, **counts: int) -> None:
-        raise RuntimeError("observer blew up")
-
-    pool.set_observer(boom)
-
-    # Acquire and release must both complete despite the observer raising on every transition,
-    # and the slot must be returned so a following waiter is served rather than deadlocked.
+    # Acquire and release must both complete despite the first observer raising on every
+    # transition, and the slot must be returned so a following waiter is served rather than
+    # deadlocked.
     holder = await pool.acquire(priority=Priority.MEDIUM)
     assert pool.available == 0
 
@@ -181,6 +193,10 @@ async def test_failing_observer_does_not_corrupt_admission_state() -> None:
     assert pool.available == pool.max_concurrency
     assert all(pool.in_flight(priority=priority) == 0 for priority in Priority)
 
+    # Isolation is per observer: the sink behind the failing one still saw both transitions.
+    assert survivor.calls == 2
+    assert survivor.in_flight[Priority.MEDIUM] == 0
+
     # A fresh acquire still succeeds on the recovered slot.
     again = await pool.acquire(priority=Priority.LOW)
     pool.release(acquisition=again)
@@ -188,7 +204,7 @@ async def test_failing_observer_does_not_corrupt_admission_state() -> None:
 
 
 async def test_cancel_after_handoff_rereleases_slot() -> None:
-    pool = PrioritySlotPool(max_concurrency=1)
+    pool = PrioritySlotPool(max_concurrency=1, observers=[])
 
     holder = await pool.acquire(priority=Priority.MEDIUM)
 

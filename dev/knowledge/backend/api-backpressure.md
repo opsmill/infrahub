@@ -36,14 +36,44 @@ Everything lives in `backend/infrahub/api/admission/`:
 | File | Responsibility |
 |---|---|
 | `middleware.py` | `AdmissionMiddleware`, the outermost pure-ASGI gate |
-| `controller.py` | `AdmissionController`, the admit/shed decision, and its settings-reading factory |
+| `controller.py` | `AdmissionController`, the admit/shed decision |
+| `factory.py` | `build_admission_controller`, the settings-reading wiring of the object graph |
 | `slot_pool.py` | `PrioritySlotPool`, bounded concurrency with per-class FIFO waiter queues |
 | `codel.py` | `CoDelController`, the pure CoDel state machine |
 | `capacity.py` | `derive_max_concurrency`, the slot-cap derivation |
 | `priority.py` | the `Priority` enum and `X-Priority` header parsing |
+| `constants.py` | the `RejectionReason` enum, which doubles as the `reason` metric label |
+| `retry_policy.py` | `RetryAfterPolicy`, the adaptive `Retry-After` computation |
 | `metrics.py` | the `infrahub_admission_*` Prometheus families |
+| `observers.py` | the sinks that publish the live gauges |
 
-The database-stress signal it consumes lives in `backend/infrahub/database/load_signal.py`.
+The database-stress signal it consumes lives in `backend/infrahub/database/load_signal.py`, with its
+metrics sink in `load_signal_metrics.py` and the process-global instance in `load_signal_registry.py`.
+
+## Where metrics attach
+
+Four components feed metrics: the admission controller, the slot pool, the retry policy, and the
+stress tracker. None of them imports a metrics module. Each takes `observers` as a required
+constructor argument and *pushes* values to them — decision events, counts, a duration, the derived
+signal — so a sink never reads back into the component it observes.
+
+`AdmissionObserver` is one interface with four events (`on_offered`, `on_admitted`, `on_rejected`,
+`on_sojourn`) rather than one interface per metric: they describe a single request's passage through
+one decision, so a sink implements them together. Separate interfaces belong to separate components,
+which is why the pool, the policy, and the tracker each have their own.
+
+The concrete sinks in `observers.py` are named only where the object graph is wired: `server.py`
+passes them to `build_admission_controller`, which takes them as arguments rather than choosing them,
+and `load_signal_registry` wires the tracker's. Nothing under `api/admission/` outside that entry
+point imports them, which is what keeps the sinks out of the primitives' import chain and makes every
+gauge visible at the point of construction.
+
+Observer failures are contained per observer, so one broken sink can neither skip the sinks behind
+it, corrupt admission state, shed a request that would have been admitted, nor fail the database
+query that fed an observation.
+
+The one metric still incremented outside a sink is `missing_priority_total`, in `middleware.py`
+where the header is parsed.
 
 ## The request path
 

@@ -6,15 +6,19 @@ from dataclasses import dataclass
 import pytest
 
 from infrahub.api.admission.codel import CoDelController
+from infrahub.api.admission.constants import RejectionReason
 from infrahub.api.admission.controller import (
     AdmissionController,
+    AdmissionObserver,
     Admitted,
     Rejected,
     stress_shed_fraction,
+    stress_tier,
 )
 from infrahub.api.admission.priority import Priority
 from infrahub.api.admission.retry_policy import RetryAfterPolicy
 from infrahub.api.admission.slot_pool import PrioritySlotPool
+from tests.unit.api.admission.helpers import FailingAdmissionObserver, RecordingAdmissionObserver
 
 # Per-class stress triggers (the ratio at which a class starts shedding).
 _THRESHOLDS = {Priority.HIGH: 100.0, Priority.MEDIUM: 20.0, Priority.LOW: 5.0}
@@ -52,10 +56,16 @@ class _FakeLoadSignal:
         return self._samples
 
 
-def _build(
-    *, ratio: float, samples: int, rng_value: float = 0.0, max_concurrency: int = 1, min_samples: int = 1
+def _build(  # noqa: PLR0913
+    *,
+    ratio: float,
+    samples: int,
+    rng_value: float = 0.0,
+    max_concurrency: int = 1,
+    min_samples: int = 1,
+    observers: list[AdmissionObserver] | None = None,
 ) -> tuple[AdmissionController, PrioritySlotPool]:
-    slot_pool = PrioritySlotPool(max_concurrency=max_concurrency, clock=_StepClock(step=1.0))
+    slot_pool = PrioritySlotPool(max_concurrency=max_concurrency, observers=[], clock=_StepClock(step=1.0))
     # Neutralise the per-class CoDel target so nothing but the signal under test differs.
     codel_clock = _StepClock(step=1.0)
     controller = AdmissionController(
@@ -67,36 +77,42 @@ def _build(
         stress_signal=_FakeLoadSignal(ratio=ratio, samples=samples),
         stress_thresholds=_THRESHOLDS,
         stress_min_samples=min_samples,
-        retry_policy=RetryAfterPolicy(),
+        retry_policy=RetryAfterPolicy(observers=[]),
+        observers=observers if observers is not None else [],
         rng=lambda: rng_value,
     )
     return controller, slot_pool
 
 
 @dataclass
-class _FractionCase:
+class _TierCase:
     name: str
     ratio: float
     threshold: float
-    expected: float
+    expected: int
 
 
-_FRACTION_CASES = [
-    _FractionCase(name="below_trigger_sheds_nothing", ratio=0.5, threshold=1.0, expected=0.0),
-    _FractionCase(name="at_trigger_is_mild", ratio=1.0, threshold=1.0, expected=0.20),
-    _FractionCase(name="just_under_2x_is_mild", ratio=1.9, threshold=1.0, expected=0.20),
-    _FractionCase(name="at_2x_is_moderate", ratio=2.0, threshold=1.0, expected=0.50),
-    _FractionCase(name="just_under_5x_is_moderate", ratio=4.9, threshold=1.0, expected=0.50),
-    _FractionCase(name="at_5x_is_severe", ratio=5.0, threshold=1.0, expected=0.80),
-    _FractionCase(name="far_past_trigger_is_severe", ratio=100.0, threshold=1.0, expected=0.80),
-    _FractionCase(name="scales_with_threshold", ratio=40.0, threshold=20.0, expected=0.50),
-    _FractionCase(name="non_positive_threshold_sheds_nothing", ratio=10.0, threshold=0.0, expected=0.0),
+_TIER_CASES = [
+    _TierCase(name="below_trigger_is_untiered", ratio=0.5, threshold=1.0, expected=0),
+    _TierCase(name="at_trigger_is_mild", ratio=1.0, threshold=1.0, expected=1),
+    _TierCase(name="just_under_2x_is_mild", ratio=1.9, threshold=1.0, expected=1),
+    _TierCase(name="at_2x_is_moderate", ratio=2.0, threshold=1.0, expected=2),
+    _TierCase(name="just_under_5x_is_moderate", ratio=4.9, threshold=1.0, expected=2),
+    _TierCase(name="at_5x_is_severe", ratio=5.0, threshold=1.0, expected=3),
+    _TierCase(name="far_past_trigger_is_severe", ratio=100.0, threshold=1.0, expected=3),
+    _TierCase(name="scales_with_threshold", ratio=40.0, threshold=20.0, expected=2),
+    _TierCase(name="non_positive_threshold_is_untiered", ratio=10.0, threshold=0.0, expected=0),
 ]
 
 
-@pytest.mark.parametrize("case", _FRACTION_CASES, ids=[case.name for case in _FRACTION_CASES])
-def test_stress_shed_fraction(case: _FractionCase) -> None:
-    assert stress_shed_fraction(ratio=case.ratio, threshold=case.threshold) == case.expected
+@pytest.mark.parametrize("case", _TIER_CASES, ids=[case.name for case in _TIER_CASES])
+def test_stress_tier(case: _TierCase) -> None:
+    assert stress_tier(ratio=case.ratio, threshold=case.threshold) == case.expected
+
+
+def test_shed_fraction_escalates_by_tier() -> None:
+    # The whole schedule, so an accidental edit to one entry fails rather than passing silently.
+    assert {tier: stress_shed_fraction(tier=tier) for tier in (0, 1, 2, 3)} == {0: 0.0, 1: 0.20, 2: 0.50, 3: 0.80}
 
 
 @dataclass
@@ -164,7 +180,7 @@ async def test_stress_sheds_a_fraction_without_queueing(case: _StressCase) -> No
         assert case.expect_shed is False
     else:
         assert case.expect_shed is True
-        assert result.reason == "stress"
+        assert result.reason == RejectionReason.STRESS
 
 
 async def _second_follower(
@@ -201,7 +217,7 @@ async def test_codel_sheds_independent_of_stress() -> None:
     result = await _second_follower(controller, slot_pool, priority=Priority.LOW)
 
     assert isinstance(result, Rejected)
-    assert result.reason == "codel"
+    assert result.reason == RejectionReason.CODEL
 
 
 async def test_retry_after_reflects_per_priority_stress_tier() -> None:
@@ -214,14 +230,14 @@ async def test_retry_after_reflects_per_priority_stress_tier() -> None:
     low_controller, _ = _build(ratio=60.0, samples=100, rng_value=0.0, max_concurrency=10)
     low = await low_controller.admit(priority=Priority.LOW)
     assert isinstance(low, Rejected)
-    assert low.reason == "stress"
+    assert low.reason == RejectionReason.STRESS
     assert low.retry_after == 10
 
     # MEDIUM trigger is 20. Same ratio 60 -> 3x -> moderate (tier 2) -> level-2 base (5s).
     medium_controller, _ = _build(ratio=60.0, samples=100, rng_value=0.0, max_concurrency=10)
     medium = await medium_controller.admit(priority=Priority.MEDIUM)
     assert isinstance(medium, Rejected)
-    assert medium.reason == "stress"
+    assert medium.reason == RejectionReason.STRESS
     assert medium.retry_after == 5
 
 
@@ -242,8 +258,57 @@ async def test_stress_sheds_before_queueing_for_a_slot() -> None:
     result = await controller.admit(priority=Priority.LOW)
 
     assert isinstance(result, Rejected)
-    assert result.reason == "stress"
+    assert result.reason == RejectionReason.STRESS
     # The shed took the fast path: the request never enqueued behind the held slot.
     assert slot_pool.waiters(priority=Priority.LOW) == 0
 
     controller.release(acquisition=holder.acquisition)
+
+
+async def test_admitted_request_emits_offered_sojourn_admitted() -> None:
+    observer = RecordingAdmissionObserver()
+    controller, _ = _build(ratio=1.0, samples=100, max_concurrency=1, observers=[observer])
+
+    assert isinstance(await controller.admit(priority=Priority.MEDIUM), Admitted)
+
+    assert observer.events == [
+        ("offered", Priority.MEDIUM),
+        ("sojourn", Priority.MEDIUM),
+        ("admitted", Priority.MEDIUM),
+    ]
+    # The fast path acquires without waiting, so the reported sojourn is zero rather than absent.
+    assert observer.sojourns == [0.0]
+
+
+async def test_shed_request_emits_offered_then_rejected_only() -> None:
+    observer = RecordingAdmissionObserver()
+    # LOW's trigger is 5; at 10x that is tier 2 (a 50% fraction) and the draw is forced below it.
+    controller, _ = _build(ratio=50.0, samples=100, rng_value=0.0, max_concurrency=1, observers=[observer])
+
+    assert isinstance(await controller.admit(priority=Priority.LOW), Rejected)
+
+    # A request shed before it reaches the pool has no sojourn to report and was never admitted.
+    assert observer.events == [("offered", Priority.LOW), ("rejected:stress", Priority.LOW)]
+    assert observer.sojourns == []
+
+
+async def test_failing_observer_does_not_affect_the_decision() -> None:
+    survivor = RecordingAdmissionObserver()
+    # The failing sink is ordered first, so a shared guard would swallow the survivor too.
+    controller, slot_pool = _build(
+        ratio=1.0, samples=100, max_concurrency=1, observers=[FailingAdmissionObserver(), survivor]
+    )
+
+    result = await controller.admit(priority=Priority.HIGH)
+
+    assert isinstance(result, Admitted)
+    # Isolation is per observer: the sink behind the failing one saw every event.
+    assert survivor.events == [
+        ("offered", Priority.HIGH),
+        ("sojourn", Priority.HIGH),
+        ("admitted", Priority.HIGH),
+    ]
+
+    # A failing sink mid-decision must not strand the slot it was holding.
+    controller.release(acquisition=result.acquisition)
+    assert slot_pool.available == slot_pool.max_concurrency

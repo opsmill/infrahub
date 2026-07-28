@@ -5,11 +5,9 @@ import time
 from collections import deque
 from typing import Callable, Protocol
 
-from .metrics import (
-    REFERENCE_QUERY_FLOOR_SECONDS,
-    REFERENCE_QUERY_STRESS_RATIO_MEDIAN,
-    REFERENCE_QUERY_WINDOW_MIN_SECONDS,
-)
+from infrahub.log import get_logger
+
+log = get_logger()
 
 DEFAULT_STRESS_WINDOW_SECONDS = 20.0
 
@@ -35,6 +33,12 @@ class LoadSignal(Protocol):
     def stress_ratio_median(self) -> float: ...
 
     def sample_count(self) -> int: ...
+
+
+class LoadSignalObserver(Protocol):
+    """Sink notified with the derived signal after each recorded observation."""
+
+    def on_observation(self, *, floor: float | None, window_min: float | None, stress_ratio_median: float) -> None: ...
 
 
 class ReferenceQueryLoadTracker:
@@ -63,25 +67,18 @@ class ReferenceQueryLoadTracker:
     def __init__(
         self,
         *,
+        observers: list[LoadSignalObserver],
         window_seconds: float = DEFAULT_STRESS_WINDOW_SECONDS,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
-        self.window_seconds = window_seconds
+        self._window_seconds = window_seconds
         self._clock = clock
         self._floor: float | None = None
         # In-window samples in arrival order, so eviction knows which value ages out next.
         self._samples: deque[tuple[float, float]] = deque()
         # The same in-window values kept sorted: front is the minimum, middle is the median.
         self._sorted: list[float] = []
-        self._observer: Callable[[ReferenceQueryLoadTracker], None] | None = None
-
-    def set_observer(self, observer: Callable[[ReferenceQueryLoadTracker], None] | None) -> None:
-        """Register a callback invoked after each recorded observation.
-
-        Lets an external sink (the metric gauges) refresh from the latest state without the
-        tracker depending on that sink.
-        """
-        self._observer = observer
+        self._observers = observers
 
     def record(self, execution_seconds: float) -> None:
         """Record one reference-query observation and refresh the derived signal.
@@ -104,12 +101,28 @@ class ReferenceQueryLoadTracker:
         bisect.insort(self._sorted, observation)
 
         self._evict(now=now)
+        self._notify()
 
-        if self._observer is not None:
-            self._observer(self)
+    def _notify(self) -> None:
+        """Push the freshly derived signal to every observer.
+
+        Each observer is isolated on its own: the sinks are best-effort and ``record`` runs on
+        the database query path, so a failing sink must neither fail the query that fed the
+        observation nor skip the observers behind it.
+        """
+        if not self._observers:
+            return
+        floor = self._floor
+        window_min = self._sorted[0] if self._sorted else None
+        stress_ratio_median = self.stress_ratio_median()
+        for observer in self._observers:
+            try:
+                observer.on_observation(floor=floor, window_min=window_min, stress_ratio_median=stress_ratio_median)
+            except Exception:
+                log.warning("database load-signal observer raised; continuing", exc_info=True)
 
     def _evict(self, *, now: float) -> None:
-        horizon = now - self.window_seconds
+        horizon = now - self._window_seconds
         while self._samples and self._samples[0][0] <= horizon:
             _, value = self._samples.popleft()
             del self._sorted[bisect.bisect_left(self._sorted, value)]
@@ -123,6 +136,11 @@ class ReferenceQueryLoadTracker:
         the current time before answering.
         """
         self._evict(now=self._clock())
+
+    @property
+    def window_seconds(self) -> float:
+        """Length of the rolling window, fixed for the tracker's lifetime."""
+        return self._window_seconds
 
     def floor(self) -> float | None:
         """The all-time minimum observation, or ``None`` before any observation."""
@@ -159,32 +177,3 @@ class ReferenceQueryLoadTracker:
         if value is None or self._floor is None or self._floor <= 0:
             return UNSTRESSED_RATIO
         return value / self._floor
-
-
-def _publish_metrics(tracker: ReferenceQueryLoadTracker) -> None:
-    floor = tracker.floor()
-    if floor is not None:
-        REFERENCE_QUERY_FLOOR_SECONDS.set(floor)
-    window_min = tracker.window_min()
-    if window_min is not None:
-        REFERENCE_QUERY_WINDOW_MIN_SECONDS.set(window_min)
-    REFERENCE_QUERY_STRESS_RATIO_MEDIAN.set(tracker.stress_ratio_median())
-
-
-_reference_query_load_tracker: ReferenceQueryLoadTracker | None = None
-
-
-def get_reference_query_load_tracker() -> ReferenceQueryLoadTracker:
-    """Return the process-global stress tracker, building and wiring it on first use.
-
-    The database layer feeds it and the admission layer reads it, so both must share one
-    instance. Building it lazily here — rather than at import — keeps importing this module
-    free of side effects and defers attaching the metrics sink until it is first needed. It
-    starts with the default window; the startup wiring overrides that from settings.
-    """
-    global _reference_query_load_tracker
-    if _reference_query_load_tracker is None:
-        tracker = ReferenceQueryLoadTracker()
-        tracker.set_observer(_publish_metrics)
-        _reference_query_load_tracker = tracker
-    return _reference_query_load_tracker

@@ -20,8 +20,13 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 from infrahub import __version__, config
 from infrahub.api import router as api
-from infrahub.api.admission.controller import build_admission_controller
+from infrahub.api.admission.factory import build_admission_controller
 from infrahub.api.admission.middleware import AdmissionMiddleware
+from infrahub.api.admission.observers import (
+    AdmissionMetricsObserver,
+    SlotPoolMetricsObserver,
+    SustainedLoadMetricsObserver,
+)
 from infrahub.api.exception_handlers import generic_api_exception_handler, log_forwarding_exception_handler
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
@@ -58,8 +63,14 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
 
     # Build the admission controller once here, at startup, and publish it (with the kill-switch)
     # on app.state for the outermost AdmissionMiddleware to read. Constructing it at the app entry
-    # point keeps settings resolution and the controller's object graph out of the middleware.
-    application.state.admission_controller = build_admission_controller(settings=config.SETTINGS.active_settings)
+    # point keeps settings resolution and the controller's object graph out of the middleware, and
+    # naming the metric sinks here keeps them out of the admission internals' import chain.
+    application.state.admission_controller = build_admission_controller(
+        settings=config.SETTINGS.active_settings,
+        admission_observers=[AdmissionMetricsObserver()],
+        slot_pool_observers=[SlotPoolMetricsObserver()],
+        retry_policy_observers=[SustainedLoadMetricsObserver()],
+    )
     application.state.admission_enabled = config.SETTINGS.api.backpressure_enabled
 
     # Initialize trace

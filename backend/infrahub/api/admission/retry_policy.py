@@ -1,13 +1,27 @@
 from __future__ import annotations
 
 import time
-from typing import Callable
+from typing import Callable, Protocol
+
+from infrahub.log import get_logger
+
+log = get_logger()
 
 # Persistence multipliers applied to the per-priority intensity base by how long load has been
 # sustained. The base reflects the current intensity; these stretch a client's bounded retry
 # budget across a longer real-time window when overload does not clear.
 _SUSTAINED_MULTIPLIER_WARN = 2
 _SUSTAINED_MULTIPLIER_HIGH = 3
+
+
+class RetryPolicyObserver(Protocol):
+    """Sink notified with the current sustained-load duration after each observation.
+
+    Receives the duration as an argument, so it never reads back from the policy: the
+    dependency runs one way, from policy to sink.
+    """
+
+    def on_sustained_load(self, *, sustained_seconds: float) -> None: ...
 
 
 class RetryAfterPolicy:
@@ -20,14 +34,15 @@ class RetryAfterPolicy:
     ratios below that line are a warm-up zone that never accrues sustained time. The per-tier base
     is multiplied by the persistence factor and clamped to a maximum.
 
-    The current sustained-load duration is pushed to a registered observer (e.g. a metric gauge)
-    after each observation, so the primitive itself stays free of any metrics dependency. State is
-    per worker on a single event loop, so it takes no lock.
+    The current sustained-load duration is pushed to the observers after each observation, so the
+    primitive itself stays free of any metrics dependency. State is per worker on a single event
+    loop, so it takes no lock.
     """
 
     def __init__(
         self,
         *,
+        observers: list[RetryPolicyObserver],
         level1_seconds: int = 1,
         level2_seconds: int = 5,
         level3_seconds: int = 10,
@@ -46,18 +61,10 @@ class RetryAfterPolicy:
         # Monotonic timestamp when the current continuous overload episode began, or None while
         # the ratio is below the significant-load line.
         self._overload_since: float | None = None
-        self._on_sustained_load: Callable[[float], None] | None = None
-
-    def set_observer(self, on_change: Callable[[float], None] | None) -> None:
-        """Register a callback invoked with the current sustained-load seconds after each observation.
-
-        Lets an external sink (e.g. a metric gauge) track the episode without the policy depending
-        on that sink.
-        """
-        self._on_sustained_load = on_change
+        self._observers = observers
 
     def observe(self, *, ratio: float) -> None:
-        """Update the overload episode from the latest stress ratio and notify the observer.
+        """Update the overload episode from the latest stress ratio and notify the observers.
 
         A ratio at or above the significant-load line starts the episode (if not already running);
         anything below resets it. Ratios in the warm-up zone therefore never accrue sustained time.
@@ -68,8 +75,20 @@ class RetryAfterPolicy:
                 self._overload_since = now
         else:
             self._overload_since = None
-        if self._on_sustained_load is not None:
-            self._on_sustained_load(self._sustained_seconds(now))
+        self._notify(sustained_seconds=self._sustained_seconds(now))
+
+    def _notify(self, *, sustained_seconds: float) -> None:
+        """Push the current sustained-load duration to every observer.
+
+        Each observer is isolated on its own: the sinks are best-effort and this runs on the
+        admission path of every request, so a failing sink must neither shed nor fail a request
+        that would otherwise be admitted, nor skip the observers behind it.
+        """
+        for observer in self._observers:
+            try:
+                observer.on_sustained_load(sustained_seconds=sustained_seconds)
+            except Exception:
+                log.warning("admission retry-policy observer raised; continuing", exc_info=True)
 
     def retry_after(self, *, tier: int) -> int:
         """Seconds to advise a shed request to wait: the per-tier base scaled by sustained load.
