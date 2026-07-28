@@ -21,6 +21,7 @@ import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
 
 export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value" | "onChange"> {
   className?: string;
@@ -29,6 +30,7 @@ export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value
   value: Node | PoolValue | null;
   options?: Array<Node>;
   parent?: { name?: string; value?: string };
+  addNewInitialObject?: NodeFieldsWithMetadata;
   ref?: React.Ref<React.ComponentRef<typeof PopoverTrigger>>;
 }
 
@@ -39,6 +41,7 @@ export const RelationshipInput = ({
   options,
   peer,
   parent,
+  addNewInitialObject,
   ref,
   ...props
 }: RelationshipInputProps) => {
@@ -143,6 +146,7 @@ export const RelationshipInput = ({
         {!options && (
           <AddRelationshipAction
             peer={peer}
+            initialObject={addNewInitialObject}
             onSuccess={(value) => {
               onChange(value);
               setOpen(false);

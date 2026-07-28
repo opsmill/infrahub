@@ -17,6 +17,8 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useDefaultParent } from "@/entities/nodes/relationships/ui/queries/get-default-parent.query";
 
+import { useCommonParentFilter } from "./useCommonParentFilter";
+
 export interface RegularRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;
   defaultParent?: Node | null;
@@ -39,6 +41,10 @@ export const NodeRelationshipField = ({
   ...props
 }: RegularRelationshipFieldProps) => {
   const parentRelationship = getParentRelationship(relationship.peer);
+  const commonParent = useCommonParentFilter(relationship, name);
+  // When common_parent drives the filter from a sibling field, the manual "Parent" picker
+  // is redundant — hide it and source the peer filter from the sibling value instead.
+  const showManualParent = !commonParent.isActive && !!parentRelationship;
 
   const { data: defaultParent } = useDefaultParent({
     defaultValue,
@@ -61,7 +67,7 @@ export const NodeRelationshipField = ({
 
   return (
     <div className="space-y-2">
-      {parentRelationship && (
+      {showManualParent && (
         <LabelFormField
           label={label}
           unique={unique}
@@ -69,7 +75,7 @@ export const NodeRelationshipField = ({
           description={description}
         />
       )}
-      {parentRelationship && (
+      {showManualParent && (
         <FormField
           key={`${name}_parent`}
           name={name}
@@ -131,7 +137,7 @@ export const NodeRelationshipField = ({
                 unique={unique}
                 required={!!rules?.required}
                 description={description}
-                variant={parentRelationship ? "small" : undefined}
+                variant={showManualParent ? "small" : undefined}
                 fieldData={fieldData}
               />
 
@@ -143,7 +149,12 @@ export const NodeRelationshipField = ({
                     value={value}
                     onChange={onChange}
                     peer={peer}
-                    parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
+                    parent={
+                      commonParent.isActive
+                        ? commonParent.parent
+                        : { name: parentRelationship?.name, value: selectedParent?.id }
+                    }
+                    addNewInitialObject={commonParent.addNewInitialObject}
                   />
                 </FormInput>
 

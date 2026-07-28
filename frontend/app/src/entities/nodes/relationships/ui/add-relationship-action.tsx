@@ -5,16 +5,20 @@ import { useState } from "react";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm, { type ObjectFormProps } from "@/shared/components/form/object-form";
 
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface AddRelationshipActionProps {
   peer: string;
   onSuccess?: ObjectFormProps["onSuccess"];
+  // Pre-fills the create form (e.g. the common_parent so a created peer satisfies the constraint).
+  initialObject?: NodeFieldsWithMetadata;
 }
 
 export const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
   peer,
   onSuccess,
+  initialObject,
 }) => {
   const { schema } = useSchema(peer);
   const [open, setOpen] = useState(false);
@@ -45,6 +49,7 @@ export const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
       >
         <ObjectForm
           kind={peer}
+          currentObject={initialObject}
           onSuccess={async (newNode) => {
             setOpen(false);
             if (!onSuccess) return;
