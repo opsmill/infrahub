@@ -21,9 +21,11 @@ class DiffSummaryCache:
         self._key_namespace = key_namespace
 
     async def set(self, diff_id: str, diff_summary: list[NodeDiff]) -> None:
-        await self._cache.set(
-            key=self._key(diff_id), value=self._serializer.dump(diff_summary), expires=KVTTL.TWO_HOURS
-        )
+        await self.set_payload(diff_id=diff_id, payload=self._serializer.dump(diff_summary))
+
+    async def set_payload(self, diff_id: str, payload: str) -> None:
+        """Store an already-serialized summary, avoiding a second dump when the caller measured it."""
+        await self._cache.set(key=self._key(diff_id), value=payload, expires=KVTTL.TWO_HOURS)
 
     async def get(self, diff_id: str) -> list[NodeDiff]:
         """Load a diff summary.

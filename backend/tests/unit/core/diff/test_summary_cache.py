@@ -45,6 +45,14 @@ async def test_round_trip() -> None:
     assert await cache.get(diff_id="diff-1") == summary
 
 
+async def test_set_payload_round_trip() -> None:
+    cache = _cache(MemoryCache())
+    summary = _summary()
+    payload = DiffSummarySerializer().dump(summary)
+    await cache.set_payload(diff_id="diff-1", payload=payload)
+    assert await cache.get(diff_id="diff-1") == summary
+
+
 async def test_miss_raises() -> None:
     cache = _cache(MemoryCache())
     with pytest.raises(ResourceNotFoundError, match=r"^Diff summary for absent was not found in the cache$"):
