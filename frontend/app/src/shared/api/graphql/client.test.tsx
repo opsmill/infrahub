@@ -12,7 +12,6 @@ import { __navigation } from "@/entities/authentication/domain/use-cases/redirec
 import { graphqlClient } from "./client";
 import { handleGraphQLErrors } from "./error-handling";
 
-// Build a CombinedError carrying a single catalogue-coded GraphQL error.
 function combinedError(code: string, message = "boom") {
   return new CombinedError({
     graphQLErrors: [{ message, extensions: { code, http_status: 401, data: {} } }],
@@ -121,7 +120,7 @@ describe("handleGraphQLErrors — catalogue routing", () => {
     // GIVEN
     const processErrorMessage = vi.fn();
 
-    // WHEN — UNDEFINED_ERROR is the generic/unknown path
+    // WHEN
     handleGraphQLErrors(combinedError(ERROR_CODES.UNDEFINED_ERROR, "nope"), {
       processErrorMessage,
     });
@@ -144,9 +143,6 @@ describe("handleGraphQLErrors — catalogue routing", () => {
   });
 });
 
-// Integration: drive the real client + exchange chain through a stubbed global
-// fetch to prove the refresh contract (one refresh + one replay, then bail) and
-// the result-shape invariants.
 describe("graphqlClient — token refresh integration", () => {
   let assignSpy: ReturnType<typeof vi.fn>;
   let originalAssign: typeof __navigation.assign;
@@ -201,21 +197,19 @@ describe("graphqlClient — token refresh integration", () => {
   });
 
   it("sends queries as POST (backend /graphql rejects GET → SPA fallback HTML)", async () => {
-    // GIVEN a successful query
+    // GIVEN
     fetchSpy.mockResolvedValueOnce(jsonResponse({ data: { __typename: "Query" } }));
 
     // WHEN
     await graphqlClient.query({ query: PING });
 
-    // THEN the request is POST — NOT GET (urql's `within-url-limit` default would
-    // GET small queries, which the backend answers with index.html)
+    // THEN
     const init = fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined;
     expect(init?.method).toBe("POST");
   });
 
   it("injects __typename into selections (Apollo InMemoryCache parity)", async () => {
-    // GIVEN a query whose selections omit __typename (as the dynamic object
-    // queries do — they relied on Apollo auto-adding it)
+    // GIVEN
     fetchSpy.mockResolvedValueOnce(jsonResponse({ data: {} }));
 
     // WHEN
@@ -233,7 +227,7 @@ describe("graphqlClient — token refresh integration", () => {
       `,
     });
 
-    // THEN the request body's query carries __typename (added by formatDocument)
+    // THEN
     const body = JSON.parse((fetchSpy.mock.calls[0]?.[1] as RequestInit).body as string);
     expect(body.query).toContain("__typename");
   });
@@ -276,8 +270,7 @@ describe("graphqlClient — token refresh integration", () => {
   });
 
   it("refreshes once and replays successfully on TOKEN_EXPIRED", async () => {
-    // GIVEN a first response that is TOKEN_EXPIRED, a successful refresh, and a
-    // second (replayed) response that succeeds.
+    // GIVEN
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(tokenExpiredBody))
       .mockResolvedValueOnce(jsonResponse({ data: { __typename: "Query" } }));
@@ -286,7 +279,7 @@ describe("graphqlClient — token refresh integration", () => {
     // WHEN
     const result = await graphqlClient.query({ query: PING });
 
-    // THEN — data returned, exactly one refresh, exactly one replay, no redirect
+    // THEN
     expect(result.data).toEqual({ __typename: "Query" });
     expect(result.errors).toBeUndefined();
     expect(fetchQuerySpy).toHaveBeenCalledOnce();
@@ -295,16 +288,14 @@ describe("graphqlClient — token refresh integration", () => {
   });
 
   it("bails to /login when TOKEN_EXPIRED persists after the single replay", async () => {
-    // GIVEN every response is TOKEN_EXPIRED and the refresh succeeds. Use a
-    // fresh Response per call — a Response body stream can only be read once.
+    // GIVEN
     fetchSpy.mockImplementation(() => Promise.resolve(jsonResponse(tokenExpiredBody)));
     fetchQuerySpy.mockResolvedValue({ access_token: "new-token", refresh_token: "new-refresh" });
 
     // WHEN
     const querying = graphqlClient.query({ query: PING });
 
-    // THEN — only ONE replay (2 fetches), one refresh, and the persistent expiry
-    // routes to /login.
+    // THEN
     await expect(querying).rejects.toThrow("Token expired");
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(fetchQuerySpy).toHaveBeenCalledOnce();
@@ -312,7 +303,7 @@ describe("graphqlClient — token refresh integration", () => {
   });
 
   it("rejects a query on GraphQL errors even when the response carries data", async () => {
-    // GIVEN a response with both data and a (non-auth) error.
+    // GIVEN
     fetchSpy.mockResolvedValueOnce(
       jsonResponse({
         data: { __typename: "Query" },
@@ -331,13 +322,12 @@ describe("graphqlClient — token refresh integration", () => {
       context: { processErrorMessage: () => {} },
     });
 
-    // THEN — callers never have to decide what a half-failed read means
+    // THEN
     await expect(querying).rejects.toThrow("partial");
   });
 
-  // Both queries and mutations reject when the response carries GraphQL errors: use-cases await a mutation without checking
   it("rejects when a mutation responds with GraphQL errors", async () => {
-    // GIVEN a mutation whose response carries a GraphQL error
+    // GIVEN
     fetchSpy.mockResolvedValueOnce(
       jsonResponse({
         data: null,
@@ -356,7 +346,7 @@ describe("graphqlClient — token refresh integration", () => {
       context: { processErrorMessage: () => {} },
     });
 
-    // THEN the caller sees a rejection carrying the backend message, unprefixed
+    // THEN
     await expect(mutating).rejects.toThrow("Cannot delete Device 'x'.");
   });
 });

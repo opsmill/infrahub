@@ -28,8 +28,6 @@ function notifyUser(message: string | undefined, context?: GraphQLRequestContext
   });
 }
 
-// A TOKEN_EXPIRED only reaches here after the auth exchange already refreshed and replayed once,
-// so it is terminal → redirect.
 export function handleGraphQLErrors(
   error: CombinedError | undefined,
   context?: GraphQLRequestContext
