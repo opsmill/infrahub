@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.merge.selective_regen.models import CascadeRole
 from infrahub.core.merge.selective_regen.participant import CascadeSource, CascadeTerminal
+from infrahub.generators.models import RequestGeneratorDefinitionRun
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, REQUEST_GENERATOR_DEFINITION_RUN
 from tests.helpers.selective_regen import ArtifactForcingSelector, GeneratorForcingSelector, StubCascadeSourceOutput
 
@@ -29,8 +30,8 @@ def test_source_entry_forwards_its_requests_and_carries_the_built_output() -> No
     """A source's entry is tagged SOURCE and carries the capture its output builds from those requests."""
     output = _RecordingOutputFactory()
     selector = GeneratorForcingSelector(definitions=[], member_ids=[], subscriber_by_member={})
-    participant = CascadeSource(selector, output=output)
-    requests: list[RegenerationRequest] = []
+    participant = CascadeSource[RequestGeneratorDefinitionRun](selector, output=output)
+    requests: list[RequestGeneratorDefinitionRun] = []
 
     entry = participant.to_entry(requests)
 

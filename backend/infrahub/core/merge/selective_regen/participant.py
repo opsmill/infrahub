@@ -12,19 +12,20 @@ if TYPE_CHECKING:
     from .models import CascadeSourceOutput, CascadeSourceOutputFactory, RegenerationRequest
 
 
-class CascadeParticipant(ABC):
+class CascadeParticipant[RequestT: RegenerationRequest](ABC):
     """A selector paired with its place in the merge regeneration cascade.
 
     Selection is the selector's concern; capturing output for the cascade is a separate one. A
     participant binds the two so a source and a terminal differ by composition rather than a flag.
+    The request type is carried so a source's output must match the selector it is wired to.
     """
 
     role: CascadeRole
 
-    def __init__(self, selector: DefinitionSelectorBase[Any, Any]) -> None:
+    def __init__(self, selector: DefinitionSelectorBase[Any, RequestT]) -> None:
         self.selector = selector
 
-    def to_entry(self, requests: Sequence[RegenerationRequest]) -> PlannedRegeneration:
+    def to_entry(self, requests: Sequence[RequestT]) -> PlannedRegeneration:
         """Turn this participant's selected requests into a plan entry carrying its cascade output."""
         return PlannedRegeneration(
             workflow=self.selector.workflow,
@@ -34,27 +35,29 @@ class CascadeParticipant(ABC):
         )
 
     @abstractmethod
-    def _capture(self, requests: Sequence[RegenerationRequest]) -> CascadeSourceOutput | None:
+    def _capture(self, requests: Sequence[RequestT]) -> CascadeSourceOutput | None:
         """The output capture for these requests, or None when nothing downstream reselects from it."""
 
 
-class CascadeSource(CascadeParticipant):
+class CascadeSource[RequestT: RegenerationRequest](CascadeParticipant[RequestT]):
     """A participant whose output the cascade re-reads to reselect the terminals that consume it."""
 
     role = CascadeRole.SOURCE
 
-    def __init__(self, selector: DefinitionSelectorBase[Any, Any], *, output: CascadeSourceOutputFactory[Any]) -> None:
+    def __init__(
+        self, selector: DefinitionSelectorBase[Any, RequestT], *, output: CascadeSourceOutputFactory[RequestT]
+    ) -> None:
         super().__init__(selector)
         self._output = output
 
-    def _capture(self, requests: Sequence[RegenerationRequest]) -> CascadeSourceOutput:
+    def _capture(self, requests: Sequence[RequestT]) -> CascadeSourceOutput:
         return self._output.for_requests(requests)
 
 
-class CascadeTerminal(CascadeParticipant):
+class CascadeTerminal[RequestT: RegenerationRequest](CascadeParticipant[RequestT]):
     """A participant that ends the cascade -- nothing downstream re-reads what it produces."""
 
     role = CascadeRole.TERMINAL
 
-    def _capture(self, requests: Sequence[RegenerationRequest]) -> None:  # noqa: ARG002
+    def _capture(self, requests: Sequence[RequestT]) -> None:  # noqa: ARG002
         return None

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from infrahub.proposed_change.branch_diff import get_modified_kinds
 
@@ -45,7 +45,7 @@ class MergeSelectiveRegeneration(RegenerationSelector):
     dispatch. Adding a definition kind is one new participant in the injected list, with no change here.
     """
 
-    def __init__(self, participants: Sequence[CascadeParticipant]) -> None:
+    def __init__(self, participants: Sequence[CascadeParticipant[Any]]) -> None:
         self.participants = participants
 
     async def build_plan(self, diff_summary: list[NodeDiff], target_branch: str) -> SelectiveRegenerationPlan:
@@ -65,7 +65,7 @@ class MergeSelectiveRegeneration(RegenerationSelector):
         return await self._plan(participants, diff_summary=diff_summary, target_branch=target_branch)
 
     async def _plan(
-        self, participants: Sequence[CascadeParticipant], *, diff_summary: list[NodeDiff], target_branch: str
+        self, participants: Sequence[CascadeParticipant[Any]], *, diff_summary: list[NodeDiff], target_branch: str
     ) -> list[PlannedRegeneration]:
         modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=target_branch)
         loaded_by_participant = [
