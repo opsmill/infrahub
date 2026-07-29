@@ -1,1 +1,0 @@
-Documented the Community Edition single-core Neo4j limitation on the community vs enterprise page: Community runs Neo4j on a single CPU core, which bounds large merge and import performance, while Enterprise runs Neo4j across multiple cores.
