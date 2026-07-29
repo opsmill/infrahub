@@ -41,6 +41,8 @@ Many tests leverage the database and use TestContainers for external dependencie
 
 **When to use:** Testing individual components that require external services — database state, cache behavior, lock coordination, message bus interactions, or any business logic that depends on infrastructure. See the [Key Root Fixtures](#key-root-fixtures) and [Test Adapters](#test-adapters) sections below for available test infrastructure.
 
+**Testing invariant — duplicate-UUID nodes.** Any query or component test that filters or resolves Node vertices by UUID must include a case with a stale same-UUID duplicate left by a kind/inheritance migration alongside the current active one — see [Database Schema — Schema Migration](database-schema.md#schema-migration-namenamespaceinheritance). Skipping this case has caused real bugs; testing only the single-vertex case isn't sufficient coverage for UUID-based queries.
+
 ### Functional Tests (`backend/tests/functional/`)
 
 Multi-component tests running in a single thread/process. Async tasks execute inline without separate workers.
