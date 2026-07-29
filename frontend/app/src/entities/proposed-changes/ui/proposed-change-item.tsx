@@ -13,11 +13,6 @@ import { CHECK_OBJECT } from "@/entities/diff/domain/model/check";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
-import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
-import {
-  computeProposedChangeSort,
-  isProposedChangeSortedByUpdatedAt,
-} from "@/entities/proposed-changes/domain/rules/proposed-change-sort";
 import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/use-cases/get-proposed-changes";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary/proposed-change-diff-summary";
 import { ProposedChangesActionCell } from "@/entities/proposed-changes/ui/proposed-changes-actions-cell";
@@ -29,12 +24,8 @@ type ProposedChangesItemProps = {
 };
 
 export const ProposedChangesItem = ({ proposedChange }: ProposedChangesItemProps) => {
-  const { permission, selectedSchema } = useObjectTableContext();
-  const { appliedSort } = useSort(selectedSchema);
+  const { permission } = useObjectTableContext();
   const { node, metadata } = proposedChange;
-
-  // A row shows the date it is ordered by, so it can be read as ordered.
-  const showUpdatedAt = isProposedChangeSortedByUpdatedAt(computeProposedChangeSort(appliedSort));
 
   return (
     <ListBoxItem className="flex items-center p-2">
@@ -47,7 +38,7 @@ export const ProposedChangesItem = ({ proposedChange }: ProposedChangesItemProps
           isDraft={!!node.is_draft?.value}
           isApproved={!!node.approved_by.edges.length}
           createdAt={metadata.created_at}
-          updatedAt={showUpdatedAt ? metadata.updated_at : null}
+          updatedAt={metadata.updated_at}
           branchName={node.source_branch?.value}
         />
 
@@ -123,7 +114,7 @@ const ProposedChangesInfo = ({
           Opened <DateDisplay date={createdAt} /> by {author}
           {updatedAt && (
             <>
-              <ClockIcon className="size-3" />
+              <ClockIcon className="ml-1 size-3" />
               Updated <DateDisplay date={updatedAt} />
             </>
           )}
