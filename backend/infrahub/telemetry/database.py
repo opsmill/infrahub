@@ -11,6 +11,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.database import DatabaseType, InfrahubDatabase
 
 from .models import TelemetryDatabaseData, TelemetryDatabaseServerData, TelemetryDatabaseSystemInfoData
+from .queries import CountNodesByKindsQuery
 from .utils import safe_metric
 
 
@@ -61,11 +62,16 @@ async def count_user_nodes(db: InfrahubDatabase) -> int:
     default_branch = registry.get_branch_from_registry()
     schema_branch = db.schema.get_schema_branch(name=default_branch.name)
     user_namespaces = [namespace.name for namespace in schema_branch.get_namespaces() if namespace.user_editable]
-    total = 0
-    for node_schema in schema_branch.get_schemas_for_namespaces(namespaces=user_namespaces):
-        if isinstance(node_schema, NodeSchema) and InfrahubKind.GENERICGROUP not in node_schema.inherit_from:
-            total += await NodeManager.count(db=db, schema=node_schema.kind, branch=default_branch)
-    return total
+    kinds = [
+        node_schema.kind
+        for node_schema in schema_branch.get_schemas_for_namespaces(namespaces=user_namespaces)
+        if isinstance(node_schema, NodeSchema) and InfrahubKind.GENERICGROUP not in node_schema.inherit_from
+    ]
+    if not kinds:
+        return 0
+    query = await CountNodesByKindsQuery.init(db=db, branch=default_branch, kinds=kinds)
+    await query.execute(db=db)
+    return sum(item.count for item in query.get_data())
 
 
 @task(name="telemetry-gather-db", task_run_name="Gather Database Information", cache_policy=NONE)

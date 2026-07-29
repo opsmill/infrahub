@@ -1,10 +1,18 @@
 from infrahub.core import utils
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.telemetry.database import gather_database_information, get_server_info, get_system_info
+from infrahub.telemetry.database import (
+    count_user_nodes,
+    gather_database_information,
+    get_server_info,
+    get_system_info,
+)
 
 
 async def test_get_server_info(db: InfrahubDatabase) -> None:
@@ -98,3 +106,63 @@ async def test_gather_database_information_user_counts_only_user_namespaces(
     assert user_count <= corenode_count <= total_count
     # The Core account is a managed node excluded from user, so user is strictly below corenode.
     assert user_count < corenode_count
+
+
+async def test_count_user_nodes_is_branch_aware(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    """``user`` reflects the default branch at gather time: deleted and branch-only nodes are excluded."""
+    assert await count_user_nodes(db=db) == 0
+
+    persons: list[Node] = []
+    for index in range(3):
+        person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+        await person.new(db=db, name=f"branch-aware-person-{index}")
+        await person.save(db=db)
+        persons.append(person)
+
+    # A node deleted on the default branch stops being counted.
+    await persons[0].delete(db=db)
+
+    # A node that exists only on another branch is invisible to the default-branch count.
+    other_branch = await create_branch(branch_name="user-count-branch", db=db)
+    branch_person = await Node.init(db=db, schema="TestPerson", branch=other_branch)
+    await branch_person.new(db=db, name="branch-only-person")
+    await branch_person.save(db=db)
+
+    assert await count_user_nodes(db=db) == 2
+
+
+async def test_count_user_nodes_matches_per_kind_oracle(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    """The single-pass count equals summing a per-kind branch-aware count over the same kinds."""
+    seeded_persons = 3
+    persons: list[Node] = []
+    for index in range(seeded_persons):
+        person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+        await person.new(db=db, name=f"oracle-person-{index}", height=180)
+        await person.save(db=db)
+        persons.append(person)
+
+    seeded_cars = 2
+    for index in range(seeded_cars):
+        car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+        await car.new(db=db, name=f"oracle-car-{index}", nbr_seats=4, is_electric=False, owner=persons[0])
+        await car.save(db=db)
+
+    schema_branch = db.schema.get_schema_branch(name=default_branch.name)
+    user_namespaces = [namespace.name for namespace in schema_branch.get_namespaces() if namespace.user_editable]
+    oracle = 0
+    for node_schema in schema_branch.get_schemas_for_namespaces(namespaces=user_namespaces):
+        if isinstance(node_schema, NodeSchema) and InfrahubKind.GENERICGROUP not in node_schema.inherit_from:
+            oracle += await NodeManager.count(db=db, schema=node_schema.kind, branch=default_branch)
+
+    assert oracle == seeded_persons + seeded_cars
+    assert await count_user_nodes(db=db) == oracle
