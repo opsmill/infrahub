@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from infrahub.proposed_change.branch_diff import get_modified_kinds
 
@@ -8,8 +8,10 @@ from .definition_selector.artifact_selector import ArtifactSelector
 from .definition_selector.generator_selector import GeneratorSelector
 from .fallbacks import repositories_forcing_full_regeneration
 from .gate import DefinitionGate
+from .generator_output import GeneratorCascadeOutput
 from .impacted import ImpactedSubscriberResolver
 from .models import CascadeRole, PlannedRegeneration, SelectiveRegenerationPlan
+from .participant import CascadeSource, CascadeTerminal
 
 if TYPE_CHECKING:
     import logging
@@ -18,9 +20,9 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
-    from .definition_selector.base import DefinitionSelectorBase
-    from .generator_diff_capturer import GeneratorMutationDiffCapturer
+    from .generator_output import GeneratorMutationDiffCapturer
     from .models import DefinitionModel, RegenerationRequest
+    from .participant import CascadeParticipant
 
 
 class RegenerationSelector(Protocol):
@@ -36,39 +38,18 @@ class RegenerationSelector(Protocol):
 
 
 class MergeSelectiveRegeneration:
-    """Select the definitions a merge changed, narrowed to affected members, across every selector.
+    """Select the definitions a merge changed, narrowed to affected members, across every participant.
 
-    Runs each injected selector over a single computation of the diff's modified kinds and one shared
-    repository-escalation set, returning one plan entry per selector for the follow-up to dispatch.
-    Adding a definition kind is one new selector in the injected list, with no change here.
+    Runs each injected participant's selector over a single computation of the diff's modified kinds and
+    one shared repository-escalation set, returning one plan entry per participant for the follow-up to
+    dispatch. Adding a definition kind is one new participant in the injected list, with no change here.
     """
 
-    def __init__(self, selectors: Sequence[DefinitionSelectorBase[Any, Any]]) -> None:
-        self.selectors = selectors
+    def __init__(self, participants: Sequence[CascadeParticipant]) -> None:
+        self.participants = participants
 
     async def build_plan(self, diff_summary: list[NodeDiff], target_branch: str) -> SelectiveRegenerationPlan:
-        modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=target_branch)
-        loaded_by_selector = [
-            (selector, await selector.load_definitions(target_branch=target_branch)) for selector in self.selectors
-        ]
-
-        # Computed over every selector's definitions so a repository escalated by any missing fingerprint
-        # regenerates all of its definitions, not only those of the kind that carried the null fingerprint.
-        all_definitions: list[DefinitionModel] = [
-            loaded.definition for _, loaded_definitions in loaded_by_selector for loaded in loaded_definitions
-        ]
-        forced_repositories = repositories_forcing_full_regeneration(definitions=all_definitions)
-
-        entries: list[PlannedRegeneration] = []
-        for selector, loaded_definitions in loaded_by_selector:
-            requests = await selector.select(
-                loaded_definitions=loaded_definitions,
-                forced_repositories=forced_repositories,
-                diff_summary=diff_summary,
-                target_branch=target_branch,
-                modified_kinds=modified_kinds,
-            )
-            entries.append(self._plan_entry(selector, requests))
+        entries = await self._plan(self.participants, diff_summary=diff_summary, target_branch=target_branch)
         return SelectiveRegenerationPlan(entries=entries)
 
     async def reselect_from_cascade_output(
@@ -76,86 +57,63 @@ class MergeSelectiveRegeneration:
     ) -> list[PlannedRegeneration]:
         """Re-select the definitions a cascade source's own output requires be regenerated.
 
-        Given the diff of what the just-run cascade sources wrote, re-run every non-source selector so
-        the definitions that read that output are regenerated. The sources are excluded on purpose:
-        they produced this diff, so re-running them on it would repeat runs already completed.
+        Given the diff of what the just-run cascade sources wrote, re-run every non-source participant so
+        the definitions that read that output are regenerated. The sources are excluded on purpose: they
+        produced this diff, so re-running them on it would repeat runs already completed.
         """
+        participants = [participant for participant in self.participants if participant.role is not CascadeRole.SOURCE]
+        return await self._plan(participants, diff_summary=diff_summary, target_branch=target_branch)
+
+    async def _plan(
+        self, participants: Sequence[CascadeParticipant], *, diff_summary: list[NodeDiff], target_branch: str
+    ) -> list[PlannedRegeneration]:
         modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=target_branch)
-        loaded_by_selector = [
-            (selector, await selector.load_definitions(target_branch=target_branch))
-            for selector in self.selectors
-            if selector.cascade_role is not CascadeRole.SOURCE
+        loaded_by_participant = [
+            (participant, await participant.selector.load_definitions(target_branch=target_branch))
+            for participant in participants
         ]
 
-        # Aggregated over every non-source selector so a repository escalated by any missing fingerprint
-        # regenerates all of its definitions, not only the kind that carried the null fingerprint.
+        # Aggregated over every participant's definitions so a repository escalated by any missing
+        # fingerprint regenerates all of its definitions, not only the kind that carried the null one.
         all_definitions: list[DefinitionModel] = [
-            loaded.definition for _, loaded_definitions in loaded_by_selector for loaded in loaded_definitions
+            loaded.definition for _, loaded_definitions in loaded_by_participant for loaded in loaded_definitions
         ]
         forced_repositories = repositories_forcing_full_regeneration(definitions=all_definitions)
 
         entries: list[PlannedRegeneration] = []
-        for selector, loaded_definitions in loaded_by_selector:
-            requests = await selector.select(
+        for participant, loaded_definitions in loaded_by_participant:
+            requests = await participant.selector.select(
                 loaded_definitions=loaded_definitions,
                 forced_repositories=forced_repositories,
                 diff_summary=diff_summary,
                 target_branch=target_branch,
                 modified_kinds=modified_kinds,
             )
-            entries.append(self._plan_entry(selector, requests))
+            entries.append(participant.to_entry(requests))
         return entries
 
-    def _plan_entry(
-        self, selector: DefinitionSelectorBase[Any, Any], requests: Sequence[RegenerationRequest]
-    ) -> PlannedRegeneration:
-        """Build the entry for one selector's requests, enforcing that only a source carries cascade output.
-
-        A source feeds the cascade, so it must capture output for its terminals to reselect from; a
-        terminal ends the chain, so it must not. A mismatch is a wiring error caught here rather than a
-        source that runs but whose terminals are silently never reselected.
-
-        Raises:
-            ValueError: When a source carries no output capture, or a terminal carries one.
-
-        """
-        output = selector.output_capture(requests)
-        if selector.cascade_role is CascadeRole.SOURCE and output is None:
-            raise ValueError(
-                f"cascade source {selector.workflow.name!r} produced no output capture; "
-                "a source must capture the output its terminals reselect from"
-            )
-        if selector.cascade_role is CascadeRole.TERMINAL and output is not None:
-            raise ValueError(
-                f"cascade terminal {selector.workflow.name!r} produced an output capture; "
-                "only a source feeds the cascade"
-            )
-        return PlannedRegeneration(
-            workflow=selector.workflow,
-            cascade_role=selector.cascade_role,
-            requests=requests,
-            output=output,
-        )
-
     def consolidate_submissions(self, entries: Sequence[PlannedRegeneration]) -> list[PlannedRegeneration]:
-        """Combine the given entries' requests through the selector that owns each, one batch per selector.
+        """Combine the given entries' requests through the participant that owns each, one batch per workflow.
 
-        Requests are grouped by their selector (matched on workflow), so each selector consolidates its
-        own kind -- an artifact selected by both the merge diff and a generator's output collapses to a
-        single request -- without the follow-up knowing how to merge them.
+        Requests are grouped by workflow, so each participant's selector consolidates its own kind -- an
+        artifact selected by both the merge diff and a generator's output collapses to a single request --
+        without the follow-up knowing how to merge them.
         """
-        selector_by_workflow = {selector.workflow.name: selector for selector in self.selectors}
+        participant_by_workflow = {participant.selector.workflow.name: participant for participant in self.participants}
         requests_by_workflow: dict[str, list[RegenerationRequest]] = {}
         for entry in entries:
             requests_by_workflow.setdefault(entry.workflow.name, []).extend(entry.requests)
-        return [
-            PlannedRegeneration(
-                workflow=selector_by_workflow[workflow_name].workflow,
-                cascade_role=selector_by_workflow[workflow_name].cascade_role,
-                requests=selector_by_workflow[workflow_name].consolidate(requests),
+        submissions: list[PlannedRegeneration] = []
+        for workflow_name, requests in requests_by_workflow.items():
+            participant = participant_by_workflow[workflow_name]
+            submissions.append(
+                PlannedRegeneration(
+                    workflow=participant.selector.workflow,
+                    cascade_role=participant.role,
+                    requests=participant.selector.consolidate(requests),
+                )
             )
-            for workflow_name, requests in requests_by_workflow.items()
-        ]
+        return submissions
 
 
 def build_merge_selective_regeneration(
@@ -164,23 +122,20 @@ def build_merge_selective_regeneration(
     log: logging.Logger | logging.LoggerAdapter[logging.Logger],
     output_capturer: GeneratorMutationDiffCapturer,
 ) -> MergeSelectiveRegeneration:
-    """Wire a fully-injected selector for one merge follow-up, sharing the gate and impact resolver.
+    """Wire the participants for one merge follow-up, sharing the gate and impact resolver.
 
-    The generator selector runs before the artifact selector so the plan awaits generator output
-    before the artifacts that may read it are selected. The generator selector also holds the output
-    capturer, so it -- not the follow-up -- owns capturing what its generators wrote.
+    The generator participant runs before the artifact participant so the plan awaits generator output
+    before the artifacts that may read it are selected. The generator participant is the cascade source
+    and carries the output capture built from the capturer, so the follow-up need not own that.
     """
     gate = DefinitionGate(log=log)
     impacted_resolver = ImpactedSubscriberResolver(client=client)
     return MergeSelectiveRegeneration(
-        selectors=[
-            GeneratorSelector(
-                client=client,
-                gate=gate,
-                impacted_resolver=impacted_resolver,
-                log=log,
-                output_capturer=output_capturer,
+        participants=[
+            CascadeSource(
+                GeneratorSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log),
+                output=GeneratorCascadeOutput(capturer=output_capturer),
             ),
-            ArtifactSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log),
+            CascadeTerminal(ArtifactSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log)),
         ]
     )

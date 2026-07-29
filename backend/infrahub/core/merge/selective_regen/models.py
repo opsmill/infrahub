@@ -45,6 +45,16 @@ class CascadeSourceOutput(Protocol):
     async def capture(self, *, since: Timestamp) -> list[NodeDiff]: ...
 
 
+class CascadeOutput[RequestT](Protocol):
+    """Produces the output capture for a cascade source from the requests it selected.
+
+    Bound to a source at wiring time and given that source's selected requests, so the capture is
+    scoped to what those requests will write without the source itself owning how that is located.
+    """
+
+    def for_requests(self, requests: Sequence[RequestT]) -> CascadeSourceOutput: ...
+
+
 @dataclass(frozen=True)
 class LoadedDefinition[DefinitionT: DefinitionModel]:
     """A candidate definition paired with the id of the group it targets."""

@@ -12,7 +12,7 @@ from infrahub.git.utils import fetch_artifact_definition_targets
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 
-from ..models import CascadeRole, LoadedDefinition
+from ..models import LoadedDefinition
 from .base import DefinitionSelectorBase
 
 if TYPE_CHECKING:
@@ -24,7 +24,6 @@ class ArtifactSelector(DefinitionSelectorBase[ProposedChangeArtifactDefinition, 
 
     subscriber_kind = InfrahubKind.ARTIFACT
     workflow = REQUEST_ARTIFACT_DEFINITION_GENERATE
-    cascade_role = CascadeRole.TERMINAL
 
     def consolidate(
         self, requests: Sequence[RequestArtifactDefinitionGenerate]

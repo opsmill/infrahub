@@ -33,7 +33,7 @@ from infrahub.core.merge.recompute_coalescing import (
 )
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher, submit_full_regeneration
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
-from infrahub.core.merge.selective_regen.generator_diff_capturer import GeneratorTrackingGroupDiffCapturer
+from infrahub.core.merge.selective_regen.generator_output import GeneratorTrackingGroupDiffCapturer
 from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError

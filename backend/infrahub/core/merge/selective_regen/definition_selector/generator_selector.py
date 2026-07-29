@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from infrahub_sdk.protocols import CoreGeneratorDefinition
 
 from infrahub.core.constants import InfrahubKind
@@ -14,19 +12,8 @@ from infrahub.generators.models import (
 from infrahub.git.utils import fetch_proposed_change_generator_definition_targets
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_RUN
 
-from ..generator_diff_capturer import GeneratorTrackingOutput
-from ..models import CascadeRole, CascadeSourceOutput, LoadedDefinition
+from ..models import LoadedDefinition
 from .base import DefinitionSelectorBase
-
-if TYPE_CHECKING:
-    import logging
-    from collections.abc import Sequence
-
-    from infrahub_sdk.client import InfrahubClient
-
-    from ..gate import DefinitionGate
-    from ..generator_diff_capturer import GeneratorMutationDiffCapturer
-    from ..impacted import ImpactedSubscriberResolver
 
 
 class GeneratorSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun]):
@@ -34,24 +21,6 @@ class GeneratorSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition
 
     subscriber_kind = InfrahubKind.GENERATORINSTANCE
     workflow = REQUEST_GENERATOR_DEFINITION_RUN
-    cascade_role = CascadeRole.SOURCE
-
-    def __init__(
-        self,
-        client: InfrahubClient,
-        gate: DefinitionGate,
-        impacted_resolver: ImpactedSubscriberResolver,
-        log: logging.Logger | logging.LoggerAdapter[logging.Logger],
-        output_capturer: GeneratorMutationDiffCapturer,
-    ) -> None:
-        super().__init__(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log)
-        self._output_capturer = output_capturer
-
-    def output_capture(self, requests: Sequence[RequestGeneratorDefinitionRun]) -> CascadeSourceOutput:
-        return GeneratorTrackingOutput(
-            capturer=self._output_capturer,
-            definition_names=[run.generator_definition.definition_name for run in requests],
-        )
 
     async def load_definitions(
         self, *, target_branch: str

@@ -10,6 +10,8 @@ from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
@@ -17,6 +19,9 @@ if TYPE_CHECKING:
     from infrahub.core.diff.coordinator import DiffCoordinator
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.diff.summary_serializer import DiffSummarySerializer
+    from infrahub.generators.models import RequestGeneratorDefinitionRun
+
+    from .models import CascadeSourceOutput
 
 # A generator tracks the nodes it writes into a per-member group named "<definition name>-<md5 hex>".
 _TRACKING_HASH = re.compile(r"[0-9a-f]{32}$")
@@ -50,6 +55,23 @@ class GeneratorTrackingOutput:
 
     async def capture(self, *, since: Timestamp) -> list[NodeDiff]:
         return await self._capturer.capture(since=since, generator_definition_names=self._definition_names)
+
+
+class GeneratorCascadeOutput:
+    """Produces a set of generators' cascade output from the runs selected for them.
+
+    Owns the generator-specific step of reading the definition names off the runs, so the capturer it
+    holds stays free of that kind's request shape.
+    """
+
+    def __init__(self, capturer: GeneratorMutationDiffCapturer) -> None:
+        self._capturer = capturer
+
+    def for_requests(self, requests: Sequence[RequestGeneratorDefinitionRun]) -> CascadeSourceOutput:
+        return GeneratorTrackingOutput(
+            capturer=self._capturer,
+            definition_names=[run.generator_definition.definition_name for run in requests],
+        )
 
 
 class GeneratorTrackingGroupDiffCapturer:

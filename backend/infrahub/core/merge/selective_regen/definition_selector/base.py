@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
     from ..gate import DefinitionGate
     from ..impacted import ImpactedSubscriberResolver
-    from ..models import CascadeRole, CascadeSourceOutput, LoadedDefinition
+    from ..models import LoadedDefinition
 
 
 def _narrow_members_filter(rendered_members: list[str], total_members: int) -> list[str]:
@@ -46,8 +46,6 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
     subscriber_kind: str
     workflow: WorkflowDefinition
     """The workflow that runs this selector's requests."""
-    cascade_role: CascadeRole
-    """This selector's role in the merge regeneration cascade, which orders how it runs."""
 
     def __init__(
         self,
@@ -137,14 +135,6 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
             members = _narrow_members_filter(rendered_members, len(member_ids))
             requests.append(self._build_request(definition=definition, target_branch=target_branch, members=members))
         return requests
-
-    def output_capture(self, requests: Sequence[RequestT]) -> CascadeSourceOutput | None:  # noqa: ARG002
-        """Return how to capture this selector's output for the cascade, or None if it is not a source.
-
-        Overridden by cascade-source selectors, which know their concrete request type and so can build
-        the capture without the follow-up narrowing it.
-        """
-        return None
 
     def consolidate(self, requests: Sequence[RequestT]) -> Sequence[RequestT]:
         """Combine this selector's requests before dispatch; by default each is dispatched as-is.
