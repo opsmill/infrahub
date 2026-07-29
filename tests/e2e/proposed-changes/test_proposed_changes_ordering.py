@@ -151,7 +151,7 @@ class TestProposedChangesOrdering:
         await expect(admin_page.locator(f'a[href*="/proposed-changes/{newest.id}"]')).to_be_visible()
 
         # The default order says nothing about update dates, so rows don't carry one.
-        await expect(admin_page.get_by_role("listbox")).not_to_contain_text("updated")
+        await expect(admin_page.get_by_role("listbox")).not_to_contain_text("Updated")
 
         await _pick_sort(admin_page, re.compile(r"^Recently updated"))
 
@@ -160,7 +160,7 @@ class TestProposedChangesOrdering:
         assert [pc_id for pc_id in updated_order if pc_id in newest_first] == list(reversed(newest_first))
 
         # Rows now explain their own position by showing the date they are ordered by.
-        await expect(admin_page.get_by_role("listbox")).to_contain_text("updated")
+        await expect(admin_page.get_by_role("listbox")).to_contain_text("Updated")
 
         await _pick_sort(admin_page, "Least recently updated")
 

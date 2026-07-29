@@ -13,6 +13,7 @@ import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
+import { PROPOSED_CHANGE_DEFAULT_SORT } from "@/entities/proposed-changes/domain/model/proposed-change-sort";
 import type {
   AttributeSchema,
   ModelSchema,
@@ -48,7 +49,7 @@ export const getProposedChangesFromApi = async ({
         __args: {
           limit,
           offset,
-          ...(sort?.length ? addOrderByToRequest(sort) : {}),
+          ...addOrderByToRequest(sort?.length ? sort : [PROPOSED_CHANGE_DEFAULT_SORT]),
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
         count: true,

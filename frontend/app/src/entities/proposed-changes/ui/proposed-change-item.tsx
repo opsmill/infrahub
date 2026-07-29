@@ -119,7 +119,7 @@ const ProposedChangesInfo = ({
           {updatedAt && (
             <>
               <Icon icon={"mdi:clock-outline"} />
-              updated <DateDisplay date={updatedAt} />
+              Updated <DateDisplay date={updatedAt} />
             </>
           )}
         </span>
