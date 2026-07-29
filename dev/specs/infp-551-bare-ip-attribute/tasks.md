@@ -588,7 +588,7 @@ component.** Do not build a dedicated IPHost input — that is out of scope.
 **Independent Test**: Point the UI at a node whose schema has a declared attribute and exercise the
 edit form, detail view, and list view.
 
-- [ ] T034 [P] [US2] Add the FR-010 regression test to
+- [X] T034 [P] [US2] Add the FR-010 regression test to
   `frontend/app/src/shared/components/form/utils/getFormFieldFromAttribute.test.ts`: an `IPHost`
   attribute's form field carries **no** prefix-length control, with and without
   `parameters.allow_prefix`. This is the sole guard preventing a future dedicated IPHost input from
@@ -597,11 +597,66 @@ edit form, detail view, and list view.
   whose bare-address attribute is entered as `10.0.0.1/32`, then sees `10.0.0.1` in the list view, the
   detail view, and the display label, with no prefix control anywhere in the form. Also assert an
   undeclared `IPHost` attribute still shows its mask (depends on T017, T018).
-- [ ] T036 [US2] Confirm no frontend source change was required. If any turned out to be necessary,
+- [X] T036 [US2] Confirm no frontend source change was required. If any turned out to be necessary,
   stop and record why in `plan.md` — it contradicts research R6 and means the scope assessment was
   wrong.
 
 **Checkpoint**: All three user stories are independently functional.
+
+### Phase 5 implementation notes (T034-T036)
+
+- **T036 answer: no frontend source change was required.** Nothing under `frontend/app/src` was
+  touched. The two new files are both tests/helpers:
+  `src/shared/components/form/utils/getFormFieldFromAttribute.test.ts` (extended) and
+  `tests/e2e/objects/bare-address-attribute.spec.ts` + `tests/e2e/utils/schema.ts` (new).
+- **R6's conclusion holds, but two of its supporting claims are wrong and should not be relied on
+  again.** R6 states `IP_HOST` appears "nowhere" in the table cell and the filter input, "verified by
+  grep … zero matches". It does appear, in four places:
+  `src/shared/components/form/dynamic-form.tsx:110`,
+  `src/entities/nodes/object/ui/object-table/cells/table-attribute-cell.tsx:49`,
+  `src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx:48`, and
+  `src/entities/nodes/getObjectItemDisplayValue.tsx:209`. Every one of them is a fall-through `case`
+  in a `switch` that lands on the generic plain-text handling (`InputField`, `<span>{value}</span>`,
+  `<Input>`, `<TextDisplay>`), so none renders a prefix control or a mask and the *conclusion* — no
+  source change needed — is unaffected. R6's claims that are correct as written: `IP_HOST` has no
+  branch in `getFormFieldFromAttribute.ts` (an `IPHost` attribute reaches `basicFormFieldProps`), and
+  `prefixlen`/`prefixLength` appear in `frontend/app/src` only inside generated GraphQL types.
+- **`allow_prefix` is already visible to the frontend** via the regenerated
+  `src/shared/api/rest/types.generated.ts` (`IPHostAttributeParametersRead`/`Write`,
+  `IPHostAttributeRead`/`Write`). Note the frontend's `AttributeSchema` union in
+  `src/entities/schema/domain/model/schema.ts` does **not** include `IPHostAttributeRead`, so an
+  `IPHost` attribute is typed as `GenericAttributeRead` whose `parameters` is
+  `Record<string, never>`. Reading `allow_prefix` therefore needs the same `as` cast the file already
+  uses for text/number parameters. No production code reads it, so nothing was widened.
+- **What T034 actually pins.** Three cases (no `parameters`, `allow_prefix: true`,
+  `allow_prefix: false`) each assert the returned field descriptor's `type` is `IPHost`, that no key
+  matches `/prefix/i`, that no resource-pool metadata is attached, and that its key set is identical
+  to a plain `Text` attribute's descriptor. Verified to discriminate: adding an `IPHost` branch
+  returning `{...basicFormFieldProps, prefixLength: 32}` fails all three, and the differently-named
+  `{...basicFormFieldProps, maskControl: true}` also fails all three via the key-set comparison.
+  **Residual gap** — this test cannot see the dispatch in `dynamic-form.tsx`: a future dedicated
+  IPHost component swapped in there while keeping `type: "IPHost"` would not break it. T035 is what
+  covers that layer.
+- **T035 awaits a CI run.** Local Playwright E2E needs a full Infrahub stack; per the run decision it
+  was written but not executed. Exact CI-side command:
+
+  ```bash
+  cd frontend/app && pnpm exec playwright test tests/e2e/objects/bare-address-attribute.spec.ts
+  ```
+
+  (the standard job entry point `pnpm ci:test:e2e` picks it up with no filter).
+- **T035's fixture is self-contained, which is the main thing to watch in CI.** The E2E environment
+  loads `models/base`, which contains **no** `IPHost` attribute at all, so the spec creates its own
+  branch and loads a `Testing/DnsRecord` node kind onto it through `POST /api/schema/load?branch=…`
+  using the new `tests/e2e/utils/schema.ts` helper. The kind mirrors the backend component fixture
+  `backend/tests/helpers/schema/dns_record.py`: `dns_target` (`IPHost`, unique, required,
+  `allow_prefix: false`) paired with the undeclared control `mgmt_ip` (`IPHost`, optional).
+  `display_labels`/`human_friendly_id` are both `dns_target__value`, so the list-view link name and
+  the breadcrumb are the bare address verbatim. No change to `models/base` and no CI workflow change.
+- **Vitest cannot run in browser mode in the local WSL environment** (`chrome-headless-shell` fails
+  on a missing `libasound.so.2`; installing it needs root). T034 was therefore observed passing with
+  `--browser.enabled=false`, which is sound for this file because it is a pure-function test with no
+  DOM. CI runs it in browser mode unchanged.
 
 ---
 
