@@ -503,7 +503,7 @@ async def _build_post_merge_regeneration_dispatcher(
     )
     return PostMergeRegenerationDispatcher(
         workflow=get_workflow(),
-        selector=build_merge_selective_regeneration(client=get_client(), log=log, output_capturer=output_capturer),
+        planner=build_merge_selective_regeneration(client=get_client(), log=log, output_capturer=output_capturer),
         summary_cache=DiffSummaryCache(
             cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
         ),

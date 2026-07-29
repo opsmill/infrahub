@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from .participant import CascadeParticipant
 
 
-class RegenerationSelector(Protocol):
+class RegenerationPlanner(Protocol):
     """Computes which definitions and members a merge diff requires be regenerated."""
 
     async def build_plan(self, diff_summary: list[NodeDiff], target_branch: str) -> SelectiveRegenerationPlan:
@@ -47,7 +47,7 @@ class RegenerationSelector(Protocol):
         ...
 
 
-class MergeSelectiveRegeneration(RegenerationSelector):
+class MergeSelectiveRegeneration(RegenerationPlanner):
     """Select the definitions a merge changed, narrowed to affected members, across every participant.
 
     Runs each injected participant's selector over a single computation of the diff's modified kinds and

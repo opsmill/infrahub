@@ -262,7 +262,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
         )
         dispatcher = PostMergeRegenerationDispatcher(
             workflow=workflow_recorder,
-            selector=build_merge_selective_regeneration(
+            planner=build_merge_selective_regeneration(
                 client=client, log=logging.getLogger("test"), output_capturer=generator_output
             ),
             summary_cache=DiffSummaryCache(

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.workflow import InfrahubWorkflow
 
     from .selective_regen.models import PlannedRegeneration, SelectiveRegenerationPlan
-    from .selective_regen.orchestrator import RegenerationSelector
+    from .selective_regen.orchestrator import RegenerationPlanner
 
 
 class FullRegenerationReason(StrEnum):
@@ -60,12 +60,12 @@ class PostMergeRegenerationDispatcher:
     def __init__(
         self,
         workflow: InfrahubWorkflow,
-        selector: RegenerationSelector,
+        planner: RegenerationPlanner,
         summary_cache: DiffSummaryCache,
         log: Logger | LoggerAdapter[Logger],
     ) -> None:
         self.workflow = workflow
-        self.selector = selector
+        self.planner = planner
         self.summary_cache = summary_cache
         self.log = log
 
@@ -103,7 +103,7 @@ class PostMergeRegenerationDispatcher:
         # leaving the merge under-regenerated. A single generator run failing is handled granularly in
         # _dispatch_plan and does not reach here.
         try:
-            plan = await self.selector.build_plan(diff_summary=diff_summary, target_branch=target_branch)
+            plan = await self.planner.build_plan(diff_summary=diff_summary, target_branch=target_branch)
             await self._dispatch_plan(context=context, target_branch=target_branch, plan=plan)
         except Exception:
             self.log.exception("Selective post-merge regeneration failed; falling back to full regeneration")
@@ -163,7 +163,7 @@ class PostMergeRegenerationDispatcher:
 
     async def _submit(self, *, context: InfrahubContext, entries: list[PlannedRegeneration]) -> None:
         """Submit each fire-and-forget request, letting the owning selector consolidate its own kind."""
-        for entry in self.selector.consolidate_submissions(entries):
+        for entry in self.planner.consolidate_submissions(entries):
             for request in entry.requests:
                 await self.workflow.submit_workflow(
                     workflow=entry.workflow, context=context, parameters={"model": request}
@@ -188,7 +188,7 @@ class PostMergeRegenerationDispatcher:
             for entry in sources:
                 if entry.output is not None:
                     captured.extend(await entry.output.capture(since=since))
-            targeted = await self.selector.reselect_from_cascade_output(
+            targeted = await self.planner.reselect_from_cascade_output(
                 diff_summary=captured, target_branch=target_branch
             )
         except Exception:
@@ -206,7 +206,7 @@ class PostMergeRegenerationDispatcher:
         await submit_full_regeneration(workflow=self.workflow, context=context, target_branch=target_branch)
 
     async def _submit_full_terminal_regeneration(self, context: InfrahubContext, target_branch: str) -> None:
-        for regeneration in self.selector.terminal_full_regenerations(target_branch):
+        for regeneration in self.planner.terminal_full_regenerations(target_branch):
             await self.workflow.submit_workflow(
                 workflow=regeneration.workflow, context=context, parameters=regeneration.parameters
             )
