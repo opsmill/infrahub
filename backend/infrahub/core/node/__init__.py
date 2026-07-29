@@ -55,6 +55,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.creation_context import NodeCreationContext
+    from infrahub.core.relationship import Relationship
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
@@ -76,6 +77,19 @@ class HasRelationshipFields(Protocol):
 # ---------------------------------------------------------------------------------------
 
 log = get_logger()
+
+
+def _build_peer_stub(relationship: Relationship) -> dict[str, Any]:
+    """Build the minimal peer payload preloaded on a node's GraphQL response.
+
+    The concrete kind is included when known so that a consumer resolving an
+    abstract GraphQL type does not have to hydrate the peer to learn it.
+    """
+    stub: dict[str, Any] = {"id": relationship.peer_id}
+    peer_kind = relationship.get_concrete_peer_kind()
+    if peer_kind:
+        stub[KIND_GRAPHQL_FIELD_NAME] = peer_kind
+    return stub
 
 
 class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
@@ -1292,7 +1306,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     peer_rels = list(rel_manager)
                 if peer_rels:
                     response[relationship_schema.name] = [
-                        {"node": {"id": relationship.peer_id}} for relationship in peer_rels if relationship.peer_id
+                        {"node": _build_peer_stub(relationship=relationship)}
+                        for relationship in peer_rels
+                        if relationship.peer_id
                     ]
             except LookupError:
                 continue

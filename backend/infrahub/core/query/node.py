@@ -995,6 +995,8 @@ class GroupedPeerNodes:
         self._metadata_map: dict[
             tuple[str, str, RelationshipDirection, str], dict[MetadataOptions, Timestamp | str | bool | None]
         ] = {}
+        # {peer_id: peer_kind}
+        self._peer_kinds: dict[str, str] = {}
 
     def add_peer(
         self,
@@ -1002,6 +1004,7 @@ class GroupedPeerNodes:
         rel_name: str,
         peer_id: str,
         direction: RelationshipDirection,
+        peer_kind: str | None = None,
         created_at: Timestamp | None = None,
         created_by: str | None = None,
         updated_at: Timestamp | None = None,
@@ -1014,6 +1017,8 @@ class GroupedPeerNodes:
         if direction not in self._rel_directions_map[node_id, rel_name]:
             self._rel_directions_map[node_id, rel_name][direction] = set()
         self._rel_directions_map[node_id, rel_name][direction].add(peer_id)
+        if peer_kind:
+            self._peer_kinds[peer_id] = peer_kind
         key = (node_id, rel_name, direction, peer_id)
         provided = (created_at, created_by, updated_at, updated_by, source_id, owner_id, is_protected)
         if any(v is not None for v in provided):
@@ -1052,6 +1057,9 @@ class GroupedPeerNodes:
         self, node_id: str, rel_name: str, direction: RelationshipDirection, peer_id: str
     ) -> dict[MetadataOptions, Timestamp | str | bool | None]:
         return self._metadata_map.get((node_id, rel_name, direction, peer_id), {})
+
+    def get_peer_kind(self, peer_id: str) -> str | None:
+        return self._peer_kinds.get(peer_id)
 
 
 class NodeListGetRelationshipsQuery(Query):
@@ -1217,7 +1225,7 @@ CALL (rel) {
                 WHERE r2.status = "active"
                 RETURN r1, r2
             }
-            RETURN n.uuid AS n_uuid, rel, peer.uuid AS peer_uuid, "inbound" as direction, r1, r2
+            RETURN n.uuid AS n_uuid, rel, peer.uuid AS peer_uuid, peer.kind AS peer_kind, "inbound" as direction, r1, r2
             UNION
             WITH n
             MATCH (n)-[:IS_RELATED]->(rel:Relationship)-[:IS_RELATED]->(peer)
@@ -1241,7 +1249,7 @@ CALL (rel) {
                 WHERE r2.status = "active"
                 RETURN r1, r2
             }
-            RETURN n.uuid AS n_uuid, rel, peer.uuid AS peer_uuid, "outbound" as direction, r1, r2
+            RETURN n.uuid AS n_uuid, rel, peer.uuid AS peer_uuid, peer.kind AS peer_kind, "outbound" as direction, r1, r2
             UNION
             WITH n
             MATCH (n)-[:IS_RELATED]->(rel:Relationship)<-[:IS_RELATED]-(peer)
@@ -1265,13 +1273,13 @@ CALL (rel) {
                 WHERE r2.status = "active"
                 RETURN r1, r2
             }
-            RETURN n.uuid AS n_uuid, rel, peer.uuid AS peer_uuid, "bidirectional" as direction, r1, r2
+            RETURN n.uuid AS n_uuid, rel, peer.uuid AS peer_uuid, peer.kind AS peer_kind, "bidirectional" as direction, r1, r2
         }
         """ % {"filters": rels_filter}
         self.add_to_query(query)
 
         self.order_by = ["n_uuid", "rel_name", "peer_uuid", "direction"]
-        self.return_labels = ["n_uuid", "peer_uuid", "direction"]
+        self.return_labels = ["n_uuid", "peer_uuid", "peer_kind", "direction"]
 
         self._add_created_metadata_to_query()
         self._add_updated_metadata_to_query(branch_filter_str=rels_filter)
@@ -1288,6 +1296,7 @@ CALL (rel) {
             node_id = result.get("n_uuid")
             rel_name = result.get("rel_name")
             peer_id = result.get("peer_uuid")
+            peer_kind = result.get_as_optional_type("peer_kind", return_type=str)
             direction = str(result.get("direction"))
 
             created_at = None
@@ -1330,6 +1339,7 @@ CALL (rel) {
                 rel_name=rel_name,
                 peer_id=peer_id,
                 direction=direction_enum,
+                peer_kind=peer_kind,
                 created_at=created_at,
                 created_by=created_by_str,
                 updated_at=updated_at,
