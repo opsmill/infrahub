@@ -492,17 +492,17 @@ value's type; run a protocol-generation test asserting the emitted annotation.
 
 ### Tests for User Story 3
 
-- [ ] T026 [P] [US3] Write the value-coercion tests in `python_sdk/tests/unit/sdk/test_node.py` (or a
+- [X] T026 [P] [US3] Write the value-coercion tests in `python_sdk/tests/unit/sdk/test_node.py` (or a
   focused new module beside it): a declared attribute's `.value` is `IPv4Address` / `IPv6Address`; an
   undeclared `IPHost` attribute's `.value` is still `IPv4Interface` / `IPv6Interface`; and a schema
   payload with **no** `allow_prefix` key yields today's behaviour (the old-server tolerance case).
-- [ ] T027 [P] [US3] Extend `python_sdk/tests/unit/sdk/test_protocols_generator.py`: a declared
+- [X] T027 [P] [US3] Extend `python_sdk/tests/unit/sdk/test_protocols_generator.py`: a declared
   attribute renders `IPAddress`, a declared optional attribute with no default renders
   `IPAddressOptional`, and undeclared attributes still render `IPHost` / `IPHostOptional`.
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Make value coercion parameter-aware in
+- [X] T028 [US3] Make value coercion parameter-aware in
   `python_sdk/infrahub_sdk/node/attribute.py:111-118`: for `IPHost`, select `ipaddress.ip_address`
   when `allow_prefix` is `False` and `ipaddress.ip_interface` otherwise, reading the flag tolerantly as
   `(self._schema.parameters or {}).get("allow_prefix", True)` because
@@ -510,17 +510,17 @@ value's type; run a protocol-generation test asserting the emitted annotation.
   (`python_sdk/infrahub_sdk/schema/main.py:149`). **Remove the now-unreachable `"IPAddress"` kind key**
   — no such attribute kind exists server-side; this is the dead-path cleanup the PRD called for, and
   the `ip_address` callable it referenced becomes the declared-`IPHost` branch.
-- [ ] T029 [US3] Make `_jinja2_filter_render_attribute` parameter-aware in
+- [X] T029 [US3] Make `_jinja2_filter_render_attribute` parameter-aware in
   `python_sdk/infrahub_sdk/protocols_generator/generator.py:117-124`: emit `IPAddress` /
   `IPAddressOptional` for a declared `IPHost` attribute, `IPHost` / `IPHostOptional` otherwise,
   composing with the existing `optional and default_value is None` suffix rule. No change is needed to
   `protocols_generator/constants.py`, `protocols_base.py`, or `template.j2` — all four protocol names
   are already registered and imported.
-- [ ] T030 [US3] Regenerate the SDK's `python_sdk/infrahub_sdk/protocols.py` and
+- [X] T030 [US3] Regenerate the SDK's `python_sdk/infrahub_sdk/protocols.py` and
   `python_sdk/infrahub_sdk/schema/generated/read.py` (the latter gains
   `IPHostAttributeParametersRead`) and run `cd python_sdk && uv run invoke format lint-code`
   (depends on T009, T028, T029).
-- [ ] T031 [US3] Add the SDK version floor to the SDK's own user-facing documentation: consuming a
+- [X] T031 [US3] Add the SDK version floor to the SDK's own user-facing documentation: consuming a
   bare-address attribute requires an SDK at or above this version, because an older SDK silently
   re-attaches the host mask (see `contracts/sdk-contract.md` § Version skew).
 - [ ] T032 [US3] **GATE — the SDK commit must be pushed.** Push the SDK branch to
@@ -535,6 +535,40 @@ value's type; run a protocol-generation test asserting the emitted annotation.
   provisional** — see T045, which must run before the Infrahub PR merges.
 
 **Checkpoint**: US1 and US3 both work. The feature is shippable end to end for API and SDK consumers.
+
+### Phase 4 implementation notes (T026-T031)
+
+- **SDK branch `infp-551-bare-ip-attribute`, commit `89e406a`** — created off the detached submodule
+  HEAD `973eaa9`, which was verified an ancestor of `origin/infrahub-develop`
+  (`git merge-base --is-ancestor`). **Not pushed.**
+- **T032 and T033 were excluded from this run.** The SDK branch is local only, and the `python_sdk`
+  pointer in this repo was deliberately left untouched. A human still needs to push the SDK branch,
+  open the SDK PR, and then bump the pointer — in that order.
+- **T028's dead-path removal confirmed dead before removing it.** The SDK's generated `AttributeKind`
+  enum (`infrahub_sdk/schema/generated/enums.py`, generated from the backend's own enum) has no
+  `IPADDRESS` member, and the backend schema reference lists no `IPAddress` accepted value. The two
+  tests that exercised the kind were `@pytest.mark.skip`-ed for exactly that reason and were
+  repurposed onto declared `IPHost` instead of deleted. The dead `"IPAddress": "IPAddress"` entry in
+  `protocols_generator/constants.py` was left in place per T029, and is now genuinely reachable in
+  spirit — the branch emits that protocol name — though not through a kind lookup.
+- **T030's generated diff is confined to the four expected shapes**: the `parameters` union gained
+  `IPHostAttributeParameters{Read,Write}`, an `IPHostAttribute{Read,Write}` discriminated member
+  appeared, `AttributeKind.IPHOST` left the generic variant, and `invoke format` rewrapped the two
+  now-longer union expressions. `infrahub_sdk/protocols.py` is **unchanged** — no attribute in the
+  core schema declares the flag, so the protocol emission has nothing to change yet.
+- **T031's version floor is SDK 1.23.0 against Infrahub 1.11.** Derived from the latest SDK tag
+  (`v1.22.2`, so the next feature release is `1.23.0`) and the latest Infrahub tags (`1.11.0a*` in
+  flight). It landed in the SDK's compatibility matrix — but that page is **generated**, so the edits
+  are in `docs/docs_generation/compatibility.py` (`FEATURE_REQUIREMENTS`) and
+  `docs/_templates/sdk_compatibility.j2` (the explanatory subsection and the silent-mask warning),
+  with `docs/docs/python-sdk/reference/compatibility.mdx` regenerated. A first attempt at editing the
+  `.mdx` directly was silently reverted by `invoke docs-generate`.
+- **The unreleased changelog fragment `+ipaddress-attribute-kind.added.md` announced the kind being
+  removed here**, so it was replaced by `+bare-iphost-attribute.added.md` describing the real
+  behaviour. Leaving it would have shipped release notes for an attribute kind that does not exist.
+- **Pre-existing SDK unit failures, unrelated and unchanged**: `test_repository_app` (2),
+  `test_task_app::test_task_list_command`, `test_config::test_missing_password`, and a collection
+  error in `test_cli::test_anonymous_info_detail_command_success`. Identical set before and after.
 
 ---
 
