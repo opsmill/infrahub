@@ -911,6 +911,65 @@ duplicate success toasts, which no schema-value change can produce.
   every fresh clone — the exact failure the submodule rule exists to prevent. Blocking the *pointer*
   on the SDK merge is unnecessary; blocking the *Infrahub merge* on it is not.
 
+### Review findings addressed
+
+Two high-severity review findings on the branch were fixed after the phases above closed.
+
+**Finding 1 — the lookup/filter path was never normalised.** Normalisation ran on writes only, so on a
+declared attribute a filter or an HFID written against the masked spelling (`10.0.0.1/32`) matched
+nothing even though the node stores `10.0.0.1`. The concrete failure is an idempotent upsert written
+against the documented `/32` spelling: it finds no existing node, creates a second one, and then trips
+the uniqueness constraint.
+
+Fixed declared-only, mirroring the write-path scoping, at three call sites of one shared hook:
+
+- `AttributeSchema.normalize_query_value()` is the hook — a no-op on the base class, overridden on
+  `IPHostAttributeSchema`, where `parameters.allow_prefix` is typed rather than probed. It also
+  restricts itself to the `value` / `values` filter names, so `prefixlen`, `version`, `ip` and the
+  metadata filters are untouched.
+- `AttributeSchema.get_query_filter()` applies it next to the existing enum conversion, which covers the
+  filter subquery on every lookup query (node list, relationship peer, hierarchy).
+- `NodeGetListQuery._build_attribute_filter_requirement()` applies it as well, because the node-list
+  path writes the value to Cypher twice — once through the subquery and once through the
+  `final_attr_value{idx}` WHERE clause built from the requirement — and the latter never reaches
+  `get_query_filter`.
+- `NodeManager.get_one_by_hfid()` applies it per HFID component. HFID resolution is a **separate** seam:
+  it matches the JSON string stored in the node's `human_friendly_id` attribute rather than going
+  through the filter machinery at all. This restores, scoped to the flag, the per-component
+  normalisation that `get_one_by_hfid` lost when HFID lookup moved to the indexed value.
+
+A **subnet prefix as filter input matches nothing and reports nothing** — it is not rewritten and not
+rejected. Rewriting `10.0.0.1/24` to `10.0.0.1` would let input the attribute can never hold match a
+node; raising would make a read fail where it has always simply found nothing, and would introduce a
+new error class on the query path. Malformed input is handled the same way, so garbage filter values
+behave exactly as before.
+
+**Finding 2 — immutability was only proven at the dry-run surface.** `allow_prefix` immutability was
+asserted through `client.schema.check` and a direct `validate_update` call, never through a real
+`POST /api/schema/load`, and no test reloaded the schema afterwards to confirm the stored value had not
+moved. Since the flag is deliberately migration-free, a toggle slipping past the load path would
+silently reinterpret every stored bare value.
+`TestAllowPrefixIsImmutable::test_changing_the_declaration_is_refused_by_the_load_endpoint` now drives
+the real load endpoint, asserts the refusal, and reloads the schema to assert all three attributes keep
+their original declaration. The assertion deliberately does not depend on the message naming
+`parameters.allow_prefix` — `SchemaUpdateValidationError.to_string()` drops `path.property_name` — and
+it does not require whole-string equality, because the error aggregates both declared attributes.
+
+### Follow-ups left open
+
+Recorded here so they are not lost; all were deliberately excluded from the two fixes above.
+
+- **`_create` path gap.** A `.value` assigned after `Node.new()` and then saved bypasses validation.
+- **Generic/inheritance divergence.** A node re-declaring an inherited `IPHost` attribute without
+  `parameters` silently resets the flag to `True`.
+- **Frontend guard** is weaker than the backend's; the containment test and the collision test with no
+  assertion on the declared attribute are both worth strengthening.
+- **A third declared fixture attribute** — IPv4, optional, non-unique — would let the declared path be
+  asserted on the generated profile/template kinds without leaning on `v6_target`.
+- **Relationship-reached HFID components** are not normalised: `_normalize_hfid` only resolves a
+  component whose path is a direct `attribute__value` on the queried schema. A declared attribute
+  reached through a relationship in an HFID keeps today's behaviour.
+
 ---
 
 ## Dependencies & Execution Order
