@@ -1,0 +1,272 @@
+---
+title: IP address attributes
+---
+
+# IP address attributes
+
+An `IPHost` attribute holds an IP address together with a prefix. Infrahub normalizes whatever it is
+given into that form, so `10.0.0.1` is stored and returned as `10.0.0.1/32` and `2001:db8::1` becomes
+`2001:db8::1/128`. That is the right shape for an interface address, but it is wrong for values that
+are only ever a host address — a DNS record target, a management address, a BGP neighbor, a syslog
+destination.
+
+Declare `parameters.allow_prefix: false` on the attribute to make it hold a **bare** address instead.
+Infrahub then stores and returns `10.0.0.1`, and rejects any value carrying a real subnet prefix.
+
+An `IPHost` attribute that does not declare `allow_prefix` keeps its existing behavior. So does every
+`IPNetwork` attribute, which always carries a prefix by definition.
+
+## Declaring a bare address attribute
+
+Add `parameters.allow_prefix: false` to the attribute:
+
+```yaml
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  - name: DnsRecord
+    namespace: Demo
+    label: "DNS Record"
+    display_label: "target__value"
+    human_friendly_id: ["target__value"]
+    attributes:
+      - name: target
+        kind: IPHost
+        unique: true
+        description: "Host address of the record. A subnet prefix is not accepted."
+        parameters:
+          allow_prefix: false
+      - name: management_address
+        kind: IPHost
+        optional: true
+        description: "Interface address of the resolver, with its prefix."
+```
+
+`target` holds a bare address. `management_address` declares nothing, so it behaves as `IPHost`
+always has and keeps its prefix.
+
+## Behavior of a bare address attribute
+
+| Input | `allow_prefix: false` | `IPHost` default |
+| ----- | --------------------- | ---------------- |
+| `10.0.0.1` | stored as `10.0.0.1` | stored as `10.0.0.1/32` |
+| `10.0.0.1/32` | host mask dropped, stored as `10.0.0.1` | stored as `10.0.0.1/32` |
+| `10.0.0.1/24` | rejected | stored as `10.0.0.1/24` |
+| `2001:db8::1/128` | host mask dropped, stored as `2001:db8::1` | stored as `2001:db8::1/128` |
+| `2001:db8::1/64` | rejected | stored as `2001:db8::1/64` |
+
+A rejected value produces a validation error naming the attribute, for example
+`10.0.0.1/24 is not a valid IPHost because a subnet prefix is not permitted`.
+
+The bare value is the value everywhere else too:
+
+- GraphQL and the REST API return the bare address, on both creation and update.
+- Display labels and human-friendly identifiers built from the attribute carry no mask, so an `hfid`
+  returned by a query can be fed straight back in as a lookup value.
+- A uniqueness constraint sees one value per address. `10.0.0.1` and `10.0.0.1/32` are the same value
+  and collide with each other.
+- A `default_value` of `10.0.0.1/32` is recorded as `10.0.0.1`, so the default matches what a node
+  actually receives.
+- Profiles and object templates generated from the node inherit the declaration, and reject a subnet
+  prefix the same way the node does.
+
+Derived properties keep their meaning: `prefixlen` is still `32` for a bare IPv4 address and `128`
+for a bare IPv6 one, and the address is still resolved against IPAM prefixes as a host address.
+
+## Set a description on the attribute
+
+The UI renders a bare address attribute as a plain text input. There is no prefix control to remove
+and no client-side check, so an operator who types a subnet prefix only finds out when the form is
+submitted. The attribute's `description` is the only hint shown before that point — write one that
+says a prefix is not accepted, as in the example above.
+
+## Version requirements
+
+| Component | Minimum version |
+| --------- | --------------- |
+| Infrahub | 1.11 |
+| Infrahub Python SDK | 1.23.0 |
+
+The API returns the bare address to any client. The SDK version matters for the *type* you get back:
+from 1.23.0 a bare address attribute's `.value` is an `ipaddress.IPv4Address` or
+`ipaddress.IPv6Address`, and generated protocols type it as `IPAddress`. An older SDK parses the same
+value as an interface and re-attaches the host mask, so `.value` comes back as
+`IPv4Interface('10.0.0.1/32')`.
+
+## Restrictions
+
+`allow_prefix` cannot be changed after the attribute exists. Adding it to, removing it from, or
+flipping it on an attribute that is already in the schema is rejected as an unsupported schema
+change, because the stored values would have to be rewritten. In-place conversion of a populated
+attribute is planned; until it lands, use the manual conversion below.
+
+Changing an attribute's `kind` away from `IPHost` drops the `allow_prefix` declaration without
+warning. Since the declaration cannot be added back to an attribute that already exists, treat a kind
+change as one-way: to get the bare address behavior again, follow the manual conversion below.
+
+## Converting an existing attribute
+
+To move a populated `IPHost` attribute to a bare address, add a second attribute alongside it, copy
+the values across, point everything that references the old attribute at the new one, and remove the
+old attribute. Each step below is one schema load. Confirm it applied, and that the data looks right,
+before running the next one.
+
+The starting point is a `DemoDnsRecord` whose `target` is a plain `IPHost` attribute holding values
+such as `10.0.0.1/32`:
+
+```yaml
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  - name: DnsRecord
+    namespace: Demo
+    label: "DNS Record"
+    display_label: "target__value"
+    human_friendly_id: ["target__value"]
+    attributes:
+      - name: target
+        kind: IPHost
+        unique: true
+        description: "Address of the record."
+```
+
+:::warning Keep the node definition complete in every load
+
+A schema load is merged into the schema already in place, and a field left out of the payload falls
+back to its default rather than keeping its current value — omitting `optional: true` makes the
+attribute mandatory, for example. Edit the full node definition in your schema file between steps and
+load that file each time, as the examples below do. Do not submit a payload holding only the
+attribute you are changing.
+
+:::
+
+### Step 1: add the replacement attribute
+
+Add the new attribute as optional and not unique. Existing objects have no value for it yet, so a
+mandatory or unique attribute would fail validation before you can populate it.
+
+```yaml {13-18} showLineNumbers
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  - name: DnsRecord
+    namespace: Demo
+    label: "DNS Record"
+    display_label: "target__value"
+    human_friendly_id: ["target__value"]
+    attributes:
+      - name: target
+        kind: IPHost
+        unique: true
+        description: "Address of the record."
+      - name: bare_target
+        kind: IPHost
+        optional: true
+        description: "Host address of the record. A subnet prefix is not accepted."
+        parameters:
+          allow_prefix: false
+```
+
+### Step 2: copy the values across
+
+Read each object's old value, strip the mask, and write it to the new attribute. The old attribute
+still carries a prefix, so the SDK hands you an `IPv4Interface` or `IPv6Interface` whose `ip` property
+is the bare address.
+
+```python
+from ipaddress import ip_interface
+
+from infrahub_sdk import InfrahubClient
+
+
+async def copy_values() -> None:
+    client = InfrahubClient()
+    for record in await client.all(kind="DemoDnsRecord"):
+        record.bare_target.value = str(ip_interface(str(record.target.value)).ip)
+        await record.save()
+```
+
+Confirm every object now has a value before continuing. Anything left empty fails the next step.
+
+### Step 3: point the schema at the new attribute
+
+Move `display_label`, `human_friendly_id`, and any `uniqueness_constraints` onto the new attribute, and
+make it mandatory and unique if the old one was. All four are schema updates Infrahub supports, and it
+validates the data as part of applying them — which is why this step has to follow the copy.
+
+```yaml {8-9,15-16} showLineNumbers
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  - name: DnsRecord
+    namespace: Demo
+    label: "DNS Record"
+    display_label: "bare_target__value"
+    human_friendly_id: ["bare_target__value"]
+    attributes:
+      - name: target
+        kind: IPHost
+        unique: true
+        description: "Address of the record."
+      - name: bare_target
+        kind: IPHost
+        unique: true
+        description: "Host address of the record. A subnet prefix is not accepted."
+        parameters:
+          allow_prefix: false
+```
+
+Anything outside the schema that reads the old attribute has to move too: Jinja2 templates for
+computed attributes and display labels, `order_by` entries, and GraphQL queries in Transformations,
+Generators, Checks, and webhooks.
+
+### Step 4: remove the old attribute
+
+With nothing referencing it, remove the old attribute by setting `state: absent` on it:
+
+```yaml {12} showLineNumbers
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  - name: DnsRecord
+    namespace: Demo
+    label: "DNS Record"
+    display_label: "bare_target__value"
+    human_friendly_id: ["bare_target__value"]
+    attributes:
+      - name: target
+        state: absent
+        kind: IPHost
+      - name: bare_target
+        kind: IPHost
+        unique: true
+        description: "Host address of the record. A subnet prefix is not accepted."
+        parameters:
+          allow_prefix: false
+```
+
+Removing the attribute deletes its values, so keep the old attribute in place until you have verified
+the new one.
+
+:::info About the attribute name
+
+The converted attribute keeps its new name — an attribute cannot be renamed, and `allow_prefix` cannot
+be added to the attribute that already holds the values. Pick a name you are willing to keep before
+starting. Rehearse the whole sequence against a copy of your data if the name has to end up as the
+original one, since that means running the four steps a second time in the opposite direction once
+`target` has been removed.
+
+:::
+
+## Related concepts
+
+- [Nodes & attributes](./nodes-and-attributes) — attribute kinds and parameters
+- [Display labels](./display_label) — how a display label is built from attribute values
+- [Schema migration](./migration) — what a schema update can and cannot change
+- [IPAM](../ipam/overview) — IP address and prefix management
+- [Reference: Attribute](../reference/schema/attribute) — full attribute property reference

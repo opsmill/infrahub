@@ -128,6 +128,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'computed-attributes/overview', label: 'Computed attributes' },
             { type: 'doc', id: 'schema/number-pool', label: 'Number pools' },
             { type: 'doc', id: 'schema/file-object', label: 'File objects' },
+            { type: 'doc', id: 'schema/ip-address-attributes', label: 'IP address attributes' },
           ],
         },
         // ── Display & presentation ────────────────────────────

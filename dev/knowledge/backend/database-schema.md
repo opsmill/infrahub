@@ -88,6 +88,8 @@ Stores attribute values. Labels always include `AttributeValue`. Labels include 
 
 **Sharing via `MERGE`**: `AttributeValue` nodes are de-duplicated on `value` + `is_default`. Any two attributes with identical serialized values reference the same node. Migrations that modify values must create new nodes and transfer `HAS_VALUE` edges rather than updating in place, or they risk corrupting unrelated attributes.
 
+**Derived properties are written from the stored value, not stored alongside it.** Some attribute kinds add queryable properties to the value vertex — an `IPHost` value carries `version`, `binary_address`, and `prefixlen`, an `IPNetwork` value carries the network bounds. Every one of them is recomputed in `to_db()` from `value` on each write, so the serialized form of `value` is the only thing a kind has to get right. Storing an `IPHost` address bare rather than as `address/prefixlen` therefore leaves `prefixlen` at the host length (`32` / `128`) and `binary_address` unchanged, and IPAM prefix-containment queries — which read `binary_address` and `prefixlen`, never the string — keep resolving the address. Do not "clean up" a derived property that looks redundant next to the stored string: the graph queries read the property, and the string is not interchangeable with it.
+
 ### Boolean
 
 Stores boolean values for Boolean attributes and `IS_PROTECTED` metadata edges. Label: `Boolean`.

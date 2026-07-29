@@ -87,6 +87,60 @@ When `branch=None`, the branch support is resolved from both peers' settings. If
 
 All `AttributeSchema` entries must include a `description` field. This is enforced by `backend/tests/component/core/schema/test_schema_documentation.py`. Omitting `description` will cause a test failure.
 
+## Per-Kind Attribute Parameters
+
+A schema option that applies to one attribute kind belongs in that kind's `AttributeParameters`
+subclass — not as a new top-level field on `AttributeSchema`. That is the sanctioned extension point:
+a top-level field would be visible on every kind and would need a guard on each one it does not apply
+to, while a parameters field is reachable only from the kind that declares it.
+
+Adding one touches four places, and the generator is fail-closed, so missing any of them makes
+`invoke backend.generate` raise rather than emit a silently wrong artifact:
+
+1. the `AttributeParameters` subclass and its entry in `get_attribute_parameters_class_for_kind`
+   (`backend/infrahub/core/schema/attribute_parameters.py`);
+2. a per-kind `AttributeSchema` subclass carrying the typed `parameters` field, registered in
+   `attribute_schema_class_by_kind` (`backend/infrahub/core/schema/attribute_schema.py`) — this
+   registration is what makes the field reachable at runtime, because every attribute is upgraded to
+   its per-kind class when a node schema is built;
+3. the class in the `internal_kind` list of the `parameters` `SchemaAttribute`
+   (`backend/infrahub/core/schema/definitions/internal.py`) **and** an import in
+   `backend/templates/attributeschema_imports.j2`, which is the hand-maintained source of the
+   generated module's import block;
+4. the kind → parameters mapping in the SDK generator's `attribute_variant_specs`, `_pre_families`,
+   and the per-kind field list in `tasks/backend.py`, which the generator compares against the
+   backend's own mapping.
+
+Two consequences worth knowing before writing tests against a new parameter:
+
+- **An unknown parameter key in a loaded schema is dropped, not rejected.**
+  `AttributeParameters.convert_from_dict` filters keys to the target model's fields before pydantic's
+  `extra="forbid"` sees them. `extra="forbid"` fires only when a parameters model is constructed from
+  the mapping directly. This is pre-existing behavior shared by every parameter.
+- **A parameter declaration is lost when the attribute's `kind` changes.** The parameters class is
+  selected from `kind`, so moving an attribute to another kind silently converts the parameters to
+  that kind's class and drops anything it does not define.
+
+Profile and object-template kinds generated from a node do carry the declaration, because they are
+built as ordinary attributes of the same kind. Unique attributes are excluded from both generated
+kinds, so a unique attribute is not a usable subject for a profile or template test.
+
+## Parameter Sub-Fields Carry Their Own Update Classification
+
+`SchemaUpdateValidationResult` (`backend/infrahub/core/models.py`) walks a schema diff and, when a
+changed property is itself a nested model, descends into it and reads each changed sub-field's own
+`json_schema_extra["update"]`, falling back to the parent property's classification only when the
+sub-field has none. The emitted `SchemaPath` property name is `parameters.<field>`.
+
+So a single parameter can be classified independently of its siblings: one
+`VALIDATE_CONSTRAINT` parameter and one `NOT_SUPPORTED` parameter can live on the same model, and a
+schema load that changes the second is refused without any dedicated validation code. Classifying the
+field is the whole implementation — adding, removing, and flipping the value are all covered, because
+each of the three shows up as a change to that sub-field.
+
+Caveat when asserting on the user-facing error: `SchemaUpdateValidationError.to_string()` drops
+`SchemaPath.property_name`, so the HTTP response names the kind and the field but not the parameter.
+
 ## Constraint Count Test
 
 `backend/tests/component/message_bus/operations/requests/test_proposed_change.py::test_get_proposed_change_schema_integrity_constraints` contains hardcoded constraint counts. These counts change whenever schemas are added or removed because `ConstraintValidatorDeterminer` iterates all schemas in the registry and generates one `SchemaUpdateConstraintInfo` per validatable property. After schema changes, run the test to get actual counts and update the assertions. See `#2592` for planned improvements.
