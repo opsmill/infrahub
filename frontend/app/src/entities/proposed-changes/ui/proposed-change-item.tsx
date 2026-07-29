@@ -12,6 +12,11 @@ import { CHECK_OBJECT } from "@/entities/diff/domain/model/check";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
+import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
+import {
+  computeProposedChangeSort,
+  isProposedChangeSortedByUpdatedAt,
+} from "@/entities/proposed-changes/domain/rules/proposed-change-sort";
 import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/use-cases/get-proposed-changes";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary/proposed-change-diff-summary";
 import { ProposedChangesActionCell } from "@/entities/proposed-changes/ui/proposed-changes-actions-cell";
@@ -20,16 +25,15 @@ import { TASK_OBJECT } from "@/entities/tasks/domain/model/task";
 
 type ProposedChangesItemProps = {
   proposedChange: ProposedChangeItem;
-  /** Surfaces the update date, so a row ordered by it can be read as ordered. */
-  showUpdatedAt?: boolean;
 };
 
-export const ProposedChangesItem = ({
-  proposedChange,
-  showUpdatedAt,
-}: ProposedChangesItemProps) => {
-  const { permission } = useObjectTableContext();
+export const ProposedChangesItem = ({ proposedChange }: ProposedChangesItemProps) => {
+  const { permission, selectedSchema } = useObjectTableContext();
+  const { appliedSort } = useSort(selectedSchema);
   const { node, metadata } = proposedChange;
+
+  // A row shows the date it is ordered by, so it can be read as ordered.
+  const showUpdatedAt = isProposedChangeSortedByUpdatedAt(computeProposedChangeSort(appliedSort));
 
   return (
     <ListBoxItem className="flex items-center p-2">
