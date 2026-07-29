@@ -187,3 +187,33 @@ nodes:
         optional: false
         cardinality: one
         kind: Component
+  # Appended last on purpose: the tests above address nodes by index.
+  # dns_target refuses a prefix, mgmt_ip is the control that keeps one, and both are read by the
+  # computed attribute and the display label so a mask leaking back in is visible in either surface.
+  - name: DnsRecord
+    namespace: Testing
+    label: "DNS Record"
+    icon: "mdi:dns"
+    display_label: "{{ dns_target__value }} via {{ mgmt_ip__value }}"
+    human_friendly_id: ["name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+      - name: dns_target
+        kind: IPHost
+        optional: false
+        parameters:
+          allow_prefix: false
+      - name: mgmt_ip
+        kind: IPHost
+        optional: false
+      - name: target_summary
+        kind: Text
+        description: "The rendered DNS target"
+        computed_attribute:
+          kind: Jinja2
+          jinja2_template: "{{ name__value }} resolves to {{ dns_target__value }} via {{ mgmt_ip__value }}"
+        read_only: true
+        optional: true

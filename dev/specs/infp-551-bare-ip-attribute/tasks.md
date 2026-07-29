@@ -667,25 +667,112 @@ edit form, detail view, and list view.
   declared attribute receives the **bare** value, and a display-label Jinja2 template referencing it
   renders with no mask. Constitution Principle IV requires Integration Docker coverage for
   computed-attribute features, which is why this is not a component test (critique E2).
-- [ ] T038 [P] Write the user-facing documentation under `docs/` covering: how to declare a
+- [X] T038 [P] Write the user-facing documentation under `docs/` covering: how to declare a
   bare-address attribute; the immutability restriction and that in-place conversion is the tracked
   follow-up; **a manual conversion recipe for an existing populated `IPHost` attribute** (add a new
   bare-address attribute alongside, backfill through the SDK, repoint `display_labels` /
   `human_friendly_id` / uniqueness constraints, remove the old attribute); that authors should set the
   attribute's `description`, since the UI surfaces it as the only pre-submit hint that a prefix is
   disallowed; and the SDK version floor.
-- [ ] T039 [P] Verify the attribute-kinds reference documentation renders `allow_prefix` correctly
+- [X] T039 [P] Verify the attribute-kinds reference documentation renders `allow_prefix` correctly
   from the T003 field `description`; if the wording reads poorly, fix the `description` in
   `backend/infrahub/core/schema/attribute_parameters.py` and re-run `uv run invoke docs.generate`
   rather than editing the generated page.
-- [ ] T040 [P] Add the Towncrier changelog fragment under `changelog/` per
+- [X] T040 [P] Add the Towncrier changelog fragment under `changelog/` per
   `dev/guidelines/` conventions, referencing INFP-551.
-- [ ] T041 Update `dev/knowledge/backend/` with the load-bearing findings that outlive this feature:
+- [X] T041 Update `dev/knowledge/backend/` with the load-bearing findings that outlive this feature:
   per-kind attribute parameters are the sanctioned extension point for kind-specific schema options;
   the schema-diff walker honours a parameter sub-field's own `update` classification
   (`backend/infrahub/core/models.py:279-300`); and derived IP properties are computed from the stored
   value, so bare storage keeps `prefixlen` truthful. Constitution requires backend architecture
   changes to update this directory.
+### Phase 6 implementation notes (T037-T041)
+
+- **T037 is written but was NOT observed passing locally — left unticked.** The test is
+  `test_bare_address_reaches_computed_attribute_and_display_label` in
+  `backend/tests/integration_docker/test_computed_attributes.py`, plus a `Testing/DnsRecord` node
+  **appended last** to `test_files/computed_tshirt.yml` (appended on purpose: the existing tests in
+  that class address nodes by index, `nodes[0]`-`nodes[5]`). CI-side command:
+
+  ```bash
+  uv run invoke dev.build && uv run pytest backend/tests/integration_docker/
+  ```
+
+  The image build now succeeds locally, but `docker compose up --wait` for the testcontainers stack
+  fails in this WSL environment before any test body runs: `message-queue` (RabbitMQ) dies on
+  `Error when reading /var/lib/rabbitmq/.erlang.cookie: eacces` and `task-manager` exits 127, so
+  `dependency failed to start`. All nine tests in the class error in the class-scoped `infrahub_app`
+  fixture, including the eight that predate this branch — the failure is environmental and unrelated
+  to the change.
+- **What was verified statically instead**, by processing the modified fixture through
+  `SchemaBranch.load_schema()` + `process()` offline (internal + core models + the file):
+  the whole file still validates (display label, HFID, computed attribute, inheritance); the six
+  pre-existing nodes keep their indices and `TestingDnsRecord` lands at index 6; `dns_target` carries
+  `IPHostAttributeParameters(allow_prefix=False)` while the `mgmt_ip` control carries
+  `allow_prefix=True`; the Jinja2 template is as authored. `yamllint`, `ruff`, and `mypy` are clean on
+  both changed files. What is **not** verified: that the rendered computed attribute and display label
+  actually come back bare at runtime — that is exactly what CI must confirm.
+- **The test asserts on the raw GraphQL payload, not the SDK's typed `.value`.** Both surfaces under
+  test are server-rendered strings, so reading them through `execute_graphql` keeps the assertions
+  independent of the SDK's bare-address coercion — which matters because the `python_sdk` pointer is
+  not bumped yet (T033/T045).
+- **The declared/undeclared pairing lives inside one template.** `target_summary` and the display
+  label both read `dns_target` (declared) and `mgmt_ip` (undeclared) in the same string, so the
+  expected value is `"… 10.10.0.5 via 10.10.0.6/32"` — a mask leaking onto the declared attribute or
+  disappearing from the control both fail the same assertion.
+- **T039 verdict: no-op, confirmed independently. `allow_prefix` has nowhere to render in the
+  generated reference.** Three findings:
+  1. `docs/docs/reference/schema/attribute.mdx` documents `parameters` as one opaque field ("Extra
+     parameters specific to this kind of attribute") and never enumerates per-kind parameter models.
+  2. The page that *does* enumerate them, `docs/docs/snippets/attribute-kind-params.mdx`, is rendered
+     by `_generate_infrahub_schema_attribute_kind_parameters_snippet` (`tasks/docs.py`), which keeps
+     only parameters whose `json_schema_extra["update"] == "validate_constraint"`. `allow_prefix` is
+     `not_supported`, so it is structurally excluded — as is `NumberPool`'s `start_range`/`end_range`
+     and `List`'s `regex`, none of which appear in the committed snippet either.
+  3. That snippet is **not** regenerated by `invoke docs.generate` (only by `docs.generate-schema`),
+     and the committed file has diverged from its template by hand edits
+     (`<Tabs groupId="attribute-kind" queryString>`, a `markdownlint-disable-file` line). Running
+     `docs.generate-schema` would revert those, so it was deliberately not run.
+
+  No `description` string was changed and no generated page was touched. The flag is documented in
+  T038's hand-written page, and `nodes-and-attributes.mdx` now says out loud that the generated table
+  covers constraint parameters only and points at the two kinds whose parameters change the value's
+  shape.
+- **T038 landed as a new page**, `docs/docs/schema/ip-address-attributes.mdx` ("IP address
+  attributes"), listed in `docs/sidebars.ts` under *Advanced schema features* beside *Number pools*
+  and *File objects* — the same shape of page (one attribute kind, its parameters, its restrictions).
+  Extending `nodes-and-attributes.mdx` was rejected: that page is already 13 KB of general node/
+  attribute reference and the conversion recipe is a four-step procedure. Three cross-links were added
+  to it instead (the `IPHost` kind bullet, the parameters section, Related concepts).
+- **Every step of the manual conversion recipe was checked against the `UpdateSupport` classification
+  in `backend/infrahub/core/schema/definitions/internal.py` before being written down.** Node
+  `display_label` and `human_friendly_id` are `ALLOWED`; node `uniqueness_constraints` and attribute
+  `unique` / `optional` are `MIGRATION_REQUIRED` (supported, with validation) — which is *why* the
+  recipe adds the new attribute optional and non-unique, backfills, and only then tightens it and
+  moves the constraints. Nothing in the recipe is blocked by an immutability rule. Two consequences of
+  immutability are called out on the page: an attribute cannot be renamed, so reusing the original
+  name means running the recipe a second time in reverse; and because *adding* `allow_prefix` to an
+  existing attribute is refused (T016), a `kind` change away from `IPHost` is one-way for the
+  declaration.
+- **The page deliberately does not quote the immutability rejection message.** `to_string()` drops
+  `SchemaPath.property_name`, so the 422 does not name `parameters.allow_prefix`; the page says the
+  change "is rejected as an unsupported schema change" rather than promising wording the API does not
+  produce.
+- **T041 split across two files** because the third finding is not a schema-definition concern:
+  `dev/knowledge/backend/schema-definitions.md` gained *Per-Kind Attribute Parameters* (the four
+  registration points, the fail-closed generator, the silent-drop-on-unknown-key and
+  drop-on-kind-change behaviours) and *Parameter Sub-Fields Carry Their Own Update Classification*;
+  `dev/knowledge/backend/database-schema.md` gained a paragraph under *AttributeValue* on derived
+  properties being recomputed in `to_db()` from the stored value, with the "do not clean up a
+  redundant-looking derived property" warning.
+- **`uv run invoke docs.validate` exits 0** after the docs changes are committed. It runs
+  `_generate` then `git diff --exit-code docs`, so it reports uncommitted hand edits under `docs/` as
+  a failure — the pass has to be taken after the commit, not before. No generated page changed.
+- **`docs.lint` is clean on every file added or changed here.** Vale is not installed on this machine;
+  a v3.9.1 binary was fetched to `/tmp` to run it. The only alerts in the whole tree are 7 errors and
+  3 warnings in the untouched `docs/docs/release-notes/infrahub/docs-restructure.mdx`, which
+  `.vale.ini` exempts by path — a local vale-version artefact, pre-existing and not ours.
+
 - [ ] T042 Run the full local CI gate — `/pre-ci`, plus
   `cd frontend/app && pnpm exec biome ci . && pnpm knip && pnpm exec betterer ci && pnpm test`.
   Do **not** commit `.betterer.results` if the only change is `node_modules` path drift.

@@ -456,3 +456,48 @@ class TestComputedAttributes(TestInfrahubDockerClient):
                 break
 
         assert description == expected
+
+    async def test_bare_address_reaches_computed_attribute_and_display_label(self, client: InfrahubClient) -> None:
+        """A computed attribute and a display label both receive a bare address with no mask.
+
+        ``TestingDnsRecord.dns_target`` refuses a prefix while ``mgmt_ip`` keeps one, and the same
+        Jinja2 computed attribute and display-label template read both, so a mask re-attached to
+        either stored value shows up in the rendered output. The assertions read the raw GraphQL
+        payload rather than the SDK's typed value so they pin the server-rendered strings and stay
+        independent of the SDK's own coercion of a bare-address attribute.
+        """
+        record = await client.create(
+            kind="TestingDnsRecord",
+            data={"name": "web-01", "dns_target": "10.10.0.5/32", "mgmt_ip": "10.10.0.6/32"},
+        )
+        await record.save()
+
+        expected_summary = "web-01 resolves to 10.10.0.5 via 10.10.0.6/32"
+        expected_display_label = "10.10.0.5 via 10.10.0.6/32"
+        query = """
+        query {
+            TestingDnsRecord(name__value: "web-01") {
+                edges {
+                    node {
+                        display_label
+                        dns_target { value }
+                        mgmt_ip { value }
+                        target_summary { value }
+                    }
+                }
+            }
+        }
+        """
+
+        node: dict = {}
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
+            result = await client.execute_graphql(query=query)
+            node = result["TestingDnsRecord"]["edges"][0]["node"]
+            if node["target_summary"]["value"] == expected_summary:
+                break
+            await sleep(1)
+
+        assert node["dns_target"]["value"] == "10.10.0.5"
+        assert node["mgmt_ip"]["value"] == "10.10.0.6/32"
+        assert node["target_summary"]["value"] == expected_summary
+        assert node["display_label"] == expected_display_label
