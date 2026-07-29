@@ -773,14 +773,16 @@ edit form, detail view, and list view.
   3 warnings in the untouched `docs/docs/release-notes/infrahub/docs-restructure.mdx`, which
   `.vale.ini` exempts by path — a local vale-version artefact, pre-existing and not ours.
 
-- [ ] T042 Run the full local CI gate — `/pre-ci`, plus
+- [X] T042 Run the full local CI gate — `/pre-ci`, plus
   `cd frontend/app && pnpm exec biome ci . && pnpm knip && pnpm exec betterer ci && pnpm test`.
   Do **not** commit `.betterer.results` if the only change is `node_modules` path drift.
 
 ### Phase 6 implementation notes (T042)
 
-**T042 left unticked**: two of its commands did not pass locally — one for an environmental reason,
-one for a real branch defect recorded below. Everything else passed.
+**T042 ticked on the second pass.** Every gate that can run on this machine passes. The one gate that
+still cannot run is `pnpm test`, for the environmental reason recorded in the table — Vitest browser
+mode cannot launch `chrome-headless-shell` without root. The `backend.validate-generated` failure that
+originally held T042 back was a real pipeline defect and is now fixed (below).
 
 | Gate | Result |
 |------|--------|
@@ -798,7 +800,7 @@ one for a real branch defect recorded below. Everything else passed.
 | `pnpm knip` | pass |
 | `pnpm exec betterer ci` | **pass — 190 issues, "stayed the same"** (see below) |
 | `pnpm test` | **could not run locally** — Vitest browser mode cannot launch `chrome-headless-shell` (`libasound.so.2` missing, needs root). Ran the affected file with `--browser.enabled=false` instead: `getFormFieldFromAttribute.test.ts`, 5 passed. CI's `frontend-tests` job is `skipping` for this PR's path set anyway. |
-| `uv run invoke backend.validate-generated` | **fail — real defect, see below** |
+| `uv run invoke backend.validate-generated` | pass — exit 0 after the generator formatting fix below |
 
 **Betterer root cause and fix.** Regenerating `types.generated.ts` added
 `IPHostAttributeRead` as a new member of the attribute discriminated union in the four
@@ -821,25 +823,62 @@ unchanged at 190 and every entry's trailing source hash is unchanged — only me
 against the `node_modules`-path-drift trap: the six changed lines contain **zero** `node_modules`
 references, so the committed paths are CI-correct rather than local-install artefacts.
 
-**`backend.validate-generated` fails for a reason distinct from the SDK-pointer issue.** The diff is
-entirely inside the `python_sdk` submodule: regeneration emits `AttributeSchemaRead` /
-`AttributeSchemaWrite` as a single ~150-character line, while the committed SDK version has it
-ruff-wrapped across six lines. `ruff format` reports the committed form already-formatted and *does*
-wrap the single-line form, so the committed form is canonical and the generate step is emitting a
-non-canonical form that survives into the diff. This only surfaces now because `IPHostAttributeWrite`
-is what pushes the union past the 120-character limit. **It will keep failing after the pointer bump
-(T032/T033)** and needs its own fix — either in the SDK commit or in the ordering of the
-format/lint steps that `tasks/backend.py` runs over the generated directory. Not fixed here.
-The submodule working tree was restored; the pointer was left unstaged.
+**`backend.validate-generated` — fixed in the generator's formatting order.** The failure was a
+pipeline defect, not a content one, and would have survived the pointer bump. `SdkSchemaGenerator`
+renders the attribute union as a multi-line `Union[...]`, then ran `ruff format` followed by
+`ruff check --fix`. The `--fix` pass rewrites `Union[A, B, C]` to `A | B | C` **and emits the rewrite
+unwrapped**; nothing re-wrapped it afterwards, so the freshly generated union landed on one
+~150-character line while the committed SDK file — which had been through the SDK's own `invoke
+format` — was wrapped across six lines. `IPHostAttributeWrite` is what pushed the union past the
+120-character limit and turned a previously-invisible mismatch into a failing diff.
 
-**`backend-tests-integration` also fails on this branch, on its own new tests** — not previously
-recorded. Four cases in
-`backend/tests/integration/schema_lifecycle/test_attribute_parameters_update.py::TestAllowPrefixIsImmutable`
-assert an exact single-attribute error message, but the server reports **both** declared attributes:
-expected `"'not_supported': TestingDnsRecord dns_target None"`, actual
-`"'not_supported': TestingDnsRecord v6_target None, 'not_supported': TestingDnsRecord dns_target
-None"`. The candidate schema the helper builds evidently loses `v6_target`'s parameters as well as
-flipping the target attribute's. Needs its own fix.
+Fixed by appending a second `ruff format` pass over the generated directory, so formatting is the last
+thing that touches the output. Two cheaper-looking alternatives were tried and rejected:
+
+- Dropping the leading `ruff format` and using the canonical `check --fix` → `format` order (the order
+  `_generate_custom_graphql_types` uses) **fails**: the raw render carries a 390-character
+  `AttributeKind` literal line, and `E501` is unfixable, so `ruff check --fix` exits non-zero and
+  `execute_command` aborts the generate task. The leading format pass is load-bearing.
+- Hand-editing the generated files would have papered over a defect that recurs on every regeneration.
+
+The fix is entirely in `tasks/backend.py`; no generated file's content changed and the SDK working tree
+needed no commit. After it, `uv run invoke backend.generate` leaves both repositories clean and
+`backend.validate-generated` exits 0.
+
+**`backend-tests-integration` — not a defect on this branch; an artefact of the stale submodule
+pointer.** The four `TestAllowPrefixIsImmutable` failures have the same root cause as the `json-schema`
+job, and the earlier reading of them (the candidate schema "loses `v6_target`'s parameters") had the
+mechanism backwards. `SchemaLoadAPI` in `backend/infrahub/api/schema.py` **inherits
+`InfrahubSchemaWrite` from the SDK's generated write models** and rebuilds the internal `SchemaRoot`
+from its own `model_dump()`. At the pinned pointer `681b458c` the SDK has no `IPHostAttributeWrite`, so
+an `IPHost` attribute matches `GenericAttributeWrite`, whose `parameters` is the field-less
+`AttributeParametersWrite` with `extra="ignore"` — and `allow_prefix` is **silently dropped from every
+`IPHost` attribute in the payload**. The candidate then defaults to `allow_prefix=True` on both
+`dns_target` and `v6_target`, so both trip the immutability guard regardless of what the payload
+changed. That is why the aggregated message names those two and never names `mgmt_ip` even in the
+`add_the_declaration` case, and why `test_an_unrelated_parameter_change_is_still_accepted` — which
+changes only a `description` — is rejected too.
+
+Reproduced exactly: checking the two generated SDK files out at `681b458c` and re-running the class
+locally gives `4 failed, 1 passed` with byte-identical messages to CI. With the submodule at
+`89e406a` the same file is `8 passed`. **No test or production change was made.** Loosening the
+assertion to "the changed attribute appears in the error" was considered and rejected: two of the four
+cases would then have passed against the stale SDK, hiding a genuine cross-repository mismatch. The
+test earned its keep by catching this, and it is not vacuous — flipping `allow_prefix`'s
+`UpdateSupport` from `NOT_SUPPORTED` to `ALLOWED` makes all three refusal cases fail on
+`assert True is False`.
+
+The durable lesson: because the backend validates schema payloads through the SDK's generated write
+models, **any new attribute parameter is inert on the server until the `python_sdk` pointer carries
+it** — unknown parameter keys are dropped silently rather than rejected. A parameter-adding feature and
+its submodule bump have to land together, and integration tests that exercise a new parameter over the
+API will fail until they do.
+
+**The CI run these failures were read from is five commits stale.** Run `30421606216` has
+`headSha=8e92cecd5`, which predates the mirrored-union fix — so its `frontend-lint` failure (Betterer,
+"46 new issues, 190 existing") is exactly the defect that commit fixes and needs no further action. The
+integration and `validate-generated` diagnoses above are unaffected: neither the test file nor the
+schema fixture changed after `8e92cecd5`, and its submodule pointer is the same `681b458c`.
 
 **E2E `test_multi_profiles` failure is not ours.** `E2E-testing-pytest-playwright (foundation)` fails
 on `test_create_3_profiles_and_use_them_in_the_form` with a Playwright strict-mode violation — two
