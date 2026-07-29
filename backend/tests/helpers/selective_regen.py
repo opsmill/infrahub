@@ -7,8 +7,6 @@ from infrahub.core.merge.selective_regen.definition_selector.base import Definit
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
 from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
 from infrahub.core.merge.selective_regen.models import (
-    CascadeRole,
-    CascadeSourceOutput,
     DefinitionModel,
     GateResult,
     LoadedDefinition,
@@ -24,6 +22,7 @@ if TYPE_CHECKING:
 
     from infrahub_sdk.diff import NodeDiff
 
+    from infrahub.core.merge.selective_regen.models import CascadeSourceOutput
     from infrahub.core.timestamp import Timestamp
 
 
@@ -32,6 +31,16 @@ class StubCascadeSourceOutput:
 
     async def capture(self, *, since: Timestamp) -> list[NodeDiff]:
         return []
+
+
+class StubCascadeOutput:
+    """A CascadeOutput yielding a fixed capture, for source doubles that only exercise selection."""
+
+    def __init__(self, result: CascadeSourceOutput | None = None) -> None:
+        self._result = result if result is not None else StubCascadeSourceOutput()
+
+    def for_requests(self, requests: Sequence[object]) -> CascadeSourceOutput:
+        return self._result
 
 
 class RecordingGeneratorDiffCapturer:
@@ -112,10 +121,6 @@ class GeneratorForcingSelector(
     ForcingTemplateSelector[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun]
 ):
     workflow = REQUEST_GENERATOR_DEFINITION_RUN
-    cascade_role = CascadeRole.SOURCE
-
-    def output_capture(self, requests: Sequence[RequestGeneratorDefinitionRun]) -> CascadeSourceOutput:
-        return StubCascadeSourceOutput()
 
     def _build_request(
         self, *, definition: ProposedChangeGeneratorDefinition, target_branch: str, members: list[str]
@@ -129,7 +134,6 @@ class ArtifactForcingSelector(
     ForcingTemplateSelector[ProposedChangeArtifactDefinition, RequestArtifactDefinitionGenerate]
 ):
     workflow = REQUEST_ARTIFACT_DEFINITION_GENERATE
-    cascade_role = CascadeRole.TERMINAL
 
     def _build_request(
         self, *, definition: ProposedChangeArtifactDefinition, target_branch: str, members: list[str]

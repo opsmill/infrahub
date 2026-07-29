@@ -5,12 +5,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.timestamp import Timestamp
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 
 if TYPE_CHECKING:
     from infrahub.core.merge.selective_regen.definition_selector.generator_selector import GeneratorSelector
-    from tests.helpers.selective_regen import RecordingGeneratorDiffCapturer
 
 TARGET_BRANCH = "main"
 
@@ -44,27 +42,6 @@ def test_build_request_threads_branch_definition_and_members(generator_selector:
     assert request.branch == TARGET_BRANCH
     assert request.generator_definition is definition
     assert request.target_members == ["m1", "m2"]
-
-
-async def test_output_capture_captures_the_runs_generators_by_name(
-    generator_selector: GeneratorSelector, output_capturer: RecordingGeneratorDiffCapturer
-) -> None:
-    """output_capture derives the capture scope from each run's generator name, with no follow-up narrowing."""
-    runs = [
-        generator_selector._build_request(
-            definition=_generator_definition(name="gen-a"), target_branch=TARGET_BRANCH, members=[]
-        ),
-        generator_selector._build_request(
-            definition=_generator_definition(name="gen-b"), target_branch=TARGET_BRANCH, members=[]
-        ),
-    ]
-
-    output = generator_selector.output_capture(runs)
-    since = Timestamp()
-    captured = await output.capture(since=since)
-
-    assert output_capturer.calls == [(since, ["gen-a", "gen-b"])]
-    assert captured is output_capturer.result
 
 
 def test_consolidate_returns_the_runs_unchanged_for_a_source(generator_selector: GeneratorSelector) -> None:

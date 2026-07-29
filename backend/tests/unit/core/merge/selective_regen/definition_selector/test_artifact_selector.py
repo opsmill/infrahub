@@ -50,11 +50,6 @@ def test_build_request_carries_definition_identity_and_members(artifact_selector
     assert request.members == ["m1", "m2"]
 
 
-def test_output_capture_is_none_for_a_terminal(artifact_selector: ArtifactSelector) -> None:
-    """An artifact selector is a cascade terminal: it produces no output for the cascade to re-read."""
-    assert artifact_selector.output_capture([]) is None
-
-
 def test_consolidate_merges_requests_for_the_same_definition(artifact_selector: ArtifactSelector) -> None:
     """A definition selected more than once collapses to one request; member filters union, empty wins."""
     consolidated = artifact_selector.consolidate(

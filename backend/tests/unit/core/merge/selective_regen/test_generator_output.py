@@ -9,12 +9,14 @@ from infrahub.core.diff.model.path import EnrichedDiffRoot, EnrichedDiffRootMeta
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
-from infrahub.core.merge.selective_regen.generator_diff_capturer import (
+from infrahub.core.merge.selective_regen.generator_output import (
     CAPTURE_DIFF_NAME_PREFIX,
+    GeneratorCascadeOutput,
     GeneratorTrackingGroupDiffCapturer,
     GeneratorTrackingOutput,
 )
 from infrahub.core.timestamp import Timestamp
+from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from tests.helpers.selective_regen import RecordingGeneratorDiffCapturer
 
 if TYPE_CHECKING:
@@ -187,6 +189,40 @@ async def test_generator_tracking_output_forwards_its_names_and_since_to_the_cap
     """GeneratorTrackingOutput binds the generator names to the capturer and forwards the since and diff."""
     capturer = RecordingGeneratorDiffCapturer()
     output = GeneratorTrackingOutput(capturer=capturer, definition_names=["gen-a", "gen-b"])
+    since = Timestamp()
+
+    captured = await output.capture(since=since)
+
+    assert capturer.calls == [(since, ["gen-a", "gen-b"])]
+    assert captured is capturer.result
+
+
+def _generator_run(name: str) -> RequestGeneratorDefinitionRun:
+    return RequestGeneratorDefinitionRun(
+        branch="main",
+        generator_definition=ProposedChangeGeneratorDefinition(
+            definition_id="def-1",
+            definition_name=name,
+            query_name="q",
+            convert_query_response=False,
+            class_name="C",
+            file_path="gen.py",
+            group_id="grp-1",
+            parameters={},
+            execute_in_proposed_change=False,
+            execute_after_merge=True,
+            query_id="q-1",
+            query_models=[],
+            query_payload="query {}",
+            repository_id="repo-1",
+        ),
+    )
+
+
+async def test_generator_cascade_output_captures_the_runs_generators_by_name() -> None:
+    """GeneratorCascadeOutput derives the capture scope from each run's generator name."""
+    capturer = RecordingGeneratorDiffCapturer()
+    output = GeneratorCascadeOutput(capturer=capturer).for_requests([_generator_run("gen-a"), _generator_run("gen-b")])
     since = Timestamp()
 
     captured = await output.capture(since=since)
