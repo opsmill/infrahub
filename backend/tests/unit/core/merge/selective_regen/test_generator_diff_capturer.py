@@ -9,7 +9,10 @@ from infrahub.core.diff.model.path import EnrichedDiffRoot, EnrichedDiffRootMeta
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
-from infrahub.core.merge.selective_regen.generator_diff_capturer import GeneratorTrackingGroupDiffCapturer
+from infrahub.core.merge.selective_regen.generator_diff_capturer import (
+    CAPTURE_DIFF_NAME_PREFIX,
+    GeneratorTrackingGroupDiffCapturer,
+)
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -40,11 +43,13 @@ def _group(name: str, member_ids: list[str]) -> SimpleNamespace:
 class _RecordingCoordinator(DiffCoordinator):
     def __init__(self) -> None:
         self.diff_branches: list[str] = []
+        self.names: list[str] = []
 
     async def create_or_update_arbitrary_timeframe_diff(
         self, base_branch: Branch, diff_branch: Branch, from_time: Timestamp, to_time: Timestamp, name: str
     ) -> EnrichedDiffRootMetadata:
         self.diff_branches.append(diff_branch.name)
+        self.names.append(name)
         return _empty_root(diff_branch.name)
 
 
@@ -158,3 +163,19 @@ async def test_capture_widens_when_any_definition_lacks_a_tracking_group() -> No
     # abandoning the second definition once the first resolved.
     assert client.queried_names == ["genA", "genB"]
     assert repository.filters_seen == [None]
+
+
+async def test_capture_marks_the_saved_diff_so_it_can_be_identified_later() -> None:
+    coordinator = _RecordingCoordinator()
+    capturer = GeneratorTrackingGroupDiffCapturer(
+        diff_coordinator=coordinator,
+        diff_repository=_RecordingRepository(),
+        serializer=_RecordingSerializer(),
+        client=cast("InfrahubClient", _FakeClient({})),
+        branch=Branch(name="main"),
+    )
+
+    await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
+
+    assert len(coordinator.names) == 1
+    assert coordinator.names[0].startswith(CAPTURE_DIFF_NAME_PREFIX)
