@@ -1,1 +1,0 @@
-Added a "Local development and evaluation" section to the hardware requirements page, with starting-point CPU, memory, and disk figures for running Infrahub Community on a single machine for evaluation or proof-of-value work.

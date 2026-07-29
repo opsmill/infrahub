@@ -40,7 +40,7 @@ These are starting points, not a measured specification. Real resource use depen
 | Resource      | Minimum (light evaluation) | Recommended | Notes                                                                                                     |
 |---------------|----------------------------|-------------|----------------------------------------------------------------------------------------------------------|
 | RAM           | 8 GB                       | 16 GB       | Recommended matches the general requirements above.                                                       |
-| CPU           | 4 cores                    | 6 cores     | A proposed-change or merge pipeline uses up to 4 cores concurrently.                                      |
+| CPU           | 6 cores                    | 8 cores     | A proposed-change or merge pipeline uses several cores concurrently, so provision headroom.               |
 | Disk          | 20 GB                      | 40 GB       | SSD. Container images require 1.3 GB; data volumes grow with your data and graph history.                 |
 | Storage class | SSD                        | SSD         | Neo4j and PostgreSQL are latency-sensitive, so the storage class matters more than a specific IOPS target. |
 
