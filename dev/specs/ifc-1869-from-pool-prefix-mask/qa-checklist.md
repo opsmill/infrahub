@@ -6,12 +6,13 @@
 
 ## Scope
 
-Verify that, when allocating an **IP address** from a resource pool in the UI, a tester can
-optionally set a custom prefix length instead of the pool default — and that leaving it empty
-preserves today's behaviour. In scope: the shared pool picker's prefix-length control on IP
-**address** pools (`CoreIPAddressPool`), its validation (range `1–128`), gating, and the
-first-allocation conflict guard. Out of scope: IP **prefix** pools (deferred — the control is
-intentionally hidden there), number pools, and editing the mask of an already-allocated address.
+Verify that, when allocating an **IP address or IP prefix** from a resource pool in the UI, a
+tester can optionally set a custom prefix length instead of the pool default — and that leaving
+it empty preserves today's behaviour. In scope: the shared pool picker's prefix-length control on
+IP **address** pools (`CoreIPAddressPool`) and IP **prefix** pools (`CoreIPPrefixPool`), its
+validation (range `1–128`), gating, and the first-allocation conflict guard. Out of scope: number
+pools, selecting the target object kind for generic IP relationships, and editing the mask of an
+already-allocated address.
 
 ## Prerequisites
 
@@ -80,19 +81,32 @@ uv run invoke demo.load-infra-data
 
 **Expected result**: Values outside `1–128` (or non-integers) show an inline error and prevent saving; a valid value clears the error and re-enables **Save**.
 
-### 4. Control shows only for IP address pools, and resets on pool change
+### 4. Carve a subnet of a specific size from a prefix pool
+
+**What this verifies**: The custom length also works for IP **prefix** pools (US1 / SC-001, SC-004).
+
+**Steps**:
+
+- [ ] On an object with a prefix relationship (or IPAM → create a prefix), set the field to allocate from an IP **prefix** pool.
+- [ ] Confirm the **Prefix length · optional** control appears, with the pool default as placeholder.
+- [ ] Enter a non-default size (example: `30`), then **Save**.
+- [ ] Open the newly created prefix.
+
+**Expected result**: A subnet of exactly the requested size (e.g. `/30`) is carved from the pool — no error, no fallback to the default.
+
+### 5. Control shows only for IP pools, and resets on pool change
 
 **What this verifies**: Gating and reset rules (FR-002, FR-003, FR-009, FR-010, SC-004).
 
 **Steps**:
 
 - [ ] On a from-pool field before any pool is selected → confirm **no** prefix-length control is shown.
-- [ ] Select an IP **address** pool → the control appears.
+- [ ] Select an IP **address** or IP **prefix** pool → the control appears.
 - [ ] Enter a length, then switch to a **different** pool → confirm the entered length resets to empty.
 - [ ] Clear the pool selection (back to manual entry) → confirm the control disappears.
-- [ ] On a field backed by a **number** pool (or an IP **prefix** pool) → confirm **no** prefix-length control appears.
+- [ ] On a field backed by a **number** pool → confirm **no** prefix-length control appears.
 
-**Expected result**: The control is present only while an IP address pool is selected, resets on pool change, and is absent for number/prefix pools.
+**Expected result**: The control is present only while an IP address/prefix pool is selected, resets on pool change, and is absent for number pools.
 
 ## Edge Cases
 

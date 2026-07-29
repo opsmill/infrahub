@@ -2,11 +2,11 @@
 
 **Feature Branch**: `from-pool-prefix-mask-infp-362`
 **Created**: 2026-06-17
-**Status**: Implemented (IP address pools)
+**Status**: Implemented (IP address and IP prefix pools)
 **Jira**: IFC-1869 (capability 1 of epic IFC-2763 → JPD idea INFP-362)
 **Input**: User description: "When a user allocates a Prefix or IP address via from-pool in the Infrahub UI, today the allocation always uses the pool's default prefix length, with no way to request a different mask. This feature lets the user optionally specify the desired prefix length at allocation time, while keeping the pool default as the zero-effort path."
 
-> **Scope as shipped**: This capability covers **IP address pools** (`CoreIPAddressPool`). IP **prefix** pools were deferred — their inline `from_pool` GraphQL input exposes `size`, not `prefixlen`, so honoring a custom length there is a separate enhancement (see Assumptions). References to "prefix or IP address" below describe the original intent; the delivered scope is IP address only.
+> **Scope as shipped**: This capability covers **IP address pools** (`CoreIPAddressPool`) and **IP prefix pools** (`CoreIPPrefixPool`). The prefix-pool inline `from_pool` input names the length `size`; the pool allocator accepts `size` as an alias of `prefixlen`, so both pool kinds honor a custom length end to end (initially the UI gated the control to address pools; the gate and the alias landed together in review).
 
 ## Clarifications
 
@@ -74,7 +74,7 @@ A user enters a prefix length that is not valid for the target address family (f
 
 - **FR-001**: Users MUST be able to optionally specify a prefix length when allocating a Prefix or IP address from a resource pool.
 - **FR-002**: The prefix-length control MUST be hidden until a pool has been selected for the field, and MUST appear once a pool is selected.
-- **FR-003**: The prefix-length control MUST be shown only when the from-pool target is an **IP address** pool (`CoreIPAddressPool`); it MUST NOT appear for IP prefix pools (deferred) or other pool types (e.g. number pools).
+- **FR-003**: The prefix-length control MUST be shown only when the from-pool target is an **IP address** pool (`CoreIPAddressPool`) or an **IP prefix** pool (`CoreIPPrefixPool`); it MUST NOT appear for other pool types (e.g. number pools).
 - **FR-004**: When the prefix-length control is left empty, the system MUST allocate using the pool's default prefix length (preserving current behavior).
 - **FR-005**: The interface MUST communicate the pool's default prefix length to the user when known, and otherwise MUST clearly indicate that an empty control means "use the pool default".
 - **FR-006**: The prefix-length control MUST be clearly marked as optional.
@@ -105,8 +105,7 @@ A user enters a prefix length that is not valid for the target address family (f
 
 ## Assumptions
 
-- The work is primarily a user-interface enhancement; the IP address pool's inline `from_pool` input already accepts `prefixlen` and `get_resource` honors it. The only backend change shipped is the FR-014 conflict guard in `CoreIPAddressPool.get_resource`. No GraphQL schema change was needed.
-- **IP prefix pools are deferred.** Their inline `from_pool` input exposes `size` (not `prefixlen`), so supporting a custom length there would require a GraphQL input change and backend threading — tracked as a separate enhancement. The UI hides the control for prefix pools rather than sending a value the API rejects.
+- The work is primarily a user-interface enhancement; the IP address pool's inline `from_pool` input already accepts `prefixlen` and `get_resource` honors it. The backend changes shipped are the FR-014 conflict guard shared across both IP pools and a `size` → `prefixlen` alias in `CoreIPPrefixPool.get_resource` (the prefix-pool inline input publishes `size`, but a 2024 rename left the allocator accepting only `prefixlen`, so an explicit `size` crashed). No GraphQL schema change was needed.
 - **Alternatives considered for FR-014** (and rejected for this capability): (a) releasing the pool reservation when a relationship is re-pointed — rejected as too broad a behavior change (fires on node delete, branch rebase, generator re-runs) and a risk to allocation idempotency; (b) a read-only endpoint to look up a pool's reserved resources so the UI could disable the control up front — viable and cleaner, but a larger change deferred to a follow-up. The inline conflict error is the minimal, idempotency-preserving interim.
 - "Prefix length" is the user-facing term (paired with a leading "/"), consistent with how allocation length is referenced elsewhere.
 - The pool's default prefix length and address family may not always be available to the interface at entry time; the experience degrades gracefully (neutral default hint, widest-range validation) when they are not.

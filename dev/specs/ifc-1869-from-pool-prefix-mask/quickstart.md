@@ -2,7 +2,7 @@
 
 Prereqs: dev stack running (deps in Docker, host API on :8000, Vite dev server on :8080). Log in (admin / infrahub). Demo dataset loaded.
 
-> **As-built status**: Slice 1 (IP address) is accurate and was verified in the preview. **Slice 2 (IP prefix) is DEFERRED** — the control is hidden for prefix pools, so there is no prefix-length field to fill there. Range validation is **1–128** (the `33`-for-v4 check does not apply). Add this scenario instead: re-select an address pool that already holds a reservation for the object and enter a *different* length → inline error `its prefix length cannot be changed, only /<n> can be used` (FR-014); entering nothing reuses the reservation with no error. The Playwright specs below were **not** added; verification was manual.
+> **As-built status**: Slice 1 (IP address) is accurate and was verified in the preview. Slice 2 (IP prefix) shipped after review: the UI shows the control for prefix pools and sends `size`, which the allocator accepts as an alias of `prefixlen`. Range validation is **1–128** (the `33`-for-v4 check does not apply). Extra scenario: re-select a pool that already holds a reservation for the object and enter a *different* length → inline error `its prefix length cannot be changed, only /<n> can be used` (FR-014); entering nothing reuses the reservation with no error. The Playwright specs below were **not** added; verification was manual.
 
 ## Manual verification (preview-driven)
 
