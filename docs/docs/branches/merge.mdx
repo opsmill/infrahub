@@ -62,10 +62,71 @@ Once merged, a branch enters a frozen state and no further mutations are allowed
 
 The merged source branch can be deleted manually or automatically — see [Delete a branch](./delete.mdx) for the deletion options, including the `delete_branch_after_merge` configuration that removes branches automatically right after a successful merge.
 
+## When a merge fails
+
+A merge is not a single write and it can be too large to be wrapped in a transaction. While the write protection described above is in place, the merge copies the data into the default branch and, when the source branch changed the schema, applies the schema migrations that follow from it. Only once all of that has succeeded does the merge reach its point of no return, where the source branch becomes frozen and the write protection lifts. All of that work runs on one worker, and that worker can disappear part-way through — the process crashes or is killed, its container is restarted, or the database becomes unreachable while the merge is mid-flight.
+
+Infrahub is designed so that this leaves a *recoverable* state rather than a silently half-merged default branch. The write protection is not lifted on failure: it stays in place, so nothing writes on top of a partial merge, and the branch keeps its merge status until an administrator recovers it. The trade-off is deliberate — the default branch rejects writes for longer in exchange for never presenting a partially merged graph as if the merge had succeeded.
+
+### How a failed merge is detected
+
+A merge cannot report its own death, so Infrahub infers it. A background check runs once a minute and looks for a branch still in the merging state whose merge worker is no longer among the live workers. When it finds one, and the merge has been running longer than the grace period, it records the branch as having failed and escalates the write protection from the transient in-progress block to a recovery-required block.
+
+:::note
+A failed merge is therefore not flagged the instant the worker dies. Expect a few minutes to pass before the rejection changes from `MERGE_IN_PROGRESS` to `MERGE_RECOVERY_REQUIRED`.
+:::
+
+A merge whose worker is still alive is never flagged, however long it runs.
+
+### The error clients see
+
+Once the merge is flagged as failed, writes to the default branch and to the merge source branch are rejected with the structured code `MERGE_RECOVERY_REQUIRED` (HTTP status 423):
+
+```json
+{
+  "extensions": {
+    "code": "MERGE_RECOVERY_REQUIRED",
+    "http_status": 423,
+    "data": {
+      "branch_name": "main",
+      "merging_branch": "my-feature-branch"
+    }
+  }
+}
+```
+
+The accompanying message names the remedy directly:
+
+> A previous merge failed and left the default branch protected. Writes stay blocked until an administrator runs `infrahub recover merge`. Please contact an administrator.
+
+This is the important distinction from `MERGE_IN_PROGRESS`, which carries the same HTTP status: `MERGE_IN_PROGRESS` is transient and clears on its own, so retrying is the correct response. `MERGE_RECOVERY_REQUIRED` is durable. It does not clear with time and no amount of retrying will lift it — it requires an administrator to act. Automation should treat the two codes differently rather than retrying both.
+
+:::warning
+Client-side retry logic that matches only on HTTP 423 will retry a failed merge forever. Branch on the `code` in `extensions`, not on the status alone.
+:::
+
+### Recovering the failed merge
+
+An administrator recovers the branch with the [`infrahub recover merge`](../reference/infrahub-cli/infrahub-recover.mdx) CLI command, run against the Infrahub server:
+
+```shell
+infrahub recover merge
+```
+
+The command finds the failed merge on its own; naming a branch explicitly restricts it to that branch. It first previews what it found — the branch, when the merge started, and any associated Proposed Change — and asks for confirmation before changing anything. `--yes` skips the prompt for unattended use.
+
+Recovery reverses the partial merge rather than completing it. It rolls back every default-branch write the merge made, returns the branch and any associated Proposed Change to the open state, and lifts the write protection last, so an interruption part-way through leaves the branch protected rather than exposed. It is idempotent: running it again after a partial recovery re-detects the branch and finishes the job, and running it when there is nothing to recover reports that and makes no changes.
+
+Once recovery reports success, the default branch is writable again and the branch is back in the state it was in before the merge started. The merge can then be retried.
+
+By default, recovery acts only on a merge whose worker is confirmed dead. A merge that is stuck without an identifiable worker is ambiguous — it can look the same as a healthy merge whose bookkeeping was lost — so recovering it requires `--force`.
+
 ## Related
 
 - [Branches](./overview.mdx) — branch lifecycle and concepts
 - [Proposed Changes](../proposed-changes/overview.mdx) — the recommended path for merging
 - [Resolve conflicts](./resolve-conflicts.mdx) — handle conflicts before or during merge
+- [`infrahub recover`](../reference/infrahub-cli/infrahub-recover.mdx) — CLI reference for recovering a failed merge
+- [Error catalogue](../reference/error-catalogue.mdx) — the full `MERGE_IN_PROGRESS` and `MERGE_RECOVERY_REQUIRED` contracts
 - [Rebase a branch](./rebase.mdx) — keep your branch up-to-date before merging
 - [Delete a branch](./delete.mdx) — what happens after merging
