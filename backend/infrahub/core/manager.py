@@ -1342,8 +1342,7 @@ class NodeManager:
                 rel_peers_with_metadata.append(peer_with_metadata)
 
             rel_manager.has_fetched_relationships = True
-            # invariant list parameter; update() only reads data, so the narrower element type is safe
-            await rel_manager.update(db=db, data=rel_peers_with_metadata)  # type: ignore[arg-type]
+            await rel_manager.update(db=db, data=rel_peers_with_metadata)
 
     @classmethod
     async def delete(

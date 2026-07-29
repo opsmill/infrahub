@@ -256,6 +256,44 @@ async def test_many_update(
     assert len(paths) == 2
 
 
+async def test_many_update_with_tuple(
+    db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_main: Node, branch: Branch
+) -> None:
+    """A tuple of peers is treated as a collection of peers, like the equivalent list."""
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    relm = await RelationshipManager.init(
+        db=db, schema=rel_schema, branch=branch, at=Timestamp(), node=person_jack_main
+    )
+    await relm.save(db=db)
+
+    await relm.update(db=db, data=(tag_blue_main, tag_red_main))
+    await relm.save(db=db)
+
+    peer_ids = {rel.peer_id for rel in await relm.get_relationships(db=db)}
+    assert peer_ids == {tag_blue_main.id, tag_red_main.id}
+
+
+async def test_many_update_with_peer_id_string(
+    db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
+) -> None:
+    """A peer id is a single peer, never a sequence of one-character peer ids."""
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    relm = await RelationshipManager.init(
+        db=db, schema=rel_schema, branch=branch, at=Timestamp(), node=person_jack_main
+    )
+    await relm.save(db=db)
+
+    await relm.update(db=db, data=tag_blue_main.id)
+    await relm.save(db=db)
+
+    peer_ids = {rel.peer_id for rel in await relm.get_relationships(db=db)}
+    assert peer_ids == {tag_blue_main.id}
+
+
 async def test_many_add(
     db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_main: Node, branch: Branch
 ) -> None:
