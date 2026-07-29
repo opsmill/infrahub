@@ -523,13 +523,13 @@ value's type; run a protocol-generation test asserting the emitted annotation.
 - [X] T031 [US3] Add the SDK version floor to the SDK's own user-facing documentation: consuming a
   bare-address attribute requires an SDK at or above this version, because an older SDK silently
   re-attaches the host mask (see `contracts/sdk-contract.md` § Version skew).
-- [ ] T032 [US3] **GATE — the SDK commit must be pushed.** Push the SDK branch to
+- [~] T032 [US3] **GATE — the SDK commit must be pushed.** Push the SDK branch to
   `origin` in `infrahub-sdk-python` and open the SDK pull request against `infrahub-develop`. The
   pointer bump in T033 requires the commit to be **fetchable from the remote**, which a pushed PR
   branch satisfies — root `AGENTS.md` § Submodules permits "merged *or the commit is otherwise
   available upstream*". Merge is **not** a prerequisite here; the only hard rule is that a pointer to
   an unpushed commit breaks every other checkout.
-- [ ] T033 [US3] Bump the `python_sdk` submodule pointer to the latest pushed commit on the SDK PR
+- [X] T033 [US3] Bump the `python_sdk` submodule pointer to the latest pushed commit on the SDK PR
   branch (depends on T032). This lets Infrahub CI run against the real SDK change and unblocks review
   of both PRs in parallel, rather than serialising them behind the SDK merge. **This pointer is
   provisional** — see T045, which must run before the Infrahub PR merges.
@@ -894,7 +894,7 @@ duplicate success toasts, which no schema-value change can produce.
 - [ ] T043 Walk every scenario in [quickstart.md](./quickstart.md) end to end, including the manual
   GraphQL smoke check. Note the local `infrahub upgrade` Prefect parameter-size workaround
   (`PREFECT_SERVER_API_MAX_PARAMETER_SIZE=0`) if testing the upgrade path.
-- [ ] T044 Restate the Principle III deviation in the pull request description: the serialised form of
+- [X] T044 Restate the Principle III deviation in the pull request description: the serialised form of
   an `IPHost` value becomes conditional on a schema parameter, the rejected simpler alternative was a
   separate `IPAddress` attribute kind, and the four narrowing mitigations from `plan.md` §
   Complexity Tracking. Constitution Governance requires any Principle VII/III deviation to be
