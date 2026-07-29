@@ -298,7 +298,7 @@ from old is the value quoted in the violation message —
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Make `IPHost.validate_format` parameter-aware in
+- [X] T017 [US1] Make `IPHost.validate_format` parameter-aware in
   `backend/infrahub/core/attribute.py:1130-1148`: after the existing `ip_interface(value)` check, when
   the schema declares `allow_prefix=False` and the parsed interface's `network.prefixlen` is not the
   host length for its version (32 / 128), raise `ValidationError` keyed by the attribute `name` with a
@@ -307,17 +307,55 @@ from old is the value quoted in the violation message —
   `AttributeSchema` and inherited/profile/template paths may pass a base-classed instance.
   **Check the parsed prefix length, never the presence of `/` in the string**, or `/32` would be
   wrongly refused.
-- [ ] T018 [US1] Make `IPHost._normalize_value` parameter-aware in
+- [X] T018 [US1] Make `IPHost._normalize_value` parameter-aware in
   `backend/infrahub/core/attribute.py:1150-1151`: return `str(ipaddress.ip_interface(value).ip)` when
   the flag is off, else keep `ipaddress.ip_interface(value).with_prefixlen` exactly as today. Read the
   flag from `self.schema.parameters` (set at `attribute.py:120`, before the validate/normalise pair
   runs at `attribute.py:166-167`). Leave `to_db()` and every derived property untouched.
-- [ ] T019 [US1] Add the schema-load default-value tests to
+- [X] T019 [US1] Add the schema-load default-value tests to
   `backend/tests/component/core/schema_manager/test_manager_schema.py`: a declared attribute with
   `default_value: "10.0.0.1/24"` fails to load with a `default value ...` error naming the attribute
   (this falls out of T017 via `SchemaBranch.validate_default_values()` at
   `backend/infrahub/core/schema/schema_branch.py:1048-1066`), a `/32` default loads and is recorded
   bare, and a node created with no explicit value receives the bare default (depends on T007, T017).
+### Phase 3 implementation notes (T017-T019)
+
+- **The flag is read with `isinstance`, not `getattr`.** `dev/guidelines/backend/python.md` § "Prefer
+  `isinstance` over `getattr` for narrowing" forbids the `getattr` spelling the task text suggested,
+  and `attribute.py` already has the precedent one class up
+  (`isinstance(schema.parameters, NumberAttributeParameters)` in `BaseAttribute.validate_content`),
+  with `attribute_parameters` already imported at runtime so no import cycle is involved. The
+  behaviour is identical to `getattr(..., "allow_prefix", True)`: a base-classed
+  `AttributeParameters` fails the `isinstance` check and yields the permissive answer. Both call
+  sites go through one private `IPHost._allows_prefix(schema=...)` staticmethod, so the classmethod
+  validator and the instance-level normaliser cannot drift apart.
+- **The host length is derived as `interface.ip.max_prefixlen`**, the same idiom T007 already uses on
+  the schema side. `32`/`128` appear nowhere in the production change, so the IPv6-`/32` case is
+  rejected for the right reason.
+- **No committed test needed changing.** The error wording the Phase 3 test notes pinned was adopted
+  verbatim; all 15 expected failures flipped and the 20 controls kept passing on the first run.
+- **The profile/template/inherited path held no surprises.** `set_parameters_type` keys off `kind`,
+  so any attribute with `kind: IPHost` — base `AttributeSchema` included — ends up carrying
+  `IPHostAttributeParameters`. T020 still owns proving that end to end.
+- **T019's rejection message reads**
+  `InfraTinySchema: default value 10.0.0.1/24 is not a valid IPHost because a subnet prefix is not permitted at something`
+  — the `{namespace}{name}: default value ` prefix from `validate_default_values()` wrapped around
+  the dict-formatted `... at {attribute}` suffix.
+- **T019 landed as two tests, one per tier.** The prefix-policy matrix is a parametrised dataclass
+  case set beside the existing `test_validate_default_value_*` pair, running against an in-memory
+  `SchemaBranch` with no DB (cheapest tier, and it pins the undeclared control's `/24` and `/32`
+  defaults as untouched). The "a node with no explicit value receives the bare default" half needs
+  the registry, so it loads a `default_value`-carrying variant of the shared fixture through
+  `load_schema` and asserts `is_default` alongside the bare value.
+- **Pre-existing local noise, not regressions.** `backend/tests/unit/git/test_git_repository.py` has
+  3 failures with the change stashed as well as applied, and every `ty` diagnostic from
+  `invoke backend.lint` points into the untracked `repositories/` scratch directory. `invoke lint`
+  also reports yamllint errors in `development/docker-compose*.override.yml` and inside
+  `python_testcontainers/.venv`, none of them tracked files.
+- **`mypy` does not see the new tests.** `^backend/tests/component` is in `[tool.mypy].exclude`, so
+  the 284 errors reported when pointing mypy at `test_manager_schema.py` directly (284 of them
+  pre-existing) are not a CI gate. `backend/infrahub/core/attribute.py` is mypy-clean.
+
 - [ ] T020 [US1] Add the profile and template tests to
   `backend/tests/component/core/test_attribute_iphost_allow_prefix.py`: a profile node and a template
   node inheriting a declared attribute validate and serialise identically to the node they derive
