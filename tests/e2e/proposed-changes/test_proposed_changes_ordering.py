@@ -58,9 +58,13 @@ async def _rendered_pc_order(page: Page) -> list[str]:
 
 
 async def _pick_sort(page: Page, option: str | re.Pattern[str]) -> None:
-    """Open the Sort menu and choose one of its date orders."""
+    """Open the Sort menu and choose one of its date orders.
+
+    The orders are a single-selection group, so the items are radios rather than
+    plain menu items.
+    """
     await page.get_by_role("button", name="Sort").click()
-    await page.get_by_role("menuitem", name=option).click()
+    await page.get_by_role("menuitemradio", name=option).click()
 
 
 class TestProposedChangesOrdering:

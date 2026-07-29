@@ -12,15 +12,6 @@ const schema = generateNodeSchema({
   relationships: [],
 });
 
-// Menu items are addressed by position: an active item carries a visually hidden "active" label, so
-// its accessible name no longer matches its own text exactly.
-const OPTION = {
-  newest: 0,
-  oldest: 1,
-  recentlyUpdated: 2,
-  leastRecentlyUpdated: 3,
-} as const;
-
 const renderSortMenu = async ({
   searchParams = "",
   onUrlUpdate,
@@ -43,51 +34,52 @@ describe("ProposedChangesSortMenu", () => {
     const component = await renderSortMenu();
 
     // WHEN
-    const items = component.getByRole("menuitem");
+    const items = component.getByRole("menuitemradio");
 
     // THEN
-    await expect.element(items.nth(OPTION.newest)).toHaveTextContent("Newest");
-    await expect.element(items.nth(OPTION.oldest)).toHaveTextContent("Oldest");
-    await expect.element(items.nth(OPTION.recentlyUpdated)).toHaveTextContent("Recently updated");
-    await expect
-      .element(items.nth(OPTION.leastRecentlyUpdated))
-      .toHaveTextContent("Least recently updated");
+    await expect.element(items.nth(0)).toHaveTextContent("Newest");
+    await expect.element(items.nth(1)).toHaveTextContent("Oldest");
+    await expect.element(items.nth(2)).toHaveTextContent("Recently updated");
+    await expect.element(items.nth(3)).toHaveTextContent("Least recently updated");
   });
 
-  test("marks the default order as active when no sort is in the URL", async () => {
+  test("checks the default order when no sort is in the URL", async () => {
     // GIVEN
     const component = await renderSortMenu();
 
     // WHEN
-    const items = component.getByRole("menuitem");
+    const newest = component.getByRole("menuitemradio", { name: "Newest", exact: true });
 
     // THEN
-    await expect.element(items.nth(OPTION.newest)).toHaveTextContent("active");
+    await expect.element(newest).toHaveAttribute("aria-checked", "true");
   });
 
-  test("marks the order carried by the URL as active", async () => {
+  test("checks the order carried by the URL", async () => {
     // GIVEN
     const component = await renderSortMenu({
       searchParams: "?sort=node_metadata__updated_at__desc",
     });
 
     // WHEN
-    const items = component.getByRole("menuitem");
+    const recentlyUpdated = component.getByRole("menuitemradio", {
+      name: "Recently updated",
+      exact: true,
+    });
 
     // THEN
-    await expect.element(items.nth(OPTION.recentlyUpdated)).toHaveTextContent("active");
+    await expect.element(recentlyUpdated).toHaveAttribute("aria-checked", "true");
   });
 
-  test("marks nothing as active for a sort the menu does not offer", async () => {
+  test("checks nothing for a sort the menu does not offer", async () => {
     // GIVEN
     const component = await renderSortMenu({ searchParams: "?sort=name__value__asc" });
 
     // WHEN
-    const items = component.getByRole("menuitem");
+    const items = component.getByRole("menuitemradio");
 
     // THEN
-    await expect.element(items.nth(OPTION.newest)).not.toHaveTextContent("active");
-    await expect.element(items.nth(OPTION.recentlyUpdated)).not.toHaveTextContent("active");
+    await expect.element(items.nth(0)).toHaveAttribute("aria-checked", "false");
+    await expect.element(items.nth(2)).toHaveAttribute("aria-checked", "false");
   });
 
   test("writes the selected order to the URL", async () => {
@@ -96,7 +88,7 @@ describe("ProposedChangesSortMenu", () => {
     const component = await renderSortMenu({ onUrlUpdate });
 
     // WHEN
-    await component.getByRole("menuitem").nth(OPTION.leastRecentlyUpdated).click();
+    await component.getByRole("menuitemradio", { name: "Least recently updated" }).click();
 
     // THEN
     expect(onUrlUpdate.mock.lastCall?.[0]?.searchParams.get("sort")).toBe(
@@ -113,7 +105,7 @@ describe("ProposedChangesSortMenu", () => {
     });
 
     // WHEN
-    await component.getByRole("menuitem").nth(OPTION.newest).click();
+    await component.getByRole("menuitemradio", { name: "Newest", exact: true }).click();
 
     // THEN
     expect(onUrlUpdate.mock.lastCall?.[0]?.searchParams.get("sort")).toBeNull();
