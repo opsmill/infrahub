@@ -310,6 +310,8 @@ describe("graphqlClient — token refresh integration", () => {
     expect(fetchQuerySpy).toHaveBeenCalledOnce();
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(assignSpy).not.toHaveBeenCalled();
+    const replay = new Headers((fetchSpy.mock.calls[1]?.[1] as RequestInit).headers);
+    expect(replay.get(PRIORITY_HEADER)).toBe("high");
   });
 
   it("bails to /login when TOKEN_EXPIRED persists after the single replay", async () => {
