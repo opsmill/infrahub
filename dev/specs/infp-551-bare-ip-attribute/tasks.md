@@ -48,17 +48,47 @@ Web application spanning three trees:
 
 **Purpose**: Establish the regression baseline and the shared test fixture before any code changes.
 
-- [ ] T001 Record the FR-012 / SC-006 baseline: run the existing IPHost-touching suites on the
+- [X] T001 Record the FR-012 / SC-006 baseline: run the existing IPHost-touching suites on the
   unmodified tree and save the results to `/tmp/iphost-baseline.txt` —
   `uv run pytest backend/tests/component/core/test_attribute.py backend/tests/component/graphql/queries/test_hfid.py backend/tests/unit/test_types.py -v`.
   Every later phase is measured against this.
-- [ ] T002 [P] Add the shared test schema fixture carrying **both** attribute flavours (a
+- [X] T002 [P] Add the shared test schema fixture carrying **both** attribute flavours (a
   bare-address `dns_target` with `unique: true`, an undeclared `mgmt_ip` control, and a bare-address
   IPv6 `v6_target`) to `backend/tests/fixtures/` following the existing schema-fixture convention;
   reuse an existing fixture instead if one already provides an `IPHost` attribute plus `display_labels`
   and `human_friendly_id`. The exact shape is in `quickstart.md` § Test schema fixture.
 
 **Checkpoint**: Baseline captured; fixture available to every story.
+
+### Phase 1 implementation notes
+
+- **T001 result**: 76 passed, 0 failed on the unmodified tree at commit `8925db53b`; no
+  pre-existing failures to work around. `/tmp/iphost-baseline.txt` carries a provenance header
+  (timestamp, commit, command, DB) above the verbatim `-v` output.
+- **T002 landed at `backend/tests/helpers/schema/dns_record.py`, not `backend/tests/fixtures/`.**
+  No existing fixture provided `IPHost` + display label + `human_friendly_id`, so reuse was not an
+  option. `backend/tests/fixtures/schemas/` is JSON-only, contains zero `human_friendly_id`
+  precedent, has no YAML loader, and is reachable only through the conftest-scoped `helper` pytest
+  fixture — unusable at import time for parametrised unit tests. `backend/tests/helpers/schema/` is
+  the actual convention for shared schema fixtures of this shape and already ships a `load_schema()`
+  helper. Exported as `DNS_RECORD_DEFINITION` (raw dict), `DNS_RECORD_SCHEMA` (`SchemaRoot`), and
+  `DNS_RECORD` (`NodeSchema`).
+- **Uses `display_label` (singular), not `display_labels`.** `display_labels` is deprecated and
+  emits a warning; the singular field accepts the same attribute path.
+- **The fixture is a raw dict, deliberately.** Attribute parameters are coerced from dicts by a
+  `mode="before"` validator, so the dict form drives the same path a user's YAML/JSON payload takes.
+  It is also the only mypy-clean spelling until an `IPHost` parameters model joins the `parameters`
+  union — CI runs `mypy backend`, and `backend/tests/helpers/` is not excluded.
+- **`generate_template=True` was added beyond the quickstart shape** so Scenario 5 has profile and
+  object-template kinds to assert against.
+- **Scenario 5 must assert on `v6_target`, not `dns_target`.** Verified: `dns_target` is absent from
+  both `ProfileTestingDnsRecord` (`mgmt_ip`, `profile_name`, `profile_priority`, `v6_target`) and
+  `TemplateTestingDnsRecord` (`mgmt_ip`, `template_name`, `v6_target`) because unique attributes are
+  excluded from both generated kinds.
+- **`allow_prefix` is silently dropped today**, not rejected: `AttributeParameters.convert_from_dict`
+  filters unknown keys before pydantic's `extra="forbid"` sees them, and `IPHost` has no entry in
+  `get_attribute_parameters_class_for_kind`. So the fixture loads clean pre-feature, and a test
+  asserting rejection of the flag would fail until the parameters model lands.
 
 ---
 
