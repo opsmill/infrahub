@@ -24,7 +24,6 @@ from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
-from infrahub.core.merge.follow_up import merge_follow_up_guard
 from infrahub.core.merge.merge_locker import MergeLocker
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
@@ -56,6 +55,7 @@ from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
+from infrahub.utils import log_exception_guard
 from infrahub.workers.dependencies import (
     get_cache,
     get_client,
@@ -314,7 +314,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     for event in events:
         await event_service.send(event)
 
-    with merge_follow_up_guard(log, "Failed to submit the coalesced post-rebase recompute"):
+    with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
         schema_name = (
             user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
         )

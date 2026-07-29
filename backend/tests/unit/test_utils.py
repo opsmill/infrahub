@@ -1,13 +1,55 @@
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 import pytest
 
-from infrahub.utils import get_fixtures_dir, has_any_key
+from infrahub.utils import get_fixtures_dir, has_any_key, log_exception_guard
 
 
 def test_get_fixtures_dir() -> None:
     assert get_fixtures_dir().exists()
+
+
+def test_log_exception_guard_absorbs_and_logs(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.ERROR)
+    log = logging.getLogger("test_log_exception_guard")
+    ran_after = False
+
+    with log_exception_guard(log, "block failed"):
+        raise RuntimeError("boom")
+    ran_after = True
+
+    assert ran_after is True
+    assert [record.message for record in caplog.records] == ["block failed"]
+    assert caplog.records[0].exc_info is not None
+
+
+def test_log_exception_guard_no_error_stays_silent(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.ERROR)
+    log = logging.getLogger("test_log_exception_guard")
+    calls: list[str] = []
+
+    with log_exception_guard(log, "block failed"):
+        calls.append("ran")
+
+    assert calls == ["ran"]
+    assert caplog.records == []
+
+
+def test_log_exception_guard_isolates_each_iteration(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.ERROR)
+    log = logging.getLogger("test_log_exception_guard")
+    attempted: list[str] = []
+
+    for item in ["a", "b", "c"]:
+        with log_exception_guard(log, f"block '{item}' failed"):
+            attempted.append(item)
+            if item == "b":
+                raise RuntimeError("boom")
+
+    assert attempted == ["a", "b", "c"]
+    assert [record.message for record in caplog.records] == ["block 'b' failed"]
 
 
 @dataclass
