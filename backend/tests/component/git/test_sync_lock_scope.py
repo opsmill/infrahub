@@ -1,3 +1,4 @@
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 from infrahub.core.branch import Branch
@@ -8,7 +9,7 @@ from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRe
 
 
 async def test_repository_lock_scopes_import_build_and_apply(
-    prefect_test_fixture: None, git_repo_04: InfrahubRepository
+    prefect_test_fixture: None, git_repo_04: InfrahubRepository, mock_branch_all: AsyncMock
 ) -> None:
     """The build phase of an import must run outside the lock and the apply phase inside it.
 
