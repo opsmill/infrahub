@@ -204,29 +204,97 @@ change required.
 
 > Write these first and confirm they fail before T017-T018.
 
-- [ ] T012 [P] [US1] Write the validation and normalisation matrix in
+- [X] T012 [P] [US1] Write the validation and normalisation matrix in
   `backend/tests/component/core/test_attribute_iphost_allow_prefix.py`: {bare, `/32`, `/128`, `/24`,
   `/64`, `/31`, `/0`} × {IPv4, IPv6} × {declared, undeclared}. Declared rejects every non-host prefix
   with an error naming the attribute; declared stores bare for bare and host-mask input; undeclared
   behaves exactly as today. Include the optional-attribute null path (no prefix logic applied).
-- [ ] T013 [P] [US1] Write the storage and derived-property assertions in the same file: for a
+- [X] T013 [P] [US1] Write the storage and derived-property assertions in the same file: for a
   declared attribute the stored `value` is bare **and** the value vertex still carries
   `prefixlen == 32` (IPv4) / `128` (IPv6), `binary_address`, and `version`; an IPAM prefix-containment
   query for `10.0.0.0/8` still returns the node. This test guards FR-008 against a future "clean up
   the meaningless prefixlen" refactor.
-- [ ] T014 [P] [US1] Extend `backend/tests/component/graphql/queries/test_hfid.py` with a
+- [X] T014 [P] [US1] Extend `backend/tests/component/graphql/queries/test_hfid.py` with a
   bare-address counterpart to the existing `test_iphost_hfid_roundtrip_via_graphql` (the #8896
   reproduction): the HFID and display label carry no mask, and the HFID returned by a query is
   accepted verbatim as lookup input with zero caller-side transformation.
-- [ ] T015 [P] [US1] Write the uniqueness collision test in
+- [X] T015 [P] [US1] Write the uniqueness collision test in
   `backend/tests/component/core/test_attribute_iphost_allow_prefix.py`: on a declared attribute with a
   uniqueness constraint, nodes created with `10.0.0.1` and `10.0.0.1/32` collide. Assert the same two
   inputs also collide on an undeclared attribute (both store `10.0.0.1/32`), so the test distinguishes
   the new behaviour from the old.
-- [ ] T016 [P] [US1] Extend
+- [X] T016 [P] [US1] Extend
   `backend/tests/integration/schema_lifecycle/test_attribute_parameters_update.py` with the toggle
   rejection (FR-009): flipping, adding, or removing `allow_prefix` on an existing attribute fails with
   an unsupported-change error naming `parameters.allow_prefix`.
+
+### Phase 3 test notes (T012-T016)
+
+**Expected-fail state.** T012-T015 were written before T017/T018 and are red on purpose. Verified
+`2026-07-28`, 15 failing / 20 passing across the two component files:
+
+- `backend/tests/component/core/test_attribute_iphost_allow_prefix.py` — 14 failed, 19 passed.
+  Failures: 4 stored-value assertions (`'10.0.0.1/32' == '10.0.0.1'`), 9 `DID NOT RAISE
+  ValidationError` on non-host prefixes, 1 uniqueness test failing on its stored-value precondition.
+- `backend/tests/component/graphql/queries/test_hfid.py::test_bare_iphost_hfid_roundtrip_via_graphql`
+  — 1 failed on `'192.0.2.10/32' == '192.0.2.10'`.
+- The undeclared-control halves all pass today, as does the whole of T016.
+
+**T016 passes now, by design.** The notes below "Three requirements need no implementation task"
+already predicted this: the diff walker honours the sub-field's own `NOT_SUPPORTED` classification, so
+flipping, removing, and adding `allow_prefix` are all already refused. T016 is a verification task.
+
+**Gap found by T016: the rendered error does not name the parameter.**
+`SchemaUpdateValidationError.to_string()` (`backend/infrahub/core/models.py:141-142`) formats only
+`error`, `schema_kind`, `field_name`, and `message` — it drops `path.property_name`. So the HTTP 422
+body reads `'not_supported': TestingDnsRecord dns_target None`, which identifies the attribute but not
+the declaration. FR-009's "error identifying the declaration" is therefore only half-met at the API
+surface. The test pins the message as produced **and** asserts
+`path.property_name == "parameters.allow_prefix"` against `validate_update` directly, so the
+requirement is verified where it currently holds. **Follow-up**: including `property_name` in
+`to_string()` is a one-line production change that would improve every `not_supported` and
+`migration_not_available` message; it was left out of a tests-only chunk because it changes error text
+shared with other suites.
+
+**Rejection message pinned by the tests.** T017 has no wording yet, so the tests define it:
+
+```text
+{value} is not a valid IPHost because a subnet prefix is not permitted
+```
+
+raised as `ValidationError({attribute_name: ...})`, which the dict formatter renders as
+`... is not permitted at dns_target`. T017 must use this exact string or update the tests with it.
+
+**Matrix decisions where the target behaviour was ambiguous.**
+
+- `/0` and `/31` (IPv4) — **rejected**. The spec's Edge Cases are explicit that any prefix other than
+  the host length is refused.
+- IPv6 `/64` and `/127` — **rejected**, same rule, `/127` being the IPv6 analogue of `/31`.
+- IPv6 `/32` — **rejected**. Not named in the spec, but 32 is a subnet prefix for IPv6; the check is
+  the parsed prefix length against the version's host length, never a literal `32`. This case exists
+  precisely to catch an implementation that hardcodes `32`.
+- IPv4 `/128` — **not** a prefix-policy case. `ip_interface("10.0.0.1/128")` raises, so both declared
+  and undeclared attributes keep today's `is not a valid IPHost` error. Included so the matrix does not
+  imply the new rule swallowed the malformed-input path.
+- `10.0.0.1/255.255.255.0` (netmask notation) — **not covered**. `ip_interface` resolves it to `/24`,
+  so it is already covered by the `/24` row; adding it would assert the same code path twice.
+
+**Prefix containment is asserted against the value vertex, not through IPAM.** The IPAM containment
+queries are scoped to IPAM node kinds and attribute names, so they never see a `TestingDnsRecord`
+attribute. The test instead runs the same predicate those queries use —
+`av.binary_address STARTS WITH <the /8 bit prefix>` on the `AttributeIPHost` vertex — for both the
+declared and the undeclared attribute. This passes today and must keep passing once storage goes bare,
+which is the FR-008 guard the task asked for.
+
+**T015 needed a schema variant.** The shared fixture's `mgmt_ip` control is not unique, so the
+undeclared half of the collision test had nothing to collide on. The test derives a variant with
+`deepcopy` marking `mgmt_ip` unique rather than changing the shared fixture. Note that the *collision*
+itself already happens today (both input forms normalise to `10.0.0.1/32`), so what distinguishes new
+from old is the value quoted in the violation message —
+`An object already exist with this value: dns_target: 10.0.0.1` — plus the stored-value precondition.
+
+**`display_label` was added to the new HFID test's query.** The existing
+`test_iphost_hfid_roundtrip_via_graphql` was not touched, in line with T024.
 
 ### Implementation for User Story 1
 
