@@ -32,7 +32,7 @@ from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship, RelationshipManager
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import (
-    AttributeSchema,
+    AttributePathParsingError,
     GenericSchema,
     MainSchemaTypes,
     NodeSchema,
@@ -46,6 +46,7 @@ from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFou
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.constants import RelationshipHierarchyDirection
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 SchemaProtocol = TypeVar("SchemaProtocol")
@@ -69,20 +70,32 @@ def identify_node_class(node: NodeToProcess) -> type[Node]:
     return Node
 
 
-def _normalize_hfid(paths: list[str], schema: MainSchemaTypes, hfid: list[str]) -> list[str]:
+def _normalize_hfid(
+    paths: list[str], schema: MainSchemaTypes, schema_branch: SchemaBranch, hfid: list[str]
+) -> list[str]:
     """Return the HFID components spelled the way the graph stores them.
 
     An HFID is resolved by matching the string a node stored, so a component read from an attribute
-    that normalises what it is given has to be normalised as lookup input too. A component reached
-    through a relationship is left alone, as is one whose field is not an attribute value.
+    that normalises what it is given has to be normalised as lookup input too. That holds however the
+    attribute is reached, including through a relationship or through a hierarchy parent.
+
+    A component whose path does not resolve to an attribute value is handed back untouched, and so is
+    one whose path cannot be resolved at all -- a lookup that finds nothing is the behaviour a read
+    has always had, where raising would turn it into a failure.
     """
     normalized: list[str] = []
 
     for path, component in zip(paths, hfid, strict=True):
-        field_name, _, property_name = path.partition("__")
-        field = schema.get_field(field_name, raise_on_error=False) if property_name == "value" else None
-        if isinstance(field, AttributeSchema):
-            normalized.append(field.normalize_query_value(filter_name="value", filter_value=component))
+        try:
+            schema_path = schema.parse_schema_path(path=path, schema=schema_branch)
+        except AttributePathParsingError:
+            normalized.append(component)
+            continue
+
+        if schema_path.attribute_schema and schema_path.attribute_property_name == "value":
+            normalized.append(
+                schema_path.attribute_schema.normalize_query_value(filter_name="value", filter_value=component)
+            )
         else:
             normalized.append(component)
 
@@ -800,7 +813,14 @@ class NodeManager:
             branch=branch,
             at=at,
             node_kind=kind_str,
-            hfids=[_normalize_hfid(paths=node_schema.human_friendly_id, schema=node_schema, hfid=hfid)],
+            hfids=[
+                _normalize_hfid(
+                    paths=node_schema.human_friendly_id,
+                    schema=node_schema,
+                    schema_branch=db.schema.get_schema_branch(name=branch.name),
+                    hfid=hfid,
+                )
+            ],
             branch_agnostic=branch_agnostic,
         )
         await query.execute(db=db)

@@ -36,6 +36,7 @@ from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.templates.node_applier import NodeTemplateApplier
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
+from tests.helpers.schema.dns_delegation import DNS_DELEGATION_SCHEMA
 from tests.helpers.schema.dns_record import DNS_RECORD_DEFINITION
 
 if TYPE_CHECKING:
@@ -50,6 +51,13 @@ if TYPE_CHECKING:
 DNS_RECORD_KIND = "TestingDnsRecord"
 DNS_RECORD_PROFILE_KIND = "ProfileTestingDnsRecord"
 DNS_RECORD_TEMPLATE_KIND = "TemplateTestingDnsRecord"
+
+DNS_ZONE_KIND = "TestingDnsZone"
+DECLARED_DELEGATION_KIND = "TestingDeclaredDelegation"
+UNDECLARED_DELEGATION_KIND = "TestingUndeclaredDelegation"
+ZONE_ROOT_KIND = "TestingZoneRoot"
+ZONE_LEAF_KIND = "TestingZoneLeaf"
+ZONE_MGMT_LEAF_KIND = "TestingZoneMgmtLeaf"
 
 # A valid bare value for the mandatory declared attribute, so a case exercising another attribute is
 # not also fighting a missing mandatory value.
@@ -827,6 +835,201 @@ class TestLookupInput:
                 db=db, branch=default_branch, query=LOOKUP_BY_HFID_QUERY, variables={"hfid": ["10.0.0.1/24"]}
             )
             == []
+        )
+
+
+@dataclass(frozen=True)
+class DelegationRecords:
+    zone: Node
+    declared: Node
+    undeclared: Node
+
+
+@dataclass(frozen=True)
+class HierarchyRecords:
+    root: Node
+    leaf: Node
+    mgmt_leaf: Node
+
+
+class TestLookupInputReachedThroughARelationship:
+    """A component of an HFID that reaches an attribute through a relationship is lookup input too.
+
+    The stored HFID of a node holds the peer's value in the spelling the peer keeps it in, so a
+    declared attribute reached across a relationship has to accept the redundant host mask exactly as
+    it does when it is reached directly. Each declared case is paired with the undeclared control on
+    the same peer, which keeps matching only the spelling the graph holds.
+    """
+
+    @pytest.fixture
+    async def delegation_schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        init_nodes_registry: None,
+    ) -> None:
+        await load_schema(db=db, schema=DNS_DELEGATION_SCHEMA)
+
+    @pytest.fixture
+    async def delegations(
+        self, db: InfrahubDatabase, default_branch: Branch, delegation_schema: None
+    ) -> DelegationRecords:
+        zone = await Node.init(db=db, schema=DNS_ZONE_KIND, branch=default_branch)
+        await zone.new(db=db, name="primary-zone", zone_target="10.1.1.1", zone_mgmt_ip="10.1.1.2")
+        await zone.save(db=db)
+
+        declared = await Node.init(db=db, schema=DECLARED_DELEGATION_KIND, branch=default_branch)
+        await declared.new(db=db, label="primary", zone=zone)
+        await declared.save(db=db)
+
+        undeclared = await Node.init(db=db, schema=UNDECLARED_DELEGATION_KIND, branch=default_branch)
+        await undeclared.new(db=db, label="mgmt", zone=zone)
+        await undeclared.save(db=db)
+
+        return DelegationRecords(zone=zone, declared=declared, undeclared=undeclared)
+
+    @pytest.fixture
+    async def hierarchy(
+        self, db: InfrahubDatabase, default_branch: Branch, delegation_schema: None
+    ) -> HierarchyRecords:
+        root = await Node.init(db=db, schema=ZONE_ROOT_KIND, branch=default_branch)
+        await root.new(db=db, name="tree-root", tree_target="10.2.2.1", tree_mgmt_ip="10.2.2.2")
+        await root.save(db=db)
+
+        leaf = await Node.init(db=db, schema=ZONE_LEAF_KIND, branch=default_branch)
+        await leaf.new(db=db, name="tree-leaf", tree_target="10.2.2.3", tree_mgmt_ip="10.2.2.4", parent=root)
+        await leaf.save(db=db)
+
+        mgmt_leaf = await Node.init(db=db, schema=ZONE_MGMT_LEAF_KIND, branch=default_branch)
+        await mgmt_leaf.new(db=db, name="tree-mgmt-leaf", tree_target="10.2.2.5", tree_mgmt_ip="10.2.2.6", parent=root)
+        await mgmt_leaf.save(db=db)
+
+        return HierarchyRecords(root=root, leaf=leaf, mgmt_leaf=mgmt_leaf)
+
+    async def test_a_declared_attribute_reached_through_a_relationship_is_found_by_either_spelling(
+        self, db: InfrahubDatabase, default_branch: Branch, delegations: DelegationRecords
+    ) -> None:
+        assert await delegations.declared.get_hfid(db=db) == ["10.1.1.1", "primary"]
+
+        for hfid in (["10.1.1.1", "primary"], ["10.1.1.1/32", "primary"]):
+            found = await NodeManager.get_one_by_hfid(
+                db=db, hfid=hfid, kind=DECLARED_DELEGATION_KIND, branch=default_branch, raise_on_error=True
+            )
+            assert found.id == delegations.declared.id
+
+        assert (
+            await NodeManager.get_one_by_hfid(
+                db=db, hfid=["10.1.1.1/24", "primary"], kind=DECLARED_DELEGATION_KIND, branch=default_branch
+            )
+            is None
+        )
+
+    async def test_an_undeclared_attribute_reached_through_a_relationship_is_found_only_by_the_stored_spelling(
+        self, db: InfrahubDatabase, default_branch: Branch, delegations: DelegationRecords
+    ) -> None:
+        """The control: reaching an attribute that accepts a prefix across a relationship changes nothing."""
+        assert await delegations.undeclared.get_hfid(db=db) == ["10.1.1.2/32", "mgmt"]
+
+        found = await NodeManager.get_one_by_hfid(
+            db=db,
+            hfid=["10.1.1.2/32", "mgmt"],
+            kind=UNDECLARED_DELEGATION_KIND,
+            branch=default_branch,
+            raise_on_error=True,
+        )
+        assert found.id == delegations.undeclared.id
+
+        assert (
+            await NodeManager.get_one_by_hfid(
+                db=db, hfid=["10.1.1.2", "mgmt"], kind=UNDECLARED_DELEGATION_KIND, branch=default_branch
+            )
+            is None
+        )
+
+    async def test_a_component_that_is_not_an_address_still_has_to_match(
+        self, db: InfrahubDatabase, default_branch: Branch, delegations: DelegationRecords
+    ) -> None:
+        """The `Text` component of the same HFID is handed on untouched, so it goes on discriminating."""
+        assert (
+            await NodeManager.get_one_by_hfid(
+                db=db, hfid=["10.1.1.1/32", "secondary"], kind=DECLARED_DELEGATION_KIND, branch=default_branch
+            )
+            is None
+        )
+        assert (
+            await NodeManager.get_one_by_hfid(
+                db=db, hfid=["10.1.1.1", "secondary"], kind=DECLARED_DELEGATION_KIND, branch=default_branch
+            )
+            is None
+        )
+
+    async def test_a_declared_attribute_reached_through_a_parent_is_found_by_either_spelling(
+        self, db: InfrahubDatabase, default_branch: Branch, hierarchy: HierarchyRecords
+    ) -> None:
+        assert await hierarchy.leaf.get_hfid(db=db) == ["10.2.2.1", "tree-leaf"]
+
+        for hfid in (["10.2.2.1", "tree-leaf"], ["10.2.2.1/32", "tree-leaf"]):
+            found = await NodeManager.get_one_by_hfid(
+                db=db, hfid=hfid, kind=ZONE_LEAF_KIND, branch=default_branch, raise_on_error=True
+            )
+            assert found.id == hierarchy.leaf.id
+
+        assert (
+            await NodeManager.get_one_by_hfid(
+                db=db, hfid=["10.2.2.1/24", "tree-leaf"], kind=ZONE_LEAF_KIND, branch=default_branch
+            )
+            is None
+        )
+
+    async def test_an_undeclared_attribute_reached_through_a_parent_is_found_only_by_the_stored_spelling(
+        self, db: InfrahubDatabase, default_branch: Branch, hierarchy: HierarchyRecords
+    ) -> None:
+        assert await hierarchy.mgmt_leaf.get_hfid(db=db) == ["10.2.2.2/32", "tree-mgmt-leaf"]
+
+        found = await NodeManager.get_one_by_hfid(
+            db=db,
+            hfid=["10.2.2.2/32", "tree-mgmt-leaf"],
+            kind=ZONE_MGMT_LEAF_KIND,
+            branch=default_branch,
+            raise_on_error=True,
+        )
+        assert found.id == hierarchy.mgmt_leaf.id
+
+        assert (
+            await NodeManager.get_one_by_hfid(
+                db=db, hfid=["10.2.2.2", "tree-mgmt-leaf"], kind=ZONE_MGMT_LEAF_KIND, branch=default_branch
+            )
+            is None
+        )
+
+    async def test_a_path_that_cannot_be_resolved_leaves_its_component_alone(
+        self, db: InfrahubDatabase, default_branch: Branch, delegations: DelegationRecords
+    ) -> None:
+        """A lookup keeps finding what the graph holds when a path cannot be resolved to an attribute.
+
+        Resolving a path is best-effort here: an HFID path is validated when the schema is loaded, so a
+        path that cannot be resolved means the schema and the values in the graph already disagree, and
+        a read of it has always answered with whatever the stored HFID matches rather than failing.
+        """
+        broken = db.schema.get(name=DECLARED_DELEGATION_KIND, branch=default_branch, duplicate=True)
+        broken.human_friendly_id = ["zone__no_such_attribute__value", "label__value"]
+        db.schema.set(name=DECLARED_DELEGATION_KIND, schema=broken, branch=default_branch.name)
+
+        found = await NodeManager.get_one_by_hfid(
+            db=db,
+            hfid=["10.1.1.1", "primary"],
+            kind=DECLARED_DELEGATION_KIND,
+            branch=default_branch,
+            raise_on_error=True,
+        )
+        assert found.id == delegations.declared.id
+
+        assert (
+            await NodeManager.get_one_by_hfid(
+                db=db, hfid=["10.1.1.1/32", "primary"], kind=DECLARED_DELEGATION_KIND, branch=default_branch
+            )
+            is None
         )
 
 

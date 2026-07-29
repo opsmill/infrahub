@@ -85,6 +85,35 @@ class TestAllowPrefixDeclaration:
         assert _iphost_attribute(node, "dns_target").parameters.allow_prefix is False
 
 
+class TestQueryValueNormalisation:
+    """Rewriting lookup input is scoped to the declaration, and nothing else can reach the rewrite.
+
+    Every seam that normalises a lookup goes through the same method, so a kind that does not override
+    it cannot have its lookups changed. `IPNetwork` and `MacAddress` are asserted by name because they
+    are the neighbouring kinds that also hold an address and would be the ones to regress.
+    """
+
+    @pytest.mark.parametrize("kind", ["IPNetwork", "MacAddress"])
+    @pytest.mark.parametrize("value", ["10.0.0.1/32", "10.0.0.1", "AA:BB:CC:DD:EE:FF"])
+    def test_a_kind_without_an_override_hands_its_value_back(self, kind: str, value: str) -> None:
+        attribute = AttributeSchema(name="some_attr", kind=kind)
+
+        assert attribute.normalize_query_value(filter_name="value", filter_value=value) == value
+
+    @pytest.mark.parametrize("value", ["10.0.0.1/32", "10.0.0.1", "10.0.0.0/24"])
+    def test_an_undeclared_iphost_attribute_hands_its_value_back(self, value: str) -> None:
+        attribute = IPHostAttributeSchema(name="mgmt_ip", kind="IPHost")
+
+        assert attribute.normalize_query_value(filter_name="value", filter_value=value) == value
+
+    def test_a_declared_iphost_attribute_strips_a_redundant_host_mask(self) -> None:
+        attribute = IPHostAttributeSchema(
+            name="dns_target", kind="IPHost", parameters=IPHostAttributeParameters(allow_prefix=False)
+        )
+
+        assert attribute.normalize_query_value(filter_name="value", filter_value="10.0.0.1/32") == "10.0.0.1"
+
+
 class TestDefaultValueNormalisation:
     @dataclass
     class Case:

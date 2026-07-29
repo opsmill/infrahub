@@ -955,6 +955,35 @@ their original declaration. The assertion deliberately does not depend on the me
 `parameters.allow_prefix` — `SchemaUpdateValidationError.to_string()` drops `path.property_name` — and
 it does not require whole-string equality, because the error aggregates both declared attributes.
 
+**Finding 3 — a relationship-reached HFID component was never normalised.** `_normalize_hfid` split the
+path with `str.partition("__")`, which splits on the *first* separator only. A multi-segment path such as
+`target__address__value` therefore yielded `property_name == "address__value"`, never matched `"value"`,
+and fell through untouched. A declared attribute reached through a relationship or through a hierarchy
+`parent` resolved by the bare spelling but not by the masked one — the same upsert failure as Finding 1,
+one indirection away.
+
+Fixed by replacing the hand-rolled parsing with `BaseNodeSchema.parse_schema_path()`, which splits on
+every separator, resolves the peer schema for a leading relationship (including the `parent` case), and
+resolves the attribute against the *related* schema. The normalisation decision is then made on the
+resolved `attribute_schema` regardless of how it was reached, so it stays declared-only for free. The
+`SchemaBranch` that `parse_schema_path` needs is taken from `db.schema.get_schema_branch()`, matching how
+the write side (`Node.get_path_value()`) obtains it.
+
+`parse_schema_path` raises `AttributePathParsingError` where the previous `get_field(raise_on_error=False)`
+degraded silently, so it is caught and the component handed back untouched. Letting it propagate would
+turn a lookup that finds nothing today into a failed read on a schema whose HFID path and stored values
+already disagree, and would add a new error class to a read path. `parse_schema_path` is defined on
+`BaseNodeSchema`, so it is available on all four kinds that reach this function (`NodeSchema`,
+`GenericSchema`, `ProfileSchema`, `TemplateSchema`).
+
+Cost was measured rather than assumed, per HFID component: a direct attribute path costs 1.4 µs against
+the previous 0.2 µs and copies nothing, because `parse_schema_path` only duplicates a schema on the
+relationship branch. A relationship path costs 91 µs (196 µs for a large peer such as `CoreArtifact`),
+essentially all of it the peer `duplicate=True`. A full `get_one_by_hfid` round trip costs ~34,600 µs, so
+the worst case is ~0.6% of the lookup. No cache was added, and the direct-attribute case was left going
+through the same single code path — special-casing it would buy ~1 µs out of ~35 ms for a second branch
+to maintain.
+
 ### Follow-ups left open
 
 Recorded here so they are not lost; all were deliberately excluded from the two fixes above.
@@ -966,9 +995,11 @@ Recorded here so they are not lost; all were deliberately excluded from the two 
   assertion on the declared attribute are both worth strengthening.
 - **A third declared fixture attribute** — IPv4, optional, non-unique — would let the declared path be
   asserted on the generated profile/template kinds without leaning on `v6_target`.
-- **Relationship-reached HFID components** are not normalised: `_normalize_hfid` only resolves a
-  component whose path is a direct `attribute__value` on the queried schema. A declared attribute
-  reached through a relationship in an HFID keeps today's behaviour.
+- **`SchemaManager.get_schema_branch()` creates on miss.** It registers a fresh empty `SchemaBranch` for
+  an unknown branch name rather than raising, which would shadow the default-branch fallback that
+  `SchemaManager.get()` performs. Not reachable from HFID lookup — the schema resolution that precedes it
+  would already have failed — and the write path has used the same accessor for a long time, so it was
+  left alone rather than guarded speculatively. Worth a look on its own terms.
 
 ---
 
