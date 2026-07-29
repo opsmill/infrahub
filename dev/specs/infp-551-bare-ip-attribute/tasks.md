@@ -377,11 +377,11 @@ from old is the value quoted in the violation message —
   regression, not a test-maintenance task** — investigate rather than adjust the test.
 - [X] T025 [US1] Verify `uv run invoke docs.validate` is clean, so CI's
   `validate-generated-documentation` job will pass (depends on T023).
-- [ ] T046 [US1] **BLOCKS the US1 checkpoint — found by T021.** Normalise an attribute value on the
-  *update* path, not only on construction. `BaseAttribute.__init__` is the sole caller of
+- [X] T046 [US1] **Found by T021.** Normalise an attribute value on the *update* path, not only on
+  construction. `BaseAttribute.__init__` was the sole caller of
   `_normalize_value` (`backend/infrahub/core/attribute.py:166-167`); `from_graphql` and a plain
   `attr.value = ...` assignment both set the value verbatim, and `_update`
-  (`backend/infrahub/core/attribute.py:446`) re-validates but never re-normalises. Evidence, from a
+  (`backend/infrahub/core/attribute.py:446`) re-validated but never re-normalised. Evidence, from a
   real `TestingDnsRecordUpdate` mutation against the shared fixture:
 
   ```text
@@ -390,21 +390,38 @@ from old is the value quoted in the violation message —
   graph:    dns_target = "10.0.0.9/32"   mgmt_ip = "10.0.0.9"
   ```
 
-  So editing a declared attribute leaks the mask into the API response, the stored value, and the
-  persisted display label — FR-005 holds on create and fails on update. The undeclared control is
-  wrong in the mirror direction (`10.0.0.9` stored where `10.0.0.9/32` is expected), which makes this
-  a **pre-existing gap shared by every kind that overrides `_normalize_value`** (`IPHost`,
-  `IPNetwork`, `MacAddress`) rather than something T017/T018 introduced. Deliberately left out of the
-  T020-T025 chunk: the candidate fix is one line beside the existing `self.validate(...)` call in
-  `_update`, but it changes stored values for undeclared `IPHost`/`IPNetwork`/`MacAddress` updates and
-  so needs its own baseline run and review. Until it lands, the second half of T021 is pinned by a
-  `strict=True` xfail that flips to a failure the moment normalisation is fixed — remove the marker
-  then.
+  So editing a declared attribute leaked the mask into the API response, the stored value, and the
+  persisted display label — FR-005 held on create and failed on update.
+
+  **Implemented as a `_normalize_assigned_value` hook**: a no-op on `BaseAttribute` that `IPHost`
+  overrides to return the bare form *only* when `allow_prefix` is `False`. It is called from two
+  seams. In `_update`, immediately after the existing `validate(...)`, so a value that arrived by a
+  plain `attr.value = ...` assignment is canonical before it is written and before the changelog, the
+  `is_default` comparison and the hfid/display-label recompute read it. In `from_graphql`, where the
+  incoming value is set, so the pre-save uniqueness constraint and the mutation lock names compare the
+  value that will actually be stored. The second seam was **proven necessary by test rather than
+  assumed**: with only the `_update` seam, updating a declared unique attribute to `10.0.0.1/32` while
+  another node held `10.0.0.1` passed the uniqueness check and wrote a duplicate. The hook validates
+  before it normalises, so a rejected subnet prefix is still reported instead of being quietly
+  rewritten into an address that would be accepted.
+
+  **The scope was deliberately limited to a declared attribute.** Normalising unconditionally was
+  considered and rejected: it would rewrite stored values for already-populated undeclared
+  `IPHost`/`IPNetwork`/`MacAddress` attributes and need a migration, which FR-012 forbids. No shipped
+  schema declares `allow_prefix: false`, so the production blast radius of the change is zero.
+
+  **The general update-path normalisation gap remains open, and is worth its own ticket.** For an
+  undeclared `IPHost`, an `IPNetwork` or a `MacAddress`, an edit still writes whatever spelling it was
+  given: a bare `10.0.0.9` reaches the graph without its `/32`, and a mutation response echoes the raw
+  input. It hides on a reload only because `__init__` re-normalises on the way out of the database, so
+  the stored value and the read value disagree — which is also why a uniqueness check can miss a
+  duplicate spelled the other way (observed: an undeclared unique attribute accepted `10.0.0.1` while
+  `10.0.0.1/32` was already stored for it). `TestTheUpdatePath` pins that behaviour as it stands today,
+  so changing it will be a deliberate act.
 
 **Checkpoint**: US1 is fully functional and independently demonstrable. The MVP is complete — an author
-can declare a bare-address attribute and every backend read surface returns no mask. **Not reached
-yet**: T046 above. Create, read, profile, template, schema-merge, uniqueness and HFID paths all return
-no mask; the update path still does.
+can declare a bare-address attribute and every backend read surface returns no mask. Create, read,
+update, profile, template, schema-merge, uniqueness and HFID paths all return no mask.
 
 ### Phase 3 implementation notes (T020-T025)
 
@@ -419,9 +436,10 @@ no mask; the update path still does.
 - **T021 first half passes and follows the production merge path.** The graph merge writes the schema
   nodes; the destination schema is then re-read with `load_schema_from_db` and re-registered, exactly
   as the merge orchestrator does. Both the declaration and the rejection behaviour survive.
-- **T021 second half is red for a production reason, not a test reason — see T046.** The two input
-  forms do not converge, because neither is normalised on the update path, so the diff sees
-  `10.0.0.1` against `10.0.0.1/32` and reports a conflict. The paired assertions that *do* hold are
+- **T021 second half was red for a production reason, not a test reason — fixed by T046.** The two
+  input forms did not converge, because neither was normalised on the update path, so the diff saw
+  `10.0.0.1` against `10.0.0.1/32` and reported a conflict. It passes on its original assertions now
+  that an edit of a declared attribute is normalised. The paired assertions that *do* hold are
   kept in their own green test: genuinely different addresses conflict on the declared attribute and
   on the undeclared control alike, so the expected absence of a conflict cannot be confused with the
   enricher never looking at the attribute.

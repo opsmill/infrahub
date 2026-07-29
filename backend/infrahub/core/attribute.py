@@ -377,6 +377,16 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         """Return the canonical form of a value."""
         return value
 
+    def _normalize_assigned_value(self, value: Any) -> Any:
+        """Return the form of a value assigned after construction that a write path should keep.
+
+        A value is only normalised while the attribute is being built, so a value assigned afterwards
+        keeps the spelling its caller used. Re-normalising every kind here would rewrite values
+        already in the graph, so a kind opts in only where a single canonical form is part of its
+        contract.
+        """
+        return value
+
     async def save(
         self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None
     ) -> AttributeChangelog | None:
@@ -444,6 +454,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         # Validate if the value is still correct, will raise a ValidationError if not
         self.validate(value=self.value, name=self.name, schema=self.schema)
+        self.value = self._normalize_assigned_value(self.value)
 
         # Check if the current value is still the default one
         if self.is_default:
@@ -636,7 +647,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             if self.is_enum:
                 value_to_set = self.schema.convert_value_to_enum(data["value"])
             else:
-                value_to_set = data["value"]
+                value_to_set = self._normalize_assigned_value(data["value"])
             if value_to_set != self.value:
                 self.value = value_to_set
                 changed = True
@@ -1173,6 +1184,23 @@ class IPHost(BaseAttribute):
         if self._allows_prefix(schema=self.schema):
             return interface.with_prefixlen
         return str(interface.ip)
+
+    def _normalize_assigned_value(self, value: Any) -> Any:
+        """Return the bare form of a value assigned to an attribute that refuses a prefix.
+
+        An attribute that refuses a prefix has exactly one spelling for an address, and that has to
+        hold however the value arrived, so an edit converges on the same value a creation would have
+        stored. An attribute that accepts a prefix keeps whatever spelling it was given, because
+        normalising it would rewrite addresses already stored under a different one.
+
+        The value is validated first, so a prefix that is not permitted is reported rather than
+        quietly rewritten into an address that is.
+        """
+        if value is None or self._allows_prefix(schema=self.schema):
+            return value
+
+        self.validate(value=value, name=self.name, schema=self.schema)
+        return self._normalize_value(value)
 
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:

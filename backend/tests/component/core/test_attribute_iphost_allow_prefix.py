@@ -30,13 +30,17 @@ from infrahub.core.schema.attribute_parameters import IPHostAttributeParameters,
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import UniquenessViolationError, ValidationError
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.pools.noop_allocator import NoOpPoolAllocator
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.templates.node_applier import NodeTemplateApplier
+from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
 from tests.helpers.schema.dns_record import DNS_RECORD_DEFINITION
 
 if TYPE_CHECKING:
+    from graphql import ExecutionResult
+
     from infrahub.core.branch import Branch
     from infrahub.core.diff.model.path import EnrichedDiffNode
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -72,6 +76,13 @@ MATCH (n:Node { uuid: $node_id })-[:HAS_ATTRIBUTE]->(a:Attribute { name: $attrib
 MATCH (a)-[:HAS_VALUE]->(av:AttributeIPHost)
 RETURN av.value AS value, av.prefixlen AS prefixlen, av.version AS version,
        av.binary_address AS binary_address
+"""
+
+ACTIVE_VALUE_QUERY = """
+MATCH (n:Node { uuid: $node_id })-[:HAS_ATTRIBUTE]->(a:Attribute { name: $attribute_name })
+MATCH (a)-[e:HAS_VALUE]->(av:AttributeIPHost)
+WHERE e.status = "active" AND e.to IS NULL
+RETURN av.value AS value
 """
 
 CONTAINMENT_QUERY = """
@@ -122,6 +133,43 @@ def _value_conflict(diff_node: EnrichedDiffNode, attribute_name: str) -> Enriche
             if prop.property_type is DatabaseEdgeType.HAS_VALUE:
                 return prop.conflict
     return None
+
+
+async def _active_stored_value(db: InfrahubDatabase, node_id: str, attribute_name: str) -> str:
+    """Return the value vertex an attribute currently points at, ignoring the ones it used to."""
+    records = await db.execute_query(
+        query=ACTIVE_VALUE_QUERY, params={"node_id": node_id, "attribute_name": attribute_name}
+    )
+    assert len(records) == 1
+    return records[0]["value"]
+
+
+async def _run_mutation(
+    db: InfrahubDatabase, branch: Branch, mutation: str, variables: dict[str, Any]
+) -> ExecutionResult:
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    return await graphql(
+        schema=gql_params.schema,
+        source=mutation,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values=variables,
+    )
+
+
+async def _mutation_result(
+    db: InfrahubDatabase, branch: Branch, mutation: str, variables: dict[str, Any]
+) -> dict[str, Any]:
+    result = await _run_mutation(db=db, branch=branch, mutation=mutation, variables=variables)
+    assert result.errors is None
+    assert result.data
+    return result.data["TestingDnsRecordUpdate"]
+
+
+async def _mutation_errors(db: InfrahubDatabase, branch: Branch, mutation: str, variables: dict[str, Any]) -> list[str]:
+    result = await _run_mutation(db=db, branch=branch, mutation=mutation, variables=variables)
+    assert result.errors is not None
+    return [error.message for error in result.errors]
 
 
 async def _node_ids_within(db: InfrahubDatabase, attribute_name: str, binary_prefix: str) -> set[str]:
@@ -450,6 +498,162 @@ class TestUniquenessAcrossInputForms:
         await constraint.check(other)
 
 
+class TestTheUpdatePath:
+    """An edit of a declared attribute converges on the value a creation of it would have stored.
+
+    Normalising an edit is scoped to a declared attribute on purpose. An attribute that accepts a
+    prefix has always kept whatever spelling an edit gave it, and rewriting that would change values
+    already in the graph, so the undeclared control here asserts today's behaviour rather than the
+    behaviour the declared attribute gets.
+    """
+
+    @pytest.fixture
+    async def saved_record(self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None) -> Node:
+        node = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+        await node.new(db=db, dns_target="10.0.0.1", v6_target="2001:db8::1", mgmt_ip="10.0.0.1")
+        await node.save(db=db)
+        return node
+
+    async def test_a_host_masked_edit_reads_back_bare(
+        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+    ) -> None:
+        await _set_values(
+            db=db,
+            branch=default_branch,
+            node_id=saved_record.id,
+            dns_target="10.0.0.9/32",
+            v6_target="2001:db8::9/128",
+            mgmt_ip="10.0.0.9",
+        )
+
+        reloaded = await NodeManager.get_one(db=db, id=saved_record.id, branch=default_branch, raise_on_error=True)
+
+        assert reloaded.dns_target.value == "10.0.0.9"
+        assert reloaded.v6_target.value == "2001:db8::9"
+        assert await reloaded.get_display_label(db=db) == "10.0.0.9"
+        assert await reloaded.get_hfid(db=db) == ["10.0.0.9"]
+        assert reloaded.dns_target.prefixlen == 32
+        assert await _active_stored_value(db=db, node_id=saved_record.id, attribute_name="dns_target") == "10.0.0.9"
+        assert await _active_stored_value(db=db, node_id=saved_record.id, attribute_name="v6_target") == "2001:db8::9"
+
+        # The undeclared control is untouched: an edit still writes exactly the spelling it was given,
+        # so the bare address reaches the graph without the host mask that a creation would have added,
+        # and only reading it back puts the mask on.
+        assert await _active_stored_value(db=db, node_id=saved_record.id, attribute_name="mgmt_ip") == "10.0.0.9"
+        assert reloaded.mgmt_ip.value == "10.0.0.9/32"
+
+    async def test_a_host_masked_edit_through_graphql_reads_back_bare(
+        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+    ) -> None:
+        mutation = """
+        mutation UpdateRecord($id: String!) {
+            TestingDnsRecordUpdate(
+                data: {
+                    id: $id
+                    dns_target: { value: "10.0.0.9/32" }
+                    v6_target: { value: "2001:db8::9/128" }
+                    mgmt_ip: { value: "10.0.0.9" }
+                }
+            ) {
+                ok
+                object {
+                    display_label
+                    hfid
+                    dns_target { value prefixlen }
+                    v6_target { value prefixlen }
+                    mgmt_ip { value prefixlen }
+                }
+            }
+        }
+        """
+        result = await _mutation_result(
+            db=db, branch=default_branch, mutation=mutation, variables={"id": saved_record.id}
+        )
+
+        assert result["ok"] is True
+        assert result["object"]["dns_target"] == {"value": "10.0.0.9", "prefixlen": 32}
+        assert result["object"]["v6_target"] == {"value": "2001:db8::9", "prefixlen": 128}
+        assert result["object"]["display_label"] == "10.0.0.9"
+        assert result["object"]["hfid"] == ["10.0.0.9"]
+        # The undeclared control answers with the spelling the request used rather than the canonical
+        # one a creation would have produced -- the behaviour an edit of it has always had.
+        assert result["object"]["mgmt_ip"] == {"value": "10.0.0.9", "prefixlen": 32}
+
+        reloaded = await NodeManager.get_one(db=db, id=saved_record.id, branch=default_branch, raise_on_error=True)
+        assert reloaded.dns_target.value == "10.0.0.9"
+        assert reloaded.v6_target.value == "2001:db8::9"
+        assert await _active_stored_value(db=db, node_id=saved_record.id, attribute_name="dns_target") == "10.0.0.9"
+        assert await _active_stored_value(db=db, node_id=saved_record.id, attribute_name="mgmt_ip") == "10.0.0.9"
+        assert reloaded.mgmt_ip.value == "10.0.0.9/32"
+
+    async def test_an_edit_to_a_subnet_prefix_is_rejected_and_changes_nothing(
+        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+    ) -> None:
+        """Normalising an edit must not turn a rejected prefix into an address that would be accepted."""
+        node = await NodeManager.get_one(db=db, id=saved_record.id, branch=default_branch, raise_on_error=True)
+        node.dns_target.value = "10.0.0.9/24"
+        error = _rejected_for_subnet_prefix("10.0.0.9/24", "dns_target")
+
+        with pytest.raises(ValidationError, match=rf"^{re.escape(error)}$"):
+            await node.save(db=db)
+
+        reloaded = await NodeManager.get_one(db=db, id=saved_record.id, branch=default_branch, raise_on_error=True)
+        assert reloaded.dns_target.value == "10.0.0.1"
+        assert await reloaded.get_display_label(db=db) == "10.0.0.1"
+
+        await _set_values(db=db, branch=default_branch, node_id=saved_record.id, mgmt_ip="10.0.0.9/24")
+
+        control = await NodeManager.get_one(db=db, id=saved_record.id, branch=default_branch, raise_on_error=True)
+        assert control.mgmt_ip.value == "10.0.0.9/24"
+
+    async def test_an_edit_onto_a_taken_address_spelled_differently_is_rejected(
+        self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema_unique_mgmt_ip: None
+    ) -> None:
+        """A uniqueness check has to see the value the edit will store, not the spelling it arrived in."""
+        taken = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+        await taken.new(db=db, dns_target="10.0.0.1", mgmt_ip="10.0.0.1")
+        await taken.save(db=db)
+
+        other = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+        await other.new(db=db, dns_target="10.0.0.9", mgmt_ip="10.0.0.9/24")
+        await other.save(db=db)
+
+        declared_mutation = """
+        mutation UpdateRecord($id: String!) {
+            TestingDnsRecordUpdate(data: { id: $id, dns_target: { value: "10.0.0.1/32" } }) {
+                ok
+            }
+        }
+        """
+        declared_error = "Violates uniqueness constraint 'dns_target'"
+        errors = await _mutation_errors(
+            db=db, branch=default_branch, mutation=declared_mutation, variables={"id": other.id}
+        )
+
+        assert errors == [declared_error]
+
+        # The undeclared control compares the spelling the request used against the one in the graph, so
+        # a bare address is not seen to collide with the host mask already holding it -- the behaviour it
+        # has always had, and the reason normalising an edit stays scoped to the declared attribute.
+        undeclared_mutation = """
+        mutation UpdateRecord($id: String!) {
+            TestingDnsRecordUpdate(data: { id: $id, mgmt_ip: { value: "10.0.0.1" } }) {
+                ok
+            }
+        }
+        """
+        result = await _mutation_result(
+            db=db, branch=default_branch, mutation=undeclared_mutation, variables={"id": other.id}
+        )
+
+        assert result["ok"] is True
+
+        reloaded = await NodeManager.get_one(db=db, id=other.id, branch=default_branch, raise_on_error=True)
+        assert reloaded.dns_target.value == "10.0.0.9"
+        assert await _active_stored_value(db=db, node_id=other.id, attribute_name="mgmt_ip") == "10.0.0.1"
+        assert reloaded.mgmt_ip.value == "10.0.0.1/32"
+
+
 class TestGeneratedKindsInheritTheDeclaration:
     """The generated profile and object-template kinds behave like the kind they are derived from.
 
@@ -627,14 +831,6 @@ class TestBranchMerge:
         assert _value_conflict(diff_node, "dns_target") is not None
         assert _value_conflict(diff_node, "mgmt_ip") is not None
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "An attribute value is normalised when it is constructed but not when it is updated, so the two"
-            " input forms reach the graph unchanged and still read as two different values. Remove this"
-            " marker once updating an attribute stores its canonical form."
-        ),
-    )
     async def test_input_forms_that_converge_on_one_value_do_not_conflict(
         self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema_in_db: None
     ) -> None:
