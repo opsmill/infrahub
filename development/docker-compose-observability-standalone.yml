@@ -129,7 +129,7 @@ services:
     - "9100:9100"
 
   infrahub-cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.52.1
+    image: ghcr.io/google/cadvisor:v0.60.5
     privileged: true
     volumes:
     - /:/rootfs:ro

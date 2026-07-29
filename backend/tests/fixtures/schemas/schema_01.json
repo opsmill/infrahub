@@ -7,7 +7,7 @@
             "attributes": [
                 {
                     "name": "query",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -18,7 +18,7 @@
                 },
                 {
                     "name": "description",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -29,7 +29,7 @@
                 },
                 {
                     "name": "name",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -64,7 +64,7 @@
             "attributes": [
                 {
                     "name": "username",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -75,7 +75,7 @@
                 },
                 {
                     "name": "type",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": "LOCAL",
@@ -86,7 +86,7 @@
                 },
                 {
                     "name": "name",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -97,7 +97,7 @@
                 },
                 {
                     "name": "description",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -108,7 +108,7 @@
                 },
                 {
                     "name": "commit",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -119,7 +119,7 @@
                 },
                 {
                     "name": "location",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -130,7 +130,7 @@
                 },
                 {
                     "name": "password",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -141,7 +141,7 @@
                 },
                 {
                     "name": "default_branch",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": "main",
@@ -152,7 +152,7 @@
                 },
                 {
                     "name": "internal_status",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": "main",
@@ -201,7 +201,7 @@
             "attributes": [
                 {
                     "name": "name",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -212,7 +212,7 @@
                 },
                 {
                     "name": "description",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -235,17 +235,17 @@
             "attributes": [
                 {
                     "name": "name",
-                    "kind": "String",
+                    "kind": "Text",
                     "unique": true
                 },
                 {
                     "name": "description",
-                    "kind": "String",
+                    "kind": "Text",
                     "optional": true
                 },
                 {
                     "name": "type",
-                    "kind": "String"
+                    "kind": "Text"
                 }
             ],
             "relationships": [

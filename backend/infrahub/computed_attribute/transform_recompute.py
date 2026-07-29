@@ -6,6 +6,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
+from infrahub.workflows.constants import WorkflowTag
 
 from .recompute_resolution import RecomputeResolver
 
@@ -66,5 +67,7 @@ class TransformRecomputeSubmitter:
                     "computed_attribute_kind": definition.kind,
                     "context": context,
                 },
+                # Must be a creation tag: in-flow tag updates drop tags added mid-run.
+                tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
             )
         return len(definitions)

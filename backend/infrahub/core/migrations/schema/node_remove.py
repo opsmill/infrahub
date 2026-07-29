@@ -114,6 +114,14 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     CALL (peer_node) {
         WITH peer_node
         WHERE $set_metadata
+        SET peer_node.previous_updated_at = CASE
+                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_at
+                ELSE peer_node.previous_updated_at
+            END,
+            peer_node.previous_updated_by = CASE
+                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_by
+                ELSE peer_node.previous_updated_by
+            END
         SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
     }
 
@@ -236,6 +244,14 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     CALL (active_node) {
         WITH active_node
         WHERE $set_metadata
+        SET active_node.previous_updated_at = CASE
+                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
+                ELSE active_node.previous_updated_at
+            END,
+            active_node.previous_updated_by = CASE
+                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
+                ELSE active_node.previous_updated_by
+            END
         SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
     }
 
@@ -261,6 +277,14 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     CALL (peer_node) {
         WITH peer_node
         WHERE $set_metadata AND (peer_node:Attribute OR peer_node:Relationship)
+        SET peer_node.previous_updated_at = CASE
+                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_at
+                ELSE peer_node.previous_updated_at
+            END,
+            peer_node.previous_updated_by = CASE
+                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_by
+                ELSE peer_node.previous_updated_by
+            END
         SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
     }
 

@@ -41,12 +41,13 @@ import type {
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 
 function mapFieldToDefinition(
   schemaKind: ModelSchema["kind"],
   field: AttributeSchema | RelationshipSchema
 ): FilterDefinition {
-  if ("peer" in field) {
+  if (isRelationshipSchema(field)) {
     return { type: "relationship", schema: field };
   }
 

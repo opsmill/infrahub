@@ -1,60 +1,56 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipKind, SchemaPathType
 from infrahub.core.constants.schema import UpdateSupport
-from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import AttributePathParsingError, AttributeSchema, MainSchemaTypes
 from infrahub.core.schema.attribute_parameters import AttributeParameters
 from infrahub.core.schema.relationship_schema import RelationshipSchema
-from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
+from infrahub.core.validators.node_diff_index import NodeDiffIndex
+from infrahub.core.validators.uniqueness.dependent_resolver import UniquenessDependentResolver
+from infrahub.core.validators.uniqueness.scope import UniquenessConstraintScoper
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
 
+    from infrahub.core.branch import Branch
+    from infrahub.core.diff.model.path import NodeDiffFieldSummary
+    from infrahub.core.schema import AttributeSchema, MainSchemaTypes
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.timestamp import Timestamp
+    from infrahub.database import InfrahubDatabase
+
 LOG = get_logger(__name__)
 
 
 class ConstraintValidatorDeterminer:
-    def __init__(self, schema_branch: SchemaBranch) -> None:
+    def __init__(
+        self,
+        schema_branch: SchemaBranch,
+        node_diff_index: NodeDiffIndex,
+        uniqueness_scoper: UniquenessConstraintScoper,
+    ) -> None:
         self.schema_branch = schema_branch
-        self._node_kinds: set[str] = set()
-        self._attribute_element_map: dict[str, set[str]] = {}
-        self._relationship_element_map: dict[str, set[str]] = {}
-
-    def _index_node_diffs(self, node_diffs: list[NodeDiffFieldSummary]) -> None:
-        for node_diff in node_diffs:
-            self._node_kinds.add(node_diff.kind)
-            if node_diff.kind not in self._attribute_element_map:
-                self._attribute_element_map[node_diff.kind] = set()
-            for attribute_name in node_diff.attribute_names:
-                self._attribute_element_map[node_diff.kind].add(attribute_name)
-            if node_diff.kind not in self._relationship_element_map:
-                self._relationship_element_map[node_diff.kind] = set()
-            for relationship_name in node_diff.relationship_names:
-                self._relationship_element_map[node_diff.kind].add(relationship_name)
-
-    def _has_attribute_diff(self, kind: str, name: str) -> bool:
-        return name in self._attribute_element_map.get(kind, set())
-
-    def _has_relationship_diff(self, kind: str, name: str) -> bool:
-        return name in self._relationship_element_map.get(kind, set())
+        self.node_diff_index = node_diff_index
+        self.uniqueness_scoper = uniqueness_scoper
 
     async def get_constraints(
         self, node_diffs: list[NodeDiffFieldSummary], filter_invalid: bool = True
     ) -> list[SchemaUpdateConstraintInfo]:
-        self._index_node_diffs(node_diffs)
+        self.node_diff_index.initialize(node_diffs)
+        self.uniqueness_scoper.reset()
         constraints: list[SchemaUpdateConstraintInfo] = []
         if not node_diffs:
             return constraints
 
         constraints.extend(await self._get_property_constraints_for_impacted_kinds())
 
-        for kind in self._node_kinds:
+        for kind in self.node_diff_index.kinds:
             schema = self._get_schema_or_none(kind=kind)
             if schema is None:
                 # a branch can hold data changes for a kind whose schema it also deletes
@@ -97,7 +93,7 @@ class ConstraintValidatorDeterminer:
         generic-level uniqueness check spans every implementing node.
         """
         kinds: set[str] = set()
-        for kind in self._node_kinds:
+        for kind in self.node_diff_index.kinds:
             schema = self._get_schema_or_none(kind=kind)
             if schema is None:
                 continue
@@ -105,26 +101,18 @@ class ConstraintValidatorDeterminer:
             kinds.update(getattr(schema, "inherit_from", None) or [])
         return kinds
 
-    def _has_uniqueness_constraint_on_peer(self, schema: MainSchemaTypes, peer_kinds: set[str]) -> bool:
-        """Return True if a uniqueness constraint of `schema` reads an attribute of a peer in `peer_kinds`.
+    def _node_property_triggered_by_diff(self, schema: MainSchemaTypes, prop_name: str) -> bool:
+        """Return True if the diff touches a field guarded by the node-level property `prop_name`.
 
-        A constraint element such as "owner__name" compares the value of an attribute on the
-        related node, so a data change on the peer kind can create a violation without any
-        change to the constrained kind itself.
+        A node-level constraint may be defined on a kind without every data change to that kind
+        being able to violate it; emit only when a participating field is in the diff. Unknown
+        properties default to emitting so a newly-added node-level constraint is never missed.
         """
-        for constraint_paths in schema.uniqueness_constraints or []:
-            for constraint_path in constraint_paths:
-                try:
-                    schema_path = schema.parse_schema_path(path=constraint_path, schema=self.schema_branch)
-                except AttributePathParsingError:
-                    continue
-                if (
-                    schema_path.is_type_relationship
-                    and schema_path.attribute_schema is not None
-                    and schema_path.active_relationship_schema.peer in peer_kinds
-                ):
-                    return True
-        return False
+        if prop_name == "uniqueness_constraints":
+            return self.uniqueness_scoper.requires_validation(schema=schema)
+        if prop_name in ("parent", "children"):
+            return self.node_diff_index.has_relationship_diff(kind=schema.kind, name=prop_name)
+        return True
 
     async def _get_property_constraints_for_impacted_kinds(self) -> list[SchemaUpdateConstraintInfo]:
         impacted_kinds = self._get_impacted_kinds()
@@ -136,7 +124,7 @@ class ConstraintValidatorDeterminer:
         for schema in self.schema_branch.get_all(duplicate=False).values():
             if schema.kind in impacted_kinds:
                 continue
-            if self._has_uniqueness_constraint_on_peer(schema=schema, peer_kinds=impacted_kinds):
+            if self.uniqueness_scoper.requires_validation(schema=schema):
                 schemas.append(schema)
 
         constraints: list[SchemaUpdateConstraintInfo] = []
@@ -186,7 +174,18 @@ class ConstraintValidatorDeterminer:
             if not do_constraint_validation:
                 continue
 
-            constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
+            if not self._node_property_triggered_by_diff(schema=schema, prop_name=prop_name):
+                # the node-level constraint is defined on this kind, but no field it guards is in
+                # the diff, so a data change cannot violate it
+                continue
+
+            node_uuids: list[str] | None = None
+            if prop_name == "uniqueness_constraints":
+                node_uuids = await self.uniqueness_scoper.affected_node_uuids(schema=schema)
+
+            constraints.append(
+                SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path, node_uuids=node_uuids)
+            )
         return constraints
 
     async def _get_attribute_constraints_for_one_schema(
@@ -194,7 +193,7 @@ class ConstraintValidatorDeterminer:
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         for field_name in schema.attribute_names:
-            if self._has_attribute_diff(kind=schema.kind, name=field_name):
+            if self.node_diff_index.has_attribute_diff(kind=schema.kind, name=field_name):
                 field = schema.get_attribute(field_name)
                 constraints.extend(await self._get_constraints_for_one_field(schema=schema, field=field))
         return constraints
@@ -204,7 +203,7 @@ class ConstraintValidatorDeterminer:
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         for field_name in schema.relationship_names:
-            if self._has_relationship_diff(kind=schema.kind, name=field_name):
+            if self.node_diff_index.has_relationship_diff(kind=schema.kind, name=field_name):
                 field = schema.get_relationship(field_name)
                 constraints.extend(await self._get_constraints_for_one_field(schema=schema, field=field))
         return constraints
@@ -266,3 +265,21 @@ class ConstraintValidatorDeterminer:
 
             constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
         return constraints
+
+
+def build_constraint_validator_determiner(
+    db: InfrahubDatabase,
+    branch: Branch,
+    schema_branch: SchemaBranch,
+    at: Timestamp | str | None = None,
+) -> ConstraintValidatorDeterminer:
+    """Wire a determiner with its node-diff index and uniqueness scoper for a single operation."""
+    node_diff_index = NodeDiffIndex()
+    uniqueness_scoper = UniquenessConstraintScoper(
+        schema_branch=schema_branch,
+        dependent_resolver=UniquenessDependentResolver(db=db, branch=branch, at=at),
+        node_diff_index=node_diff_index,
+    )
+    return ConstraintValidatorDeterminer(
+        schema_branch=schema_branch, node_diff_index=node_diff_index, uniqueness_scoper=uniqueness_scoper
+    )

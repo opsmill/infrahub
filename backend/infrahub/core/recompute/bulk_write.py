@@ -10,10 +10,9 @@ from infrahub.core.manager import NodeManager
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta
 from infrahub.events.node_action import NodeUpdatedEvent
+from infrahub.utilities.chunks import chunked
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
@@ -43,11 +42,6 @@ class WrittenNode:
     node_id: str
     kind: str
     fields: tuple[str, ...]
-
-
-def _chunks(items: list[str], size: int) -> Iterator[list[str]]:
-    for start in range(0, len(items), size):
-        yield items[start : start + size]
 
 
 async def _apply(node: Node, write: AttributeValueWrite) -> None:
@@ -102,7 +96,7 @@ class BulkRecomputeWriter:
         user_id = context.account_id or SYSTEM_USER_ID
         written: list[WrittenNode] = []
         async with self.db.start_session() as session:
-            for chunk in _chunks(list(writes_by_node), self.transaction_chunk_size):
+            for chunk in chunked(list(writes_by_node), self.transaction_chunk_size):
                 # Load the whole node, not just the written fields: the save recomputes same-node
                 # derived values (display label, hfid, computed siblings) that read a written value,
                 # and it can only do that when they are loaded.

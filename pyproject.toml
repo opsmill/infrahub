@@ -44,6 +44,7 @@ dependencies = [
     "gunicorn>=23.0.0,<24",
     "lunr>=0.7.0.post1,<0.8",
     "starlette-exporter>=0.23,<0.24",
+    "prometheus-client>=0.25,<0.26",
     "python-multipart==0.0.27", # Required by FastAPI to upload large files
     "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
     "bcrypt>=4.1,<4.2", # Used to hash and validate password
@@ -229,7 +230,6 @@ disable_error_code = [
 [[tool.mypy.overrides]]
 module = "infrahub.core.manager"
 disable_error_code = [
-    "arg-type",
     "assignment",
     "attr-defined",
     "index",
@@ -1350,49 +1350,331 @@ type-assertion-failure = "ignore"
 include = ["backend/infrahub/core/**"]
 
 [tool.ty.overrides.rules]
-##################################################################################################
-# The ignored rules below should be removed once the code has been updated, they are included    #
-# like this so that we can reactivate them one by one.                                           #
-##################################################################################################
-call-non-callable = "ignore"
-invalid-argument-type = "ignore"
-invalid-assignment = "ignore"
-invalid-method-override = "ignore"
-invalid-parameter-default = "ignore"
-invalid-return-type = "ignore"
-invalid-type-form = "ignore"
-no-matching-overload = "ignore"
-not-subscriptable = "ignore"
-not-iterable = "ignore"
-possibly-missing-attribute = "ignore"
-unknown-argument = "ignore"
-unresolved-attribute = "ignore"
-unsupported-operator = "ignore"
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+##################################################################################################
+# backend/infrahub/core/** type-check debt, scoped per file/module instead of core-wide.         #
+#                                                                                                #
+# Each override's `include` list IS the remaining to-do list for that rule: fix a file, remove   #
+# it from the glob, and that file starts being enforced. When a list is empty, delete the rule.  #
+# The rest of core/ (every path not listed below) is fully enforced for these rules.             #
+#                                                                                                #
+# The two high-volume rules (unresolved-attribute, invalid-argument-type) are scoped by          #
+# submodule so each module can be cleared independently; the rest are scoped to exact files.     #
+##################################################################################################
+
+
+# --- High-volume rules, scoped by submodule (delete a glob once that module is clean) ---
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/core/*.py",
+    "backend/infrahub/core/diff/**",
+    "backend/infrahub/core/integrity/**",
+    "backend/infrahub/core/ipam/**",
+    "backend/infrahub/core/migrations/**",
+    "backend/infrahub/core/node/**",
+    "backend/infrahub/core/query/**",
+    "backend/infrahub/core/regeneration/**",
+    "backend/infrahub/core/relationship/**",
+    "backend/infrahub/core/schema/**",
+]
+
+[tool.ty.overrides.rules]
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/core/*.py",
+    "backend/infrahub/core/convert_object_type/**",
+    "backend/infrahub/core/merge/**",
+    "backend/infrahub/core/migrations/**",
+    "backend/infrahub/core/node/**",
+    "backend/infrahub/core/query/**",
+    "backend/infrahub/core/relationship/**",
+    "backend/infrahub/core/schema/**",
+    "backend/infrahub/core/validators/**",
+]
+
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"
+
+# --- Low-volume rules, scoped to the exact files that still trip them ---
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/core/manager.py",
+    "backend/infrahub/core/node/__init__.py",
+    "backend/infrahub/core/query/subquery.py",
+    "backend/infrahub/core/regeneration/members.py",
+    "backend/infrahub/core/schema/basenode_schema.py",
+    "backend/infrahub/core/schema/manager.py",
+    "backend/infrahub/core/schema/schema_branch.py",
+]
+
+[tool.ty.overrides.rules]
+invalid-assignment = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/core/graph/constraints.py",
+    "backend/infrahub/core/query/relationship.py",
+    "backend/infrahub/core/schema/basenode_schema.py",
+    "backend/infrahub/core/schema/manager.py",
+    "backend/infrahub/core/schema/schema_branch.py",
+]
+
+[tool.ty.overrides.rules]
+invalid-type-form = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/core/merge/selective_regen/definition_selector/artifact_selector.py",
+    "backend/infrahub/core/merge/selective_regen/definition_selector/generator_selector.py",
+    "backend/infrahub/core/query/__init__.py",
+    "backend/infrahub/core/query/ipam.py",
+    "backend/infrahub/core/query/relationship.py",
+]
+
+[tool.ty.overrides.rules]
+invalid-return-type = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/core/diff/coordinator.py",
+    "backend/infrahub/core/relationship/model.py",
+]
+
+[tool.ty.overrides.rules]
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/core/query/diff.py",
+    "backend/infrahub/core/query/relationship.py",
+    "backend/infrahub/core/query/subquery.py",
+]
+
+[tool.ty.overrides.rules]
+invalid-parameter-default = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/core/branch/models.py",
+    "backend/infrahub/core/node/__init__.py",
+    "backend/infrahub/core/schema/basenode_schema.py",
+]
+
+[tool.ty.overrides.rules]
+invalid-method-override = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/core/attribute.py",
+    "backend/infrahub/core/utils.py",
+]
+
+[tool.ty.overrides.rules]
+call-non-callable = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/core/attribute.py",
+    "backend/infrahub/core/query/relationship.py",
+]
+
+[tool.ty.overrides.rules]
+not-iterable = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/core/schema/schema_branch.py"]
+
+[tool.ty.overrides.rules]
+not-subscriptable = "ignore"
+unsupported-operator = "ignore"
+
+##################################################################################################
+# backend/infrahub/graphql/** type-check debt, scoped per file/module instead of graphql-wide.   #
+#                                                                                                #
+# Each override's `include` list IS the remaining to-do list for that rule: fix a file, remove   #
+# it from the glob, and that file starts being enforced. When a list is empty, delete the rule.  #
+# The rest of graphql/ (every path not listed below) is fully enforced for these rules.          #
+#                                                                                                #
+# The two high-volume rules (unknown-argument, unresolved-attribute) are scoped by submodule so  #
+# each module can be cleared independently; the rest are scoped to exact files.                  #
+##################################################################################################
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/graphql/**"]
 
 [tool.ty.overrides.rules]
-##################################################################################################
-# The ignored rules below should be removed once the code has been updated, they are included    #
-# like this so that we can reactivate them one by one.                                           #
-##################################################################################################
-conflicting-declarations = "ignore"
-invalid-argument-type = "ignore"
-invalid-assignment = "ignore"
-invalid-context-manager = "ignore"
-invalid-method-override = "ignore"
-invalid-return-type = "ignore"
-no-matching-overload = "ignore"
-not-subscriptable = "ignore"
-not-iterable = "ignore"
-possibly-missing-attribute = "ignore"
-redundant-cast = "ignore"
-unknown-argument = "ignore"
-unresolved-attribute = "ignore"
-unsupported-operator = "ignore"
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+# --- High-volume rules, scoped by submodule (delete a glob once that module is clean) ---
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/graphql/mutations/**",
+    "backend/infrahub/graphql/queries/**",
+    "backend/infrahub/graphql/types/**",
+]
+
+[tool.ty.overrides.rules]
+unknown-argument = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/graphql/*.py",
+    "backend/infrahub/graphql/mutations/**",
+    "backend/infrahub/graphql/queries/**",
+    "backend/infrahub/graphql/resolvers/**",
+]
+
+[tool.ty.overrides.rules]
+unresolved-attribute = "ignore"
+
+# --- Low-volume rules, scoped to the exact files that still trip them ---
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/graphql/analyzer.py",
+    "backend/infrahub/graphql/manager.py",
+    "backend/infrahub/graphql/mutations/branch.py",
+    "backend/infrahub/graphql/mutations/computed_attribute.py",
+    "backend/infrahub/graphql/mutations/convert_object_type.py",
+    "backend/infrahub/graphql/mutations/diff.py",
+    "backend/infrahub/graphql/mutations/diff_conflict.py",
+    "backend/infrahub/graphql/mutations/ipam.py",
+    "backend/infrahub/graphql/mutations/main.py",
+    "backend/infrahub/graphql/mutations/schema.py",
+    "backend/infrahub/graphql/queries/path.py",
+    "backend/infrahub/graphql/queries/reachable.py",
+    "backend/infrahub/graphql/subscription/graphql_query.py",
+]
+
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/graphql/mutations/branch.py",
+    "backend/infrahub/graphql/mutations/ipam.py",
+    "backend/infrahub/graphql/mutations/node_getter/by_default_filter.py",
+    "backend/infrahub/graphql/mutations/node_getter/by_hfid.py",
+    "backend/infrahub/graphql/mutations/node_getter/by_id.py",
+    "backend/infrahub/graphql/mutations/profile.py",
+    "backend/infrahub/graphql/mutations/proposed_change.py",
+    "backend/infrahub/graphql/mutations/repository.py",
+    "backend/infrahub/graphql/mutations/resource_manager.py",
+]
+
+[tool.ty.overrides.rules]
+not-subscriptable = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/graphql/mutations/account.py",
+    "backend/infrahub/graphql/mutations/action.py",
+    "backend/infrahub/graphql/mutations/artifact_definition.py",
+    "backend/infrahub/graphql/mutations/graphql_query.py",
+    "backend/infrahub/graphql/mutations/ipam.py",
+    "backend/infrahub/graphql/mutations/main.py",
+    "backend/infrahub/graphql/mutations/menu.py",
+    "backend/infrahub/graphql/mutations/profile.py",
+    "backend/infrahub/graphql/mutations/proposed_change.py",
+    "backend/infrahub/graphql/mutations/repository.py",
+    "backend/infrahub/graphql/mutations/resource_manager.py",
+    "backend/infrahub/graphql/mutations/webhook.py",
+    "backend/infrahub/graphql/types/node.py",
+    "backend/infrahub/graphql/types/standard_node.py",
+]
+
+[tool.ty.overrides.rules]
+invalid-method-override = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/graphql/manager.py",
+    "backend/infrahub/graphql/mutations/convert_object_type.py",
+    "backend/infrahub/graphql/mutations/ipam.py",
+    "backend/infrahub/graphql/mutations/main.py",
+    "backend/infrahub/graphql/mutations/profile.py",
+    "backend/infrahub/graphql/mutations/repository.py",
+    "backend/infrahub/graphql/mutations/resource_manager.py",
+    "backend/infrahub/graphql/queries/diff/tree.py",
+    "backend/infrahub/graphql/queries/path.py",
+    "backend/infrahub/graphql/queries/reachable.py",
+    "backend/infrahub/graphql/resolvers/ipam.py",
+    "backend/infrahub/graphql/types/attribute.py",
+]
+
+[tool.ty.overrides.rules]
+invalid-assignment = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/graphql/app.py",
+    "backend/infrahub/graphql/error_formatter.py",
+    "backend/infrahub/graphql/execution.py",
+    "backend/infrahub/graphql/manager.py",
+    "backend/infrahub/graphql/mutations/ipam.py",
+    "backend/infrahub/graphql/mutations/main.py",
+    "backend/infrahub/graphql/mutations/proposed_change.py",
+    "backend/infrahub/graphql/mutations/repository.py",
+    "backend/infrahub/graphql/queries/diff/tree.py",
+]
+
+[tool.ty.overrides.rules]
+invalid-return-type = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/graphql/mutations/branch.py",
+    "backend/infrahub/graphql/mutations/ipam.py",
+    "backend/infrahub/graphql/mutations/main.py",
+    "backend/infrahub/graphql/mutations/node_getter/by_default_filter.py",
+    "backend/infrahub/graphql/mutations/node_getter/by_hfid.py",
+    "backend/infrahub/graphql/mutations/node_getter/by_id.py",
+    "backend/infrahub/graphql/mutations/profile.py",
+    "backend/infrahub/graphql/resolvers/ipam.py",
+]
+
+[tool.ty.overrides.rules]
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/graphql/error_formatter.py",
+    "backend/infrahub/graphql/mutations/ipam.py",
+    "backend/infrahub/graphql/mutations/main.py",
+    "backend/infrahub/graphql/mutations/node_getter/by_default_filter.py",
+    "backend/infrahub/graphql/mutations/repository.py",
+    "backend/infrahub/graphql/queries/path.py",
+    "backend/infrahub/graphql/queries/reachable.py",
+]
+
+[tool.ty.overrides.rules]
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/graphql/mutations/action.py",
+    "backend/infrahub/graphql/queries/resource_manager.py",
+]
+
+[tool.ty.overrides.rules]
+redundant-cast = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/graphql/manager.py",
+    "backend/infrahub/graphql/utils.py",
+]
+
+[tool.ty.overrides.rules]
+not-iterable = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/graphql/types/standard_node.py"]
+
+[tool.ty.overrides.rules]
+invalid-context-manager = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/git/**"]

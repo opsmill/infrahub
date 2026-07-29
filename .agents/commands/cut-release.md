@@ -148,6 +148,9 @@ Use this template:
 ```mdx
 ---
 title: Release <version>
+release_date: <YYYY-MM-DD>
+release_type: <"minor" for X.Y.0 releases, "security" if the changelog has a ### Security section, otherwise "patch">
+description: "<1-2 plain-text sentences summarizing the release>"
 ---
 <table>
   <tbody>
@@ -171,21 +174,27 @@ title: Release <version>
 
 Where `<changelog_sections>` contains the ### Added, ### Fixed, etc. sections extracted from the changelog.
 
-## Step 6: Update Sidebar
+Frontmatter contract (consumed by the release-notes feed at `/release-notes/infrahub`
+and the generated sidebar — see `docs/plugins/release-notes-data.js` and
+`docs/sidebar-releases.ts`):
 
-Edit `docs/sidebars.ts`:
+- `release_date` (required): ISO date `YYYY-MM-DD`.
+- `release_type` (required): `minor` for X.Y.0 releases, `security` when the
+  changelog contains a `### Security` section, otherwise `patch`.
+- `description` (required): 1–2 plain-text sentences shown as the release
+  summary in the feed (no markdown, no code formatting).
+- `breaking: true` (only when applicable): set when the release notes contain a
+  Breaking-changes section; renders a "Breaking changes" chip in the feed.
 
-1. Find the Infrahub release notes items array (search for `'release-notes/infrahub/release-1_7_1'`)
-2. Add the new release at the TOP of the list (releases are in descending order, newest first)
-3. The new entry format: `'release-notes/infrahub/release-<major>_<minor>_<patch>',`
+`node scripts/backfill-release-frontmatter.mjs --check` (run from `docs/`)
+verifies that no release file is missing a required field.
 
-For example, if releasing 1.7.2, insert:
+## Step 6: Verify Sidebar Generation
 
-```typescript
-            'release-notes/infrahub/release-1_7_2',
-```
-
-before the existing first entry.
+The release-notes sidebar is generated automatically from the files in
+`docs/docs/release-notes/infrahub/` by `docs/sidebar-releases.ts` — no manual
+`docs/sidebars.ts` edit is needed. The new release appears in its "X.Y release"
+category once the file exists.
 
 ## Step 7: Commit, Tag, and Push
 
@@ -204,7 +213,7 @@ reads — there is no version file to bump.
    already committed it in Step 3):
 
    ```bash
-   git add CHANGELOG.md docs/docs/release-notes/infrahub/release-<major>_<minor>_<patch>.mdx docs/sidebars.ts
+   git add CHANGELOG.md docs/docs/release-notes/infrahub/release-<major>_<minor>_<patch>.mdx
    git commit -m "chore: release <new_version>"
    ```
 
@@ -227,12 +236,11 @@ Review all modified files:
 
 1. `CHANGELOG.md` - new release section added, fragments removed
 2. `docs/docs/release-notes/infrahub/release-<version>.mdx` - new file created
-3. `docs/sidebars.ts` - new entry added at top of releases list
-4. **No `pyproject.toml` changes**: `git diff HEAD~1 -- pyproject.toml python_testcontainers/pyproject.toml`
+3. **No `pyproject.toml` changes**: `git diff HEAD~1 -- pyproject.toml python_testcontainers/pyproject.toml`
    MUST be empty
-5. `docker-compose.yml` - all infrahub services pin `<new_version>` via the workflow's bot commit
+4. `docker-compose.yml` - all infrahub services pin `<new_version>` via the workflow's bot commit
    (`uv run invoke release.validate-docker-compose --version <new_version>` passes)
-6. The annotated tag `infrahub-v<new_version>` exists and points at the release commit
+5. The annotated tag `infrahub-v<new_version>` exists and points at the release commit
 
 ## Step 9: Summary and Next Steps
 

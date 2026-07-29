@@ -8,6 +8,12 @@ Git workflow and commit conventions for the project.
 
 - **Main branches:** `stable` (production), `develop` (development), `release-*` (releases)
 - **Feature branches:** Create from `develop`, merge back via PR
+- **Bug fixes:** target the oldest branch that needs the fix — `stable` when the bug is in released
+  code and the fix should ship in a patch release, `develop` when the code only exists there or the
+  fix can wait for the next minor
+- **Verify the base before cutting:** check that the code the ticket references actually exists on
+  the chosen base (`git ls-tree <base> -- <path>`); follow-up tickets often reference modules that
+  are only on `develop`
 - **Branch naming:** `<initials>-<short-description>` (e.g., `jd-add-breadcrumbs`)
 
 ## Versioning
@@ -98,7 +104,7 @@ fix: resolve sidebar collapse issue [IFC-2847]
 
 ## Changelog
 
-Add changelog fragments to `changelog/` using Towncrier. See [Changelog Guidelines](changelog.md) for change types and examples.
+Add changelog fragments to `changelog/` using Towncrier. Use the `creating-changelog-entries` skill for change types and examples.
 
 ## Pull Requests
 
@@ -119,5 +125,5 @@ Add changelog fragments to `changelog/` using Towncrier. See [Changelog Guidelin
 
 ## See Also
 
-- [Changelog Guidelines](changelog.md) - Changelog entry guidelines
+- Use the `creating-changelog-entries` skill - Changelog entry guidelines
 - `docs/docs/development/git-best-practices.mdx` - Comprehensive Git guide (submodules, troubleshooting, advanced workflows)

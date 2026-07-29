@@ -3,8 +3,8 @@ import { useRef, useState } from "react";
 import { type Selection, TagGroup, type TagGroupProps, TagList } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
+import { type UseFormatDateResult, useFormatDate } from "@/shared/context/date-preferences-context";
 import { classNames } from "@/shared/utils/common";
-import { formatFullDate } from "@/shared/utils/date";
 
 import {
   AVAILABLE_IP_FILTER_NAME,
@@ -29,15 +29,17 @@ import type { AttributeKind } from "@/entities/schema/domain/model/schema";
 export function formatAttributeFilterValue({
   kind,
   value,
+  formatDate,
 }: {
   kind: AttributeKind;
   value: unknown;
+  formatDate: UseFormatDateResult["formatDate"];
 }) {
   switch (kind) {
     case ATTRIBUTE_KIND.BOOLEAN:
       return String(value);
     case ATTRIBUTE_KIND.DATETIME:
-      return formatFullDate(value as string | number | Date);
+      return formatDate(value as string | number | Date, "datetime");
     default:
       return value as React.ReactNode;
   }
@@ -208,10 +210,12 @@ interface EditableFilterTagProps {
 }
 
 function EditableFilterTag({ ref, filter, fieldKey, filterDefinition }: EditableFilterTagProps) {
+  const { formatDate } = useFormatDate();
   const display = getFilterTagDisplay({
     filter,
     fieldKey,
     filterDefinition,
+    formatDate,
   });
 
   if (!display) return null;
@@ -227,10 +231,12 @@ export function getFilterTagDisplay({
   filter,
   fieldKey,
   filterDefinition,
+  formatDate,
 }: {
   filter: Filter;
   fieldKey: string;
   filterDefinition: FilterDefinition;
+  formatDate: UseFormatDateResult["formatDate"];
 }): FilterTagDisplay | null {
   const name = getFilterDefinitionLabel(filterDefinition);
   const isRelationship =
@@ -254,6 +260,7 @@ export function getFilterTagDisplay({
       value: formatAttributeFilterValue({
         kind: filterDefinition.schema.kind as AttributeKind,
         value: filter.value,
+        formatDate,
       }),
     };
   }
@@ -293,7 +300,7 @@ export function getFilterTagDisplay({
     return {
       label: name,
       condition: fieldKey,
-      value: formatFullDate(filter.value as string | number | Date),
+      value: formatDate(filter.value as string | number | Date, "datetime"),
     };
   }
 

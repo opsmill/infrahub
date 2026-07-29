@@ -1,6 +1,6 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import HashableModelState, InfrahubKind
+from infrahub.core.constants import HashableModelState, InfrahubKind, SchemaPathType
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -9,7 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
-from infrahub.core.path import SchemaPath, SchemaPathType
+from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -58,19 +58,18 @@ async def test_merge_graph(
     assert cars[0].nbr_seats.value == 5
     assert cars[0].nbr_seats.is_protected is False
 
-    # Query all cars in BRANCH1, AFTER the merge
+    # Query all cars in BRANCH1, AFTER the merge. BRANCH1 does not see c2, created on main after
+    # BRANCH1 forked.
     cars = sorted(await NodeManager.query(schema="TestCar", branch=branch1, db=db), key=lambda c: c.id)
-    assert len(cars) == 3
-    assert cars[2].id == "c3"
-    assert cars[2].name.value == "volt"
+    assert [car.id for car in cars] == ["c1", "c3"]
+    assert cars[1].name.value == "volt"
 
-    # Query all cars in BRANCH1, BEFORE the merge
+    # Query all cars in BRANCH1, BEFORE the merge — same isolated two-car view (still no c2).
     cars = sorted(
         await NodeManager.query(schema="TestCar", branch=branch1, at=base_dataset_02["time0"], db=db),
         key=lambda c: c.id,
     )
-    assert len(cars) == 3
-    assert cars[0].id == "c1"
+    assert [car.id for car in cars] == ["c1", "c3"]
     assert cars[0].nbr_seats.value == 4
 
     # It should be possible to merge a graph even without changes

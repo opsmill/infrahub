@@ -24,6 +24,7 @@ import type {
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 
 interface IpPrefixDetailsHeaderProps extends RowProps {
   ipPrefixSchema: ModelSchema;
@@ -61,7 +62,7 @@ export function IpamDetailsHeader({
         {orderedFields.map((field, index) => {
           let displayValue: React.ReactNode = "-";
 
-          if ("peer" in field) {
+          if (isRelationshipSchema(field)) {
             if (field.cardinality === "many") {
               const relData = ipPrefixNode[field.name] as NodeRelationshipMany | undefined;
               if (relData && relData.edges?.length > 0) {

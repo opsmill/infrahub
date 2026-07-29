@@ -26,6 +26,35 @@ class RequestArtifactDefinitionGenerate(BaseModel):
         default_factory=list,
         description="List of targets to limit the scope of the generation, if populated only the included artifacts will be regenerated",
     )
+    members: list[str] = Field(
+        default_factory=list,
+        description="Member node ids to generate artifacts for; when populated, only these members are processed.",
+    )
+
+    @property
+    def evaluates_every_member(self) -> bool:
+        """Whether this request examines the definition's whole target group.
+
+        A conclusion drawn from the absence of a member -- such as an existing artifact now being
+        orphaned -- only holds for a pass that looked at all of them. Either filter narrows the
+        pass, and a request narrowed by ``members`` leaves ``limit`` empty, so ``limit`` alone does
+        not tell the two apart.
+        """
+        return not self.members and not self.limit
+
+    def selects_member(self, *, member_id: str, artifact_id: str | None) -> bool:
+        """Whether the member should have its artifact (re)generated under this request's filters.
+
+        ``members`` filters on the member node id, so a member with no artifact yet is still
+        selected when its id is listed. ``limit`` filters on the existing artifact id, so it can
+        only ever narrow to members that already have an artifact -- a member whose ``artifact_id``
+        is ``None`` is skipped by a non-empty ``limit``. An empty filter imposes no restriction.
+        """
+        if self.members and member_id not in self.members:
+            return False
+        if self.limit and artifact_id not in self.limit:
+            return False
+        return True
 
 
 class RequestArtifactGenerate(BaseModel):

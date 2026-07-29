@@ -34,6 +34,7 @@ async def process_hfid(
 ) -> None:
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     filter_id: str | list[str] | None = object_ids if object_ids is not None else object_id
     if not filter_id:
@@ -145,6 +146,7 @@ async def trigger_update_hfid(
     await add_tags(branches=[branch_name])
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     node_query = HFIDNodeIDQuery(kind=kind)
     workflow = get_workflow()

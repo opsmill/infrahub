@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
+import type { FilterFieldSchema } from "@/entities/schema/domain/model/schema";
 
 import { GlobalFilterForm } from "./global-filter-form";
 import { FilterTag } from "./global-filter-tag";
@@ -15,7 +15,7 @@ import { FilterTag } from "./global-filter-tag";
 interface FilterTagProps extends TagProps {
   label: React.ReactNode;
   name: string;
-  fieldSchema: AttributeSchema | RelationshipSchema;
+  fieldSchema: FilterFieldSchema;
 }
 
 export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagProps) {

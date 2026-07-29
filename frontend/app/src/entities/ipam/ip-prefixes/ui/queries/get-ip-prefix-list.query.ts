@@ -9,7 +9,7 @@ import {
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/has-incompatible-filters-for-ip-availability";
+import { shouldExcludeIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/should-exclude-ip-availability";
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import {
   type GetIpPrefixListParams,
@@ -50,10 +50,9 @@ export function useGetIpPrefixList(
     isSuccess: isCountSuccess,
     isError: isCountError,
   } = useObjectsCount({
-    objectKind:
-      params.filters && hasIncompatibleFiltersForIpAvailability(params.filters)
-        ? params.schema.kind!
-        : IP_PREFIX_GENERIC,
+    objectKind: shouldExcludeIpAvailability(params.filters ?? [], params.sort)
+      ? params.schema.kind!
+      : IP_PREFIX_GENERIC,
     filters: params.filters,
   });
 

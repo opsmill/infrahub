@@ -300,6 +300,16 @@ To branch on or read from a typed object, use `isinstance` so the type checker c
 
 When a JSON string feeds a hash, fingerprint, or cache key, its output must be deterministic. Do **not** pass `default=str` to `json.dumps` there: it silently serializes unexpected types via `str()`, which can embed run-specific data (memory addresses) and break determinism. Serialize an explicit, canonical shape (sorted keys, known field types) and let unknown types raise instead of being coerced.
 
+### When a wrong-type bug slips through
+
+`mypy` and `ty` both gate CI, but modules opt out of checks — mypy via per-module `disable_error_code` in `pyproject.toml`, ty via directory `[[tool.ty.overrides]]` (`invalid-argument-type` is currently ignored tree-wide). These suppressions hide real bugs.
+
+So when a bug is caused by a **wrong type being passed** (e.g. a class where a `str` was expected), the checker should have caught it — treat it as a gap to close, not just a runtime fix:
+
+1. Find why it was missed — usually `arg-type` / `invalid-argument-type` is suppressed for that module.
+2. Re-enable the rule for that module and fix the whole typing chain it surfaces. Grandfather unrelated pre-existing violations with a scoped `# type: ignore[code]  # reason`, not by leaving the rule off.
+3. Fix the source. Never widen a parameter's type to silence the checker when the real contract is narrower — that entrenches the defect. mypy enforces argument types by default (modules opt out), so fix there; re-enabling ty's `invalid-argument-type` is a deliberate directory-wide effort, not a per-file exception.
+
 ## Python Version Compatibility
 
 The `python_testcontainers` package supports Python 3.10+, while the main backend requires Python 3.12+. When writing code that may be shared or used in `python_testcontainers`, be mindful of version-specific features.
@@ -373,6 +383,7 @@ except NodeNotFoundError:
 Guidelines:
 
 - **Name the exceptions.** Catch the narrowest type(s) that the called code actually raises. If several are handled the same way, group them: `except (NodeNotFoundError, BranchNotFoundError):`.
+- **Check the hierarchy before narrowing.** Infrahub's exception types are mostly direct `Error` subclasses, not a tree — `QueryTimeoutError` is a *sibling* of `DatabaseError`, so catching `DatabaseError` does not cover query timeouts. Verify in `backend/infrahub/exceptions.py` which types the call path actually raises before writing the tuple.
 - **Keep the `try` body small.** Wrap only the statement that can raise, not a whole block, so an unexpected error elsewhere isn't caught by accident.
 - **Never silence.** A bare `except Exception: pass` hides real failures. If there is genuinely nothing to do, comment why, and at minimum `log.debug(...)`.
 - **Re-raise what you can't handle.** If you must catch broadly to add context or clean up, re-raise afterwards (`raise` to preserve the traceback, or `raise NewError(...) from exc` to chain).
@@ -387,6 +398,45 @@ except Exception as exc:
 ```
 
 A broad `except Exception` is justified only at a top-level boundary (a task worker loop, a request handler) whose job is to prevent one failure from taking down the process — and even there, log the exception and re-raise or record it, never discard it.
+
+## ASGI Middleware
+
+<!-- Extracted from specs/ifc-2886-priority-api-backpressure on 2026-07-26 -->
+
+Write middleware as **pure ASGI** — `async def __call__(self, scope, receive, send)`, subclassing
+nothing — when it runs on every request, may short-circuit a request, or sits anywhere near
+streaming or background tasks:
+
+```python
+class SomeMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        ...
+```
+
+The `@app.middleware("http")` decorator wraps `BaseHTTPMiddleware`, which buffers the entire
+response and interferes with streaming responses and background tasks. Reserve it for
+non-hot-path work where that cost is irrelevant.
+
+Rules that follow from the ASGI contract:
+
+- Always pass non-`http` scopes (`websocket`, `lifespan`) straight through untouched.
+- Short-circuit by constructing and sending the response yourself. Middleware runs outside the
+  exception-handler scope, so raising will not reach FastAPI's registered handlers, and those
+  handlers cannot attach custom response headers.
+- Registration order is inverted: Starlette inserts each `add_middleware(...)` at the front, so
+  the **last** registered runs **first** (outermost). Put a gate that must run before auth,
+  routing, and telemetry last in `server.py`.
+- Anything resolved by `Depends(...)` — including the authenticated user — is not available;
+  dependencies resolve per route, after all middleware.
+
+Worked example: `backend/infrahub/api/admission/middleware.py`, with the reasoning in
+[API Backpressure](../../knowledge/backend/api-backpressure.md#why-its-built-this-way).
 
 ## Testing
 

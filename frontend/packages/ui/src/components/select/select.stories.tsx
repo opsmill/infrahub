@@ -32,24 +32,28 @@ const items = [
   { key: "blue", label: "Blue" },
 ];
 
-const SizeLabel = ({ children }: { children?: string }) => (
-  <div className="text-xxs font-medium tracking-wider text-neutral-400 uppercase">{children}</div>
-);
+function SizeLabel({ children }: { children?: string }) {
+  return (
+    <div className="text-xxs font-medium tracking-wider text-neutral-400 uppercase">{children}</div>
+  );
+}
 
-const ColorSelect = (props: SelectTriggerProps) => (
-  <div className="w-64">
-    <Select placeholder="Pick a color">
-      <SelectTrigger {...props} />
-      <SelectList items={items}>
-        {(item) => (
-          <SelectItem key={item.key} textValue={item.label}>
-            {item.label}
-          </SelectItem>
-        )}
-      </SelectList>
-    </Select>
-  </div>
-);
+function ColorSelect(props: SelectTriggerProps) {
+  return (
+    <div className="w-64">
+      <Select placeholder="Pick a color">
+        <SelectTrigger {...props} />
+        <SelectList items={items}>
+          {(item) => (
+            <SelectItem key={item.key} textValue={item.label}>
+              {item.label}
+            </SelectItem>
+          )}
+        </SelectList>
+      </Select>
+    </div>
+  );
+}
 
 export const AllVariants: Story = {
   argTypes: {

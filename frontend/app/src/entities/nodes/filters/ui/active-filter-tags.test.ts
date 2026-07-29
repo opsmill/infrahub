@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import type { UseFormatDateResult } from "@/shared/context/date-preferences-context";
+
 import {
   formatAttributeFilterValue,
   getFilterTagDisplay,
@@ -11,6 +13,9 @@ import {
   generateRelationshipSchema,
 } from "../../../../../tests/fake/schema";
 
+// Stub the preference-aware formatter; these tests assert labels/conditions, not date formatting.
+const formatDate: UseFormatDateResult["formatDate"] = (date) => new Date(date).toISOString();
+
 describe("formatAttributeFilterValue", () => {
   it("returns string representation for boolean kind", () => {
     // GIVEN
@@ -18,7 +23,7 @@ describe("formatAttributeFilterValue", () => {
     const value = true;
 
     // WHEN
-    const result = formatAttributeFilterValue({ kind, value });
+    const result = formatAttributeFilterValue({ kind, value, formatDate });
 
     // THEN
     expect(result).toBe("true");
@@ -30,7 +35,7 @@ describe("formatAttributeFilterValue", () => {
     const value = "hello";
 
     // WHEN
-    const result = formatAttributeFilterValue({ kind, value });
+    const result = formatAttributeFilterValue({ kind, value, formatDate });
 
     // THEN
     expect(result).toBe("hello");
@@ -44,6 +49,7 @@ describe("getFilterTagDisplay", () => {
 
     // WHEN
     const result = getFilterTagDisplay({
+      formatDate,
       filter,
       fieldKey: "value",
       filterDefinition: {
@@ -66,6 +72,7 @@ describe("getFilterTagDisplay", () => {
 
     // WHEN
     const result = getFilterTagDisplay({
+      formatDate,
       filter,
       fieldKey: "value",
       filterDefinition: {
@@ -90,6 +97,7 @@ describe("getFilterTagDisplay", () => {
 
     // WHEN
     const result = getFilterTagDisplay({
+      formatDate,
       filter,
       fieldKey: "ids",
       filterDefinition: {
@@ -118,6 +126,7 @@ describe("getFilterTagDisplay", () => {
 
     // WHEN
     const result = getFilterTagDisplay({
+      formatDate,
       filter,
       fieldKey: "ids",
       filterDefinition: {
@@ -142,6 +151,7 @@ describe("getFilterTagDisplay", () => {
 
     // WHEN
     const result = getFilterTagDisplay({
+      formatDate,
       filter,
       fieldKey: "ids",
       filterDefinition: {
@@ -160,6 +170,7 @@ describe("getFilterTagDisplay", () => {
 
     // WHEN
     const result = getFilterTagDisplay({
+      formatDate,
       filter,
       fieldKey: "isnull",
       filterDefinition: {
@@ -182,6 +193,7 @@ describe("getFilterTagDisplay", () => {
 
     // WHEN
     const result = getFilterTagDisplay({
+      formatDate,
       filter,
       fieldKey: "isnull",
       filterDefinition: {
@@ -204,6 +216,7 @@ describe("getFilterTagDisplay", () => {
 
     // WHEN
     const result = getFilterTagDisplay({
+      formatDate,
       filter,
       fieldKey: "unknown",
       filterDefinition: {
@@ -222,6 +235,7 @@ describe("getFilterTagDisplay", () => {
 
     // WHEN
     const result = getFilterTagDisplay({
+      formatDate,
       filter,
       fieldKey: "value",
       filterDefinition: {
@@ -245,6 +259,7 @@ describe("getFilterTagDisplay", () => {
 
     // WHEN
     const result = getFilterTagDisplay({
+      formatDate,
       filter,
       fieldKey: "value",
       filterDefinition: {
@@ -268,6 +283,7 @@ describe("getFilterTagDisplay", () => {
 
     // WHEN
     const result = getFilterTagDisplay({
+      formatDate,
       filter,
       fieldKey: "after",
       filterDefinition: {

@@ -4,8 +4,8 @@ import { CheckIcon, RefreshCwIcon } from "lucide-react";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { classNames } from "@/shared/utils/common";
-import { formatFullDate } from "@/shared/utils/date";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
@@ -25,6 +25,7 @@ export function RefreshButton({ queryKey, ...props }: RefreshButtonProps) {
   const [dataUpdatedAt, setDataUpdatedAt] = React.useState(getLastUpdateTime());
   const isFetching = useIsFetching({ queryKey: watchedQueryKey });
   const isRefetching = isFetching > 0;
+  const { formatDate } = useFormatDate();
 
   React.useEffect(() => {
     if (isFetching > 0) return;
@@ -44,7 +45,7 @@ export function RefreshButton({ queryKey, ...props }: RefreshButtonProps) {
         dataUpdatedAt ? (
           <>
             <div>Last data refresh</div>
-            <div className="text-neutral-200">{formatFullDate(dataUpdatedAt)}</div>
+            <div className="text-neutral-200">{formatDate(dataUpdatedAt, "datetime")}</div>
           </>
         ) : (
           "Refresh"

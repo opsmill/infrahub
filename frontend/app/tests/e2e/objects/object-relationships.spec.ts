@@ -123,14 +123,14 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
       await test.step("Navigates to North America and checks the children", async () => {
         await page.goto(`/objects/LocationContinent?branch=${BRANCH_NAME}`);
         await page.getByRole("link", { name: "North America" }).first().click();
-        await page.getByText("Children2").click();
+        await page.getByText("Country2").click();
         await expect(page.getByRole("link", { name: "Canada" })).toBeVisible();
         await expect(page.getByRole("link", { name: "United States of America" })).toBeVisible();
       });
 
       await test.step("Navigates to the USA and checks the children", async () => {
         await page.getByRole("link", { name: "United States of America" }).click();
-        await page.getByText("Children5").click();
+        await page.getByText("Site5").click();
         await expect(page.getByRole("link", { name: "atl1" })).toBeVisible();
         await expect(page.getByRole("link", { name: "den1" })).toBeVisible();
         await expect(page.getByText("Bailey Li")).toBeVisible();

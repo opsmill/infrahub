@@ -12,6 +12,7 @@ import createUploadLink from "apollo-upload-client/createUploadLink.mjs";
 import { toast } from "react-toastify";
 
 import { ERROR_CODES, parseCatalogueError } from "@/shared/api/errors";
+import { PRIORITY_HEADER, resolvePriority } from "@/shared/api/priority";
 import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/shared/config/config";
@@ -57,6 +58,20 @@ export const authLink = setContext((_, previousContext) => {
     headers: {
       ...headers,
       authorization: `Bearer ${accessToken}`,
+    },
+  };
+});
+
+// The backend prioritizes requests by X-Priority under load, so stamp it
+// on every operation — otherwise the frontend's traffic falls back to the
+// server default and can't be told apart from other clients when it matters.
+export const priorityLink = setContext((_, previousContext) => {
+  const { headers, priority } = previousContext;
+
+  return {
+    headers: {
+      ...headers,
+      [PRIORITY_HEADER]: resolvePriority(priority),
     },
   };
 });
@@ -229,7 +244,7 @@ function notifyUser(
 }
 
 const graphqlClient = new ApolloClient({
-  link: from([errorLink, authLink, httpLink]),
+  link: from([errorLink, authLink, priorityLink, httpLink]),
   cache: new InMemoryCache(),
   defaultOptions,
   // Apollo is a transport-only layer here: queries run imperatively via

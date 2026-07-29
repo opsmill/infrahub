@@ -124,6 +124,10 @@ class ProposedChangeArtifactDefinition(BaseModel):
         default=None,
         description="True when the dependency list is fully resolved. False when partial. None when not yet computed.",
     )
+    fingerprint: str | None = Field(
+        default=None,
+        description="Content hash of the definition's inputs, recomputed on each import. None when not yet computed.",
+    )
 
     @property
     def source_noun(self) -> str:
@@ -132,6 +136,15 @@ class ProposedChangeArtifactDefinition(BaseModel):
     @property
     def instance_noun(self) -> str:
         return "artifacts"
+
+    def reads_kind(self, kind: str) -> bool:
+        """Whether a data change to ``kind`` is relevant because the query reads that kind.
+
+        An artifact query may read a kind through its Profile, so the profile-stripped kind matches too.
+        """
+        return kind in self.query_models or (
+            kind.startswith("Profile") and kind.replace("Profile", "", 1) in self.query_models
+        )
 
     @property
     def transform_location(self) -> str:

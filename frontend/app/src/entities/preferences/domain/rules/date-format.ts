@@ -17,7 +17,7 @@ export function buildDateFormatPresets(): Array<DateFormatPreset> {
   return DATE_FORMAT_KEYS.map((key) => ({ key, label: DATE_FORMAT_PRESETS[key].label }));
 }
 
-function patternForKey(key: string): string {
+export function dateFormatPattern(key: string): string {
   return (
     (DATE_FORMAT_PRESETS as Record<string, DateFormatPresetDef>)[key]?.pattern ??
     DATE_FORMAT_PRESETS[DEFAULT_DATE_FORMAT].pattern
@@ -30,5 +30,5 @@ export function dateFormatLabel(key: string): string {
 
 // An unknown/invalid key (e.g. written by an out-of-date client or the SDK) falls back to the default pattern so it still yields a real example.
 export function formatDateFormatExample(key: string, referenceDate: Date = new Date()): string {
-  return format(referenceDate, patternForKey(key));
+  return format(referenceDate, dateFormatPattern(key));
 }

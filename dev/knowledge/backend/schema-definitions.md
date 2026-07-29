@@ -91,6 +91,65 @@ All `AttributeSchema` entries must include a `description` field. This is enforc
 
 `backend/tests/component/message_bus/operations/requests/test_proposed_change.py::test_get_proposed_change_schema_integrity_constraints` contains hardcoded constraint counts. These counts change whenever schemas are added or removed because `ConstraintValidatorDeterminer` iterates all schemas in the registry and generates one `SchemaUpdateConstraintInfo` per validatable property. After schema changes, run the test to get actual counts and update the assertions. See `#2592` for planned improvements.
 
+## Field Visibility and the Write / Read / Internal Models
+
+Every schema field carries a `visibility` classification in its `extra` metadata, defined by
+the `Visibility` enum in `backend/infrahub/core/constants/schema.py`. The three levels are
+ordinal and nested — `write ⊆ read ⊆ internal`:
+
+| Level | Who may see/set it | Examples |
+|-------|--------------------|----------|
+| `WRITE` | User may submit it on load | `name`, `namespace`, `attributes`, `relationships` |
+| `READ` | Returned on `GET /api/schema` but not settable | `inherited`, `used_by`, `hierarchy`, derived `kind` |
+| `INTERNAL` | Backend-only, never exposed | internal bookkeeping fields |
+
+Fields default to `INTERNAL` unless their definition sets a higher `visibility`, so a new
+field is hidden until it is deliberately classified.
+
+### Model families
+
+The `internal.py` definitions remain the single source of truth. `invoke backend.generate`
+renders two model families from them by filtering each field on its visibility level (see
+`SdkSchemaGenerator` in `tasks/backend.py`, entered through `_generate_schemas_sdk`):
+
+- **write models** — include only `WRITE` fields and set `extra="ignore"`, so a read-only,
+  internal, or unknown field in a submitted payload is dropped by pydantic itself instead of
+  rejected. That holds at every nesting level, and the per-kind discriminated unions
+  (attribute kinds, computed-attribute kinds) resolve first, so each variant keeps only the
+  fields valid for it. Constrained values that *are* settable are still validated and
+  rejected when out of range. No hand-written filtering step is needed at the boundary.
+- **read models** — include `WRITE` and `READ` fields, describing the shape returned by
+  `GET /api/schema`.
+
+Because both families are generated from the same definitions, a field's classification is
+declared once and both the write contract and the read shape follow automatically.
+
+A field whose valid values are a closed set is generated as a dedicated `(str, Enum)` class in
+`python_sdk/infrahub_sdk/schema/generated/enums.py` and referenced by both families, rather than
+as a bare `str` or an inline `Literal`. The allowed values therefore travel with the model, so a
+client — or an agent reading the contract — can enumerate them without consulting the server.
+
+`version` is required on the write root. The load endpoint has always required it, so the
+generated model requires it too; otherwise offline validation would accept a payload the server
+rejects.
+
+### Backend → SDK dependency
+
+The generated write/read models are rendered **into the Python SDK**, at
+`python_sdk/infrahub_sdk/schema/generated/{write,read}.py`. The output is self-contained
+(only `pydantic` + `typing`) so it imports with just the SDK installed — no backend, no
+server. This inverts the usual direction: the backend's schema definitions are the source,
+and the generator writes the artifact into the SDK submodule, where it is committed and
+shipped inside the published package.
+
+`POST /api/schema/load` enforces the write contract at the boundary by calling the SDK's
+`validate_schema()` (`python_sdk/infrahub_sdk/schema/validate.py`) from the
+`validate_write_contract` validator on `SchemaLoadAPI` (`backend/infrahub/api/schema.py`).
+The same validator runs offline in the SDK, so a client gets the identical field-level
+verdict before submitting. After changing a field's `visibility` (or adding a field), run
+`invoke backend.generate` and commit the regenerated SDK models alongside the backend
+change; CI fails if the generated artifact is stale.
+
 ## Key Locations
 
 | Component | Path |
@@ -98,6 +157,10 @@ All `AttributeSchema` entries must include a `description` field. This is enforc
 | Core schema definitions | `backend/infrahub/core/schema/definitions/core/` |
 | Internal schema definitions | `backend/infrahub/core/schema/definitions/internal/` |
 | Generated schemas (do not edit) | `backend/infrahub/core/schema/generated/` |
+| `Visibility` enum | `backend/infrahub/core/constants/schema.py` |
+| SDK write/read generator | `SdkSchemaGenerator` in `tasks/backend.py` |
+| Generated SDK write/read models (do not edit) | `python_sdk/infrahub_sdk/schema/generated/{write,read}.py` |
+| Offline write-contract validator | `python_sdk/infrahub_sdk/schema/validate.py` |
 | RelationshipSchema class | `backend/infrahub/core/schema/relationship_schema.py` |
 | AttributeSchema class | `backend/infrahub/core/schema/attribute_schema.py` |
 | GenericSchema class | `backend/infrahub/core/schema/generic_schema.py` |
@@ -107,3 +170,5 @@ All `AttributeSchema` entries must include a `description` field. This is enforc
 
 - [Code Generation](code-generation.md) — How schema definitions become generated code
 - [Database Schema](database-schema.md) — How schemas map to Neo4j graph structure
+- [ADR 0010](../../adr/0010-generated-user-facing-schema-contract.md) — Why the user-facing
+  contract is generated into the SDK, and why submission ignores non-write fields

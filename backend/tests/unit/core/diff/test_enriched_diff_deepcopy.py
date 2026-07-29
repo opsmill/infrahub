@@ -15,7 +15,7 @@ EnrichedDiffRelationship objects that may have circular node references.
 from copy import deepcopy
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
-from tests.component.core.diff.factories import (
+from tests.helpers.diff_factories import (
     EnrichedNodeFactory,
     EnrichedRelationshipElementFactory,
     EnrichedRelationshipGroupFactory,

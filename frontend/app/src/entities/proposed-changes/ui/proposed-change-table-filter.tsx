@@ -15,6 +15,7 @@ import type {
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 export interface TableColumnHeaderProps extends PopoverTriggerProps {
@@ -61,7 +62,7 @@ export function ProposedChangeTableFilter({
         <div className="absolute -top-[1.8rem] -left-px rounded-t-md border border-gray-200 border-b-0 bg-white px-2 py-1 font-semibold">
           Filter by {columnSchema.label ?? columnSchema.name}
         </div>
-        {"peer" in columnSchema ? (
+        {isRelationshipSchema(columnSchema) ? (
           <RelationshipFilterForm relationshipSchema={columnSchema} onSuccess={closePopover} />
         ) : (
           <AttributeFilterForm attributeSchema={columnSchema} onSuccess={closePopover} />

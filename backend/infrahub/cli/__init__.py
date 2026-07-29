@@ -9,6 +9,7 @@ from .context import CliContext
 from .db import app as db_app
 from .dev import app as dev_app
 from .events import app as events_app
+from .recover import app as recover_app
 from .server import app as server_app
 from .tasks import app as tasks_app
 from .upgrade import upgrade_cmd
@@ -28,6 +29,7 @@ app.add_typer(events_app, name="events", help="Interact with the events system."
 app.add_typer(tasks_app, name="tasks", hidden=True)
 app.add_typer(dev_app, name="dev", help="Internal development commands.")
 app.command(name="upgrade")(upgrade_cmd)
+app.add_typer(recover_app, name="recover", help="Recover from failed operations.")
 
 
 async def _init_shell(config_file: str) -> None:

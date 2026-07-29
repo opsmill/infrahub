@@ -314,7 +314,7 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["rel_prop"] = self.get_relationship_properties_dict(
             status=RelationshipStatus.ACTIVE, user_id=self.user_id
         )
-        arrows = self.schema.get_query_arrows()
+        arrows = self.get_query_arrows(direction=self.schema.direction)
         r1 = f"{arrows.left.start}[r1:IS_RELATED $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:IS_RELATED $rel_prop ]{arrows.right.end}"
 
@@ -585,7 +585,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         self.params["at"] = self.at.to_string()
         self.params.update(rel_params)
 
-        arrows = self.schema.get_query_arrows()
+        arrows = self.get_query_arrows(direction=self.schema.direction)
         r1 = f"{arrows.left.start}[r1:IS_RELATED $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:IS_RELATED $rel_prop ]{arrows.right.end}"
 
@@ -966,7 +966,7 @@ RETURN updated_at, updated_by
         self.params["peer_kind"] = self.schema.peer
         self.params["source_kind"] = self.source_kind
 
-        arrows = self.schema.get_query_arrows()
+        arrows = self.get_query_arrows(direction=self.schema.direction)
 
         path_str = f"{arrows.left.start}[r1:IS_RELATED]{arrows.left.end}(rl){arrows.right.start}[r2:IS_RELATED]{arrows.right.end}"
 

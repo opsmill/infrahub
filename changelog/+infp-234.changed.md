@@ -1,0 +1,7 @@
+`POST /api/schema/load` now validates every submitted node, generic, and extension against a user-facing *write* contract. Constrained fields (for example an attribute `kind` or a relationship `cardinality`) set outside their allowed values, out-of-range values, and missing required fields are rejected with a field-level error naming the field and the invalid value.
+
+Fields a user may not set — read-only or internal fields such as `inherited`, `used_by`, `hierarchy`, and a derived `kind` on nodes/generics — as well as fields that are genuinely unknown (a typo, or a field removed in a newer version) are dropped silently before the schema is applied, so a schema read back from Infrahub or hand-edited still loads.
+
+`GET /api/schema` returns the same response body as before and still includes read-only fields such as `inherited` and `used_by`. Its OpenAPI component schemas are now named after the generated read models — `NodeSchemaRead`, `GenericSchemaRead`, `ProfileSchemaRead`, and `TemplateSchemaRead` in place of `APINodeSchema`, `APIGenericSchema`, `APIProfileSchema`, and `APITemplateSchema` — so a client generating types from `openapi.json` needs to update those type names.
+
+The write contract is published as a committed model in the Python SDK (`infrahub_sdk.schema.generated.write`); the SDK `validate_schema()` helper reproduces the server verdict offline so a payload can be checked before submission.

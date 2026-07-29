@@ -91,7 +91,7 @@ class TestSchemaIntegrityRelationshipConstraints(TestInfrahubApp):
 
         schema_branch = registry.schema.get_schema_branch(name=branch.name)
         constraints = await _get_proposed_change_schema_integrity_constraints(
-            schema=schema_branch, diff_summary=diff_summary
+            db=db, schema=schema_branch, diff_summary=diff_summary, branch=source
         )
         constrained_fields = {(c.path.schema_kind, c.path.field_name) for c in constraints}
 
