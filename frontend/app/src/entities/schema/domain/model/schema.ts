@@ -16,6 +16,7 @@ export type AttributeSchema =
   | components["schemas"]["NumberAttributeRead"]
   | components["schemas"]["ListAttributeRead"]
   | components["schemas"]["NumberPoolAttributeRead"]
+  | components["schemas"]["IPHostAttributeRead"]
   | components["schemas"]["GenericAttributeRead"];
 
 /**
