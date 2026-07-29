@@ -711,8 +711,13 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         db: InfrahubDatabase,
         schema_branch: SchemaBranch,
         jinja_template: InfrahubJinja2Template,
-    ) -> dict[str, Any]:
-        """Resolve Jinja2 template variables from local attributes and relationship peers."""
+    ) -> dict[str, Any] | None:
+        """Resolve Jinja2 template variables from local attributes and relationship peers.
+
+        Returns None when the template depends on a local attribute sourced from a pool whose
+        value has not been allocated yet. The macro cannot be rendered against the missing value
+        and must be skipped until the allocation happens.
+        """
         allowed_path_types = (
             SchemaElementPathType.ATTR_WITH_PROP
             | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
@@ -733,6 +738,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     variables[variable] = None
             elif attribute_path.is_type_attribute:
                 attribute = self.get_attribute(attribute_path.active_attribute_schema.name)
+                if attribute.from_pool and attribute.value is None:
+                    return None
                 variables[variable] = attribute.get_property(attribute_path.active_attribute_property_name)
 
         return variables
@@ -757,6 +764,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             variables = await self._resolve_jinja2_variables(
                 db=db, schema_branch=schema_branch, jinja_template=jinja_template
             )
+            if variables is None:
+                continue
 
             content = await jinja_template.render(variables=variables)
 
