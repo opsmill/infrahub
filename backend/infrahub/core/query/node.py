@@ -2143,11 +2143,18 @@ WITH %(tracked_vars)s,
         index: int,
     ) -> FieldAttributeRequirement:
         """Build a FieldAttributeRequirement for an attribute/relationship filter."""
+        filter_value = attr_value.value if isinstance(attr_value, Enum) else attr_value
+
+        # The value reaches Cypher both through the filter subquery and through the WHERE clause built
+        # from this requirement, so it has to carry the stored spelling before either of them reads it.
+        if isinstance(field, AttributeSchema):
+            filter_value = field.normalize_query_value(filter_name=attr_name, filter_value=filter_value)
+
         return FieldAttributeRequirement(
             field_name=field_name,
             field=field,
             field_attr_name=attr_name,
-            field_attr_value=attr_value.value if isinstance(attr_value, Enum) else attr_value,
+            field_attr_value=filter_value,
             index=index,
             types=[FieldAttributeRequirementType.FILTER],
         )

@@ -32,6 +32,7 @@ from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship, RelationshipManager
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import (
+    AttributeSchema,
     GenericSchema,
     MainSchemaTypes,
     NodeSchema,
@@ -66,6 +67,26 @@ def identify_node_class(node: NodeToProcess) -> type[Node]:
                 return registry.node[parent]
 
     return Node
+
+
+def _normalize_hfid(paths: list[str], schema: MainSchemaTypes, hfid: list[str]) -> list[str]:
+    """Return the HFID components spelled the way the graph stores them.
+
+    An HFID is resolved by matching the string a node stored, so a component read from an attribute
+    that normalises what it is given has to be normalised as lookup input too. A component reached
+    through a relationship is left alone, as is one whose field is not an attribute value.
+    """
+    normalized: list[str] = []
+
+    for path, component in zip(paths, hfid, strict=True):
+        field_name, _, property_name = path.partition("__")
+        field = schema.get_field(field_name, raise_on_error=False) if property_name == "value" else None
+        if isinstance(field, AttributeSchema):
+            normalized.append(field.normalize_query_value(filter_name="value", filter_value=component))
+        else:
+            normalized.append(component)
+
+    return normalized
 
 
 def get_schema[SchemaProtocol](
@@ -775,7 +796,12 @@ class NodeManager:
             )
 
         query = await NodeGetByHFIDQuery.init(
-            db=db, branch=branch, at=at, node_kind=kind_str, hfids=[hfid], branch_agnostic=branch_agnostic
+            db=db,
+            branch=branch,
+            at=at,
+            node_kind=kind_str,
+            hfids=[_normalize_hfid(paths=node_schema.human_friendly_id, schema=node_schema, hfid=hfid)],
+            branch_agnostic=branch_agnostic,
         )
         await query.execute(db=db)
         node_uuids = query.get_node_uuids()

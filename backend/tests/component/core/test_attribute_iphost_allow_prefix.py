@@ -144,6 +144,29 @@ async def _active_stored_value(db: InfrahubDatabase, node_id: str, attribute_nam
     return records[0]["value"]
 
 
+async def _matching_ids(db: InfrahubDatabase, branch: Branch, **filters: Any) -> list[str]:
+    nodes = await NodeManager.query(db=db, schema=DNS_RECORD_KIND, branch=branch, filters=filters)
+    return [node.id for node in nodes]
+
+
+async def _run_query(db: InfrahubDatabase, branch: Branch, query: str, variables: dict[str, Any]) -> ExecutionResult:
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    return await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values=variables,
+    )
+
+
+async def _queried_ids(db: InfrahubDatabase, branch: Branch, query: str, variables: dict[str, Any]) -> list[str]:
+    result = await _run_query(db=db, branch=branch, query=query, variables=variables)
+    assert result.errors is None
+    assert result.data
+    return [edge["node"]["id"] for edge in result.data["TestingDnsRecord"]["edges"]]
+
+
 async def _run_mutation(
     db: InfrahubDatabase, branch: Branch, mutation: str, variables: dict[str, Any]
 ) -> ExecutionResult:
@@ -652,6 +675,159 @@ class TestTheUpdatePath:
         assert reloaded.dns_target.value == "10.0.0.9"
         assert await _active_stored_value(db=db, node_id=other.id, attribute_name="mgmt_ip") == "10.0.0.1"
         assert reloaded.mgmt_ip.value == "10.0.0.1/32"
+
+
+FILTER_BY_TARGET_QUERY = """
+query FindRecord($value: String!) {
+    TestingDnsRecord(dns_target__value: $value) {
+        edges { node { id } }
+    }
+}
+"""
+
+FILTER_BY_MGMT_IP_QUERY = """
+query FindRecord($value: String!) {
+    TestingDnsRecord(mgmt_ip__value: $value) {
+        edges { node { id } }
+    }
+}
+"""
+
+LOOKUP_BY_HFID_QUERY = """
+query FindRecord($hfid: [String]!) {
+    TestingDnsRecord(hfid: $hfid) {
+        edges { node { id } }
+    }
+}
+"""
+
+
+class TestLookupInput:
+    """A value used as lookup input reaches the node that stored it under the other spelling.
+
+    A declared attribute stores one spelling of an address, so a lookup written against the redundant
+    host mask has to resolve to it -- otherwise an idempotent upsert written against the masked form
+    never finds the node it already created. The undeclared control keeps the lookup behaviour it has
+    always had, which is to match only the spelling the graph holds.
+    """
+
+    @pytest.fixture
+    async def saved_record(self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None) -> Node:
+        node = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+        await node.new(db=db, dns_target="10.0.0.1", v6_target="2001:db8::1", mgmt_ip="10.0.0.1")
+        await node.save(db=db)
+        return node
+
+    async def test_a_declared_attribute_is_found_by_either_spelling(
+        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+    ) -> None:
+        for value in ("10.0.0.1", "10.0.0.1/32"):
+            assert await _matching_ids(db=db, branch=default_branch, dns_target__value=value) == [saved_record.id]
+            assert (
+                await NodeManager.count(
+                    db=db, schema=DNS_RECORD_KIND, branch=default_branch, filters={"dns_target__value": value}
+                )
+                == 1
+            )
+
+        for value in ("2001:db8::1", "2001:db8::1/128"):
+            assert await _matching_ids(db=db, branch=default_branch, v6_target__value=value) == [saved_record.id]
+
+    async def test_a_declared_attribute_is_found_by_either_spelling_in_a_list_filter(
+        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+    ) -> None:
+        assert await _matching_ids(db=db, branch=default_branch, dns_target__values=["10.0.0.1/32"]) == [
+            saved_record.id
+        ]
+        assert await _matching_ids(db=db, branch=default_branch, dns_target__values=["10.0.0.1"]) == [saved_record.id]
+
+    async def test_an_undeclared_attribute_is_found_only_by_the_spelling_it_stored(
+        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+    ) -> None:
+        """The control: an attribute that accepts a prefix keeps matching on the stored spelling alone."""
+        assert await _matching_ids(db=db, branch=default_branch, mgmt_ip__value="10.0.0.1/32") == [saved_record.id]
+        assert await _matching_ids(db=db, branch=default_branch, mgmt_ip__value="10.0.0.1") == []
+        assert await _matching_ids(db=db, branch=default_branch, mgmt_ip__values=["10.0.0.1"]) == []
+
+    async def test_a_subnet_prefix_matches_nothing_and_reports_nothing(
+        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+    ) -> None:
+        """A prefix a declared attribute can never hold is not rewritten into an address it can.
+
+        A lookup is not a write, so the answer is an empty result rather than an error: rejecting it
+        here would make a read fail where it has always simply found nothing.
+        """
+        assert await _matching_ids(db=db, branch=default_branch, dns_target__value="10.0.0.1/24") == []
+        assert await _matching_ids(db=db, branch=default_branch, v6_target__value="2001:db8::1/64") == []
+        assert await _matching_ids(db=db, branch=default_branch, mgmt_ip__value="10.0.0.1/24") == []
+
+    async def test_a_value_that_is_not_an_address_matches_nothing_and_reports_nothing(
+        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+    ) -> None:
+        assert await _matching_ids(db=db, branch=default_branch, dns_target__value="not-an-address") == []
+        assert await _matching_ids(db=db, branch=default_branch, mgmt_ip__value="not-an-address") == []
+
+    async def test_a_graphql_filter_accepts_either_spelling(
+        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+    ) -> None:
+        for value in ("10.0.0.1", "10.0.0.1/32"):
+            assert await _queried_ids(
+                db=db, branch=default_branch, query=FILTER_BY_TARGET_QUERY, variables={"value": value}
+            ) == [saved_record.id]
+
+        assert (
+            await _queried_ids(
+                db=db, branch=default_branch, query=FILTER_BY_TARGET_QUERY, variables={"value": "10.0.0.1/24"}
+            )
+            == []
+        )
+
+        assert await _queried_ids(
+            db=db, branch=default_branch, query=FILTER_BY_MGMT_IP_QUERY, variables={"value": "10.0.0.1/32"}
+        ) == [saved_record.id]
+        assert (
+            await _queried_ids(
+                db=db, branch=default_branch, query=FILTER_BY_MGMT_IP_QUERY, variables={"value": "10.0.0.1"}
+            )
+            == []
+        )
+
+    async def test_hfid_lookup_accepts_the_returned_hfid_and_the_masked_spelling(
+        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+    ) -> None:
+        assert await saved_record.get_hfid(db=db) == ["10.0.0.1"]
+
+        for hfid in (["10.0.0.1"], ["10.0.0.1/32"]):
+            found = await NodeManager.get_one_by_hfid(
+                db=db, hfid=hfid, kind=DNS_RECORD_KIND, branch=default_branch, raise_on_error=True
+            )
+            assert found.id == saved_record.id
+
+        assert (
+            await NodeManager.get_one_by_hfid(db=db, hfid=["10.0.0.1/24"], kind=DNS_RECORD_KIND, branch=default_branch)
+            is None
+        )
+        assert (
+            await NodeManager.get_one_by_hfid(
+                db=db, hfid=["not-an-address"], kind=DNS_RECORD_KIND, branch=default_branch
+            )
+            is None
+        )
+
+    async def test_a_graphql_hfid_lookup_accepts_either_spelling(
+        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+    ) -> None:
+        for hfid in (["10.0.0.1"], ["10.0.0.1/32"]):
+            assert await _queried_ids(
+                db=db, branch=default_branch, query=LOOKUP_BY_HFID_QUERY, variables={"hfid": hfid}
+            ) == [saved_record.id]
+
+        assert (
+            await _queried_ids(
+                db=db, branch=default_branch, query=LOOKUP_BY_HFID_QUERY, variables={"hfid": ["10.0.0.1/24"]}
+            )
+            == []
+        )
 
 
 class TestGeneratedKindsInheritTheDeclaration:

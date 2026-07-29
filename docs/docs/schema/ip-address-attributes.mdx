@@ -64,6 +64,10 @@ The bare value is the value everywhere else too:
 - GraphQL and the REST API return the bare address, on both creation and update.
 - Display labels and human-friendly identifiers built from the attribute carry no mask, so an `hfid`
   returned by a query can be fed straight back in as a lookup value.
+- A lookup accepts either spelling. An attribute filter or an `hfid` written as `10.0.0.1/32` resolves
+  to the node holding `10.0.0.1`, so an idempotent upsert written against the masked form finds the
+  object it already created rather than creating a duplicate. A value carrying a real subnet prefix is
+  not rewritten and matches nothing.
 - A uniqueness constraint sees one value per address. `10.0.0.1` and `10.0.0.1/32` are the same value
   and collide with each other.
 - A `default_value` of `10.0.0.1/32` is recorded as `10.0.0.1`, so the default matches what a node

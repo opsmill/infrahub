@@ -37,6 +37,26 @@ def get_attribute_schema_class_for_kind(kind: str) -> type[AttributeSchema]:
     return attribute_schema_class_by_kind.get(kind, AttributeSchema)
 
 
+def _bare_host_address(value: Any) -> str | None:
+    """Return an address stripped of its redundant host mask, or None when it does not carry one.
+
+    A value that is not an address, or that carries a real subnet prefix, has no bare form: rewriting
+    it would turn input that an attribute can never hold into input that it can.
+    """
+    if not isinstance(value, str):
+        return None
+
+    try:
+        interface = ip_interface(value)
+    except ValueError:
+        return None
+
+    if interface.network.prefixlen != interface.ip.max_prefixlen:
+        return None
+
+    return str(interface.ip)
+
+
 class AttributeSchema(GeneratedAttributeSchema):
     _sort_by: list[str] = ["name"]
     _enum_class: type[enum.Enum] | None = None
@@ -233,6 +253,13 @@ class AttributeSchema(GeneratedAttributeSchema):
     def get_max_length(self) -> int | None:
         return self.max_length
 
+    def normalize_query_value(self, filter_name: str, filter_value: Any) -> Any:  # noqa: ARG002
+        """Return a value used to look this attribute up in the spelling the graph holds it in.
+
+        A kind that stores a value exactly as it was given has nothing to translate.
+        """
+        return filter_value
+
     async def get_query_filter(
         self,
         name: str,
@@ -246,6 +273,8 @@ class AttributeSchema(GeneratedAttributeSchema):
     ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
         if self.enum:
             filter_value = self.convert_enum_to_value(filter_value)
+
+        filter_value = self.normalize_query_value(filter_name=filter_name, filter_value=filter_value)
 
         return await default_attribute_query_filter(
             name=name,
@@ -326,18 +355,30 @@ class IPHostAttributeSchema(AttributeSchema):
         that cannot be parsed, or that carries a real subnet prefix, is left untouched here so the
         format validation applied to default values stays the single place that reports it.
         """
-        if self.parameters.allow_prefix or not isinstance(self.default_value, str):
+        if self.parameters.allow_prefix:
             return self
 
-        try:
-            interface = ip_interface(self.default_value)
-        except ValueError:
-            return self
-
-        if interface.network.prefixlen == interface.ip.max_prefixlen:
-            self.default_value = str(interface.ip)
+        bare_address = _bare_host_address(value=self.default_value)
+        if bare_address is not None:
+            self.default_value = bare_address
 
         return self
+
+    def normalize_query_value(self, filter_name: str, filter_value: Any) -> Any:
+        """Return an address used to look this attribute up in the spelling the graph holds it in.
+
+        An attribute that refuses a prefix holds exactly one spelling of an address, so a lookup
+        written against the redundant host mask has to reach it. A value the attribute could never
+        hold -- a real subnet prefix, or something that is not an address at all -- is handed back
+        untouched, so it goes on matching nothing instead of being rewritten into one that matches.
+        """
+        if self.parameters.allow_prefix or filter_name not in ("value", "values"):
+            return filter_value
+
+        if isinstance(filter_value, list):
+            return [_bare_host_address(value=item) or item for item in filter_value]
+
+        return _bare_host_address(value=filter_value) or filter_value
 
 
 attribute_schema_class_by_kind: dict[str, type[AttributeSchema]] = {
