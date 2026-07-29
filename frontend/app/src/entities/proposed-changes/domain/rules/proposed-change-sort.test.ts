@@ -1,0 +1,145 @@
+import { describe, expect, test } from "vitest";
+
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
+import { PROPOSED_CHANGE_DEFAULT_SORT } from "@/entities/proposed-changes/domain/model/proposed-change-sort";
+import {
+  computeProposedChangeSort,
+  findProposedChangeSortOption,
+  isProposedChangeDefaultSort,
+  isProposedChangeSortedByUpdatedAt,
+} from "@/entities/proposed-changes/domain/rules/proposed-change-sort";
+
+describe("computeProposedChangeSort", () => {
+  test("falls back to newest created first when nothing is applied", () => {
+    // GIVEN
+    const appliedSort: Sort[] = [];
+
+    // WHEN
+    const sort = computeProposedChangeSort(appliedSort);
+
+    // THEN
+    expect(sort).toEqual([{ field: "node_metadata__created_at", direction: "DESC" }]);
+  });
+
+  test("keeps the applied sort untouched", () => {
+    // GIVEN
+    const appliedSort: Sort[] = [{ field: "node_metadata__updated_at", direction: "ASC" }];
+
+    // WHEN
+    const sort = computeProposedChangeSort(appliedSort);
+
+    // THEN
+    expect(sort).toEqual(appliedSort);
+  });
+});
+
+describe("findProposedChangeSortOption", () => {
+  test("matches the menu option for newest created first", () => {
+    // GIVEN
+    const sort: Sort[] = [{ field: "node_metadata__created_at", direction: "DESC" }];
+
+    // WHEN
+    const option = findProposedChangeSortOption(sort);
+
+    // THEN
+    expect(option).toMatchObject({ id: "newest", label: "Newest" });
+  });
+
+  test("matches the menu option for least recently updated", () => {
+    // GIVEN
+    const sort: Sort[] = [{ field: "node_metadata__updated_at", direction: "ASC" }];
+
+    // WHEN
+    const option = findProposedChangeSortOption(sort);
+
+    // THEN
+    expect(option).toMatchObject({ id: "least-recently-updated" });
+  });
+
+  test("returns null for a sort the menu does not offer", () => {
+    // GIVEN
+    const sort: Sort[] = [{ field: "name__value", direction: "ASC" }];
+
+    // WHEN
+    const option = findProposedChangeSortOption(sort);
+
+    // THEN
+    expect(option).toBeNull();
+  });
+
+  test("returns null for a multi-key sort", () => {
+    // GIVEN
+    const sort: Sort[] = [
+      { field: "node_metadata__created_at", direction: "DESC" },
+      { field: "name__value", direction: "ASC" },
+    ];
+
+    // WHEN
+    const option = findProposedChangeSortOption(sort);
+
+    // THEN
+    expect(option).toBeNull();
+  });
+});
+
+describe("isProposedChangeSortedByUpdatedAt", () => {
+  test("is true when the update date drives the order", () => {
+    // GIVEN
+    const sort: Sort[] = [{ field: "node_metadata__updated_at", direction: "DESC" }];
+
+    // WHEN
+    const isSortedByUpdatedAt = isProposedChangeSortedByUpdatedAt(sort);
+
+    // THEN
+    expect(isSortedByUpdatedAt).toBe(true);
+  });
+
+  test("is false when the update date is only a secondary key", () => {
+    // GIVEN
+    const sort: Sort[] = [
+      { field: "name__value", direction: "ASC" },
+      { field: "node_metadata__updated_at", direction: "DESC" },
+    ];
+
+    // WHEN
+    const isSortedByUpdatedAt = isProposedChangeSortedByUpdatedAt(sort);
+
+    // THEN
+    expect(isSortedByUpdatedAt).toBe(false);
+  });
+
+  test("is false for the default order", () => {
+    // GIVEN
+    const sort = computeProposedChangeSort([]);
+
+    // WHEN
+    const isSortedByUpdatedAt = isProposedChangeSortedByUpdatedAt(sort);
+
+    // THEN
+    expect(isSortedByUpdatedAt).toBe(false);
+  });
+});
+
+describe("isProposedChangeDefaultSort", () => {
+  test("is true for newest created first", () => {
+    // GIVEN
+    const sort = PROPOSED_CHANGE_DEFAULT_SORT;
+
+    // WHEN
+    const isDefault = isProposedChangeDefaultSort(sort);
+
+    // THEN
+    expect(isDefault).toBe(true);
+  });
+
+  test("is false when only the direction differs", () => {
+    // GIVEN
+    const sort: Sort = { field: "node_metadata__created_at", direction: "ASC" };
+
+    // WHEN
+    const isDefault = isProposedChangeDefaultSort(sort);
+
+    // THEN
+    expect(isDefault).toBe(false);
+  });
+});

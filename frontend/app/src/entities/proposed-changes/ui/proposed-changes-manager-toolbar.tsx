@@ -9,6 +9,7 @@ import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/activ
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectItemsHeader } from "@/entities/nodes/object/ui/object-items-header";
 import type { Permission } from "@/entities/permission/domain/model/permission";
+import { ProposedChangesSortMenu } from "@/entities/proposed-changes/ui/proposed-changes-sort-menu";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface ProposedChangesManagerToolbarProps {
@@ -28,6 +29,8 @@ export function ProposedChangesManagerToolbar({
 
       <Row className="p-2">
         <FilterSearchInput schema={schema} />
+
+        <ProposedChangesSortMenu schema={schema} />
 
         <ActiveObjectFilterTags schema={schema} className="p-0" />
 

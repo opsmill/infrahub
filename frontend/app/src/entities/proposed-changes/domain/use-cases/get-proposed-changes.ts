@@ -7,6 +7,7 @@ import {
   getProposedChangesFromApi,
   type ProposedChangesFromApiParams,
 } from "@/entities/proposed-changes/api/get-proposed-changes-from-api";
+import { computeProposedChangeSort } from "@/entities/proposed-changes/domain/rules/proposed-change-sort";
 
 export type ProposedChangeNode = {
   id: string;
@@ -40,10 +41,12 @@ export type GetProposedChangesResult = PaginatedResponse<ProposedChangeItem>;
 export const getProposedChanges = async ({
   getAttributesVisible = getAttributesVisibleInListView,
   getRelationshipsVisible = getRelationshipsVisibleInListView,
+  sort,
   ...params
 }: GetProposedChangesParams): Promise<GetProposedChangesResult> => {
   const { data, errors } = await getProposedChangesFromApi({
     ...params,
+    sort: computeProposedChangeSort(sort ?? []),
     getAttributesVisible,
     getRelationshipsVisible,
   });

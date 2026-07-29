@@ -20,9 +20,14 @@ import { TASK_OBJECT } from "@/entities/tasks/domain/model/task";
 
 type ProposedChangesItemProps = {
   proposedChange: ProposedChangeItem;
+  /** Surfaces the update date, so a row ordered by it can be read as ordered. */
+  showUpdatedAt?: boolean;
 };
 
-export const ProposedChangesItem = ({ proposedChange }: ProposedChangesItemProps) => {
+export const ProposedChangesItem = ({
+  proposedChange,
+  showUpdatedAt,
+}: ProposedChangesItemProps) => {
   const { permission } = useObjectTableContext();
   const { node, metadata } = proposedChange;
 
@@ -37,6 +42,7 @@ export const ProposedChangesItem = ({ proposedChange }: ProposedChangesItemProps
           isDraft={!!node.is_draft?.value}
           isApproved={!!node.approved_by.edges.length}
           createdAt={metadata.created_at}
+          updatedAt={showUpdatedAt ? metadata.updated_at : null}
           branchName={node.source_branch?.value}
         />
 
@@ -65,6 +71,7 @@ type ProposedChangesInfoProps = {
   isDraft: boolean;
   isApproved: boolean;
   createdAt: string | null;
+  updatedAt?: string | null;
   branchName?: string;
 };
 
@@ -75,6 +82,7 @@ const ProposedChangesInfo = ({
   isDraft,
   isApproved,
   createdAt,
+  updatedAt,
   branchName,
 }: ProposedChangesInfoProps) => {
   return (
@@ -108,6 +116,12 @@ const ProposedChangesInfo = ({
             {branchName}
           </span>
           Opened <DateDisplay date={createdAt} /> by {author}
+          {updatedAt && (
+            <>
+              <Icon icon={"mdi:clock-outline"} />
+              updated <DateDisplay date={updatedAt} />
+            </>
+          )}
         </span>
       </div>
     </div>
