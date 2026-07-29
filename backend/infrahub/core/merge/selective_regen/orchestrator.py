@@ -28,15 +28,23 @@ if TYPE_CHECKING:
 class RegenerationSelector(Protocol):
     """Computes which definitions and members a merge diff requires be regenerated."""
 
-    async def build_plan(self, diff_summary: list[NodeDiff], target_branch: str) -> SelectiveRegenerationPlan: ...
+    async def build_plan(self, diff_summary: list[NodeDiff], target_branch: str) -> SelectiveRegenerationPlan:
+        """Return the plan for a merge diff: one entry per participant, tagged with its cascade role."""
+        ...
 
     async def reselect_from_cascade_output(
         self, diff_summary: list[NodeDiff], target_branch: str
-    ) -> list[PlannedRegeneration]: ...
+    ) -> list[PlannedRegeneration]:
+        """Re-select the entries a cascade source's captured output requires, excluding the sources."""
+        ...
 
-    def consolidate_submissions(self, entries: Sequence[PlannedRegeneration]) -> list[PlannedRegeneration]: ...
+    def consolidate_submissions(self, entries: Sequence[PlannedRegeneration]) -> list[PlannedRegeneration]:
+        """Collapse the entries into one dispatchable entry per workflow, deduped by their owner."""
+        ...
 
-    def terminal_full_regenerations(self, target_branch: str) -> list[FullRegeneration]: ...
+    def terminal_full_regenerations(self, target_branch: str) -> list[FullRegeneration]:
+        """The blanket regeneration for every terminal, for when a source's output is unavailable."""
+        ...
 
 
 class MergeSelectiveRegeneration(RegenerationSelector):
