@@ -56,6 +56,7 @@ from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
+from infrahub.utils import log_exception_guard
 from infrahub.workers.dependencies import (
     get_cache,
     get_client,
@@ -320,7 +321,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     for event in events:
         await event_service.send(event)
 
-    try:
+    with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
         schema_name = (
             user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
         )
@@ -330,8 +331,6 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
         )
         await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
-    except Exception:
-        log.exception("Failed to submit the coalesced post-rebase recompute")
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
