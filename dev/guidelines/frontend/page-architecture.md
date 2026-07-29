@@ -98,7 +98,7 @@ If the client needs to *display* a server-side default, surface it via the API (
 
 ## Pagination and sort-change: know the current tradeoff
 
-The header-sort-menu spec (`dev/specs/002-header-sort-menu/spec.md`, FR-010) intentionally keeps the pagination offset unchanged when the active sort changes, matching how filter changes already behave — today's implementation and its regression test both assert the offset is preserved. At scale (verified with ~10k rows) this produces a page-stitching bug: from a deep offset, changing sort direction shows the tail of the new order immediately followed by rows from the old, now-inconsistent offset. The reviewer-recommended fix — reset the offset to its default (`offset: 0`) whenever sort changes — was deferred to a follow-up PR (see PR #9948) rather than applied immediately.
+Object list sorting today intentionally keeps the pagination offset unchanged when the active sort changes, matching how filter changes already behave. At scale (verified with ~10k rows) this produces a page-stitching bug: from a deep offset, changing sort direction shows the tail of the new order immediately followed by rows from the old, now-inconsistent offset. That fix — resetting the offset to its default (`offset: 0`) whenever sort changes — has not landed yet.
 
 For any *new* offset-paginated list that supports both sorting and pagination, prefer resetting the offset to its default value on sort change rather than repeating this known tradeoff.
 
@@ -112,7 +112,7 @@ For any *new* offset-paginated list that supports both sorting and pagination, p
 | Two selectors with ~50% duplicated UI | Extract a `KindMultiSelect` / shared block once both exist |
 | Hand-rolling `gql` + `graphqlClient.query` in a `ui/` file | Use the entity layer (`useGetObject`, `ui/queries/`) |
 | Hardcoding `HIDDEN_NAMESPACES` on the client | Backend-authoritative; surface via schema if needed |
-| Sort change preserving pagination offset at scale — page-stitching bug (PR #9948, fix deferred to a follow-up PR) | Reset the offset to its default (`0`) on sort change, once implemented |
+| Sort change preserving pagination offset at scale — page-stitching bug, fix not yet landed | Reset the offset to its default (`0`) on sort change, once implemented |
 
 ## See also
 
