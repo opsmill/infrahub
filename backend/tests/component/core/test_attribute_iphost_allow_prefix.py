@@ -11,24 +11,41 @@ import re
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 import pytest
 
+from infrahub.core import registry
+from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.merger.merger import DiffMerger
+from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffConflict
+from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.constraints.attribute_uniqueness import NodeAttributeUniquenessConstraint
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import IPHostAttributeParameters, TextAttributeParameters
+from infrahub.core.timestamp import Timestamp
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import UniquenessViolationError, ValidationError
+from infrahub.pools.noop_allocator import NoOpPoolAllocator
+from infrahub.profiles.node_applier import NodeProfilesApplier
+from infrahub.templates.node_applier import NodeTemplateApplier
 from tests.helpers.schema import load_schema
 from tests.helpers.schema.dns_record import DNS_RECORD_DEFINITION
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.diff.model.path import EnrichedDiffNode
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
 DNS_RECORD_KIND = "TestingDnsRecord"
+DNS_RECORD_PROFILE_KIND = "ProfileTestingDnsRecord"
+DNS_RECORD_TEMPLATE_KIND = "TemplateTestingDnsRecord"
 
 # A valid bare value for the mandatory declared attribute, so a case exercising another attribute is
 # not also fighting a missing mandatory value.
@@ -81,6 +98,32 @@ async def _stored_value_properties(db: InfrahubDatabase, node_id: str, attribute
     return dict(records[0])
 
 
+async def _set_values(db: InfrahubDatabase, branch: Branch, node_id: str, **values: str) -> None:
+    node = await NodeManager.get_one(db=db, branch=branch, id=node_id, raise_on_error=True)
+    for name, value in values.items():
+        node.get_attribute(name).value = value
+    await node.save(db=db)
+
+
+async def _branch_diff_node(db: InfrahubDatabase, branch: Branch, node_id: str) -> EnrichedDiffNode:
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    await diff_coordinator.update_branch_diff(base_branch=registry.get_branch_from_registry(), diff_branch=branch)
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    diff = await diff_repository.get_one(tracking_id=BranchTrackingId(name=branch.name), diff_branch_name=branch.name)
+    return next(node for node in diff.nodes if node.uuid == node_id)
+
+
+def _value_conflict(diff_node: EnrichedDiffNode, attribute_name: str) -> EnrichedDiffConflict | None:
+    for attribute in diff_node.attributes:
+        if attribute.name != attribute_name:
+            continue
+        for prop in attribute.properties:
+            if prop.property_type is DatabaseEdgeType.HAS_VALUE:
+                return prop.conflict
+    return None
+
+
 async def _node_ids_within(db: InfrahubDatabase, attribute_name: str, binary_prefix: str) -> set[str]:
     records = await db.execute_query(
         query=CONTAINMENT_QUERY, params={"attribute_name": attribute_name, "binary_prefix": binary_prefix}
@@ -107,6 +150,17 @@ async def dns_record_schema_unique_mgmt_ip(
 ) -> None:
     """The undeclared control needs its own uniqueness constraint to be comparable to the declared one."""
     await load_schema(db=db, schema=_dns_record_root(mgmt_ip={"unique": True}))
+
+
+@pytest.fixture
+async def dns_record_schema_in_db(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    init_nodes_registry: None,
+) -> None:
+    """The schema persisted to the graph, so a branch forked from it can be diffed and merged."""
+    await load_schema(db=db, schema=_dns_record_root(), update_db=True)
 
 
 @dataclass
@@ -394,3 +448,253 @@ class TestUniquenessAcrossInputForms:
         await other.new(db=db, dns_target="10.0.0.2/32", mgmt_ip="10.0.0.2")
 
         await constraint.check(other)
+
+
+class TestGeneratedKindsInheritTheDeclaration:
+    """The generated profile and object-template kinds behave like the kind they are derived from.
+
+    A declaration lost on either path would be invisible: the node kind would keep storing bare
+    addresses, so the feature would still look like it works while every value that reached a node
+    through a profile or a template carried a mask.
+
+    `dns_target` is absent from both generated kinds because unique attributes are excluded from them,
+    so `v6_target` is the declared attribute under test and `mgmt_ip` remains the undeclared control.
+    """
+
+    async def test_the_declaration_reaches_the_generated_kinds(
+        self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None
+    ) -> None:
+        for kind in (DNS_RECORD_KIND, DNS_RECORD_PROFILE_KIND, DNS_RECORD_TEMPLATE_KIND):
+            schema = registry.schema.get(name=kind, branch=default_branch, duplicate=False)
+
+            assert schema.get_attribute("v6_target").parameters == IPHostAttributeParameters(allow_prefix=False)
+            assert schema.get_attribute("mgmt_ip").parameters == IPHostAttributeParameters(allow_prefix=True)
+
+    async def test_a_profile_validates_and_normalises_like_a_node(
+        self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None
+    ) -> None:
+        rejected = await Node.init(db=db, schema=DNS_RECORD_PROFILE_KIND, branch=default_branch)
+        error = _rejected_for_subnet_prefix("2001:db8::1/64", "v6_target")
+
+        with pytest.raises(ValidationError, match=rf"^{re.escape(error)}$"):
+            await rejected.new(db=db, profile_name="rejected", profile_priority=1000, v6_target="2001:db8::1/64")
+
+        profile = await Node.init(db=db, schema=DNS_RECORD_PROFILE_KIND, branch=default_branch)
+        await profile.new(
+            db=db,
+            profile_name="accepted",
+            profile_priority=1000,
+            v6_target="2001:db8::1/128",
+            mgmt_ip="10.0.0.1",
+        )
+        await profile.save(db=db)
+
+        reloaded = await NodeManager.get_one(db=db, id=profile.id, branch=default_branch, raise_on_error=True)
+        assert reloaded.v6_target.value == "2001:db8::1"
+        assert reloaded.mgmt_ip.value == "10.0.0.1/32"
+
+    async def test_a_node_receives_the_bare_value_from_its_profile(
+        self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None
+    ) -> None:
+        profile = await Node.init(db=db, schema=DNS_RECORD_PROFILE_KIND, branch=default_branch)
+        await profile.new(
+            db=db,
+            profile_name="dns-defaults",
+            profile_priority=1000,
+            v6_target="2001:db8::1/128",
+            mgmt_ip="10.0.0.1",
+        )
+        await profile.save(db=db)
+
+        node = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+        await node.new(db=db, dns_target=FILLER_TARGET)
+        await node.save(db=db)
+        await node.profiles.update(db=db, data=[profile])
+        await node.save(db=db)
+
+        applier = NodeProfilesApplier(db=db, branch=default_branch)
+        assert sorted(await applier.apply_profiles(node=node)) == ["mgmt_ip", "v6_target"]
+        await node.save(db=db)
+
+        reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch, raise_on_error=True)
+        assert reloaded.v6_target.value == "2001:db8::1"
+        assert reloaded.mgmt_ip.value == "10.0.0.1/32"
+
+    async def test_a_template_validates_and_normalises_like_a_node(
+        self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None
+    ) -> None:
+        template_schema = registry.schema.get_template_schema(name=DNS_RECORD_TEMPLATE_KIND, branch=default_branch)
+        rejected = await Node.init(db=db, schema=template_schema, branch=default_branch)
+        error = _rejected_for_subnet_prefix("2001:db8::1/64", "v6_target")
+
+        with pytest.raises(ValidationError, match=rf"^{re.escape(error)}$"):
+            await rejected.new(db=db, template_name="rejected", v6_target="2001:db8::1/64")
+
+        template = await Node.init(db=db, schema=template_schema, branch=default_branch)
+        await template.new(db=db, template_name="accepted", v6_target="2001:db8::1/128", mgmt_ip="10.0.0.1")
+        await template.save(db=db)
+
+        reloaded = await NodeManager.get_one(db=db, id=template.id, branch=default_branch, raise_on_error=True)
+        assert reloaded.v6_target.value == "2001:db8::1"
+        assert reloaded.mgmt_ip.value == "10.0.0.1/32"
+
+    async def test_a_node_receives_the_bare_value_from_its_template(
+        self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None
+    ) -> None:
+        template_schema = registry.schema.get_template_schema(name=DNS_RECORD_TEMPLATE_KIND, branch=default_branch)
+        template = await Node.init(db=db, schema=template_schema, branch=default_branch)
+        await template.new(db=db, template_name="dns-defaults", v6_target="2001:db8::1/128", mgmt_ip="10.0.0.1")
+        await template.save(db=db)
+
+        applier = NodeTemplateApplier(db=db, branch=default_branch, pool_allocator=NoOpPoolAllocator())
+        fields = await applier.apply(
+            template=template,
+            target_schema=registry.schema.get_node_schema(name=DNS_RECORD_KIND, branch=default_branch),
+            target_id=str(uuid4()),
+            user_fields={"dns_target": FILLER_TARGET},
+        )
+
+        assert fields["v6_target"]["value"] == "2001:db8::1"
+        assert fields["mgmt_ip"]["value"] == "10.0.0.1/32"
+
+        node = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+        await node.new(db=db, **fields)
+        await node.save(db=db)
+
+        reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch, raise_on_error=True)
+        assert reloaded.v6_target.value == "2001:db8::1"
+        assert reloaded.mgmt_ip.value == "10.0.0.1/32"
+
+
+class TestBranchMerge:
+    async def test_the_declaration_and_its_rejection_survive_a_schema_merge(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        init_nodes_registry: None,
+    ) -> None:
+        """A declaration authored on a branch keeps working once it reaches the target branch."""
+        branch = await create_branch(db=db, branch_name="declare-bare-addresses")
+        await load_schema(db=db, schema=_dns_record_root(), branch_name=branch.name, update_db=True)
+
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+        await diff_merger.merge_graph(at=Timestamp())
+
+        merged_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        registry.schema.set_schema_branch(name=default_branch.name, schema=merged_schema)
+        merged_record = merged_schema.get(name=DNS_RECORD_KIND, duplicate=False)
+
+        assert merged_record.get_attribute("dns_target").parameters == IPHostAttributeParameters(allow_prefix=False)
+        assert merged_record.get_attribute("v6_target").parameters == IPHostAttributeParameters(allow_prefix=False)
+        assert merged_record.get_attribute("mgmt_ip").parameters == IPHostAttributeParameters(allow_prefix=True)
+
+        rejected = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+        error = _rejected_for_subnet_prefix("10.0.0.1/24", "dns_target")
+
+        with pytest.raises(ValidationError, match=rf"^{re.escape(error)}$"):
+            await rejected.new(db=db, dns_target="10.0.0.1/24")
+
+        accepted = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+        await accepted.new(db=db, dns_target="10.0.0.1/32", mgmt_ip="10.0.0.1/24")
+        await accepted.save(db=db)
+
+        reloaded = await NodeManager.get_one(db=db, id=accepted.id, branch=default_branch, raise_on_error=True)
+        assert reloaded.dns_target.value == "10.0.0.1"
+        assert reloaded.mgmt_ip.value == "10.0.0.1/24"
+
+    async def test_divergent_edits_on_either_flavour_still_conflict(
+        self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema_in_db: None
+    ) -> None:
+        """Two branches picking genuinely different addresses conflict, declared attribute or not.
+
+        This is the floor the convergence expectation is measured against: without it, a reported
+        absence of conflict could just as well mean the diff never looked at the attribute.
+        """
+        record = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+        await record.new(db=db, dns_target="10.0.0.100", mgmt_ip="10.0.0.100")
+        await record.save(db=db)
+
+        branch = await create_branch(db=db, branch_name="divergent-addresses")
+        await _set_values(db=db, branch=branch, node_id=record.id, dns_target="10.0.0.2", mgmt_ip="10.0.0.2/24")
+        await _set_values(db=db, branch=default_branch, node_id=record.id, dns_target="10.0.0.3", mgmt_ip="10.0.0.3/24")
+
+        diff_node = await _branch_diff_node(db=db, branch=branch, node_id=record.id)
+
+        assert _value_conflict(diff_node, "dns_target") is not None
+        assert _value_conflict(diff_node, "mgmt_ip") is not None
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "An attribute value is normalised when it is constructed but not when it is updated, so the two"
+            " input forms reach the graph unchanged and still read as two different values. Remove this"
+            " marker once updating an attribute stores its canonical form."
+        ),
+    )
+    async def test_input_forms_that_converge_on_one_value_do_not_conflict(
+        self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema_in_db: None
+    ) -> None:
+        """Bare and host-masked edits of a declared attribute are the same edit, so a merge sees no conflict.
+
+        The undeclared control is the same shape one prefix apart: there a bare address and a host mask
+        also mean the same thing, while a real subnet prefix does not, so only the declared attribute
+        can converge on a value the other side spelled differently.
+        """
+        record = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+        await record.new(db=db, dns_target="10.0.0.100", mgmt_ip="10.0.0.100")
+        await record.save(db=db)
+
+        branch = await create_branch(db=db, branch_name="converging-addresses")
+        await _set_values(db=db, branch=branch, node_id=record.id, dns_target="10.0.0.1", mgmt_ip="10.0.0.1")
+        await _set_values(
+            db=db, branch=default_branch, node_id=record.id, dns_target="10.0.0.1/32", mgmt_ip="10.0.0.1/24"
+        )
+
+        diff_node = await _branch_diff_node(db=db, branch=branch, node_id=record.id)
+
+        assert _value_conflict(diff_node, "dns_target") is None
+        assert _value_conflict(diff_node, "mgmt_ip") is not None
+
+
+class TestAttributeKindChange:
+    """Today a declaration is dropped without a word when the attribute stops being an `IPHost`.
+
+    The parameters of an attribute are re-typed from its kind, and fields the target kind does not know
+    about are discarded. That silence is accepted for now; these assertions exist so that changing it
+    is a deliberate act rather than an accident.
+    """
+
+    def test_leaving_iphost_drops_the_declaration_from_a_schema_payload(self) -> None:
+        declared = _dns_record_root().nodes[0].get_attribute("dns_target")
+        assert declared.parameters == IPHostAttributeParameters(allow_prefix=False)
+
+        retyped = _dns_record_root(dns_target={"kind": "Text"}).nodes[0].get_attribute("dns_target")
+
+        assert retyped.parameters == TextAttributeParameters()
+
+    def test_leaving_iphost_drops_the_declaration_from_a_loaded_schema(self) -> None:
+        declared = _dns_record_root().nodes[0].get_attribute("dns_target")
+
+        retyped = AttributeSchema(name=declared.name, kind="Text", parameters=declared.parameters)
+
+        assert retyped.parameters == TextAttributeParameters()
+
+    def test_returning_to_iphost_restores_the_permissive_default(self) -> None:
+        retyped = AttributeSchema(
+            name="dns_target", kind="Text", parameters=IPHostAttributeParameters(allow_prefix=False)
+        )
+
+        restored = AttributeSchema(name="dns_target", kind="IPHost", parameters=retyped.parameters)
+
+        assert restored.parameters == IPHostAttributeParameters(allow_prefix=True)
+
+    def test_a_change_that_keeps_the_kind_keeps_the_declaration(self) -> None:
+        """Pairing the drop with a re-parse that keeps the kind, so the cause is the kind and nothing else."""
+        edited = _dns_record_root(dns_target={"description": "The address this record resolves to"}).nodes[0]
+
+        assert edited.get_attribute("dns_target").parameters == IPHostAttributeParameters(allow_prefix=False)
+        assert edited.get_attribute("mgmt_ip").parameters == IPHostAttributeParameters(allow_prefix=True)
