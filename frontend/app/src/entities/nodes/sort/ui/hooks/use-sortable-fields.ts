@@ -10,9 +10,11 @@ import {
 } from "@/entities/nodes/sort/domain/rules/sort-field";
 import {
   NODE_METADATA_SORT_OPTIONS,
+  PEER_LABEL_SEPARATOR,
   type SortableField,
 } from "@/entities/nodes/sort/ui/sort-options";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { getRelationshipLabel } from "@/entities/schema/domain/rules/get-relationship-label";
 import { resolveSchema } from "@/entities/schema/domain/rules/resolve-schema";
 import {
   genericSchemasAtom,
@@ -20,9 +22,6 @@ import {
   profileSchemasAtom,
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
-
-// "Peer › Attribute" separator. En-spaces (U+2002) around the chevron keep it from looking cramped.
-const PEER_LABEL_SEPARATOR = " › ";
 
 /**
  * Flat list of every field a node can be sorted by: its own attributes,
@@ -39,6 +38,7 @@ export function useSortableFields(schema: ModelSchema): SortableField[] {
     .map((attribute) => ({
       field: buildAttributeSortField(attribute.name),
       label: attribute.label ?? attribute.name,
+      fieldSchema: attribute,
     }));
 
   const relationshipFields: SortableField[] = sortByOrderWeight(schema.relationships ?? [])
@@ -52,7 +52,7 @@ export function useSortableFields(schema: ModelSchema): SortableField[] {
       });
       if (!peerSchema) return [];
 
-      const relationshipLabel = relationship.label ?? relationship.name;
+      const relationshipLabel = getRelationshipLabel(relationship, peerSchema);
       const peerAttributes = (peerSchema.attributes ?? []).filter(isSortableAttribute);
 
       return sortByOrderWeight(peerAttributes).map((attribute) => {
@@ -62,6 +62,7 @@ export function useSortableFields(schema: ModelSchema): SortableField[] {
         return {
           field: buildRelationshipSortField(relationship.name, attributeField),
           label: `${relationshipLabel}${PEER_LABEL_SEPARATOR}${attributeLabel}`,
+          fieldSchema: relationship,
         };
       });
     });

@@ -157,8 +157,7 @@ class ArtifactRegenTestBase(TestInfrahubAppBase):
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:
-        workflow_recorder.execute_calls.clear()
-        workflow_recorder.submit_calls.clear()
+        workflow_recorder.reset()
 
     def _make_context(self, account: CoreAccount, default_branch: Branch) -> InfrahubContext:
         return InfrahubContext(

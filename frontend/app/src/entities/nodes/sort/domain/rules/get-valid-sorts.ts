@@ -5,6 +5,7 @@ import {
   type Sort,
   type SortField,
 } from "@/entities/nodes/sort/domain/model/sort";
+import { getSchemaDefaultSort } from "@/entities/nodes/sort/domain/rules/get-schema-default-sort";
 import { isSortableAttribute } from "@/entities/nodes/sort/domain/rules/is-sortable-attribute";
 import { isSortableRelationship } from "@/entities/nodes/sort/domain/rules/is-sortable-relationship";
 import {
@@ -21,6 +22,12 @@ import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
  */
 export function getValidSorts(sorts: Sort[], schema: ModelSchema): Sort[] {
   if (sorts.length === 0) return sorts;
+
+  // The schema's own default order can target an attribute sub-property (e.g. IP prefixes sort on
+  // `prefix__version`), which the `__value` builders never produce. These are backend-authoritative
+  // orderings, so allow custom sorts on them — otherwise editing a default-order row is silently
+  // dropped and never reaches the query.
+  const defaultOrderFields = (getSchemaDefaultSort(schema) ?? []).map((sort) => sort.field);
 
   const attributeFields = (schema.attributes ?? [])
     .filter(isSortableAttribute)
@@ -42,6 +49,7 @@ export function getValidSorts(sorts: Sort[], schema: ModelSchema): Sort[] {
   const sortableFields = new Set<SortField>([
     ...attributeFields,
     ...relationshipFields,
+    ...defaultOrderFields,
     ...NODE_METADATA_SORT_FIELDS,
   ]);
 

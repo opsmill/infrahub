@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import random
+import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
 
@@ -38,7 +39,13 @@ from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
-from .metrics import CONNECTION_POOL_USAGE, QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
+from .load_signal_registry import get_reference_query_load_tracker
+from .metrics import (
+    CONNECTION_POOL_USAGE,
+    QUERY_EXECUTION_METRICS,
+    REFERENCE_QUERY_NAME,
+    TRANSACTION_RETRIES,
+)
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -386,6 +393,7 @@ class InfrahubDatabase:
                 )
 
             with QUERY_EXECUTION_METRICS.labels(**labels).time():
+                execution_start = time.monotonic()
                 try:
                     response = await self.run_query(
                         query=query, params=params, name=name, timeout_seconds=timeout_seconds
@@ -402,8 +410,14 @@ class InfrahubDatabase:
                             message=f"Query '{name}' exceeded its execution time budget of {timeout_seconds}s"
                         ) from exc
                     raise
+                # Time the query ourselves (submission through row drain). Only READ executions of
+                # the reference query feed the database-stress signal, so a write sharing the name
+                # cannot pollute the floor or the window.
+                if name == REFERENCE_QUERY_NAME and type == QueryType.READ:
+                    get_reference_query_load_tracker().record(time.monotonic() - execution_start)
+                metadata = response._metadata or {}
                 span.set_attribute("rows", len(results))
-                return results, response._metadata or {}
+                return results, metadata
 
     async def run_query(
         self,
@@ -558,6 +572,7 @@ async def get_db(retry: int = 0) -> AsyncDriver:
             NotificationDisabledClassification.SCHEMA,
         ],
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
+        max_connection_pool_size=config.SETTINGS.database.max_connection_pool_size,
     )
 
     if config.SETTINGS.database.database_name not in validated_database:

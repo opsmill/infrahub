@@ -7,14 +7,17 @@ from infrahub_sdk.client import InfrahubClient
 
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
+from infrahub.branch.status_checker import MERGE_RECOVERY_REQUIRED_MESSAGE
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
@@ -316,6 +319,45 @@ async def test_branch_delete(
 
     assert delete_before_create.errors
     assert delete_before_create.errors[0].message == "Branch: branch3 not found."
+
+
+async def test_branch_delete_merge_failed_rejected(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    session_admin: AccountSession,
+    local_services: InfrahubServices,
+) -> None:
+    # A branch left durably in MERGE_FAILED must not be deletable until an administrator recovers it,
+    # even when the volatile write-protection cache key is absent (the routine state after a restart or
+    # cache flush) and regardless of which branch the request targets. No merge:protected key is set
+    # here, so a passing assertion proves the delete block reads the durable branch status rather than
+    # the cache key.
+    failed_branch = Branch(
+        name="merge-failed-branch",
+        status=BranchStatus.MERGE_FAILED,
+        branched_from=Timestamp().to_string(),
+        merge_started_at=Timestamp().to_string(),
+    )
+    await failed_branch.save(db=db)
+
+    assert await MergeWriteBlocker(cache=local_services.cache).get() is None
+
+    result = await graphql_mutation(
+        query='mutation { BranchDelete(data: { name: "merge-failed-branch" }) { ok } }',
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        service=local_services,
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert result.errors[0].message == MERGE_RECOVERY_REQUIRED_MESSAGE
+
+    # The guard raises before the delete workflow runs, so the branch is left intact for recovery.
+    reloaded = await Branch.get_by_name(db=db, name=failed_branch.name)
+    assert reloaded.status == BranchStatus.MERGE_FAILED
 
 
 async def test_branch_rebase_wrong_branch(

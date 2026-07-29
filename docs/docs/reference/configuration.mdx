@@ -38,6 +38,7 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_SCHEMA_STRICT_MODE` | Enable strict schema validation. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes. | boolean | True |
 | `INFRAHUB_DIFF_UPDATE_AFTER_MERGE` | When enabled, diff updates are triggered for active branches after a branch merge. | boolean | True |
 | `INFRAHUB_DELETE_BRANCH_AFTER_MERGE` | When enabled, the Infrahub branch is automatically deleted after a successful merge. | boolean | False |
+| `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE` | When enabled, only the generators and artifact definitions affected by a merge are re-executed; when disabled, every generator and artifact definition is re-executed. | boolean | True |
 | `INFRAHUB_MERGE_FAILURE_GRACE_PERIOD_SECONDS` | How long a branch may stay in MERGING with a dead merge-lock holder before it is flagged MERGE_FAILED. | integer | 180 |
 
 ## Api
@@ -48,6 +49,26 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_API_CORS_ALLOW_METHODS` | A list of HTTP verbs that are allowed for the actual request | array[string] | None |
 | `INFRAHUB_API_CORS_ALLOW_HEADERS` | The list of non-standard HTTP headers allowed in requests from the browser | array[string] | None |
 | `INFRAHUB_API_CORS_ALLOW_CREDENTIALS` | If True, cookies will be allowed to be included in cross-site HTTP requests | boolean | True |
+| `INFRAHUB_API_BACKPRESSURE_ENABLED` | Kill-switch for priority-aware API backpressure; when disabled every request passes through. | boolean | True |
+| `INFRAHUB_API_BACKPRESSURE_CODEL_TARGET_SECONDS` | CoDel target sojourn in seconds before shedding is considered. | number | 0.005 |
+| `INFRAHUB_API_BACKPRESSURE_CODEL_INTERVAL_SECONDS` | CoDel interval in seconds the sojourn must stay above target before dropping. | number | 0.1 |
+| `INFRAHUB_API_BACKPRESSURE_HIGH_TARGET_MULTIPLIER` | Multiplier applied to the CoDel target for the high-priority class. | number | 4.0 |
+| `INFRAHUB_API_BACKPRESSURE_BACKSTOP_MAX_WAITERS` | Per-class hard cap on queued waiters before requests are rejected. | integer | 1000 |
+| `INFRAHUB_API_BACKPRESSURE_RETRY_AFTER_LEVEL1_SECONDS` | Retry-After (seconds) advised for a shed request at load level 1 (mild). | integer | 1 |
+| `INFRAHUB_API_BACKPRESSURE_RETRY_AFTER_LEVEL2_SECONDS` | Retry-After (seconds) advised for a shed request at load level 2 (moderate). | integer | 5 |
+| `INFRAHUB_API_BACKPRESSURE_RETRY_AFTER_LEVEL3_SECONDS` | Retry-After (seconds) advised for a shed request at load level 3 (severe). | integer | 10 |
+| `INFRAHUB_API_BACKPRESSURE_RETRY_AFTER_MAX_SECONDS` | Upper bound on the advised Retry-After after sustained-load escalation is applied. | integer | 30 |
+| `INFRAHUB_API_BACKPRESSURE_SIGNIFICANT_LOAD_STRESS_RATIO` | Stress ratio at or above which the server is counted as under significant sustained load. | number | 20.0 |
+| `INFRAHUB_API_BACKPRESSURE_SUSTAINED_LOAD_WARN_SECONDS` | Seconds of continuous significant load after which the advised Retry-After is escalated. | number | 60.0 |
+| `INFRAHUB_API_BACKPRESSURE_SUSTAINED_LOAD_HIGH_SECONDS` | Seconds of continuous significant load after which the advised Retry-After is escalated further. | number | 300.0 |
+| `INFRAHUB_API_BACKPRESSURE_MAX_CONCURRENCY_FACTOR` | Scales the derived maximum admission concurrency. | number | 0.5 |
+| `INFRAHUB_API_BACKPRESSURE_STRESS_WINDOW_SECONDS` | Rolling window, in seconds, over which the database-stress signal is measured. | number | 20.0 |
+| `INFRAHUB_API_BACKPRESSURE_STRESS_MIN_SAMPLES` | Reference-query samples required in the window before the stress signal gates shedding. | integer | 5 |
+| `INFRAHUB_API_BACKPRESSURE_SHED_LOW_STRESS_RATIO` | Database-stress ratio at or above which low-priority requests become eligible for shedding. | number | 10.0 |
+| `INFRAHUB_API_BACKPRESSURE_SHED_MEDIUM_STRESS_RATIO` | Database-stress ratio at or above which medium-priority requests become eligible for shedding. | number | 25.0 |
+| `INFRAHUB_API_BACKPRESSURE_SHED_HIGH_STRESS_RATIO` | Database-stress ratio at or above which high-priority requests become eligible for shedding. | number | 100.0 |
+| `INFRAHUB_API_BACKPRESSURE_BACKSTOP_LOW_MULTIPLIER` | Scales the base backstop waiter cap for the low-priority class. | number | 0.5 |
+| `INFRAHUB_API_BACKPRESSURE_BACKSTOP_HIGH_MULTIPLIER` | Scales the base backstop waiter cap for the high-priority class. | number | 4.0 |
 
 ## Git
 
@@ -108,6 +129,7 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY` | Delay to add when max_concurrent_queries is reached. | number | 0.01 |
 | `INFRAHUB_DB_PATH_TRAVERSAL_QUERY_TIMEOUT` | Server-side transaction timeout in seconds for each point-to-point path-traversal query. Point-to-point traversal runs many small queries one depth at a time, so a single query that exceeds this budget marks a doomed search: it is aborted and the shallower paths found so far are returned with a truncation depth, rather than the whole request failing. | number | 30 |
 | `INFRAHUB_DB_REACHABLE_NODES_QUERY_TIMEOUT` | Server-side transaction timeout in seconds for reachable-nodes queries; the query is aborted once it is exceeded. | number | 75 |
+| `INFRAHUB_DB_MAX_CONNECTION_POOL_SIZE` | Maximum number of connections the driver keeps in its pool per remote address. | integer | 100 |
 
 ## Broker
 

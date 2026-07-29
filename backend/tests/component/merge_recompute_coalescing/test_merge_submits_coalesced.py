@@ -9,6 +9,7 @@ from infrahub import lock
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
+from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import merge_branch, rebase_branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.dependencies.registry import get_component_registry
@@ -26,7 +27,6 @@ from tests.helpers.merge_recompute.dataset import load_profile_schema, seed_bran
 if TYPE_CHECKING:
     from fast_depends import Provider
 
-    from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
@@ -63,6 +63,10 @@ async def test_merge_submits_one_coalesced_recompute_per_target(
         account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
     )
 
+    # Captured before the merge so it can be compared against what the merge stamps on the source branch.
+    pre_merge_destination_changed_at = default_branch.schema_changed_at
+    assert pre_merge_destination_changed_at is not None
+
     with (
         dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
         dependency_provider.scope(build_event_service, lambda: event_recorder),
@@ -70,6 +74,11 @@ async def test_merge_submits_one_coalesced_recompute_per_target(
         dependency_provider.scope(build_cache, lambda: cache),
     ):
         await merge_branch(branch=seeded.branch_name, context=context)
+
+    # The merge stamps the source branch with the destination's pre-merge schema_changed_at, the value
+    # an out-of-process recovery restores after rolling a crashed merge back.
+    merged_source = await Branch.get_by_name(db=db, name=seeded.branch_name)
+    assert merged_source.pre_merge_destination_schema_changed_at == pre_merge_destination_changed_at
 
     computed = workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_JINJA2)
     display = workflow_recorder.get_submit_calls_for(DISPLAY_LABELS_PROCESS_JINJA2)

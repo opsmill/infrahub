@@ -48,12 +48,12 @@ export interface MenuProps<T> extends AriaMenuProps<T>, MenuVariants {
   emptyMessage?: React.ReactNode;
 }
 
-export const Menu = <T extends object>({
+export function Menu<T extends object>({
   className,
   variant,
   emptyMessage,
   ...props
-}: MenuProps<T>) => {
+}: MenuProps<T>) {
   const resolvedVariant = variant ?? React.use(MenuVariantContext);
 
   return (
@@ -75,21 +75,21 @@ export const Menu = <T extends object>({
       />
     </MenuVariantContext.Provider>
   );
-};
+}
 
 export interface MenuItemProps extends AriaMenuItemProps {
   tooltip?: TooltipProps["message"];
   side?: TooltipProps["placement"];
 }
 
-export const MenuItem = ({
+export function MenuItem({
   tooltip,
   side,
   children,
   className,
   textValue,
   ...props
-}: MenuItemProps) => {
+}: MenuItemProps) {
   if (tooltip !== undefined) {
     return (
       <MenuItemWithTooltip
@@ -120,30 +120,30 @@ export const MenuItem = ({
       )}
     </AriaMenuItem>
   );
-};
+}
 
 export interface MenuSeparatorProps extends AriaSeparatorProps {}
 
-export const MenuSeparator = ({ className, ...props }: MenuSeparatorProps) => (
-  <AriaSeparator className={cn("-mx-1 my-1 h-px bg-stone-300", className)} {...props} />
-);
+export function MenuSeparator({ className, ...props }: MenuSeparatorProps) {
+  return <AriaSeparator className={cn("-mx-1 my-1 h-px bg-stone-300", className)} {...props} />;
+}
 
 export interface MenuSectionProps<T> extends AriaMenuSectionProps<T> {
   title?: React.ReactNode;
 }
-export const MenuSection = <T extends object>({
+export function MenuSection<T extends object>({
   className,
   title,
   children,
   ...props
-}: MenuSectionProps<T>) => {
+}: MenuSectionProps<T>) {
   return (
     <AriaMenuSection className={cn("flex flex-col", className)} {...props}>
       {title && <AriaHeader className="mb-0.5 px-1 text-xs text-stone-500">{title}</AriaHeader>}
       <Collection items={props.items}>{children}</Collection>
     </AriaMenuSection>
   );
-};
+}
 
 interface MenuItemWithTooltipProps extends MenuItemProps {}
 

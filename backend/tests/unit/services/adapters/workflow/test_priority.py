@@ -28,8 +28,8 @@ def build_context(priority: WorkflowPriority | None = None) -> InfrahubContext:
     )
 
 
-def build_event_context() -> EventContext:
-    return EventContext(branch=EventBranchContext(name="main"), account_id="account-a")
+def build_event_context(priority: WorkflowPriority | None = None) -> EventContext:
+    return EventContext(branch=EventBranchContext(name="main"), account_id="account-a", priority=priority)
 
 
 @dataclass
@@ -76,6 +76,13 @@ RESOLUTION_CASES = [
         context=build_context(priority=WorkflowPriority.HIGH),
         default_priority=WorkflowPriority.MEDIUM,
         expected=WorkflowPriority.HIGH,
+    ),
+    ResolutionCase(
+        name="event_context_priority_wins_over_catalogue_default",
+        priority=None,
+        context=build_event_context(priority=WorkflowPriority.LOW),
+        default_priority=WorkflowPriority.HIGH,
+        expected=WorkflowPriority.LOW,
     ),
     ResolutionCase(
         name="low_context_priority_not_floored_by_high_catalogue_default",
@@ -182,24 +189,40 @@ class TestPrepareDispatch:
         assert dispatched_context.priority is WorkflowPriority.MEDIUM
         assert work_queue_name == WorkflowPriority.MEDIUM.queue_name
 
-    def test_event_context_passes_through_unstamped(self) -> None:
+    def test_event_context_without_priority_stamps_default_but_does_not_route(self) -> None:
         caller_context = build_event_context()
 
         dispatched_context, work_queue_name = prepare_dispatch(
-            workflow=build_workflow(), context=caller_context, priority=None
+            workflow=build_workflow(default_priority=WorkflowPriority.MEDIUM), context=caller_context, priority=None
         )
 
-        assert dispatched_context is caller_context
+        assert isinstance(dispatched_context, EventContext)
+        assert dispatched_context is not caller_context
+        assert dispatched_context.priority is WorkflowPriority.MEDIUM
+        assert caller_context.priority is None
         assert work_queue_name is None
 
-    def test_event_context_with_explicit_priority_routes_without_stamping(self) -> None:
+    def test_event_context_priority_stamps_and_routes(self) -> None:
+        caller_context = build_event_context(priority=WorkflowPriority.LOW)
+
+        dispatched_context, work_queue_name = prepare_dispatch(
+            workflow=build_workflow(default_priority=WorkflowPriority.HIGH), context=caller_context, priority=None
+        )
+
+        assert isinstance(dispatched_context, EventContext)
+        assert dispatched_context is not caller_context
+        assert dispatched_context.priority is WorkflowPriority.LOW
+        assert work_queue_name == WorkflowPriority.LOW.queue_name
+
+    def test_event_context_with_explicit_priority_routes_and_stamps(self) -> None:
         caller_context = build_event_context()
 
         dispatched_context, work_queue_name = prepare_dispatch(
             workflow=build_workflow(), context=caller_context, priority=WorkflowPriority.LOW
         )
 
-        assert dispatched_context is caller_context
+        assert isinstance(dispatched_context, EventContext)
+        assert dispatched_context.priority is WorkflowPriority.LOW
         assert work_queue_name == WorkflowPriority.LOW.queue_name
 
     def test_no_context_no_priority_routes_nothing(self) -> None:

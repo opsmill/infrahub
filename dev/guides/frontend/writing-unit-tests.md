@@ -53,7 +53,13 @@ Follow BDD structure consistently:
 - **WHEN**: Execute the function being tested
 - **THEN**: Assert the expected outcome
 
-**Important**: Never mix GIVEN/WHEN/THEN comments (e.g., "GIVEN / WHEN") - keep them separate.
+**Important**:
+
+- Never mix GIVEN/WHEN/THEN comments (e.g., "GIVEN / WHEN") - keep them separate.
+- Every test has **exactly one** of each marker - always a GIVEN (arrange inputs), a WHEN (call the
+  function under test), and a THEN (assert).
+- A test that needs a second WHEN/THEN is testing a multi-phase flow - split it into separate,
+  single-phase tests instead of chaining WHEN → THEN → WHEN → THEN in one test.
 
 ## Test Data
 
@@ -231,7 +237,7 @@ import { shouldAllowEmptySubmission } from "./shouldAllowEmptySubmission";
 
 describe("shouldAllowEmptySubmission", () => {
   it("returns true when all attributes are read-only", () => {
-    // GIVEN: A schema where all attributes are read-only
+    // GIVEN
     const schema = {
       attributes: [
         generateAttributeSchema({ name: "number_pool_attr", read_only: true }),
@@ -247,7 +253,7 @@ describe("shouldAllowEmptySubmission", () => {
   });
 
   it("returns false when some attributes are not read-only", () => {
-    // GIVEN: A schema with some editable attributes
+    // GIVEN
     const schema = {
       attributes: [
         generateAttributeSchema({ name: "editable_attr", read_only: false }),
@@ -263,7 +269,7 @@ describe("shouldAllowEmptySubmission", () => {
   });
 
   it("returns true when schema has no attributes", () => {
-    // GIVEN: A schema with no attributes (only relationships)
+    // GIVEN
     const schema = {
       attributes: [],
     } as ModelSchema;
@@ -295,7 +301,7 @@ src/entities/schema/utils/is-generic-schema.test.ts
 - Keep tests independent - each test should run in isolation
 - Test behavior, not implementation details
 - Test relevant edge cases and error paths
-- Use GIVEN/WHEN/THEN comments in each test
+- Give every test exactly one GIVEN, one WHEN, and one THEN comment
 - Use specific assertions (e.g., `.toBe()`, `.toEqual()`) instead of vague ones
 
 ### Don't
@@ -304,6 +310,7 @@ src/entities/schema/utils/is-generic-schema.test.ts
 - Don't use vague assertions like `.toBeTruthy()` or `.toBeFalsy()`
 - Don't create tests that depend on execution order
 - Don't mix GIVEN/WHEN/THEN comments (e.g., "GIVEN / WHEN") - keep them separate
+- Don't repeat a marker within one test (two WHENs/THENs)
 - Don't test implementation details - focus on behavior
 - Don't skip testing error paths
 

@@ -1,0 +1,52 @@
+---
+title: Namespaces
+---
+
+# Namespaces
+
+Every model in your schema belongs to a namespace. A namespace groups related models together and makes each model's `kind` unique, so two teams can both define a `Device` model without a name collision.
+
+## How a namespace forms a kind
+
+Infrahub builds a model's `kind` by concatenating its `namespace` and its `name`. A node with namespace `Dcim` and name `Device` has the kind `DcimDevice` — the identifier you use in GraphQL, the SDK, and the UI. See [Nodes & attributes](./nodes-and-attributes) for how `namespace` and `name` are set on a node.
+
+Because the `kind` combines both parts, the same `name` can appear in different namespaces without conflict. `DcimDevice` and `IpopsDevice` are distinct kinds. The `kind` — the (`namespace`, `name`) pair — must be unique across the schema.
+
+## Naming rules
+
+A namespace must match the regular expression `^[A-Z][a-z0-9]+$` and be 3 to 64 characters long:
+
+- Start with a single uppercase letter.
+- Continue with lowercase letters and digits only.
+
+This rules out two patterns that are otherwise common:
+
+- **Underscores** — `Tx_core` is rejected. A namespace contains no separators.
+- **Interior uppercase** — `IPOps` is rejected, because only the first letter can be uppercase.
+
+Write the namespace as one capitalized word: `Ipops`, `Dcim`, `Netops`, `Transport`.
+
+## Reserved namespaces
+
+Infrahub reserves a set of namespaces for its own models. You cannot create schema models in them:
+
+`Account`, `Branch`, `Builtin`, `Core`, `Deprecated`, `Diff`, `Infrahub`, `Internal`, `Lineage`, `Profile`, `Schema`, `Template`.
+
+Loading a schema that places a node in one of these namespaces fails with a restricted-namespace error. Choose a namespace outside the list for your own models.
+
+## Organize namespaces across teams
+
+When several teams or repositories load schemas into one Infrahub instance, use the namespace as each team's prefix. Each team owns a namespace and defines its models under it:
+
+- The IP operations team owns `Ipops` and defines `IpopsDevice`, `IpopsInterface`.
+- The transport team owns `Transport` and defines `TransportCircuit`.
+
+A central team owns the shared models — the [`Generic`](./generics-and-inheritance) nodes and common objects every team builds on — under its own namespace. Teams develop their schemas in branches and validate against the shared models before merging.
+
+Because the namespace is part of the `kind`, one team's `IpopsDevice` never collides with another team's `TransportDevice`, and each repository evolves its own models independently.
+
+## Related
+
+- [Nodes & attributes](./nodes-and-attributes) — where `namespace` and `name` are defined on a node
+- [Generics & inheritance](./generics-and-inheritance) — sharing common models across namespaces
+- [Node reference](../reference/schema/node) — the full list of node options, including the `namespace` constraint

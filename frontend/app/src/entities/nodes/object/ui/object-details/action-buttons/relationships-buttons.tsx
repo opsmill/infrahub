@@ -18,6 +18,7 @@ import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/a
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -48,8 +49,11 @@ export function RelationshipsButtons({
   const relationshipSchemaData = relationshipSchema ?? relationshipGeneric;
   const generic = generics.find((g) => g.kind === relationshipSchemaData?.kind);
   const peerSchema = useSchema(relationshipSchemaData?.peer);
-  const peerRelationshipSchema = peerSchema.schema?.relationships?.find(
-    (r) => r.peer === objectKind
+  // Find the peer's required Parent relationship back to the viewed object. Match against
+  // the object's schema rather than an exact kind string, so a Parent relationship that
+  // peers a generic still resolves when the object is a concrete node inheriting from it.
+  const peerParentRelationship = peerSchema.schema?.relationships?.find(
+    (r) => r.kind === "Parent" && r.optional === false && isOfKind(r.peer, parentSchema)
   );
 
   const poolKind = peerSchema.schema ? getPoolKindFromSchema(peerSchema.schema) : null;
@@ -138,8 +142,7 @@ export function RelationshipsButtons({
         />
         <FormContext value={{ parentSchema, parentData: objectDetailsData }}>
           {relationshipSchemaData.kind === "Component" &&
-          peerRelationshipSchema?.kind === "Parent" &&
-          peerRelationshipSchema.optional === false &&
+          peerParentRelationship &&
           relationshipSchemaData.peer ? (
             <ObjectForm
               onSuccess={async () => {

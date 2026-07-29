@@ -23,6 +23,7 @@ import type {
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 
 interface ObjectDataDisplayProps {
   objectSchema: ModelSchema;
@@ -84,7 +85,7 @@ export function ObjectDataDisplay({
 
         const objectKind = objectSchema.kind!;
 
-        if ("peer" in field) {
+        if (isRelationshipSchema(field)) {
           const relationshipData = resolveRelationshipData({
             relationshipName: fieldName,
             objectSchema,

@@ -14,7 +14,7 @@ import {
   type GetIpAddressListParams,
   getIpAddressList,
 } from "@/entities/ipam/ip-addresses/domain/use-cases/get-ip-address-list";
-import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/has-incompatible-filters-for-ip-availability";
+import { shouldExcludeIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/should-exclude-ip-availability";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
@@ -50,10 +50,9 @@ export function useGetIpAddressList(
     isSuccess: isCountSuccess,
     isError: isCountError,
   } = useObjectsCount({
-    objectKind:
-      params.filters && hasIncompatibleFiltersForIpAvailability(params.filters)
-        ? params.schema.kind!
-        : IP_ADDRESS_GENERIC,
+    objectKind: shouldExcludeIpAvailability(params.filters ?? [], params.sort)
+      ? params.schema.kind!
+      : IP_ADDRESS_GENERIC,
     filters: params.filters,
   });
 

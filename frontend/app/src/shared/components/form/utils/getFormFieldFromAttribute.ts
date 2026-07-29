@@ -132,7 +132,7 @@ export const getFormFieldFromAttribute = ({
       type: ATTRIBUTE_KIND.DROPDOWN,
       schema,
       items: (attributeSchema.choices ?? []).map(
-        (choice: components["schemas"]["DropdownChoice"]) => ({
+        (choice: components["schemas"]["DropdownChoiceRead"]) => ({
           value: choice.name,
           label: choice.label ?? choice.name,
           color: choice.color ?? undefined,

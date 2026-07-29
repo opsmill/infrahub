@@ -6,6 +6,7 @@ import type {
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export const ATTRIBUTE_ICONS: Record<AttributeKind, string> = {
@@ -38,7 +39,7 @@ interface FieldSchemaIconProps {
 }
 
 export function FieldSchemaIcon({ fieldSchema }: FieldSchemaIconProps) {
-  if ("peer" in fieldSchema) {
+  if (isRelationshipSchema(fieldSchema)) {
     return <RelationshipFieldIcon relationshipSchema={fieldSchema} />;
   }
 

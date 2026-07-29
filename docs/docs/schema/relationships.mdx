@@ -45,7 +45,7 @@ This ensures a strong relationship in both directions, where the parent node can
 
 :::warning Cascade deletion
 
-Relationships of kind `Component` include an implicit `on_delete: cascade`. This means that if you delete a node with a `Component` relationship, the related nodes connected by this relationship will also be deleted.
+When `on_delete` is not set explicitly, its default is derived from the relationship kind: `Component` relationships default to `cascade`, and all other kinds default to `no-action`. As a result, deleting a node with a `Component` relationship also deletes the related nodes connected by it. Set `on_delete` explicitly on any relationship to override this default — deletion behavior is driven by the resolved `on_delete` value, not by the relationship kind directly.
 
 :::
 

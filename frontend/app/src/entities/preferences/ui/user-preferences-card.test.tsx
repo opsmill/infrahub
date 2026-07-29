@@ -189,6 +189,9 @@ describe("UserPreferencesCard", () => {
         })
       )
       .toBeVisible();
+
+    // Park the pointer away from the trigger so the tooltip closes before the next test renders.
+    await initPointerTracking(component.locator);
   });
 
   test("the (i) tooltip reflects the user's own preference when an override is set", async () => {
@@ -209,6 +212,9 @@ describe("UserPreferencesCard", () => {
     await expect
       .element(component.getByRole("tooltip", { name: "Your preference." }))
       .toBeVisible();
+
+    // Park the pointer away from the trigger so the tooltip closes before the next test renders.
+    await initPointerTracking(component.locator);
   });
 
   test("the (i) tooltip falls back to the browser source when neither user nor global is set", async () => {

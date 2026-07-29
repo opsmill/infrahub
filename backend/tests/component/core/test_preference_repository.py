@@ -81,3 +81,25 @@ async def test_get_all_returns_rows_for_all_owners(db: InfrahubDatabase, default
 
     all_rows = await repository.get_all()
     assert {preference.owner_id for preference in all_rows} == {"owner-a", "owner-b", GLOBAL_OWNER_ID}
+
+
+async def test_delete_for_owner_removes_only_that_owners_row(db: InfrahubDatabase, default_branch: Branch) -> None:
+    repository = PreferenceRepository(db=db)
+    await repository.save(Preference(owner_id="owner-a", timezone="Europe/Paris"))
+    await repository.save(Preference(owner_id="owner-b", date_format="ISO_DATETIME"))
+    await repository.save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
+
+    await repository.delete_for_owner(owner_id="owner-a")
+
+    # Only owner-a's row is gone; the other owner's row and the global row are untouched.
+    assert await repository.get_for_owner(owner_id="owner-a") is None
+    assert {preference.owner_id for preference in await repository.get_all()} == {"owner-b", GLOBAL_OWNER_ID}
+
+
+async def test_delete_for_owner_is_a_noop_when_no_row_exists(db: InfrahubDatabase, default_branch: Branch) -> None:
+    repository = PreferenceRepository(db=db)
+    await repository.save(Preference(owner_id="owner-a", timezone="Europe/Paris"))
+
+    await repository.delete_for_owner(owner_id="owner-absent")
+
+    assert {preference.owner_id for preference in await repository.get_all()} == {"owner-a"}

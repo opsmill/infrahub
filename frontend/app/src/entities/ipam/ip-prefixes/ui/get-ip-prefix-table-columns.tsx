@@ -86,7 +86,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
     ...getObjectGenericColumns(schema),
     ...attributes.map((attribute) => {
       return columnHelper.accessor(attribute.name, {
-        header: () => <TableColumnHeader columnSchema={attribute} />,
+        header: () => <TableColumnHeader schema={schema} columnSchema={attribute} />,
         cell: ({ cell, row }) => {
           const attributeData = cell.getValue() as NodeAttribute | undefined;
           if (!attributeData) return null;
@@ -128,7 +128,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
     }),
     ...relationships.map((relationship) => {
       return columnHelper.accessor(relationship.name, {
-        header: () => <TableColumnHeader columnSchema={relationship} />,
+        header: () => <TableColumnHeader schema={schema} columnSchema={relationship} />,
         cell: ({ cell, row }) => {
           const relationshipData = cell.getValue() as NodeRelationship | undefined;
           if (!relationshipData) return null;

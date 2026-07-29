@@ -84,6 +84,22 @@ describe("getValidSorts", () => {
     expect(validSorts).toEqual([{ field: "name__value", direction: "ASC" }]);
   });
 
+  it("keeps a custom sort on a schema default-order sub-property field", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      order_by: ["prefix__version", "prefix__binary_address"],
+      attributes: [generateAttributeSchema({ name: "prefix", kind: "IPNetwork" })],
+      relationships: [],
+    });
+    const sorts = [{ field: "prefix__version", direction: "DESC" }] as const;
+
+    // WHEN
+    const validSorts = getValidSorts([...sorts], schema);
+
+    // THEN
+    expect(validSorts).toEqual([...sorts]);
+  });
+
   it("keeps only the first occurrence of a duplicated field", () => {
     // GIVEN
     const schema = generateNodeSchema({

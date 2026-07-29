@@ -19,9 +19,11 @@ type Story = StoryObj<typeof Autocomplete>;
 
 const fruits = ["Apple", "Banana", "Cherry", "Date", "Elderberry", "Fig", "Grape"];
 
-const Frame = ({ children }: { children: React.ReactNode }) => (
-  <div className="w-64 overflow-hidden rounded-lg border border-neutral-300">{children}</div>
-);
+function Frame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="w-64 overflow-hidden rounded-lg border border-neutral-300">{children}</div>
+  );
+}
 
 const fruitList = () => (
   <ListBox aria-label="Fruits" className="max-h-60" emptyMessage="No result found">

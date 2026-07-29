@@ -18,7 +18,6 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
-from infrahub.workflows.constants import WorkflowPriority
 from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.test_client import InfrahubTestClient
 
@@ -142,7 +141,6 @@ class TestArtifact11(TestInfrahubApp):
                         )
                     },
                     context=context,
-                    priority=WorkflowPriority.HIGH,
                 ),
             ]
             mock_submit_workflow.assert_has_calls(expected_calls)

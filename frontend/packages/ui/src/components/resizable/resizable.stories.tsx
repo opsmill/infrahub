@@ -13,11 +13,13 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const PanelContent = ({ label }: { label: string }) => (
-  <div className="flex h-full w-full items-center justify-center bg-stone-100 p-3 text-sm text-stone-700">
-    {label}
-  </div>
-);
+function PanelContent({ label }: { label: string }) {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-stone-100 p-3 text-sm text-stone-700">
+      {label}
+    </div>
+  );
+}
 
 export const Horizontal: Story = {
   render: () => (

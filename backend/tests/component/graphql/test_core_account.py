@@ -7,6 +7,9 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
+from infrahub.core.preferences.models import Preference
+from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
@@ -265,3 +268,44 @@ async def test_admin_cannot_delete_own_account(
 
     assert result.errors
     assert str(result.errors[0].message) == "Cannot delete your own account"
+
+
+async def test_account_delete_also_deletes_its_preference_row(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    authentication_base: None,
+    session_admin: AccountSession,
+    first_account: Node,
+) -> None:
+    repository = PreferenceRepository(db=db)
+    await repository.save(Preference(owner_id=first_account.id, timezone="Europe/Paris"))
+    await repository.save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
+    # Guard against a silently failing save: the delete assertion below is only meaningful if the
+    # row actually existed before the mutation.
+    assert await repository.get_for_owner(owner_id=first_account.id) is not None
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CORE_ACCOUNT_DELETE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": first_account.id},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["CoreAccountDelete"]["ok"] is True
+
+    # The deleted account's row is gone; the global row is untouched.
+    assert await repository.get_for_owner(owner_id=first_account.id) is None
+    global_row = await repository.get_for_owner(owner_id=GLOBAL_OWNER_ID)
+    assert global_row is not None
+    assert global_row.timezone == "UTC"

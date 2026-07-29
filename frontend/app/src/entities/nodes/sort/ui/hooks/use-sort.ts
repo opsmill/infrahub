@@ -16,7 +16,8 @@ const sortParser = createParser({
 type UseSort = (schema: ModelSchema) => {
   /** The sort the user explicitly chose (URL state), or null when they haven't customized. */
   customSort: Sort[] | null;
-  setCustomSort: (next: Sort[]) => void;
+  /** Pass null (or []) to clear the custom sort and restore the default order. */
+  setCustomSort: (next: Sort[] | null) => void;
   /** The schema's order_by, or null when it defines none. */
   defaultSort: Sort[] | null;
   /** The sort effectively applied: custom sort, else schema default, else empty. */
@@ -32,7 +33,8 @@ export const useSort: UseSort = (schema) => {
   const validSort = getValidSorts(sortInQsp ?? [], schema);
 
   const customSort = validSort.length > 0 ? validSort : null;
-  const setCustomSort = (next: Sort[]) => setSortInQsp(next.length > 0 ? next : null);
+  const setCustomSort = (next: Sort[] | null) =>
+    setSortInQsp(next && next.length > 0 ? next : null);
   const defaultSort = getSchemaDefaultSort(schema);
   const appliedSort = customSort ?? defaultSort ?? [];
 

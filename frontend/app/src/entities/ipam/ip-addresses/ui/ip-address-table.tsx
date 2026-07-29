@@ -10,6 +10,7 @@ import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/o
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/utils/get-object-actions-column";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
+import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 
 const IP_ADDRESS_TABLE_COLUMN_ORDER = ["id", "objectKind", "ip_prefix", "description"];
 
@@ -19,6 +20,7 @@ export interface IpAddressTableProps {
 
 export function IpAddressTable({ baseFilters = [] }: IpAddressTableProps) {
   const { filters, selectedSchema, permission } = useObjectTableContext();
+  const { customSort } = useSort(selectedSchema);
   const allFilters = [...baseFilters, ...filters];
 
   const { data: count } = useObjectsCount({
@@ -30,6 +32,7 @@ export function IpAddressTable({ baseFilters = [] }: IpAddressTableProps) {
     useGetIpAddressList({
       schema: selectedSchema,
       filters: allFilters,
+      sort: customSort,
     });
 
   if (error) {

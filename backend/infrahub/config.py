@@ -48,7 +48,7 @@ def default_cors_allow_methods() -> list[str]:
 
 
 def default_cors_allow_headers() -> list[str]:
-    return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"]
+    return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with", "x-priority"]
 
 
 def default_append_git_suffix_domains() -> list[str]:
@@ -216,6 +216,11 @@ class MainSettings(BaseSettings):
         default=False,
         description="When enabled, the Infrahub branch is automatically deleted after a successful merge.",
     )
+    selective_execution_after_merge: bool = Field(
+        default=True,
+        description="When enabled, only the generators and artifact definitions affected by a merge "
+        "are re-executed; when disabled, every generator and artifact definition is re-executed.",
+    )
     merge_failure_grace_period_seconds: int = Field(
         default=180,
         ge=0,
@@ -365,6 +370,11 @@ class DatabaseSettings(BaseSettings):
             "Server-side transaction timeout in seconds for reachable-nodes queries; "
             "the query is aborted once it is exceeded."
         ),
+    )
+    max_connection_pool_size: int = Field(
+        default=100,
+        ge=1,
+        description="Maximum number of connections the driver keeps in its pool per remote address.",
     )
 
     @property
@@ -539,6 +549,135 @@ class ApiSettings(BaseSettings):
     cors_allow_credentials: bool = Field(
         default=True, description="If True, cookies will be allowed to be included in cross-site HTTP requests"
     )
+    backpressure_enabled: bool = Field(
+        default=True,
+        description="Kill-switch for priority-aware API backpressure; when disabled every request passes through.",
+    )
+    backpressure_codel_target_seconds: float = Field(
+        default=0.005,
+        gt=0,
+        allow_inf_nan=False,
+        description="CoDel target sojourn in seconds before shedding is considered.",
+    )
+    backpressure_codel_interval_seconds: float = Field(
+        default=0.1,
+        gt=0,
+        allow_inf_nan=False,
+        description="CoDel interval in seconds the sojourn must stay above target before dropping.",
+    )
+    backpressure_high_target_multiplier: float = Field(
+        default=4.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Multiplier applied to the CoDel target for the high-priority class.",
+    )
+    backpressure_backstop_max_waiters: int = Field(
+        default=1000, ge=1, description="Per-class hard cap on queued waiters before requests are rejected."
+    )
+    backpressure_retry_after_level1_seconds: int = Field(
+        default=1, ge=0, description="Retry-After (seconds) advised for a shed request at load level 1 (mild)."
+    )
+    backpressure_retry_after_level2_seconds: int = Field(
+        default=5, ge=0, description="Retry-After (seconds) advised for a shed request at load level 2 (moderate)."
+    )
+    backpressure_retry_after_level3_seconds: int = Field(
+        default=10, ge=0, description="Retry-After (seconds) advised for a shed request at load level 3 (severe)."
+    )
+    backpressure_retry_after_max_seconds: int = Field(
+        default=30,
+        ge=0,
+        description="Upper bound on the advised Retry-After after sustained-load escalation is applied.",
+    )
+    backpressure_significant_load_stress_ratio: float = Field(
+        default=20.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Stress ratio at or above which the server is counted as under significant sustained load.",
+    )
+    backpressure_sustained_load_warn_seconds: float = Field(
+        default=60.0,
+        gt=0,
+        allow_inf_nan=False,
+        description="Seconds of continuous significant load after which the advised Retry-After is escalated.",
+    )
+    backpressure_sustained_load_high_seconds: float = Field(
+        default=300.0,
+        gt=0,
+        allow_inf_nan=False,
+        description="Seconds of continuous significant load after which the advised Retry-After is escalated further.",
+    )
+    backpressure_max_concurrency_factor: float = Field(
+        default=0.5,
+        gt=0,
+        allow_inf_nan=False,
+        description="Scales the derived maximum admission concurrency.",
+    )
+    backpressure_stress_window_seconds: float = Field(
+        default=20.0,
+        gt=0,
+        allow_inf_nan=False,
+        description="Rolling window, in seconds, over which the database-stress signal is measured.",
+    )
+    backpressure_stress_min_samples: int = Field(
+        default=5,
+        ge=1,
+        description="Reference-query samples required in the window before the stress signal gates shedding.",
+    )
+    backpressure_shed_low_stress_ratio: float = Field(
+        default=10.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Database-stress ratio at or above which low-priority requests become eligible for shedding.",
+    )
+    backpressure_shed_medium_stress_ratio: float = Field(
+        default=25.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Database-stress ratio at or above which medium-priority requests become eligible for shedding.",
+    )
+    backpressure_shed_high_stress_ratio: float = Field(
+        default=100.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Database-stress ratio at or above which high-priority requests become eligible for shedding.",
+    )
+    backpressure_backstop_low_multiplier: float = Field(
+        default=0.5,
+        gt=0,
+        le=1,
+        allow_inf_nan=False,
+        description="Scales the base backstop waiter cap for the low-priority class.",
+    )
+    backpressure_backstop_high_multiplier: float = Field(
+        default=4.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Scales the base backstop waiter cap for the high-priority class.",
+    )
+
+    @model_validator(mode="after")
+    def validate_shed_stress_ratios_ordered_by_priority(self) -> Self:
+        """Require each class to start shedding no earlier than the one below it.
+
+        A class sheds once the database-stress ratio reaches its own trigger, so the whole point of
+        the feature — interactive traffic surviving longest — inverts silently if a higher-priority
+        class is given a lower trigger.
+
+        Raises:
+            ValueError: If the triggers are not ordered from low to high priority.
+
+        """
+        if not (
+            self.backpressure_shed_low_stress_ratio
+            <= self.backpressure_shed_medium_stress_ratio
+            <= self.backpressure_shed_high_stress_ratio
+        ):
+            raise ValueError(
+                "'backpressure_shed_low_stress_ratio' must not exceed "
+                "'backpressure_shed_medium_stress_ratio', which must not exceed "
+                "'backpressure_shed_high_stress_ratio', so lower-priority traffic sheds first"
+            )
+        return self
 
 
 class GitSettings(BaseSettings):

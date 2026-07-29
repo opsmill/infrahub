@@ -3,8 +3,6 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
-
 from infrahub import config
 from infrahub.core.constants import RelationshipDirection, RelationshipKind
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
@@ -66,15 +64,6 @@ class RelationshipSchema(GeneratedRelationshipSchema):
         if not self.id:
             raise InitializationError("The relationship schema has not been saved yet and doesn't have an id")
         return self.id
-
-    def get_query_arrows(self) -> QueryArrows:
-        """Return (in 4 parts) the 2 arrows for the relationship R1 and R2 based on the direction of the relationship."""
-        if self.direction == RelationshipDirection.OUTBOUND:
-            return QueryArrows(left=QueryArrowOutband(), right=QueryArrowOutband())
-        if self.direction == RelationshipDirection.INBOUND:
-            return QueryArrows(left=QueryArrowInband(), right=QueryArrowInband())
-
-        return QueryArrows(left=QueryArrowOutband(), right=QueryArrowInband())
 
     def update_from_generic(self, other: RelationshipSchema) -> None:
         fields_to_exclude = ("id", "order_weight", "branch", "inherited", "filters")
@@ -210,28 +199,3 @@ class RelationshipSchema(GeneratedRelationshipSchema):
         query_params.update(field_params)
 
         return query_filter, query_params, query_where
-
-
-class QueryArrow(BaseModel):
-    start: str
-    end: str
-
-
-class QueryArrowInband(QueryArrow):
-    start: str = "<-"
-    end: str = "-"
-
-
-class QueryArrowOutband(QueryArrow):
-    start: str = "-"
-    end: str = "->"
-
-
-class QueryArrowBidir(QueryArrow):
-    start: str = "-"
-    end: str = "-"
-
-
-class QueryArrows(BaseModel):
-    left: QueryArrow
-    right: QueryArrow

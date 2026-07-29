@@ -1,11 +1,11 @@
 ---
 name: neo4j-cypher-guide
-description: Comprehensive guide for writing modern Neo4j Cypher read queries. Essential for text2cypher MCP tools and LLMs generating Cypher queries. Covers removed/deprecated syntax, modern replacements, CALL subqueries for reads, COLLECT patterns, sorting best practices, and Quantified Path Patterns (QPP) for efficient graph traversal.
+description: Comprehensive guide for writing modern Neo4j Cypher queries. Essential for text2cypher MCP tools and LLMs generating Cypher queries. Covers removed/deprecated syntax, modern replacements, CALL subqueries for reads, COLLECT patterns, sorting best practices, set-based writes, and Quantified Path Patterns (QPP) for efficient graph traversal.
 ---
 
 # Neo4j Modern Cypher Query Guide
 
-This skill helps generate Neo4j Cypher read queries using modern syntax patterns and avoiding deprecated features. It focuses on efficient query patterns for graph traversal and data retrieval.
+This skill helps generate Neo4j Cypher queries using modern syntax patterns and avoiding deprecated features. It focuses on efficient query patterns for graph traversal, data retrieval, and set-based writes.
 
 ## Quick Compatibility Check
 
@@ -23,6 +23,15 @@ When generating Cypher queries, immediately avoid these REMOVED features:
 2. **Optimize during traversal** - Filter early within patterns, not after expansion
 3. **Always filter nulls when sorting** - Add IS NOT NULL checks for sorted properties
 4. **Explicit is better than implicit** - Always use explicit grouping and type checking
+5. **Write set-based, not per-node** - One query with a `WHERE`/property condition beats fetching
+   nodes and mutating them one by one (an N+1). E.g. delete all rows for one owner in one shot:
+
+   ```cypher
+   MATCH (n:Preference { owner_id: $owner_id })
+   DETACH DELETE n
+   ```
+
+   not "fetch matching nodes, then run one DELETE per node".
 
 ## Critical Sorting Rule
 
@@ -210,6 +219,21 @@ WHERE n:Label1|Label2  // OR
 WHERE n:Label1&Label2  // AND
 WHERE n:!Archived      // NOT
 ```
+
+### Dynamic Labels and Types
+
+Labels and relationship types accept parameters (Neo4j 5.26+):
+
+```cypher
+MATCH (n:$($label))                    // dynamic node label
+MATCH (a)-[r:$($rel_type)]->(b)        // dynamic relationship type
+```
+
+Choosing between a dynamic label and interpolating the label into the query text is a performance
+tradeoff, not a style rule: each interpolated variant is planned and cached separately, but the
+planner generally does better with a static label than a dynamic one. If the label is the primary
+filter of the `MATCH`, prefer a static/interpolated label; when other indexed predicates carry the
+filtering, a dynamic label is more likely to be acceptable. When in doubt, `PROFILE` both.
 
 ### Type Predicates
 
