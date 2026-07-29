@@ -845,8 +845,14 @@ class SdkSchemaGenerator:
 
         _write_sdk_generated_init(self.generated)
 
+        # The rendered output is formatted before it is linted because the raw render carries lines
+        # far past the limit and the unfixable E501 would abort the fixer. It is formatted again
+        # afterwards because a fix is emitted as unwrapped source (a rewritten union can land past
+        # the limit); without that pass the committed files differ from a fresh run purely on
+        # wrapping.
         execute_command(context=self.context, command=f'ruff format "{self.generated}"')
         execute_command(context=self.context, command=f'ruff check --fix "{self.generated}"')
+        execute_command(context=self.context, command=f'ruff format "{self.generated}"')
 
     @staticmethod
     def _variants() -> list[SdkVariant]:
