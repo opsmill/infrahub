@@ -2,37 +2,18 @@ import {
   type NodeMetadataSortField,
   SORT_DIRECTION,
   type Sort,
+  type SortDirection,
 } from "@/entities/nodes/sort/domain/model/sort";
 
-/** A date sort the proposed-changes list offers as a one-click option. */
-export interface ProposedChangeSortOption {
-  label: string;
-  sort: Sort & { field: NodeMetadataSortField };
-}
+/** The date orders the list offers, spelled as the tokens the URL and the sort menu key them by. */
+export type ProposedChangeSortToken = `${NodeMetadataSortField}__${Lowercase<SortDirection>}`;
 
 /**
  * Order applied when the user hasn't picked one. The proposed-change schema declares no default
  * order, so the list owns one — unordered, the backend falls back to node-uuid order and buries the
  * most recent proposed changes.
  */
-export const PROPOSED_CHANGE_DEFAULT_SORT: ProposedChangeSortOption["sort"] = {
+export const PROPOSED_CHANGE_DEFAULT_SORT: Sort & { field: NodeMetadataSortField } = {
   field: "node_metadata__created_at",
   direction: SORT_DIRECTION.DESC,
 };
-
-/** Wording follows the sort menu on GitHub pull requests, which users arrive here already knowing. */
-export const PROPOSED_CHANGE_SORT_OPTIONS: ProposedChangeSortOption[] = [
-  { label: "Newest", sort: PROPOSED_CHANGE_DEFAULT_SORT },
-  {
-    label: "Oldest",
-    sort: { field: "node_metadata__created_at", direction: SORT_DIRECTION.ASC },
-  },
-  {
-    label: "Recently updated",
-    sort: { field: "node_metadata__updated_at", direction: SORT_DIRECTION.DESC },
-  },
-  {
-    label: "Least recently updated",
-    sort: { field: "node_metadata__updated_at", direction: SORT_DIRECTION.ASC },
-  },
-];

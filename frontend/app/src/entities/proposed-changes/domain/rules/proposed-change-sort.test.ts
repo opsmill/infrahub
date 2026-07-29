@@ -1,11 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
-import { serializeSortToken } from "@/entities/nodes/sort/domain/rules/sort-token";
-import {
-  PROPOSED_CHANGE_DEFAULT_SORT,
-  PROPOSED_CHANGE_SORT_OPTIONS,
-} from "@/entities/proposed-changes/domain/model/proposed-change-sort";
+import { PROPOSED_CHANGE_DEFAULT_SORT } from "@/entities/proposed-changes/domain/model/proposed-change-sort";
 import {
   computeProposedChangeSort,
   isProposedChangeDefaultSort,
@@ -33,20 +29,6 @@ describe("computeProposedChangeSort", () => {
 
     // THEN
     expect(sort).toEqual(appliedSort);
-  });
-});
-
-describe("PROPOSED_CHANGE_SORT_OPTIONS", () => {
-  // The menu keys its items by sort token, so two options sharing one would collide.
-  test("each option offers a distinct order", () => {
-    // GIVEN
-    const options = PROPOSED_CHANGE_SORT_OPTIONS;
-
-    // WHEN
-    const tokens = options.map((option) => serializeSortToken(option.sort));
-
-    // THEN
-    expect(new Set(tokens).size).toBe(options.length);
   });
 });
 

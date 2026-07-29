@@ -4,7 +4,7 @@ import type { Selection } from "react-aria-components";
 
 import { parseSortToken, serializeSortToken } from "@/entities/nodes/sort/domain/rules/sort-token";
 import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
-import { PROPOSED_CHANGE_SORT_OPTIONS } from "@/entities/proposed-changes/domain/model/proposed-change-sort";
+import type { ProposedChangeSortToken } from "@/entities/proposed-changes/domain/model/proposed-change-sort";
 import {
   computeProposedChangeSort,
   isProposedChangeDefaultSort,
@@ -42,24 +42,37 @@ export function ProposedChangesSortMenu({ schema }: ProposedChangesSortMenuProps
         <Menu
           aria-label="Sort proposed changes"
           variant="picker"
-          items={PROPOSED_CHANGE_SORT_OPTIONS}
           selectionMode="single"
           disallowEmptySelection
           selectedKeys={selectedKeys}
           onSelectionChange={selectSort}
         >
-          {(option) => (
-            <MenuItem id={serializeSortToken(option.sort)} textValue={option.label}>
-              {({ isSelected }) => (
-                <>
-                  <span>{option.label}</span>
-                  {isSelected && <CheckIcon className="ml-auto" />}
-                </>
-              )}
-            </MenuItem>
-          )}
+          {/* Wording follows the sort menu on GitHub pull requests, which users arrive here already knowing. */}
+          <SortMenuItem id="node_metadata__created_at__desc">Newest</SortMenuItem>
+          <SortMenuItem id="node_metadata__created_at__asc">Oldest</SortMenuItem>
+          <SortMenuItem id="node_metadata__updated_at__desc">Recently updated</SortMenuItem>
+          <SortMenuItem id="node_metadata__updated_at__asc">Least recently updated</SortMenuItem>
         </Menu>
       </Popover>
     </MenuTrigger>
+  );
+}
+
+interface SortMenuItemProps {
+  /** Doubles as the menu's selection key, so it has to be the token the URL carries. */
+  id: ProposedChangeSortToken;
+  children: string;
+}
+
+function SortMenuItem({ id, children }: SortMenuItemProps) {
+  return (
+    <MenuItem id={id} textValue={children}>
+      {({ isSelected }) => (
+        <>
+          <span>{children}</span>
+          {isSelected && <CheckIcon className="ml-auto" />}
+        </>
+      )}
+    </MenuItem>
   );
 }
