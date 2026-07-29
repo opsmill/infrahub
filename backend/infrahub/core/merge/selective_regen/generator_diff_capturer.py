@@ -21,6 +21,9 @@ if TYPE_CHECKING:
 # A generator tracks the nodes it writes into a per-member group named "<definition name>-<md5 hex>".
 _TRACKING_HASH = re.compile(r"[0-9a-f]{32}$")
 
+# The tracking-id delimiter is ".", so the marker must not contain one.
+CAPTURE_DIFF_NAME_PREFIX = "selective-regen-capture--"
+
 
 class GeneratorMutationDiffCapturer(Protocol):
     """Capture, as a diff summary, the graph changes a post-merge generator wrote.
@@ -66,7 +69,7 @@ class GeneratorTrackingGroupDiffCapturer:
             diff_branch=self.branch,
             from_time=since,
             to_time=Timestamp(),
-            name=str(uuid4()),
+            name=f"{CAPTURE_DIFF_NAME_PREFIX}{uuid4()}",
         )
         filters = EnrichedDiffQueryFilters(ids=sorted(node_ids)) if node_ids else None
         enriched = await self.diff_repository.get_one(
