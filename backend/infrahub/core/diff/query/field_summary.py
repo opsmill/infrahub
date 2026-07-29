@@ -42,17 +42,17 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
         AND (diff_root.uuid = $diff_id OR $diff_id IS NULL)
         OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(n:DiffNode)
         WHERE n.action <> $unchanged_str
-        WITH DISTINCT n.kind AS kind
-        CALL (kind) {
-            OPTIONAL MATCH (n:DiffNode {kind: kind})-[:DIFF_HAS_ATTRIBUTE]->(a:DiffAttribute)
+        WITH DISTINCT diff_root, n.kind AS kind
+        CALL (diff_root, kind) {
+            OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(n:DiffNode {kind: kind})-[:DIFF_HAS_ATTRIBUTE]->(a:DiffAttribute)
             WHERE n.action <> $unchanged_str
             AND a.action <> $unchanged_str
             WITH DISTINCT a.name AS attr_name
             RETURN collect(attr_name) AS attr_names
         }
-        WITH kind, attr_names
-        CALL (kind) {
-            OPTIONAL MATCH (n:DiffNode {kind: kind})-[:DIFF_HAS_RELATIONSHIP]->(r:DiffRelationship)
+        WITH diff_root, kind, attr_names
+        CALL (diff_root, kind) {
+            OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(n:DiffNode {kind: kind})-[:DIFF_HAS_RELATIONSHIP]->(r:DiffRelationship)
             WHERE n.action <> $unchanged_str
             AND r.action <> $unchanged_str
             WITH DISTINCT r.name AS rel_name

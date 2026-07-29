@@ -140,6 +140,124 @@ class TestDiffIdenticalBranches:
         assert dest_schema.diff(other=candidate_schema).all == []
 
 
+class TestDeleteRemovesGeneratedKinds:
+    """The profile and template generated from a kind must not outlive it in the schema maps.
+
+    Between the delete and the next process() any reader would otherwise see a generated kind
+    whose backing schema is gone, and reprocessing has to land on the schema that never held it.
+    """
+
+    @staticmethod
+    def _gadget_and_widget_schema(with_gadget: bool) -> SchemaRoot:
+        nodes = [
+            NodeSchema(
+                name="Widget",
+                namespace="Testing",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            ),
+        ]
+        if with_gadget:
+            nodes.append(
+                NodeSchema(
+                    name="Gadget",
+                    namespace="Testing",
+                    generate_template=True,
+                    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                )
+            )
+        return SchemaRoot(nodes=nodes)
+
+    def test_reprocessing_after_delete_matches_schema_without_the_node(self) -> None:
+        baseline = _load_processed_branch(schema_root=self._gadget_and_widget_schema(with_gadget=False))
+        branch = _load_processed_branch(schema_root=self._gadget_and_widget_schema(with_gadget=True))
+
+        branch.delete(name="TestingGadget")
+        branch.process()
+
+        assert branch.get_hash() == baseline.get_hash()
+        assert sorted(branch.node_names) == sorted(baseline.node_names)
+        assert sorted(branch.generic_names) == sorted(baseline.generic_names)
+        assert sorted(branch.profile_names) == sorted(baseline.profile_names)
+        assert sorted(branch.template_names) == sorted(baseline.template_names)
+
+        hash_after_removal = branch.get_hash()
+        branch.process()
+
+        assert branch.get_hash() == hash_after_removal
+
+    def test_delete_node_removes_its_template_and_profile(self) -> None:
+        branch = _load_processed_branch(schema_root=self._gadget_and_widget_schema(with_gadget=True))
+        assert "TemplateTestingGadget" in branch.template_names
+        assert "ProfileTestingGadget" in branch.profile_names
+
+        branch.delete(name="TestingGadget")
+
+        assert "TemplateTestingGadget" not in branch.template_names
+        assert "ProfileTestingGadget" not in branch.profile_names
+
+    def test_delete_generic_removes_its_template(self) -> None:
+        schema_root = SchemaRoot(
+            generics=[
+                GenericSchema(
+                    name="Part",
+                    namespace="Testing",
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                ),
+            ],
+            nodes=[
+                NodeSchema(
+                    name="Gadget",
+                    namespace="Testing",
+                    generate_template=True,
+                    inherit_from=["TestingPart"],
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text", unique=True),
+                    ],
+                ),
+            ],
+        )
+        branch = _load_processed_branch(schema_root=schema_root)
+        assert "TemplateTestingPart" in branch.generic_names
+
+        branch.delete(name="TestingPart")
+
+        assert "TemplateTestingPart" not in branch.generic_names
+
+
+class TestProcessWithOrphanedTemplate:
+    """A schema holding a generated template whose backing node is gone must reprocess cleanly.
+
+    A registry can hold such an orphan when the node was removed without cleaning up the
+    kinds generated from it; reprocessing must drop the orphan instead of failing.
+    """
+
+    def test_process_removes_orphaned_template_and_profile(self) -> None:
+        schema_root = SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Gadget",
+                    namespace="Testing",
+                    generate_template=True,
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text", unique=True),
+                    ],
+                ),
+            ],
+        )
+        branch = _load_processed_branch(schema_root=schema_root)
+        assert "TemplateTestingGadget" in branch.template_names
+        assert "ProfileTestingGadget" in branch.profile_names
+
+        # Drop the node from the map directly, bypassing the delete() cascade, to mirror
+        # a registry that already holds an orphaned template
+        del branch.nodes["TestingGadget"]
+
+        branch.process()
+
+        assert "TemplateTestingGadget" not in branch.template_names
+        assert "ProfileTestingGadget" not in branch.profile_names
+
+
 class TestHierarchySchemaProcessingSetsCorrectPeerAndHierarchical:
     """Proves that schema processing produces the peer/hierarchical values in an expected manner."""
 

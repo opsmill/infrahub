@@ -12,7 +12,7 @@ import { classNames } from "@/shared/utils/common";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import type { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore, NodeFieldsWithMetadata } from "@/entities/nodes/types";
 
 export interface RelationshipManyInputProps
   extends Omit<PopoverTriggerProps, "value" | "onChange"> {
@@ -21,6 +21,8 @@ export interface RelationshipManyInputProps
   peer: string;
   value: Array<NodeCore> | null;
   filterQuery?: Record<string, string | number | boolean | string[]>;
+  enforceFilterQueryOnIdSearch?: boolean;
+  addNewInitialObject?: NodeFieldsWithMetadata;
   ref?: React.Ref<HTMLButtonElement>;
 }
 
@@ -30,6 +32,8 @@ export function RelationshipManyInput({
   value,
   onChange,
   filterQuery,
+  enforceFilterQueryOnIdSearch,
+  addNewInitialObject,
   ref,
   ...props
 }: RelationshipManyInputProps) {
@@ -89,8 +93,13 @@ export function RelationshipManyInput({
           onSelect={handleSelect}
           filterItem={(node) => !value?.some((v) => v.id === node.id)}
           filterQuery={filterQuery}
+          enforceFilterQueryOnIdSearch={enforceFilterQueryOnIdSearch}
         />
-        <AddRelationshipAction peer={peer} onSuccess={handleSelect} />
+        <AddRelationshipAction
+          peer={peer}
+          initialObject={addNewInitialObject}
+          onSuccess={handleSelect}
+        />
       </ComboboxContent>
     </Combobox>
   );
