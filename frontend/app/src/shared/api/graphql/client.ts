@@ -54,6 +54,7 @@ const authenticationExchange = authExchange(async (authUtilities) => {
   };
 });
 
+// Grows only with the branch/point-in-time endpoints a session visits, and dies with the page.
 const clientsByEndpoint = new Map<string, Client>();
 
 // urql's Client dedups concurrent operations by hash(query, variables) and ignores the URL.
@@ -66,7 +67,6 @@ function getGraphqlClient(branch?: string | null, date?: Date | null): Client {
   if (!client) {
     client = new Client({
       url,
-      requestPolicy: "network-only",
       preferGetMethod: false,
       fetchOptions: {
         headers: {
