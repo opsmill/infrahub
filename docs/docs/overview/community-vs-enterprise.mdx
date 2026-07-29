@@ -153,6 +153,7 @@ This area represents one of the most significant differences between the edition
 #### Community edition characteristics
 
 - **Scale capacity**: Suitable for infrastructures up to ~1,000 devices
+- **Database concurrency**: Neo4j runs on a single CPU core, so large merges and imports are bound by single-core performance regardless of how many cores the host has
 - **Database optimization**: Standard optimization suitable for moderate workloads
 - **Caching**: Basic caching and query optimization
 - **Deployment model**: Single-instance deployment patterns
@@ -165,6 +166,7 @@ Community Edition is fully capable of handling production workloads for small to
 #### Enterprise edition enhancements
 
 - **Scale capacity**: Optimized for environments with 10,000+ devices
+- **Database concurrency**: Multi-core Neo4j for parallel query and merge execution
 - **Database performance**: Advanced tuning, indexing strategies, and query optimization
 - **Caching architecture**: Enhanced multi-layer caching for improved performance
 - **High availability**: Built-in clustering support for resilience
