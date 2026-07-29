@@ -47,8 +47,9 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
 from tests.constants import TestKind
-from tests.helpers.schema import CAR_SCHEMA, CHILD, DEVICE, DEVICE_SCHEMA, THING
+from tests.helpers.schema import CAR_SCHEMA, CHILD, DEVICE, DEVICE_SCHEMA, THING, load_schema
 from tests.helpers.schema.device import LAG_INTERFACE
+from tests.helpers.schema.dns_record import DNS_RECORD_DEFINITION
 
 from .conftest import _get_schema_by_kind
 
@@ -2271,6 +2272,118 @@ async def test_validate_default_value_error(
 
     with pytest.raises(ValidationError, match=expected_error):
         schema.validate_default_values()
+
+
+@dataclass
+class IPHostDefaultValueTestCase:
+    name: str
+    default_value: str
+    parameters: dict[str, Any] | None = None
+    recorded_default: str | None = None
+    expected_error: str | None = None
+
+
+IPHOST_DEFAULT_VALUE_CASES = [
+    IPHostDefaultValueTestCase(
+        name="declared_host_mask_is_recorded_bare",
+        default_value="10.0.0.1/32",
+        parameters={"allow_prefix": False},
+        recorded_default="10.0.0.1",
+    ),
+    IPHostDefaultValueTestCase(
+        name="declared_bare_is_recorded_bare",
+        default_value="10.0.0.1",
+        parameters={"allow_prefix": False},
+        recorded_default="10.0.0.1",
+    ),
+    IPHostDefaultValueTestCase(
+        name="declared_ipv6_host_mask_is_recorded_bare",
+        default_value="2001:db8::1/128",
+        parameters={"allow_prefix": False},
+        recorded_default="2001:db8::1",
+    ),
+    IPHostDefaultValueTestCase(
+        name="declared_subnet_prefix_is_rejected",
+        default_value="10.0.0.1/24",
+        parameters={"allow_prefix": False},
+        expected_error=(
+            "InfraTinySchema: default value 10.0.0.1/24 is not a valid IPHost "
+            "because a subnet prefix is not permitted at something"
+        ),
+    ),
+    IPHostDefaultValueTestCase(
+        name="declared_ipv6_subnet_prefix_is_rejected",
+        default_value="2001:db8::1/64",
+        parameters={"allow_prefix": False},
+        expected_error=(
+            "InfraTinySchema: default value 2001:db8::1/64 is not a valid IPHost "
+            "because a subnet prefix is not permitted at something"
+        ),
+    ),
+    IPHostDefaultValueTestCase(
+        name="undeclared_subnet_prefix_is_accepted",
+        default_value="10.0.0.1/24",
+        recorded_default="10.0.0.1/24",
+    ),
+    IPHostDefaultValueTestCase(
+        name="undeclared_host_mask_is_kept",
+        default_value="10.0.0.1/32",
+        recorded_default="10.0.0.1/32",
+    ),
+]
+
+
+@pytest.mark.parametrize("case", IPHOST_DEFAULT_VALUE_CASES, ids=lambda case: case.name)
+async def test_validate_default_value_iphost_prefix_policy(
+    schema_all_in_one: dict[str, Any], case: IPHostDefaultValueTestCase
+) -> None:
+    attribute: dict[str, Any] = {
+        "name": "something",
+        "kind": "IPHost",
+        "optional": True,
+        "default_value": case.default_value,
+    }
+    if case.parameters is not None:
+        attribute["parameters"] = case.parameters
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraTinySchema")
+    schema_dict["attributes"].append(attribute)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    if case.expected_error is not None:
+        with pytest.raises(ValidationError, match=rf"^{re.escape(case.expected_error)}$"):
+            schema.validate_default_values()
+        return
+
+    schema.validate_default_values()
+
+    assert schema.get(name="InfraTinySchema").get_attribute(name="something").default_value == case.recorded_default
+
+
+async def test_bare_iphost_default_value_reaches_a_node_bare(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    init_nodes_registry: None,
+) -> None:
+    definition = copy.deepcopy(DNS_RECORD_DEFINITION)
+    defaults = {"v6_target": "2001:db8::1/128", "mgmt_ip": "10.0.0.1"}
+    for attribute in definition["attributes"]:
+        if attribute["name"] in defaults:
+            attribute["default_value"] = defaults[attribute["name"]]
+    await load_schema(db=db, schema=SchemaRoot(nodes=[definition]))
+
+    node = await Node.init(db=db, schema="TestingDnsRecord", branch=default_branch)
+    await node.new(db=db, dns_target="10.10.10.10")
+    await node.save(db=db)
+
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch, raise_on_error=True)
+
+    assert reloaded.v6_target.value == "2001:db8::1"
+    assert reloaded.v6_target.is_default is True
+    assert reloaded.mgmt_ip.value == "10.0.0.1/32"
+    assert reloaded.mgmt_ip.is_default is True
 
 
 async def test_schema_branch_load_schema_extension(

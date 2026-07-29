@@ -42,7 +42,7 @@ from infrahub.log import get_logger
 
 from ..types import is_large_attribute_type
 from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
-from .schema.attribute_parameters import NumberAttributeParameters
+from .schema.attribute_parameters import IPHostAttributeParameters, NumberAttributeParameters
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -1036,6 +1036,17 @@ class IPHost(BaseAttribute):
     value: str
 
     @staticmethod
+    def _allows_prefix(schema: AttributeSchema) -> bool:
+        """Return whether the attribute accepts an address carrying a prefix.
+
+        Anything other than the per-kind parameters class cannot express the restriction, so the
+        permissive answer is the safe one for a base-classed schema.
+        """
+        if isinstance(schema.parameters, IPHostAttributeParameters):
+            return schema.parameters.allow_prefix
+        return True
+
+    @staticmethod
     def get_allowed_property_in_path() -> list[str]:
         return [
             "binary_address",
@@ -1143,12 +1154,25 @@ class IPHost(BaseAttribute):
         super().validate_format(value=value, name=name, schema=schema)
 
         try:
-            ipaddress.ip_interface(value)
+            interface = ipaddress.ip_interface(value)
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
+        if cls._allows_prefix(schema=schema):
+            return
+
+        # A host mask is redundant rather than a prefix, so the comparison is against the host length
+        # of the parsed address' own version -- a `/32` is a subnet prefix on an IPv6 address.
+        if interface.network.prefixlen != interface.ip.max_prefixlen:
+            raise ValidationError(
+                {name: f"{value} is not a valid {schema.kind} because a subnet prefix is not permitted"}
+            )
+
     def _normalize_value(self, value: Any) -> str:
-        return ipaddress.ip_interface(value).with_prefixlen
+        interface = ipaddress.ip_interface(value)
+        if self._allows_prefix(schema=self.schema):
+            return interface.with_prefixlen
+        return str(interface.ip)
 
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
