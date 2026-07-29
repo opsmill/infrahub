@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -7,11 +8,13 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import (
+    IPHostAttributeParameters,
     NumberAttributeParameters,
     NumberPoolParameters,
     TextAttributeParameters,
 )
 from tests.helpers.schema import load_schema as load_schema_root
+from tests.helpers.schema.dns_record import DNS_RECORD_DEFINITION
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -24,6 +27,7 @@ if TYPE_CHECKING:
 
 LEGACY_KIND = "TestingThingLegacy"
 NEW_KIND = "TestingThing"
+DNS_RECORD_KIND = "TestingDnsRecord"
 
 
 class TestUpdateAttributeParameters(TestInfrahubApp):
@@ -342,3 +346,106 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         )
         self._validate_schema_number_parameters(schema=new_schema, min_value=20, max_value=30)
         self._validate_schema_numberpool_parameters(schema=new_schema, start_range=50, end_range=1200)
+
+
+class TestAllowPrefixIsImmutable(TestInfrahubApp):
+    """A bare-address declaration can be set when an attribute is created but never changed afterwards."""
+
+    @pytest.fixture(scope="class")
+    def schema_step_01(self) -> dict[str, Any]:
+        return {"version": "1.0", "nodes": [deepcopy(DNS_RECORD_DEFINITION)]}
+
+    @pytest.fixture(scope="class")
+    async def load_schema_01(
+        self, db: InfrahubDatabase, default_branch: Branch, schema_step_01: dict[str, Any]
+    ) -> None:
+        schema_root = SchemaRoot(**schema_step_01)
+        await load_schema_root(db=db, branch_name=default_branch.name, schema=schema_root, update_db=True)
+
+    @staticmethod
+    def _with_parameters(
+        schema_step: dict[str, Any], attribute_name: str, parameters: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        candidate = deepcopy(schema_step)
+        attribute = next(attr for attr in candidate["nodes"][0]["attributes"] if attr["name"] == attribute_name)
+        if parameters is None:
+            attribute.pop("parameters", None)
+        else:
+            attribute["parameters"] = parameters
+        return candidate
+
+    async def test_declaration_is_recorded_on_load(
+        self, db: InfrahubDatabase, default_branch: Branch, load_schema_01: None
+    ) -> None:
+        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+        dns_record = schema_branch.get_node(name=DNS_RECORD_KIND, duplicate=False)
+
+        assert dns_record.get_attribute("dns_target").parameters == IPHostAttributeParameters(allow_prefix=False)
+        assert dns_record.get_attribute("mgmt_ip").parameters == IPHostAttributeParameters(allow_prefix=True)
+
+    @pytest.mark.parametrize(
+        ("attribute_name", "parameters"),
+        [
+            pytest.param("dns_target", {"allow_prefix": True}, id="flip_to_allow_prefixes"),
+            pytest.param("dns_target", None, id="remove_the_declaration"),
+            pytest.param("mgmt_ip", {"allow_prefix": False}, id="add_the_declaration"),
+        ],
+    )
+    async def test_changing_the_declaration_is_refused(
+        self,
+        client: InfrahubClient,
+        default_branch: Branch,
+        load_schema_01: None,
+        schema_step_01: dict[str, Any],
+        attribute_name: str,
+        parameters: dict[str, Any] | None,
+    ) -> None:
+        candidate = self._with_parameters(schema_step_01, attribute_name, parameters)
+
+        success, response = await client.schema.check(schemas=[candidate], branch=default_branch.name)
+
+        assert success is False
+        assert response == {
+            "data": None,
+            "errors": [
+                {
+                    "message": f"'not_supported': {DNS_RECORD_KIND} {attribute_name} None",
+                    "extensions": {"code": 422},
+                }
+            ],
+        }
+
+        assert self._validation_error_paths(default_branch=default_branch, candidate_schema=candidate) == [
+            ("not_supported", attribute_name, "parameters.allow_prefix")
+        ]
+
+    @staticmethod
+    def _validation_error_paths(
+        default_branch: Branch, candidate_schema: dict[str, Any]
+    ) -> list[tuple[str, str | None, str | None]]:
+        """The rejected path, which carries the parameter name that the rendered message drops."""
+        branch_schema = registry.schema.get_schema_branch(name=default_branch.name)
+        candidate = branch_schema.duplicate()
+        candidate.load_schema(schema=SchemaRoot(**candidate_schema))
+        candidate.process()
+        diff = branch_schema.diff(other=candidate)
+
+        result = branch_schema.validate_update(other=candidate, diff=diff)
+
+        return [(error.error.value, error.path.field_name, error.path.property_name) for error in result.errors]
+
+    async def test_an_unrelated_parameter_change_is_still_accepted(
+        self,
+        client: InfrahubClient,
+        default_branch: Branch,
+        load_schema_01: None,
+        schema_step_01: dict[str, Any],
+    ) -> None:
+        """The refusal must be specific to the declaration, not to touching the attribute at all."""
+        candidate = deepcopy(schema_step_01)
+        mgmt_ip = next(attr for attr in candidate["nodes"][0]["attributes"] if attr["name"] == "mgmt_ip")
+        mgmt_ip["description"] = "Address used to reach the record's host out of band"
+
+        success, _ = await client.schema.check(schemas=[candidate], branch=default_branch.name)
+
+        assert success is True
