@@ -90,6 +90,11 @@ def relevant_node_changes(
     return relevant_node_ids
 
 
+def reads_kind(definition: RegenerationDefinition, kind: str) -> bool:
+    """Whether a data change to ``kind`` is relevant because the definition's query reads that kind."""
+    return kind in definition.query_models
+
+
 def query_changed(
     definition: RegenerationDefinition,
     diff_summary: list[NodeDiff],

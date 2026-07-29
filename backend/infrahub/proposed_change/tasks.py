@@ -59,6 +59,7 @@ from infrahub.core.regeneration.models import DefinitionSelect
 from infrahub.core.regeneration.predicates import (
     definition_changed,
     query_changed,
+    reads_kind,
     repo_diff_or_none,
     transform_changed,
 )
@@ -461,7 +462,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
             select = select.add_flag(
                 current=select,
                 flag=DefinitionSelect.MODIFIED_KINDS,
-                condition=generator_definition.reads_kind(changed_model),
+                condition=reads_kind(generator_definition, changed_model),
             )
 
         if select:
@@ -1368,7 +1369,7 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
             select = select.add_flag(
                 current=select,
                 flag=DefinitionSelect.MODIFIED_KINDS,
-                condition=artifact_definition.reads_kind(changed_model),
+                condition=reads_kind(artifact_definition, changed_model),
             )
 
         if select:
