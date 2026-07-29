@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
-from .models import CascadeRole, PlannedRegeneration
+from .models import CascadeRole, FullRegeneration, PlannedRegeneration
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -32,6 +32,13 @@ class CascadeParticipant[RequestT: RegenerationRequest](ABC):
             cascade_role=self.role,
             requests=requests,
             output=self._capture(requests),
+        )
+
+    def full_regeneration(self, *, target_branch: str) -> FullRegeneration:
+        """The blanket regeneration of this participant's kind, for when selective output is unavailable."""
+        return FullRegeneration(
+            workflow=self.selector.full_regeneration_workflow,
+            parameters=self.selector.full_regeneration_parameters(target_branch=target_branch),
         )
 
     @abstractmethod

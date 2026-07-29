@@ -15,7 +15,11 @@ from infrahub.core.merge.selective_regen.participant import CascadeSource, Casca
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
-from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, REQUEST_GENERATOR_DEFINITION_RUN
+from infrahub.workflows.catalogue import (
+    REQUEST_ARTIFACT_DEFINITION_GENERATE,
+    REQUEST_GENERATOR_DEFINITION_RUN,
+    TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+)
 from tests.helpers.diff_summary import node_diff
 from tests.helpers.selective_regen import (
     ArtifactForcingSelector,
@@ -224,6 +228,22 @@ async def test_consolidate_submissions_routes_each_workflow_to_its_selector() ->
     assert [(entry.workflow, list(entry.requests)) for entry in result] == [
         (REQUEST_GENERATOR_DEFINITION_RUN, [generator_run]),
         (REQUEST_ARTIFACT_DEFINITION_GENERATE, [artifact_request]),
+    ]
+
+
+def test_terminal_full_regenerations_cover_every_terminal_and_exclude_sources() -> None:
+    """The source-failure fallback regenerates every terminal kind wholesale, never the sources."""
+    source = CascadeSource[RequestGeneratorDefinitionRun](
+        GeneratorForcingSelector(definitions=[], member_ids=[], subscriber_by_member={}), output=StubOutputFactory()
+    )
+    terminal = CascadeTerminal(ArtifactForcingSelector(definitions=[], member_ids=[], subscriber_by_member={}))
+
+    regenerations = MergeSelectiveRegeneration(participants=[source, terminal]).terminal_full_regenerations(
+        TARGET_BRANCH
+    )
+
+    assert [(regeneration.workflow, regeneration.parameters) for regeneration in regenerations] == [
+        (TRIGGER_ARTIFACT_DEFINITION_GENERATE, {"branch": TARGET_BRANCH}),
     ]
 
 

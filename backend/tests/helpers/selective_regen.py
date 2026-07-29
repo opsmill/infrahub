@@ -15,7 +15,12 @@ from infrahub.core.regeneration.models import TargetSelection
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
-from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, REQUEST_GENERATOR_DEFINITION_RUN
+from infrahub.workflows.catalogue import (
+    REQUEST_ARTIFACT_DEFINITION_GENERATE,
+    REQUEST_GENERATOR_DEFINITION_RUN,
+    TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+    TRIGGER_GENERATOR_DEFINITION_RUN,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -121,6 +126,7 @@ class GeneratorForcingSelector(
     ForcingTemplateSelector[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun]
 ):
     workflow = REQUEST_GENERATOR_DEFINITION_RUN
+    full_regeneration_workflow = TRIGGER_GENERATOR_DEFINITION_RUN
 
     def _build_request(
         self, *, definition: ProposedChangeGeneratorDefinition, target_branch: str, members: list[str]
@@ -134,6 +140,7 @@ class ArtifactForcingSelector(
     ForcingTemplateSelector[ProposedChangeArtifactDefinition, RequestArtifactDefinitionGenerate]
 ):
     workflow = REQUEST_ARTIFACT_DEFINITION_GENERATE
+    full_regeneration_workflow = TRIGGER_ARTIFACT_DEFINITION_GENERATE
 
     def _build_request(
         self, *, definition: ProposedChangeArtifactDefinition, target_branch: str, members: list[str]

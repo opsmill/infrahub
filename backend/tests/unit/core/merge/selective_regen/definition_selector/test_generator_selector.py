@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 
 if TYPE_CHECKING:
@@ -42,6 +43,14 @@ def test_build_request_threads_branch_definition_and_members(generator_selector:
     assert request.branch == TARGET_BRANCH
     assert request.generator_definition is definition
     assert request.target_members == ["m1", "m2"]
+
+
+def test_full_regeneration_parameters_carry_the_merge_source(generator_selector: GeneratorSelector) -> None:
+    """A generator's blanket regeneration is tagged as a merge-sourced run."""
+    assert generator_selector.full_regeneration_parameters(target_branch=TARGET_BRANCH) == {
+        "branch": TARGET_BRANCH,
+        "source": GeneratorDefinitionRunSource.MERGE,
+    }
 
 
 def test_consolidate_returns_the_runs_unchanged_for_a_source(generator_selector: GeneratorSelector) -> None:

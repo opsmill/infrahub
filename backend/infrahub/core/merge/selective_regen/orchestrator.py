@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
 
     from .generator_output import GeneratorMutationDiffCapturer
-    from .models import DefinitionModel, RegenerationRequest
+    from .models import DefinitionModel, FullRegeneration, RegenerationRequest
     from .participant import CascadeParticipant
 
 
@@ -35,6 +35,8 @@ class RegenerationSelector(Protocol):
     ) -> list[PlannedRegeneration]: ...
 
     def consolidate_submissions(self, entries: Sequence[PlannedRegeneration]) -> list[PlannedRegeneration]: ...
+
+    def terminal_full_regenerations(self, target_branch: str) -> list[FullRegeneration]: ...
 
 
 class MergeSelectiveRegeneration(RegenerationSelector):
@@ -114,6 +116,14 @@ class MergeSelectiveRegeneration(RegenerationSelector):
                 )
             )
         return submissions
+
+    def terminal_full_regenerations(self, target_branch: str) -> list[FullRegeneration]:
+        """The blanket regenerations for every terminal participant, for the source-failure fallback."""
+        return [
+            participant.full_regeneration(target_branch=target_branch)
+            for participant in self.participants
+            if participant.role is CascadeRole.TERMINAL
+        ]
 
 
 def build_merge_selective_regeneration(

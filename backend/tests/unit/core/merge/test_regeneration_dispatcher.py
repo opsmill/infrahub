@@ -14,6 +14,7 @@ from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
 from infrahub.core.merge.selective_regen.models import (
     CascadeRole,
+    FullRegeneration,
     PlannedRegeneration,
     SelectiveRegenerationPlan,
 )
@@ -106,6 +107,10 @@ class _FakeSelector:
     def consolidate_submissions(self, entries: Sequence[PlannedRegeneration]) -> list[PlannedRegeneration]:
         """Return the canned submissions when set, otherwise the entries unchanged."""
         return self._submissions if self._submissions is not None else list(entries)
+
+    def terminal_full_regenerations(self, target_branch: str) -> list[FullRegeneration]:
+        """The blanket regeneration a single artifact terminal would contribute."""
+        return [FullRegeneration(workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE, parameters={"branch": target_branch})]
 
 
 class _FakeSourceOutput:

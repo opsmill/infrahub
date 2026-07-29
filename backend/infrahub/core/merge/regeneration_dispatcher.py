@@ -147,16 +147,16 @@ class PostMergeRegenerationDispatcher:
                     self.log.exception("Post-merge generator run failed")
 
         if generator_failed:
-            # A failed generator's consuming artifacts cannot be selected from its output, so regenerate
-            # every artifact -- but never re-run the generators, which would fail the same way again.
-            await self._submit_full_artifact_regeneration(context=context, target_branch=target_branch)
+            # A failed source's consuming terminals cannot be selected from its output, so regenerate
+            # every terminal -- but never re-run the sources, which would fail the same way again.
+            await self._submit_full_terminal_regeneration(context=context, target_branch=target_branch)
             return
 
         targeted = await self._reselect_from_cascade_output(
             context=context, target_branch=target_branch, sources=sources, since=cascade_started_at
         )
         if targeted is None:
-            # Every artifact was already regenerated wholesale, which covers the merge-diff selection too.
+            # Every terminal was already regenerated wholesale, which covers the merge-diff selection too.
             return
         # Dispatched only after the capture, so the capture window never sees these generations' own writes.
         await self._submit(context=context, entries=[*terminals, *targeted])
@@ -180,8 +180,8 @@ class PostMergeRegenerationDispatcher:
         """Reselect the fire-and-forget generations the just-run sources' own output requires.
 
         Each source captures its own output; the terminals that read it are then reselected from the
-        combined diff. Returns ``None`` after regenerating every artifact wholesale when that output
-        cannot be captured or selected, so a source's writes can never leave a consuming artifact stale.
+        combined diff. Returns ``None`` after regenerating every terminal wholesale when that output
+        cannot be captured or selected, so a source's writes can never leave a consuming terminal stale.
         """
         try:
             captured: list[NodeDiff] = []
@@ -192,11 +192,11 @@ class PostMergeRegenerationDispatcher:
                 diff_summary=captured, target_branch=target_branch
             )
         except Exception:
-            self.log.exception("Failed to target artifacts from generator output; regenerating all artifacts instead")
-            await self._submit_full_artifact_regeneration(context=context, target_branch=target_branch)
+            self.log.exception("Failed to target terminals from cascade output; regenerating all terminals instead")
+            await self._submit_full_terminal_regeneration(context=context, target_branch=target_branch)
             return None
         targeted_count = sum(len(entry.requests) for entry in targeted)
-        self.log.debug(f"Targeted {targeted_count} artifact definition(s) from generator output")
+        self.log.debug(f"Targeted {targeted_count} terminal definition(s) from cascade output")
         return targeted
 
     async def _full_regeneration(
@@ -205,7 +205,8 @@ class PostMergeRegenerationDispatcher:
         self.log.debug(f"{reason}; regenerating all definitions")
         await submit_full_regeneration(workflow=self.workflow, context=context, target_branch=target_branch)
 
-    async def _submit_full_artifact_regeneration(self, context: InfrahubContext, target_branch: str) -> None:
-        await self.workflow.submit_workflow(
-            workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE, context=context, parameters={"branch": target_branch}
-        )
+    async def _submit_full_terminal_regeneration(self, context: InfrahubContext, target_branch: str) -> None:
+        for regeneration in self.selector.terminal_full_regenerations(target_branch):
+            await self.workflow.submit_workflow(
+                workflow=regeneration.workflow, context=context, parameters=regeneration.parameters
+            )

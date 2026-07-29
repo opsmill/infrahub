@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -83,6 +83,18 @@ class SelectiveRegenerationPlan:
     def for_role(self, cascade_role: CascadeRole) -> list[PlannedRegeneration]:
         """Return the entries whose selector plays the given cascade role, in selector order."""
         return [entry for entry in self.entries if entry.cascade_role is cascade_role]
+
+
+@dataclass(frozen=True)
+class FullRegeneration:
+    """A blanket regeneration submission for one kind, ignoring any selective narrowing.
+
+    Dispatched when a cascade source's output is unavailable, so every definition of a terminal kind
+    is regenerated rather than only the ones the diff would have selected.
+    """
+
+    workflow: WorkflowDefinition
+    parameters: dict[str, Any]
 
 
 @dataclass(frozen=True)

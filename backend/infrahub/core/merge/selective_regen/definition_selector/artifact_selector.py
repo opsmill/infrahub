@@ -10,7 +10,7 @@ from infrahub.core.regeneration.members import should_render_artifact
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.git.utils import fetch_artifact_definition_targets
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
-from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
+from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, TRIGGER_ARTIFACT_DEFINITION_GENERATE
 
 from ..models import LoadedDefinition
 from .base import DefinitionSelectorBase
@@ -24,6 +24,7 @@ class ArtifactSelector(DefinitionSelectorBase[ProposedChangeArtifactDefinition, 
 
     subscriber_kind = InfrahubKind.ARTIFACT
     workflow = REQUEST_ARTIFACT_DEFINITION_GENERATE
+    full_regeneration_workflow = TRIGGER_ARTIFACT_DEFINITION_GENERATE
 
     def consolidate(
         self, requests: Sequence[RequestArtifactDefinitionGenerate]

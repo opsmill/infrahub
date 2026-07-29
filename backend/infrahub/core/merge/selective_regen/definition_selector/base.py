@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.regeneration.members import map_subscriber_ids_by_member
 
@@ -46,6 +46,8 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
     subscriber_kind: str
     workflow: WorkflowDefinition
     """The workflow that runs this selector's requests."""
+    full_regeneration_workflow: WorkflowDefinition
+    """The workflow that regenerates every definition of this kind, ignoring selective narrowing."""
 
     def __init__(
         self,
@@ -135,6 +137,10 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
             members = _narrow_members_filter(rendered_members, len(member_ids))
             requests.append(self._build_request(definition=definition, target_branch=target_branch, members=members))
         return requests
+
+    def full_regeneration_parameters(self, *, target_branch: str) -> dict[str, Any]:
+        """Parameters for the blanket regeneration of this kind; extended by kinds that need more."""
+        return {"branch": target_branch}
 
     def consolidate(self, requests: Sequence[RequestT]) -> Sequence[RequestT]:
         """Combine this selector's requests before dispatch; by default each is dispatched as-is.
