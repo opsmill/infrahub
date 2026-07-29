@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol
 
+from infrahub.core import registry
 from infrahub.core.regeneration.profiles import SchemaProfileExpander
 from infrahub.proposed_change.branch_diff import get_modified_kinds
 
@@ -154,5 +155,5 @@ def build_merge_selective_regeneration(
             ),
             CascadeTerminal(ArtifactSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log)),
         ],
-        kinds_expander=SchemaProfileExpander(),
+        kinds_expander=SchemaProfileExpander(schema_manager=registry.schema),
     )

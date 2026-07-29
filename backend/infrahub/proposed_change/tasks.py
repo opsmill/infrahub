@@ -421,7 +421,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
     ]
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    modified_kinds = SchemaProfileExpander().expand(
+    modified_kinds = SchemaProfileExpander(schema_manager=registry.schema).expand(
         modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch),
         branch=model.source_branch,
     )
@@ -1335,7 +1335,7 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
         definitions=definition_information[InfrahubKind.ARTIFACTDEFINITION]["edges"]
     )
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    modified_kinds = SchemaProfileExpander().expand(
+    modified_kinds = SchemaProfileExpander(schema_manager=registry.schema).expand(
         modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch),
         branch=model.source_branch,
     )

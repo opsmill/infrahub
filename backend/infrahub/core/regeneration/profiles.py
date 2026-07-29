@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
-from infrahub.core import registry
+if TYPE_CHECKING:
+    from infrahub.core.schema.manager import SchemaManager
 
 
 class ModifiedKindsExpander(Protocol):
@@ -19,8 +20,11 @@ class SchemaProfileExpander:
     changed profile widens the set to that node kind; a kind that names no profile passes through.
     """
 
+    def __init__(self, schema_manager: SchemaManager) -> None:
+        self._schema_manager = schema_manager
+
     def expand(self, *, modified_kinds: list[str], branch: str) -> list[str]:
-        schema_branch = registry.schema.get_schema_branch(name=branch)
+        schema_branch = self._schema_manager.get_schema_branch(name=branch)
         expanded = set(modified_kinds)
         for kind in modified_kinds:
             if kind in schema_branch.profiles:
