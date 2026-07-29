@@ -33,11 +33,17 @@ class CoreIPPrefixPool(Node):
         identifier: str | None = None,
         data: dict[str, Any] | None = None,
         prefixlen: int | None = None,
+        size: int | None = None,
         member_type: str | None = None,
         prefix_type: str | None = None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
     ) -> Node:
+        # `size` is the public GraphQL name for the carved prefix's length on the inline
+        # `from_pool` input. Accept it as an alias for now; the proper fix is renaming the
+        # public field to `prefixlen`, which is a breaking API change reserved for a major release.
+        if prefixlen is None:
+            prefixlen = size
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # Check if there is already a resource allocated with this identifier
             # if not, pull all existing prefixes and allocated the next available
