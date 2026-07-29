@@ -873,7 +873,7 @@ export interface components {
              * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
              * @enum {string}
              */
-            kind: "Any" | "Bandwidth" | "Boolean" | "Checkbox" | "Color" | "DateTime" | "Dropdown" | "Email" | "File" | "HashedPassword" | "ID" | "IPHost" | "IPNetwork" | "JSON" | "MacAddress" | "Password" | "URL";
+            kind: "Any" | "Bandwidth" | "Boolean" | "Checkbox" | "Color" | "DateTime" | "Dropdown" | "Email" | "File" | "HashedPassword" | "ID" | "IPNetwork" | "JSON" | "MacAddress" | "Password" | "URL";
             /**
              * Enum
              * @description Define a list of valid values for the attribute.
@@ -995,7 +995,7 @@ export interface components {
              * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
              * @enum {string}
              */
-            kind: "Any" | "Bandwidth" | "Boolean" | "Checkbox" | "Color" | "DateTime" | "Dropdown" | "Email" | "File" | "HashedPassword" | "ID" | "IPHost" | "IPNetwork" | "JSON" | "MacAddress" | "Password" | "URL";
+            kind: "Any" | "Bandwidth" | "Boolean" | "Checkbox" | "Color" | "DateTime" | "Dropdown" | "Email" | "File" | "HashedPassword" | "ID" | "IPNetwork" | "JSON" | "MacAddress" | "Password" | "URL";
             /**
              * Enum
              * @description Define a list of valid values for the attribute.
@@ -1186,7 +1186,7 @@ export interface components {
              * Attributes
              * @description Node attributes
              */
-            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
+            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["IPHostAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
             /**
              * Relationships
              * @description Node Relationships
@@ -1313,7 +1313,7 @@ export interface components {
              * Attributes
              * @description Node attributes
              */
-            attributes?: (components["schemas"]["TextAttributeWrite"] | components["schemas"]["NumberAttributeWrite"] | components["schemas"]["ListAttributeWrite"] | components["schemas"]["NumberPoolAttributeWrite"] | components["schemas"]["GenericAttributeWrite"])[];
+            attributes?: (components["schemas"]["TextAttributeWrite"] | components["schemas"]["NumberAttributeWrite"] | components["schemas"]["ListAttributeWrite"] | components["schemas"]["NumberPoolAttributeWrite"] | components["schemas"]["IPHostAttributeWrite"] | components["schemas"]["GenericAttributeWrite"])[];
             /**
              * Relationships
              * @description Node Relationships
@@ -1356,6 +1356,262 @@ export interface components {
             removed?: {
                 [key: string]: components["schemas"]["HashableModelDiff"] | null;
             };
+        };
+        /** IPHostAttributeParametersRead */
+        IPHostAttributeParametersRead: {
+            /**
+             * Allow Prefix
+             * @description When false, this attribute holds a bare IP address: a value with a subnet prefix is rejected and a host prefix is dropped.
+             * @default true
+             */
+            allow_prefix: boolean;
+        };
+        /** IPHostAttributeParametersWrite */
+        IPHostAttributeParametersWrite: {
+            /**
+             * Allow Prefix
+             * @description When false, this attribute holds a bare IP address: a value with a subnet prefix is rejected and a host prefix is dropped.
+             * @default true
+             */
+            allow_prefix: boolean;
+        };
+        /** IPHostAttributeRead */
+        IPHostAttributeRead: {
+            /**
+             * Id
+             * @description The ID of the attribute
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Attribute name, must be unique within a model and must be all lowercase.
+             */
+            name: string;
+            /**
+             * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "IPHost";
+            /**
+             * Enum
+             * @description Define a list of valid values for the attribute.
+             */
+            enum?: unknown[] | null;
+            /**
+             * Computed Attribute
+             * @description Defines how the value of this attribute will be populated.
+             */
+            computed_attribute?: (components["schemas"]["ComputedAttributeUserRead"] | components["schemas"]["ComputedAttributeJinja2Read"] | components["schemas"]["ComputedAttributeTransformPythonRead"]) | null;
+            /**
+             * Choices
+             * @description Define a list of valid choices for a dropdown attribute.
+             */
+            choices?: components["schemas"]["DropdownChoiceRead"][] | null;
+            /**
+             * Regex
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
+             */
+            regex?: string | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
+             */
+            max_length?: number | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
+             */
+            min_length?: number | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name. Will be autogenerated if not provided
+             */
+            label?: string | null;
+            /**
+             * Description
+             * @description Short description of the attribute.
+             */
+            description?: string | null;
+            /**
+             * Read Only
+             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Unique
+             * @description Indicate if the value of this attribute must be unique in the database for a given model.
+             * @default false
+             */
+            unique: boolean;
+            /**
+             * Optional
+             * @description Indicate if this attribute is mandatory or optional.
+             * @default false
+             */
+            optional: boolean;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
+            /**
+             * Order Weight
+             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+             */
+            order_weight?: number | null;
+            /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
+            /**
+             * Default Value
+             * @description Default value of the attribute.
+             */
+            default_value?: unknown | null;
+            /**
+             * Inherited
+             * @description Internal value to indicate if the attribute was inherited from a Generic node.
+             * @default false
+             */
+            inherited: boolean;
+            /**
+             * @description Expected state of the attribute after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * @description Type of allowed override for the attribute.
+             * @default any
+             */
+            allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
+            /** @description Extra parameters specific to this kind of attribute */
+            parameters?: components["schemas"]["IPHostAttributeParametersRead"] | null;
+        };
+        /** IPHostAttributeWrite */
+        IPHostAttributeWrite: {
+            /**
+             * Id
+             * @description The ID of the attribute
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Attribute name, must be unique within a model and must be all lowercase.
+             */
+            name: string;
+            /**
+             * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "IPHost";
+            /**
+             * Enum
+             * @description Define a list of valid values for the attribute.
+             */
+            enum?: unknown[] | null;
+            /**
+             * Computed Attribute
+             * @description Defines how the value of this attribute will be populated.
+             */
+            computed_attribute?: (components["schemas"]["ComputedAttributeUserWrite"] | components["schemas"]["ComputedAttributeJinja2Write"] | components["schemas"]["ComputedAttributeTransformPythonWrite"]) | null;
+            /**
+             * Choices
+             * @description Define a list of valid choices for a dropdown attribute.
+             */
+            choices?: components["schemas"]["DropdownChoiceWrite"][] | null;
+            /**
+             * Regex
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
+             */
+            regex?: string | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
+             */
+            max_length?: number | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
+             */
+            min_length?: number | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name. Will be autogenerated if not provided
+             */
+            label?: string | null;
+            /**
+             * Description
+             * @description Short description of the attribute.
+             */
+            description?: string | null;
+            /**
+             * Read Only
+             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Unique
+             * @description Indicate if the value of this attribute must be unique in the database for a given model.
+             * @default false
+             */
+            unique: boolean;
+            /**
+             * Optional
+             * @description Indicate if this attribute is mandatory or optional.
+             * @default false
+             */
+            optional: boolean;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
+            /**
+             * Order Weight
+             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+             */
+            order_weight?: number | null;
+            /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
+            /**
+             * Default Value
+             * @description Default value of the attribute.
+             */
+            default_value?: unknown | null;
+            /**
+             * @description Expected state of the attribute after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * @description Type of allowed override for the attribute.
+             * @default any
+             */
+            allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
+            /** @description Extra parameters specific to this kind of attribute */
+            parameters?: components["schemas"]["IPHostAttributeParametersWrite"] | null;
         };
         /** InfoAPI */
         InfoAPI: {
@@ -1892,7 +2148,7 @@ export interface components {
              * Attributes
              * @description Attributes to add to the existing node.
              */
-            attributes?: (components["schemas"]["TextAttributeWrite"] | components["schemas"]["NumberAttributeWrite"] | components["schemas"]["ListAttributeWrite"] | components["schemas"]["NumberPoolAttributeWrite"] | components["schemas"]["GenericAttributeWrite"])[];
+            attributes?: (components["schemas"]["TextAttributeWrite"] | components["schemas"]["NumberAttributeWrite"] | components["schemas"]["ListAttributeWrite"] | components["schemas"]["NumberPoolAttributeWrite"] | components["schemas"]["IPHostAttributeWrite"] | components["schemas"]["GenericAttributeWrite"])[];
             /**
              * Relationships
              * @description Relationships to add to the existing node.
@@ -1990,7 +2246,7 @@ export interface components {
              * Attributes
              * @description Node attributes
              */
-            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
+            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["IPHostAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
             /**
              * Relationships
              * @description Node Relationships
@@ -2127,7 +2383,7 @@ export interface components {
              * Attributes
              * @description Node attributes
              */
-            attributes?: (components["schemas"]["TextAttributeWrite"] | components["schemas"]["NumberAttributeWrite"] | components["schemas"]["ListAttributeWrite"] | components["schemas"]["NumberPoolAttributeWrite"] | components["schemas"]["GenericAttributeWrite"])[];
+            attributes?: (components["schemas"]["TextAttributeWrite"] | components["schemas"]["NumberAttributeWrite"] | components["schemas"]["ListAttributeWrite"] | components["schemas"]["NumberPoolAttributeWrite"] | components["schemas"]["IPHostAttributeWrite"] | components["schemas"]["GenericAttributeWrite"])[];
             /**
              * Relationships
              * @description Node Relationships
@@ -2832,7 +3088,7 @@ export interface components {
              * Attributes
              * @description Node attributes
              */
-            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
+            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["IPHostAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
             /**
              * Relationships
              * @description Node Relationships
@@ -3420,7 +3676,7 @@ export interface components {
              * Attributes
              * @description Node attributes
              */
-            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
+            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["IPHostAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
             /**
              * Relationships
              * @description Node Relationships

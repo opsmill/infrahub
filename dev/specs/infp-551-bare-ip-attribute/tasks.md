@@ -356,30 +356,103 @@ from old is the value quoted in the violation message —
   the 284 errors reported when pointing mypy at `test_manager_schema.py` directly (284 of them
   pre-existing) are not a CI gate. `backend/infrahub/core/attribute.py` is mypy-clean.
 
-- [ ] T020 [US1] Add the profile and template tests to
+- [X] T020 [US1] Add the profile and template tests to
   `backend/tests/component/core/test_attribute_iphost_allow_prefix.py`: a profile node and a template
   node inheriting a declared attribute validate and serialise identically to the node they derive
   from. **This is the highest-value test in the set** — silent flag loss on these paths would look
   exactly like the feature working (plan Risks).
-- [ ] T021 [US1] Add the branch-merge tests to the same file: an attribute declared on a branch
+- [X] T021 [US1] Add the branch-merge tests to the same file: an attribute declared on a branch
   carries both the declaration **and** its rejection behaviour to the target branch after merge; and
   two branches setting `10.0.0.1` and `10.0.0.1/32` on the same declared attribute produce **no**
   merge conflict, because they converge on one stored value. Required by Constitution Principle II.
-- [ ] T022 [US1] Add the kind-change test to the same file, pinning today's behaviour: changing a
+- [X] T022 [US1] Add the kind-change test to the same file, pinning today's behaviour: changing a
   declared attribute's kind away from `IPHost` silently drops `allow_prefix` (via
   `set_parameters_type` in `backend/infrahub/core/schema/attribute_schema.py:136-153`). The spec
   accepts this silence for v1; the test exists so a future change to it is deliberate.
-- [ ] T023 [US1] Regenerate the remaining contract artefacts and commit them:
+- [X] T023 [US1] Regenerate the remaining contract artefacts and commit them:
   `uv run invoke schema.generate-graphqlschema`, `uv run invoke schema.generate-jsonschema`,
   `uv run invoke docs.generate`, and `cd frontend/app && pnpm codegen` (depends on T009).
-- [ ] T024 [US1] Verify the FR-012 gate: re-run the T001 command and confirm the results match
+- [X] T024 [US1] Verify the FR-012 gate: re-run the T001 command and confirm the results match
   `/tmp/iphost-baseline.txt` exactly. **Any modification needed to an existing IPHost test is a
   regression, not a test-maintenance task** — investigate rather than adjust the test.
-- [ ] T025 [US1] Verify `uv run invoke docs.validate` is clean, so CI's
+- [X] T025 [US1] Verify `uv run invoke docs.validate` is clean, so CI's
   `validate-generated-documentation` job will pass (depends on T023).
+- [ ] T046 [US1] **BLOCKS the US1 checkpoint — found by T021.** Normalise an attribute value on the
+  *update* path, not only on construction. `BaseAttribute.__init__` is the sole caller of
+  `_normalize_value` (`backend/infrahub/core/attribute.py:166-167`); `from_graphql` and a plain
+  `attr.value = ...` assignment both set the value verbatim, and `_update`
+  (`backend/infrahub/core/attribute.py:446`) re-validates but never re-normalises. Evidence, from a
+  real `TestingDnsRecordUpdate` mutation against the shared fixture:
+
+  ```text
+  request:  dns_target = "10.0.0.9/32"   mgmt_ip = "10.0.0.9"
+  response: dns_target = "10.0.0.9/32"   mgmt_ip = "10.0.0.9"   display_label = "10.0.0.9/32"
+  graph:    dns_target = "10.0.0.9/32"   mgmt_ip = "10.0.0.9"
+  ```
+
+  So editing a declared attribute leaks the mask into the API response, the stored value, and the
+  persisted display label — FR-005 holds on create and fails on update. The undeclared control is
+  wrong in the mirror direction (`10.0.0.9` stored where `10.0.0.9/32` is expected), which makes this
+  a **pre-existing gap shared by every kind that overrides `_normalize_value`** (`IPHost`,
+  `IPNetwork`, `MacAddress`) rather than something T017/T018 introduced. Deliberately left out of the
+  T020-T025 chunk: the candidate fix is one line beside the existing `self.validate(...)` call in
+  `_update`, but it changes stored values for undeclared `IPHost`/`IPNetwork`/`MacAddress` updates and
+  so needs its own baseline run and review. Until it lands, the second half of T021 is pinned by a
+  `strict=True` xfail that flips to a failure the moment normalisation is fixed — remove the marker
+  then.
 
 **Checkpoint**: US1 is fully functional and independently demonstrable. The MVP is complete — an author
-can declare a bare-address attribute and every backend read surface returns no mask.
+can declare a bare-address attribute and every backend read surface returns no mask. **Not reached
+yet**: T046 above. Create, read, profile, template, schema-merge, uniqueness and HFID paths all return
+no mask; the update path still does.
+
+### Phase 3 implementation notes (T020-T025)
+
+- **T020's answer to the plan's top risk: the profile and template paths do *not* lose the flag.**
+  `set_parameters_type` keys off `kind`, so `ProfileTestingDnsRecord` and `TemplateTestingDnsRecord`
+  both carry `IPHostAttributeParameters(allow_prefix=False)` on `v6_target` and the permissive default
+  on `mgmt_ip`. A profile and a template each reject `2001:db8::1/64` with the same message a node
+  does, store `2001:db8::1/128` as bare, and hand the bare value on to the node that derives from
+  them — asserted through `NodeProfilesApplier.apply_profiles` and `NodeTemplateApplier.apply`
+  respectively. `dns_target` is untestable here (unique attributes are excluded from both generated
+  kinds), which is why every assertion is on `v6_target`.
+- **T021 first half passes and follows the production merge path.** The graph merge writes the schema
+  nodes; the destination schema is then re-read with `load_schema_from_db` and re-registered, exactly
+  as the merge orchestrator does. Both the declaration and the rejection behaviour survive.
+- **T021 second half is red for a production reason, not a test reason — see T046.** The two input
+  forms do not converge, because neither is normalised on the update path, so the diff sees
+  `10.0.0.1` against `10.0.0.1/32` and reports a conflict. The paired assertions that *do* hold are
+  kept in their own green test: genuinely different addresses conflict on the declared attribute and
+  on the undeclared control alike, so the expected absence of a conflict cannot be confused with the
+  enricher never looking at the attribute.
+- **T022 pins the drop from both directions.** A schema payload re-loaded with `kind: Text` and a live
+  `IPHostAttributeParameters` instance carried onto a `Text` attribute both end up with a bare
+  `TextAttributeParameters`, silently; coming back to `IPHost` yields `allow_prefix=True`, not the
+  declaration that was there before. The pairing is a re-parse that keeps the kind (only
+  `description` changes), which keeps the declaration — so the cause is the kind change and nothing
+  else about re-validation.
+- **T023 diff is confined to `schema/openapi.json` plus the REST types it feeds.** Structurally: new
+  `IPHostAttribute{Read,Write}` and `IPHostAttributeParameters{Read,Write}` components (the latter
+  carrying `allow_prefix`, default `true`), `IPHost` dropped from `GenericAttribute{Read,Write}`'s
+  `kind` enum, and the `oneOf` member plus discriminator mapping repointed for `IPHost` on
+  `NodeSchema{Read,Write}`, `GenericSchema{Read,Write}`, `ProfileSchemaRead`, `TemplateSchemaRead` and
+  `NodeExtensionWrite`. 227 leaf additions, 2 removals, 24 changes, zero unrelated churn.
+- **`schema/schema.graphql` and the generated docs did not change at all.** The core schema exposes
+  `parameters` as an opaque `JSON` attribute, so no per-kind parameters model reaches either surface.
+  `docs.validate` is therefore clean without any doc edit — and **T039 will find that
+  `allow_prefix` is not rendered anywhere in the schema reference**, because that page documents the
+  `parameters` field itself rather than its per-kind contents. T038's hand-written page is the only
+  place the flag can be documented today.
+- **`pnpm codegen` is the wrong command for the REST types, and it fails for an unrelated reason.**
+  `codegen` only regenerates the GraphQL types from `schema/schema.graphql` (unchanged here), and it
+  exits non-zero on a pre-existing document-validation error in
+  `frontend/app/src/shared/api/graphql/graphqlClientApollo.test.ts` ("This anonymous operation must be
+  the only defined operation") — reproduced with this branch's changes stashed. The command that
+  consumes `schema/openapi.json` is `pnpm codegen:openapi`; that is what regenerated
+  `frontend/app/src/shared/api/rest/types.generated.ts`.
+- **T024 gate is clean.** 77 passed; all 76 baseline node ids still `PASSED`, none missing, none
+  changed status, one new id (`test_bare_iphost_hfid_roundtrip_via_graphql`, added by T014). No
+  existing IPHost test was touched.
 
 ---
 
