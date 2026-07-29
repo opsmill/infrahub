@@ -22,8 +22,12 @@ PROFILE_NODE_KIND = "TestingProfileNode"
 PROFILE_PEER_KIND = "TestingProfilePeer"
 
 
-def build_profile_schema() -> SchemaRoot:
-    """Two kinds: a peer, and a main node carrying all three derived families."""
+def build_profile_schema(cross_relationship_hfid: bool = False) -> SchemaRoot:
+    """Two kinds: a peer, and a main node carrying all three derived families.
+
+    With ``cross_relationship_hfid`` the node's human-friendly id reads the peer across the
+    relationship instead of only its own name, so a peer rename has to refresh the stored HFID.
+    """
     peer = NodeSchema(
         name="ProfilePeer",
         namespace=PROFILE_NAMESPACE,
@@ -41,7 +45,7 @@ def build_profile_schema() -> SchemaRoot:
         label="Profile Node",
         default_filter="name__value",
         display_label="{{ name__value }} via {{ peer__name__value }}",
-        human_friendly_id=["name__value"],
+        human_friendly_id=["name__value", "peer__name__value"] if cross_relationship_hfid else ["name__value"],
         uniqueness_constraints=[["name__value"]],
         attributes=[
             AttributeSchema(name="name", kind="Text", optional=False, unique=True),
@@ -231,6 +235,99 @@ def build_chain_schema_dict(levels: int = 3) -> dict:
             ]
         nodes.append(node)
     return {"version": "1.0", "nodes": nodes}
+
+
+INTERFACE_NAMESPACE = "Testing"
+DEVICE_KIND = "TestingDevice"
+INTERFACE_KIND = "TestingInterface"
+
+
+def build_interface_hfid_schema_dict() -> dict:
+    """A device and an interface whose identity reads the device across the relationship.
+
+    The interface's human-friendly id and display label both read the device name, so its stored
+    identity depends on a peer attribute. Renaming the device must rewrite the stored id, the
+    cross-relationship case that a self-only id never reaches.
+    """
+    return {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": INTERFACE_NAMESPACE,
+                "default_filter": "name__value",
+                "display_label": "{{ name__value }}",
+                "attributes": [{"name": "name", "kind": "Text", "optional": False, "unique": True}],
+            },
+            {
+                "name": "Interface",
+                "namespace": INTERFACE_NAMESPACE,
+                "default_filter": "name__value",
+                "display_label": "{{ device__name__value }} :: {{ name__value }}",
+                "human_friendly_id": ["name__value", "device__name__value"],
+                "uniqueness_constraints": [["device", "name__value"]],
+                "attributes": [{"name": "name", "kind": "Text", "optional": False}],
+                "relationships": [{"name": "device", "peer": DEVICE_KIND, "optional": False, "cardinality": "one"}],
+            },
+        ],
+    }
+
+
+LOCATION_NAMESPACE = "Testing"
+METRO_KIND = "TestingMetro"
+SITE_KIND = "TestingSite"
+RACK_KIND = "TestingRack"
+
+
+def build_location_cascade_schema_dict() -> dict:
+    """A metro -> site -> rack chain that propagates a top-level rename two hops.
+
+    The site's short name is a computed attribute reading the metro name across the relationship.
+    The site display label reads the metro directly, so it refreshes on the first hop. The rack
+    display label reads the site's short name across its own relationship, so it moves only after
+    the site's short name is rewritten: the recompute has to chain from that write to the rack. A
+    self-only display label never exercises this second hop.
+    """
+    return {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Metro",
+                "namespace": LOCATION_NAMESPACE,
+                "default_filter": "name__value",
+                "display_label": "{{ name__value }}",
+                "attributes": [{"name": "name", "kind": "Text", "optional": False, "unique": True}],
+            },
+            {
+                "name": "Site",
+                "namespace": LOCATION_NAMESPACE,
+                "default_filter": "name__value",
+                "display_label": "{{ metro__name__value }}-{{ name__value }}",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "optional": False, "unique": True},
+                    {
+                        "name": "shortname",
+                        "kind": "Text",
+                        "optional": True,
+                        "read_only": True,
+                        "computed_attribute": {
+                            "kind": "Jinja2",
+                            "jinja2_template": "{{ metro__name__value }}-{{ name__value }}",
+                        },
+                    },
+                ],
+                "relationships": [{"name": "metro", "peer": METRO_KIND, "optional": False, "cardinality": "one"}],
+            },
+            {
+                "name": "Rack",
+                "namespace": LOCATION_NAMESPACE,
+                "default_filter": "name__value",
+                "display_label": "{{ site__shortname__value }} :: {{ name__value }}",
+                "attributes": [{"name": "name", "kind": "Text", "optional": False, "unique": True}],
+                "relationships": [{"name": "site", "peer": SITE_KIND, "optional": False, "cardinality": "one"}],
+            },
+        ],
+    }
 
 
 @dataclass(frozen=True)
