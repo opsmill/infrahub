@@ -1,9 +1,9 @@
 import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
-import {
-  PROPOSED_CHANGE_DEFAULT_SORT,
-  PROPOSED_CHANGE_SORT_OPTIONS,
-  type ProposedChangeSortOption,
-} from "@/entities/proposed-changes/domain/model/proposed-change-sort";
+import { PROPOSED_CHANGE_DEFAULT_SORT } from "@/entities/proposed-changes/domain/model/proposed-change-sort";
+
+function isSameSort(one: Sort, other: Sort): boolean {
+  return one.field === other.field && one.direction === other.direction;
+}
 
 /** The order the list actually queries: what the user chose, else the list default. */
 export function computeProposedChangeSort(sort: Sort[]): Sort[] {
@@ -11,20 +11,14 @@ export function computeProposedChangeSort(sort: Sort[]): Sort[] {
 }
 
 /**
- * The menu option matching an applied order, or `null` when it matches none — a sort can also come
- * from the URL (`?sort=name__value__asc`), and those are honoured with no option marked as active.
+ * Whether an applied order is exactly the one a menu option offers. A sort can also arrive from the
+ * URL (`?sort=name__value__asc`, or several keys at once); those are honoured, and no option claims
+ * to be the applied one.
  */
-export function findProposedChangeSortOption(sort: Sort[]): ProposedChangeSortOption | null {
-  if (sort.length !== 1) return null;
-
+export function isProposedChangeSortApplied(option: Sort, sort: Sort[]): boolean {
   const [applied] = sort;
 
-  return (
-    PROPOSED_CHANGE_SORT_OPTIONS.find(
-      (option) =>
-        option.sort.field === applied?.field && option.sort.direction === applied?.direction
-    ) ?? null
-  );
+  return sort.length === 1 && !!applied && isSameSort(applied, option);
 }
 
 /**
@@ -37,8 +31,5 @@ export function isProposedChangeSortedByUpdatedAt(sort: Sort[]): boolean {
 
 /** Picking the default order clears the URL param rather than spelling out the default in it. */
 export function isProposedChangeDefaultSort(sort: Sort): boolean {
-  return (
-    sort.field === PROPOSED_CHANGE_DEFAULT_SORT.field &&
-    sort.direction === PROPOSED_CHANGE_DEFAULT_SORT.direction
-  );
+  return isSameSort(sort, PROPOSED_CHANGE_DEFAULT_SORT);
 }

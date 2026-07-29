@@ -4,8 +4,8 @@ import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
 import { PROPOSED_CHANGE_DEFAULT_SORT } from "@/entities/proposed-changes/domain/model/proposed-change-sort";
 import {
   computeProposedChangeSort,
-  findProposedChangeSortOption,
   isProposedChangeDefaultSort,
+  isProposedChangeSortApplied,
   isProposedChangeSortedByUpdatedAt,
 } from "@/entities/proposed-changes/domain/rules/proposed-change-sort";
 
@@ -33,52 +33,65 @@ describe("computeProposedChangeSort", () => {
   });
 });
 
-describe("findProposedChangeSortOption", () => {
-  test("matches the menu option for newest created first", () => {
+describe("isProposedChangeSortApplied", () => {
+  const recentlyUpdated: Sort = { field: "node_metadata__updated_at", direction: "DESC" };
+
+  test("is true when the applied order is exactly the option", () => {
     // GIVEN
-    const sort: Sort[] = [{ field: "node_metadata__created_at", direction: "DESC" }];
+    const sort: Sort[] = [{ field: "node_metadata__updated_at", direction: "DESC" }];
 
     // WHEN
-    const option = findProposedChangeSortOption(sort);
+    const isApplied = isProposedChangeSortApplied(recentlyUpdated, sort);
 
     // THEN
-    expect(option).toMatchObject({ id: "newest", label: "Newest" });
+    expect(isApplied).toBe(true);
   });
 
-  test("matches the menu option for least recently updated", () => {
+  test("is false when only the direction differs", () => {
     // GIVEN
     const sort: Sort[] = [{ field: "node_metadata__updated_at", direction: "ASC" }];
 
     // WHEN
-    const option = findProposedChangeSortOption(sort);
+    const isApplied = isProposedChangeSortApplied(recentlyUpdated, sort);
 
     // THEN
-    expect(option).toMatchObject({ id: "least-recently-updated" });
+    expect(isApplied).toBe(false);
   });
 
-  test("returns null for a sort the menu does not offer", () => {
+  test("is false for an order the menu does not offer", () => {
     // GIVEN
     const sort: Sort[] = [{ field: "name__value", direction: "ASC" }];
 
     // WHEN
-    const option = findProposedChangeSortOption(sort);
+    const isApplied = isProposedChangeSortApplied(recentlyUpdated, sort);
 
     // THEN
-    expect(option).toBeNull();
+    expect(isApplied).toBe(false);
   });
 
-  test("returns null for a multi-key sort", () => {
+  test("is false for a multi-key order that merely starts with the option", () => {
     // GIVEN
     const sort: Sort[] = [
-      { field: "node_metadata__created_at", direction: "DESC" },
+      { field: "node_metadata__updated_at", direction: "DESC" },
       { field: "name__value", direction: "ASC" },
     ];
 
     // WHEN
-    const option = findProposedChangeSortOption(sort);
+    const isApplied = isProposedChangeSortApplied(recentlyUpdated, sort);
 
     // THEN
-    expect(option).toBeNull();
+    expect(isApplied).toBe(false);
+  });
+
+  test("is false for an empty order", () => {
+    // GIVEN
+    const sort: Sort[] = [];
+
+    // WHEN
+    const isApplied = isProposedChangeSortApplied(recentlyUpdated, sort);
+
+    // THEN
+    expect(isApplied).toBe(false);
   });
 });
 

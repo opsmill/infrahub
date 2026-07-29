@@ -8,8 +8,8 @@ import {
 } from "@/entities/proposed-changes/domain/model/proposed-change-sort";
 import {
   computeProposedChangeSort,
-  findProposedChangeSortOption,
   isProposedChangeDefaultSort,
+  isProposedChangeSortApplied,
 } from "@/entities/proposed-changes/domain/rules/proposed-change-sort";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
@@ -20,7 +20,7 @@ interface ProposedChangesSortMenuProps {
 export function ProposedChangesSortMenu({ schema }: ProposedChangesSortMenuProps) {
   const { appliedSort, setCustomSort } = useSort(schema);
 
-  const activeOption = findProposedChangeSortOption(computeProposedChangeSort(appliedSort));
+  const sort = computeProposedChangeSort(appliedSort);
 
   const selectOption = (option: ProposedChangeSortOption) => {
     setCustomSort(isProposedChangeDefaultSort(option.sort) ? null : [option.sort]);
@@ -42,7 +42,7 @@ export function ProposedChangesSortMenu({ schema }: ProposedChangesSortMenuProps
               onAction={() => selectOption(option)}
             >
               <span>{option.label}</span>
-              {activeOption?.id === option.id && (
+              {isProposedChangeSortApplied(option.sort, sort) && (
                 <>
                   <CheckIcon className="ml-auto" />
                   <span className="sr-only">active</span>
