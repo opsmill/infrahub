@@ -9,6 +9,7 @@ from infrahub.display_labels.scoping import derive_display_label_targets
 from infrahub.events.limits import get_submission_chunk_size
 from infrahub.hfid.scoping import derive_hfid_targets
 from infrahub.log import get_logger
+from infrahub.utilities.chunks import chunked
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     DISPLAY_LABELS_PROCESS_JINJA2,
@@ -173,12 +174,6 @@ class CoalescedSubmission:
     node_ids: tuple[str, ...]
 
 
-def _chunk(ids: tuple[str, ...], size: int) -> Iterator[tuple[str, ...]]:
-    """Yield ``ids`` in contiguous slices of at most ``size``."""
-    for start in range(0, len(ids), size):
-        yield ids[start : start + size]
-
-
 class CoalescedRecomputeBuilder:
     """Derive the deduplicated recompute for a merge or rebase change set from one schema branch."""
 
@@ -339,7 +334,7 @@ class CoalescedRecomputeSubmitter:
             )
             for target in coalesced.targets
             for lookup in target.reader_lookups
-            for chunk in _chunk(tuple(sorted(lookup.source_node_ids)), chunk_size)
+            for chunk in chunked(tuple(sorted(lookup.source_node_ids)), chunk_size)
         ]
         return sorted(
             submissions,

@@ -14,6 +14,7 @@ import {
   type SortableField,
 } from "@/entities/nodes/sort/ui/sort-options";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { getRelationshipLabel } from "@/entities/schema/domain/rules/get-relationship-label";
 import { resolveSchema } from "@/entities/schema/domain/rules/resolve-schema";
 import {
   genericSchemasAtom,
@@ -51,7 +52,7 @@ export function useSortableFields(schema: ModelSchema): SortableField[] {
       });
       if (!peerSchema) return [];
 
-      const relationshipLabel = relationship.label ?? relationship.name;
+      const relationshipLabel = getRelationshipLabel(relationship, peerSchema);
       const peerAttributes = (peerSchema.attributes ?? []).filter(isSortableAttribute);
 
       return sortByOrderWeight(peerAttributes).map((attribute) => {

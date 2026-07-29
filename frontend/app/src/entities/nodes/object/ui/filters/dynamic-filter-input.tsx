@@ -10,21 +10,16 @@ import { warnUnexpectedType } from "@/shared/utils/common";
 
 import { RelationshipFilterCombobox } from "@/entities/nodes/object/ui/filters/relationship-filter-combobox";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
-import type {
-  AttributeKind,
-  AttributeSchema,
-  RelationshipSchema,
-} from "@/entities/schema/domain/model/schema";
-import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
+import type { AttributeKind, FilterFieldSchema } from "@/entities/schema/domain/model/schema";
 
 export interface DynamicFilterInputProps {
-  fieldSchema: AttributeSchema | RelationshipSchema;
+  fieldSchema: FilterFieldSchema;
   value: any;
   onChange: (value: any) => any;
 }
 
 export function DynamicFilterInput({ fieldSchema, value, onChange }: DynamicFilterInputProps) {
-  if (isRelationshipSchema(fieldSchema)) {
+  if (fieldSchema.peer) {
     return <RelationshipFilterCombobox peer={fieldSchema.peer} value={value} onChange={onChange} />;
   }
 

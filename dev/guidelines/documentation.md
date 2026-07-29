@@ -89,7 +89,7 @@ Infrahub documentation follows the [Diataxis framework](https://diataxis.fr/), s
 - Use marketing language or hype (in topics)
 - Skip definitions of technical terms
 - Focus on "how to" instead of "how it works" (in topics)
-- Cite a specific PR number or spec file as the reason for a rule in `dev/guidelines/`, `dev/knowledge/`, or `AGENTS.md` — describe the underlying system behavior or problem instead. These references rot once the PR merges and the spec is forgotten, and a reader can't verify a closed PR against the doc's claim the way a reviewer could at review time. Track a significant architectural decision in `dev/adr/` (see `dev/adr/README.md`), written as a self-contained Context/Decision/Consequences record independent of the spec that prompted it — not as an inline citation in a guideline
+- Reference Jira tickets, GitHub issues, PR numbers, or spec files as the reason for a rule — describe the underlying behavior or constraint instead. These rot once the item closes and the spec is forgotten, and a reader can't verify a closed reference the way a reviewer could at review time. Work-item IDs belong in commit messages, PR descriptions, and changelog fragments; track a significant architectural decision in `dev/adr/` (see `dev/adr/README.md`) instead, written as a self-contained Context/Decision/Consequences record independent of the spec that prompted it
 
 ## Documentation Workflow
 

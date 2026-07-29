@@ -20,16 +20,20 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const ColumnLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-xxs font-medium tracking-wider text-neutral-400 uppercase">{children}</div>
-);
+function ColumnLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-xxs font-medium tracking-wider text-neutral-400 uppercase">{children}</div>
+  );
+}
 
 // The menu lives inside a Popover in real usage; this mimics that surface so the  items render against the expected background.
-const MenuSurface = ({ children }: { children: React.ReactNode }) => (
-  <div className="w-56 rounded-xl border border-neutral-300 bg-stone-100/70 shadow-md">
-    {children}
-  </div>
-);
+function MenuSurface({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="w-56 rounded-xl border border-neutral-300 bg-stone-100/70 shadow-md">
+      {children}
+    </div>
+  );
+}
 
 // Item sets shared across both variants, so each scenario renders identically as action and picker.
 const simpleItems = () => [

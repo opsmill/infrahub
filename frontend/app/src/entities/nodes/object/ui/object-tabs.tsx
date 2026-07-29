@@ -6,6 +6,8 @@ import { LinkTab } from "@/shared/components/ui/link";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/ui/queries/get-relationship-count.query";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
+import { getRelationshipLabel } from "@/entities/schema/domain/rules/get-relationship-label";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 
 export interface RelationshipTabProps {
@@ -24,13 +26,14 @@ export function RelationshipTab({
     objectId,
     relationshipName: relationshipSchema.name,
   });
+  const { schema: peerSchema } = useSchema(relationshipSchema.peer);
 
   return (
     <LinkTab
       to={getObjectDetailsUrl(objectKind, objectId, undefined, relationshipSchema.name)}
       scrollIntoViewOnActive
     >
-      {relationshipSchema.label}
+      {getRelationshipLabel(relationshipSchema, peerSchema)}
       {isPending && <Spinner />}
       {!isPending && (
         <Badge className="rounded-full font-medium text-gray-80">{relationshipCount}</Badge>

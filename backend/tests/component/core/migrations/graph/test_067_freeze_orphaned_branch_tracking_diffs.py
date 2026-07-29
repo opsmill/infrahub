@@ -28,7 +28,7 @@ from infrahub.core.migrations.graph.m067_freeze_orphaned_branch_tracking_diffs i
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
-from tests.component.core.diff.factories import EnrichedRootFactory
+from tests.helpers.diff_factories import EnrichedRootFactory
 
 
 @dataclass

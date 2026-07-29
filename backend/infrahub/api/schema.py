@@ -3,9 +3,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from fastapi import APIRouter, Depends, Query, Request
+from infrahub_sdk.schema.generated.read import (
+    BaseNodeSchemaRead,
+    GenericSchemaRead,
+    NodeSchemaRead,
+    ProfileSchemaRead,
+    TemplateSchemaRead,
+)
+from infrahub_sdk.schema.generated.write import InfrahubSchemaWrite
+from infrahub_sdk.schema.validate import validate_schema as validate_write_schema
 from pydantic import (
     BaseModel,
     Field,
+    PrivateAttr,
     computed_field,
     create_model,
     model_validator,
@@ -69,55 +79,48 @@ log = get_logger()
 router = APIRouter(prefix="/schema")
 
 
-class APISchemaMixin:
-    @classmethod
-    def from_schema(cls, schema: MainSchemaTypes) -> Self:
-        data = schema.model_dump()
-        data["relationships"] = [
-            relationship.model_dump() for relationship in schema.relationships if not relationship.internal_peer
-        ]
-        data["hash"] = schema.get_hash()
-        return cls(**data)
-
-    @model_validator(mode="before")
-    @classmethod
-    def set_kind(cls, values: Any) -> Any:
-        if isinstance(values, dict):
-            values["kind"] = f"{values['namespace']}{values['name']}"
-        return values
-
-
-class APINodeSchema(NodeSchema, APISchemaMixin):
-    api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
-    hash: str
-
-
-class APIGenericSchema(GenericSchema, APISchemaMixin):
-    api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
-    hash: str
-
-
-class APIProfileSchema(ProfileSchema, APISchemaMixin):
-    api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
-    hash: str
-
-
-class APITemplateSchema(TemplateSchema, APISchemaMixin):
-    api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
-    hash: str
+def _api_schema_from_schema[TApiSchema: BaseNodeSchemaRead](
+    model: type[TApiSchema], schema: MainSchemaTypes
+) -> TApiSchema:
+    data = schema.model_dump()
+    data["relationships"] = [
+        relationship.model_dump() for relationship in schema.relationships if not relationship.internal_peer
+    ]
+    data["hash"] = schema.get_hash()
+    return model(**data)
 
 
 class SchemaReadAPI(BaseModel):
     main: str = Field(description="Main hash for the entire schema")
-    nodes: list[APINodeSchema] = Field(default_factory=list)
-    generics: list[APIGenericSchema] = Field(default_factory=list)
-    profiles: list[APIProfileSchema] = Field(default_factory=list)
-    templates: list[APITemplateSchema] = Field(default_factory=list)
+    nodes: list[NodeSchemaRead] = Field(default_factory=list)
+    generics: list[GenericSchemaRead] = Field(default_factory=list)
+    profiles: list[ProfileSchemaRead] = Field(default_factory=list)
+    templates: list[TemplateSchemaRead] = Field(default_factory=list)
     namespaces: list[SchemaNamespace] = Field(default_factory=list)
 
 
-class SchemaLoadAPI(SchemaRoot):
-    version: str
+class SchemaLoadAPI(InfrahubSchemaWrite):
+    _internal_schema: SchemaRoot = PrivateAttr()
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_write_contract(cls, data: Any) -> Any:
+        # Raising here turns the field-level messages into a single request-validation error.
+        if isinstance(data, dict):
+            result = validate_write_schema(schema=data)
+            if not result.valid:
+                raise ValueError("; ".join(result.messages))
+        return data
+
+    @model_validator(mode="after")
+    def build_internal_schema(self) -> Self:
+        # Built here to surface validation errors at construction.
+        self._internal_schema = SchemaRoot.model_validate(self.model_dump(exclude_none=True))
+        return self
+
+    @property
+    def internal_schema(self) -> SchemaRoot:
+        return self._internal_schema
 
 
 class SchemasLoadAPI(BaseModel):
@@ -171,11 +174,11 @@ def _merge_candidate_schemas(schemas: Sequence[SchemaRoot]) -> SchemaRoot:
 
 
 def evaluate_candidate_schemas(
-    branch_schema: SchemaBranch, schemas_to_evaluate: SchemasLoadAPI
+    branch_schema: SchemaBranch, schemas_to_evaluate: Sequence[SchemaRoot]
 ) -> tuple[SchemaBranch, SchemaUpdateValidationResult]:
     candidate_schema = branch_schema.duplicate()
     try:
-        schema = _merge_candidate_schemas(schemas=schemas_to_evaluate.schemas)
+        schema = _merge_candidate_schemas(schemas=schemas_to_evaluate)
 
         candidate_schema.load_schema(schema=schema)
         candidate_schema.process()
@@ -206,22 +209,22 @@ async def get_schema(
     return SchemaReadAPI(
         main=registry.schema.get_schema_branch(name=branch.name).get_hash(),
         nodes=[
-            APINodeSchema.from_schema(value)
+            _api_schema_from_schema(model=NodeSchemaRead, schema=value)
             for value in all_schemas
             if isinstance(value, NodeSchema) and value.namespace != "Internal"
         ],
         generics=[
-            APIGenericSchema.from_schema(value)
+            _api_schema_from_schema(model=GenericSchemaRead, schema=value)
             for value in all_schemas
             if isinstance(value, GenericSchema) and value.namespace != "Internal"
         ],
         profiles=[
-            APIProfileSchema.from_schema(value)
+            _api_schema_from_schema(model=ProfileSchemaRead, schema=value)
             for value in all_schemas
             if isinstance(value, ProfileSchema) and value.namespace != "Internal"
         ],
         templates=[
-            APITemplateSchema.from_schema(value)
+            _api_schema_from_schema(model=TemplateSchemaRead, schema=value)
             for value in all_schemas
             if isinstance(value, TemplateSchema) and value.namespace != "Internal"
         ],
@@ -241,16 +244,16 @@ async def get_schema_summary(
 @router.get("/{schema_kind}")
 async def get_schema_by_kind(
     schema_kind: str, branch: Branch = Depends(get_branch_dep), _: AccountSession = Depends(get_current_user)
-) -> APIProfileSchema | APINodeSchema | APIGenericSchema | APITemplateSchema:
+) -> ProfileSchemaRead | NodeSchemaRead | GenericSchemaRead | TemplateSchemaRead:
     log.debug("schema_kind_request", branch=branch.name)
 
     schema = registry.schema.get(name=schema_kind, branch=branch, duplicate=False)
 
-    api_schema: dict[str, type[APIProfileSchema | APINodeSchema | APIGenericSchema | APITemplateSchema]] = {
-        "profile": APIProfileSchema,
-        "node": APINodeSchema,
-        "generic": APIGenericSchema,
-        "template": APITemplateSchema,
+    api_schema: dict[str, type[ProfileSchemaRead | NodeSchemaRead | GenericSchemaRead | TemplateSchemaRead]] = {
+        "profile": ProfileSchemaRead,
+        "node": NodeSchemaRead,
+        "generic": GenericSchemaRead,
+        "template": TemplateSchemaRead,
     }
     key = ""
 
@@ -263,7 +266,7 @@ async def get_schema_by_kind(
     if isinstance(schema, TemplateSchema):
         key = "template"
 
-    return api_schema[key].from_schema(schema=schema)
+    return _api_schema_from_schema(model=api_schema[key], schema=schema)
 
 
 @router.get("/json_schema/{schema_kind}")
@@ -358,10 +361,12 @@ async def load_schema(
 
     errors: list[str] = []
     warnings: list[SchemaWarning] = []
+    candidate_schemas: list[SchemaRoot] = []
     for schema in schemas.schemas:
-        errors += schema.validate_namespaces()
-        errors += schema.validate_reserved_suffixes()
-        warnings += schema.gather_warnings()
+        internal_schema = schema.internal_schema
+        candidate_schemas.append(internal_schema)
+        errors += internal_schema.validate_reserved_names()
+        warnings += internal_schema.gather_warnings()
 
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
@@ -370,7 +375,9 @@ async def load_schema(
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
         original_hash = branch_schema.get_hash()
 
-        candidate_schema, result = evaluate_candidate_schemas(branch_schema=branch_schema, schemas_to_evaluate=schemas)
+        candidate_schema, result = evaluate_candidate_schemas(
+            branch_schema=branch_schema, schemas_to_evaluate=candidate_schemas
+        )
 
         if not result.diff.all:
             return SchemaUpdate(hash=original_hash, previous_hash=original_hash, diff=result.diff)
@@ -447,17 +454,21 @@ async def check_schema(
 
     errors: list[str] = []
     warnings: list[SchemaWarning] = []
+    candidate_schemas: list[SchemaRoot] = []
     for schema in schemas.schemas:
-        errors += schema.validate_namespaces()
-        errors += schema.validate_reserved_suffixes()
-        warnings += schema.gather_warnings()
+        internal_schema = schema.internal_schema
+        candidate_schemas.append(internal_schema)
+        errors += internal_schema.validate_reserved_names()
+        warnings += internal_schema.gather_warnings()
 
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
 
     branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
-    candidate_schema, result = evaluate_candidate_schemas(branch_schema=branch_schema, schemas_to_evaluate=schemas)
+    candidate_schema, result = evaluate_candidate_schemas(
+        branch_schema=branch_schema, schemas_to_evaluate=candidate_schemas
+    )
 
     # ----------------------------------------------------------
     # Validate if the new schema is valid with the content of the database
