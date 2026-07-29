@@ -3511,64 +3511,16 @@ async def test_hierarchical_groups_descendants(
 async def test_single_relationship_id_only_uses_preloaded_peer_id(
     db: InfrahubDatabase,
     default_branch: Branch,
-    animal_person_schema: SchemaBranch,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    person_schema = animal_person_schema.get(name="TestPerson")
-    dog_schema = animal_person_schema.get(name="TestDog")
-
-    person = await Node.init(db=db, schema=person_schema, branch=default_branch)
-    await person.new(db=db, name="Jack")
-    await person.save(db=db)
-
-    dog = await Node.init(db=db, schema=dog_schema, branch=default_branch)
-    await dog.new(db=db, name="Rocky", breed="Labrador", owner=person)
-    await dog.save(db=db)
-
-    async def fail_node_load(*_args: object, **_kwargs: object) -> None:
-        raise AssertionError("the ID-only relationship unexpectedly used NodeDataLoader")
-
-    monkeypatch.setattr(
-        "infrahub.graphql.resolvers.single_relationship.NodeDataLoader.load",
-        fail_node_load,
-    )
-
-    query = """
-    query {
-        TestDog {
-            edges {
-                node {
-                    id
-                    owner { node { id } }
-                }
-            }
-        }
-    }
-    """
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert result.data == {"TestDog": {"edges": [{"node": {"id": dog.id, "owner": {"node": {"id": person.id}}}}]}}
-    assert gql_params.context.related_node_ids == {dog.id, person.id}
-
-
-async def test_single_relationship_id_only_generic_peer_uses_shortcut(
-    db: InfrahubDatabase,
-    default_branch: Branch,
     animal_person_schema_unregistered: dict[str, Any],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # TestAnimal is a generic, so favorite_animal is a cardinality-one relationship whose
-    # GraphQL node field is an interface: the id-only shortcut can only answer it without
-    # hydrating the peer when the preloaded stub carries the peer's concrete kind.
+    """Verify cardinality-one peer ID relationship shortcut
+
+    TestAnimal is a generic, so favorite_animal is a cardinality-one relationship whose
+    GraphQL node field is an interface: the id-only shortcut can only answer it without
+    hydrating the peer when the preloaded stub carries the peer's concrete kind. owner
+    covers the same shortcut when the peer field is a concrete node type.
+    """
     schema_dict = deepcopy(animal_person_schema_unregistered)
     person_node = next(node for node in schema_dict["nodes"] if node["name"] == "Person")
     person_node["relationships"].append(
@@ -3583,8 +3535,8 @@ async def test_single_relationship_id_only_generic_peer_uses_shortcut(
     )
     schema_branch = registry.schema.register_schema(schema=SchemaRoot(**schema_dict), branch=default_branch.name)
 
-    person_schema = schema_branch.get(name="TestPerson")
-    dog_schema = schema_branch.get(name="TestDog")
+    person_schema = schema_branch.get_node(name="TestPerson", duplicate=False)
+    dog_schema = schema_branch.get_node(name="TestDog", duplicate=False)
 
     person = await Node.init(db=db, schema=person_schema, branch=default_branch)
     await person.new(db=db, name="Jack")
@@ -3594,7 +3546,7 @@ async def test_single_relationship_id_only_generic_peer_uses_shortcut(
     await dog.new(db=db, name="Rocky", breed="Labrador", owner=person)
     await dog.save(db=db)
 
-    await person.favorite_animal.update(db=db, data=dog)
+    await person.get_relationship("favorite_animal").update(db=db, data=dog)
     await person.save(db=db)
 
     async def fail_node_load(*_args: object, **_kwargs: object) -> None:
@@ -3605,7 +3557,34 @@ async def test_single_relationship_id_only_generic_peer_uses_shortcut(
         fail_node_load,
     )
 
-    query = """
+    default_branch.update_schema_hash()
+
+    concrete_peer_query = """
+    query {
+        TestDog {
+            edges {
+                node {
+                    id
+                    owner { node { id } }
+                }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=concrete_peer_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data == {"TestDog": {"edges": [{"node": {"id": dog.id, "owner": {"node": {"id": person.id}}}}]}}
+    assert gql_params.context.related_node_ids == {dog.id, person.id}
+
+    generic_peer_query = """
     query {
         TestPerson {
             edges {
@@ -3617,11 +3596,10 @@ async def test_single_relationship_id_only_generic_peer_uses_shortcut(
         }
     }
     """
-    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
-        source=query,
+        source=generic_peer_query,
         context_value=gql_params.context,
         root_value=None,
         variable_values={},
