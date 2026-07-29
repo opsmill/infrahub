@@ -35,6 +35,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.schema.attribute_parameters import (
     AttributeParameters,
+    IPHostAttributeParameters,
     ListAttributeParameters,
     NumberAttributeParameters,
     NumberPoolParameters,
@@ -809,6 +810,7 @@ attribute_schema = SchemaNode(
                 TextAttributeParameters,
                 NumberAttributeParameters,
                 NumberPoolParameters,
+                IPHostAttributeParameters,
             ],
             optional=True,
             description="Extra parameters specific to this kind of attribute",

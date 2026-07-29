@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import enum
 from enum import Enum
+from ipaddress import ip_interface
 from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import Field, PrivateAttr, ValidationInfo, field_validator, model_validator
@@ -15,6 +16,7 @@ from infrahub.types import ATTRIBUTE_KIND_LABELS, ATTRIBUTE_TYPES
 
 from .attribute_parameters import (
     AttributeParameters,
+    IPHostAttributeParameters,
     ListAttributeParameters,
     NumberAttributeParameters,
     NumberPoolParameters,
@@ -163,6 +165,9 @@ class AttributeSchema(GeneratedAttributeSchema):
         if isinstance(self.parameters, ListAttributeParameters) and self.kind != "List":
             raise ValueError(f"ListAttributeParameters can't be used as parameters for {self.kind}")
 
+        if isinstance(self.parameters, IPHostAttributeParameters) and self.kind != "IPHost":
+            raise ValueError(f"IPHostAttributeParameters can't be used as parameters for {self.kind}")
+
         return self
 
     def get_class(self) -> type[BaseAttribute]:
@@ -305,10 +310,42 @@ class ListAttributeSchema(AttributeSchema):
         return self.parameters.regex
 
 
+class IPHostAttributeSchema(AttributeSchema):
+    parameters: IPHostAttributeParameters = Field(
+        default_factory=IPHostAttributeParameters,
+        description="Extra parameters specific to IP host attributes",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+
+    @model_validator(mode="after")
+    def reject_prefixed_default_value(self) -> Self:
+        """Refuse a default value carrying a prefix when the attribute holds a bare address.
+
+        Raises:
+            ValueError: When the default value parses as an address and carries a prefix.
+
+        """
+        if self.parameters.allow_prefix:
+            return self
+
+        if not isinstance(self.default_value, str) or "/" not in self.default_value:
+            return self
+
+        try:
+            ip_interface(self.default_value)
+        except ValueError:
+            return self
+
+        raise ValueError(
+            f"{self.default_value} is not a valid default value for {self.name} because a prefix is not permitted"
+        )
+
+
 attribute_schema_class_by_kind: dict[str, type[AttributeSchema]] = {
     "NumberPool": NumberPoolSchema,
     "Text": TextAttributeSchema,
     "TextArea": TextAttributeSchema,
     "List": ListAttributeSchema,
     "Number": NumberAttributeSchema,
+    "IPHost": IPHostAttributeSchema,
 }

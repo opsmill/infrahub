@@ -10,6 +10,7 @@ from infrahub.core.constants import AllowOverrideType, BranchSupportType, Hashab
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.attribute_parameters import (
     AttributeParameters,
+    IPHostAttributeParameters,
     ListAttributeParameters,
     NumberAttributeParameters,
     NumberPoolParameters,
@@ -130,6 +131,7 @@ class GeneratedAttributeSchema(HashableModel):
         | TextAttributeParameters
         | NumberAttributeParameters
         | NumberPoolParameters
+        | IPHostAttributeParameters
     ) = Field(
         default_factory=AttributeParameters,
         description="Extra parameters specific to this kind of attribute",
