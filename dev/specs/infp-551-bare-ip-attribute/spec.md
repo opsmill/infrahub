@@ -184,8 +184,18 @@ annotation.
 
 - **FR-001**: Schema authors MUST be able to declare an `IPHost` attribute as holding a bare
   address. *Verify*: a schema declaring it loads successfully.
-- **FR-002**: System MUST reject the declaration on any attribute kind other than `IPHost`, at
-  schema-load time. *Verify*: declaring it on a text attribute produces a validation error.
+- **FR-002**: The declaration MUST be unreachable on any attribute kind other than `IPHost` — it MUST
+  have no effect there and MUST NOT be settable through a typed parameters object.
+  *Verify*: attaching an `IPHostAttributeParameters` instance to another kind produces a validation
+  error; declaring `allow_prefix` as a plain mapping on a text attribute loads with the flag dropped.
+
+  **As-built deviation from user story 13**: declaring the flag as a plain mapping on another kind is
+  *silently dropped*, not rejected, so an author learns by observing no effect rather than at
+  schema-load time. This is pre-existing behaviour for every attribute parameter — the mapping is
+  coerced to the attribute kind's own parameters model, which filters unknown keys before
+  `extra="forbid"` can reject them — and changing it would change the contract of every parameter, not
+  just this one. The behaviour is pinned by a test so any future change is deliberate. Making the
+  forward direction actually reject is out of scope for this feature.
 - **FR-003**: System MUST reject a value carrying a non-host subnet prefix on a bare-address
   attribute, with an error naming the attribute. *Verify*: `10.0.0.1/24` and `2001:db8::1/64` are
   both refused; the error text names the attribute.

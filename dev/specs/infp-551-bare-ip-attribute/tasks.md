@@ -776,6 +776,82 @@ edit form, detail view, and list view.
 - [ ] T042 Run the full local CI gate — `/pre-ci`, plus
   `cd frontend/app && pnpm exec biome ci . && pnpm knip && pnpm exec betterer ci && pnpm test`.
   Do **not** commit `.betterer.results` if the only change is `node_modules` path drift.
+
+### Phase 6 implementation notes (T042)
+
+**T042 left unticked**: two of its commands did not pass locally — one for an environmental reason,
+one for a real branch defect recorded below. Everything else passed.
+
+| Gate | Result |
+|------|--------|
+| `uv run invoke format` / `docs.format` / `pnpm biome:fix` | pass — no files changed |
+| `uv run invoke main.lint` | pass |
+| `uv lock --check` | pass |
+| `pnpm run codegen:graphql` | pass — no generated file changed |
+| `uv run invoke backend.lint` | pass — 15 diagnostics, all inside the untracked local `repositories/` checkout |
+| `uv run invoke docs.lint` | pass — 0 errors over 176 files (needs `docs/node_modules/.bin` on `PATH`; the task calls `markdownlint-cli2` bare) |
+| `uv run invoke schema.validate-graphqlschema` | pass |
+| `uv run invoke schema.validate-jsonschema` | pass |
+| `uv run invoke docs.validate` | pass |
+| `uv run invoke backend.test-unit` | pass — 2122 passed, 3 pre-existing `test_git_repository.py` failures |
+| `pnpm exec biome ci .` | pass — 1505 files |
+| `pnpm knip` | pass |
+| `pnpm exec betterer ci` | **pass — 190 issues, "stayed the same"** (see below) |
+| `pnpm test` | **could not run locally** — Vitest browser mode cannot launch `chrome-headless-shell` (`libasound.so.2` missing, needs root). Ran the affected file with `--browser.enabled=false` instead: `getFormFieldFromAttribute.test.ts`, 5 passed. CI's `frontend-tests` job is `skipping` for this PR's path set anyway. |
+| `uv run invoke backend.validate-generated` | **fail — real defect, see below** |
+
+**Betterer root cause and fix.** Regenerating `types.generated.ts` added
+`IPHostAttributeRead` as a new member of the attribute discriminated union in the four
+`NodeSchemaRead`/`GenericSchemaRead`/… `attributes?:` positions. The frontend keeps a **hand-maintained
+mirror** of that union in `frontend/app/src/entities/schema/domain/model/schema.ts`
+(`export type AttributeSchema = TextAttributeRead | NumberAttributeRead | ListAttributeRead |
+NumberPoolAttributeRead | GenericAttributeRead`). Because the mirror was not updated, every site
+passing an API-typed `attributes` array into an `AttributeSchema`-typed parameter stopped
+type-checking: 46 new errors across 25 files, all the same shape — `Type '{ … kind: "IPHost"; … }' is
+not assignable to type 'AttributeSchema'` → `Types of property 'kind' are incompatible. Type
+'"IPHost"' is not assignable to type '"NumberPool"'` (21 × TS2322, 18 × TS2345, 7 × TS2769).
+
+Fixed properly, at the cause, by adding the missing member to the mirrored union — a **one-line**
+change that takes the new-error count from 46 to 0 with no new errors and no suppression. The
+baseline was **not** relaxed to accommodate the errors.
+
+`.betterer.results` still needed a companion update: six **pre-existing** recorded issues embed the
+rendered union text in their tsc message, so those messages grew by one member. The issue count is
+unchanged at 190 and every entry's trailing source hash is unchanged — only message text. Verified
+against the `node_modules`-path-drift trap: the six changed lines contain **zero** `node_modules`
+references, so the committed paths are CI-correct rather than local-install artefacts.
+
+**`backend.validate-generated` fails for a reason distinct from the SDK-pointer issue.** The diff is
+entirely inside the `python_sdk` submodule: regeneration emits `AttributeSchemaRead` /
+`AttributeSchemaWrite` as a single ~150-character line, while the committed SDK version has it
+ruff-wrapped across six lines. `ruff format` reports the committed form already-formatted and *does*
+wrap the single-line form, so the committed form is canonical and the generate step is emitting a
+non-canonical form that survives into the diff. This only surfaces now because `IPHostAttributeWrite`
+is what pushes the union past the 120-character limit. **It will keep failing after the pointer bump
+(T032/T033)** and needs its own fix — either in the SDK commit or in the ordering of the
+format/lint steps that `tasks/backend.py` runs over the generated directory. Not fixed here.
+The submodule working tree was restored; the pointer was left unstaged.
+
+**`backend-tests-integration` also fails on this branch, on its own new tests** — not previously
+recorded. Four cases in
+`backend/tests/integration/schema_lifecycle/test_attribute_parameters_update.py::TestAllowPrefixIsImmutable`
+assert an exact single-attribute error message, but the server reports **both** declared attributes:
+expected `"'not_supported': TestingDnsRecord dns_target None"`, actual
+`"'not_supported': TestingDnsRecord v6_target None, 'not_supported': TestingDnsRecord dns_target
+None"`. The candidate schema the helper builds evidently loses `v6_target`'s parameters as well as
+flipping the target attribute's. Needs its own fix.
+
+**E2E `test_multi_profiles` failure is not ours.** `E2E-testing-pytest-playwright (foundation)` fails
+on `test_create_3_profiles_and_use_them_in_the_form` with a Playwright strict-mode violation — two
+elements matching `get_by_text("InfraInterfaceL2 created")`. Evidence it is pre-existing flake:
+48 of 49 tests in the shard pass; this branch changes **no frontend runtime code** at all (the only
+frontend changes are TypeScript type declarations, erased at build, plus a unit test and legacy-TS e2e
+files the pytest suite does not run); it touches nothing under `tests/e2e/` or `models/base/`, which is
+what the `schema_base` fixture loads; and the base schema contains no `IPHost` attribute anywhere, so
+no normalisation path is reached. The same shard has failed on unrelated tests on `develop`
+(run 30278909631, `test_account_tokens`), confirming general shard flakiness. The assertion is about
+duplicate success toasts, which no schema-value change can produce.
+
 - [ ] T043 Walk every scenario in [quickstart.md](./quickstart.md) end to end, including the manual
   GraphQL smoke check. Note the local `infrahub upgrade` Prefect parameter-size workaround
   (`PREFECT_SERVER_API_MAX_PARAMETER_SIZE=0`) if testing the upgrade path.

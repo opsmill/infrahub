@@ -51,9 +51,13 @@ if isinstance(self.parameters, IPHostAttributeParameters) and self.kind != "IPHo
     raise ValueError(f"IPHostAttributeParameters can't be used as parameters for {self.kind}")
 ```
 
-This is the *reverse* guard. The forward guard — `allow_prefix` supplied on a `Text` attribute — is
-already handled by `extra="forbid"` on `AttributeParameters`. Together they satisfy FR-002 from both
-directions.
+This is the *reverse* guard, and it is the only direction that raises. The forward direction —
+`allow_prefix` supplied as a plain mapping on a `Text` attribute — is **not** rejected: the mapping is
+coerced to the attribute kind's own parameters model, and that coercion filters unknown keys out
+before `extra="forbid"` can inspect them, so the flag is silently dropped. That is pre-existing
+behaviour for every attribute parameter (`regex` on a `Number` attribute behaves the same way) and is
+pinned by a test rather than changed here. FR-002 is therefore satisfied in the "unreachable on other
+kinds" sense, not the "load fails" sense — see spec.md FR-002.
 
 ## Changed: internal schema registration
 

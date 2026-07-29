@@ -38,14 +38,23 @@ Omitting `parameters`, or omitting `allow_prefix`, yields today's behaviour:
 | Mutability | Immutable once the attribute exists |
 | Visibility | `WRITE` (inherited from the `parameters` field) |
 
-### Rejection cases
+### Kind-scoping cases
 
 | Input | Result |
 |-------|--------|
-| `allow_prefix` on a `Text`, `TextArea`, `List`, `Number`, or `NumberPool` attribute | Schema load fails — Pydantic `extra="forbid"` on the kind's parameters class |
-| `allow_prefix` on any other kind (base `AttributeParameters`) | Schema load fails — `extra="forbid"` |
+| `allow_prefix` on a `Text`, `TextArea`, `List`, `Number`, or `NumberPool` attribute | **Accepted and silently dropped** — the attribute keeps its own kind's parameters, without the flag |
+| `allow_prefix` on any other kind (base `AttributeParameters`) | **Accepted and silently dropped**, same mechanism |
 | An `IPHostAttributeParameters` instance attached to a non-`IPHost` kind | Schema load fails — `"IPHostAttributeParameters can't be used as parameters for {kind}"` |
 | A schema update adding, removing, or flipping `allow_prefix` on an existing attribute | Update fails — unsupported-change error naming `parameters.allow_prefix` |
+
+The silent drop is **pre-existing behaviour shared by every attribute parameter**, not something this
+feature introduces: a `parameters` mapping is coerced to the parameters model of the attribute's own
+kind, and that coercion filters out keys the target model does not declare *before* Pydantic's
+`extra="forbid"` can see them. `regex` on a `Number` attribute behaves identically. So the flag is
+unreachable on other kinds — it has no effect there — but a schema declaring it there still loads.
+
+Only the reverse direction genuinely rejects: an `IPHostAttributeParameters` **instance** (as opposed
+to a plain mapping) attached to a kind whose registered parameters class is something else.
 
 ## Value contract
 
