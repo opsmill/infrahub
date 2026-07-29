@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import enum
 from enum import Enum
+from ipaddress import ip_interface
 from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import Field, PrivateAttr, ValidationInfo, field_validator, model_validator
@@ -15,6 +16,7 @@ from infrahub.types import ATTRIBUTE_KIND_LABELS, ATTRIBUTE_TYPES
 
 from .attribute_parameters import (
     AttributeParameters,
+    IPHostAttributeParameters,
     ListAttributeParameters,
     NumberAttributeParameters,
     NumberPoolParameters,
@@ -163,6 +165,9 @@ class AttributeSchema(GeneratedAttributeSchema):
         if isinstance(self.parameters, ListAttributeParameters) and self.kind != "List":
             raise ValueError(f"ListAttributeParameters can't be used as parameters for {self.kind}")
 
+        if isinstance(self.parameters, IPHostAttributeParameters) and self.kind != "IPHost":
+            raise ValueError(f"IPHostAttributeParameters can't be used as parameters for {self.kind}")
+
         return self
 
     def get_class(self) -> type[BaseAttribute]:
@@ -305,10 +310,41 @@ class ListAttributeSchema(AttributeSchema):
         return self.parameters.regex
 
 
+class IPHostAttributeSchema(AttributeSchema):
+    parameters: IPHostAttributeParameters = Field(
+        default_factory=IPHostAttributeParameters,
+        description="Extra parameters specific to IP host attributes",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+
+    @model_validator(mode="after")
+    def strip_redundant_host_mask_from_default(self) -> Self:
+        """Record a bare address as the default when the attribute holds bare addresses.
+
+        A host mask is redundant on such an attribute and is dropped from every node value, so keeping
+        it on the default would make the schema advertise a default no node ever receives. A default
+        that cannot be parsed, or that carries a real subnet prefix, is left untouched here so the
+        format validation applied to default values stays the single place that reports it.
+        """
+        if self.parameters.allow_prefix or not isinstance(self.default_value, str):
+            return self
+
+        try:
+            interface = ip_interface(self.default_value)
+        except ValueError:
+            return self
+
+        if interface.network.prefixlen == interface.ip.max_prefixlen:
+            self.default_value = str(interface.ip)
+
+        return self
+
+
 attribute_schema_class_by_kind: dict[str, type[AttributeSchema]] = {
     "NumberPool": NumberPoolSchema,
     "Text": TextAttributeSchema,
     "TextArea": TextAttributeSchema,
     "List": ListAttributeSchema,
     "Number": NumberAttributeSchema,
+    "IPHost": IPHostAttributeSchema,
 }

@@ -755,6 +755,15 @@ class SdkSchemaGenerator:
                 regex=r"^(\d+(?:-\d+)?)(?:,\d+(?:-\d+)?)*$",
             ),
         ]
+        self.iphost_parameters_fields = [
+            self._field(
+                "allow_prefix",
+                "Boolean",
+                "When false, this attribute holds a bare IP address: a value with a subnet prefix is rejected "
+                "and a host prefix is dropped.",
+                default_value=True,
+            ),
+        ]
         self.number_pool_parameters_fields = [
             self._field(
                 "end_range",
@@ -800,6 +809,7 @@ class SdkSchemaGenerator:
             ("NumberAttribute", "NumberAttributeParameters"),
             ("ListAttribute", "ListAttributeParameters"),
             ("NumberPoolAttribute", "NumberPoolParameters"),
+            ("IPHostAttribute", "IPHostAttributeParameters"),
             ("GenericAttribute", "AttributeParameters"),
         ]
         self.kinds_by_parameters = _attribute_kinds_by_parameters(
@@ -976,6 +986,11 @@ class SdkSchemaGenerator:
                 "class_name": f"NumberPoolParameters{suffix}",
                 "parent": base,
                 "attributes": self.number_pool_parameters_fields,
+            },
+            {
+                "class_name": f"IPHostAttributeParameters{suffix}",
+                "parent": base,
+                "attributes": self.iphost_parameters_fields,
             },
             {
                 "class_name": f"DropdownChoice{suffix}",

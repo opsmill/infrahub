@@ -18,6 +18,7 @@ def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParamete
         "TextArea": TextAttributeParameters,
         "List": ListAttributeParameters,
         "Number": NumberAttributeParameters,
+        "IPHost": IPHostAttributeParameters,
     }
     return param_classes.get(kind, AttributeParameters)
 
@@ -180,6 +181,17 @@ class NumberAttributeParameters(AttributeParameters):
         for start, end in self.get_excluded_ranges():
             if start <= value <= end:
                 raise ValidationError({name: f"{value} is in an the excluded range {start}-{end}"})
+
+
+class IPHostAttributeParameters(AttributeParameters):
+    allow_prefix: bool = Field(
+        default=True,
+        description=(
+            "When false, this attribute holds a bare IP address: a value with a subnet prefix is rejected "
+            "and a host prefix is dropped."
+        ),
+        json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value},
+    )
 
 
 class NumberPoolParameters(AttributeParameters):

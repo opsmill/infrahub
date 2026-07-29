@@ -100,48 +100,93 @@ half of plan Phase C.
 **⚠️ CRITICAL**: No user story can begin until this phase completes — US1 needs the parameter to read,
 US2 and US3 need it published in the schema contract.
 
-- [ ] T003 Add `IPHostAttributeParameters(AttributeParameters)` with
+- [X] T003 Add `IPHostAttributeParameters(AttributeParameters)` with
   `allow_prefix: bool = Field(default=True, description=..., json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value})`
   to `backend/infrahub/core/schema/attribute_parameters.py`. The `description` text becomes the
   attribute-kinds reference documentation, so write it for a schema author. Default `True` is what
   guarantees FR-012.
-- [ ] T004 Register `"IPHost": IPHostAttributeParameters` in
+- [X] T004 Register `"IPHost": IPHostAttributeParameters` in
   `get_attribute_parameters_class_for_kind` in
   `backend/infrahub/core/schema/attribute_parameters.py` (depends on T003).
-- [ ] T005 Add `IPHostAttributeSchema(AttributeSchema)` carrying the typed
+- [X] T005 Add `IPHostAttributeSchema(AttributeSchema)` carrying the typed
   `parameters: IPHostAttributeParameters` field (mirroring `TextAttributeSchema`) and register
   `"IPHost": IPHostAttributeSchema` in `attribute_schema_class_by_kind`, both in
   `backend/infrahub/core/schema/attribute_schema.py` (depends on T003).
   **Registration is load-bearing**: `backend/infrahub/core/schema/basenode_schema.py:152-174` upgrades
   every attribute to its per-kind class, which is what makes `parameters.allow_prefix` reachable from
   the attribute class.
-- [ ] T006 Add the reverse guard to `AttributeSchema.validate_parameters` in
+- [X] T006 Add the reverse guard to `AttributeSchema.validate_parameters` in
   `backend/infrahub/core/schema/attribute_schema.py` — an `IPHostAttributeParameters` instance on a
   non-`IPHost` kind raises `"IPHostAttributeParameters can't be used as parameters for {kind}"`,
   matching the three existing branches at lines 157-166 (depends on T003).
-- [ ] T007 Add a model validator to `IPHostAttributeSchema` in
+- [X] T007 Add a model validator to `IPHostAttributeSchema` in
   `backend/infrahub/core/schema/attribute_schema.py` that strips a redundant host mask from
   `default_value` when `allow_prefix` is `False`, so the schema records `10.0.0.1` rather than
   `10.0.0.1/32` (depends on T005). Without this the schema advertises a default that no node ever
   receives — see critique E1.
-- [ ] T008 Add `IPHostAttributeParameters` to the `internal_kind` list of the `parameters`
+- [X] T008 Add `IPHostAttributeParameters` to the `internal_kind` list of the `parameters`
   `SchemaAttribute` at `backend/infrahub/core/schema/definitions/internal.py:803-817` (depends on
   T003). This is the single edit that produces the core-schema diff.
-- [ ] T009 Regenerate backend artefacts — `uv run invoke backend.generate` — and commit the resulting
+- [X] T009 Regenerate backend artefacts — `uv run invoke backend.generate` — and commit the resulting
   changes to `backend/infrahub/core/schema/generated/` and `backend/infrahub/core/protocols.py`
   (depends on T008). **Verify the diff is confined to the `parameters` type union**; anything wider
   means a mistake in T003-T008.
-- [ ] T010 [P] Write the schema-type unit tests in
+- [X] T010 [P] Write the schema-type unit tests in
   `backend/tests/unit/core/schema/test_iphost_attribute_parameters.py`: `allow_prefix` defaults to
   `True`; `allow_prefix` on a `Text` attribute is rejected by `extra="forbid"`;
   `IPHostAttributeParameters` on a non-`IPHost` kind raises; the field carries
   `UpdateSupport.NOT_SUPPORTED`; a `/32` `default_value` is normalised to bare and a bare one is left
   alone; an undeclared attribute's `default_value` is untouched (depends on T003-T007).
-- [ ] T011 Confirm the baseline still holds — re-run the T001 command and diff against
+- [X] T011 Confirm the baseline still holds — re-run the T001 command and diff against
   `/tmp/iphost-baseline.txt`. Schema types alone must change no behaviour.
 
 **Checkpoint**: The declaration exists, is guarded on other kinds, is immutable by classification, and
 is published in the schema contract. All three stories can now proceed.
+
+### Phase 2 implementation notes
+
+- **T008 was not a single edit — `backend.generate` refuses to run until three more places agree.**
+  The generator is deliberately fail-closed: `_attribute_kinds_by_parameters`
+  (`tasks/backend.py`) compares the backend's kind → parameters mapping against the SDK generator's
+  `attribute_variant_specs` and raises when they diverge. So publishing the class needed:
+  1. the `internal_kind` list entry (T008 as written);
+  2. `from ... import IPHostAttributeParameters` in `backend/templates/attributeschema_imports.j2` —
+     the generated module's import block comes from this hand-maintained template, not from the
+     `internal_kind` list, so without it the generated file references an undefined name;
+  3. `("IPHostAttribute", "IPHostAttributeParameters")` in `attribute_variant_specs`, an
+     `IPHostAttributeParameters{suffix}` entry in `_pre_families`, and an `iphost_parameters_fields`
+     field list, all in `tasks/backend.py`.
+- **T009 diff scope.** `backend/infrahub/core/schema/generated/attribute_schema.py` gained exactly two
+  lines — the import and the union member. `backend/infrahub/core/protocols.py` is unchanged.
+  `backend.generate` also writes the SDK's `python_sdk/infrahub_sdk/schema/generated/{read,write}.py`,
+  which gained `IPHostAttributeParameters{Read,Write}` and `IPHostAttribute{Read,Write}` and moved
+  `AttributeKind.IPHOST` out of the generic variant — exactly what `data-model.md` predicted. **Those
+  changes are left uncommitted in the submodule working tree**; the submodule pointer was not moved.
+  T030/T032/T033 own the SDK commit.
+- **`schema/schema.graphql`, `schema/openapi.json` and the generated docs were deliberately not
+  regenerated** — that is T023, and no test or CI job in this repo checks them before then.
+- **The `allow_prefix` description had to be short.** The first draft (five sentences covering both
+  flag states, an example, and the immutability restriction) made the generated SDK line 476
+  characters and failed `ruff` E501 at 150. The description is duplicated verbatim in
+  `tasks/backend.py`, so the practical ceiling is ~127 characters. The fuller explanation belongs in
+  the user-facing documentation (T038), not the field description.
+- **T010's `extra="forbid"` expectation was wrong as written, and the contract is wrong with it.**
+  `allow_prefix` declared on a `Text` attribute in a loaded schema is **silently dropped**, not
+  rejected: `set_parameters_type` coerces the mapping through
+  `TextAttributeParameters.convert_from_dict`, which filters unknown keys before `extra="forbid"`
+  can see them. `extra="forbid"` only fires when a parameters model is built from the mapping
+  directly. Both behaviours are now pinned by tests, but
+  `contracts/schema-contract.md` § Rejection cases (rows 1-2) overstates what happens, and the
+  note claiming FR-002 "needs no implementation task" holds only for the reverse direction.
+  This is pre-existing behaviour shared by every attribute parameter (`regex` on a `Number`
+  attribute is dropped the same way), so it was left alone rather than fixed inside this phase.
+- **The reverse guard (T006) only fires on kinds with no registered parameters class** — `Boolean`,
+  `IPNetwork`, `Dropdown`, … For `Text` or `Number`, `set_parameters_type` converts the instance to
+  that kind's own parameters class before `validate_parameters` runs, so the guard never sees it.
+  This is identical to how the three pre-existing guards behave; the test parametrises over
+  `Boolean` and `IPNetwork` accordingly.
+- **T007 leaves a non-host prefix and an unparsable default untouched.** Only a redundant host mask
+  is stripped, so `default value` reporting stays with the format validator that T017/T019 cover.
 
 ---
 
