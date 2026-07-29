@@ -434,6 +434,37 @@ class TestAllowPrefixIsImmutable(TestInfrahubApp):
 
         return [(error.error.value, error.path.field_name, error.path.property_name) for error in result.errors]
 
+    async def test_changing_the_declaration_is_refused_by_the_load_endpoint(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        default_branch: Branch,
+        load_schema_01: None,
+        schema_step_01: dict[str, Any],
+    ) -> None:
+        """A toggle that slipped past the real load path would reinterpret every stored value.
+
+        The flag is deliberately migration-free, so nothing would rewrite the addresses already in the
+        graph to match the new meaning.
+        """
+        candidate = self._with_parameters(schema_step_01, "dns_target", {"allow_prefix": True})
+
+        response = await client.schema.load(schemas=[candidate], branch=default_branch.name)
+
+        assert response.errors
+        # The rendered message drops the parameter name, so the assertion pins the refusal and the
+        # attribute it names rather than the whole string.
+        messages = [error["message"] for error in response.errors["errors"]]
+        assert len(messages) == 1
+        assert "not_supported" in messages[0]
+        assert "dns_target" in messages[0]
+
+        reloaded = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+        dns_record = reloaded.get_node(name=DNS_RECORD_KIND, duplicate=False)
+        assert dns_record.get_attribute("dns_target").parameters == IPHostAttributeParameters(allow_prefix=False)
+        assert dns_record.get_attribute("v6_target").parameters == IPHostAttributeParameters(allow_prefix=False)
+        assert dns_record.get_attribute("mgmt_ip").parameters == IPHostAttributeParameters(allow_prefix=True)
+
     async def test_an_unrelated_parameter_change_is_still_accepted(
         self,
         client: InfrahubClient,
