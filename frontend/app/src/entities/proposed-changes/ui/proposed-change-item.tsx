@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Tooltip } from "@infrahub/ui";
+import { ClockIcon } from "lucide-react";
 import { ListBoxItem } from "react-aria-components";
 import { Link } from "react-router";
 
@@ -122,7 +123,7 @@ const ProposedChangesInfo = ({
           Opened <DateDisplay date={createdAt} /> by {author}
           {updatedAt && (
             <>
-              <Icon icon={"mdi:clock-outline"} />
+              <ClockIcon className="size-3" />
               Updated <DateDisplay date={updatedAt} />
             </>
           )}
