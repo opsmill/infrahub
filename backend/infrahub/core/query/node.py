@@ -995,8 +995,7 @@ class GroupedPeerNodes:
         self._metadata_map: dict[
             tuple[str, str, RelationshipDirection, str], dict[MetadataOptions, Timestamp | str | bool | None]
         ] = {}
-        # {peer_id: peer_kind}
-        self._peer_kinds: dict[str, str] = {}
+        self._peer_kind_map: dict[str, str] = {}
 
     def add_peer(
         self,
@@ -1004,7 +1003,7 @@ class GroupedPeerNodes:
         rel_name: str,
         peer_id: str,
         direction: RelationshipDirection,
-        peer_kind: str | None = None,
+        peer_kind: str,
         created_at: Timestamp | None = None,
         created_by: str | None = None,
         updated_at: Timestamp | None = None,
@@ -1017,8 +1016,7 @@ class GroupedPeerNodes:
         if direction not in self._rel_directions_map[node_id, rel_name]:
             self._rel_directions_map[node_id, rel_name][direction] = set()
         self._rel_directions_map[node_id, rel_name][direction].add(peer_id)
-        if peer_kind:
-            self._peer_kinds[peer_id] = peer_kind
+        self._peer_kind_map[peer_id] = peer_kind
         key = (node_id, rel_name, direction, peer_id)
         provided = (created_at, created_by, updated_at, updated_by, source_id, owner_id, is_protected)
         if any(v is not None for v in provided):
@@ -1058,8 +1056,8 @@ class GroupedPeerNodes:
     ) -> dict[MetadataOptions, Timestamp | str | bool | None]:
         return self._metadata_map.get((node_id, rel_name, direction, peer_id), {})
 
-    def get_peer_kind(self, peer_id: str) -> str | None:
-        return self._peer_kinds.get(peer_id)
+    def get_peer_kind(self, peer_id: str) -> str:
+        return self._peer_kind_map[peer_id]
 
 
 class NodeListGetRelationshipsQuery(Query):
@@ -1296,7 +1294,7 @@ CALL (rel) {
             node_id = result.get("n_uuid")
             rel_name = result.get("rel_name")
             peer_id = result.get("peer_uuid")
-            peer_kind = result.get_as_optional_type("peer_kind", return_type=str)
+            peer_kind = result.get_as_type("peer_kind", return_type=str)
             direction = str(result.get("direction"))
 
             created_at = None

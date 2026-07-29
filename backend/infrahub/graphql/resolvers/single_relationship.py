@@ -58,8 +58,7 @@ class SingleRelationshipResolver:
             return {"id": peer_id}
 
         # A generic peer resolves to a GraphQL interface, whose type resolution
-        # needs the peer's concrete kind. Preloaded data only carries one when
-        # the relationship query could read it off the peer vertex.
+        # needs the peer's concrete kind.
         peer_kind = peer_stub.get(KIND_GRAPHQL_FIELD_NAME)
         if not peer_kind:
             return None
