@@ -39,23 +39,22 @@ export function handleGraphQLErrors(
 
     console.error(
       `[GraphQL error]: Code: ${parsed.code}, Message: ${graphQLError.message}, ` +
-        `Path: ${graphQLError.path}`
+        `Location: ${JSON.stringify(graphQLError.locations)}, Path: ${graphQLError.path}`
     );
 
     switch (parsed.code) {
       case ERROR_CODES.TOKEN_EXPIRED:
+      case ERROR_CODES.AUTHENTICATION_REQUIRED: {
         redirectToLogin();
         return;
+      }
 
-      case ERROR_CODES.AUTHENTICATION_REQUIRED:
-        redirectToLogin();
-        return;
-
-      case ERROR_CODES.PERMISSION_DENIED:
+      case ERROR_CODES.PERMISSION_DENIED: {
         // 403s are handled by route-level guards; `continue` so sibling errors still route.
         continue;
+      }
 
-      case ERROR_CODES.UNDEFINED_ERROR:
+      case ERROR_CODES.UNDEFINED_ERROR: {
         // Unknown catalogue code: surface it loudly in dev so the gap gets registered.
         if (import.meta.env.DEV) {
           console.error(
@@ -66,11 +65,11 @@ export function handleGraphQLErrors(
           );
         }
         notifyUser(graphQLError.message, context);
-        return;
-
-      default:
+        continue;
+      }
+      default: {
         notifyUser(graphQLError.message, context);
-        return;
+      }
     }
   }
 }

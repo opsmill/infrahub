@@ -130,6 +130,31 @@ describe("handleGraphQLErrors — catalogue routing", () => {
     expect(assignSpy).not.toHaveBeenCalled();
   });
 
+  it("still redirects when an unrouted error precedes AUTHENTICATION_REQUIRED", () => {
+    // GIVEN
+    const processErrorMessage = vi.fn();
+    const error = new CombinedError({
+      graphQLErrors: [
+        {
+          message: "boom",
+          extensions: { code: ERROR_CODES.NODE_NOT_FOUND, http_status: 404, data: {} },
+        },
+        { message: "gap", extensions: { code: "NOT_IN_CATALOGUE", http_status: 500, data: {} } },
+        {
+          message: "auth",
+          extensions: { code: ERROR_CODES.AUTHENTICATION_REQUIRED, http_status: 401, data: {} },
+        },
+      ],
+    });
+
+    // WHEN
+    handleGraphQLErrors(error, { processErrorMessage });
+
+    // THEN
+    expect(processErrorMessage).toHaveBeenCalledWith("boom");
+    expect(assignSpy).toHaveBeenCalledOnce();
+  });
+
   it("does nothing when there is no error", () => {
     // GIVEN
     const processErrorMessage = vi.fn();
