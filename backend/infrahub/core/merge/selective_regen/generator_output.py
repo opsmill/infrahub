@@ -8,6 +8,9 @@ from infrahub_sdk.protocols import CoreGeneratorGroup
 
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.timestamp import Timestamp
+from infrahub.generators.models import RequestGeneratorDefinitionRun
+
+from .models import CascadeSourceOutput, CascadeSourceOutputFactory
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -19,9 +22,6 @@ if TYPE_CHECKING:
     from infrahub.core.diff.coordinator import DiffCoordinator
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.diff.summary_serializer import DiffSummarySerializer
-    from infrahub.generators.models import RequestGeneratorDefinitionRun
-
-    from .models import CascadeSourceOutput
 
 # A generator tracks the nodes it writes into a per-member group named "<definition name>-<md5 hex>".
 _TRACKING_HASH = re.compile(r"[0-9a-f]{32}$")
@@ -42,7 +42,7 @@ class GeneratorMutationDiffCapturer(Protocol):
     async def capture(self, *, since: Timestamp, generator_definition_names: list[str]) -> list[NodeDiff]: ...
 
 
-class GeneratorTrackingOutput:
+class GeneratorTrackingOutput(CascadeSourceOutput):
     """The cascade output of a set of generators, captured through their per-member tracking groups.
 
     Binds the generators' definition names to the capturer so the follow-up can capture their output
@@ -57,7 +57,7 @@ class GeneratorTrackingOutput:
         return await self._capturer.capture(since=since, generator_definition_names=self._definition_names)
 
 
-class GeneratorCascadeOutput:
+class GeneratorOutputFactory(CascadeSourceOutputFactory[RequestGeneratorDefinitionRun]):
     """Produces a set of generators' cascade output from the runs selected for them.
 
     Owns the generator-specific step of reading the definition names off the runs, so the capturer it
@@ -74,7 +74,7 @@ class GeneratorCascadeOutput:
         )
 
 
-class GeneratorTrackingGroupDiffCapturer:
+class GeneratorTrackingGroupDiffCapturer(GeneratorMutationDiffCapturer):
     """Capture a post-merge generator's own writes, scoped to the nodes it tracked.
 
     A time-window diff of the branch alone would also carry any concurrent write landing on it while the

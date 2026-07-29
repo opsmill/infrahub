@@ -13,8 +13,8 @@ if TYPE_CHECKING:
     from infrahub.core.merge.selective_regen.models import CascadeSourceOutput, RegenerationRequest
 
 
-class _RecordingCascadeOutput:
-    """A CascadeOutput that records the requests it was asked to build the capture from."""
+class _RecordingOutputFactory:
+    """A CascadeSourceOutputFactory that records the requests it was asked to build the capture from."""
 
     def __init__(self) -> None:
         self.seen: list[Sequence[RegenerationRequest]] = []
@@ -27,7 +27,7 @@ class _RecordingCascadeOutput:
 
 def test_source_entry_forwards_its_requests_and_carries_the_built_output() -> None:
     """A source's entry is tagged SOURCE and carries the capture its output builds from those requests."""
-    output = _RecordingCascadeOutput()
+    output = _RecordingOutputFactory()
     selector = GeneratorForcingSelector(definitions=[], member_ids=[], subscriber_by_member={})
     participant = CascadeSource(selector, output=output)
     requests: list[RegenerationRequest] = []

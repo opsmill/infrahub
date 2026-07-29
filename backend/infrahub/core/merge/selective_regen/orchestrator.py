@@ -8,7 +8,7 @@ from .definition_selector.artifact_selector import ArtifactSelector
 from .definition_selector.generator_selector import GeneratorSelector
 from .fallbacks import repositories_forcing_full_regeneration
 from .gate import DefinitionGate
-from .generator_output import GeneratorCascadeOutput
+from .generator_output import GeneratorOutputFactory
 from .impacted import ImpactedSubscriberResolver
 from .models import CascadeRole, PlannedRegeneration, SelectiveRegenerationPlan
 from .participant import CascadeSource, CascadeTerminal
@@ -37,7 +37,7 @@ class RegenerationSelector(Protocol):
     def consolidate_submissions(self, entries: Sequence[PlannedRegeneration]) -> list[PlannedRegeneration]: ...
 
 
-class MergeSelectiveRegeneration:
+class MergeSelectiveRegeneration(RegenerationSelector):
     """Select the definitions a merge changed, narrowed to affected members, across every participant.
 
     Runs each injected participant's selector over a single computation of the diff's modified kinds and
@@ -134,7 +134,7 @@ def build_merge_selective_regeneration(
         participants=[
             CascadeSource(
                 GeneratorSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log),
-                output=GeneratorCascadeOutput(capturer=output_capturer),
+                output=GeneratorOutputFactory(capturer=output_capturer),
             ),
             CascadeTerminal(ArtifactSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log)),
         ]

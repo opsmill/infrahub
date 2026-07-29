@@ -33,8 +33,8 @@ class StubCascadeSourceOutput:
         return []
 
 
-class StubCascadeOutput:
-    """A CascadeOutput yielding a fixed capture, for source doubles that only exercise selection."""
+class StubOutputFactory:
+    """A CascadeSourceOutputFactory yielding a fixed capture, for source doubles that only select."""
 
     def __init__(self, result: CascadeSourceOutput | None = None) -> None:
         self._result = result if result is not None else StubCascadeSourceOutput()

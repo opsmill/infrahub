@@ -20,8 +20,8 @@ from tests.helpers.diff_summary import node_diff
 from tests.helpers.selective_regen import (
     ArtifactForcingSelector,
     GeneratorForcingSelector,
-    StubCascadeOutput,
     StubCascadeSourceOutput,
+    StubOutputFactory,
 )
 
 if TYPE_CHECKING:
@@ -117,7 +117,7 @@ async def test_build_plan_shares_modified_kinds_and_assembles_plan() -> None:
 
     plan = await MergeSelectiveRegeneration(
         participants=[
-            CascadeSource(generator_selector, output=StubCascadeOutput(result=generator_output)),
+            CascadeSource(generator_selector, output=StubOutputFactory(result=generator_output)),
             CascadeTerminal(artifact_selector),
         ]
     ).build_plan(diff_summary=diff_summary, target_branch=TARGET_BRANCH)
@@ -155,7 +155,7 @@ async def test_reselect_from_cascade_output_excludes_cascade_sources() -> None:
 
     entries = await MergeSelectiveRegeneration(
         participants=[
-            CascadeSource(generator_selector, output=StubCascadeOutput()),
+            CascadeSource(generator_selector, output=StubOutputFactory()),
             CascadeTerminal(artifact_selector),
         ]
     ).reselect_from_cascade_output(diff_summary=diff_summary, target_branch=TARGET_BRANCH)
@@ -214,7 +214,7 @@ async def test_consolidate_submissions_routes_each_workflow_to_its_selector() ->
 
     result = MergeSelectiveRegeneration(
         participants=[
-            CascadeSource(generator_selector, output=StubCascadeOutput()),
+            CascadeSource(generator_selector, output=StubOutputFactory()),
             CascadeTerminal(artifact_selector),
         ]
     ).consolidate_submissions(entries)
@@ -287,7 +287,7 @@ async def test_missing_generator_fingerprint_escalates_a_sibling_artifact_in_the
 
     plan = await MergeSelectiveRegeneration(
         participants=[
-            CascadeSource(generator_selector, output=StubCascadeOutput()),
+            CascadeSource(generator_selector, output=StubOutputFactory()),
             CascadeTerminal(artifact_selector),
         ]
     ).build_plan(diff_summary=[], target_branch=TARGET_BRANCH)

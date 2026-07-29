@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from .definition_selector.base import DefinitionSelectorBase
-    from .models import CascadeOutput, CascadeSourceOutput, RegenerationRequest
+    from .models import CascadeSourceOutput, CascadeSourceOutputFactory, RegenerationRequest
 
 
 class CascadeParticipant(ABC):
@@ -43,7 +43,7 @@ class CascadeSource(CascadeParticipant):
 
     role = CascadeRole.SOURCE
 
-    def __init__(self, selector: DefinitionSelectorBase[Any, Any], *, output: CascadeOutput[Any]) -> None:
+    def __init__(self, selector: DefinitionSelectorBase[Any, Any], *, output: CascadeSourceOutputFactory[Any]) -> None:
         super().__init__(selector)
         self._output = output
 

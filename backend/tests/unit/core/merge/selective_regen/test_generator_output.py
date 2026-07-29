@@ -11,7 +11,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.merge.selective_regen.generator_output import (
     CAPTURE_DIFF_NAME_PREFIX,
-    GeneratorCascadeOutput,
+    GeneratorOutputFactory,
     GeneratorTrackingGroupDiffCapturer,
     GeneratorTrackingOutput,
 )
@@ -220,9 +220,9 @@ def _generator_run(name: str) -> RequestGeneratorDefinitionRun:
 
 
 async def test_generator_cascade_output_captures_the_runs_generators_by_name() -> None:
-    """GeneratorCascadeOutput derives the capture scope from each run's generator name."""
+    """GeneratorOutputFactory derives the capture scope from each run's generator name."""
     capturer = RecordingGeneratorDiffCapturer()
-    output = GeneratorCascadeOutput(capturer=capturer).for_requests([_generator_run("gen-a"), _generator_run("gen-b")])
+    output = GeneratorOutputFactory(capturer=capturer).for_requests([_generator_run("gen-a"), _generator_run("gen-b")])
     since = Timestamp()
 
     captured = await output.capture(since=since)
