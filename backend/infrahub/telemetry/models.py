@@ -1,5 +1,3 @@
-from typing import Self
-
 from pydantic import BaseModel, Field
 
 from .constants import InfrahubType
@@ -19,10 +17,6 @@ class TelemetryAccountData(BaseModel):
     active: int | None = Field(default=None)
     groups: int | None = Field(default=None)
 
-    @classmethod
-    def default(cls) -> Self:
-        return cls()
-
 
 class TelemetryActivity24hData(BaseModel):
     logins: int | None = Field(default=None)
@@ -37,10 +31,6 @@ class TelemetryActivity24hData(BaseModel):
     branches_deleted: int | None = Field(default=None)
     webhooks_fired_success: int | None = Field(default=None)
     webhooks_fired_failure: int | None = Field(default=None)
-
-    @classmethod
-    def default(cls) -> Self:
-        return cls()
 
 
 class TelemetrySchemaData(BaseModel):
@@ -90,8 +80,8 @@ class TelemetryData(BaseModel):
     platform: str
     workers: TelemetryWorkerData
     branches: TelemetryBranchData
-    accounts: TelemetryAccountData = Field(default_factory=TelemetryAccountData.default)
-    activity_24h: TelemetryActivity24hData = Field(default_factory=TelemetryActivity24hData.default)
+    accounts: TelemetryAccountData = Field(default_factory=TelemetryAccountData)
+    activity_24h: TelemetryActivity24hData = Field(default_factory=TelemetryActivity24hData)
     features: dict[str, int]
     schema_info: TelemetrySchemaData
     database: TelemetryDatabaseData

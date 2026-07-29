@@ -28,13 +28,11 @@ from infrahub.telemetry.task_manager import (
     count_windowed_unique_resources,
 )
 from infrahub.telemetry.tasks import (
-    AccountGatherer,
-    ActiveBranchCounter,
-    ActivityGatherer,
     AnonymousTelemetryGatherer,
     DefaultAccountGatherer,
     DefaultActiveBranchCounter,
     DefaultActivityGatherer,
+    GathererInterface,
     build_anonymous_telemetry_gatherer,
     count_active_branches,
     gather_account_information,
@@ -161,9 +159,9 @@ async def telemetry_environment(
 
 
 async def _build_gatherer(
-    account_gatherer: AccountGatherer | None = None,
-    activity_gatherer: ActivityGatherer | None = None,
-    active_branch_counter: ActiveBranchCounter | None = None,
+    account_gatherer: GathererInterface[TelemetryAccountData] | None = None,
+    activity_gatherer: GathererInterface[TelemetryActivity24hData] | None = None,
+    active_branch_counter: GathererInterface[int] | None = None,
 ) -> AnonymousTelemetryGatherer:
     """Build the gatherer with real collaborators, overriding any one with an injected double."""
     database = await get_database()
@@ -262,7 +260,7 @@ class BoomActivityGatherer:
 
 
 class BoomActiveBranchCounter:
-    async def count(self) -> int:
+    async def gather(self) -> int:
         raise RuntimeError("branch source unavailable")
 
 

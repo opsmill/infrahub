@@ -1,7 +1,6 @@
 import asyncio
 import uuid
 from collections.abc import AsyncGenerator, Generator
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, cast
 
@@ -266,39 +265,21 @@ async def test_gather_activity_24h_logins(prefect_client: PrefectClient, seeded_
     assert data.webhooks_fired_failure is not None
 
 
-@dataclass
-class ActivityFieldCase:
-    name: str
-    field: str
-    event_name: str
-
-
-@pytest.mark.parametrize(
-    "case",
-    [
-        ActivityFieldCase(name="checks_started", field="checks_started", event_name=ValidatorStartedEvent.event_name),
-        ActivityFieldCase(name="checks_passed", field="checks_passed", event_name=ValidatorPassedEvent.event_name),
-        ActivityFieldCase(name="checks_failed", field="checks_failed", event_name=ValidatorFailedEvent.event_name),
-        ActivityFieldCase(
-            name="artifacts_created", field="artifacts_created", event_name=ArtifactCreatedEvent.event_name
-        ),
-        ActivityFieldCase(
-            name="artifacts_updated", field="artifacts_updated", event_name=ArtifactUpdatedEvent.event_name
-        ),
-        ActivityFieldCase(name="branches_created", field="branches_created", event_name=BranchCreatedEvent.event_name),
-        ActivityFieldCase(name="branches_merged", field="branches_merged", event_name=BranchMergedEvent.event_name),
-        ActivityFieldCase(name="branches_deleted", field="branches_deleted", event_name=BranchDeletedEvent.event_name),
-    ],
-    ids=lambda case: case.name,
-)
 async def test_gather_activity_24h_checks_artifacts_branches(
-    prefect_client: PrefectClient, seeded_activity: dict[str, int], case: ActivityFieldCase
+    prefect_client: PrefectClient, seeded_activity: dict[str, int]
 ) -> None:
     # Each field equals exactly the in-window seeded count for its mapped event; the single
     # out-of-window event per name is excluded, so the count never inflates past the in-window
-    # total.
+    # total. One gather covers every field: the flow computes them all in a single pass.
     data = await gather_activity_24h.fn(client=prefect_client)
-    assert getattr(data, case.field) == seeded_activity[case.event_name]
+    assert data.checks_started == seeded_activity[ValidatorStartedEvent.event_name]
+    assert data.checks_passed == seeded_activity[ValidatorPassedEvent.event_name]
+    assert data.checks_failed == seeded_activity[ValidatorFailedEvent.event_name]
+    assert data.artifacts_created == seeded_activity[ArtifactCreatedEvent.event_name]
+    assert data.artifacts_updated == seeded_activity[ArtifactUpdatedEvent.event_name]
+    assert data.branches_created == seeded_activity[BranchCreatedEvent.event_name]
+    assert data.branches_merged == seeded_activity[BranchMergedEvent.event_name]
+    assert data.branches_deleted == seeded_activity[BranchDeletedEvent.event_name]
 
 
 async def test_gather_prefect_events_unchanged(prefect_client: PrefectClient, seeded_logins: str) -> None:

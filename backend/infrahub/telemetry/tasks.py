@@ -99,16 +99,8 @@ async def count_active_branches(db: InfrahubDatabase) -> int:
     return await Branch.get_list_count(db=db, exclude_global=True, exclude_default=True, exclude_terminal=True)
 
 
-class AccountGatherer(Protocol):
-    async def gather(self) -> TelemetryAccountData: ...
-
-
-class ActivityGatherer(Protocol):
-    async def gather(self) -> TelemetryActivity24hData: ...
-
-
-class ActiveBranchCounter(Protocol):
-    async def count(self) -> int: ...
+class GathererInterface[T](Protocol):
+    async def gather(self) -> T: ...
 
 
 class DefaultAccountGatherer:
@@ -129,7 +121,7 @@ class DefaultActiveBranchCounter:
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
-    async def count(self) -> int:
+    async def gather(self) -> int:
         return await count_active_branches(db=self.db)
 
 
@@ -141,9 +133,9 @@ class AnonymousTelemetryGatherer:
         *,
         database: InfrahubDatabase,
         component: InfrahubComponent,
-        account_gatherer: AccountGatherer,
-        activity_gatherer: ActivityGatherer,
-        active_branch_counter: ActiveBranchCounter,
+        account_gatherer: GathererInterface[TelemetryAccountData],
+        activity_gatherer: GathererInterface[TelemetryActivity24hData],
+        active_branch_counter: GathererInterface[int],
     ) -> None:
         self.database = database
         self.component = component
@@ -173,10 +165,10 @@ class AnonymousTelemetryGatherer:
             ),
             branches=TelemetryBranchData(
                 total=len(registry.branch),
-                active=await safe_metric(self.active_branch_counter.count()),
+                active=await safe_metric(self.active_branch_counter.gather()),
             ),
-            accounts=accounts if accounts is not None else TelemetryAccountData.default(),
-            activity_24h=activity_24h if activity_24h is not None else TelemetryActivity24hData.default(),
+            accounts=accounts if accounts is not None else TelemetryAccountData(),
+            activity_24h=activity_24h if activity_24h is not None else TelemetryActivity24hData(),
             features=await gather_feature_information(),
             schema_info=await gather_schema_information(branch=default_branch),
             database=await gather_database_information(db=self.database),
