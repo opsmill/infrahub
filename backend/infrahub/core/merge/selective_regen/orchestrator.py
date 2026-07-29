@@ -71,8 +71,7 @@ class MergeSelectiveRegeneration(RegenerationSelector):
     ) -> list[PlannedRegeneration]:
         modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=target_branch)
         loaded_by_participant = [
-            (participant, await participant.selector.load_definitions(target_branch=target_branch))
-            for participant in participants
+            (participant, await participant.load(target_branch=target_branch)) for participant in participants
         ]
 
         # Aggregated over every participant's definitions so a repository escalated by any missing
@@ -84,14 +83,15 @@ class MergeSelectiveRegeneration(RegenerationSelector):
 
         entries: list[PlannedRegeneration] = []
         for participant, loaded_definitions in loaded_by_participant:
-            requests = await participant.selector.select(
-                loaded_definitions=loaded_definitions,
-                forced_repositories=forced_repositories,
-                diff_summary=diff_summary,
-                target_branch=target_branch,
-                modified_kinds=modified_kinds,
+            entries.append(
+                await participant.plan(
+                    loaded_definitions=loaded_definitions,
+                    forced_repositories=forced_repositories,
+                    diff_summary=diff_summary,
+                    target_branch=target_branch,
+                    modified_kinds=modified_kinds,
+                )
             )
-            entries.append(participant.to_entry(requests))
         return entries
 
     def consolidate_submissions(self, entries: Sequence[PlannedRegeneration]) -> list[PlannedRegeneration]:
@@ -101,21 +101,14 @@ class MergeSelectiveRegeneration(RegenerationSelector):
         artifact selected by both the merge diff and a generator's output collapses to a single request --
         without the follow-up knowing how to merge them.
         """
-        participant_by_workflow = {participant.selector.workflow.name: participant for participant in self.participants}
+        participant_by_workflow = {participant.workflow.name: participant for participant in self.participants}
         requests_by_workflow: dict[str, list[RegenerationRequest]] = {}
         for entry in entries:
             requests_by_workflow.setdefault(entry.workflow.name, []).extend(entry.requests)
-        submissions: list[PlannedRegeneration] = []
-        for workflow_name, requests in requests_by_workflow.items():
-            participant = participant_by_workflow[workflow_name]
-            submissions.append(
-                PlannedRegeneration(
-                    workflow=participant.selector.workflow,
-                    cascade_role=participant.role,
-                    requests=participant.selector.consolidate(requests),
-                )
-            )
-        return submissions
+        return [
+            participant_by_workflow[workflow_name].consolidated_entry(requests)
+            for workflow_name, requests in requests_by_workflow.items()
+        ]
 
     def terminal_full_regenerations(self, target_branch: str) -> list[FullRegeneration]:
         """The blanket regenerations for every terminal participant, for the source-failure fallback."""
