@@ -32,8 +32,6 @@ describe("proposedChangesQueryKeys", () => {
     expect(result).toEqual(["objects", PROPOSED_CHANGE_OBJECT, filters, sort]);
   });
 
-  // Two orders of the same list are two different results: sharing a key would serve the previous
-  // order's cached pages and let infinite scroll interleave both.
   it("returns a different list query key per sort", () => {
     // GIVEN
     const filters: Filter[] = [{ name: "status__value", value: "open" }];

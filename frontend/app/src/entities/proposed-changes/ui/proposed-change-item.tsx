@@ -5,6 +5,7 @@ import { ListBoxItem } from "react-aria-components";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
@@ -67,7 +68,7 @@ type ProposedChangesInfoProps = {
   isDraft: boolean;
   isApproved: boolean;
   createdAt: string | null;
-  updatedAt?: string | null;
+  updatedAt: string | null;
   branchName?: string;
 };
 
@@ -106,19 +107,14 @@ const ProposedChangesInfo = ({
             {isApproved && <Badge variant={"blue-outline"}>approved</Badge>}
           </div>
         </span>
-        <span className="flex items-center gap-1 text-xs">
+        <Row className="gap-1 text-xs">
           <span className="flex items-center gap-1 font-semibold">
             <Icon icon={"mdi:source-branch"} />
             {branchName}
           </span>
           Opened <DateDisplay date={createdAt} /> by {author}
-          {updatedAt && (
-            <>
-              <ClockIcon className="ml-1 size-3" />
-              Updated <DateDisplay date={updatedAt} />
-            </>
-          )}
-        </span>
+          <ClockIcon className="size-3" /> Updated <DateDisplay date={updatedAt} />
+        </Row>
       </div>
     </div>
   );
