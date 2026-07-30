@@ -712,11 +712,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return errors
 
-    @staticmethod
-    def _referenced_root_fields(jinja_template: InfrahubJinja2Template) -> set[str]:
-        """Root attribute/relationship names a template depends on (the segment before `__`)."""
-        return {variable.split("__")[0] for variable in jinja_template.get_variables()}
-
     def _has_pending_pool_dependency(self, schema_branch: SchemaBranch, jinja_template: InfrahubJinja2Template) -> bool:
         """Whether the template reads a local pool-sourced attribute whose value is not allocated yet.
 
@@ -779,7 +774,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 continue
 
             jinja_template = InfrahubJinja2Template(template=attr_schema.computed_attribute.jinja2_template)
-            if self._referenced_root_fields(jinja_template) & skipped or self._has_pending_pool_dependency(
+            if jinja_template.get_referenced_root_fields() & skipped or self._has_pending_pool_dependency(
                 schema_branch=schema_branch, jinja_template=jinja_template
             ):
                 skipped.add(macro)
@@ -839,7 +834,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
             jinja_template = InfrahubJinja2Template(template=attr_schema.computed_attribute.jinja2_template)
 
-            referenced_attributes = self._referenced_root_fields(jinja_template)
+            referenced_attributes = jinja_template.get_referenced_root_fields()
             if failed_dependencies := referenced_attributes & failed_attributes:
                 log.warning(
                     "Skipping recomputation of Jinja2 attribute due to failed dependency",
