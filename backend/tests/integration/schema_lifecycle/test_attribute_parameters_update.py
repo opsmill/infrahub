@@ -14,7 +14,7 @@ from infrahub.core.schema.attribute_parameters import (
     TextAttributeParameters,
 )
 from tests.helpers.schema import load_schema as load_schema_root
-from tests.helpers.schema.dns_record import DNS_RECORD_DEFINITION
+from tests.helpers.schema.dns_record import DNS_RECORD_DICT
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -353,7 +353,7 @@ class TestAllowPrefixIsImmutable(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     def schema_step_01(self) -> dict[str, Any]:
-        return {"version": "1.0", "nodes": [deepcopy(DNS_RECORD_DEFINITION)]}
+        return {"version": "1.0", "nodes": [deepcopy(DNS_RECORD_DICT)]}
 
     @pytest.fixture(scope="class")
     async def load_schema_01(

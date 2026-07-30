@@ -36,7 +36,7 @@ from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.templates.node_applier import NodeTemplateApplier
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
-from tests.helpers.schema.dns_record import DNS_RECORD_DEFINITION
+from tests.helpers.schema.dns_record import DNS_RECORD_DICT
 
 if TYPE_CHECKING:
     from graphql import ExecutionResult
@@ -94,7 +94,7 @@ RETURN DISTINCT n.uuid AS uuid
 
 
 def _dns_record_root(**attribute_overrides: dict[str, Any]) -> SchemaRoot:
-    definition = deepcopy(DNS_RECORD_DEFINITION)
+    definition = deepcopy(DNS_RECORD_DICT)
     for attribute_name, overrides in attribute_overrides.items():
         attribute = next(attr for attr in definition["attributes"] if attr["name"] == attribute_name)
         attribute.update(overrides)
