@@ -77,6 +77,12 @@ class HasRelationshipFields(Protocol):
 
 log = get_logger()
 
+JINJA2_ALLOWED_PATH_TYPES = (
+    SchemaElementPathType.ATTR_WITH_PROP
+    | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+    | SchemaElementPathType.REL_ONE_OPTIONAL_ATTR_WITH_PROP
+)
+
 
 class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     @classmethod
@@ -706,28 +712,33 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return errors
 
+    def _has_pending_pool_dependency(self, schema_branch: SchemaBranch, jinja_template: InfrahubJinja2Template) -> bool:
+        """Whether the template reads a local pool-sourced attribute whose value is not allocated yet.
+
+        Such a macro cannot be rendered until the pool allocation has taken place and must be skipped.
+        """
+        for variable in jinja_template.get_variables():
+            attribute_path = schema_branch.validate_schema_path(
+                node_schema=self._schema, path=variable, allowed_path_types=JINJA2_ALLOWED_PATH_TYPES
+            )
+            if attribute_path.is_type_attribute:
+                attribute = self.get_attribute(attribute_path.active_attribute_schema.name)
+                if attribute.from_pool and attribute.value is None:
+                    return True
+        return False
+
     async def _resolve_jinja2_variables(
         self,
         db: InfrahubDatabase,
         schema_branch: SchemaBranch,
         jinja_template: InfrahubJinja2Template,
-    ) -> dict[str, Any] | None:
-        """Resolve Jinja2 template variables from local attributes and relationship peers.
-
-        Returns None when the template depends on a local attribute sourced from a pool whose
-        value has not been allocated yet. The macro cannot be rendered against the missing value
-        and must be skipped until the allocation happens.
-        """
-        allowed_path_types = (
-            SchemaElementPathType.ATTR_WITH_PROP
-            | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
-            | SchemaElementPathType.REL_ONE_OPTIONAL_ATTR_WITH_PROP
-        )
+    ) -> dict[str, Any]:
+        """Resolve Jinja2 template variables from local attributes and relationship peers."""
         variables: dict[str, Any] = {}
 
         for variable in jinja_template.get_variables():
             attribute_path = schema_branch.validate_schema_path(
-                node_schema=self._schema, path=variable, allowed_path_types=allowed_path_types
+                node_schema=self._schema, path=variable, allowed_path_types=JINJA2_ALLOWED_PATH_TYPES
             )
             if attribute_path.is_type_relationship:
                 relationship = self.get_relationship(attribute_path.active_relationship_schema.name)
@@ -738,8 +749,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     variables[variable] = None
             elif attribute_path.is_type_attribute:
                 attribute = self.get_attribute(attribute_path.active_attribute_schema.name)
-                if attribute.from_pool and attribute.value is None:
-                    return None
                 variables[variable] = attribute.get_property(attribute_path.active_attribute_property_name)
 
         return variables
@@ -761,12 +770,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 continue
 
             jinja_template = InfrahubJinja2Template(template=attr_schema.computed_attribute.jinja2_template)
+            if self._has_pending_pool_dependency(schema_branch=schema_branch, jinja_template=jinja_template):
+                continue
+
             variables = await self._resolve_jinja2_variables(
                 db=db, schema_branch=schema_branch, jinja_template=jinja_template
             )
-            if variables is None:
-                continue
-
             content = await jinja_template.render(variables=variables)
 
             generator_method_name = "_generate_attribute_default"
@@ -830,11 +839,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 failed_attributes.add(target.attribute.name)
                 continue
 
+            if self._has_pending_pool_dependency(schema_branch=schema_branch, jinja_template=jinja_template):
+                continue
+
             variables = await self._resolve_jinja2_variables(
                 db=db, schema_branch=schema_branch, jinja_template=jinja_template
             )
-            if variables is None:
-                continue
 
             try:
                 new_value = await jinja_template.render(variables=variables)
