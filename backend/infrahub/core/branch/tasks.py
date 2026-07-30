@@ -33,7 +33,10 @@ from infrahub.core.merge.recompute_coalescing import (
 )
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher, submit_full_regeneration
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
-from infrahub.core.merge.selective_regen.generator_output import GeneratorTrackingGroupDiffCapturer
+from infrahub.core.merge.selective_regen.generator_output import (
+    GeneratorTrackingGroupDiffCapturer,
+    GeneratorTrackingOutput,
+)
 from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
@@ -501,9 +504,10 @@ async def _build_post_merge_regeneration_dispatcher(
         client=get_client(),
         branch=branch,
     )
+    generator_output = GeneratorTrackingOutput(capturer=output_capturer)
     return PostMergeRegenerationDispatcher(
         workflow=get_workflow(),
-        planner=build_merge_selective_regeneration(client=get_client(), log=log, output_capturer=output_capturer),
+        planner=build_merge_selective_regeneration(client=get_client(), log=log, generator_output=generator_output),
         summary_cache=DiffSummaryCache(
             cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
         ),

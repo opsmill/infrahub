@@ -27,25 +27,14 @@ if TYPE_CHECKING:
 
     from infrahub_sdk.diff import NodeDiff
 
-    from infrahub.core.merge.selective_regen.models import CascadeSourceOutput
     from infrahub.core.timestamp import Timestamp
 
 
 class StubCascadeSourceOutput:
     """A CascadeSourceOutput that captures nothing, for source doubles that only exercise selection."""
 
-    async def capture(self, *, since: Timestamp) -> list[NodeDiff]:
+    async def capture(self, *, since: Timestamp, requests: Sequence[object]) -> list[NodeDiff]:
         return []
-
-
-class StubOutputFactory:
-    """A CascadeSourceOutputFactory yielding a fixed capture, for source doubles that only select."""
-
-    def __init__(self, result: CascadeSourceOutput | None = None) -> None:
-        self._result = result if result is not None else StubCascadeSourceOutput()
-
-    def for_requests(self, requests: Sequence[object]) -> CascadeSourceOutput:
-        return self._result
 
 
 class RecordingGeneratorDiffCapturer:

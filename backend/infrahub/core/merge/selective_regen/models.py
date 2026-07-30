@@ -35,24 +35,15 @@ class CascadeRole(Enum):
     TERMINAL = "terminal"
 
 
-class CascadeSourceOutput(Protocol):
-    """Captures the diff of what a cascade source wrote once it has run.
+class CascadeSourceOutput[RequestT](Protocol):
+    """Captures the diff of what a cascade source's requests wrote once they have run.
 
-    A source produces the diff of its own writes so the terminals that read them can be reselected,
-    without the follow-up needing to know how that output is located.
+    Given the requests the source selected, it produces the diff of their own writes so the terminals
+    that read them can be reselected, without the follow-up needing to know how that output is located.
+    Bound to its capturer at wiring time; the requests scope the capture and arrive per run.
     """
 
-    async def capture(self, *, since: Timestamp) -> list[NodeDiff]: ...
-
-
-class CascadeSourceOutputFactory[RequestT](Protocol):
-    """Produces the output capture for a cascade source from the requests it selected.
-
-    Bound to a source at wiring time and given that source's selected requests, so the capture is
-    scoped to what those requests will write without the source itself owning how that is located.
-    """
-
-    def for_requests(self, requests: Sequence[RequestT]) -> CascadeSourceOutput: ...
+    async def capture(self, *, since: Timestamp, requests: Sequence[RequestT]) -> list[NodeDiff]: ...
 
 
 @dataclass(frozen=True)
@@ -70,7 +61,7 @@ class PlannedRegeneration:
     workflow: WorkflowDefinition
     cascade_role: CascadeRole
     requests: Sequence[RegenerationRequest]
-    output: CascadeSourceOutput | None = None
+    output: CascadeSourceOutput[Any] | None = None
     """How to capture this entry's output when it is a cascade source; None for a terminal."""
 
 

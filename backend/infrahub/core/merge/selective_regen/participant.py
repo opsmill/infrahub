@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from infrahub.workflows.models import WorkflowDefinition
 
     from .definition_selector.base import DefinitionSelectorBase
-    from .models import CascadeSourceOutput, CascadeSourceOutputFactory, LoadedDefinition, RegenerationRequest
+    from .models import CascadeSourceOutput, LoadedDefinition, RegenerationRequest
 
 
 class CascadeParticipant[RequestT: RegenerationRequest](ABC):
@@ -65,7 +65,7 @@ class CascadeParticipant[RequestT: RegenerationRequest](ABC):
             workflow=self.workflow,
             cascade_role=self.role,
             requests=requests,
-            output=self._capture(requests),
+            output=self._output(),
         )
 
     def consolidated_entry(self, requests: Sequence[RequestT]) -> PlannedRegeneration:
@@ -80,8 +80,8 @@ class CascadeParticipant[RequestT: RegenerationRequest](ABC):
         )
 
     @abstractmethod
-    def _capture(self, requests: Sequence[RequestT]) -> CascadeSourceOutput | None:
-        """The output capture for these requests, or None when nothing downstream reselects from it."""
+    def _output(self) -> CascadeSourceOutput[RequestT] | None:
+        """This participant's cascade output, or None when nothing downstream reselects from it."""
 
 
 class CascadeSource[RequestT: RegenerationRequest](CascadeParticipant[RequestT]):
@@ -90,13 +90,13 @@ class CascadeSource[RequestT: RegenerationRequest](CascadeParticipant[RequestT])
     role = CascadeRole.SOURCE
 
     def __init__(
-        self, selector: DefinitionSelectorBase[Any, RequestT], *, output: CascadeSourceOutputFactory[RequestT]
+        self, selector: DefinitionSelectorBase[Any, RequestT], *, output: CascadeSourceOutput[RequestT]
     ) -> None:
         super().__init__(selector)
-        self._output = output
+        self._source_output = output
 
-    def _capture(self, requests: Sequence[RequestT]) -> CascadeSourceOutput:
-        return self._output.for_requests(requests)
+    def _output(self) -> CascadeSourceOutput[RequestT]:
+        return self._source_output
 
 
 class CascadeTerminal[RequestT: RegenerationRequest](CascadeParticipant[RequestT]):
@@ -104,5 +104,5 @@ class CascadeTerminal[RequestT: RegenerationRequest](CascadeParticipant[RequestT
 
     role = CascadeRole.TERMINAL
 
-    def _capture(self, requests: Sequence[RequestT]) -> None:  # noqa: ARG002
+    def _output(self) -> None:
         return None

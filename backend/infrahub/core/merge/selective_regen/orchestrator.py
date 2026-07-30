@@ -8,7 +8,6 @@ from .definition_selector.artifact_selector import ArtifactSelector
 from .definition_selector.generator_selector import GeneratorSelector
 from .fallbacks import repositories_forcing_full_regeneration
 from .gate import DefinitionGate
-from .generator_output import GeneratorOutputFactory
 from .impacted import ImpactedSubscriberResolver
 from .models import CascadeRole, PlannedRegeneration, SelectiveRegenerationPlan
 from .participant import CascadeSource, CascadeTerminal
@@ -20,8 +19,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
-    from .generator_output import GeneratorMutationDiffCapturer
-    from .models import DefinitionModel, FullRegeneration, RegenerationRequest
+    from .models import CascadeSourceOutput, DefinitionModel, FullRegeneration, RegenerationRequest
     from .participant import CascadeParticipant
 
 
@@ -131,13 +129,13 @@ def build_merge_selective_regeneration(
     *,
     client: InfrahubClient,
     log: logging.Logger | logging.LoggerAdapter[logging.Logger],
-    output_capturer: GeneratorMutationDiffCapturer,
+    generator_output: CascadeSourceOutput[Any],
 ) -> MergeSelectiveRegeneration:
     """Wire the participants for one merge follow-up, sharing the gate and impact resolver.
 
     The generator participant runs before the artifact participant so the plan awaits generator output
-    before the artifacts that may read it are selected. The generator participant is the cascade source
-    and carries the output capture built from the capturer, so the follow-up need not own that.
+    before the artifacts that may read it are selected. The generator participant is the cascade source;
+    its output capture is built once at the composition root and injected here.
     """
     gate = DefinitionGate(log=log)
     impacted_resolver = ImpactedSubscriberResolver(client=client)
@@ -145,7 +143,7 @@ def build_merge_selective_regeneration(
         participants=[
             CascadeSource(
                 GeneratorSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log),
-                output=GeneratorOutputFactory(capturer=output_capturer),
+                output=generator_output,
             ),
             CascadeTerminal(ArtifactSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log)),
         ]

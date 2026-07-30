@@ -187,7 +187,7 @@ class PostMergeRegenerationDispatcher:
             captured: list[NodeDiff] = []
             for entry in sources:
                 if entry.output is not None:
-                    captured.extend(await entry.output.capture(since=since))
+                    captured.extend(await entry.output.capture(since=since, requests=entry.requests))
             targeted = await self.planner.reselect_from_cascade_output(
                 diff_summary=captured, target_branch=target_branch
             )

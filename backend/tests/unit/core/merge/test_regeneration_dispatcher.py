@@ -121,7 +121,7 @@ class _FakeSourceOutput:
         self._error = error
         self.calls = 0
 
-    async def capture(self, *, since: Timestamp) -> list:
+    async def capture(self, *, since: Timestamp, requests: Sequence[Any]) -> list:
         self.calls += 1
         if self._error is not None:
             raise self._error

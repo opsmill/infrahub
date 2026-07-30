@@ -10,7 +10,7 @@ from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.timestamp import Timestamp
 from infrahub.generators.models import RequestGeneratorDefinitionRun
 
-from .models import CascadeSourceOutput, CascadeSourceOutputFactory
+from .models import CascadeSourceOutput
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -42,36 +42,19 @@ class GeneratorMutationDiffCapturer(Protocol):
     async def capture(self, *, since: Timestamp, generator_definition_names: list[str]) -> list[NodeDiff]: ...
 
 
-class GeneratorTrackingOutput(CascadeSourceOutput):
+class GeneratorTrackingOutput(CascadeSourceOutput[RequestGeneratorDefinitionRun]):
     """The cascade output of a set of generators, captured through their per-member tracking groups.
 
-    Binds the generators' definition names to the capturer so the follow-up can capture their output
-    without handling the names itself.
-    """
-
-    def __init__(self, *, capturer: GeneratorMutationDiffCapturer, definition_names: list[str]) -> None:
-        self._capturer = capturer
-        self._definition_names = definition_names
-
-    async def capture(self, *, since: Timestamp) -> list[NodeDiff]:
-        return await self._capturer.capture(since=since, generator_definition_names=self._definition_names)
-
-
-class GeneratorOutputFactory(CascadeSourceOutputFactory[RequestGeneratorDefinitionRun]):
-    """Produces a set of generators' cascade output from the runs selected for them.
-
-    Owns the generator-specific step of reading the definition names off the runs, so the capturer it
-    holds stays free of that kind's request shape.
+    Holds only the capturer; the runs to capture arrive per call, so it reads their definition names
+    itself and the follow-up need not handle that kind-specific step.
     """
 
     def __init__(self, capturer: GeneratorMutationDiffCapturer) -> None:
         self._capturer = capturer
 
-    def for_requests(self, requests: Sequence[RequestGeneratorDefinitionRun]) -> CascadeSourceOutput:
-        return GeneratorTrackingOutput(
-            capturer=self._capturer,
-            definition_names=[run.generator_definition.definition_name for run in requests],
-        )
+    async def capture(self, *, since: Timestamp, requests: Sequence[RequestGeneratorDefinitionRun]) -> list[NodeDiff]:
+        definition_names = [run.generator_definition.definition_name for run in requests]
+        return await self._capturer.capture(since=since, generator_definition_names=definition_names)
 
 
 class GeneratorTrackingGroupDiffCapturer(GeneratorMutationDiffCapturer):

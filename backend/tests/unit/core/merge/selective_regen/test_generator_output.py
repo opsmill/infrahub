@@ -11,7 +11,6 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.merge.selective_regen.generator_output import (
     CAPTURE_DIFF_NAME_PREFIX,
-    GeneratorOutputFactory,
     GeneratorTrackingGroupDiffCapturer,
     GeneratorTrackingOutput,
 )
@@ -185,18 +184,6 @@ async def test_capture_marks_the_saved_diff_so_it_can_be_identified_later() -> N
     assert coordinator.names[0].startswith(CAPTURE_DIFF_NAME_PREFIX)
 
 
-async def test_generator_tracking_output_forwards_its_names_and_since_to_the_capturer() -> None:
-    """GeneratorTrackingOutput binds the generator names to the capturer and forwards the since and diff."""
-    capturer = RecordingGeneratorDiffCapturer()
-    output = GeneratorTrackingOutput(capturer=capturer, definition_names=["gen-a", "gen-b"])
-    since = Timestamp()
-
-    captured = await output.capture(since=since)
-
-    assert capturer.calls == [(since, ["gen-a", "gen-b"])]
-    assert captured is capturer.result
-
-
 def _generator_run(name: str) -> RequestGeneratorDefinitionRun:
     return RequestGeneratorDefinitionRun(
         branch="main",
@@ -219,13 +206,13 @@ def _generator_run(name: str) -> RequestGeneratorDefinitionRun:
     )
 
 
-async def test_generator_cascade_output_captures_the_runs_generators_by_name() -> None:
-    """GeneratorOutputFactory derives the capture scope from each run's generator name."""
+async def test_generator_tracking_output_captures_the_runs_generators_by_name() -> None:
+    """GeneratorTrackingOutput reads the names off the runs and forwards them with since to the capturer."""
     capturer = RecordingGeneratorDiffCapturer()
-    output = GeneratorOutputFactory(capturer=capturer).for_requests([_generator_run("gen-a"), _generator_run("gen-b")])
+    output = GeneratorTrackingOutput(capturer=capturer)
     since = Timestamp()
 
-    captured = await output.capture(since=since)
+    captured = await output.capture(since=since, requests=[_generator_run("gen-a"), _generator_run("gen-b")])
 
     assert capturer.calls == [(since, ["gen-a", "gen-b"])]
     assert captured is capturer.result

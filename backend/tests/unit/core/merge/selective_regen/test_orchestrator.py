@@ -25,7 +25,6 @@ from tests.helpers.selective_regen import (
     ArtifactForcingSelector,
     GeneratorForcingSelector,
     StubCascadeSourceOutput,
-    StubOutputFactory,
 )
 
 if TYPE_CHECKING:
@@ -121,7 +120,7 @@ async def test_build_plan_shares_modified_kinds_and_assembles_plan() -> None:
 
     plan = await MergeSelectiveRegeneration(
         participants=[
-            CascadeSource(generator_selector, output=StubOutputFactory(result=generator_output)),
+            CascadeSource(generator_selector, output=generator_output),
             CascadeTerminal(artifact_selector),
         ]
     ).build_plan(diff_summary=diff_summary, target_branch=TARGET_BRANCH)
@@ -159,7 +158,7 @@ async def test_reselect_from_cascade_output_excludes_cascade_sources() -> None:
 
     entries = await MergeSelectiveRegeneration(
         participants=[
-            CascadeSource(generator_selector, output=StubOutputFactory()),
+            CascadeSource(generator_selector, output=StubCascadeSourceOutput()),
             CascadeTerminal(artifact_selector),
         ]
     ).reselect_from_cascade_output(diff_summary=diff_summary, target_branch=TARGET_BRANCH)
@@ -218,7 +217,7 @@ async def test_consolidate_submissions_routes_each_workflow_to_its_selector() ->
 
     result = MergeSelectiveRegeneration(
         participants=[
-            CascadeSource(generator_selector, output=StubOutputFactory()),
+            CascadeSource(generator_selector, output=StubCascadeSourceOutput()),
             CascadeTerminal(artifact_selector),
         ]
     ).consolidate_submissions(entries)
@@ -234,7 +233,8 @@ async def test_consolidate_submissions_routes_each_workflow_to_its_selector() ->
 def test_terminal_full_regenerations_cover_every_terminal_and_exclude_sources() -> None:
     """The source-failure fallback regenerates every terminal kind wholesale, never the sources."""
     source = CascadeSource[RequestGeneratorDefinitionRun](
-        GeneratorForcingSelector(definitions=[], member_ids=[], subscriber_by_member={}), output=StubOutputFactory()
+        GeneratorForcingSelector(definitions=[], member_ids=[], subscriber_by_member={}),
+        output=StubCascadeSourceOutput(),
     )
     terminal = CascadeTerminal(ArtifactForcingSelector(definitions=[], member_ids=[], subscriber_by_member={}))
 
@@ -307,7 +307,7 @@ async def test_missing_generator_fingerprint_escalates_a_sibling_artifact_in_the
 
     plan = await MergeSelectiveRegeneration(
         participants=[
-            CascadeSource(generator_selector, output=StubOutputFactory()),
+            CascadeSource(generator_selector, output=StubCascadeSourceOutput()),
             CascadeTerminal(artifact_selector),
         ]
     ).build_plan(diff_summary=[], target_branch=TARGET_BRANCH)
