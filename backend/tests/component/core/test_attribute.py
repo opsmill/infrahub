@@ -5,6 +5,7 @@ import pytest
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
+from infrahub.core import registry
 from infrahub.core.attribute import (
     MAX_STRING_LENGTH,
     URL,
@@ -18,12 +19,16 @@ from infrahub.core.attribute import (
     String,
 )
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, MetadataOptions
+from infrahub.core.constants import SYSTEM_USER_ID, BranchSupportType, InfrahubKind, MetadataOptions, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import MetadataQueryOptions, NodeManager
+from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema, NodeSchema
+from infrahub.core.path import SchemaPath
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import TextAttributeParameters
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
@@ -1577,3 +1582,86 @@ def test_attribute_list_regex(default_branch: Branch, regex_value: str, input_va
         data=input_value,
     )
     assert list_attrib.value == input_value
+
+
+async def test_update_inherited_default_backed_attribute_persists(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """An inherited default-backed attribute updated on a node that predates the attribute persists the new value.
+
+    A node created before a generic contributes a default-backed attribute has no database row for that attribute:
+    the add-attribute migration is a no-op for inherited attributes. Setting the attribute to a non-default value
+    and saving must materialise the row so the value survives a reload, gains a real id, and is no longer the default.
+    """
+    # A concrete node that only carries a name attribute.
+    server_v1 = NodeSchema(
+        name="Server",
+        namespace="Bugtest",
+        branch=BranchSupportType.AWARE,
+        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    )
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[server_v1]), branch=default_branch.name)
+
+    # Create the node before the inherited attribute exists.
+    server = await Node.init(db=db, schema="BugtestServer", branch=default_branch)
+    await server.new(db=db, name="server-1")
+    await server.save(db=db)
+
+    # Evolve the schema: add a generic exposing a default-backed Dropdown, and make the node inherit from it.
+    tracked_thing = GenericSchema(
+        name="TrackedThing",
+        namespace="Bugtest",
+        branch=BranchSupportType.AWARE,
+        attributes=[
+            AttributeSchema(
+                name="status",
+                kind="Dropdown",
+                default_value="active",
+                optional=True,
+                choices=[{"name": "active"}, {"name": "planned"}],
+            )
+        ],
+    )
+    server_v2 = NodeSchema(
+        name="Server",
+        namespace="Bugtest",
+        branch=BranchSupportType.AWARE,
+        inherit_from=["BugtestTrackedThing"],
+        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    )
+    registry.schema.set(name=tracked_thing.kind, schema=tracked_thing, branch=default_branch.name)
+    registry.schema.set(name=server_v2.kind, schema=server_v2, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    evolved_server_schema = registry.schema.get_node_schema(
+        name="BugtestServer", branch=default_branch.name, duplicate=False
+    )
+    assert evolved_server_schema.get_attribute("status").inherited is True
+
+    # The add-attribute migration is a no-op for inherited attributes, leaving existing nodes without a status row.
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=server_v1,
+        new_node_schema=evolved_server_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="BugtestServer", field_name="status"),
+    )
+    migration_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert migration_result.errors == []
+    assert migration_result.nbr_migrations_executed == 0
+
+    # Reading the pre-existing node yields the schema default, backed by no attribute row.
+    loaded = await NodeManager.get_one(db=db, id=server.id, branch=default_branch)
+    assert loaded.status.value == "active"
+    assert loaded.status.id is None
+    assert loaded.status.is_default is True
+
+    # Update the attribute to a non-default value and save.
+    loaded.status.value = "planned"
+    await loaded.save(db=db)
+
+    # A subsequent read must return the persisted value, with a real attribute id and is_default False.
+    reloaded = await NodeManager.get_one(db=db, id=server.id, branch=default_branch)
+    assert reloaded.status.value == "planned"
+    assert reloaded.status.id is not None
+    assert reloaded.status.is_default is False
