@@ -77,6 +77,12 @@ class HasRelationshipFields(Protocol):
 
 log = get_logger()
 
+JINJA2_ALLOWED_PATH_TYPES = (
+    SchemaElementPathType.ATTR_WITH_PROP
+    | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+    | SchemaElementPathType.REL_ONE_OPTIONAL_ATTR_WITH_PROP
+)
+
 
 class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     @classmethod
@@ -706,6 +712,21 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return errors
 
+    def _has_pending_pool_dependency(self, schema_branch: SchemaBranch, jinja_template: InfrahubJinja2Template) -> bool:
+        """Whether the template reads a local pool-sourced attribute whose value is not allocated yet.
+
+        Such a macro cannot be rendered until the pool allocation has taken place and must be skipped.
+        """
+        for variable in jinja_template.get_variables():
+            attribute_path = schema_branch.validate_schema_path(
+                node_schema=self._schema, path=variable, allowed_path_types=JINJA2_ALLOWED_PATH_TYPES
+            )
+            if attribute_path.is_type_attribute:
+                attribute = self.get_attribute(attribute_path.active_attribute_schema.name)
+                if attribute.from_pool and attribute.value is None:
+                    return True
+        return False
+
     async def _resolve_jinja2_variables(
         self,
         db: InfrahubDatabase,
@@ -713,16 +734,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         jinja_template: InfrahubJinja2Template,
     ) -> dict[str, Any]:
         """Resolve Jinja2 template variables from local attributes and relationship peers."""
-        allowed_path_types = (
-            SchemaElementPathType.ATTR_WITH_PROP
-            | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
-            | SchemaElementPathType.REL_ONE_OPTIONAL_ATTR_WITH_PROP
-        )
         variables: dict[str, Any] = {}
 
         for variable in jinja_template.get_variables():
             attribute_path = schema_branch.validate_schema_path(
-                node_schema=self._schema, path=variable, allowed_path_types=allowed_path_types
+                node_schema=self._schema, path=variable, allowed_path_types=JINJA2_ALLOWED_PATH_TYPES
             )
             if attribute_path.is_type_relationship:
                 relationship = self.get_relationship(attribute_path.active_relationship_schema.name)
@@ -740,6 +756,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     async def _process_macros(self, db: InfrahubDatabase) -> None:
         schema_branch = db.schema.get_schema_branch(self._branch.name)
         errors = []
+        # Macros are iterated in dependency order, so a prerequisite is always seen before the
+        # macros that reference it. Skipping cascades: a macro whose dependency was skipped for an
+        # unallocated pool cannot render either and is deferred until the allocation happens.
+        skipped: set[str] = set()
         for macro in self._computed_jinja2_attributes:
             attr_schema = self._schema.get_attribute(name=macro)
             if not attr_schema.computed_attribute:
@@ -754,10 +774,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 continue
 
             jinja_template = InfrahubJinja2Template(template=attr_schema.computed_attribute.jinja2_template)
+            if jinja_template.get_referenced_root_fields() & skipped or self._has_pending_pool_dependency(
+                schema_branch=schema_branch, jinja_template=jinja_template
+            ):
+                skipped.add(macro)
+                continue
+
             variables = await self._resolve_jinja2_variables(
                 db=db, schema_branch=schema_branch, jinja_template=jinja_template
             )
-
             content = await jinja_template.render(variables=variables)
 
             generator_method_name = "_generate_attribute_default"
@@ -809,16 +834,18 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
             jinja_template = InfrahubJinja2Template(template=attr_schema.computed_attribute.jinja2_template)
 
-            referenced_variables = jinja_template.get_variables()
-            depends_on_failed = any(var.split("__")[0] in failed_attributes for var in referenced_variables)
-            if depends_on_failed:
+            referenced_attributes = jinja_template.get_referenced_root_fields()
+            if failed_dependencies := referenced_attributes & failed_attributes:
                 log.warning(
                     "Skipping recomputation of Jinja2 attribute due to failed dependency",
                     node_kind=self._schema.kind,
                     attribute_name=target.attribute.name,
-                    failed_dependencies=failed_attributes & {var.split("__")[0] for var in referenced_variables},
+                    failed_dependencies=failed_dependencies,
                 )
                 failed_attributes.add(target.attribute.name)
+                continue
+
+            if self._has_pending_pool_dependency(schema_branch=schema_branch, jinja_template=jinja_template):
                 continue
 
             variables = await self._resolve_jinja2_variables(

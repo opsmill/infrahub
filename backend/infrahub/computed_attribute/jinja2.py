@@ -84,3 +84,11 @@ class InfrahubJinja2Template(Jinja2Template):
             filters={**FILTERS, **(filters or {})},
             client=client,
         )
+
+    def get_referenced_root_fields(self) -> set[str]:
+        """Root schema field names the template depends on (the segment before ``__``).
+
+        A variable such as ``owner__name__value`` resolves to the root field ``owner``; ``__`` is
+        the schema-path separator, so a field name never contains it.
+        """
+        return {variable.split("__")[0] for variable in self.get_variables()}
