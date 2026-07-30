@@ -67,3 +67,27 @@ async def test_create_with_jinja2_macro_mixing_pool_and_plain_attributes(
 
     assert incident.number.value == 1
     assert incident.identifier.value == "INC000000001-first issue"
+
+
+async def test_create_with_chained_macro_depending_on_pool_macro(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """A computed attribute chained on a pool-dependent one renders once the pool is allocated."""
+    schema = snow_schema_with_format_identifier(
+        extra_incident_attrs=[
+            computed_jinja2_attr(name="reference", template="REF-{{ identifier__value }}", unique=False)
+        ]
+    )
+    await register_and_provision_number_pools(db=db, branch=default_branch, schema=schema)
+
+    incident_schema = registry.schema.get_node_schema(name="SnowIncident", branch=default_branch)
+    incident = await create_node(
+        data={"title": "First Issue"},
+        db=db,
+        branch=default_branch,
+        schema=incident_schema,
+    )
+
+    assert incident.number.value == 1
+    assert incident.identifier.value == "INC000000001"
+    assert incident.reference.value == "REF-INC000000001"

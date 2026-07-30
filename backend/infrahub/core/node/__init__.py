@@ -756,6 +756,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     async def _process_macros(self, db: InfrahubDatabase) -> None:
         schema_branch = db.schema.get_schema_branch(self._branch.name)
         errors = []
+        # Macros are iterated in dependency order, so a prerequisite is always seen before the
+        # macros that reference it. Skipping cascades: a macro whose dependency was skipped for an
+        # unallocated pool cannot render either and is deferred until the allocation happens.
+        skipped: set[str] = set()
         for macro in self._computed_jinja2_attributes:
             attr_schema = self._schema.get_attribute(name=macro)
             if not attr_schema.computed_attribute:
@@ -770,7 +774,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 continue
 
             jinja_template = InfrahubJinja2Template(template=attr_schema.computed_attribute.jinja2_template)
-            if self._has_pending_pool_dependency(schema_branch=schema_branch, jinja_template=jinja_template):
+            referenced_attributes = {variable.split("__")[0] for variable in jinja_template.get_variables()}
+            if referenced_attributes & skipped or self._has_pending_pool_dependency(
+                schema_branch=schema_branch, jinja_template=jinja_template
+            ):
+                skipped.add(macro)
                 continue
 
             variables = await self._resolve_jinja2_variables(
