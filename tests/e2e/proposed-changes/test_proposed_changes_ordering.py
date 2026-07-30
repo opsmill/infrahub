@@ -1,12 +1,14 @@
-"""/proposed-changes list ordering and the Sort menu.
+"""/proposed-changes list ordering and the Sort picker.
 
 The proposed-changes list (both the Opened and Closed tabs) defaults to creation
 date, newest first. Regression guard for the list previously coming back in an
 arbitrary (node-uuid) order, which buried recently created proposed changes.
 
-The Sort menu then offers four date orders — Newest, Oldest, Recently updated,
-Least recently updated — persisted in the `sort` query param. The default order
-carries no param, so choosing Newest clears it.
+The toolbar carries the generic Sort picker: choosing a field (e.g. the
+"Created at" / "Updated at" node metadata) and a direction persists the order in
+the `sort` query param. The default order is the absence of a param — the
+CoreProposedChange schema defines no order_by, so clearing the custom sort
+drops the param and the list falls back to newest created first.
 
 The tests own all of their data: three throwaway branches and one proposed
 change per branch through the SDK, so they need neither the demo dataset nor the
@@ -57,14 +59,20 @@ async def _rendered_pc_order(page: Page) -> list[str]:
     return order
 
 
-async def _pick_sort(page: Page, option: str | re.Pattern[str]) -> None:
-    """Open the Sort menu and choose one of its date orders.
+async def _open_sort_picker(page: Page) -> None:
+    """Open the Sort picker popover (the trigger carries a count badge once a sort is applied)."""
+    await page.get_by_role("button", name=re.compile(r"^Sort( \d+)?$")).click()
 
-    The orders are a single-selection group, so the items are radios rather than
-    plain menu items.
+
+async def _add_sort(page: Page, field: str, direction: str) -> None:
+    """Pick a sort from scratch: choose a field, then its direction in the submenu.
+
+    Ends with Escape so the popover doesn't cover the first rows of the list.
     """
-    await page.get_by_role("button", name="Sort").click()
-    await page.get_by_role("menuitemradio", name=option).click()
+    await _open_sort_picker(page)
+    await page.get_by_role("menuitem", name=field).click()
+    await page.get_by_role("menuitem", name=direction).click()
+    await page.keyboard.press("Escape")
 
 
 class TestProposedChangesOrdering:
@@ -117,7 +125,7 @@ class TestProposedChangesOrdering:
         closed_order = await _rendered_pc_order(admin_page)
         assert [pc_id for pc_id in closed_order if pc_id in expected] == expected
 
-    async def test_sort_menu_flips_the_creation_order(
+    async def test_sort_picker_flips_the_creation_order(
         self, admin_page: Page, proposed_changes: list[InfrahubNode]
     ) -> None:
         oldest, middle, newest = proposed_changes
@@ -126,20 +134,22 @@ class TestProposedChangesOrdering:
         await admin_page.goto("/proposed-changes")
         await expect(admin_page.locator(f'a[href*="/proposed-changes/{newest.id}"]')).to_be_visible()
 
-        await _pick_sort(admin_page, "Oldest")
+        await _add_sort(admin_page, "Created at", "Ascending")
 
         await expect(admin_page).to_have_url(re.compile(r"sort=node_metadata__created_at__asc"))
         oldest_order = await _rendered_pc_order(admin_page)
         assert [pc_id for pc_id in oldest_order if pc_id in newest_first] == list(reversed(newest_first))
 
-        # The default order is the absence of a param, so choosing it drops the param entirely.
-        await _pick_sort(admin_page, "Newest")
+        # The default order is the absence of a param, so clearing the sort drops it entirely.
+        await _open_sort_picker(admin_page)
+        await admin_page.get_by_role("button", name="Clear sort").click()
+        await admin_page.keyboard.press("Escape")
 
         await expect(admin_page).not_to_have_url(re.compile(r"sort="))
         restored_order = await _rendered_pc_order(admin_page)
         assert [pc_id for pc_id in restored_order if pc_id in newest_first] == newest_first
 
-    async def test_sort_menu_orders_by_update_date(
+    async def test_sort_picker_orders_by_update_date(
         self, admin_page: Page, proposed_changes: list[InfrahubNode]
     ) -> None:
         oldest, middle, newest = proposed_changes
@@ -154,19 +164,17 @@ class TestProposedChangesOrdering:
         await admin_page.goto("/proposed-changes?pr_state=closed")
         await expect(admin_page.locator(f'a[href*="/proposed-changes/{newest.id}"]')).to_be_visible()
 
-        # The default order says nothing about update dates, so rows don't carry one.
-        await expect(admin_page.get_by_role("listbox")).not_to_contain_text("Updated")
-
-        await _pick_sort(admin_page, re.compile(r"^Recently updated"))
+        await _add_sort(admin_page, "Updated at", "Descending")
 
         await expect(admin_page).to_have_url(re.compile(r"sort=node_metadata__updated_at__desc"))
         updated_order = await _rendered_pc_order(admin_page)
         assert [pc_id for pc_id in updated_order if pc_id in newest_first] == list(reversed(newest_first))
 
-        # Rows now explain their own position by showing the date they are ordered by.
-        await expect(admin_page.get_by_role("listbox")).to_contain_text("Updated")
-
-        await _pick_sort(admin_page, "Least recently updated")
+        # Flip the direction from the applied-sort row inside the picker.
+        await _open_sort_picker(admin_page)
+        await admin_page.get_by_role("button", name=re.compile(r"Sort direction")).click()
+        await admin_page.get_by_role("option", name="Ascending").click()
+        await admin_page.keyboard.press("Escape")
 
         await expect(admin_page).to_have_url(re.compile(r"sort=node_metadata__updated_at__asc"))
         least_updated_order = await _rendered_pc_order(admin_page)
