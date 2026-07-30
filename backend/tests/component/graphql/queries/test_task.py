@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
+from uuid import uuid4
 
 import pytest
 from graphql import ExecutionResult
@@ -796,6 +797,43 @@ async def test_task_query_progress(
             "workflow": "dummy-flow",
         }
     }
+
+
+async def test_task_query_related_node_missing_from_graph(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    prefect_client: PrefectClient,
+    register_core_models_schema: None,
+    delete_flow_runs: None,
+) -> None:
+    # An id with no vertex in the graph is indistinguishable from one whose node was
+    # removed: neither can resolve a kind.
+    missing_node_id = str(uuid4())
+    flow = await prefect_client.create_flow_run(
+        flow=dummy_flow,
+        name="dummy-completed-missing-node",
+        parameters={"firstname": "xxxx", "lastname": "yyy"},
+        tags=[TAG_NAMESPACE, WorkflowTag.RELATED_NODE.render(identifier=missing_node_id)],
+        state=State(type="COMPLETED"),
+    )
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_TASK,
+        variables={"related_nodes": [missing_node_id]},
+    )
+
+    assert result.errors is None
+    assert result.data
+
+    node = result.data["InfrahubTask"]["edges"][0]["node"]
+    assert node["id"] == str(flow.id)
+    assert node["related_nodes"] == []
+    assert node["related_node"] is None
+    assert node["related_node_kind"] is None
+    # The reference itself is not lost: related nodes are derived from these tags.
+    assert WorkflowTag.RELATED_NODE.render(identifier=missing_node_id) in node["tags"]
 
 
 async def test_task_no_count(
