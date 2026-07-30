@@ -10,7 +10,7 @@ from .car import CAR
 from .child import CHILD
 from .color import COLOR
 from .device import DEVICE, INTERFACE, INTERFACE_HOLDER, PHYSICAL_INTERFACE, SFP, VIRTUAL_INTERFACE
-from .dns_record import DNS_RECORD, DNS_RECORD_DICT, DNS_RECORD_SCHEMA
+from .dns_record import DNS_RECORD, DNS_RECORD_SCHEMA
 from .file_contract import FILE_CONTRACT
 from .location import CONTINENT, COUNTRY, LOCATION, SITE
 from .manufacturer import MANUFACTURER
@@ -91,7 +91,6 @@ __all__ = [
     "DEVICE",
     "DEVICE_SCHEMA",
     "DNS_RECORD",
-    "DNS_RECORD_DICT",
     "DNS_RECORD_SCHEMA",
     "FILE_CONTRACT",
     "INTERFACE",
