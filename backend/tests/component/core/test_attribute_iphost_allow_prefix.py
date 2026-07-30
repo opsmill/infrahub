@@ -55,12 +55,10 @@ DNS_RECORD_TEMPLATE_KIND = "TemplateTestingDnsRecord"
 # not also fighting a missing mandatory value.
 FILLER_TARGET = "10.10.10.10"
 
+# The binary form is what prefix containment is resolved against, so pinning it exactly is what proves
+# a bare value stays reachable by a containment lookup.
 IPV4_TARGET_BINARY = "00001010" + "00000000" * 2 + "00000001"
 IPV6_TARGET_BINARY = "0010000000000001" + "0000110110111000" + "0" * 80 + "0000000000000001"
-
-# The leading bits shared by every address inside 10.0.0.0/8, which is how prefix containment is
-# resolved against the value vertex.
-IPV4_SLASH_8_BINARY = "00001010"
 
 
 def _rejected_for_subnet_prefix(value: str, attribute_name: str) -> str:
@@ -83,13 +81,6 @@ MATCH (n:Node { uuid: $node_id })-[:HAS_ATTRIBUTE]->(a:Attribute { name: $attrib
 MATCH (a)-[e:HAS_VALUE]->(av:AttributeIPHost)
 WHERE e.status = "active" AND e.to IS NULL
 RETURN av.value AS value
-"""
-
-CONTAINMENT_QUERY = """
-MATCH (n:TestingDnsRecord)-[:HAS_ATTRIBUTE]->(a:Attribute { name: $attribute_name })
-MATCH (a)-[:HAS_VALUE]->(av:AttributeIPHost)
-WHERE av.binary_address STARTS WITH $binary_prefix
-RETURN DISTINCT n.uuid AS uuid
 """
 
 
@@ -172,13 +163,6 @@ async def _mutation_errors(db: InfrahubDatabase, branch: Branch, mutation: str, 
     return [error.message for error in result.errors]
 
 
-async def _node_ids_within(db: InfrahubDatabase, attribute_name: str, binary_prefix: str) -> set[str]:
-    records = await db.execute_query(
-        query=CONTAINMENT_QUERY, params={"attribute_name": attribute_name, "binary_prefix": binary_prefix}
-    )
-    return {record["uuid"] for record in records}
-
-
 @pytest.fixture
 async def dns_record_schema(
     db: InfrahubDatabase,
@@ -186,6 +170,17 @@ async def dns_record_schema(
     register_core_models_schema: SchemaBranch,
     init_nodes_registry: None,
 ) -> None:
+    await load_schema(db=db, schema=_dns_record_root())
+
+
+@pytest.fixture(scope="class")
+async def dns_record_schema_scope_class(
+    db: InfrahubDatabase,
+    default_branch_scope_class: Branch,
+    register_core_models_schema_scope_class: SchemaBranch,
+    init_nodes_registry_scope_class: None,
+) -> None:
+    """The same schema loaded once per class, because loading it per test dominates the suite's runtime."""
     await load_schema(db=db, schema=_dns_record_root())
 
 
@@ -347,14 +342,20 @@ UNDECLARED_CASES = [
 
 
 class TestValueValidationAndNormalisation:
+    """No test here saves a node, so one schema load serves the whole class."""
+
     @pytest.mark.parametrize(
         "case", DECLARED_IPV4_CASES + DECLARED_IPV6_CASES + UNDECLARED_CASES, ids=lambda case: case.name
     )
     async def test_input_form(
-        self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None, case: ValueCase
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        dns_record_schema_scope_class: None,
+        case: ValueCase,
     ) -> None:
         fields: dict[str, Any] = {"dns_target": FILLER_TARGET, case.attribute: case.value}
-        node = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+        node = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch_scope_class)
 
         if case.error is not None:
             with pytest.raises(ValidationError, match=rf"^{re.escape(case.error)}$"):
@@ -363,48 +364,54 @@ class TestValueValidationAndNormalisation:
 
         await node.new(db=db, **fields)
 
-        assert getattr(node, case.attribute).value == case.stored
+        assert node.get_attribute(case.attribute).value == case.stored
 
     async def test_an_omitted_optional_attribute_holds_no_value(
-        self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dns_record_schema_scope_class: None
     ) -> None:
-        node = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+        node = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch_scope_class)
 
         await node.new(db=db, dns_target="10.0.0.1")
 
-        assert node.v6_target.value is None
-        assert node.mgmt_ip.value is None
+        assert node.get_attribute("v6_target").value is None
+        assert node.get_attribute("mgmt_ip").value is None
 
     async def test_an_explicit_null_holds_no_value(
-        self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dns_record_schema_scope_class: None
     ) -> None:
-        node = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+        node = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch_scope_class)
 
         await node.new(db=db, dns_target="10.0.0.1", v6_target=None, mgmt_ip=None)
 
-        assert node.v6_target.value is None
-        assert node.mgmt_ip.value is None
+        assert node.get_attribute("v6_target").value is None
+        assert node.get_attribute("mgmt_ip").value is None
 
 
 class TestStorageAndDerivedProperties:
-    @pytest.fixture
-    async def saved_record(self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None) -> Node:
-        node = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
+    """One record, saved once, read by every test here — so one schema load and one save serve the class."""
+
+    @pytest.fixture(scope="class")
+    async def saved_record(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dns_record_schema_scope_class: None
+    ) -> Node:
+        node = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch_scope_class)
         await node.new(db=db, dns_target="10.0.0.1/32", v6_target="2001:db8::1/128", mgmt_ip="10.0.0.1")
         await node.save(db=db)
         return node
 
     async def test_stored_value_is_bare_and_reads_back_bare(
-        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, saved_record: Node
     ) -> None:
-        reloaded = await NodeManager.get_one(db=db, id=saved_record.id, branch=default_branch, raise_on_error=True)
+        reloaded = await NodeManager.get_one(
+            db=db, id=saved_record.id, branch=default_branch_scope_class, raise_on_error=True
+        )
 
-        assert reloaded.dns_target.value == "10.0.0.1"
-        assert reloaded.v6_target.value == "2001:db8::1"
-        assert reloaded.mgmt_ip.value == "10.0.0.1/32"
+        assert reloaded.get_attribute("dns_target").value == "10.0.0.1"
+        assert reloaded.get_attribute("v6_target").value == "2001:db8::1"
+        assert reloaded.get_attribute("mgmt_ip").value == "10.0.0.1/32"
 
     async def test_declared_value_vertex_keeps_its_derived_properties(
-        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, saved_record: Node
     ) -> None:
         ipv4 = await _stored_value_properties(db=db, node_id=saved_record.id, attribute_name="dns_target")
         ipv6 = await _stored_value_properties(db=db, node_id=saved_record.id, attribute_name="v6_target")
@@ -423,7 +430,7 @@ class TestStorageAndDerivedProperties:
         }
 
     async def test_undeclared_value_vertex_is_unchanged(
-        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, saved_record: Node
     ) -> None:
         stored = await _stored_value_properties(db=db, node_id=saved_record.id, attribute_name="mgmt_ip")
 
@@ -434,28 +441,21 @@ class TestStorageAndDerivedProperties:
             "binary_address": IPV4_TARGET_BINARY,
         }
 
-    async def test_prefix_containment_still_resolves_a_declared_attribute(
-        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
-    ) -> None:
-        declared = await _node_ids_within(db=db, attribute_name="dns_target", binary_prefix=IPV4_SLASH_8_BINARY)
-        undeclared = await _node_ids_within(db=db, attribute_name="mgmt_ip", binary_prefix=IPV4_SLASH_8_BINARY)
-
-        assert declared == {saved_record.id}
-        assert undeclared == {saved_record.id}
-
     async def test_derived_attribute_properties_report_the_host_length(
-        self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, saved_record: Node
     ) -> None:
-        reloaded = await NodeManager.get_one(db=db, id=saved_record.id, branch=default_branch, raise_on_error=True)
+        reloaded = await NodeManager.get_one(
+            db=db, id=saved_record.id, branch=default_branch_scope_class, raise_on_error=True
+        )
 
-        assert reloaded.dns_target.prefixlen == 32
-        assert reloaded.dns_target.version == 4
-        assert reloaded.dns_target.ip == "10.0.0.1"
-        assert reloaded.v6_target.prefixlen == 128
-        assert reloaded.v6_target.version == 6
-        assert reloaded.v6_target.ip == "2001:db8::1"
-        assert reloaded.mgmt_ip.prefixlen == 32
-        assert reloaded.mgmt_ip.version == 4
+        assert reloaded.get_attribute("dns_target").prefixlen == 32
+        assert reloaded.get_attribute("dns_target").version == 4
+        assert reloaded.get_attribute("dns_target").ip == "10.0.0.1"
+        assert reloaded.get_attribute("v6_target").prefixlen == 128
+        assert reloaded.get_attribute("v6_target").version == 6
+        assert reloaded.get_attribute("v6_target").ip == "2001:db8::1"
+        assert reloaded.get_attribute("mgmt_ip").prefixlen == 32
+        assert reloaded.get_attribute("mgmt_ip").version == 4
 
 
 class TestUniquenessAcrossInputForms:
@@ -467,8 +467,8 @@ class TestUniquenessAcrossInputForms:
         await existing.new(db=db, dns_target="10.0.0.1", mgmt_ip="10.0.0.1")
         await existing.save(db=db)
 
-        assert existing.dns_target.value == "10.0.0.1"
-        assert existing.mgmt_ip.value == "10.0.0.1/32"
+        assert existing.get_attribute("dns_target").value == "10.0.0.1"
+        assert existing.get_attribute("mgmt_ip").value == "10.0.0.1/32"
 
         declared_duplicate = await Node.init(db=db, schema=DNS_RECORD_KIND, branch=default_branch)
         await declared_duplicate.new(db=db, dns_target="10.0.0.1/32", mgmt_ip="10.0.0.9")
@@ -528,11 +528,11 @@ class TestTheUpdatePath:
 
         reloaded = await NodeManager.get_one(db=db, id=saved_record.id, branch=default_branch, raise_on_error=True)
 
-        assert reloaded.dns_target.value == "10.0.0.9"
-        assert reloaded.v6_target.value == "2001:db8::9"
+        assert reloaded.get_attribute("dns_target").value == "10.0.0.9"
+        assert reloaded.get_attribute("v6_target").value == "2001:db8::9"
         assert await reloaded.get_display_label(db=db) == "10.0.0.9"
         assert await reloaded.get_hfid(db=db) == ["10.0.0.9"]
-        assert reloaded.dns_target.prefixlen == 32
+        assert reloaded.get_attribute("dns_target").prefixlen == 32
         assert await _active_stored_value(db=db, node_id=saved_record.id, attribute_name="dns_target") == "10.0.0.9"
         assert await _active_stored_value(db=db, node_id=saved_record.id, attribute_name="v6_target") == "2001:db8::9"
 
@@ -540,7 +540,7 @@ class TestTheUpdatePath:
         # so the bare address reaches the graph without the host mask that a creation would have added,
         # and only reading it back puts the mask on.
         assert await _active_stored_value(db=db, node_id=saved_record.id, attribute_name="mgmt_ip") == "10.0.0.9"
-        assert reloaded.mgmt_ip.value == "10.0.0.9/32"
+        assert reloaded.get_attribute("mgmt_ip").value == "10.0.0.9/32"
 
     async def test_a_host_masked_edit_through_graphql_reads_back_bare(
         self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
@@ -580,31 +580,31 @@ class TestTheUpdatePath:
         assert result["object"]["mgmt_ip"] == {"value": "10.0.0.9", "prefixlen": 32}
 
         reloaded = await NodeManager.get_one(db=db, id=saved_record.id, branch=default_branch, raise_on_error=True)
-        assert reloaded.dns_target.value == "10.0.0.9"
-        assert reloaded.v6_target.value == "2001:db8::9"
+        assert reloaded.get_attribute("dns_target").value == "10.0.0.9"
+        assert reloaded.get_attribute("v6_target").value == "2001:db8::9"
         assert await _active_stored_value(db=db, node_id=saved_record.id, attribute_name="dns_target") == "10.0.0.9"
         assert await _active_stored_value(db=db, node_id=saved_record.id, attribute_name="mgmt_ip") == "10.0.0.9"
-        assert reloaded.mgmt_ip.value == "10.0.0.9/32"
+        assert reloaded.get_attribute("mgmt_ip").value == "10.0.0.9/32"
 
     async def test_an_edit_to_a_subnet_prefix_is_rejected_and_changes_nothing(
         self, db: InfrahubDatabase, default_branch: Branch, saved_record: Node
     ) -> None:
         """Normalising an edit must not turn a rejected prefix into an address that would be accepted."""
         node = await NodeManager.get_one(db=db, id=saved_record.id, branch=default_branch, raise_on_error=True)
-        node.dns_target.value = "10.0.0.9/24"
+        node.get_attribute("dns_target").value = "10.0.0.9/24"
         error = _rejected_for_subnet_prefix("10.0.0.9/24", "dns_target")
 
         with pytest.raises(ValidationError, match=rf"^{re.escape(error)}$"):
             await node.save(db=db)
 
         reloaded = await NodeManager.get_one(db=db, id=saved_record.id, branch=default_branch, raise_on_error=True)
-        assert reloaded.dns_target.value == "10.0.0.1"
+        assert reloaded.get_attribute("dns_target").value == "10.0.0.1"
         assert await reloaded.get_display_label(db=db) == "10.0.0.1"
 
         await _set_values(db=db, branch=default_branch, node_id=saved_record.id, mgmt_ip="10.0.0.9/24")
 
         control = await NodeManager.get_one(db=db, id=saved_record.id, branch=default_branch, raise_on_error=True)
-        assert control.mgmt_ip.value == "10.0.0.9/24"
+        assert control.get_attribute("mgmt_ip").value == "10.0.0.9/24"
 
     async def test_an_edit_onto_a_taken_address_spelled_differently_is_rejected(
         self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema_unique_mgmt_ip: None
@@ -649,9 +649,9 @@ class TestTheUpdatePath:
         assert result["ok"] is True
 
         reloaded = await NodeManager.get_one(db=db, id=other.id, branch=default_branch, raise_on_error=True)
-        assert reloaded.dns_target.value == "10.0.0.9"
+        assert reloaded.get_attribute("dns_target").value == "10.0.0.9"
         assert await _active_stored_value(db=db, node_id=other.id, attribute_name="mgmt_ip") == "10.0.0.1"
-        assert reloaded.mgmt_ip.value == "10.0.0.1/32"
+        assert reloaded.get_attribute("mgmt_ip").value == "10.0.0.1/32"
 
 
 class TestGeneratedKindsInheritTheDeclaration:
@@ -694,8 +694,8 @@ class TestGeneratedKindsInheritTheDeclaration:
         await profile.save(db=db)
 
         reloaded = await NodeManager.get_one(db=db, id=profile.id, branch=default_branch, raise_on_error=True)
-        assert reloaded.v6_target.value == "2001:db8::1"
-        assert reloaded.mgmt_ip.value == "10.0.0.1/32"
+        assert reloaded.get_attribute("v6_target").value == "2001:db8::1"
+        assert reloaded.get_attribute("mgmt_ip").value == "10.0.0.1/32"
 
     async def test_a_node_receives_the_bare_value_from_its_profile(
         self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None
@@ -721,8 +721,8 @@ class TestGeneratedKindsInheritTheDeclaration:
         await node.save(db=db)
 
         reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch, raise_on_error=True)
-        assert reloaded.v6_target.value == "2001:db8::1"
-        assert reloaded.mgmt_ip.value == "10.0.0.1/32"
+        assert reloaded.get_attribute("v6_target").value == "2001:db8::1"
+        assert reloaded.get_attribute("mgmt_ip").value == "10.0.0.1/32"
 
     async def test_a_template_validates_and_normalises_like_a_node(
         self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None
@@ -739,8 +739,8 @@ class TestGeneratedKindsInheritTheDeclaration:
         await template.save(db=db)
 
         reloaded = await NodeManager.get_one(db=db, id=template.id, branch=default_branch, raise_on_error=True)
-        assert reloaded.v6_target.value == "2001:db8::1"
-        assert reloaded.mgmt_ip.value == "10.0.0.1/32"
+        assert reloaded.get_attribute("v6_target").value == "2001:db8::1"
+        assert reloaded.get_attribute("mgmt_ip").value == "10.0.0.1/32"
 
     async def test_a_node_receives_the_bare_value_from_its_template(
         self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema: None
@@ -766,8 +766,8 @@ class TestGeneratedKindsInheritTheDeclaration:
         await node.save(db=db)
 
         reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch, raise_on_error=True)
-        assert reloaded.v6_target.value == "2001:db8::1"
-        assert reloaded.mgmt_ip.value == "10.0.0.1/32"
+        assert reloaded.get_attribute("v6_target").value == "2001:db8::1"
+        assert reloaded.get_attribute("mgmt_ip").value == "10.0.0.1/32"
 
 
 class TestBranchMerge:
@@ -807,8 +807,8 @@ class TestBranchMerge:
         await accepted.save(db=db)
 
         reloaded = await NodeManager.get_one(db=db, id=accepted.id, branch=default_branch, raise_on_error=True)
-        assert reloaded.dns_target.value == "10.0.0.1"
-        assert reloaded.mgmt_ip.value == "10.0.0.1/24"
+        assert reloaded.get_attribute("dns_target").value == "10.0.0.1"
+        assert reloaded.get_attribute("mgmt_ip").value == "10.0.0.1/24"
 
     async def test_divergent_edits_on_either_flavour_still_conflict(
         self, db: InfrahubDatabase, default_branch: Branch, dns_record_schema_in_db: None

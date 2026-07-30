@@ -2299,6 +2299,15 @@ async def empty_database(db: InfrahubDatabase, delete_all_nodes_in_db: None) -> 
 
 @pytest.fixture
 async def init_nodes_registry(db: InfrahubDatabase) -> None:
+    do_init_nodes_registry()
+
+
+@pytest.fixture(scope="class")
+async def init_nodes_registry_scope_class(db: InfrahubDatabase) -> None:
+    do_init_nodes_registry()
+
+
+def do_init_nodes_registry() -> None:
     registry.node["Node"] = Node
     registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
     registry.node[InfrahubKind.IPPREFIXPOOL] = CoreIPPrefixPool

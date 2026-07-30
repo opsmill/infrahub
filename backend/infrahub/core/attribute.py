@@ -1047,17 +1047,6 @@ class IPHost(BaseAttribute):
     value: str
 
     @staticmethod
-    def _allows_prefix(schema: AttributeSchema) -> bool:
-        """Return whether the attribute accepts an address carrying a prefix.
-
-        Anything other than the per-kind parameters class cannot express the restriction, so the
-        permissive answer is the safe one for a base-classed schema.
-        """
-        if isinstance(schema.parameters, IPHostAttributeParameters):
-            return schema.parameters.allow_prefix
-        return True
-
-    @staticmethod
     def get_allowed_property_in_path() -> list[str]:
         return [
             "binary_address",
@@ -1150,6 +1139,12 @@ class IPHost(BaseAttribute):
         return convert_ip_to_binary_str(obj=self.obj)
 
     @classmethod
+    def _allows_prefix(cls, schema: AttributeSchema) -> bool:
+        if isinstance(schema.parameters, IPHostAttributeParameters):
+            return schema.parameters.allow_prefix
+        return True
+
+    @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the format of the attribute.
 
@@ -1186,16 +1181,7 @@ class IPHost(BaseAttribute):
         return str(interface.ip)
 
     def _normalize_assigned_value(self, value: Any) -> Any:
-        """Return the bare form of a value assigned to an attribute that refuses a prefix.
-
-        An attribute that refuses a prefix has exactly one spelling for an address, and that has to
-        hold however the value arrived, so an edit converges on the same value a creation would have
-        stored. An attribute that accepts a prefix keeps whatever spelling it was given, because
-        normalising it would rewrite addresses already stored under a different one.
-
-        The value is validated first, so a prefix that is not permitted is reported rather than
-        quietly rewritten into an address that is.
-        """
+        """Return the bare form of a value assigned to an attribute that refuses a prefix."""
         if value is None or self._allows_prefix(schema=self.schema):
             return value
 

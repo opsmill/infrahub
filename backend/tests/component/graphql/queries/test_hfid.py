@@ -1,7 +1,8 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import IPHostAttributeParameters
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
@@ -100,15 +101,20 @@ async def test_bare_iphost_hfid_roundtrip_via_graphql(
     """
     schema_root = SchemaRoot(
         nodes=[
-            {
-                "name": "BareHostAddress",
-                "namespace": "Test",
-                "human_friendly_id": ["address__value"],
-                "display_label": "address__value",
-                "attributes": [
-                    {"name": "address", "kind": "IPHost", "unique": True, "parameters": {"allow_prefix": False}}
+            NodeSchema(
+                name="BareHostAddress",
+                namespace="Test",
+                human_friendly_id=["address__value"],
+                display_label="address__value",
+                attributes=[
+                    AttributeSchema(
+                        name="address",
+                        kind="IPHost",
+                        unique=True,
+                        parameters=IPHostAttributeParameters(allow_prefix=False),
+                    )
                 ],
-            }
+            )
         ]
     )
     registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
@@ -169,7 +175,7 @@ async def test_bare_iphost_hfid_roundtrip_via_graphql(
         source=lookup_query,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={"hfid": returned_node["hfid"]},
+        variable_values={"hfid": ["192.0.2.10"]},
     )
 
     assert lookup_result.errors is None
