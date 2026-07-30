@@ -1,8 +1,7 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 import type { FormRelationshipValue } from "@/shared/components/form/type";
 
@@ -74,7 +73,7 @@ export const getDefaultParentFromApi = ({
     return { data: null, error: null };
   }
 
-  const query = gql(
+  const query = graphql(
     getRelationshipParent({
       kind: parentRelationship?.peer,
       attribute: `${parentRelationshipAttribute?.name}__ids`,

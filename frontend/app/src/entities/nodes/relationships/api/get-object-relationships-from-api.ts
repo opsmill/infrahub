@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import {
   addAttributesToRequest,
   addFiltersToRequest,
@@ -84,7 +83,7 @@ export const getObjectRelationshipsFromApi = ({
   atDate,
   ...params
 }: GetObjectRelationshipsFromApiParams) => {
-  const query = gql(generateObjectRelationshipsQuery(params));
+  const query = graphql(generateObjectRelationshipsQuery(params));
 
   return graphqlClient.query({
     query,

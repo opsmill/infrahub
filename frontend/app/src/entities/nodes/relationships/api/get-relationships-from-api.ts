@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
 type GenerateRelationshipListQueryParams = PaginationParams & {
@@ -66,7 +65,7 @@ export const getRelationshipsFromApi = async ({
   filterQuery,
   additionalFields,
 }: getRelationshipsFromApiParams) => {
-  const query = gql(
+  const query = graphql(
     generateRelationshipListQuery({ peer, limit, offset, search, filterQuery, additionalFields })
   );
 

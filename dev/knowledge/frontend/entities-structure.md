@@ -287,10 +287,7 @@ Do not write a one-off `resolveUuid` function.
 
 ### api-layer `graphqlClient` call conventions
 
-Two defaults of the shared `graphqlClient` are easy to override by mistake in `api/*-from-api.ts` files:
-
-- **Don't pass `fetchPolicy`.** The client already defaults to `no-cache` (TanStack Query owns caching, not Apollo). Passing `fetchPolicy: "no-cache"` is redundant — omit it.
-- **Mutations already surface their own error toast.** The client's error link shows a toast for a failed request. If the caller *also* renders one (e.g. in a `useMutation` `onError`), the user sees two. To let the caller own the toast, suppress the client's with the mutation `context`:
+- **Mutations already surface their own error toast.** The client routes a failed request to a toast. If the caller *also* renders one (e.g. in a `useMutation` `onError`), the user sees two. To let the caller own the toast, suppress the client's with the mutation `context`:
 
   ```ts
   graphqlClient.mutate({
@@ -362,10 +359,10 @@ See `dev/guidelines/frontend/naming-conventions.md` for the full naming conventi
 
 ## GraphQL transport vs server-state hooks
 
-Apollo Client is kept as the GraphQL transport (auth links, error handling, retry) only. All server-state hooks are TanStack Query. Do not use `useQuery` / `useMutation` / `useLazyQuery` from `@apollo/client` — they were removed in 2026-05.
+`@urql/core` is the GraphQL transport (auth, error routing, token refresh, uploads) only — there is no GraphQL-layer cache and there are no GraphQL hooks. All server-state hooks are TanStack Query.
 
-- `@apollo/client` imports are allowed **only** in `src/app/app.tsx` (for `ApolloProvider`) and `src/shared/api/graphql/graphqlClientApollo.tsx` (client construction), plus `gql` template-tag imports in `entities/*/api/` files.
-- React hooks (`useQuery`, `useMutation`, etc.) from `@apollo/client` are forbidden throughout the codebase.
+- `@urql/core` imports are allowed **only** in `src/shared/api/graphql/client.ts` (tests may import it to build documents). There is no provider to wrap the app in — the client is used imperatively.
+- Everything else imports `graphql` and `graphqlClient` from `@/shared/api/graphql/client`, so the transport library stays swappable. `graphql()` covers both cases: a template literal gives a typed document, and a runtime-assembled string (the `jsonToGraphQLQuery` sites) gives an untyped one.
 - Use `useQuery` / `useMutation` from `@tanstack/react-query` (typically via the pattern in `ui/queries/`) for all data fetching.
 
 ### Mutation invalidation

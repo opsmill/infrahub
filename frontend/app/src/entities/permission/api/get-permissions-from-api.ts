@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
 
 export type GetPermissionsFromApiParams = ContextParams & { kind: string };
@@ -34,7 +33,7 @@ export const getPermissionsFromApi = ({
   branchName,
   atDate,
 }: GetPermissionsFromApiParams) => {
-  const query = gql(getObjectPermissionsQuery(kind));
+  const query = graphql(getObjectPermissionsQuery(kind));
   return graphqlClient.query({
     query,
     context: {

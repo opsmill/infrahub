@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
 
 export interface GetObjectAncestorsFromApiParams extends ContextParams {
@@ -68,7 +67,7 @@ export const getObjectAncestorsFromApi = async ({
   const query = getObjectAncestorsQuery({ objectKind, objectId });
 
   return graphqlClient.query({
-    query: gql(query),
+    query: graphql(query),
     context: {
       branch: branchName,
       date: atDate,

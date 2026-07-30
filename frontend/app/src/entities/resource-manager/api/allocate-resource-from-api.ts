@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { BranchContextParams } from "@/shared/api/types";
 
 /** The pool's GetResource input; the mandatory `id` is enforced at the call site. */
@@ -38,7 +37,7 @@ export function allocateResourceFromApi({
   });
 
   return graphqlClient.mutate({
-    mutation: gql(mutation),
+    mutation: graphql(mutation),
     context: {
       branch: branchName,
     },

@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import {
   addAttributesToRequest,
   addFiltersToRequest,
@@ -55,7 +54,7 @@ export async function getIpPrefixListFromApi({
     relationships,
   });
 
-  const query = gql(queryString);
+  const query = graphql(queryString);
   return graphqlClient.query({
     query,
     context: {
