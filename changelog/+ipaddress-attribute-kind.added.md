@@ -1,0 +1,1 @@
+Added a new `IPAddress` attribute kind that stores a bare IP address. Unlike `IPHost`, which normalizes `192.0.2.1` to `192.0.2.1/32`, an `IPAddress` value must not carry a prefix length or netmask, and any value that does is rejected. IPv6 values are normalized to their compressed lowercase form. Note that values sort lexically rather than numerically.
