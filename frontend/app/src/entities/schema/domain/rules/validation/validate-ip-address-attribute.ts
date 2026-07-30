@@ -11,26 +11,32 @@ function isValidIpv4(value: string): boolean {
   });
 }
 
+const HEX_GROUP = /^[0-9a-fA-F]{1,4}$/;
+
 function isValidIpv6(value: string): boolean {
-  // Only one "::" run may appear, and it is what allows fewer than 8 groups.
-  const doubleColonCount = value.split("::").length - 1;
-  if (doubleColonCount > 1) return false;
+  // At most one "::" run, and it is what allows fewer than the full eight groups.
+  const runs = value.split("::");
+  if (runs.length > 2) return false;
+  const isCompressed = runs.length === 2;
 
-  const parts = value.split("::");
-  const head = parts[0] ?? "";
-  const tail = parts[1] ?? "";
-  const headGroups = head === "" ? [] : head.split(":");
-  const tailGroups = tail === "" ? [] : tail.split(":");
-  const groups = [...headGroups, ...tailGroups];
+  const head = runs[0] ?? "";
+  const tail = runs[1] ?? "";
+  const headParts = head === "" ? [] : head.split(":");
+  const tailParts = tail === "" ? [] : tail.split(":");
+  const parts = [...headParts, ...tailParts];
 
-  if (groups.some((group) => !/^[0-9a-fA-F]{1,4}$/.test(group))) {
-    // the last group may be a dotted-quad, as in an IPv4-mapped address
-    const last = groups.at(-1);
-    if (!last || !isValidIpv4(last)) return false;
-    if (groups.slice(0, -1).some((group) => !/^[0-9a-fA-F]{1,4}$/.test(group))) return false;
-  }
+  const last = parts.at(-1);
+  const endsWithDottedQuad = last !== undefined && !HEX_GROUP.test(last);
+  if (endsWithDottedQuad && !isValidIpv4(last)) return false;
 
-  return doubleColonCount === 1 ? groups.length <= 8 : groups.length === 8;
+  const hexParts = endsWithDottedQuad ? parts.slice(0, -1) : parts;
+  if (hexParts.some((part) => !HEX_GROUP.test(part))) return false;
+
+  // A trailing dotted quad carries 32 bits, so it stands for the final two groups.
+  const groupCount = parts.length + (endsWithDottedQuad ? 1 : 0);
+
+  // "::" stands for at least one group of zeros, so the explicit groups must leave room for it.
+  return isCompressed ? groupCount <= 7 : groupCount === 8;
 }
 
 export function validateIpAddressAttribute(

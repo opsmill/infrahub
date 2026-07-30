@@ -9,7 +9,14 @@ describe("validateIpAddressAttribute", () => {
     "255.255.255.255",
     "2001:db8::1",
     "::1",
+    "::",
     "::ffff:10.0.0.1",
+    "1:2:3:4:5:6:7:8",
+    // a trailing dotted quad carries the last two groups, so this is a full address
+    "1:2:3:4:5:6:1.2.3.4",
+    "::1.2.3.4",
+    // "::" may stand for a single group of zeros
+    "1:2:3:4:5:6:7::",
   ])("accepts the bare address %s", (value) => {
     expect(validateIpAddressAttribute({}, value)).toEqual({ success: true, data: value });
   });
@@ -33,6 +40,13 @@ describe("validateIpAddressAttribute", () => {
     "not-an-ip",
     "2001:db8::1::2",
     "12345::1",
+    "1:2:3:4:5:6:7:8:9",
+    // a trailing dotted quad counts as two groups, so these overflow
+    "1:2:3:4:5:6:7:1.2.3.4",
+    "1.2.3.4::1",
+    // "::" has to stand for at least one group, leaving no room after eight
+    "::1:2:3:4:5:6:7:8",
+    "1:2:3:4:5:6:7:8::",
   ])("rejects %s as malformed", (value) => {
     expect(validateIpAddressAttribute({}, value)).toEqual({
       success: false,
