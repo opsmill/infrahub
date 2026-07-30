@@ -37,6 +37,33 @@ For a full reference of all available properties, see [Nodes & attributes](./nod
 
 By convention, store schema files in a `schemas` folder at the root of your repository.
 
+## Format schema files
+
+`infrahubctl schema format` rewrites schema files with a consistent key order, so hand-edited files read the same way and produce small diffs in version control. It operates on the files on disk and does not contact a running instance.
+
+```shell
+infrahubctl schema format <path to schema file or a directory>
+```
+
+By default the command only reorders the keys within each node, generic, attribute, relationship, and dropdown choice. Comments, quoting, and inline sequences are preserved, and nodes in Infrahub-reserved namespaces are left unchanged.
+
+Preview the result before writing it, or verify that files are already formatted:
+
+```shell
+infrahubctl schema format schemas/ --diff   # preview the changes, write nothing
+infrahubctl schema format schemas/ --check  # exit non-zero if any file would change
+```
+
+`--check` lets you run the formatter in a pre-commit hook or CI step.
+
+Three opt-in flags apply further changes and can be combined:
+
+- `--strip-defaults` removes keys whose value matches the schema default.
+- `--sort-by-order-weight` orders attributes and relationships by their [`order_weight`](./order-weight).
+- `--backfill-order-weight` sets `order_weight` on entries that do not define one.
+
+For the full list of options, see the [`infrahubctl schema` reference]($(base_url)infrahubctl/infrahubctl-schema).
+
 ## Check a schema
 
 During development, you can validate a schema file and preview the changes it would apply:
