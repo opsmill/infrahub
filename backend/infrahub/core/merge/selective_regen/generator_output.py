@@ -42,7 +42,7 @@ class GeneratorMutationDiffCapturer(Protocol):
     async def capture(self, *, since: Timestamp, generator_definition_names: list[str]) -> list[NodeDiff]: ...
 
 
-class GeneratorTrackingOutput(CascadeSourceOutput[RequestGeneratorDefinitionRun]):
+class GeneratorCascadeOutput(CascadeSourceOutput[RequestGeneratorDefinitionRun]):
     """The cascade output of a set of generators, captured through their per-member tracking groups.
 
     Holds only the capturer; the runs to capture arrive per call, so it reads their definition names

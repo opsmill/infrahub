@@ -15,7 +15,7 @@ from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
-from infrahub.core.merge.selective_regen.generator_output import GeneratorTrackingOutput
+from infrahub.core.merge.selective_regen.generator_output import GeneratorCascadeOutput
 from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
@@ -266,7 +266,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
             planner=build_merge_selective_regeneration(
                 client=client,
                 log=logging.getLogger("test"),
-                generator_output=GeneratorTrackingOutput(capturer=capturer),
+                generator_output=GeneratorCascadeOutput(capturer=capturer),
             ),
             summary_cache=DiffSummaryCache(
                 cache=memory_cache, serializer=DiffSummarySerializer(), key_namespace="branch_merge"
