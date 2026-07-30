@@ -1,18 +1,61 @@
 # PR split plan — bare IP addresses on IPHost attributes
 
-Plan for restructuring the 21 commits currently on `bare-ip-attribute-infp-551` into a feature branch
-plus a stack of reviewable pull requests. Nothing here has been executed — this is the plan only.
+Plan for restructuring the work on `bare-ip-attribute-infp-551` into a feature branch plus a stack of
+reviewable pull requests. The feature branch, PR 1 and the SDK pull request are built; PRs 2–5 are not.
+See Execution state immediately below for what is current.
+
+## Execution state
+
+**Read this first — the strategy below was written before the stack was built, and PRs 1 and the SDK
+change have since landed. Where this section and the strategy sections disagree, this section is
+current.**
+
+| Item | State |
+|---|---|
+| Feature branch `infp-551-bare-ip-attribute` | **pushed**, off `origin/release-1.11`; spec documents only, all 46 tasks unchecked |
+| PR 1 branch `infp-551-01-declaration` | **pushed** — 8 commits, tip `6037b36e5` |
+| PR 1 | **open as draft: opsmill/infrahub#10081** → feature branch |
+| SDK branch `infp-551-bare-ip-attribute` (in `infrahub-sdk-python`) | **pushed** — 4 commits, tip `525b28f` |
+| SDK PR | **open as draft: opsmill/infrahub-sdk-python#1220** → `infrahub-develop` |
+| Reference branch `bare-ip-attribute-infp-551` | **unmodified reference copy** of the full verified work. Do not rewrite or delete it — the faithfulness check depends on it. |
+| Superseded PR | opsmill/infrahub#10066 — the original single PR. Still open; carries the Principle III write-up and seven cubic review threads. No umbrella PR exists yet to inherit them. |
+| PRs 2–5 | **not built** |
+
+**Submodule pointer.** PR 1 and the reference branch both pin **`525b28f`** — not the `89e406a` cited in
+the strategy sections below, which was superseded when the SDK took two further commits. `release-1.11`
+and the feature branch still pin `681b458c`. **PRs 2–5 inherit `525b28f` from PR 1 and must not change
+it.**
+
+**Branch naming.** `infp-551-<NN>-<slug>`: `infp-551-01-declaration` exists; PR 2 is
+`infp-551-02-write-behaviour`, then `-03-lookup`, `-04-verification`, `-05-docs`. Each is based on its
+predecessor, not on the feature branch.
+
+**Three commits landed after this plan was written**, all already in PR 1:
+
+| Commit | Content | Slice |
+|---|---|---|
+| `43b9e45ef` | reject prefixed defaults, typed fixture, `DNS_RECORD_DEFINITION` → `DNS_RECORD_DICT` | **1 and 2** — see "The review commit spans two slices" |
+| `a109b32bd` | reworded `allow_prefix` description across 5 files + pointer bump to `525b28f` | 1 only |
+| `c56f08b92` | stopped re-exporting `DNS_RECORD_DICT` from `helpers/schema/__init__.py`; condensed a generator comment | 1 only |
+
+A builder cherry-picking PR 2 by the commit lists below must **not** replay `a109b32bd` or `c56f08b92` —
+they are PR 1's, already merged into its history.
+
+**Tests.** PR 1 was built and verified structurally, with no test runs, because it contains no
+behaviour. **PR 2 is different**: five commits and roughly 1300 lines of behavioural tests, where
+structural checks prove almost nothing. It warrants a real run. Confirm with the author before starting,
+since the earlier PRs were explicitly built without one.
 
 ## Shape
 
-```
+```text
 release-1.11
   └── infp-551-bare-ip-attribute            ← feature branch: spec documents only, all tasks unchecked
-        ├── PR 1  declaration + published contract
-        ├── PR 2  write behaviour (bare storage)
-        ├── PR 3  lookup normalisation
-        ├── PR 4  verification surfaces (frontend, E2E, integration_docker)
-        └── PR 5  documentation, changelog, knowledge
+        └── infp-551-01-declaration         ← PR 1  declaration + published contract   [#10081, draft]
+              └── infp-551-02-write-behaviour   ← PR 2  write behaviour (bare storage)
+                    └── infp-551-03-lookup          ← PR 3  lookup normalisation
+                          └── infp-551-04-verification  ← PR 4  frontend, E2E, integration_docker
+                                └── infp-551-05-docs        ← PR 5  documentation, changelog, knowledge
 ```
 
 The feature branch targets **`release-1.11`**, not `develop`. This aligns with the version floor the
@@ -52,7 +95,7 @@ prerequisites and go red for reasons unrelated to its own content. Merge strictl
 
 ## Feature branch preparation
 
-Branch `infp-551-bare-ip-attribute` off `develop`, containing **only** `dev/specs/infp-551-bare-ip-attribute/`:
+Branch `infp-551-bare-ip-attribute` off `origin/release-1.11`, containing **only** `dev/specs/infp-551-bare-ip-attribute/`:
 
 - `spec.md`, `plan.md`, `research.md`, `data-model.md`, `quickstart.md`, `contracts/`, `checklists/`,
   `critiques/`, `alignment-check.md`, `opsmill-implement-report.md`, and this file.
@@ -84,7 +127,7 @@ present at or before `e72373922`. → same PR.
 `SchemaLoadAPI` inherits the SDK's *generated* write models. Without `IPHostAttributeWrite`, an `IPHost`
 attribute matches `GenericAttributeWrite`, whose `parameters` is field-less with `extra="ignore"` — so
 `allow_prefix` is **silently dropped from every `/api/schema/load` payload**. Verified empirically:
-`TestAllowPrefixIsImmutable` fails 4 of its cases at the old pointer, and passes at `89e406a`. → any PR
+`TestAllowPrefixIsImmutable` fails 4 of its cases at the old pointer, and passes at any SDK commit carrying `IPHostAttributeWrite` (`89e406a` originally, `525b28f` now). → any PR
 containing a test that loads a declared attribute through the API must land at or after the bump.
 
 **C3 — Regenerating the REST types requires the frontend mirror fix.**
@@ -178,6 +221,76 @@ existing `10.0.0.1`), and that deserves a reviewer's undivided attention rather 
 commit in a large PR. Taking this option makes it a 6-PR stack.
 
 **CI**: green.
+
+#### Building PR 2 — the operational detail
+
+Base on `infp-551-01-declaration`. Branch `infp-551-02-write-behaviour`. Cherry-pick `c6a6db5c2`,
+`c59066c42`, `837105d00`, `4f5ab9068`, `b9bbbad04` in that order, dropping every `dev/specs/` hunk
+(`git cherry-pick -n <sha>` then `git checkout HEAD -- dev/specs/`, then commit with the original
+message).
+
+**Then fold in `43b9e45ef`'s three PR-2 files** — they could not be applied at PR 1 because the files did
+not exist there:
+
+| File | What to apply |
+|---|---|
+| `tests/component/core/test_attribute_iphost_allow_prefix.py` | `DNS_RECORD_DEFINITION` → `DNS_RECORD_DICT` (import + use) |
+| `tests/integration/schema_lifecycle/test_attribute_parameters_update.py` | same rename |
+| `tests/component/core/schema_manager/test_manager_schema.py` | the rename **plus** the inverted default-value expectations |
+
+Apply the commit's own diff rather than checking out its blobs — its blobs contain PR 3's additions and
+would drag them in.
+
+**Class ownership of the shared test file.** `test_attribute_iphost_allow_prefix.py` is the most
+conflict-prone file in the split. PR 2's version must contain exactly these, and nothing else:
+
+| Class | Introduced by | Slice |
+|---|---|---|
+| `ValueCase` | `c6a6db5c2` | 2 |
+| `TestValueValidationAndNormalisation` | `c6a6db5c2` | 2 |
+| `TestStorageAndDerivedProperties` | `c6a6db5c2` | 2 |
+| `TestUniquenessAcrossInputForms` | `c6a6db5c2` | 2 |
+| `TestGeneratedKindsInheritTheDeclaration` | `837105d00` | 2 |
+| `TestBranchMerge` | `837105d00` | 2 |
+| `TestAttributeKindChange` | `837105d00` | 2 |
+| `TestTheUpdatePath` | `4f5ab9068` | 2 |
+| `TestLookupInput` | `08b4e677a` | **3 — must be absent** |
+| `DelegationRecords`, `HierarchyRecords`, `TestLookupInputReachedThroughARelationship` | `221568c60` | **3 — must be absent** |
+
+Likewise `tests/unit/core/schema/test_iphost_attribute_parameters.py` carries **two** test classes at PR 2
+(`TestAllowPrefixDeclaration`, `TestDefaultValuePrefixPolicy`); the third,
+`TestQueryValueNormalisation`, is PR 3's and is already correctly absent from PR 1.
+
+**Structural leak-checks — run all of these and report each result.** They are what makes the branch
+verifiable:
+
+1. `test_attribute_iphost_allow_prefix.py` contains the eight PR-2 classes above and **none** of the four
+   PR-3 ones.
+2. `backend/infrahub/core/manager.py` — **unchanged** vs `infp-551-01-declaration` (PR 3 owns it).
+3. `backend/infrahub/core/query/node.py` — **unchanged** (PR 3).
+4. `backend/infrahub/core/schema/attribute_schema.py` contains **no** `normalize_query_value` and **no**
+   `_bare_host_address` (both PR 3).
+5. `backend/tests/helpers/schema/dns_delegation.py` — **absent** (PR 3 creates it).
+6. `backend/tests/unit/core/schema/test_iphost_attribute_parameters.py` contains no
+   `TestQueryValueNormalisation`.
+7. No file under `dev/specs/` differs from the base branch.
+8. The submodule pointer is still `525b28f` — unchanged from PR 1.
+9. No frontend file and no `integration_docker` file is touched (PRs 4).
+10. `git diff bare-ip-attribute-infp-551 HEAD -- <each PR-2 path>` is empty except where PR 3's additions
+    are legitimately absent — name every file that differs, and why.
+
+**Lint status is unverified on the inherited commits.** `43b9e45ef` was committed without running
+`format` or `lint`; PR 1 needed a `ruff format` reflow and a missing `Raises:` section (DOC501) on
+`reject_prefixed_default_value` as a result. **Its three PR-2 files carry the same unverified status** —
+run `uv run invoke format` and `uv run invoke lint` and expect to fix something. If `format` wants to
+reflow a file you only cherry-picked, that is inherited debt, not a bad pick.
+
+**Behavioural note the expectations depend on.** `43b9e45ef` moved the subnet-prefix `default_value`
+rejection from `SchemaBranch.validate_default_values()` (an `infrahub.exceptions.ValidationError` naming
+the schema kind) to Pydantic model validation (a `pydantic.ValidationError` naming only the attribute).
+`test_manager_schema.py` therefore asserts `pytest.raises(PydanticValidationError, match=...)` **without
+an anchor**, because Pydantic prepends its own preamble. That assertion has never been executed — treat it
+as the most likely thing to need adjusting.
 
 ### PR 3 — Normalise lookup input
 
@@ -381,8 +494,8 @@ Basing on the release branch changes the SDK side, and this needs a decision bef
 
 - `origin/release-1.11` and `origin/develop` both pin the **same** SDK commit,
   `681b458cd324c6eec746bb225135cbb7dd99640e`, which is exactly the tip of SDK `infrahub-develop`.
-- The SDK feature commit `89e406a` sits on top of that commit: `merge-base(89e406a, 681b458c) = 681b458c`,
-  with **0 commits** present in `681b458c` but absent from `89e406a`. So the pointer bump is a **pure
+- The SDK branch tip (`89e406a` when first pushed, `525b28f` now) sits on top of that commit: `merge-base(525b28f, 681b458c) = 681b458c`,
+  with **0 commits** present in `681b458c` but absent from `525b28f`. So the pointer bump is a **pure
   fast-forward and reverts nothing** — the regression risk that a release-branch reparent would normally
   raise does not exist here.
 - **There is no `infrahub-release-1.11` branch in the SDK repo.** The only release-shaped SDK branch is
@@ -412,7 +525,7 @@ Whichever is chosen, `T045`'s pre-merge check must target the same branch — e.
 ## Sequencing and external dependencies
 
 1. **Decide the SDK branch question above.** PR 1 bumps the pointer, so this blocks PR 1's merge.
-2. Open the SDK PR for `infp-551-bare-ip-attribute` (`89e406a`) against the chosen target branch.
+2. **Done** — opsmill/infrahub-sdk-python#1220, targeting `infrahub-develop`, currently at `525b28f`.
 3. Rebase the current work onto `origin/release-1.11` and re-run `backend.lint` plus
    `backend.validate-generated` per the rebase note above.
 4. Create the feature branch and open all five PRs as a stack, so reviewers can see the whole shape.
