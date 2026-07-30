@@ -237,6 +237,7 @@ async def test_all_attributes(
         myjson={"key1": "bill"},
         ipaddress="10.5.0.1/27",
         prefix="10.1.0.0/22",
+        bare_address="10.5.0.1",
     )
     await obj1.save(db=db)
 
@@ -264,6 +265,11 @@ async def test_all_attributes(
                         value
                         prefixlen
                         netmask
+                    }
+                    bare_address {
+                        __typename
+                        value
+                        version
                     }
                 }
             }
@@ -297,6 +303,10 @@ async def test_all_attributes(
     assert results["obj1"]["prefix"]["value"] == obj1.prefix.value
     assert results["obj1"]["prefix"]["netmask"] == obj1.prefix.netmask
     assert results["obj1"]["prefix"]["prefixlen"] == obj1.prefix.prefixlen
+    # a bare address round-trips without gaining a prefix, unlike the IPHost attribute above
+    assert results["obj1"]["bare_address"]["__typename"] == "IPAddress"
+    assert results["obj1"]["bare_address"]["value"] == "10.5.0.1"
+    assert results["obj1"]["bare_address"]["version"] == 4
 
     assert results["obj2"]["mystring"]["value"] == obj2.mystring.value
     assert results["obj2"]["mybool"]["value"] == obj2.mybool.value
@@ -309,6 +319,43 @@ async def test_all_attributes(
     assert results["obj2"]["prefix"]["value"] == obj2.prefix.value
     assert results["obj2"]["prefix"]["netmask"] is None
     assert results["obj2"]["prefix"]["prefixlen"] is None
+    assert results["obj2"]["bare_address"]["value"] == obj2.bare_address.value
+    assert results["obj2"]["bare_address"]["version"] is None
+
+
+async def test_ipaddress_attribute_filters(
+    db: InfrahubDatabase, default_branch: Branch, data_schema: None, all_attribute_types_schema: NodeSchema
+) -> None:
+    """An IPAddress attribute exposes the same filters as IPHost, matching on the normalized value."""
+    obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
+    await obj1.new(db=db, name="obj1", bare_address="2001:0DB8::0001")
+    await obj1.save(db=db)
+
+    obj2 = await Node.init(db=db, schema="TestAllAttributeTypes")
+    await obj2.new(db=db, name="obj2", bare_address="10.0.0.2")
+    await obj2.save(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    async def names_for(filters: str) -> list[str]:
+        result = await graphql(
+            schema=gql_params.schema,
+            source="query { TestAllAttributeTypes(%s) { edges { node { name { value } } } } }" % filters,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+        assert result.errors is None
+        assert result.data
+        return sorted(item["node"]["name"]["value"] for item in result.data["TestAllAttributeTypes"]["edges"])
+
+    # the compressed form matches, the expanded input form does not
+    assert await names_for('bare_address__value: "2001:db8::1"') == ["obj1"]
+    assert await names_for('bare_address__value: "2001:0DB8::0001"') == []
+    assert await names_for('bare_address__values: ["2001:db8::1", "10.0.0.2"]') == ["obj1", "obj2"]
+    assert await names_for("bare_address__isnull: true") == []
+    assert await names_for("bare_address__is_protected: false") == ["obj1", "obj2"]
 
 
 async def test_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch) -> None:

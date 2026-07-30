@@ -550,6 +550,7 @@ _ATTRIBUTE_KIND_MEMBER_NAMES = {
     "Bandwidth": "BANDWIDTH",
     "IPHost": "IPHOST",
     "IPNetwork": "IPNETWORK",
+    "IPAddress": "IPADDRESS",
     "Boolean": "BOOLEAN",
     "Checkbox": "CHECKBOX",
     "List": "LIST",

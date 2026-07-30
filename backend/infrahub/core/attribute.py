@@ -1177,6 +1177,91 @@ class IPHostOptional(IPHost):
     value: str | None
 
 
+class IPAddress(BaseAttribute):
+    type = str
+    value: str
+
+    @staticmethod
+    def get_allowed_property_in_path() -> list[str]:
+        return ["binary_address", "value", "version"]
+
+    @property
+    def obj(self) -> ipaddress.IPv4Address | ipaddress.IPv6Address:
+        """Return the bare ip address without a prefix or subnet mask.
+
+        Raises:
+            ValueError: When the IP address value has not been defined.
+
+        """
+        if not self.value:
+            raise ValueError("value for IPAddress must be defined")
+        return ipaddress.ip_address(str(self.value))
+
+    @property
+    def version(self) -> int | None:
+        """Return the IP version of the ip address."""
+        if not self.value:
+            return None
+        return self.obj.version
+
+    @property
+    def ip_integer(self) -> int:
+        """Return the ip address as an integer."""
+        return int(self.obj)
+
+    @property
+    def ip_binary(self) -> str:
+        """Return the ip address in binary format."""
+        return convert_ip_to_binary_str(obj=self.obj)
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        """Validate the format of the attribute.
+
+        A bare address is required, so any prefix length or netmask suffix is rejected.
+
+        Args:
+            value (Any): value to validate
+            name (str): name of the attribute to include in a potential error message
+            schema (AttributeSchema): schema for this attribute
+
+        Raises:
+            ValidationError: Format of the attribute value is not valid
+
+        """
+        super().validate_format(value=value, name=name, schema=schema)
+
+        try:
+            ipaddress.ip_address(value)
+        except ValueError as exc:
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
+
+    @classmethod
+    def _normalize_value(cls, value: Any) -> str:
+        return str(ipaddress.ip_address(value))
+
+    def get_db_node_type(self) -> AttributeDBNodeType:
+        if self.value is not None:
+            return AttributeDBNodeType.IPHOST
+        return super().get_db_node_type()
+
+    def to_db(self) -> dict[str, Any]:
+        data = super().to_db()
+
+        if self.value is not None:
+            data["version"] = self.version
+            data["binary_address"] = self.ip_binary
+            # The shared AttributeIPHost vertex requires prefixlen, and neo4j refuses to MERGE on a
+            # null property. A bare address is a single host, so its prefix length is the maximum.
+            data["prefixlen"] = self.obj.max_prefixlen
+
+        return data
+
+
+class IPAddressOptional(IPAddress):
+    value: str | None
+
+
 class MacAddress(BaseAttribute):
     type = str
     value: str

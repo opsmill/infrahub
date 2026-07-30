@@ -3,7 +3,7 @@ from graphene.types.field import Field
 
 from infrahub.core import attribute
 from infrahub.graphql import types
-from infrahub.types import ATTRIBUTE_TYPES
+from infrahub.types import ATTRIBUTE_PYTHON_TYPES, ATTRIBUTE_TYPES
 
 
 @pytest.mark.parametrize(
@@ -19,12 +19,17 @@ def test_attribute_types_allowed_property_path(test_case: str) -> None:
     attribute_type = ATTRIBUTE_TYPES[test_case]
 
     graphql_query_type = getattr(types, attribute_type.graphql_query)
-    include_binary_address = test_case in {"IPHost", "IPNetwork"}
+    include_binary_address = test_case in {"IPAddress", "IPHost", "IPNetwork"}
     path_list = _get_path_field_list(
         include_binary_address=include_binary_address, fields=graphql_query_type._meta.fields
     )
     infrahub_type: attribute.BaseAttribute = getattr(attribute, attribute_type.infrahub)
     assert path_list == infrahub_type.get_allowed_property_in_path()
+
+
+def test_attribute_python_types_cover_every_kind() -> None:
+    """Every attribute kind needs a python type, the REST schema endpoint looks it up unguarded."""
+    assert set(ATTRIBUTE_PYTHON_TYPES) == set(ATTRIBUTE_TYPES)
 
 
 def _get_path_field_list(include_binary_address: bool, fields: dict[str, Field]) -> list[str]:
