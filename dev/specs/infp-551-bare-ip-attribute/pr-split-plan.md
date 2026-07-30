@@ -41,10 +41,11 @@ predecessor, not on the feature branch.
 A builder cherry-picking PR 2 by the commit lists below must **not** replay `a109b32bd` or `c56f08b92` —
 they are PR 1's, already merged into its history.
 
-**Tests.** PR 1 was built and verified structurally, with no test runs, because it contains no
-behaviour. **PR 2 is different**: five commits and roughly 1300 lines of behavioural tests, where
-structural checks prove almost nothing. It warrants a real run. Confirm with the author before starting,
-since the earlier PRs were explicitly built without one.
+**Tests.** PR 1 was built and verified structurally, with no test runs, because it contains no behaviour.
+**PR 2 must run its tests** — five commits and roughly 1300 lines of behavioural assertions, where
+structural checks prove almost nothing. **Ask permission before running them**, then run them; do not
+skip on the grounds that earlier PRs in the stack were built without a run. The commands, expected counts
+and environment gotchas are in "Running PR 2's tests" under the PR 2 section.
 
 ## Shape
 
@@ -284,6 +285,47 @@ verifiable:
 `reject_prefixed_default_value` as a result. **Its three PR-2 files carry the same unverified status** —
 run `uv run invoke format` and `uv run invoke lint` and expect to fix something. If `format` wants to
 reflow a file you only cherry-picked, that is inherited debt, not a bad pick.
+
+#### Running PR 2's tests
+
+**Ask permission first, then run them.** Component tests reuse the local dependency containers rather
+than testcontainers; bring them up with `uv run invoke dev.deps` if they are not already running. Use
+`-p no:randomly` for stable ordering.
+
+```bash
+# The feature suite. Expect 49 passed: the 63 on the reference branch minus PR 3's 14
+# (TestLookupInput 8, TestLookupInputReachedThroughARelationship 6).
+INFRAHUB_USE_TEST_CONTAINERS=false uv run pytest \
+  backend/tests/component/core/test_attribute_iphost_allow_prefix.py -p no:randomly -q
+
+# The schema-load default-value tests. These carry the inverted expectations.
+INFRAHUB_USE_TEST_CONTAINERS=false uv run pytest \
+  "backend/tests/component/core/schema_manager/test_manager_schema.py::test_validate_default_value_iphost_prefix_policy" \
+  "backend/tests/component/core/schema_manager/test_manager_schema.py::test_bare_iphost_default_value_reaches_a_node_bare" \
+  -p no:randomly -v
+
+# Immutability through the real load endpoint. Expect 9 passed. Needs the task manager on localhost:4200.
+uv run pytest backend/tests/integration/schema_lifecycle/test_attribute_parameters_update.py -q -p no:randomly
+
+# The no-regression gate. Expect 77 passed: the 76 captured on the unmodified tree, plus this PR's own
+# HFID test. Compare per node id -- every one of the original 76 must still pass, and no existing IPHost
+# test may be modified to achieve it.
+INFRAHUB_USE_TEST_CONTAINERS=false uv run pytest \
+  backend/tests/component/core/test_attribute.py \
+  backend/tests/component/graphql/queries/test_hfid.py \
+  backend/tests/unit/test_types.py -v
+```
+
+**Known pre-existing failures — do not chase these.** Three tests in
+`backend/tests/unit/git/test_git_repository.py`; roughly 15 `uv run invoke backend.ty` diagnostics, all
+inside the untracked local `repositories/` directory; yamllint errors on untracked
+`development/docker-compose*.override.yml`.
+
+**Environment gotcha that cost real time before.** The local `infrahub-database-1` container has been
+OOM-killed under memory pressure (exit 137), which produces *erratic* read-after-write failures — a
+different test failing each run, some with no connection to this feature. Before attributing any flaky
+failure to the change, run `docker ps -a` and check for `Exited (137)`, then `docker start
+infrahub-database-1`.
 
 **Behavioural note the expectations depend on.** `43b9e45ef` moved the subnet-prefix `default_value`
 rejection from `SchemaBranch.validate_default_values()` (an `infrahub.exceptions.ValidationError` naming
