@@ -563,7 +563,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     ) -> bool:
         if (
             existing_transform.description.value != local_transform.description
-            or existing_transform.template_path.value != local_transform.template_path
+            or existing_transform.template_path.value != str(local_transform.template_path)
             or existing_transform.query.id != local_transform.query
             or existing_transform.dependencies.value != local_transform.dependencies
             or existing_transform.dependencies_complete.value != local_transform.dependencies_complete
