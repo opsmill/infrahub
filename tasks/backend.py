@@ -759,8 +759,7 @@ class SdkSchemaGenerator:
             self._field(
                 "allow_prefix",
                 "Boolean",
-                "When false, this attribute holds a bare IP address: a value with a subnet prefix is rejected "
-                "and a host prefix is dropped.",
+                "When false, this attribute holds a bare IP address rather than an interface.",
                 default_value=True,
             ),
         ]

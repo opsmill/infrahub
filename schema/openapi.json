@@ -4256,7 +4256,7 @@
                     "allow_prefix": {
                         "type": "boolean",
                         "title": "Allow Prefix",
-                        "description": "When false, this attribute holds a bare IP address: a value with a subnet prefix is rejected and a host prefix is dropped.",
+                        "description": "When false, this attribute holds a bare IP address rather than an interface.",
                         "default": true
                     }
                 },
@@ -4268,7 +4268,7 @@
                     "allow_prefix": {
                         "type": "boolean",
                         "title": "Allow Prefix",
-                        "description": "When false, this attribute holds a bare IP address: a value with a subnet prefix is rejected and a host prefix is dropped.",
+                        "description": "When false, this attribute holds a bare IP address rather than an interface.",
                         "default": true
                     }
                 },

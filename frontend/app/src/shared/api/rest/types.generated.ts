@@ -1361,7 +1361,7 @@ export interface components {
         IPHostAttributeParametersRead: {
             /**
              * Allow Prefix
-             * @description When false, this attribute holds a bare IP address: a value with a subnet prefix is rejected and a host prefix is dropped.
+             * @description When false, this attribute holds a bare IP address rather than an interface.
              * @default true
              */
             allow_prefix: boolean;
@@ -1370,7 +1370,7 @@ export interface components {
         IPHostAttributeParametersWrite: {
             /**
              * Allow Prefix
-             * @description When false, this attribute holds a bare IP address: a value with a subnet prefix is rejected and a host prefix is dropped.
+             * @description When false, this attribute holds a bare IP address rather than an interface.
              * @default true
              */
             allow_prefix: boolean;
