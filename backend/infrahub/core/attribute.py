@@ -37,7 +37,7 @@ from infrahub.core.query.attribute import (
 from infrahub.core.query.node import AttributeFromDB, NodeListGetAttributeQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import convert_ip_to_binary_str
-from infrahub.exceptions import DatabaseError, ValidationError
+from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
 from infrahub.log import get_logger
 
@@ -378,6 +378,18 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         """Return the canonical form of a value."""
         return value
 
+    def _value_diverges_from_default(self) -> bool:
+        """Return True when the in-memory value differs from the schema default.
+
+        A missing id is ambiguous: it also covers attributes that were not fetched in a partial read or
+        rebuilt without their id, both of which stay at their default. Only a value that diverges from the
+        default marks content a caller actually intends to persist.
+        """
+        current = self.value.value if isinstance(self.value, Enum) else self.value
+        if self.schema.default_value is not None:
+            return self.schema.default_value != current
+        return current is not None
+
     async def save(
         self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None
     ) -> AttributeChangelog | None:
@@ -385,15 +397,26 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         save_at = Timestamp(at)
 
         if not self.id:
-            await self._create(db=db, user_id=user_id, at=save_at)
+            if not self._value_diverges_from_default():
+                # The attribute has no row and holds only its default value; keep it virtual.
+                return None
+            if not await self._create(db=db, user_id=user_id, at=save_at):
+                # A row already exists for an attribute rebuilt without its id (e.g. a recomputed node
+                # property); leave persistence to the caller that holds the real id.
+                return None
 
         return await self._update(db=db, user_id=user_id, at=save_at)
 
-    async def _create(self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None) -> None:
+    async def _create(self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None) -> bool:
         """Materialise the database row for an attribute that exists in the schema but was never persisted.
 
         The row is created with the schema default value, so a following update reconciles the requested
-        value and the ``is_default`` flag through the regular update path.
+        value and the ``is_default`` flag through the regular update path. Creation is skipped when the
+        node already has an active row for this attribute, in which case ``False`` is returned.
+
+        Returns:
+            bool: True when a new row was created and ``self.id`` was populated, False otherwise.
+
         """
         create_at = Timestamp(at)
 
@@ -403,10 +426,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         result = query.get_result()
         created_attribute = result.get("a") if result else None
         if created_attribute is None:
-            raise DatabaseError(message=f"Unable to create the attribute {self.name!r} on node {self.node.id}")
+            return False
 
         self.id = created_attribute.get("uuid")
         self.db_id = created_attribute.element_id
+        return True
 
     def get_branch_for_delete(self) -> Branch:
         """Get the appropriate branch for explicit attribute delete operations.
@@ -466,15 +490,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.validate(value=self.value, name=self.name, schema=self.schema)
 
         # Check if the current value is still the default one
-        if self.is_default:
-            if isinstance(self.value, Enum):
-                has_default_value = self.schema.default_value == self.value.value
-            else:
-                has_default_value = self.schema.default_value == self.value
-            if (self.schema.default_value is not None and not has_default_value) or (
-                self.schema.default_value is None and self.value is not None
-            ):
-                self.is_default = False
+        if self.is_default and self._value_diverges_from_default():
+            self.is_default = False
 
         query = await NodeListGetAttributeQuery.init(
             db=db,

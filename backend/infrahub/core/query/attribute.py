@@ -67,8 +67,11 @@ class AttributeCreateQuery(AttributeQuery):
         self.params["current_time"] = at.to_string()
         self.params["user_id"] = self.user_id
 
+        # Seed the row with the schema default when it is a primitive Neo4j value; complex defaults
+        # (JSON maps, lists) are stored via the regular update path, which supersedes this value node
+        # immediately, so a NULL placeholder is enough and keeps the property assignment type-safe.
         default_value = self.attr.schema.default_value
-        self.params["attr_value"] = default_value if default_value is not None else NULL_VALUE
+        self.params["attr_value"] = default_value if isinstance(default_value, (str, int, float, bool)) else NULL_VALUE
 
         self.params["rel_props"] = {
             "branch": self.branch.name,

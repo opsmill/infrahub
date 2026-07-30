@@ -1665,3 +1665,145 @@ async def test_update_inherited_default_backed_attribute_persists(
     assert reloaded.status.value == "planned"
     assert reloaded.status.id is not None
     assert reloaded.status.is_default is False
+
+
+async def _node_with_unmaterialised_inherited_status(
+    db: InfrahubDatabase, branch: Branch, namespace: str, default_value: str | None
+) -> str:
+    """Persist a node before an inherited Dropdown ``status`` exists, then evolve the schema to add it.
+
+    Returns the node id. Because the node predates the attribute and the add-attribute migration skips
+    inherited attributes, the node keeps no database row for ``status`` until it is explicitly written.
+    """
+    server_v1 = NodeSchema(
+        name="Server",
+        namespace=namespace,
+        branch=BranchSupportType.AWARE,
+        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    )
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[server_v1]), branch=branch.name)
+
+    server = await Node.init(db=db, schema=f"{namespace}Server", branch=branch)
+    await server.new(db=db, name="server-1")
+    await server.save(db=db)
+
+    status_definition = {
+        "name": "status",
+        "kind": "Dropdown",
+        "optional": True,
+        "choices": [{"name": "active"}, {"name": "planned"}],
+    }
+    if default_value is not None:
+        status_definition["default_value"] = default_value
+
+    tracked_thing = GenericSchema(
+        name="TrackedThing",
+        namespace=namespace,
+        branch=BranchSupportType.AWARE,
+        attributes=[AttributeSchema(**status_definition)],
+    )
+    server_v2 = NodeSchema(
+        name="Server",
+        namespace=namespace,
+        branch=BranchSupportType.AWARE,
+        inherit_from=[f"{namespace}TrackedThing"],
+        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    )
+    registry.schema.set(name=tracked_thing.kind, schema=tracked_thing, branch=branch.name)
+    registry.schema.set(name=server_v2.kind, schema=server_v2, branch=branch.name)
+    registry.schema.process_schema_branch(name=branch.name)
+    return server.id
+
+
+async def test_update_inherited_default_backed_attribute_to_default_stays_virtual(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """Writing the default value to an unmaterialised inherited attribute leaves it virtual, without erroring."""
+    server_id = await _node_with_unmaterialised_inherited_status(
+        db=db, branch=default_branch, namespace="Bugdefault", default_value="active"
+    )
+
+    loaded = await NodeManager.get_one(db=db, id=server_id, branch=default_branch)
+    loaded.status.value = "active"
+    await loaded.save(db=db)
+
+    reloaded = await NodeManager.get_one(db=db, id=server_id, branch=default_branch)
+    assert reloaded.status.value == "active"
+    assert reloaded.status.id is None
+    assert reloaded.status.is_default is True
+
+
+async def test_update_inherited_attribute_without_default_persists(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """An inherited attribute with no default is materialised the first time a value is written to it."""
+    server_id = await _node_with_unmaterialised_inherited_status(
+        db=db, branch=default_branch, namespace="Bugnodefault", default_value=None
+    )
+
+    loaded = await NodeManager.get_one(db=db, id=server_id, branch=default_branch)
+    assert loaded.status.value is None
+    assert loaded.status.id is None
+
+    loaded.status.value = "planned"
+    await loaded.save(db=db)
+
+    reloaded = await NodeManager.get_one(db=db, id=server_id, branch=default_branch)
+    assert reloaded.status.value == "planned"
+    assert reloaded.status.id is not None
+    assert reloaded.status.is_default is False
+
+
+async def test_filter_matches_persisted_inherited_default_backed_attribute(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """Once an inherited default-backed attribute is materialised, attribute-value filters match its new value."""
+    server_id = await _node_with_unmaterialised_inherited_status(
+        db=db, branch=default_branch, namespace="Bugfilter", default_value="active"
+    )
+
+    loaded = await NodeManager.get_one(db=db, id=server_id, branch=default_branch)
+    loaded.status.value = "planned"
+    await loaded.save(db=db)
+
+    matches = await NodeManager.query(
+        db=db, schema="BugfilterServer", filters={"status__value": "planned"}, branch=default_branch
+    )
+    assert [node.id for node in matches] == [server_id]
+
+    non_matches = await NodeManager.query(
+        db=db, schema="BugfilterServer", filters={"status__value": "active"}, branch=default_branch
+    )
+    assert non_matches == []
+
+
+async def test_update_inherited_default_backed_attribute_persists_on_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """Materialising an inherited default-backed attribute on a branch is scoped to that branch."""
+    server_id = await _node_with_unmaterialised_inherited_status(
+        db=db, branch=default_branch, namespace="Bugbranch", default_value="active"
+    )
+    branch = await create_branch(branch_name="bug-branch", db=db)
+
+    loaded = await NodeManager.get_one(db=db, id=server_id, branch=branch)
+    loaded.status.value = "planned"
+    await loaded.save(db=db)
+
+    on_branch = await NodeManager.get_one(db=db, id=server_id, branch=branch)
+    assert on_branch.status.value == "planned"
+    assert on_branch.status.id is not None
+    assert on_branch.status.is_default is False
+
+    on_default = await NodeManager.get_one(db=db, id=server_id, branch=default_branch)
+    assert on_default.status.value == "active"
+    assert on_default.status.id is None
+    assert on_default.status.is_default is True
