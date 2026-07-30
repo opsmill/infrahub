@@ -36,13 +36,13 @@ infrahubctl schema show InfraDevice
 Omit the identifier to list every object of a kind. Empty columns are hidden by default; pass `--all-columns` to show them:
 
 ```bash
-infrahubctl get InfraDevice
+infrahubctl object get InfraDevice
 ```
 
 Provide an identifier — a UUID, a name, or an HFID — to display a single object in detail. For a multi-part HFID, separate the components with `/`:
 
 ```bash
-infrahubctl get InfraDevice spine01
+infrahubctl object get InfraDevice spine01
 ```
 
 The identifier you pass to `update` and `delete` is any of these three values. To find it for an object in a list, use its name or HFID directly, or switch to `--output json` or `--output yaml` to see the object's UUID (`id`) and HFID alongside the other fields.
@@ -50,13 +50,13 @@ The identifier you pass to `update` and `delete` is any of these three values. T
 Filter the results by attribute value with `attribute__value=<value>`:
 
 ```bash
-infrahubctl get InfraDevice --filter name__value=spine01
+infrahubctl object get InfraDevice --filter name__value=spine01
 ```
 
 Page through large result sets with `--limit` and `--offset`:
 
 ```bash
-infrahubctl get InfraDevice --limit 10 --offset 20
+infrahubctl object get InfraDevice --limit 10 --offset 20
 ```
 
 A list query that matches no objects exits with code `80`, which lets scripts distinguish an empty result from an error.
@@ -73,7 +73,7 @@ The `--output` (`-o`) option controls the display format. `get` defaults to a ta
 | YAML | `--output yaml` | Backing up and reloading with `infrahubctl object load` |
 
 ```bash
-infrahubctl get InfraDevice --output json
+infrahubctl object get InfraDevice --output json
 ```
 
 ## Create objects
@@ -81,19 +81,19 @@ infrahubctl get InfraDevice --output json
 Set field values inline with repeatable `--set key=value` flags:
 
 ```bash
-infrahubctl create InfraDevice --set name=spine01 --set status=active
+infrahubctl object create InfraDevice --set name=spine01 --set status=active
 ```
 
 Relationship values resolve by name. For example, `--set location=DC1` looks up the `DC1` node and links it:
 
 ```bash
-infrahubctl create InfraDevice --set name=spine01 --set location=DC1
+infrahubctl object create InfraDevice --set name=spine01 --set location=DC1
 ```
 
 Alternatively, supply the object as a JSON or YAML file with `--file` (`-f`). The `--set` and `--file` modes are mutually exclusive:
 
 ```bash
-infrahubctl create InfraDevice --file devices.yml
+infrahubctl object create InfraDevice --file devices.yml
 ```
 
 ## Update objects
@@ -101,7 +101,7 @@ infrahubctl create InfraDevice --file devices.yml
 Identify the object by kind and identifier, then apply the changes with `--set` or `--file`. The command fetches the object, applies the changes, and saves it back:
 
 ```bash
-infrahubctl update InfraDevice spine01 --set status=active
+infrahubctl object update InfraDevice spine01 --set status=active
 ```
 
 An update only changes the fields you provide. Attributes and relationships you leave out keep their current values — omitting a field does not clear it.
@@ -109,7 +109,7 @@ An update only changes the fields you provide. Attributes and relationships you 
 With `--file`, the file defines which objects to update and what to change, so the kind and identifier on the command line are ignored:
 
 ```bash
-infrahubctl update InfraDevice spine01 --file updates.yml
+infrahubctl object update InfraDevice spine01 --file updates.yml
 ```
 
 ## Delete objects
@@ -117,13 +117,13 @@ infrahubctl update InfraDevice spine01 --file updates.yml
 Delete an object by kind and identifier. A confirmation prompt is shown first:
 
 ```bash
-infrahubctl delete InfraDevice spine01
+infrahubctl object delete InfraDevice spine01
 ```
 
 Pass `--yes` (`-y`) to skip the prompt in scripts:
 
 ```bash
-infrahubctl delete InfraDevice spine01 --yes
+infrahubctl object delete InfraDevice spine01 --yes
 ```
 
 ## Back up and reload objects
@@ -131,7 +131,7 @@ infrahubctl delete InfraDevice spine01 --yes
 YAML output uses HFID references and omits empty values, so it reloads cleanly. Export a set of objects, then load them back with the `object` subcommand:
 
 ```bash
-infrahubctl get InfraDevice --output yaml > devices.yml
+infrahubctl object get InfraDevice --output yaml > devices.yml
 infrahubctl object load devices.yml
 ```
 
@@ -140,14 +140,14 @@ infrahubctl object load devices.yml
 Every command accepts `--branch` (`-b`) to target a branch other than the default. Changes on a branch stay isolated until the branch is merged:
 
 ```bash
-infrahubctl get InfraDevice --branch develop
-infrahubctl create InfraDevice --set name=spine02 --branch develop
+infrahubctl object get InfraDevice --branch develop
+infrahubctl object create InfraDevice --set name=spine02 --branch develop
 ```
 
 ## Reference
 
-- [`infrahubctl get`]($(base_url)infrahubctl/infrahubctl-get)
-- [`infrahubctl create`]($(base_url)infrahubctl/infrahubctl-create)
-- [`infrahubctl update`]($(base_url)infrahubctl/infrahubctl-update)
-- [`infrahubctl delete`]($(base_url)infrahubctl/infrahubctl-delete)
+- [`infrahubctl object get`]($(base_url)infrahubctl/infrahubctl-object#infrahubctl-object-get)
+- [`infrahubctl object create`]($(base_url)infrahubctl/infrahubctl-object#infrahubctl-object-create)
+- [`infrahubctl object update`]($(base_url)infrahubctl/infrahubctl-object#infrahubctl-object-update)
+- [`infrahubctl object delete`]($(base_url)infrahubctl/infrahubctl-object#infrahubctl-object-delete)
 - [`infrahubctl schema`]($(base_url)infrahubctl/infrahubctl-schema)
