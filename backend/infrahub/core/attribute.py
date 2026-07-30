@@ -373,8 +373,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         """Deserialize the value coming from the database."""
         return data.value
 
-    def _normalize_value(self, value: Any) -> Any:
-        """Return the canonical form of a value."""
+    @classmethod
+    def _normalize_value(cls, value: Any) -> Any:
+        """Return the canonical form of a value.
+
+        Exposed on the class so that a value can be checked for canonicality without building an
+        attribute instance.
+        """
         return value
 
     async def save(
@@ -1007,7 +1012,8 @@ class IPNetwork(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
-    def _normalize_value(self, value: Any) -> str:
+    @classmethod
+    def _normalize_value(cls, value: Any) -> str:
         return ipaddress.ip_network(value).with_prefixlen
 
     def get_db_node_type(self) -> AttributeDBNodeType:
@@ -1147,7 +1153,8 @@ class IPHost(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
-    def _normalize_value(self, value: Any) -> str:
+    @classmethod
+    def _normalize_value(cls, value: Any) -> str:
         return ipaddress.ip_interface(value).with_prefixlen
 
     def get_db_node_type(self) -> AttributeDBNodeType:
@@ -1273,7 +1280,8 @@ class MacAddress(BaseAttribute):
         if not netaddr.valid_mac(addr=str(value)):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
-    def _normalize_value(self, value: Any) -> str:
+    @classmethod
+    def _normalize_value(cls, value: Any) -> str:
         return netaddr.EUI(addr=value).format(dialect=netaddr.mac_unix_expanded).upper()
 
     def serialize_value(self) -> str:
