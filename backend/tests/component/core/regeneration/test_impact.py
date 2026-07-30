@@ -45,9 +45,10 @@ SUBSCRIBER_KIND = TestKind.TAG
 class TestFieldLevelImpact(TestInfrahubApp):
     """Map a data change onto the query-group subscribers that must be regenerated.
 
-    The query pins its root car by id and reads ``name`` off that car's owner. The query group tracks
-    the car as its member and the tag as its subscriber, mirroring how a definition's target group is
-    recorded in production.
+    The query pins its root car by id and reads ``name`` off that car's owner. Two cars are set up,
+    each in its own query group with its own subscriber, so a per-member routing can be told apart
+    from one that widens to every target. Each group tracks a car as its member and a tag as its
+    subscriber, mirroring how a definition's target group is recorded in production.
 
     Only the wiring is covered here: that the real query analysis classifies the owner as traversed,
     and that a narrowed routing resolves group members to subscribers of the requested kind. The
@@ -85,6 +86,20 @@ class TestFieldLevelImpact(TestInfrahubApp):
         await other_kind_subscriber.new(db=db, name="not-a-subscriber-kind")
         await other_kind_subscriber.save(db=db)
 
+        # A second car with its own owner and subscriber, in its own group. ``owner-1`` owns only the
+        # first car, so a change there ideally leaves this second subscriber untouched.
+        person_2 = await Node.init(db=db, schema=TestKind.PERSON)
+        await person_2.new(db=db, name="owner-2", height=175)
+        await person_2.save(db=db)
+
+        car_2 = await Node.init(db=db, schema=TestKind.CAR)
+        await car_2.new(db=db, name="car-2", color="blue", owner=person_2, manufacturer=manufacturer)
+        await car_2.save(db=db)
+
+        subscriber_2 = await Node.init(db=db, schema=TestKind.TAG)
+        await subscriber_2.new(db=db, name="car-2-artifact")
+        await subscriber_2.save(db=db)
+
         stored_query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
         await stored_query.new(
             db=db, name="GetImpactCar", query=QUERY_CAR_WITH_OWNER, models=[TestKind.CAR, TestKind.PERSON]
@@ -101,11 +116,22 @@ class TestFieldLevelImpact(TestInfrahubApp):
         )
         await query_group.save(db=db)
 
+        query_group_2 = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERYGROUP)
+        await query_group_2.new(
+            db=db,
+            name="impact-targets-2",
+            query=stored_query,
+            members=[car_2],
+            subscribers=[subscriber_2],
+        )
+        await query_group_2.save(db=db)
+
         return {
             "car_id": car.id,
             "person_id": person.id,
             "subscriber_id": subscriber.id,
             "other_kind_subscriber_id": other_kind_subscriber.id,
+            "subscriber_2_id": subscriber_2.id,
         }
 
     async def _resolve(
@@ -115,13 +141,14 @@ class TestFieldLevelImpact(TestInfrahubApp):
         default_branch: Branch,
         client: InfrahubClient,
         diff_summary: list[NodeDiff],
+        every_target: list[str],
     ) -> TargetSelection:
         return await get_field_level_impacted_subscribers(
             query_payload=QUERY_CAR_WITH_OWNER,
             diff_summary=diff_summary,
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
-            every_target=[dataset["subscriber_id"]],
+            every_target=every_target,
             client=client,
         )
 
@@ -140,6 +167,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
             dataset=dataset,
             default_branch=default_branch,
             client=client,
+            every_target=[dataset["subscriber_id"]],
             diff_summary=[
                 node_diff(
                     node_id=dataset["car_id"],
@@ -167,6 +195,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
             dataset=dataset,
             default_branch=default_branch,
             client=client,
+            every_target=[dataset["subscriber_id"]],
             diff_summary=[
                 node_diff(
                     node_id=dataset["person_id"],
@@ -177,3 +206,39 @@ class TestFieldLevelImpact(TestInfrahubApp):
             ],
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=True)
+
+    @pytest.mark.xfail(
+        reason=(
+            "A change reached through a relationship widens to every target. Narrowing it back to "
+            "only the members whose query read the changed node is not yet implemented."
+        ),
+        strict=True,
+    )
+    async def test_related_node_change_narrows_to_the_reading_member(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> None:
+        """Desired: changing a related node regenerates only the members whose query read it.
+
+        ``owner-1`` is the owner of the first car alone, so changing it should select that car's
+        subscriber and leave the second car's subscriber untouched. The owner is reached through a
+        relationship and has no query-group membership, so today the selection widens to every target
+        instead of narrowing to the one member that read it.
+        """
+        resolved = await self._resolve(
+            dataset=dataset,
+            default_branch=default_branch,
+            client=client,
+            every_target=[dataset["subscriber_id"], dataset["subscriber_2_id"]],
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["person_id"],
+                    kind=TestKind.PERSON,
+                    branch=default_branch.name,
+                    field_names=["name"],
+                )
+            ],
+        )
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
