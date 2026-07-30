@@ -4,10 +4,11 @@ import copy
 from typing import TYPE_CHECKING
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_TASK
@@ -26,7 +27,9 @@ def snow_schema_with_format_identifier(
     task = copy.deepcopy(SNOW_TASK)
     task.get_attribute(name="number").parameters = NumberPoolParameters(start_range=1, end_range=1000)
     incident = copy.deepcopy(SNOW_INCIDENT)
-    incident.get_attribute(name="identifier").computed_attribute.jinja2_template = identifier_template
+    incident.get_attribute(name="identifier").computed_attribute = ComputedAttribute(
+        kind=ComputedAttributeKind.JINJA2, jinja2_template=identifier_template
+    )
     if extra_incident_attrs:
         incident.attributes.extend(extra_incident_attrs)
     return SchemaRoot(generics=[task], nodes=[incident])
