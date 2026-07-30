@@ -19,9 +19,9 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from tests.helpers.merge_recompute.dataset import PROFILE_NODE_KIND, PROFILE_PEER_KIND, build_profile_schema
 
 
-def _profile_schema_branch() -> SchemaBranch:
+def _profile_schema_branch(cross_relationship_hfid: bool = False) -> SchemaBranch:
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=build_profile_schema())
+    schema_branch.load_schema(schema=build_profile_schema(cross_relationship_hfid=cross_relationship_hfid))
     schema_branch.process()
     return schema_branch
 
@@ -115,6 +115,24 @@ def test_hfid_does_not_fan_out_on_related_change() -> None:
     result = builder.build(changes=changes, branch="main")
 
     assert not any(target.family == HFID for target in result.targets)
+
+
+def test_hfid_fans_out_when_id_crosses_relationship() -> None:
+    """A human-friendly id that reads a peer across the relationship is recomputed by that peer's change.
+
+    A merge and a rebase reach the builder identically, so this one derivation covers both: the reader's
+    id is scheduled alongside the display label and computed attribute that read the same peer.
+    """
+    builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch(cross_relationship_hfid=True))
+    changes = [
+        MergeChange(node_id="peer-0", kind=PROFILE_PEER_KIND, action="updated", changed_fields=frozenset({"name"}))
+    ]
+
+    result = builder.build(changes=changes, branch="main")
+
+    hfid = _by_identity(result)[HFID, PROFILE_NODE_KIND, None]
+    assert hfid.reads_across_relationship is True
+    assert _lookups(hfid) == {(PROFILE_PEER_KIND, "peer__ids", frozenset({"peer-0"}))}
 
 
 def test_changes_to_same_target_are_deduplicated() -> None:

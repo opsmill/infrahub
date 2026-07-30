@@ -10,9 +10,16 @@ from infrahub_sdk.branch import BranchStatus
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 
 from tests.helpers.merge_recompute.dataset import (
+    DEVICE_KIND,
+    INTERFACE_KIND,
+    METRO_KIND,
     PROFILE_NODE_KIND,
     PROFILE_PEER_KIND,
+    RACK_KIND,
+    SITE_KIND,
     build_chain_schema_dict,
+    build_interface_hfid_schema_dict,
+    build_location_cascade_schema_dict,
     build_profile_schema_dict,
     chain_kind,
 )
@@ -67,6 +74,14 @@ class TestMergeRecompute(TestInfrahubDockerClient):
     @pytest.fixture(scope="class")
     def chain_schema(self) -> dict:
         return build_chain_schema_dict(levels=3)
+
+    @pytest.fixture(scope="class")
+    def interface_hfid_schema(self) -> dict:
+        return build_interface_hfid_schema_dict()
+
+    @pytest.fixture(scope="class")
+    def location_cascade_schema(self) -> dict:
+        return build_location_cascade_schema_dict()
 
     @pytest.fixture(scope="class")
     def delete_peer_schema(self) -> dict:
@@ -218,6 +233,75 @@ class TestMergeRecompute(TestInfrahubDockerClient):
         assert final.summary.value == "cnode on gamma"
         assert final.display_label == "cnode via gamma"
         assert final.hfid == ["cnode"]
+
+    # Cross-relationship human-friendly id: the reader's identity reads a peer across the relationship,
+    # so a peer rename must reindex the stored hfid that backs get_one_by_hfid. These assert the stored
+    # value through the id lookup, not the id the SDK recomputes client-side from the loaded peer.
+
+    async def test_merge_recomputes_cross_relationship_hfid(
+        self, client: InfrahubClient, interface_hfid_schema: dict
+    ) -> None:
+        """A merged peer rename reindexes the reader: it resolves under the new hfid and not the old one."""
+        loaded = await client.schema.load(schemas=[interface_hfid_schema], wait_until_converged=True)
+        assert loaded.schema_updated
+
+        device = await client.create(kind=DEVICE_KIND, data={"name": "device-a"})
+        await device.save()
+        interface = await client.create(kind=INTERFACE_KIND, data={"name": "eth1", "device": device})
+        await interface.save()
+
+        async def _resolves(hfid: list[str]) -> bool:
+            return await client.get(kind=INTERFACE_KIND, hfid=hfid, raise_when_missing=False) is not None
+
+        await _wait_until(lambda: _resolves(["eth1", "device-a"]))
+
+        branch = await client.branch.create(branch_name="hfid-merge-correctness")
+        device_on_branch = await client.get(kind=DEVICE_KIND, id=device.id, branch=branch.name)
+        device_on_branch.name.value = "device-b"
+        await device_on_branch.save()
+
+        merged = await client.branch.merge(branch_name=branch.name)
+        assert merged
+        await _wait_until_merged(client=client, branch_name=branch.name)
+
+        assert await _became_true(lambda: _resolves(["eth1", "device-b"]), seconds=90)
+        assert (await client.get(kind=INTERFACE_KIND, hfid=["eth1", "device-b"])).id == interface.id
+        assert not await _resolves(["eth1", "device-a"])
+
+    async def test_rebase_recomputes_cross_relationship_hfid(
+        self, client: InfrahubClient, interface_hfid_schema: dict
+    ) -> None:
+        """A rebase that replays a peer rename reindexes a user-branch reader under its new hfid."""
+        await client.schema.load(schemas=[interface_hfid_schema], wait_until_converged=True)
+
+        device = await client.create(kind=DEVICE_KIND, data={"name": "rdevice-a"})
+        await device.save()
+
+        branch = await client.branch.create(branch_name="hfid-rebase-correctness")
+
+        # Rename the device on the default branch; the rebase replays this onto the user branch.
+        device.name.value = "rdevice-b"
+        await device.save()
+
+        # The interface lives only on the user branch, so only the rebase recompute can refresh it.
+        interface = await client.create(
+            kind=INTERFACE_KIND, data={"name": "reth1", "device": device}, branch=branch.name
+        )
+        await interface.save()
+
+        async def _resolves(hfid: list[str]) -> bool:
+            found = await client.get(kind=INTERFACE_KIND, hfid=hfid, branch=branch.name, raise_when_missing=False)
+            return found is not None
+
+        await _wait_until(lambda: _resolves(["reth1", "rdevice-a"]))
+
+        await client.branch.rebase(branch_name=branch.name)
+
+        assert await _became_true(lambda: _resolves(["reth1", "rdevice-b"]), seconds=90)
+        assert (
+            await client.get(kind=INTERFACE_KIND, hfid=["reth1", "rdevice-b"], branch=branch.name)
+        ).id == interface.id
+        assert not await _resolves(["reth1", "rdevice-a"])
 
     @pytest.mark.xfail(
         strict=True,
@@ -383,6 +467,92 @@ class TestMergeRecompute(TestInfrahubDockerClient):
         final_tip = await client.get(kind=l3, id=tip.id, branch=branch.name)
         assert final_mid.summary.value == "rroot-edited"
         assert final_tip.summary.value == "rroot-edited"
+
+    # Display-label cascade: a rename two hops up must refresh display labels down the chain.
+
+    async def test_merge_recomputes_two_level_display_label_cascade(
+        self, client: InfrahubClient, location_cascade_schema: dict
+    ) -> None:
+        """A top-level rename must refresh both levels' display labels below it after merge."""
+        loaded = await client.schema.load(schemas=[location_cascade_schema], wait_until_converged=True)
+        assert loaded.schema_updated
+
+        metro = await client.create(kind=METRO_KIND, data={"name": "metro-a"})
+        await metro.save()
+        site = await client.create(kind=SITE_KIND, data={"name": "site1", "metro": metro})
+        await site.save()
+        rack = await client.create(kind=RACK_KIND, data={"name": "rack1", "site": site})
+        await rack.save()
+
+        async def _labels_are(metro_name: str) -> bool:
+            site_node = await client.get(kind=SITE_KIND, id=site.id)
+            rack_node = await client.get(kind=RACK_KIND, id=rack.id)
+            return (
+                site_node.display_label == f"{metro_name}-site1"
+                and rack_node.display_label == f"{metro_name}-site1 :: rack1"
+            )
+
+        await _wait_until(lambda: _labels_are("metro-a"))
+
+        branch = await client.branch.create(branch_name="cascade-merge-correctness")
+        metro_on_branch = await client.get(kind=METRO_KIND, id=metro.id, branch=branch.name)
+        metro_on_branch.name.value = "metro-b"
+        await metro_on_branch.save()
+
+        merged = await client.branch.merge(branch_name=branch.name)
+        assert merged
+        await _wait_until_merged(client=client, branch_name=branch.name)
+
+        await _wait_until(lambda: _labels_are("metro-b"))
+
+        final_site = await client.get(kind=SITE_KIND, id=site.id)
+        final_rack = await client.get(kind=RACK_KIND, id=rack.id)
+        # First hop: the site reads the metro across its relationship. Second hop: the rack reads the
+        # site's short name, which only moves once the site's recompute writes it, so the rack
+        # refreshes only if the recompute chains from the site's write to the rack.
+        assert final_site.shortname.value == "metro-b-site1"
+        assert final_site.display_label == "metro-b-site1"
+        assert final_rack.display_label == "metro-b-site1 :: rack1"
+
+    async def test_rebase_recomputes_two_level_display_label_cascade(
+        self, client: InfrahubClient, location_cascade_schema: dict
+    ) -> None:
+        """A rebase that replays a top-level rename must refresh both levels' display labels on the user branch."""
+        await client.schema.load(schemas=[location_cascade_schema], wait_until_converged=True)
+
+        metro = await client.create(kind=METRO_KIND, data={"name": "rmetro-a"})
+        await metro.save()
+
+        branch = await client.branch.create(branch_name="cascade-rebase-correctness")
+        # The site and rack live only on the user branch, so only the rebase recompute can refresh them.
+        site = await client.create(kind=SITE_KIND, data={"name": "rsite1", "metro": metro}, branch=branch.name)
+        await site.save()
+        rack = await client.create(kind=RACK_KIND, data={"name": "rrack1", "site": site}, branch=branch.name)
+        await rack.save()
+
+        async def _labels_on_branch_are(metro_name: str) -> bool:
+            site_node = await client.get(kind=SITE_KIND, id=site.id, branch=branch.name)
+            rack_node = await client.get(kind=RACK_KIND, id=rack.id, branch=branch.name)
+            return (
+                site_node.display_label == f"{metro_name}-rsite1"
+                and rack_node.display_label == f"{metro_name}-rsite1 :: rrack1"
+            )
+
+        await _wait_until(lambda: _labels_on_branch_are("rmetro-a"))
+
+        # The rebase replays the default branch's metro rename onto the user branch.
+        metro.name.value = "rmetro-b"
+        await metro.save()
+
+        await client.branch.rebase(branch_name=branch.name)
+
+        await _wait_until(lambda: _labels_on_branch_are("rmetro-b"))
+
+        final_site = await client.get(kind=SITE_KIND, id=site.id, branch=branch.name)
+        final_rack = await client.get(kind=RACK_KIND, id=rack.id, branch=branch.name)
+        assert final_site.shortname.value == "rmetro-b-rsite1"
+        assert final_site.display_label == "rmetro-b-rsite1"
+        assert final_rack.display_label == "rmetro-b-rsite1 :: rrack1"
 
     # Delete a read peer: the merge must complete instead of erroring on the missing peer.
 
