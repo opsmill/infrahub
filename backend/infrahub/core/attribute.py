@@ -28,6 +28,7 @@ from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
 from infrahub.core.query.attribute import (
     AttributeClearNodePropertyQuery,
+    AttributeCreateQuery,
     AttributeDeleteQuery,
     AttributeUpdateFlagQuery,
     AttributeUpdateNodePropertyQuery,
@@ -36,7 +37,7 @@ from infrahub.core.query.attribute import (
 from infrahub.core.query.node import AttributeFromDB, NodeListGetAttributeQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import convert_ip_to_binary_str
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import DatabaseError, ValidationError
 from infrahub.helpers import hash_password
 from infrahub.log import get_logger
 
@@ -384,9 +385,28 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         save_at = Timestamp(at)
 
         if not self.id:
-            return None
+            await self._create(db=db, user_id=user_id, at=save_at)
 
         return await self._update(db=db, user_id=user_id, at=save_at)
+
+    async def _create(self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None) -> None:
+        """Materialise the database row for an attribute that exists in the schema but was never persisted.
+
+        The row is created with the schema default value, so a following update reconciles the requested
+        value and the ``is_default`` flag through the regular update path.
+        """
+        create_at = Timestamp(at)
+
+        query = await AttributeCreateQuery.init(db=db, attr=self, at=create_at, user_id=user_id)
+        await query.execute(db=db)
+
+        result = query.get_result()
+        created_attribute = result.get("a") if result else None
+        if created_attribute is None:
+            raise DatabaseError(message=f"Unable to create the attribute {self.name!r} on node {self.node.id}")
+
+        self.id = created_attribute.get("uuid")
+        self.db_id = created_attribute.element_id
 
     def get_branch_for_delete(self) -> Branch:
         """Get the appropriate branch for explicit attribute delete operations.
