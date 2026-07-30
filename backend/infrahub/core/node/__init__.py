@@ -833,6 +833,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             variables = await self._resolve_jinja2_variables(
                 db=db, schema_branch=schema_branch, jinja_template=jinja_template
             )
+            if variables is None:
+                continue
 
             try:
                 new_value = await jinja_template.render(variables=variables)
