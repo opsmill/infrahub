@@ -20,6 +20,8 @@ from infrahub.core.node import Node
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.validators.constraint_merge import build_constraint_info_merger
+from infrahub.core.validators.determiner import build_constraint_validator_determiner
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import get_component_registry
@@ -209,9 +211,10 @@ class TestDiffCoordinatorLocks:
                 schema_manager=registry.schema,
             ),
             constraint_validator=MergeConstraintValidator(
-                db=db,
                 branch=diff_branch,
                 diff_repository=diff_repository,
+                determiner=build_constraint_validator_determiner(db=db, branch=diff_branch),
+                constraint_info_merger=build_constraint_info_merger(),
                 migration_validator=schema_validate_migrations,
             ),
         )
@@ -267,9 +270,10 @@ class TestDiffCoordinatorLocks:
                 schema_manager=registry.schema,
             ),
             constraint_validator=MergeConstraintValidator(
-                db=db2,
                 branch=diff_branch,
                 diff_repository=diff_repository_2,
+                determiner=build_constraint_validator_determiner(db=db2, branch=diff_branch),
+                constraint_info_merger=build_constraint_info_merger(),
                 migration_validator=schema_validate_migrations,
             ),
         )

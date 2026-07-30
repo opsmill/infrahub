@@ -77,91 +77,91 @@ def _remaining_uniqueness_kinds(constraints: list[SchemaUpdateConstraintInfo]) -
 
 class TestUniquenessConstraintDeduplicator:
     def test_inherited_node_dropped_when_generic_covers_it_full_population(self) -> None:
-        deduplicator = UniquenessConstraintDeduplicator(schema_branch=_schema_branch())
+        deduplicator = UniquenessConstraintDeduplicator()
         constraints = [_uniqueness_info("TestCar"), _uniqueness_info("TestElectricCar")]
 
-        result = deduplicator.deduplicate(constraints)
+        result = deduplicator.deduplicate(schema_branch=_schema_branch(), constraints=constraints)
 
         assert _remaining_uniqueness_kinds(result) == {"TestCar"}
 
     def test_all_implementers_dropped_when_generic_covers_them(self) -> None:
         # the generic's scope is the union of the implementers' changed nodes
-        deduplicator = UniquenessConstraintDeduplicator(schema_branch=_schema_branch())
+        deduplicator = UniquenessConstraintDeduplicator()
         constraints = [
             _uniqueness_info("TestCar", node_uuids=["e1", "g1"]),
             _uniqueness_info("TestElectricCar", node_uuids=["e1"]),
             _uniqueness_info("TestGazCar", node_uuids=["g1"]),
         ]
 
-        result = deduplicator.deduplicate(constraints)
+        result = deduplicator.deduplicate(schema_branch=_schema_branch(), constraints=constraints)
 
         assert _remaining_uniqueness_kinds(result) == {"TestCar"}
 
     def test_node_with_own_group_is_kept(self) -> None:
         # SpecialCar has a `special` group the generic does not cover, so it cannot be dropped
-        deduplicator = UniquenessConstraintDeduplicator(schema_branch=_schema_branch())
+        deduplicator = UniquenessConstraintDeduplicator()
         constraints = [_uniqueness_info("TestCar"), _uniqueness_info("TestSpecialCar")]
 
-        result = deduplicator.deduplicate(constraints)
+        result = deduplicator.deduplicate(schema_branch=_schema_branch(), constraints=constraints)
 
         assert _remaining_uniqueness_kinds(result) == {"TestCar", "TestSpecialCar"}
 
     def test_full_population_node_not_dropped_for_scoped_generic(self) -> None:
         # dropping a full-population node for a scoped generic would silently narrow the check
-        deduplicator = UniquenessConstraintDeduplicator(schema_branch=_schema_branch())
+        deduplicator = UniquenessConstraintDeduplicator()
         constraints = [
             _uniqueness_info("TestCar", node_uuids=["e1"]),
             _uniqueness_info("TestElectricCar", node_uuids=None),
         ]
 
-        result = deduplicator.deduplicate(constraints)
+        result = deduplicator.deduplicate(schema_branch=_schema_branch(), constraints=constraints)
 
         assert _remaining_uniqueness_kinds(result) == {"TestCar", "TestElectricCar"}
 
     def test_node_not_dropped_when_generic_scope_does_not_cover_it(self) -> None:
-        deduplicator = UniquenessConstraintDeduplicator(schema_branch=_schema_branch())
+        deduplicator = UniquenessConstraintDeduplicator()
         constraints = [
             _uniqueness_info("TestCar", node_uuids=["other"]),
             _uniqueness_info("TestElectricCar", node_uuids=["e1"]),
         ]
 
-        result = deduplicator.deduplicate(constraints)
+        result = deduplicator.deduplicate(schema_branch=_schema_branch(), constraints=constraints)
 
         assert _remaining_uniqueness_kinds(result) == {"TestCar", "TestElectricCar"}
 
     def test_scoped_node_dropped_when_generic_scope_is_superset(self) -> None:
-        deduplicator = UniquenessConstraintDeduplicator(schema_branch=_schema_branch())
+        deduplicator = UniquenessConstraintDeduplicator()
         constraints = [
             _uniqueness_info("TestCar", node_uuids=["e1", "e2", "g1"]),
             _uniqueness_info("TestElectricCar", node_uuids=["e1", "e2"]),
         ]
 
-        result = deduplicator.deduplicate(constraints)
+        result = deduplicator.deduplicate(schema_branch=_schema_branch(), constraints=constraints)
 
         assert _remaining_uniqueness_kinds(result) == {"TestCar"}
 
     def test_node_kept_when_generic_absent_from_set(self) -> None:
-        deduplicator = UniquenessConstraintDeduplicator(schema_branch=_schema_branch())
+        deduplicator = UniquenessConstraintDeduplicator()
         constraints = [_uniqueness_info("TestElectricCar")]
 
-        result = deduplicator.deduplicate(constraints)
+        result = deduplicator.deduplicate(schema_branch=_schema_branch(), constraints=constraints)
 
         assert _remaining_uniqueness_kinds(result) == {"TestElectricCar"}
 
     def test_standalone_node_is_kept(self) -> None:
-        deduplicator = UniquenessConstraintDeduplicator(schema_branch=_schema_branch())
+        deduplicator = UniquenessConstraintDeduplicator()
         constraints = [_uniqueness_info("TestCar"), _uniqueness_info("TestPerson")]
 
-        result = deduplicator.deduplicate(constraints)
+        result = deduplicator.deduplicate(schema_branch=_schema_branch(), constraints=constraints)
 
         assert _remaining_uniqueness_kinds(result) == {"TestCar", "TestPerson"}
 
     def test_non_uniqueness_constraints_pass_through(self) -> None:
-        deduplicator = UniquenessConstraintDeduplicator(schema_branch=_schema_branch())
+        deduplicator = UniquenessConstraintDeduplicator()
         attribute = _attribute_info("TestElectricCar")
         constraints = [_uniqueness_info("TestCar"), _uniqueness_info("TestElectricCar"), attribute]
 
-        result = deduplicator.deduplicate(constraints)
+        result = deduplicator.deduplicate(schema_branch=_schema_branch(), constraints=constraints)
 
         assert _remaining_uniqueness_kinds(result) == {"TestCar"}
         assert attribute in result
