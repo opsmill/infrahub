@@ -35,13 +35,31 @@ def _lookups(target: AffectedTarget) -> set[tuple[str, str, frozenset[str]]]:
 
 
 def test_cross_node_update_coalesces_readers() -> None:
-    """Many changed peers collapse to one computed and one display target, one union lookup each."""
-    builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch())
+    """Many changed peers collapse to one computed and one display target, one union lookup each.
+
+    The change set also carries kinds the derivation must tolerate rather than abort on: an updated
+    profile kind (not a NodeSchema) and a kind absent from the branch. Neither adds a target here.
+    """
+    schema_branch = _profile_schema_branch()
+    builder = CoalescedRecomputeBuilder(schema_branch=schema_branch)
     peer_ids = {f"peer-{index:02d}" for index in range(5)}
     changes = [
         MergeChange(node_id=peer_id, kind=PROFILE_PEER_KIND, action="updated", changed_fields=frozenset({"name"}))
         for peer_id in peer_ids
     ]
+    changes.extend(
+        [
+            MergeChange(
+                node_id="profile-0",
+                kind=next(iter(schema_branch.profiles)),
+                action="updated",
+                changed_fields=frozenset({"name"}),
+            ),
+            MergeChange(
+                node_id="ghost-0", kind="TestingMissingKind", action="updated", changed_fields=frozenset({"name"})
+            ),
+        ]
+    )
 
     result = builder.build(changes=changes, branch="main")
 
@@ -105,6 +123,33 @@ def test_deleted_node_refreshes_readers() -> None:
         assert _lookups(target) == {(PROFILE_PEER_KIND, "peer__ids", frozenset({"peer-gone"}))}
 
 
+def test_relationship_change_recomputes_own_values_by_id() -> None:
+    """A relationship in an update's changed fields recomputes the node's own derived values by its id.
+
+    This is the reader whose peer was deleted: it appears as an update on the relationship but was
+    never saved, so its cross-relationship values are not refreshed inline.
+    """
+    builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch())
+    changes = [
+        MergeChange(node_id="node-0", kind=PROFILE_NODE_KIND, action="updated", changed_fields=frozenset({"peer"}))
+    ]
+
+    result = builder.build(changes=changes, branch="main")
+
+    # The relationship is in the changed fields, so this is the precise self path, not the fallback.
+    assert result.fallback_used is False
+    by_identity = _by_identity(result)
+    own = {(PROFILE_NODE_KIND, "ids", frozenset({"node-0"}))}
+    assert set(by_identity) == {
+        (COMPUTED_ATTRIBUTE, PROFILE_NODE_KIND, "summary"),
+        (DISPLAY_LABEL, PROFILE_NODE_KIND, None),
+        (HFID, PROFILE_NODE_KIND, None),
+    }
+    for target in by_identity.values():
+        assert target.reads_across_relationship is False
+        assert _lookups(target) == own
+
+
 def test_hfid_does_not_fan_out_on_related_change() -> None:
     """A human-friendly id built from the local name is never recomputed by a related node's change."""
     builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch())
@@ -149,18 +194,32 @@ def test_changes_to_same_target_are_deduplicated() -> None:
     assert _lookups(computed) == {(PROFILE_PEER_KIND, "peer__ids", frozenset({"peer-0", "peer-1"}))}
 
 
-def test_update_without_fields_is_a_bounded_fallback() -> None:
-    """An update with no recorded fields recomputes every cross-node reader and is marked imprecise."""
+def test_unscoped_update_is_a_bounded_fallback() -> None:
+    """An unscoped update imprecisely recomputes cross-node readers and the node's own derived values."""
     builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch())
-    changes = [MergeChange(node_id="peer-0", kind=PROFILE_PEER_KIND, action="updated", changed_fields=frozenset())]
 
-    result = builder.build(changes=changes, branch="main")
-
-    # A peer's readers are the node computed summary and display label that read it across the
-    # relationship; no human-friendly id reads the peer, so even the unscoped fallback omits it.
-    assert set(_by_identity(result)) == {
+    # A peer: its cross-node readers (node summary and display) plus its own derived values.
+    peer_result = builder.build(
+        changes=[MergeChange(node_id="peer-0", kind=PROFILE_PEER_KIND, action="updated", changed_fields=frozenset())],
+        branch="main",
+    )
+    assert set(_by_identity(peer_result)) == {
         (COMPUTED_ATTRIBUTE, PROFILE_NODE_KIND, "summary"),
         (DISPLAY_LABEL, PROFILE_NODE_KIND, None),
+        (DISPLAY_LABEL, PROFILE_PEER_KIND, None),
+        (HFID, PROFILE_PEER_KIND, None),
     }
-    assert result.fallback_used is True
-    assert all(target.precise is False for target in result.targets)
+    assert peer_result.fallback_used is True
+    assert all(target.precise is False for target in peer_result.targets)
+
+    # A node: its own derived values, keyed by its own id.
+    node_result = builder.build(
+        changes=[MergeChange(node_id="node-0", kind=PROFILE_NODE_KIND, action="updated", changed_fields=frozenset())],
+        branch="main",
+    )
+    by_identity = _by_identity(node_result)
+    own = {(PROFILE_NODE_KIND, "ids", frozenset({"node-0"}))}
+    assert _lookups(by_identity[COMPUTED_ATTRIBUTE, PROFILE_NODE_KIND, "summary"]) == own
+    assert _lookups(by_identity[DISPLAY_LABEL, PROFILE_NODE_KIND, None]) == own
+    assert _lookups(by_identity[HFID, PROFILE_NODE_KIND, None]) == own
+    assert node_result.fallback_used is True
