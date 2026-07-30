@@ -10,6 +10,9 @@ the `sort` query param. The default order is the absence of a param — the
 CoreProposedChange schema defines no order_by, so clearing the custom sort
 drops the param and the list falls back to newest created first.
 
+The filter bar's field chips open the object table's column-header menu, so a
+chip offers both sorting and filtering for its field from one popover.
+
 The tests own all of their data: three throwaway branches and one proposed
 change per branch through the SDK, so they need neither the demo dataset nor the
 demo-edge repository.
@@ -179,3 +182,28 @@ class TestProposedChangesOrdering:
         await expect(admin_page).to_have_url(re.compile(r"sort=node_metadata__updated_at__asc"))
         least_updated_order = await _rendered_pc_order(admin_page)
         assert [pc_id for pc_id in least_updated_order if pc_id in newest_first] == newest_first
+
+    async def test_field_chip_sorts_and_filters(self, admin_page: Page, proposed_changes: list[InfrahubNode]) -> None:
+        oldest, middle, newest = proposed_changes
+        newest_first = [newest.id, middle.id, oldest.id]
+
+        await admin_page.goto("/proposed-changes")
+        await expect(admin_page.locator(f'a[href*="/proposed-changes/{newest.id}"]')).to_be_visible()
+
+        # Branch names embed their creation index, so their ascending order is the creation order.
+        await admin_page.get_by_role("button", name="Source Branch").click()
+        await admin_page.get_by_role("menuitem", name="Sort ascending").click()
+
+        await expect(admin_page).to_have_url(re.compile(r"sort=source_branch__value__asc"))
+        branch_order = await _rendered_pc_order(admin_page)
+        assert [pc_id for pc_id in branch_order if pc_id in newest_first] == list(reversed(newest_first))
+
+        # The same chip also filters its field.
+        await admin_page.get_by_role("button", name="Source Branch").click()
+        await admin_page.get_by_role("menuitem", name="Filter").click()
+        filter_form = admin_page.get_by_test_id("attribute-filter-form")
+        await filter_form.get_by_role("textbox").fill(str(newest.source_branch.value))
+        await filter_form.get_by_role("button", name="Apply").click()
+
+        await expect(admin_page.locator(f'a[href*="/proposed-changes/{oldest.id}"]')).not_to_be_visible()
+        await expect(admin_page.locator(f'a[href*="/proposed-changes/{newest.id}"]')).to_be_visible()
