@@ -81,8 +81,6 @@ def test_validate_ipaddress_returns(branch: Branch, ipaddress_schema: AttributeS
     assert test_ipv4.ip_integer == 167772673
     assert test_ipv4.ip_binary == "00001010000000000000001000000001"
     assert len(test_ipv4.ip_binary) == 32
-    # prefixlen is stored because the value shares the AttributeIPHost vertex, but a bare address is
-    # always a single host so it is the maximum for the family.
     assert test_ipv4.to_db() == {
         "binary_address": "00001010000000000000001000000001",
         "is_default": False,
