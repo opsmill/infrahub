@@ -19,7 +19,9 @@ class ConstraintInfoMerger:
     def __init__(self, deduplicator: UniquenessConstraintDeduplicator) -> None:
         self.deduplicator = deduplicator
 
-    def merge(self, *constraint_lists: list[SchemaUpdateConstraintInfo]) -> list[SchemaUpdateConstraintInfo]:
+    def merge(
+        self, schema_branch: SchemaBranch, *constraint_lists: list[SchemaUpdateConstraintInfo]
+    ) -> list[SchemaUpdateConstraintInfo]:
         """Collapse the same constraint from multiple producers onto one entry.
 
         A constraint both broadened by a schema change (full population) and hit by a data change
@@ -42,8 +44,8 @@ class ConstraintInfoMerger:
                         update={"node_uuids": sorted(set(existing.node_uuids) | set(constraint.node_uuids))}
                     )
 
-        return self.deduplicator.deduplicate(list(merged.values()))
+        return self.deduplicator.deduplicate(schema_branch=schema_branch, constraints=list(merged.values()))
 
 
-def build_constraint_info_merger(schema_branch: SchemaBranch) -> ConstraintInfoMerger:
-    return ConstraintInfoMerger(deduplicator=UniquenessConstraintDeduplicator(schema_branch=schema_branch))
+def build_constraint_info_merger() -> ConstraintInfoMerger:
+    return ConstraintInfoMerger(deduplicator=UniquenessConstraintDeduplicator())

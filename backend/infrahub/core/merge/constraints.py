@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.diff.model.diff import SchemaConflict
 from infrahub.core.diff.model.path import BranchTrackingId
-from infrahub.core.validators.constraint_merge import build_constraint_info_merger
-from infrahub.core.validators.determiner import build_constraint_validator_determiner
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 
 if TYPE_CHECKING:
@@ -16,9 +14,10 @@ if TYPE_CHECKING:
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.validators.constraint_merge import ConstraintInfoMerger
+    from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
     from infrahub.core.validators.model import SchemaViolation
     from infrahub.core.validators.models.validate_migration import SchemaValidatorPathResponseData
-    from infrahub.database import InfrahubDatabase
 
     MigrationValidator = Callable[[SchemaValidateMigrationData], Awaitable[list[SchemaValidatorPathResponseData]]]
 
@@ -101,28 +100,30 @@ class MergeConstraintValidator:
 
     def __init__(
         self,
-        db: InfrahubDatabase,
         branch: Branch,
         diff_repository: DiffRepository,
+        determiner: ConstraintValidatorDeterminer,
+        constraint_info_merger: ConstraintInfoMerger,
         migration_validator: MigrationValidator,
     ) -> None:
-        self.db = db
         self.branch = branch
         self.diff_repository = diff_repository
+        self.determiner = determiner
+        self.constraint_info_merger = constraint_info_merger
         self.migration_validator = migration_validator
 
     async def validate(
         self, candidate_schema: SchemaBranch, schema_diff_constraints: list[SchemaUpdateConstraintInfo]
     ) -> MergeConstraintValidationResult:
-        determiner = build_constraint_validator_determiner(
-            db=self.db, branch=self.branch, schema_branch=candidate_schema
-        )
         node_field_summaries = await self.diff_repository.get_node_field_summaries(
             diff_branch_name=self.branch.name, tracking_id=BranchTrackingId(name=self.branch.name)
         )
-        data_diff_constraints = await determiner.get_constraints(node_diffs=node_field_summaries)
-        merger = build_constraint_info_merger(schema_branch=candidate_schema)
-        constraints = merger.merge(data_diff_constraints, schema_diff_constraints)
+        data_diff_constraints = await self.determiner.get_constraints(
+            schema_branch=candidate_schema, node_diffs=node_field_summaries
+        )
+        constraints = self.constraint_info_merger.merge(
+            candidate_schema, data_diff_constraints, schema_diff_constraints
+        )
         if not constraints:
             return MergeConstraintValidationResult()
 

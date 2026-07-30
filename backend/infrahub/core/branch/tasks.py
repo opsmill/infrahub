@@ -192,10 +192,10 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         )
 
         candidate_schema = schema_analyzer.get_candidate_schema()
-        determiner = build_constraint_validator_determiner(
-            db=db, branch=user_branch, schema_branch=candidate_schema, at=rebase_at
+        determiner = build_constraint_validator_determiner(db=db, branch=user_branch, at=rebase_at)
+        data_diff_constraints = await determiner.get_constraints(
+            schema_branch=candidate_schema, node_diffs=node_diff_field_summaries
         )
-        data_diff_constraints = await determiner.get_constraints(node_diffs=node_diff_field_summaries)
 
         # If there are some changes related to the schema between this branch and main, we need to
         #  - Run all the validations to ensure everything is correct before rebasing the branch
@@ -203,8 +203,8 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         schema_diff_constraints: list[SchemaUpdateConstraintInfo] = []
         if user_branch.has_schema_changes:
             schema_diff_constraints = await schema_analyzer.calculate_validations(target_schema=candidate_schema)
-        merger = build_constraint_info_merger(schema_branch=candidate_schema)
-        constraints = merger.merge(data_diff_constraints, schema_diff_constraints)
+        merger = build_constraint_info_merger()
+        constraints = merger.merge(candidate_schema, data_diff_constraints, schema_diff_constraints)
         if constraints:
             responses = await schema_validate_migrations(
                 message=SchemaValidateMigrationData(

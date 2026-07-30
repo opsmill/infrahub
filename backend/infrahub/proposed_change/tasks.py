@@ -552,8 +552,8 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
         db=database, schema=candidate_schema, diff_summary=diff_summary, branch=source_branch
     )
     constraints_from_schema_diff = validation_result.constraints
-    merger = build_constraint_info_merger(schema_branch=candidate_schema)
-    constraints = merger.merge(constraints_from_data_diff, constraints_from_schema_diff)
+    merger = build_constraint_info_merger()
+    constraints = merger.merge(candidate_schema, constraints_from_data_diff, constraints_from_schema_diff)
 
     if not constraints:
         return
@@ -608,8 +608,10 @@ async def _get_proposed_change_schema_integrity_constraints(
                 field_summary.add_attribute_node_uuid(name=element_name, node_uuid=node_id)
 
     async with db.start_session(read_only=True) as session_db:
-        determiner = build_constraint_validator_determiner(db=session_db, branch=branch, schema_branch=schema)
-        return await determiner.get_constraints(node_diffs=list(node_diff_field_summary_map.values()))
+        determiner = build_constraint_validator_determiner(db=session_db, branch=branch)
+        return await determiner.get_constraints(
+            schema_branch=schema, node_diffs=list(node_diff_field_summary_map.values())
+        )
 
 
 @flow(name="proposed-changed-repository-checks", flow_run_name="Process user defined checks")
