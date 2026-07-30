@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 // Preferences resolved user → global → default; each field carries its resolved value and source.
 const GET_EFFECTIVE_PREFERENCES = graphql(`

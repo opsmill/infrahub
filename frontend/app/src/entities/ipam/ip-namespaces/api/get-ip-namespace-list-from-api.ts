@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import { addFiltersToRequest } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
@@ -20,7 +19,7 @@ export async function getIpNamespaceListFromApi({
   branchName,
   atDate,
 }: GetIpNamespaceListFromApiParams) {
-  const query = gql(
+  const query = graphql(
     jsonToGraphQLQuery({
       query: {
         __name: `GetObjects${IP_NAMESPACE_GENERIC}`,
