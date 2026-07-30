@@ -1,6 +1,26 @@
 /* eslint-disable */
 /* prettier-ignore */
 import type { TadaDocumentNode, $tada } from 'gql.tada';
+import {
+  type AnyVariables,
+  Client,
+  type CombinedError,
+  type DocumentInput,
+  fetchExchange,
+  formatDocument,
+  makeOperation,
+  mapExchange,
+} from "@urql/core";
+import { authExchange } from "@urql/exchange-auth";
+import { ERROR_CODES } from "@/shared/api/errors";
+import { handleGraphQLErrors, hasCatalogueCode } from "@/shared/api/graphql/error-handling";
+import type { GraphQLRequestContext, GraphQLResult } from "@/shared/api/graphql/types";
+import { DEFAULT_PRIORITY, PRIORITY_HEADER } from "@/shared/api/priority";
+import { queryClient } from "@/shared/api/rest/client";
+import { CONFIG } from "@/shared/config/config";
+import { getAccessToken } from "@/entities/authentication/api/token-storage";
+import { redirectToLogin } from "@/entities/authentication/domain/use-cases/redirect-to-login";
+import { refreshAccessTokenQueryOptions } from "@/entities/authentication/ui/queries/refresh-access-token.query";
 
 declare module 'gql.tada' {
  interface setupCache {
