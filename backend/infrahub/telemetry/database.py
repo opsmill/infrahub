@@ -62,14 +62,14 @@ async def count_user_nodes(db: InfrahubDatabase) -> int:
     default_branch = registry.get_branch_from_registry()
     schema_branch = db.schema.get_schema_branch(name=default_branch.name)
     user_namespaces = [namespace.name for namespace in schema_branch.get_namespaces() if namespace.user_editable]
-    kinds = [
-        node_schema.kind
+    schemas = [
+        node_schema
         for node_schema in schema_branch.get_schemas_for_namespaces(namespaces=user_namespaces)
         if isinstance(node_schema, NodeSchema) and InfrahubKind.GENERICGROUP not in node_schema.inherit_from
     ]
-    if not kinds:
+    if not schemas:
         return 0
-    query = await CountNodesByKindsQuery.init(db=db, branch=default_branch, kinds=kinds)
+    query = await CountNodesByKindsQuery.init(db=db, branch=default_branch, schemas=schemas)
     await query.execute(db=db)
     return sum(item.count for item in query.get_data())
 

@@ -9,6 +9,7 @@ from infrahub.core.query.standard_node import StandardNodeGetListQuery
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from infrahub.core.schema import NodeSchema
     from infrahub.database import InfrahubDatabase
 
 
@@ -39,18 +40,24 @@ class NodeKindCount:
 
 
 class CountNodesByKindsQuery(Query):
-    """Count active nodes of the given kinds on the query's branch at the query's time.
+    """Count active nodes of the given concrete kinds on the query's branch at the query's time.
 
     One pass over the graph replaces a per-kind count query fan-out; kinds with no
     active node return no row.
+
+    Concrete node schemas only: the match is on the vertex ``kind`` property, which
+    always holds the node's concrete kind. A generic kind never appears there (it is
+    carried only in the vertex labels), so matching a generic would silently count
+    zero. Supporting generics would require matching on labels instead, and a sum over
+    label matches double-counts nodes inheriting several of the requested kinds.
     """
 
     name = "count-nodes-by-kinds"
     type = QueryType.READ
     insert_return = False
 
-    def __init__(self, kinds: list[str], **kwargs: Any) -> None:
-        self.kinds = kinds
+    def __init__(self, schemas: list[NodeSchema], **kwargs: Any) -> None:
+        self.kinds = [schema.kind for schema in schemas]
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
