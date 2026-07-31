@@ -588,11 +588,32 @@ class DiffRepository:
     async def get_node_field_summaries(
         self, diff_branch_name: str, tracking_id: TrackingId | None = None, diff_id: str | None = None
     ) -> list[NodeDiffFieldSummary]:
-        query = await EnrichedDiffNodeFieldSummaryQuery.init(
-            db=self.db, diff_branch_name=diff_branch_name, tracking_id=tracking_id, diff_id=diff_id
-        )
-        await query.execute(db=self.db)
-        return await query.get_field_summaries()
+        node_limit = config.SETTINGS.database.query_size_limit
+        node_offset = 0
+        summaries_by_kind: dict[str, NodeDiffFieldSummary] = {}
+        while True:
+            query = await EnrichedDiffNodeFieldSummaryQuery.init(
+                db=self.db,
+                diff_branch_name=diff_branch_name,
+                tracking_id=tracking_id,
+                diff_id=diff_id,
+                node_offset=node_offset,
+                node_limit=node_limit,
+            )
+            await query.execute(db=self.db)
+            num_nodes = 0
+            for node_summary in query.get_node_field_rows():
+                num_nodes += 1
+                if not node_summary.attribute_node_uuids and not node_summary.relationship_node_uuids:
+                    continue
+                kind_summary = summaries_by_kind.setdefault(
+                    node_summary.kind, NodeDiffFieldSummary(kind=node_summary.kind)
+                )
+                kind_summary.merge(node_summary)
+            if num_nodes < node_limit:
+                break
+            node_offset += node_limit
+        return list(summaries_by_kind.values())
 
     async def mark_tracking_ids_merged(self, tracking_ids: list[TrackingId]) -> None:
         query = await EnrichedDiffMergedTrackingIdQuery.init(db=self.db, tracking_ids=tracking_ids)

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Generator
 
 import pytest
@@ -23,6 +24,19 @@ from tests.helpers.diff_factories import (
 )
 
 from .base import DiffRepositoryTestBase
+
+
+@dataclass
+class PageSizeCase:
+    name: str
+    query_size_limit: int
+
+
+PAGE_SIZE_CASES = [
+    PageSizeCase(name="partial_last_page", query_size_limit=4),
+    PageSizeCase(name="node_count_exact_multiple_of_page", query_size_limit=5),
+    PageSizeCase(name="single_page", query_size_limit=50),
+]
 
 
 class TestDiffNodeFieldSummaries(DiffRepositoryTestBase):
@@ -176,3 +190,84 @@ class TestDiffNodeFieldSummaries(DiffRepositoryTestBase):
             diff_branch_name=requested_branch_name, diff_id=requested_diff.uuid
         )
         assert retrieved_by_diff_id == expected_summaries
+
+    async def test_get_node_field_summaries_empty_diff(
+        self, diff_repository: DiffRepository, reset_database: None
+    ) -> None:
+        """A diff root with no diff nodes at all yields no summaries."""
+        tracking_id = BranchTrackingId(name=self.diff_branch_name)
+        enriched_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=set(),
+            tracking_id=tracking_id,
+        )
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+        )
+
+        retrieved = await diff_repository.get_node_field_summaries(
+            diff_branch_name=self.diff_branch_name, tracking_id=tracking_id
+        )
+        assert retrieved == []
+
+    @pytest.mark.parametrize("case", PAGE_SIZE_CASES, ids=lambda c: c.name)
+    async def test_get_node_field_summaries_batched(
+        self, diff_repository: DiffRepository, reset_database: None, case: PageSizeCase
+    ) -> None:
+        """Per-kind summaries are complete when the changed nodes span multiple retrieval pages.
+
+        Ten changed nodes of two kinds are saved, so each page size below ten forces every kind
+        across a page boundary; one node has only unchanged fields, so it fills a page slot without
+        contributing a summary.
+        """
+        tracking_id = BranchTrackingId(name=self.diff_branch_name)
+        kinds = ["TestingKindAlpha", "TestingKindBravo"]
+        nodes: set[EnrichedDiffNode] = set()
+        expected_by_kind: dict[str, NodeDiffFieldSummary] = {}
+        for index in range(9):
+            kind = kinds[index % len(kinds)]
+            node = self._build_named_field_node(
+                kind=kind,
+                node_action=DiffAction.UPDATED,
+                attribute_actions={
+                    "shared_attr": DiffAction.UPDATED,
+                    f"attr_{index}": DiffAction.ADDED,
+                    "quiet_attr": DiffAction.UNCHANGED,
+                },
+                relationship_actions={"shared_rel": DiffAction.UPDATED},
+            )
+            nodes.add(node)
+            expected = expected_by_kind.setdefault(kind, NodeDiffFieldSummary(kind=kind))
+            expected.add_attribute_node_uuid(name="shared_attr", node_uuid=node.uuid)
+            expected.add_attribute_node_uuid(name=f"attr_{index}", node_uuid=node.uuid)
+            expected.add_relationship_node_uuid(name="shared_rel", node_uuid=node.uuid)
+        nodes.add(
+            self._build_named_field_node(
+                kind=kinds[0],
+                node_action=DiffAction.UPDATED,
+                attribute_actions={"quiet_attr": DiffAction.UNCHANGED},
+                relationship_actions={"quiet_rel": DiffAction.UNCHANGED},
+            )
+        )
+        enriched_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
+            nodes=nodes,
+            tracking_id=tracking_id,
+        )
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+        )
+
+        config.SETTINGS.database.query_size_limit = case.query_size_limit
+        retrieved = await diff_repository.get_node_field_summaries(
+            diff_branch_name=self.diff_branch_name, tracking_id=tracking_id
+        )
+
+        assert len(retrieved) == len(expected_by_kind)
+        assert {summary.kind: summary for summary in retrieved} == expected_by_kind
