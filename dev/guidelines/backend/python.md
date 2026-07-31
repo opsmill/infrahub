@@ -296,6 +296,22 @@ async def set(self, key: str, value: str, expires: KVTTL | int | None = None) ->
 
 To branch on or read from a typed object, use `isinstance` so the type checker can narrow it; reaching for `getattr(obj, "attr", default)` defeats type analysis. When guarding a schema object, cover the whole family that carries the attribute — `isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema))` — since profiles and templates inherit node behavior and a `NodeSchema`-only check silently drops them.
 
+### `str` satisfies `Sequence` — exclude it before narrowing
+
+When a parameter accepts `T | Sequence[T] | ...` and `isinstance(data, Sequence)` (or `Iterable`/`Collection`) is how the code tells "one item" from "many", check `str` first whenever `T` includes `str`. A bare string satisfies `Sequence` in its own right, so without the carve-out it falls into the "many" branch and gets iterated character-by-character instead of treated as a single item — silently, if the single-item branch also accepts `str`.
+
+```python
+# ❌ Bad - a bare id like "abc-123" satisfies Sequence and gets shredded into one item per character
+if not isinstance(data, Sequence):
+    data = [data]
+
+# ✅ Good - str is excluded first, so a single id stays a single item
+if isinstance(data, str) or not isinstance(data, Sequence):
+    data = [data]
+```
+
+This carve-out is easy to lose exactly when it matters most: widening a parameter from an invariant `list[T]` to a covariant `Sequence[T]` (e.g. to drop a call-site `# type: ignore[arg-type]`, see [When a wrong-type bug slips through](#when-a-wrong-type-bug-slips-through)) means widening this runtime check in step — an annotation that newly accepts `str` as a `Sequence` while the `isinstance` check still assumes only `list` reaches it will misroute every bare string. Add a test for both the bare-`str` case and the newly-accepted non-`list` sequence (e.g. a `tuple`).
+
 ### Deterministic serialization for hashes and cache keys
 
 When a JSON string feeds a hash, fingerprint, or cache key, its output must be deterministic. Do **not** pass `default=str` to `json.dumps` there: it silently serializes unexpected types via `str()`, which can embed run-specific data (memory addresses) and break determinism. Serialize an explicit, canonical shape (sorted keys, known field types) and let unknown types raise instead of being coerced.
