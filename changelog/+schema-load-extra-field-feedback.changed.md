@@ -10,4 +10,4 @@ nodes[0].attributes[0].optionl: Unknown field, it is not part of the schema (rec
 
 This applies at every level of the payload and to every entry point — the API, `infrahubctl`, the Python SDK, and repository imports. Two shapes that previously loaded now fail: a misspelled field name, and attribute `parameters` belonging to a different attribute `kind` (for example `start_range` on a `Number` attribute), which configured nothing on the kind they were set on. Check a payload before submitting it with `infrahubctl validate schema <file>`, or with `infrahub_sdk.schema.validate_schema()` for the same verdict offline.
 
-The SDK's `client.schema.validate()` reaches this same verdict and now raises `ValueError` rather than a pydantic `ValidationError`, returning the verdict — including the warnings — when the payload is accepted.
+The SDK `client.schema.validate()` method reaches this same verdict and now raises `ValueError` rather than a pydantic `ValidationError`, returning the verdict — including the warnings — when the payload is accepted.
