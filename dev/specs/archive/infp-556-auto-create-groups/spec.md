@@ -2,7 +2,7 @@
 
 **Feature Branch**: `wvd-20260530-infp-556-spec`
 **Created**: 2026-04-30
-**Status**: Draft
+**Status**: Extracted
 **Jira/JPD**: [INFP-556](https://opsmill.atlassian.net/browse/INFP-556) — auto-create account groups from external authentication sources
 **Related**: [INFP-105](https://opsmill.atlassian.net/browse/INFP-105) (native LDAP support, ship together in 1.10), IFC-2521 (Auto creation of external identity groups epic), IFC-922 (default-group fallback), INFP-474 (login/logout activity events), INFP-536 (account lifecycle — out of scope: removal on claim removal)
 **Input**: User description: "I want to create a spec for Jira JPD INFP-556"
