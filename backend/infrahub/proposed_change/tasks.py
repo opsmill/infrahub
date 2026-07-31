@@ -59,9 +59,11 @@ from infrahub.core.regeneration.models import DefinitionSelect
 from infrahub.core.regeneration.predicates import (
     definition_changed,
     query_changed,
+    reads_kind,
     repo_diff_or_none,
     transform_changed,
 )
+from infrahub.core.regeneration.profiles import SchemaProfileExpander
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.checks_runner import run_checks_and_update_validator
 from infrahub.core.validators.constraint_merge import build_constraint_info_merger
@@ -420,7 +422,10 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
     ]
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
+    modified_kinds = SchemaProfileExpander(schema_manager=registry.schema).expand(
+        modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch),
+        branch=model.source_branch,
+    )
 
     for generator_definition in generator_definitions:
         # Select a generator definition when its query node or definition node was modified, when a
@@ -457,7 +462,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
             select = select.add_flag(
                 current=select,
                 flag=DefinitionSelect.MODIFIED_KINDS,
-                condition=changed_model in generator_definition.query_models,
+                condition=reads_kind(generator_definition, changed_model),
             )
 
         if select:
@@ -1331,7 +1336,10 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
         definitions=definition_information[InfrahubKind.ARTIFACTDEFINITION]["edges"]
     )
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
+    modified_kinds = SchemaProfileExpander(schema_manager=registry.schema).expand(
+        modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch),
+        branch=model.source_branch,
+    )
 
     for artifact_definition in artifact_definitions:
         select = DefinitionSelect.NONE
@@ -1361,7 +1369,7 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
             select = select.add_flag(
                 current=select,
                 flag=DefinitionSelect.MODIFIED_KINDS,
-                condition=artifact_definition.reads_kind(changed_model),
+                condition=reads_kind(artifact_definition, changed_model),
             )
 
         if select:

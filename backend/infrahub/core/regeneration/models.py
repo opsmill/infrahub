@@ -73,6 +73,7 @@ class RegenerationDefinition(Protocol):
     definition_name: str
     query_id: str
     query_name: str
+    query_models: list[str]
     dependencies: list[str] | None
     dependencies_complete: bool | None
 

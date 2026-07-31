@@ -22,8 +22,10 @@ from infrahub.workflows.catalogue import (
 )
 from tests.helpers.diff_summary import node_diff
 from tests.helpers.selective_regen import (
+    AppendingExpander,
     ArtifactForcingSelector,
     GeneratorForcingSelector,
+    PassthroughExpander,
     StubCascadeSourceOutput,
 )
 
@@ -122,7 +124,8 @@ async def test_build_plan_shares_modified_kinds_and_assembles_plan() -> None:
         participants=[
             CascadeSource(generator_selector, output=generator_output),
             CascadeTerminal(artifact_selector),
-        ]
+        ],
+        kinds_expander=PassthroughExpander(),
     ).build_plan(diff_summary=diff_summary, target_branch=TARGET_BRANCH)
 
     assert [(entry.workflow, entry.cascade_role, entry.requests, entry.output) for entry in plan.entries] == [
@@ -138,6 +141,29 @@ async def test_build_plan_shares_modified_kinds_and_assembles_plan() -> None:
         assert recorded_diff is diff_summary
         assert recorded_branch == TARGET_BRANCH
         assert set(recorded_kinds) == {"TestDevice", "TestSite"}
+
+
+async def test_build_plan_passes_expanded_kinds_to_selectors() -> None:
+    """The kinds the expander widens the diff to are the kinds every selector receives."""
+    diff_summary = [_node_diff(node_id="n1", kind="TestDevice")]
+    generator_selector = _RecordingSelector[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun](
+        result=[], workflow=REQUEST_GENERATOR_DEFINITION_RUN
+    )
+    artifact_selector = _RecordingSelector[ProposedChangeArtifactDefinition, RequestArtifactDefinitionGenerate](
+        result=[], workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE
+    )
+
+    await MergeSelectiveRegeneration(
+        participants=[
+            CascadeSource(generator_selector, output=StubCascadeSourceOutput()),
+            CascadeTerminal(artifact_selector),
+        ],
+        kinds_expander=AppendingExpander(extra_kind="TestProfiled"),
+    ).build_plan(diff_summary=diff_summary, target_branch=TARGET_BRANCH)
+
+    for selector in (generator_selector, artifact_selector):
+        _, _, recorded_kinds = selector.calls[0]
+        assert set(recorded_kinds) == {"TestDevice", "TestProfiled"}
 
 
 async def test_reselect_from_cascade_output_excludes_cascade_sources() -> None:
@@ -160,7 +186,8 @@ async def test_reselect_from_cascade_output_excludes_cascade_sources() -> None:
         participants=[
             CascadeSource(generator_selector, output=StubCascadeSourceOutput()),
             CascadeTerminal(artifact_selector),
-        ]
+        ],
+        kinds_expander=PassthroughExpander(),
     ).reselect_from_cascade_output(diff_summary=diff_summary, target_branch=TARGET_BRANCH)
 
     assert generator_selector.calls == []
@@ -184,7 +211,8 @@ async def test_reselect_from_cascade_output_escalates_across_terminals_sharing_a
     )
 
     entries = await MergeSelectiveRegeneration(
-        participants=[CascadeTerminal(unpopulated_terminal), CascadeTerminal(populated_terminal)]
+        participants=[CascadeTerminal(unpopulated_terminal), CascadeTerminal(populated_terminal)],
+        kinds_expander=PassthroughExpander(),
     ).reselect_from_cascade_output(diff_summary=[], target_branch=TARGET_BRANCH)
 
     assert [len(entry.requests) for entry in entries] == [1, 1]
@@ -219,7 +247,8 @@ async def test_consolidate_submissions_routes_each_workflow_to_its_selector() ->
         participants=[
             CascadeSource(generator_selector, output=StubCascadeSourceOutput()),
             CascadeTerminal(artifact_selector),
-        ]
+        ],
+        kinds_expander=PassthroughExpander(),
     ).consolidate_submissions(entries)
 
     assert generator_selector.consolidate_calls == [[generator_run]]
@@ -238,9 +267,9 @@ def test_terminal_full_regenerations_cover_every_terminal_and_exclude_sources() 
     )
     terminal = CascadeTerminal(ArtifactForcingSelector(definitions=[], member_ids=[], subscriber_by_member={}))
 
-    regenerations = MergeSelectiveRegeneration(participants=[source, terminal]).terminal_full_regenerations(
-        TARGET_BRANCH
-    )
+    regenerations = MergeSelectiveRegeneration(
+        participants=[source, terminal], kinds_expander=PassthroughExpander()
+    ).terminal_full_regenerations(TARGET_BRANCH)
 
     assert [(regeneration.workflow, regeneration.parameters) for regeneration in regenerations] == [
         (TRIGGER_ARTIFACT_DEFINITION_GENERATE, {"branch": TARGET_BRANCH}),
@@ -309,7 +338,8 @@ async def test_missing_generator_fingerprint_escalates_a_sibling_artifact_in_the
         participants=[
             CascadeSource(generator_selector, output=StubCascadeSourceOutput()),
             CascadeTerminal(artifact_selector),
-        ]
+        ],
+        kinds_expander=PassthroughExpander(),
     ).build_plan(diff_summary=[], target_branch=TARGET_BRANCH)
 
     generator_entries = plan.for_role(CascadeRole.SOURCE)
