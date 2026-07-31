@@ -515,8 +515,7 @@ class AttributeAddQuery(Query):
 
     Materialises the Attribute node together with its default value and protected flag. Nodes are matched by
     kind, optionally narrowed to specific uuids, and only those without an active row for the attribute are
-    written. This backs both the add-attribute schema migration and the create half of the attribute save path
-    for attributes that exist in the schema but were never written for a node.
+    written.
     """
 
     name = "attribute_add"
