@@ -8,7 +8,9 @@ import { classNames } from "@/shared/utils/common";
 
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
+import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 import { computeProposedChangeFilters } from "@/entities/proposed-changes/domain/rules/compute-proposed-change-filters";
+import { computeProposedChangeSort } from "@/entities/proposed-changes/domain/rules/compute-proposed-change-sort";
 import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";
 import { ProposedChangesTableFilters } from "@/entities/proposed-changes/ui/proposed-changes-table-filters";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
@@ -24,11 +26,13 @@ export function ProposedChangesTable({ schema, className }: ProposedChangesTable
   const [proposedChangeState] = useQueryState(QSP.PROPOSED_CHANGES_STATE);
 
   const [filters] = useFilters();
+  const { appliedSort } = useSort(schema);
 
   const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useGetProposedChanges(
     {
       schema,
       filters: computeProposedChangeFilters({ filters, qsp: proposedChangeState as string }),
+      sort: computeProposedChangeSort(appliedSort),
     }
   );
 

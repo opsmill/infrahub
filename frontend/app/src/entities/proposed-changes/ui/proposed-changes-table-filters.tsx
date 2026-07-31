@@ -3,8 +3,8 @@ import { useQueryState } from "nuqs";
 import { QSP } from "@/shared/config/qsp";
 
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
+import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { CLOSE_STATE } from "@/entities/proposed-changes/domain/model/proposed-change-state";
-import { ProposedChangeTableFilter } from "@/entities/proposed-changes/ui/proposed-change-table-filter";
 import { ProposedChangeTableFilterLink } from "@/entities/proposed-changes/ui/proposed-change-table-filter-link";
 import { useGetProposedChangesCounts } from "@/entities/proposed-changes/ui/queries/get-proposed-changes-counts.query";
 import type { NodeSchema } from "@/entities/schema/domain/model/schema";
@@ -29,10 +29,6 @@ export function ProposedChangesTableFilters({ schema }: ProposedChangesTableHead
 
   const sourceBranchAttribute = schema.attributes?.find((attribute) => {
     return attribute.name === "source_branch";
-  });
-
-  const authorRelationship = schema.relationships?.find((relationship) => {
-    return relationship.name === "created_by";
   });
 
   const reviewersRelationship = schema.relationships?.find((relationship) => {
@@ -66,31 +62,43 @@ export function ProposedChangesTableFilters({ schema }: ProposedChangesTableHead
       </div>
       <div className="flex items-center">
         {draftAttribute && (
-          <ProposedChangeTableFilter schema={schema} columnSchema={draftAttribute} />
+          <TableColumnHeader
+            schema={schema}
+            columnSchema={draftAttribute}
+            className="rounded-sm border-0 transition-all"
+          />
         )}
 
         {stateAttribute && (
-          <ProposedChangeTableFilter schema={schema} columnSchema={stateAttribute} />
+          <TableColumnHeader
+            schema={schema}
+            columnSchema={stateAttribute}
+            className="rounded-sm border-0 transition-all"
+          />
         )}
 
         {sourceBranchAttribute && (
-          <ProposedChangeTableFilter schema={schema} columnSchema={sourceBranchAttribute} />
-        )}
-
-        {authorRelationship && (
-          <ProposedChangeTableFilter
+          <TableColumnHeader
             schema={schema}
-            columnSchema={authorRelationship}
-            customLabel={"Author"}
+            columnSchema={sourceBranchAttribute}
+            className="rounded-sm border-0 transition-all"
           />
         )}
 
         {reviewersRelationship && (
-          <ProposedChangeTableFilter schema={schema} columnSchema={reviewersRelationship} />
+          <TableColumnHeader
+            schema={schema}
+            columnSchema={reviewersRelationship}
+            className="rounded-sm border-0 transition-all"
+          />
         )}
 
         {approversRelationship && (
-          <ProposedChangeTableFilter schema={schema} columnSchema={approversRelationship} />
+          <TableColumnHeader
+            schema={schema}
+            columnSchema={approversRelationship}
+            className="rounded-sm border-0 transition-all"
+          />
         )}
       </div>
     </div>
