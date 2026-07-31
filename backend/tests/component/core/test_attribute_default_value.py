@@ -401,3 +401,24 @@ async def test_update_inherited_default_backed_attribute_persists_on_branch(
     assert on_default.status.value == "active"
     assert on_default.status.id is None
     assert on_default.status.is_default is True
+
+
+async def test_materialising_save_reports_default_as_previous_value(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """Materialising a predating default-backed attribute records the schema default as the changelog previous value."""
+    server_id = (
+        await _node_with_unmaterialised_inherited_status(
+            db=db, branch=default_branch, namespace="Bugchangelog", default_value="active"
+        )
+    ).node_id
+
+    loaded = await NodeManager.get_one(db=db, id=server_id, branch=default_branch)
+    loaded.status.value = "planned"
+    changelog = await loaded.status.save(db=db)
+
+    assert changelog is not None
+    assert changelog.value == "planned"
+    assert changelog.value_previous == "active"

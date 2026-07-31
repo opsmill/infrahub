@@ -396,6 +396,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         """Create or Update the Attribute in the database."""
         save_at = Timestamp(at)
 
+        materialised = False
         if not self.id:
             if not self._value_diverges_from_default():
                 # The attribute has no row and holds only its default value; keep it virtual.
@@ -404,8 +405,16 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 # A row already exists for an attribute rebuilt without its id (e.g. a recomputed node
                 # property); leave persistence to the caller that holds the real id.
                 return None
+            materialised = True
 
-        return await self._update(db=db, user_id=user_id, at=save_at)
+        changelog = await self._update(db=db, user_id=user_id, at=save_at)
+
+        if materialised and changelog is not None:
+            # A newly materialised attribute read as its schema default before this save, so the default
+            # is its previous value, not the placeholder the create step seeded.
+            changelog.value_previous = self.schema.default_value
+
+        return changelog
 
     async def _create(self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None) -> bool:
         """Materialise the database row for an attribute that exists in the schema but was never persisted.
