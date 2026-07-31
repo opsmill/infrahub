@@ -66,6 +66,8 @@ All unknowns from Technical Context were resolved against the codebase (file:lin
 
 **Rationale**: The schema graph records when schema elements changed per branch — it is the only durable record of when the damage window opened. Retroactive timestamps are the mechanism that makes default-branch repairs visible to pre-existing branches without rebase (spec assumption; SC-004). The tombstone clamp prevents resurrecting history before a deliberate delete (spec edge case).
 
+**Caveat (critique E2)**: schema name/namespace/inheritance updates create same-UUID copies of schema vertices, so derivation must resolve the edge timeline across the full same-UUID vertex set (UUID for identity, internal vertex id only within a single copy's edges) rather than reading one vertex's edge history.
+
 ## R9. Damage-detection query shape
 
 **Decision**: New batched per-kind query (the feature's one deep module): for a given kind and schema-attribute list, find active nodes lacking an active attribute row per attribute — including tombstone-only cases — and derive each pair's retroactive timestamp in the same pass. Branch-scoped variant filters to data changed on the branch.
