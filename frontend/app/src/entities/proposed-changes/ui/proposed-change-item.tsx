@@ -113,7 +113,11 @@ const ProposedChangesInfo = ({
             {branchName}
           </span>
           Opened <DateDisplay date={createdAt} /> by {author}
-          <ClockIcon className="size-3" /> Updated <DateDisplay date={updatedAt} />
+          {updatedAt && updatedAt !== createdAt && (
+            <>
+              <ClockIcon className="size-3" /> Updated <DateDisplay date={updatedAt} />
+            </>
+          )}
         </Row>
       </div>
     </div>
