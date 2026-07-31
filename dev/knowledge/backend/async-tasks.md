@@ -326,6 +326,16 @@ Work dispatched *after* an operation has already committed — the recompute and
 
 A task run can expose recovery actions through the GraphQL `Task` type's `available_actions` field, gated by the run's current state. `TaskActionGenerator` derives the action set per workflow, and `InfrahubTaskRetry` and `InfrahubTaskCancel` carry the actions out. Only `WEBHOOK_SEND` runs expose actions today; see [Webhooks](webhooks.md) for the delivery-specific behavior.
 
+## Task typing (polymorphic)
+
+<!-- Extracted from specs/ifc-2755-webhook-delivery-operability on 2026-07-31 -->
+
+A task result is polymorphic by the run's workflow name, mirroring the events type hierarchy. `TaskNodeInterface` carries every field common to all tasks, including `available_actions` and the classified `error`, and each concrete type declares `interfaces = (TaskNodeInterface,)`. `TaskNodeInterface.resolve_type` returns `TASK_TYPES.get(instance["workflow"], TaskNode)`, so the discriminant is the run's workflow name (already serialized as the `workflow` field). `TASK_TYPES` maps a catalogue workflow name to its concrete type (`{WEBHOOK_SEND.name: WebhookDeliveryTask}`); anything unmapped resolves to `TaskNode`. Concrete types are registered in the GraphQL manager, mirroring `_load_event_types`.
+
+Because the discriminant is intrinsic to every run, historical runs type correctly with no backfill and no stored `task_type` field. A concrete type adds only its own fields (`WebhookDeliveryTask` adds `http_request` / `http_response`; see [Webhooks](webhooks.md)); shared capabilities stay on the interface.
+
+`TaskNodes.node` is the interface type, not a concrete object. The change is backward-compatible: `TaskNode` keeps its name, so existing selections of common fields, SDK usage, and `__typename` checks keep resolving. The deprecated `related_node` / `related_node_kind` accessors live on the interface rather than on `TaskNode`, because existing consumers select them directly on `node` without an inline fragment, and those selections must keep resolving.
+
 ## Liveness and zombie detection
 
 A running flow emits a `prefect.flow-run.heartbeat` event on a fixed interval while it executes. The `crash-zombie-flows` system automation watches for the absence of these events: it keeps a per-run countdown that every expected event restarts, and marks a run `CRASHED` once the countdown lapses. This reaps runs whose worker process died without recording a terminal state, which would otherwise stay `RUNNING` indefinitely.
