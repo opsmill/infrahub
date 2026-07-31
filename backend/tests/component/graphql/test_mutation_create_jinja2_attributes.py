@@ -6,8 +6,10 @@ from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, internal_schema
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.registry import registry as graphql_registry
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
+from tests.helpers.number_pool import register_and_provision_number_pools, snow_schema_with_format_identifier
 from tests.helpers.schema import CHILD, LOCATION_SCHEMA, THING, load_schema
 
 if TYPE_CHECKING:
@@ -219,3 +221,36 @@ async def test_create_with_jinja2_with_generics(
     assert site_result.data
     assert site_result.data["TestingSiteCreate"]["ok"] is True
     assert site_result.data["TestingSiteCreate"]["object"]["code"]["value"] == "st"
+
+
+async def test_create_with_jinja2_format_filter_on_number_pool(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    await register_and_provision_number_pools(db=db, branch=default_branch, schema=snow_schema_with_format_identifier())
+    default_branch.update_schema_hash()
+    graphql_registry.clear_cache()
+
+    query = """
+    mutation {
+        SnowIncidentCreate(data: { title: { value: "The first issue" } }) {
+            ok
+            object {
+                id
+                identifier { value }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["SnowIncidentCreate"]["ok"] is True
+    assert result.data["SnowIncidentCreate"]["object"]["identifier"]["value"] == "INC000000001"

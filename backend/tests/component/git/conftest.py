@@ -2,6 +2,7 @@ import re
 import shutil
 from pathlib import Path
 from typing import Any, Generator
+from unittest.mock import AsyncMock, patch
 
 import anyio
 import pytest
@@ -31,6 +32,13 @@ from tests.helpers.test_client import dummy_async_request
 @pytest.fixture
 def client() -> InfrahubClient:
     return InfrahubClient(config=Config(address="http://mock", insert_tracker=True))
+
+
+@pytest.fixture
+def mock_branch_all() -> Generator[AsyncMock]:
+    """Git sync queries all branches to skip merged/read-only ones; stub the SDK call with no such branches."""
+    with patch("infrahub_sdk.branch.InfrahubBranchManager.all", new_callable=AsyncMock, return_value={}) as mock:
+        yield mock
 
 
 @pytest.fixture

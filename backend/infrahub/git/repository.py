@@ -14,6 +14,7 @@ from prefect.cache_policies import NONE
 from pydantic import Field
 
 from infrahub import config
+from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.exceptions import (
     CommitNotFoundError,
@@ -159,6 +160,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         # TODO need to handle properly the situation when a branch is not valid.
         if self.internal_status == RepositoryInternalStatus.ACTIVE.value:
+            # A branch that has been merged (or is being deleted) is read-only: recording its commit
+            # would be rejected by the graph and abort the whole sync, so drop those branches here.
+            new_branches, updated_branches = await self._exclude_read_only_branches(new_branches, updated_branches)
+
             for branch_name in new_branches:
                 is_valid = self.validate_remote_branch(branch_name=branch_name)
                 if not is_valid:
@@ -225,6 +230,22 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             await self._collect_staging_imports(staging_branch=staging_branch, updated_branches=updated_branches)
         )
         return CollectedImports(imports=imports, failed_imports=failed_imports)
+
+    async def _exclude_read_only_branches(
+        self, new_branches: list[str], updated_branches: list[str]
+    ) -> tuple[list[str], list[str]]:
+        """Drop branches whose Infrahub branch is in a terminal status (merged or being deleted).
+
+        Such branches are read-only, so recording their commit is rejected by the graph. The default
+        branch is never terminal, so filtering here does not affect the staging-import path.
+        """
+        terminal_status_values = {status.value for status in TERMINAL_BRANCH_STATUSES}
+        graph_branches = await self.sdk.branch.all()
+        read_only = {name for name, branch in graph_branches.items() if branch.status.value in terminal_status_values}
+        return (
+            [name for name in new_branches if self._get_mapped_target_branch(branch_name=name) not in read_only],
+            [name for name in updated_branches if self._get_mapped_target_branch(branch_name=name) not in read_only],
+        )
 
     async def _collect_staging_imports(
         self, staging_branch: str | None, updated_branches: list[str]
