@@ -434,7 +434,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             branch=self.get_branch_based_on_support_type(),
             at=create_at,
             user_id=user_id,
-            node_kinds=["Node"],
+            node_kinds=[self.node.get_kind()],
             uuids=[self.node.id],
             attribute_name=self.name,
             attribute_kind=self.get_kind(),
