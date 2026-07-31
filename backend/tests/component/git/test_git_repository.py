@@ -560,6 +560,7 @@ async def test_sync_new_branch(
     git_repo_03: InfrahubRepository,
     httpx_mock: HTTPXMock,
     mock_add_branch01_query: HTTPXMock,
+    mock_branch_all: AsyncMock,
 ) -> None:
     repo = git_repo_03
 
@@ -598,7 +599,9 @@ async def test_sync_new_branch(
     assert len(worktrees) == 4
 
 
-async def test_sync_updated_branch(prefect_test_fixture: None, git_repo_04: InfrahubRepository) -> None:
+async def test_sync_updated_branch(
+    prefect_test_fixture: None, git_repo_04: InfrahubRepository, mock_branch_all: AsyncMock
+) -> None:
     repo = git_repo_04
 
     branch = Branch(name="branch01", uuid=uuid4())
@@ -621,7 +624,7 @@ async def test_sync_updated_branch(prefect_test_fixture: None, git_repo_04: Infr
 
 
 async def test_sync_continues_after_branch_pull_failure(
-    prefect_test_fixture: None, git_repo_07: InfrahubRepository
+    prefect_test_fixture: None, git_repo_07: InfrahubRepository, mock_branch_all: AsyncMock
 ) -> None:
     """A branch whose pull fails must not prevent the synchronization of the remaining branches."""
     repo = git_repo_07
