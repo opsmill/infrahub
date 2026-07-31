@@ -17,6 +17,7 @@ We document significant architectural decisions using ADRs.
 | [0009](0009-per-worker-coordination-free-admission.md) | Per-worker, Coordination-free Admission Capacity | Accepted | 2026-07-26 |
 | [0010](0010-generated-user-facing-schema-contract.md) | Generated User-Facing Schema Contract, Hosted in the SDK | Accepted | 2026-07-26 |
 | [0011](0011-inline-local-computed-attributes.md) | Inline Evaluation of Local Jinja2 Computed Attributes During Update Mutations | Accepted | 2026-07-31 |
+| [0012](0012-selective-post-merge-regeneration.md) | Selective Post-merge Regeneration Driven by the Captured Merge Diff | Accepted | 2026-07-31 |
 
 ## Creating a New ADR
 

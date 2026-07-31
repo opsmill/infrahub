@@ -399,6 +399,34 @@ except Exception as exc:
 
 A broad `except Exception` is justified only at a top-level boundary (a task worker loop, a request handler) whose job is to prevent one failure from taking down the process — and even there, log the exception and re-raise or record it, never discard it.
 
+### Best-effort side effects degrade to a safe fallback
+
+<!-- Extracted from specs/ifc-2704-incremental-merge-regen on 2026-07-31 -->
+
+A second broad-catch case is a best-effort side effect whose failure must not abort a primary
+operation that has already succeeded: a cache write for an optimization, an observability emit, a
+capture step feeding later work. Here the broad `except Exception` deliberately does not re-raise,
+because propagating would undo committed, correct work. This is not silencing, and it is legitimate
+only when all of the following hold:
+
+- The failure is logged.
+- It is converted into an explicit, documented fallback that is at least as safe as the side effect
+  never having run, never a silently narrower result. When the side effect feeds a later selection
+  or dispatch, the fallback must over-execute, not under-execute.
+- It is positioned so the failure cannot corrupt the primary operation's committed result (do the
+  best-effort work either fully before the point of no return or fully after it, never straddling
+  it).
+
+```python
+# ✅ Good - a best-effort capture that must never fail the committed operation
+try:
+    summary = serialize_diff(branch_diff)
+    cache.set(key, summary)          # only after the operation has committed
+except Exception as exc:
+    log.warning("Merge diff capture failed; falling back to full regeneration", error=str(exc))
+    key = None                        # explicit, safe (over-executing) fallback signal
+```
+
 ## ASGI Middleware
 
 <!-- Extracted from specs/ifc-2886-priority-api-backpressure on 2026-07-26 -->
