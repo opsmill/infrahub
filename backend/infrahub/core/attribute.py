@@ -27,8 +27,8 @@ from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
 from infrahub.core.query.attribute import (
+    AttributeAddQuery,
     AttributeClearNodePropertyQuery,
-    AttributeCreateQuery,
     AttributeDeleteQuery,
     AttributeUpdateFlagQuery,
     AttributeUpdateNodePropertyQuery,
@@ -420,7 +420,19 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         """
         create_at = Timestamp(at)
 
-        query = await AttributeCreateQuery.init(db=db, attr=self, at=create_at, user_id=user_id)
+        query = await AttributeAddQuery.init(
+            db=db,
+            branch=self.get_branch_based_on_support_type(),
+            at=create_at,
+            user_id=user_id,
+            node_kinds=["Node"],
+            uuids=[self.node.id],
+            attribute_name=self.name,
+            attribute_kind=self.get_kind(),
+            branch_support=self.schema.get_branch().value,
+            # The seeded value is superseded by the update below, so it does not need the schema default.
+            default_value=None,
+        )
         await query.execute(db=db)
 
         result = query.get_result()
