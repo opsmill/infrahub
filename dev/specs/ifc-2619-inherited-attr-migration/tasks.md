@@ -1,6 +1,6 @@
 # Tasks: Inherited-Attribute Migration Fix and Healing Migration
 
-**Input**: Design documents from `specs/ifc-2619-inherited-attr-migration/`
+**Input**: Design documents from `dev/specs/ifc-2619-inherited-attr-migration/`
 
 **Prerequisites**: plan.md (post-critique), spec.md, research.md, data-model.md, quickstart.md
 
@@ -61,7 +61,7 @@ No foundational phase: the feature modifies existing migration infrastructure, a
 
 ### Verification gate (before implementation)
 
-- [ ] T012 [US2] Verify `CoreNumberPool.get_resource` (`backend/infrahub/core/node/resource_manager/number_pool.py`) uniqueness/reservation checks are correctly branch- and time-scoped for migration-run-time allocation (spec Assumption, FR-007); document the finding in `specs/ifc-2619-inherited-attr-migration/research.md` (append to R10); if scoping is wrong, fix or wrap the allocation path first and add a regression test
+- [ ] T012 [US2] Verify `CoreNumberPool.get_resource` (`backend/infrahub/core/node/resource_manager/number_pool.py`) uniqueness/reservation checks are correctly branch- and time-scoped for migration-run-time allocation (spec Assumption, FR-007); document the finding in `dev/specs/ifc-2619-inherited-attr-migration/research.md` (append to R10); if scoping is wrong, fix or wrap the allocation path first and add a regression test
 
 ### Tests for User Story 2 (write first, watch fail)
 

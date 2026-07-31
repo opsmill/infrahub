@@ -2,7 +2,7 @@
 
 **Branch**: `inherited-attr-migration-ifc-2619` | **Date**: 2026-07-31 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `specs/ifc-2619-inherited-attr-migration/spec.md`; confirmed module decisions from `inherited-attribute-migration-prd.md` and the traced forward-fix analysis `inherited-attribute-migration-plan.md` (repo root).
+**Input**: Feature specification from `dev/specs/ifc-2619-inherited-attr-migration/spec.md`; confirmed module decisions from `inherited-attribute-migration-prd.md` and the traced forward-fix analysis `inherited-attribute-migration-plan.md` (repo root).
 
 ## Summary
 
@@ -52,7 +52,7 @@ Both PRs reference IFC-2619 and MUST land in the same release (spec assumption);
 ### Documentation (this feature)
 
 ```text
-specs/ifc-2619-inherited-attr-migration/
+dev/specs/ifc-2619-inherited-attr-migration/
 ├── spec.md
 ├── plan.md              # This file
 ├── research.md          # Phase 0 — 11 resolved decisions (R1–R11)
