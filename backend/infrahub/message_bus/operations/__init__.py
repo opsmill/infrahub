@@ -15,6 +15,7 @@ COMMAND_MAP = {
     "refresh.git.branch_deleted": git.repository.branch_deleted,
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
+    "refresh.settings.response_delay": refresh.settings.response_delay,
     "send.echo.request": send.echo.request,
 }
 

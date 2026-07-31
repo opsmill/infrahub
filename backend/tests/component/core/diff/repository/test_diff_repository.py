@@ -15,14 +15,13 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffs,
     FrozenTrackingId,
     NameTrackingId,
-    NodeDiffFieldSummary,
 )
 from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import ResourceNotFoundError
+from infrahub.exceptions import ResourceMultipleFoundError, ResourceNotFoundError
 
 from ..factories import (
     EnrichedAttributeFactory,
@@ -575,48 +574,35 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
                 diff_branch_name=self.diff_branch_name,
             )
 
-    async def test_get_node_field_summaries(self, diff_repository: DiffRepository) -> None:
-        diff_nodes = self._build_nodes(num_nodes=5, num_sub_fields=2)
-        for diff_node in list(diff_nodes)[:3]:
-            same_kind_diff_node = self.build_diff_node(num_sub_fields=3, no_recurse=True)
-            same_kind_diff_node.identifier.kind = diff_node.identifier.kind
-            same_attr_names = random.sample([a.name for a in diff_node.attributes], k=min(len(diff_node.attributes), 2))
-            for attr_diff, attr_name in zip(list(same_kind_diff_node.attributes)[:2], same_attr_names, strict=False):
-                attr_diff.name = attr_name
-            same_rel_names = random.sample(
-                [r.name for r in diff_node.relationships], k=min(len(diff_node.relationships), 2)
-            )
-            for rel_diff, rel_name in zip(list(same_kind_diff_node.relationships)[:2], same_rel_names, strict=False):
-                rel_diff.name = rel_name
-            diff_nodes.add(same_kind_diff_node)
-        diff_root = EnrichedRootFactory.build(nodes=diff_nodes)
-        diff_root.tracking_id = BranchTrackingId(name=diff_root.diff_branch_name)
-        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=diff_root, do_summary_counts=False)
-
-        expected_map: dict[str, NodeDiffFieldSummary] = {}
-        for node in diff_root.nodes:
-            if node.action is DiffAction.UNCHANGED:
-                continue
-            if node.kind not in expected_map:
-                expected_map[node.kind] = NodeDiffFieldSummary(kind=node.kind)
-            field_summary = expected_map[node.kind]
-            attr_names = {a.name for a in node.attributes if a.action is not DiffAction.UNCHANGED}
-            field_summary.attribute_names.update(attr_names)
-            rel_names = {r.name for r in node.relationships if r.action is not DiffAction.UNCHANGED}
-            field_summary.relationship_names.update(rel_names)
-        expected_map = {k: v for k, v in expected_map.items() if v.relationship_names or v.attribute_names}
-
-        retrieved_node_field_summaries = await diff_repository.get_node_field_summaries(
-            diff_branch_name=diff_root.diff_branch_name, tracking_id=diff_root.tracking_id
+    async def test_get_one_multiple_results_raises_distinct_error(
+        self, diff_repository: DiffRepository, reset_database: None
+    ) -> None:
+        # two diffs for the same branch with distinct, non-overlapping time ranges
+        first_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp("2024-06-15T10:00:00Z"),
+            to_time=Timestamp("2024-06-15T11:00:00Z"),
+            nodes=self._build_nodes(num_nodes=1, num_sub_fields=1),
+            tracking_id=NameTrackingId(name="diff-one"),
         )
-        retrieved_map = {summary.kind: summary for summary in retrieved_node_field_summaries}
-        assert expected_map == retrieved_map
-
-        retrieved_node_field_summaries = await diff_repository.get_node_field_summaries(
-            diff_branch_name=diff_root.diff_branch_name, diff_id=diff_root.uuid
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=first_diff, do_summary_counts=False)
+        second_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp("2024-06-15T12:00:00Z"),
+            to_time=Timestamp("2024-06-15T13:00:00Z"),
+            nodes=self._build_nodes(num_nodes=1, num_sub_fields=1),
+            tracking_id=NameTrackingId(name="diff-two"),
         )
-        retrieved_map = {summary.kind: summary for summary in retrieved_node_field_summaries}
-        assert expected_map == retrieved_map
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=second_diff, do_summary_counts=False
+        )
+
+        # a "multiple results" case must not masquerade as "not found"
+        with pytest.raises(ResourceMultipleFoundError, match="Multiple diffs for"):
+            await diff_repository.get_one(diff_branch_name=self.diff_branch_name)
+        assert not issubclass(ResourceMultipleFoundError, ResourceNotFoundError)
 
     async def test_merge_tracking_ids(self, diff_repository: DiffRepository, reset_database: None) -> None:
         base_branch_name = "main"

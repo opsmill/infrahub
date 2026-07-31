@@ -18,6 +18,7 @@ log = get_logger()
 
 class Migration015(ArbitraryMigration):
     name: str = "015_diff_format_update"
+    description: str = "N/A"
     minimum_version: int = 14
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

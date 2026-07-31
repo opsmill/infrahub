@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping, overload
 
 from infrahub import lock
 from infrahub.core import registry
@@ -15,7 +15,7 @@ from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.node import Node
 from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
-from infrahub.core.protocols import CoreObjectTemplate
+from infrahub.core.protocols_base import CoreNode
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
@@ -24,6 +24,8 @@ from infrahub.profiles.node_applier import NodeProfilesApplier
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.node import SchemaProtocol
+    from infrahub.core.protocols import CoreObjectTemplate
     from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema import MainSchemaTypes, NonGenericSchemaTypes, RelationshipSchema
     from infrahub.core.timestamp import Timestamp
@@ -36,12 +38,10 @@ async def get_template_relationship_peers(
     """For a given relationship on the template, fetch the related peers."""
     template_relationship_manager: RelationshipManager = getattr(template, relationship.name)
     if relationship.cardinality == RelationshipCardinality.MANY:
-        return await template_relationship_manager.get_peers(
-            db=db, peer_type=CoreObjectTemplate, include_metadata=MetadataOptions.SOURCE
-        )
+        return await template_relationship_manager.get_peers(db=db, include_metadata=MetadataOptions.SOURCE)
 
     peers: dict[str, CoreObjectTemplate] = {}
-    template_relationship_peer = await template_relationship_manager.get_peer(db=db, peer_type=CoreObjectTemplate)
+    template_relationship_peer = await template_relationship_manager.get_peer(db=db)
     if template_relationship_peer:
         peers[template_relationship_peer.id] = template_relationship_peer
     return peers
@@ -277,20 +277,50 @@ async def _do_create_node(
     return obj
 
 
+@overload
+async def create_node(
+    data: dict[str, Any],
+    db: InfrahubDatabase,
+    branch: Branch,
+    schema: type[SchemaProtocol],
+    at: Timestamp | None = ...,
+    user_id: str = ...,
+) -> SchemaProtocol: ...
+
+
+@overload
 async def create_node(
     data: dict[str, Any],
     db: InfrahubDatabase,
     branch: Branch,
     schema: MainSchemaTypes,
+    at: Timestamp | None = ...,
+    user_id: str = ...,
+) -> Node: ...
+
+
+async def create_node(
+    data: dict[str, Any],
+    db: InfrahubDatabase,
+    branch: Branch,
+    schema: MainSchemaTypes | type[SchemaProtocol],
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
-) -> Node:
+) -> Node | SchemaProtocol:
     """Create a node in the database if constraint checks succeed.
 
+    A schema protocol class may be passed instead of a schema object; the return type is then
+    narrowed to that protocol.
+
     Raises:
-        ValueError: When the schema is a `GenericSchema` and cannot be instantiated.
+        ValueError: When the schema is a `GenericSchema` and cannot be instantiated, or when a
+            class that is not a node schema protocol is passed.
 
     """
+    if isinstance(schema, type):
+        if not issubclass(schema, CoreNode):
+            raise ValueError(f"Invalid schema class provided: {schema!r}")
+        schema = db.schema.get(name=schema.__name__, branch=branch)
     if isinstance(schema, GenericSchema):
         raise ValueError(f"Node of generic schema `{schema.name=}` can not be instantiated.")
 

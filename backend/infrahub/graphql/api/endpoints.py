@@ -15,7 +15,7 @@ from infrahub.graphql.schema_sort import sort_schema_ast
 from .dependencies import build_graphql_app
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
 
 router = APIRouter(redirect_slashes=False)

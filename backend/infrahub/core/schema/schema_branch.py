@@ -63,6 +63,7 @@ from infrahub.core.schema.attribute_parameters import (
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
+from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
     HierarchicalNodesRestrictedWords,
 )
@@ -76,6 +77,12 @@ from ... import config
 from ..constants.schema import PARENT_CHILD_IDENTIFIER, RESOURCE_POOL_REL_SUFFIX
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .node_inheritance_handler import NodeInheritanceHandler
+from .order_by import (
+    ParsedAttributeOrderBy,
+    ParsedRelationshipAttributeOrderBy,
+    parse_order_by_entry,
+    strip_order_direction_suffix,
+)
 from .schema_branch_computed import ComputedAttributes
 from .schema_branch_display import DisplayLabels
 from .schema_branch_hfid import HFIDs
@@ -473,8 +480,10 @@ class SchemaBranch:
     def delete(self, name: str) -> None:
         if name in self.nodes:
             del self.nodes[name]
+            self._delete_generated_kinds(node_kind=name)
         elif name in self.generics:
             del self.generics[name]
+            self._delete_generated_kinds(node_kind=name)
         elif name in self.profiles:
             del self.profiles[name]
         elif name in self.templates:
@@ -483,6 +492,19 @@ class SchemaBranch:
             raise SchemaNotFoundError(
                 branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
             )
+
+    def _delete_generated_kinds(self, node_kind: str) -> None:
+        """Generated profile and template schemas must not outlive the node they derive from."""
+        profile_kind = self._get_profile_kind(node_kind=node_kind)
+        if profile_kind in self.profiles:
+            del self.profiles[profile_kind]
+
+        template_kind = self._get_object_template_kind(node_kind=node_kind)
+        if template_kind in self.templates:
+            del self.templates[template_kind]
+        elif template_kind in self.generics:
+            # The object template generated for a generic is itself a generic
+            del self.generics[template_kind]
 
     def get_by_id(self, id: str, duplicate: bool = True) -> MainSchemaTypes:
         for name in self.all_names:
@@ -738,6 +760,11 @@ class SchemaBranch:
         self.add_hierarchy_generic()
         self.add_hierarchy_node()
 
+        # profile and template management can add schemas (such as CoreProfile)
+        # leaving some of their attributes unresolved
+        self._reconcile_legacy_attribute_parameters()
+        self.process_branch_support()
+
     def process_validate(self) -> None:
         for validator in self.validators:
             validator.check(schema_branch=self)
@@ -753,8 +780,9 @@ class SchemaBranch:
         self.validate_identifiers()
         self.sync_uniqueness_constraints_and_unique_attributes()
         self.validate_uniqueness_constraints()
-        self.validate_display_labels()
-        self.validate_display_label()
+        # Cant move DisplayLabelValidator into the validators yet as the validation sequence would be broken
+        # validate_uniqueness_constraints needs to run before display label validation
+        DisplayLabelValidator().check(schema_branch=self)
         self.validate_order_by()
         self.validate_default_filters()
         self.validate_parent_component()
@@ -985,75 +1013,38 @@ class SchemaBranch:
                         element_name=element_name,
                     )
 
-    def validate_display_label(self) -> None:
-        self.display_labels = DisplayLabels()
-        for name in self.all_names:
-            node_schema = self.get(name=name, duplicate=False)
-
-            if node_schema.display_label is None and node_schema.display_labels:
-                update_candidate = self.get(name=name, duplicate=True)
-                if len(node_schema.display_labels) == 1:
-                    # If the previous display_labels consist of a single attribute convert
-                    # it to an attribute based display label
-                    update_candidate.display_label = _format_display_label_component(
-                        component=node_schema.display_labels[0]
-                    )
-                else:
-                    # If the previous display label consists of multiple attributes
-                    # convert it to a Jinja2 based display label
-                    update_candidate.display_label = " ".join(
-                        [
-                            f"{{{{ {_format_display_label_component(component=display_label)} }}}}"
-                            for display_label in node_schema.display_labels
-                        ]
-                    )
-                self.set(name=name, schema=update_candidate)
-
-            node_schema = self.get(name=name, duplicate=False)
-            if not node_schema.display_label:
-                continue
-
-            self._validate_display_label(node=node_schema)
-
-    def validate_display_labels(self) -> None:
-        for name in self.all_names:
-            node_schema = self.get(name=name, duplicate=False)
-
-            if node_schema.display_labels:
-                for path in node_schema.display_labels:
-                    self.validate_schema_path(
-                        node_schema=node_schema,
-                        path=path,
-                        allowed_path_types=SchemaElementPathType.ATTR,
-                        element_name="display_labels",
-                    )
-            elif isinstance(node_schema, NodeSchema):
-                generic_display_labels = []
-                for generic in node_schema.inherit_from:
-                    generic_schema = self.get(name=generic, duplicate=False)
-                    if generic_schema.display_labels:
-                        generic_display_labels.append(generic_schema.display_labels)
-
-                if len(generic_display_labels) == 1:
-                    # Only assign node display labels if a single generic has them defined
-                    node_schema.display_labels = generic_display_labels[0]
-
     def validate_order_by(self) -> None:
+        allowed_types = SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.order_by:
                 continue
 
-            allowed_types = SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
-            for order_by_path in node_schema.order_by:
-                element_name = "order_by"
-                self.validate_schema_path(
-                    node_schema=node_schema,
-                    path=order_by_path,
-                    allowed_path_types=allowed_types,
-                    element_name=element_name,
-                )
+            seen_targets: dict[tuple[str, ...], str] = {}
+            for order_by_entry in node_schema.order_by:
+                try:
+                    parsed = parse_order_by_entry(entry=order_by_entry, node_schema=node_schema)
+                except ValidationError as exc:
+                    raise ValueError(f"{node_schema.kind}.order_by: {exc.message}") from exc
+
+                if isinstance(parsed, (ParsedAttributeOrderBy, ParsedRelationshipAttributeOrderBy)):
+                    self.validate_schema_path(
+                        node_schema=node_schema,
+                        path=strip_order_direction_suffix(order_by_entry),
+                        allowed_path_types=allowed_types,
+                        element_name="order_by",
+                    )
+
+                # ensure targets are not duplicated. ie. [name__value__asc, name__value__desc]
+                if parsed.target_key in seen_targets:
+                    previous = seen_targets[parsed.target_key]
+                    target_label = ".".join(parsed.target_key[1:])
+                    raise ValueError(
+                        f"{node_schema.kind}.order_by: target {target_label!r} appears in order_by more than once "
+                        f"(entries: {previous!r}, {parsed.raw!r}). Each target may appear at most once."
+                    )
+                seen_targets[parsed.target_key] = parsed.raw
 
     def validate_default_filters(self) -> None:
         for name in self.all_names:
@@ -1251,7 +1242,10 @@ class SchemaBranch:
                 if attr.name in RESERVED_ATTR_REL_NAMES or (
                     isinstance(node, GenericSchema) and attr.name in RESERVED_ATTR_GEN_NAMES
                 ):
-                    raise ValueError(f"{node.kind}: {attr.name} isn't allowed as an attribute name.")
+                    raise ValueError(
+                        f"{node.kind}: {attr.name!r} is a reserved name (attribute: {attr.name!r}). "
+                        "Rename this attribute or relationship."
+                    )
                 if "__" in attr.name:
                     raise ValueError(
                         f"{node.kind}: '{attr.name}' cannot be used as an attribute name because"
@@ -1261,7 +1255,10 @@ class SchemaBranch:
                 if rel.name in RESERVED_ATTR_REL_NAMES or (
                     isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES
                 ):
-                    raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
+                    raise ValueError(
+                        f"{node.kind}: {rel.name!r} is a reserved name (relationship: {rel.name!r}). "
+                        "Rename this attribute or relationship."
+                    )
                 if "__" in rel.name:
                     raise ValueError(
                         f"{node.kind}: '{rel.name}' cannot be used as a relationship name"
@@ -1442,53 +1439,6 @@ class SchemaBranch:
                                 f" from multiple generics {sorted([duplicate, generic_schema.kind])}"
                             )
                         defined_from_generic[attribute_key] = generic_schema.kind
-
-    def _validate_display_label(self, node: MainSchemaTypes) -> None:
-        if not node.display_label:
-            return
-
-        if not any(c in node.display_label for c in "{}"):
-            schema_path = self.validate_schema_path(
-                node_schema=node,
-                path=node.display_label,
-                allowed_path_types=SchemaElementPathType.ATTR_WITH_PROP,
-                element_name="display_label - non Jinja2",
-            )
-            if schema_path.attribute_schema and node.is_node_schema and node.namespace not in ["Internal", "Schema"]:
-                self.display_labels.register_attribute_based_display_label(
-                    kind=node.kind, attribute_name=schema_path.attribute_schema.name
-                )
-            return
-
-        jinja_template = InfrahubJinja2Template(template=node.display_label)
-        context = ExecutionContext.CORE
-        if not config.SETTINGS.security.restrict_untrusted_jinja2_filters:
-            context |= ExecutionContext.LOCAL
-        try:
-            variables = jinja_template.get_variables()
-            jinja_template.validate(context=context)
-        except (JinjaTemplateOperationViolationError, JinjaTemplateError) as exc:
-            raise ValueError(
-                f"{node.kind}: display_label is set to a jinja2 template, but has an invalid template: {exc.message}"
-            ) from exc
-
-        allowed_path_types = (
-            SchemaElementPathType.ATTR_WITH_PROP
-            | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
-            | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
-        )
-        for variable in variables:
-            schema_path = self.validate_schema_path(
-                node_schema=node, path=variable, allowed_path_types=allowed_path_types, element_name="display_label"
-            )
-
-            if schema_path.is_type_attribute and schema_path.active_attribute_schema.name == "display_label":
-                raise ValueError(f"{node.kind}: display_label the '{variable}' variable is a reference to itself")
-
-            if node.is_node_schema and node.namespace not in ["Internal", "Schema"]:
-                self.display_labels.register_template_schema_path(
-                    kind=node.kind, schema_path=schema_path, template=node.display_label
-                )
 
     def _validate_computed_attribute(self, node: NodeSchema, attribute: AttributeSchema) -> None:
         if not attribute.computed_attribute or attribute.computed_attribute.kind == ComputedAttributeKind.USER:
@@ -2212,7 +2162,11 @@ class SchemaBranch:
         """
         for name in self.template_names:
             template = self.get(name=name, duplicate=True)
-            node = self.get(name=template.name, duplicate=False)
+            try:
+                node = self.get(name=template.name, duplicate=False)
+            except SchemaNotFoundError:
+                # An orphaned template is removed when the template schemas are managed
+                continue
 
             node_weights = {
                 item.name: item.order_weight
@@ -2356,8 +2310,47 @@ class SchemaBranch:
                     )
                 )
 
+            # On auto-generated templates, also expose template-side fields whose peers drive instance group membership at template application time
+            if isinstance(schema, TemplateSchema):
+                schema, changed = self._add_template_group_for_instances_relationships(
+                    schema=schema, schema_duplicated=changed
+                )
+
             if changed:
                 self.set(name=node_name, schema=schema)
+
+    def _add_template_group_for_instances_relationships(
+        self, schema: MainSchemaTypes, schema_duplicated: bool
+    ) -> tuple[MainSchemaTypes, bool]:
+        """Append `member_of_groups_for_instances` / `subscriber_of_groups_for_instances` on a template.
+
+        These are generic relationships using distinct identifiers so adding peers does not put the template object
+        into a group.
+
+        `schema_duplicated` reflects whether the caller has already duplicated `schema`. The helper duplicates on
+        first mutation if needed and returns the updated state so the caller knows whether anything was changed.
+        """
+        for rel_name, identifier in (
+            ("member_of_groups_for_instances", "template_group_member_for_instances"),
+            ("subscriber_of_groups_for_instances", "template_group_subscriber_for_instances"),
+        ):
+            if rel_name in schema.relationship_names:
+                continue
+            if not schema_duplicated:
+                schema = schema.duplicate()
+                schema_duplicated = True
+            schema.relationships.append(
+                RelationshipSchema(
+                    name=rel_name,
+                    identifier=identifier,
+                    peer=InfrahubKind.GENERICGROUP,
+                    kind=RelationshipKind.GENERIC,
+                    cardinality=RelationshipCardinality.MANY,
+                    optional=True,
+                    branch=BranchSupportType.AWARE,
+                )
+            )
+        return schema, schema_duplicated
 
     def _get_hierarchy_child_rel(self, peer: str, hierarchical: str | None, read_only: bool) -> RelationshipSchema:
         return RelationshipSchema(
@@ -2609,7 +2602,7 @@ class SchemaBranch:
             description=f"Profile for {node.kind}",
             branch=node.branch,
             include_in_menu=False,
-            display_labels=["profile_name__value"],
+            display_label="profile_name__value",
             inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE, InfrahubKind.NODE],
             human_friendly_id=["profile_name__value"],
             default_filter="profile_name__value",
@@ -2905,7 +2898,7 @@ class SchemaBranch:
                 generate_profile=False,
                 branch=node.branch,
                 include_in_menu=False,
-                display_labels=["template_name__value"],
+                display_label="template_name__value",
                 human_friendly_id=["template_name__value"],
                 attributes=[template_name_attr],
             )
@@ -2921,7 +2914,7 @@ class SchemaBranch:
                 description=f"Object template for {node.kind}",
                 branch=node.branch,
                 include_in_menu=False,
-                display_labels=["template_name__value"],
+                display_label="template_name__value",
                 human_friendly_id=["template_name__value"],
                 uniqueness_constraints=[["template_name__value"]],
                 inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.NODE, core_template_schema.kind],
@@ -3071,16 +3064,3 @@ class SchemaBranch:
                 updated_used_by_node = set(chain(template_schema_kinds, set(core_node_schema.used_by)))
                 core_node_schema.used_by = sorted(updated_used_by_node)
                 self.set(name=InfrahubKind.NODE, schema=core_node_schema)
-
-
-def _format_display_label_component(component: str) -> str:
-    """Return correct format for display_label.
-
-    Previously both the format of 'name' and 'name__value' was
-    supported this function ensures that the proper 'name__value'
-    format is used
-    """
-    if "__" in component:
-        return component
-
-    return f"{component}__value"

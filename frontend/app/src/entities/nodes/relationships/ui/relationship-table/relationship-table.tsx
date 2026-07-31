@@ -3,6 +3,7 @@ import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
 
+import { IP_NAMESPACE_GENERIC, IPAM_QSP } from "@/entities/ipam/constants";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { getObjectTableColumns } from "@/entities/nodes/object/ui/object-table/utils/get-object-table-columns";
 import {
@@ -15,6 +16,7 @@ import { ToolbarDissociateAction } from "@/entities/nodes/relationships/ui/relat
 import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export interface RelationshipTableProps extends UseObjectRelationshipsParams {}
 
@@ -49,8 +51,18 @@ export function RelationshipTable({
   }
 
   const flatData = data?.pages?.flat() ?? [];
+
+  // On an IP namespace's relationship tabs (e.g. its prefixes/addresses), the active
+  // namespace lives in the route path, not the `namespace` query param that IPAM links
+  // rely on. Forward it explicitly so child IP links stay in this namespace instead of
+  // falling back to the default one.
+  const identifierOverrideParams =
+    parentSchema && isOfKind(IP_NAMESPACE_GENERIC, parentSchema)
+      ? [{ name: IPAM_QSP.NAMESPACE, value: parentId }]
+      : undefined;
+
   const columns = [
-    ...getObjectTableColumns(relationshipSchema, { disabled: true }),
+    ...getObjectTableColumns(relationshipSchema, { disabled: true }, identifierOverrideParams),
     getRelationshipActionsColumn({
       parentId,
       parentKind,

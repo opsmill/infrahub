@@ -45,7 +45,7 @@ steps:
 
       if [[ "$PR_BODY" == *"AGENT_FIX_COMPLETE"* ]]; then
         REQ=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-          --jq '[.[] | select((.user.login == "infrahub-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
+          --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
             and (.body | contains("AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED")))] | length')
         if [ "$REQ" = "0" ]; then
           fail "Cannot run /bug-fix: fix already complete and no FIX_CHANGES_REQUESTED verdict from reviewer."
@@ -58,7 +58,7 @@ steps:
       fi
 
       APPROVED=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-        --jq '[.[] | select((.user.login == "infrahub-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
+        --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
           and (.body | contains("AGENT_REVIEW_VERDICT: TEST_APPROVED")))] | length')
       if [ "$APPROVED" = "0" ]; then
         fail "Cannot run /bug-fix: test not yet approved by reviewer. Wait for TEST_APPROVED verdict."
@@ -240,7 +240,7 @@ Create a changelog fragment for this bug fix. Use the issue number and the `fixe
 uv run towncrier create -c "<user-facing description of what was fixed>" <issue_number>.fixed.md
 ```
 Write the message from the user's perspective, in past tense, one sentence, no technical
-jargon (see `dev/guidelines/changelog.md`). Commit the generated file.
+jargon (use the `creating-changelog-entries` skill). Commit the generated file.
 
 ### Step 7: Scope check
 

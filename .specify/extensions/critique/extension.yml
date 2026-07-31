@@ -1,0 +1,32 @@
+schema_version: "1.0"
+
+extension:
+  id: "critique"
+  name: "Spec Critique"
+  version: "1.0.0"
+  description: "Dual-lens critical review of spec and plan from product strategy and engineering risk perspectives"
+  author: "arunt14"
+  repository: "https://github.com/arunt14/spec-kit-critique"
+  license: "MIT"
+  homepage: "https://github.com/arunt14/spec-kit-critique"
+
+requires:
+  speckit_version: ">=0.1.0"
+
+provides:
+  commands:
+    - name: "speckit.critique.run"
+      file: "commands/run.md"
+      description: "Perform a dual-lens critical review of the specification and plan"
+
+hooks:
+  after_plan:
+    command: "speckit.critique.run"
+    optional: true
+    prompt: "Run spec critique before proceeding to tasks?"
+    description: "Challenges the spec and plan through product and engineering lenses"
+
+tags:
+  - "docs"
+  - "review"
+  - "planning"

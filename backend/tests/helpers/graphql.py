@@ -18,7 +18,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 

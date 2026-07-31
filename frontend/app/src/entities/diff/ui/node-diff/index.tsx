@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
-import { createContext, useEffect } from "react";
+import { useEffect } from "react";
 
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -28,8 +28,6 @@ import { MERGE_STATE } from "@/entities/proposed-changes/constants";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
 
-export const DiffContext = createContext({});
-
 type NodeDiffProps = GetDiffSummaryParams;
 
 export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
@@ -38,7 +36,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
 
   // When branch prop is provided, we're in branch diff view - use only the branch prop
   // When no branch prop, we're in proposed change view - use source_branch from proposedChangesDetails
-  const branchName: string = branch || proposedChangesDetails?.source_branch?.value;
+  const branchName: string = branch || proposedChangesDetails?.source_branch?.value || "";
   const isMerged = proposedChangesDetails?.state?.value === MERGE_STATE;
   const branchExists = useBranchExists(branchName);
 
@@ -78,7 +76,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
     return (
       <DiffComputing
         sourceBranch={branchName}
-        destinationBranch={proposedChangesDetails.destination_branch?.value ?? DEFAULT_BRANCH_NAME}
+        destinationBranch={proposedChangesDetails?.destination_branch?.value ?? DEFAULT_BRANCH_NAME}
         hideActions={isMerged}
       />
     );
@@ -95,15 +93,23 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
     );
   }
 
-  const nodes =
+  // UNCHANGED nodes are kept: the backend returns them (include_parents) so the tree
+  // can nest changed nodes under their unchanged parents as hierarchy context
+  const allNodes =
     data.pages
       .flatMap((page) => page?.nodes)
-      .flatMap((node) => {
-        if (!node || node.status === "UNCHANGED") return [];
-        // Manually filter conflicts items since it's not available yet in the backend filters
-        if (qspStatus === DIFF_STATUS.CONFLICT && !node.contains_conflict) return [];
-        return node as unknown as DiffNodeType;
-      }) ?? [];
+      .flatMap((node) => (node ? [node as unknown as DiffNodeType] : [])) ?? [];
+
+  // The CONFLICT filter is client-side only (buildFilters excludes it from the backend
+  // status filter) and contains_conflict never propagates to ancestor nodes, so the
+  // tree keeps conflicted nodes plus their ancestor chains as hierarchy context
+  const nodes =
+    qspStatus === DIFF_STATUS.CONFLICT ? keepConflictNodesWithAncestors(allNodes) : allNodes;
+
+  const changedNodes = nodes.filter(
+    (node) =>
+      node.status !== "UNCHANGED" && (qspStatus !== DIFF_STATUS.CONFLICT || node.contains_conflict)
+  );
 
   return (
     <div className="flex h-[calc(100vh-14rem)] flex-col overflow-hidden">
@@ -130,8 +136,8 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
         </nav>
 
         <main className="col-start-2 col-end-5 space-y-4 overflow-auto bg-stone-100 p-4">
-          {nodes.length ? (
-            nodes.map((node) => (
+          {changedNodes.length ? (
+            changedNodes.map((node) => (
               <DiffNode
                 key={node.uuid}
                 node={node}
@@ -147,3 +153,20 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
     </div>
   );
 };
+
+function keepConflictNodesWithAncestors(nodes: Array<DiffNodeType>): Array<DiffNodeType> {
+  const nodesByUuid = new Map(nodes.map((node) => [node.uuid, node]));
+  const keptUuids = new Set<string>();
+
+  const markNodeAndAncestors = (node?: DiffNodeType) => {
+    if (!node || keptUuids.has(node.uuid)) return;
+    keptUuids.add(node.uuid);
+    if (node.parent) markNodeAndAncestors(nodesByUuid.get(node.parent.uuid));
+  };
+
+  for (const node of nodes) {
+    if (node.contains_conflict) markNodeAndAncestors(node);
+  }
+
+  return nodes.filter((node) => keptUuids.has(node.uuid));
+}

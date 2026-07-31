@@ -1,8 +1,8 @@
+import { Card, CardContent } from "@infrahub/ui/card";
 import { type HTMLAttributes, useRef } from "react";
 import { useParams } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Card } from "@/shared/components/ui/card";
 import type { FormRef } from "@/shared/components/ui/form";
 import {
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
@@ -93,7 +93,9 @@ export const Overview = ({ className, ...props }: HTMLAttributes<HTMLDivElement>
       <ProposedChangeEvents />
 
       <Card>
-        <AddComment ref={formRef} onSubmit={handleSubmit} />
+        <CardContent>
+          <AddComment ref={formRef} onSubmit={handleSubmit} />
+        </CardContent>
       </Card>
     </div>
   );

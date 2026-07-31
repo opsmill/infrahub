@@ -1,8 +1,7 @@
+import { Spinner } from "@infrahub/ui";
 import { useMutation } from "@tanstack/react-query";
 import { CheckIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 import React from "react";
-
-import { Spinner } from "@/shared/components/ui/spinner";
 
 import { GroupItem } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/group-item";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";

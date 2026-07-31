@@ -25,6 +25,7 @@ from infrahub.trigger.models import (
     ExecuteWorkflow,
     TriggerBranchDefinition,
     TriggerType,
+    jinja_parameter,
 )
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
@@ -174,9 +175,9 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         workflow = ExecuteWorkflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
             parameters={
-                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                "node_kind": "{{ event.resource['infrahub.node.kind'] }}",
-                "object_id": "{{ event.resource['infrahub.node.id'] }}",
+                "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
+                "node_kind": jinja_parameter("{{ event.resource['infrahub.node.kind'] }}"),
+                "object_id": jinja_parameter("{{ event.resource['infrahub.node.id'] }}"),
                 "computed_attribute_name": computed_attribute.attribute.name,
                 "computed_attribute_kind": computed_attribute.kind,
                 "updated_fields": {
@@ -253,9 +254,9 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
                 ExecuteWorkflow(
                     workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
                     parameters={
-                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                        "node_kind": "{{ event.resource['infrahub.node.kind'] }}",
-                        "object_id": "{{ event.resource['infrahub.node.id'] }}",
+                        "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
+                        "node_kind": jinja_parameter("{{ event.resource['infrahub.node.kind'] }}"),
+                        "object_id": jinja_parameter("{{ event.resource['infrahub.node.id'] }}"),
                         "computed_attribute_name": computed_attribute.computed_attribute.attribute.name,
                         "computed_attribute_kind": computed_attribute.computed_attribute.kind,
                         "context": {
@@ -315,9 +316,9 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
                 ExecuteWorkflow(
                     workflow=QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
                     parameters={
-                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                        "node_kind": "{{ event.resource['infrahub.node.kind'] }}",
-                        "object_id": "{{ event.resource['infrahub.node.id'] }}",
+                        "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
+                        "node_kind": jinja_parameter("{{ event.resource['infrahub.node.kind'] }}"),
+                        "object_id": jinja_parameter("{{ event.resource['infrahub.node.id'] }}"),
                         "context": {
                             "__prefect_kind": "json",
                             "value": {

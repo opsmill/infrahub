@@ -33,15 +33,15 @@ if TYPE_CHECKING:
 class BuiltinIPAddress(CoreNode):
     address: IPHost
     description: StringOptional
-    ip_namespace: RelationshipManager
-    ip_prefix: RelationshipManager
+    ip_namespace: RelationshipManager[BuiltinIPNamespace]
+    ip_prefix: RelationshipManager[BuiltinIPPrefix]
 
 
 class BuiltinIPNamespace(CoreNode):
     name: String
     description: StringOptional
-    ip_prefixes: RelationshipManager
-    ip_addresses: RelationshipManager
+    ip_prefixes: RelationshipManager[BuiltinIPPrefix]
+    ip_addresses: RelationshipManager[BuiltinIPAddress]
 
 
 class BuiltinIPPrefix(CoreNode):
@@ -55,27 +55,27 @@ class BuiltinIPPrefix(CoreNode):
     hostmask: StringOptional
     network_address: StringOptional
     broadcast_address: StringOptional
-    ip_namespace: RelationshipManager
-    ip_addresses: RelationshipManager
-    resource_pool: RelationshipManager
-    parent: RelationshipManager
-    children: RelationshipManager
+    ip_namespace: RelationshipManager[BuiltinIPNamespace]
+    ip_addresses: RelationshipManager[BuiltinIPAddress]
+    resource_pool: RelationshipManager[CoreIPPool]
+    parent: RelationshipManager[BuiltinIPPrefix]
+    children: RelationshipManager[BuiltinIPPrefix]
 
 
 class CoreAction(CoreNode):
     name: String
     description: StringOptional
-    triggers: RelationshipManager
+    triggers: RelationshipManager[CoreTriggerRule]
 
 
 class CoreArtifactTarget(CoreNode):
-    artifacts: RelationshipManager
+    artifacts: RelationshipManager[CoreArtifact]
 
 
 class CoreBasePermission(CoreNode):
     description: StringOptional
     identifier: StringOptional
-    roles: RelationshipManager
+    roles: RelationshipManager[CoreAccountRole]
 
 
 class CoreCheck(CoreNode):
@@ -87,7 +87,7 @@ class CoreCheck(CoreNode):
     conclusion: Enum
     severity: Enum
     created_at: DateTimeOptional
-    validator: RelationshipManager
+    validator: RelationshipManager[CoreValidator]
 
 
 class CoreComment(CoreNode):
@@ -115,8 +115,8 @@ class CoreGenericAccount(CoreNode):
     description: StringOptional
     account_type: Enum
     status: Dropdown
-    tokens: RelationshipManager
-    external_identities: RelationshipManager
+    tokens: RelationshipManager[InternalAccountToken]
+    external_identities: RelationshipManager[InternalExternalIdentity]
 
 
 class CoreGenericRepository(CoreNode):
@@ -126,13 +126,13 @@ class CoreGenericRepository(CoreNode):
     internal_status: Dropdown
     operational_status: Dropdown
     sync_status: Dropdown
-    credential: RelationshipManager
-    tags: RelationshipManager
-    transformations: RelationshipManager
-    queries: RelationshipManager
-    checks: RelationshipManager
-    generators: RelationshipManager
-    groups_objects: RelationshipManager
+    credential: RelationshipManager[CoreCredential]
+    tags: RelationshipManager[BuiltinTag]
+    transformations: RelationshipManager[CoreTransformation]
+    queries: RelationshipManager[CoreGraphQLQuery]
+    checks: RelationshipManager[CoreCheckDefinition]
+    generators: RelationshipManager[CoreGeneratorDefinition]
+    groups_objects: RelationshipManager[CoreRepositoryGroup]
 
 
 class CoreGroup(CoreNode):
@@ -140,10 +140,14 @@ class CoreGroup(CoreNode):
     label: StringOptional
     description: StringOptional
     group_type: Enum
-    members: RelationshipManager
-    subscribers: RelationshipManager
-    parent: RelationshipManager
-    children: RelationshipManager
+    members: RelationshipManager[CoreNode]
+    subscribers: RelationshipManager[CoreNode]
+    parent: RelationshipManager[CoreGroup]
+    children: RelationshipManager[CoreGroup]
+
+
+class CoreIPPool(CoreNode):
+    pass
 
 
 class CoreKeyValue(CoreNode):
@@ -165,12 +169,12 @@ class CoreMenu(CoreNode):
     order_weight: Integer
     required_permissions: ListAttributeOptional
     section: Enum
-    parent: RelationshipManager
-    children: RelationshipManager
+    parent: RelationshipManager[CoreMenu]
+    children: RelationshipManager[CoreMenu]
 
 
 class CoreNodeTriggerMatch(CoreNode):
-    trigger: RelationshipManager
+    trigger: RelationshipManager[CoreNodeTriggerRule]
 
 
 class CoreObjectComponentTemplate(CoreNode):
@@ -198,8 +202,8 @@ class CoreTaskTarget(CoreNode):
 class CoreThread(CoreNode):
     label: StringOptional
     resolved: Boolean
-    change: RelationshipManager
-    comments: RelationshipManager
+    change: RelationshipManager[CoreProposedChange]
+    comments: RelationshipManager[CoreThreadComment]
 
 
 class CoreTransformation(CoreNode):
@@ -207,9 +211,12 @@ class CoreTransformation(CoreNode):
     label: StringOptional
     description: StringOptional
     timeout: Integer
-    query: RelationshipManager
-    repository: RelationshipManager
-    tags: RelationshipManager
+    dependencies: ListAttributeOptional
+    dependencies_complete: BooleanOptional
+    query: RelationshipManager[CoreGraphQLQuery]
+    repository: RelationshipManager[CoreGenericRepository]
+    tags: RelationshipManager[BuiltinTag]
+    artifact_definitions: RelationshipManager[CoreArtifactDefinition]
 
 
 class CoreTriggerRule(CoreNode):
@@ -217,7 +224,7 @@ class CoreTriggerRule(CoreNode):
     description: StringOptional
     active: Boolean
     branch_scope: Dropdown
-    action: RelationshipManager
+    action: RelationshipManager[CoreAction]
 
 
 class CoreValidator(CoreNode):
@@ -226,8 +233,8 @@ class CoreValidator(CoreNode):
     conclusion: Enum
     completed_at: DateTimeOptional
     started_at: DateTimeOptional
-    proposed_change: RelationshipManager
-    checks: RelationshipManager
+    proposed_change: RelationshipManager[CoreProposedChange]
+    checks: RelationshipManager[CoreCheck]
 
 
 class CoreWebhook(CoreNode):
@@ -239,7 +246,7 @@ class CoreWebhook(CoreNode):
     description: StringOptional
     url: URL
     validate_certificates: BooleanOptional
-    headers: RelationshipManager
+    headers: RelationshipManager[CoreKeyValue]
 
 
 class CoreWeightedPoolResource(CoreNode):
@@ -263,11 +270,11 @@ class SnowTask(CoreNode):
 class TestingInterface(CoreNode):
     name: String
     enabled: Boolean
-    device: RelationshipManager
+    device: RelationshipManager[TestingInterfaceHolder]
 
 
 class TestingInterfaceHolder(CoreNode):
-    interfaces: RelationshipManager
+    interfaces: RelationshipManager[TestingInterface]
 
 
 class BuiltinTag(CoreNode):
@@ -280,13 +287,14 @@ class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
 
 
 class CoreAccountGroup(LineageOwner, LineageSource, CoreGroup):
-    roles: RelationshipManager
+    origin: StringOptional
+    roles: RelationshipManager[CoreAccountRole]
 
 
 class CoreAccountRole(CoreNode):
     name: String
-    groups: RelationshipManager
-    permissions: RelationshipManager
+    groups: RelationshipManager[CoreAccountGroup]
+    permissions: RelationshipManager[CoreBasePermission]
 
 
 class CoreArtifact(CoreTaskTarget):
@@ -296,8 +304,8 @@ class CoreArtifact(CoreTaskTarget):
     checksum: StringOptional
     storage_id: StringOptional
     parameters: JSONAttributeOptional
-    object: RelationshipManager
-    definition: RelationshipManager
+    object: RelationshipManager[CoreArtifactTarget]
+    definition: RelationshipManager[CoreArtifactDefinition]
 
 
 class CoreArtifactCheck(CoreCheck):
@@ -314,8 +322,10 @@ class CoreArtifactDefinition(CoreTaskTarget):
     description: StringOptional
     parameters: JSONAttribute
     content_type: Enum
-    targets: RelationshipManager
-    transformation: RelationshipManager
+    targets: RelationshipManager[CoreGroup]
+    transformation: RelationshipManager[CoreTransformation]
+    artifacts: RelationshipManager[CoreArtifact]
+    validators: RelationshipManager[CoreArtifactValidator]
 
 
 class CoreArtifactThread(CoreThread):
@@ -325,11 +335,11 @@ class CoreArtifactThread(CoreThread):
 
 
 class CoreArtifactValidator(CoreValidator):
-    definition: RelationshipManager
+    definition: RelationshipManager[CoreArtifactDefinition]
 
 
 class CoreChangeComment(CoreComment):
-    change: RelationshipManager
+    change: RelationshipManager[CoreProposedChange]
 
 
 class CoreChangeThread(CoreThread):
@@ -343,15 +353,16 @@ class CoreCheckDefinition(CoreTaskTarget):
     class_name: String
     timeout: Integer
     parameters: JSONAttributeOptional
-    repository: RelationshipManager
-    query: RelationshipManager
-    targets: RelationshipManager
-    tags: RelationshipManager
+    repository: RelationshipManager[CoreGenericRepository]
+    query: RelationshipManager[CoreGraphQLQuery]
+    targets: RelationshipManager[CoreGroup]
+    tags: RelationshipManager[BuiltinTag]
+    validators: RelationshipManager[CoreUserValidator]
 
 
 class CoreCustomWebhook(CoreWebhook, CoreTaskTarget):
     shared_key: StringOptional
-    transformation: RelationshipManager
+    transformation: RelationshipManager[CoreTransformPython]
 
 
 class CoreDataCheck(CoreCheck):
@@ -377,11 +388,11 @@ class CoreFileThread(CoreThread):
     file: StringOptional
     commit: StringOptional
     line_number: IntegerOptional
-    repository: RelationshipManager
+    repository: RelationshipManager[CoreRepository]
 
 
 class CoreGeneratorAction(CoreAction):
-    generator: RelationshipManager
+    generator: RelationshipManager[CoreGeneratorDefinition]
 
 
 class CoreGeneratorAwareGroup(CoreGroup):
@@ -401,9 +412,11 @@ class CoreGeneratorDefinition(CoreTaskTarget):
     convert_query_response: BooleanOptional
     execute_in_proposed_change: BooleanOptional
     execute_after_merge: BooleanOptional
-    query: RelationshipManager
-    repository: RelationshipManager
-    targets: RelationshipManager
+    query: RelationshipManager[CoreGraphQLQuery]
+    repository: RelationshipManager[CoreGenericRepository]
+    targets: RelationshipManager[CoreGroup]
+    instances: RelationshipManager[CoreGeneratorInstance]
+    validators: RelationshipManager[CoreGeneratorValidator]
 
 
 class CoreGeneratorGroup(CoreGroup):
@@ -413,12 +426,12 @@ class CoreGeneratorGroup(CoreGroup):
 class CoreGeneratorInstance(CoreTaskTarget):
     name: String
     status: Enum
-    object: RelationshipManager
-    definition: RelationshipManager
+    object: RelationshipManager[CoreNode]
+    definition: RelationshipManager[CoreGeneratorDefinition]
 
 
 class CoreGeneratorValidator(CoreValidator):
-    definition: RelationshipManager
+    definition: RelationshipManager[CoreGeneratorDefinition]
 
 
 class CoreGlobalPermission(CoreBasePermission):
@@ -435,38 +448,39 @@ class CoreGraphQLQuery(CoreNode):
     models: ListAttributeOptional
     depth: IntegerOptional
     height: IntegerOptional
-    repository: RelationshipManager
-    tags: RelationshipManager
+    repository: RelationshipManager[CoreGenericRepository]
+    tags: RelationshipManager[BuiltinTag]
+    query_groups: RelationshipManager[CoreGraphQLQueryGroup]
 
 
 class CoreGraphQLQueryGroup(CoreGroup):
     parameters: JSONAttributeOptional
-    query: RelationshipManager
+    query: RelationshipManager[CoreGraphQLQuery]
 
 
 class CoreGroupAction(CoreAction):
     member_action: Dropdown
-    group: RelationshipManager
+    group: RelationshipManager[CoreGroup]
 
 
 class CoreGroupTriggerRule(CoreTriggerRule):
     member_update: Dropdown
-    group: RelationshipManager
+    group: RelationshipManager[CoreGroup]
 
 
-class CoreIPAddressPool(CoreResourcePool, LineageSource):
+class CoreIPAddressPool(CoreResourcePool, LineageSource, CoreIPPool):
     default_address_type: String
     default_prefix_length: IntegerOptional
-    resources: RelationshipManager
-    ip_namespace: RelationshipManager
+    resources: RelationshipManager[BuiltinIPPrefix]
+    ip_namespace: RelationshipManager[BuiltinIPNamespace]
 
 
-class CoreIPPrefixPool(CoreResourcePool, LineageSource):
+class CoreIPPrefixPool(CoreResourcePool, LineageSource, CoreIPPool):
     default_prefix_length: IntegerOptional
     default_member_type: Enum
     default_prefix_type: StringOptional
-    resources: RelationshipManager
-    ip_namespace: RelationshipManager
+    resources: RelationshipManager[BuiltinIPPrefix]
+    ip_namespace: RelationshipManager[BuiltinIPNamespace]
 
 
 class CoreMenuItem(CoreMenu):
@@ -489,7 +503,7 @@ class CoreNodeTriggerRelationshipMatch(CoreNodeTriggerMatch):
 class CoreNodeTriggerRule(CoreTriggerRule):
     node_kind: String
     mutation_action: Enum
-    matches: RelationshipManager
+    matches: RelationshipManager[CoreNodeTriggerMatch]
 
 
 class CoreNumberPool(CoreResourcePool, LineageSource):
@@ -524,12 +538,12 @@ class CoreProposedChange(CoreTaskTarget):
     state: Enum
     is_draft: Boolean
     total_comments: IntegerOptional
-    approved_by: RelationshipManager
-    rejected_by: RelationshipManager
-    reviewers: RelationshipManager
-    comments: RelationshipManager
-    threads: RelationshipManager
-    validations: RelationshipManager
+    approved_by: RelationshipManager[CoreGenericAccount]
+    rejected_by: RelationshipManager[CoreGenericAccount]
+    reviewers: RelationshipManager[CoreGenericAccount]
+    comments: RelationshipManager[CoreChangeComment]
+    threads: RelationshipManager[CoreThread]
+    validations: RelationshipManager[CoreValidator]
 
 
 class CoreReadOnlyRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTaskTarget):
@@ -544,11 +558,11 @@ class CoreRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTas
 
 class CoreRepositoryGroup(CoreGroup):
     content: Dropdown
-    repository: RelationshipManager
+    repository: RelationshipManager[CoreGenericRepository]
 
 
 class CoreRepositoryValidator(CoreValidator):
-    repository: RelationshipManager
+    repository: RelationshipManager[CoreGenericRepository]
 
 
 class CoreSchemaCheck(CoreCheck):
@@ -577,7 +591,7 @@ class CoreStaticKeyValue(CoreKeyValue):
 
 
 class CoreThreadComment(CoreComment):
-    thread: RelationshipManager
+    thread: RelationshipManager[CoreThread]
 
 
 class CoreTransformJinja2(CoreTransformation):
@@ -591,22 +605,22 @@ class CoreTransformPython(CoreTransformation):
 
 
 class CoreUserValidator(CoreValidator):
-    check_definition: RelationshipManager
-    repository: RelationshipManager
+    check_definition: RelationshipManager[CoreCheckDefinition]
+    repository: RelationshipManager[CoreGenericRepository]
 
 
 class InternalAccountToken(CoreNode):
     name: StringOptional
     token: String
     expiration: DateTimeOptional
-    account: RelationshipManager
+    account: RelationshipManager[CoreGenericAccount]
 
 
 class InternalExternalIdentity(CoreNode):
     sub: String
     provider_name: String
     protocol: String
-    account: RelationshipManager
+    account: RelationshipManager[CoreGenericAccount]
 
 
 class InternalIPPrefixAvailable(BuiltinIPPrefix):
@@ -619,7 +633,7 @@ class InternalIPRangeAvailable(BuiltinIPAddress):
 
 class InternalRefreshToken(CoreNode):
     expiration: DateTime
-    account: RelationshipManager
+    account: RelationshipManager[CoreGenericAccount]
 
 
 class IpamNamespace(BuiltinIPNamespace):
@@ -638,9 +652,9 @@ class TestingCar(CoreNode):
     name: String
     description: StringOptional
     color: String
-    owner: RelationshipManager
-    previous_owner: RelationshipManager
-    manufacturer: RelationshipManager
+    owner: RelationshipManager[TestingPerson]
+    previous_owner: RelationshipManager[TestingPerson]
+    manufacturer: RelationshipManager[TestingManufacturer]
 
 
 class TestingDevice(TestingInterfaceHolder):
@@ -655,8 +669,8 @@ class TestingDevice(TestingInterfaceHolder):
 class TestingManufacturer(CoreNode):
     name: String
     description: StringOptional
-    cars: RelationshipManager
-    customers: RelationshipManager
+    cars: RelationshipManager[TestingCar]
+    customers: RelationshipManager[TestingPerson]
 
 
 class TestingPerson(LineageOwner, LineageSource, CoreArtifactTarget):
@@ -664,19 +678,19 @@ class TestingPerson(LineageOwner, LineageSource, CoreArtifactTarget):
     description: StringOptional
     height: IntegerOptional
     age: IntegerOptional
-    cars: RelationshipManager
+    cars: RelationshipManager[TestingCar]
 
 
 class TestingPhysicalInterface(TestingInterface):
     phys_type: Enum
-    sfp: RelationshipManager
+    sfp: RelationshipManager[TestingSfp]
 
 
 class TestingSfp(CoreNode):
     phys_type: Enum
     serial_number: String
     part_number: StringOptional
-    interface: RelationshipManager
+    interface: RelationshipManager[TestingPhysicalInterface]
 
 
 class TestingVirtualInterface(TestingInterface):

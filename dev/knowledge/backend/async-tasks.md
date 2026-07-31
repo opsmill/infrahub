@@ -72,14 +72,18 @@ WorkflowDefinition(
 
 ### Flow Functions
 
-Async functions decorated with `@flow` containing business logic:
+Async functions decorated with `@flow`. A flow function is a **composition root, not the home of business logic**: it resolves the singleton services (`get_database()`, `get_workflow()`, …), builds a component with those dependencies injected, and delegates to it. Keep the flow body thin — the logic lives in the component, where it is testable without a running worker (see `.agents/rules/backend-component-design.md`).
 
 ```python
 @flow(name="branch-merge", flow_run_name="Merge branch {branch}")
 async def merge_branch(branch: str, context: InfrahubContext) -> None:
     database = await get_database()
-    # ... implementation
+    async with database.start_session() as db:
+        merger = BranchMerger(db=db, diff_coordinator=..., ...)  # collaborators injected here
+        await merger.merge()
 ```
+
+Singleton getters belong at this entry point only — do not call `get_database()`/`get_workflow()` inside helper functions or component internals; pass the resolved services down as constructor arguments.
 
 ### Task Functions
 
@@ -101,6 +105,8 @@ Names must use **lowercase with dashes** (not underscores):
 - Bad: `branch_merge`, `BranchMerge`, `branchMerge`
 
 All flows and tasks must have an explicit `name` parameter in their decorator.
+
+**Reference workflow names via the catalogue, never as re-typed string literals.** When code outside the flow needs a workflow's name — dispatching it, filtering its flow runs, labelling metrics — import the `WorkflowDefinition` from `backend/infrahub/workflows/catalogue.py` and use it (e.g. pass `workflow=WEBHOOK_PROCESS`, or read `WEBHOOK_PROCESS.name`). A duplicated literal drifts silently when the flow is renamed.
 
 ### Flow Run Names
 
@@ -181,6 +187,93 @@ Available dependencies:
 - `get_workflow()`: Workflow service for submitting child flows
 - `get_event_service()`: Event emission service
 - `get_component()`: Component registry access
+
+## Read Query Optimization in Prefect Tasks
+
+When a flow only needs a few fields from a node (e.g. `id`, `name`, `status`), avoid `client.all()`, `client.filters()`, or `client.get(prefetch_relationships=True)` — they fetch the full object graph. Use a targeted `execute_graphql()` call instead.
+
+### Pattern: typed query model
+
+Each domain that needs optimized reads defines a Pydantic query model co-located in its `models.py` (or `queries.py` for large files):
+
+```python
+from typing import Any, ClassVar
+from infrahub_sdk.graphql import Query
+from pydantic import BaseModel, ConfigDict
+
+
+class MyNodeResult(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    id: str
+    name: str
+
+
+class MyNodeQuery(BaseModel):
+    query_name: ClassVar[str] = "MyFetchNodes"
+    kind: str  # or hardcoded if always the same type
+
+    def render_query(self) -> str:
+        query = Query(
+            name=self.query_name,
+            query={self.kind: {"edges": {"node": {"id": None, "name": {"value": None}}}}},
+        )
+        return query.render()
+
+    def parse_response(self, response: dict[str, Any]) -> list[MyNodeResult]:
+        result: list[MyNodeResult] = []
+        if kind_payload := response.get(self.kind):
+            for edge in kind_payload.get("edges", []):
+                if node := edge.get("node"):
+                    node_id = node.get("id")
+                    name = (node.get("name") or {}).get("value")
+                    if node_id and name:
+                        result.append(MyNodeResult(id=node_id, name=name))
+        return result
+```
+
+Call it in the flow:
+
+```python
+client = get_client()
+q = MyNodeQuery(kind="CoreTag")
+response = await client.execute_graphql(query=q.render_query(), branch_name=branch_name)
+nodes = q.parse_response(response=response)
+```
+
+### When to use each approach
+
+| Situation | Approach |
+|-----------|----------|
+| Need only `id` (fan-out pattern) | Subclass `NodeIDQuery` from `infrahub.core.query.node_query` |
+| Need a few scalar/relationship fields, read-only | Standalone query model with `execute_graphql()` |
+| Need to mutate the fetched node afterwards | Keep `client.get()` / `client.filters()` with `include=[...]` to narrow fetched fields; use `do_full_update=False` on `.update()` |
+
+### Existing query model base
+
+`NodeIDQuery` in `backend/infrahub/core/query/node_query.py` is the base class for queries that only need the `id` field. Subclass it with a unique `query_name: ClassVar[str]` for each domain:
+
+```python
+from infrahub.core.query.node_query import NodeIDQuery
+
+class DisplayLabelNodeIDQuery(NodeIDQuery):
+    query_name: ClassVar[str] = "DisplayLabelFetchNodeIDs"
+```
+
+Existing examples: `DisplayLabelNodeIDQuery`, `HFIDNodeIDQuery`, `ComputedAttributeNodeIDQuery` (all-node fan-out); `GitRepositoryNodeQuery`, `GeneratorInstanceQuery`, `ComputedAttributeTransformQuery` (multi-field reads).
+
+## Failure handling
+
+### A subflow succeeds only when it is completed
+
+When inspecting a subflow's terminal state, gate on `state.is_completed()`, not on the negation of `state.is_failed()`. `is_failed()` is only one terminal failure mode — a `CANCELLED` or `CRASHED` subflow is not failed but is also not a success, so `if not state.is_failed(): return` reports those as success. Treat "completed" as the only success and every other terminal state as a failure.
+
+### Observability side-writes must never change the primary outcome
+
+A write whose only purpose is observability — persisting a Prefect artifact that captures a request/response, emitting a metric, invoking a metrics-observer callback — is best-effort by definition. It must be exception-isolated (catch, log a warning, continue) so that its failure can never fail, retry, or alter the outcome of the operation it observes: a webhook delivery that succeeded must not be reported as failed because the capture artifact could not be written, and a metrics callback raising must not corrupt lock/pool state. The primary operation's result is decided before and independently of the telemetry write.
+
+### Post-commit follow-up work is best-effort
+
+Work dispatched *after* an operation has already committed — the recompute and event-send follow-ups after a merge, for example — must not be able to fail or roll back the committed operation. The contract to follow for such work is log-and-continue: catch per item, log the skipped item at exception level so a partial failure is greppable rather than silent, and carry on with the rest of the batch so one failed dispatch never aborts the others. Guaranteeing eventual consistency after a transient dispatch failure is the job of a separate reconciliation/backfill job, not of the best-effort path — do not bolt retries onto it. (Not every post-commit path enforces this yet — the merge recompute does per-item; verify before assuming a given caller isolates failures.)
 
 ## Key Locations
 

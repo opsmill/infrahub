@@ -1,8 +1,10 @@
-import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
+import { Trash2Icon } from "lucide-react";
 import React from "react";
 
+import { Tooltip } from "@/shared/components/aria/tooltip";
+
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import { ToolbarButtonWithTooltip } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import type { NodeCore } from "@/entities/nodes/types";
 
 import { DeleteObjectsModal } from "./delete-objects-modal";
@@ -16,18 +18,23 @@ export function ToolbarDeleteAction({ selectedRows }: ToolbarDeleteActionProps) 
   const { permission } = useObjectTableContext();
   const { isAllowed, message } = permission.delete;
 
+  if (!isAllowed) {
+    return (
+      <Tooltip message={message}>
+        <Button variant="danger-outline" size="xs" isDisabledAndFocusable>
+          <Trash2Icon className="size-3" />
+          Delete
+        </Button>
+      </Tooltip>
+    );
+  }
+
   return (
     <>
-      <ToolbarButtonWithTooltip
-        variant="danger"
-        isDisabled={!isAllowed}
-        tooltipEnabled={!isAllowed}
-        tooltipContent={message}
-        onPress={() => setIsOpen((prev) => !prev)}
-      >
-        <Icon icon="mdi:delete-outline" className="text-sm" />
+      <Button variant="danger-outline" size="xs" onPress={() => setIsOpen((prev) => !prev)}>
+        <Trash2Icon className="size-3" />
         Delete
-      </ToolbarButtonWithTooltip>
+      </Button>
 
       <DeleteObjectsModal selectedRows={selectedRows} isOpen={isOpen} onOpenChange={setIsOpen} />
     </>

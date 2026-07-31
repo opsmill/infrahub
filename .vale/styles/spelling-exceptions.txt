@@ -20,6 +20,7 @@ autoscaling
 backend
 backends
 backfilled
+backfills
 bcrypt
 Biome
 bool
@@ -29,6 +30,8 @@ Buildkite
 cAdvisor
 Ceph
 changelog
+conftest
+Conftest
 check_color_tags_name
 check_definitions
 class_name
@@ -45,9 +48,13 @@ content_type
 convert_query_response
 coroutine
 coroutines
+cosign
+Cosign
 created_at
 created_by
 customizable
+cybersecurity
+CycloneDX
 Dagster
 datacenter
 dataset
@@ -57,6 +64,7 @@ datetime
 default_branch
 default_filter
 Delinea
+Dependabot
 dev
 Diataxis
 direnv
@@ -65,6 +73,7 @@ display_labels
 Dockerfile
 Docusaurus
 dropdown
+DSSE
 edit_default_branch
 enablement
 end_user
@@ -86,6 +95,8 @@ Graphql
 GraphQL
 GraphQL's
 grpc
+Grype
+Gunicorn
 HAProxy
 hardcoding
 hfid
@@ -119,6 +130,7 @@ JSONSchema
 Junos
 kbps
 Keycloak
+keyless
 kubectl
 kubelet
 Kubernetes
@@ -128,6 +140,7 @@ livestream
 loopback
 Loopback
 Loopbacks
+loopless
 markdownlint
 Markdownlint
 max_concurrent_queries
@@ -157,6 +170,7 @@ npm
 O'Brian
 OAuth
 Observium
+OIDC
 Okta
 Onboarding
 OpenAPI
@@ -168,8 +182,12 @@ overridable
 parameterized
 partial_match
 passthrough
+breakpoint
+pdb
 performant
 pluggable
+pnpm
+post-mortem
 pre
 prebuilt
 precomputed
@@ -202,14 +220,20 @@ reusability
 rollout
 Schema
 schema_mapping
+stdin
 schema's
+SBOM
+SBOMs
 scrollbar
 SDK
 SDKs
 serializable
+Sigstore
 Slurp'it
 snapshotting
+SPDX
 Streamlit
+Syft
 string_type
 subchart
 subcommand
@@ -220,11 +244,14 @@ subqueries
 subschema
 subschemas
 substring
+subtree
 subtyping
 supernet
 template_path
 templated
 Terraform
+testcontainers
+Testcontainers
 Toml
 TOML
 toolchain
@@ -239,7 +266,9 @@ updated_at
 updated_by
 upsert
 upserting
+upserts
 Upserting
+URIs
 userinfo
 Userinfo
 username
@@ -261,6 +290,7 @@ walkthroughs
 whitespace
 widget's
 Widget's
+worktree
 worktrees
 Yaml
 YAML
@@ -278,6 +308,7 @@ QRadar
 rsyslog
 sourcetype
 Splunk
+Starlette
 stderr
 stdin
 stdout

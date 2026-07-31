@@ -54,11 +54,11 @@ jobs:
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv

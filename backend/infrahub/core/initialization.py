@@ -31,6 +31,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreAccountRole
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
+from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
@@ -561,6 +562,7 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     schema = SchemaRoot(**internal_schema)
     schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    schema_branch.load_schema(schema=SchemaRoot(**deprecated_models))
     schema_branch.process()
     await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, db=db, at=Timestamp())
     registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)

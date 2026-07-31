@@ -4,11 +4,14 @@ import os
 import subprocess  # noqa: S404
 import uuid
 import warnings
-from collections.abc import Generator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from prefect.client.orchestration import PrefectClient
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 from infrahub_testcontainers import __version__ as infrahub_version
 

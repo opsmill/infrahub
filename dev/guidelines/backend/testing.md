@@ -14,6 +14,8 @@ Tests are organized by type:
 - **Integration tests** (`tests/integration/`): Require Neo4j via testcontainers
 - **Integration Docker tests** (`tests/integration_docker/`): Integration tests that run in a full environment with containers
 
+**Pick the cheapest tier the logic actually needs.** If the unit under test operates purely on in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test in `tests/unit/` without database fixtures — do not default to a component test just because nearby tests use one. Reach for the database (component) or a container (integration/integration_docker) only when the behavior genuinely depends on it.
+
 Note that at some point the current integration tests will be merged with the functional tests and the `tests/integration_docker` tests will move to `tests/integration`.
 
 ### Running integration_docker tests locally
@@ -36,6 +38,40 @@ Tests are behavioral specifications. Write them to describe **what the system sh
 
 - **Do not reference issue numbers, GitHub URLs, or Jira tickets** in test code (names, comments, or docstrings). The git history links commits to issues.
 - **Do not describe which bug a test prevents.** Describe the expected behavior instead.
+
+## What not to test
+
+Every test costs maintenance. Before adding one, ask whether it actually exercises behavior the project owns.
+
+Skip tests that only assert third-party behavior:
+
+- **Pydantic field constraints** (`ge`, `le`, `min_length`, `max_length`, etc.) — these are exercised by Pydantic's own test suite. Asserting that `Field(ge=1)` rejects `0` tests Pydantic, not us.
+- **Pure assignment round-trips** — constructing a model with a value and asserting the attribute reads back the same value tests Python, not our code.
+- **`SettingsConfigDict` plumbing** — asserting that an `env_prefix` exists or that `env_nested_delimiter` is set tests Pydantic Settings configuration, not behavior. Test the behavior you care about (an env var resolves to the right field) instead.
+- **Plain `Enum` value checks** — asserting `MyEnum.FOO.value == "foo"` only tests that the enum literal matches itself.
+
+Skip tests that test the framework rather than our integration:
+
+- A test that only asserts a FastAPI route appears in `router.routes` duplicates `APIRouter`'s own contract — write it only when the registration goes through non-trivial conditional logic.
+- A test that only asserts a Pydantic model has a particular field duplicates the type system.
+
+A useful rule of thumb: if the test would still pass after we delete our implementation and reinstall the library, the test belongs to the library, not us.
+
+## Async tests
+
+The project sets `asyncio_mode = "auto"` in `pyproject.toml`, so any `async def test_*` function is automatically driven by `pytest-asyncio`. **Do not** wrap async code in `asyncio.run(...)` inside synchronous tests — declare the test function `async` and `await` directly:
+
+```python
+# Good
+async def test_returns_config() -> None:
+    cfg = await get_config()
+    assert cfg.ldap.enabled is False
+
+# Bad — wraps the event loop unnecessarily
+def test_returns_config() -> None:
+    cfg = asyncio.run(get_config())
+    assert cfg.ldap.enabled is False
+```
 
 ## Test Schemas
 
@@ -295,6 +331,16 @@ assert str(result.errors[0].message) == f"The template requested {{'id': '{TEMPL
 ```
 
 Use `==` rather than `in` to compare error messages. An exact match ensures the test fails when the error wording changes, keeping assertions tightly coupled to the expected behavior.
+
+## Assert exact expectations
+
+The exact-match principle above is not limited to error messages — it applies to every assertion. A loose assertion passes for the wrong reason and hides regressions.
+
+- **Assert the exact collection, not a subset or membership.** When a function returns a set/list/dict of results (deleted ids, affected targets, computed keys), assert full equality against the expected value. `assert x in result` / `assert expected.issubset(result)` pass even when the result grows or shrinks incorrectly. If the result is deterministic, `assert result == {…}` (or exact set equality) catches both missing and extra items.
+- **Don't stop at non-emptiness when a specific result is expected.** `assert result` (or `assert len(result) > 0`) is fine for an existence-only contract, but it does not verify *which* result came back — assert the specific expected value when that is part of the behavior under test. And avoid checks that don't even establish non-emptiness: `assert result != frozenset()` is `True` for an empty `list`/`dict`, so it passes when nothing was returned.
+- **Assert a positive count where the number matters.** A test that only checks "no failures" can pass while measuring zero of the thing it claims to test — e.g. if a workflow/name string changes so nothing is counted. Assert that the expected count is `> 0` (or the exact number) so a silently-zero run fails.
+- **Make the scenario actually hold.** A "missing row" test must not create the row; a "no second object" test must prove the count is one. Verify the setup produces the state under test.
+- **Denial tests must verify nothing changed.** When asserting an operation is rejected, also reload the target and assert its state is unchanged (or that no row was created/deleted). Asserting only that an error was returned does not prove the write was actually blocked.
 
 ## See Also
 

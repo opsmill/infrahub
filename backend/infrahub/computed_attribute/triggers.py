@@ -1,7 +1,7 @@
 from infrahub.events.branch_action import BranchDeletedEvent
 from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.events.schema_action import SchemaUpdatedEvent
-from infrahub.trigger.models import BuiltinTriggerDefinition, EventTrigger, ExecuteWorkflow
+from infrahub.trigger.models import BuiltinTriggerDefinition, EventTrigger, ExecuteWorkflow, jinja_parameter
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_SETUP_JINJA2,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
@@ -14,9 +14,9 @@ TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_COMMIT = BuiltinTriggerDefinition(
         ExecuteWorkflow(
             workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON,
             parameters={
-                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                "commit": "{{ event.payload['commit'] }}",
-                "event_name": "{{ event.event }}",
+                "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
+                "commit": jinja_parameter("{{ event.payload['data']['commit'] }}"),
+                "event_name": jinja_parameter("{{ event.event }}"),
                 "context": {
                     "__prefect_kind": "json",
                     "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['context'] | tojson }}"},
@@ -33,8 +33,8 @@ TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA = BuiltinTriggerDefinition(
         ExecuteWorkflow(
             workflow=COMPUTED_ATTRIBUTE_SETUP_JINJA2,
             parameters={
-                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                "event_name": "{{ event.event }}",
+                "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
+                "event_name": jinja_parameter("{{ event.event }}"),
                 "context": {
                     "__prefect_kind": "json",
                     "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['context'] | tojson }}"},
@@ -44,8 +44,8 @@ TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA = BuiltinTriggerDefinition(
         ExecuteWorkflow(
             workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON,
             parameters={
-                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                "event_name": "{{ event.event }}",
+                "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
+                "event_name": jinja_parameter("{{ event.event }}"),
                 "context": {
                     "__prefect_kind": "json",
                     "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['context'] | tojson }}"},

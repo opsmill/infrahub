@@ -20,15 +20,19 @@ export function getObjectsCountQueryOptions(params: GetObjectsCountParams) {
   });
 }
 
-export function useObjectsCount(params: Omit<GetObjectsCountParams, keyof ContextParams>) {
+export function useObjectsCount(
+  params: Omit<GetObjectsCountParams, keyof ContextParams>,
+  config?: { enabled?: boolean }
+) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
-  return useQuery(
-    getObjectsCountQueryOptions({
+  return useQuery({
+    ...getObjectsCountQueryOptions({
       ...params,
       branchName: currentBranch.name,
       atDate: timeMachineDate,
-    })
-  );
+    }),
+    ...config,
+  });
 }

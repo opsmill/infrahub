@@ -10,6 +10,7 @@ import { AccountLoggedInEventTitle } from "@/entities/events/ui/account-events/a
 import { AccountLoggedOutEventTitle } from "@/entities/events/ui/account-events/account-logged-out-event-title";
 import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";
 import { BranchEventTitle } from "@/entities/events/ui/branch-events/branch-event-title";
+import { GroupAutoCreateEventTitle } from "@/entities/events/ui/group-auto-create-events/group-auto-create-event-title";
 import { GroupEventTitle } from "@/entities/events/ui/group-events/group-event-title";
 import { NodeEventTitle } from "@/entities/events/ui/node-events/node-event-title";
 import { ProposedChangeEventTitle } from "@/entities/events/ui/proposed-change-events/proposed-change-event-title";
@@ -36,6 +37,11 @@ const GlobalEventDisplay = (props: EventType) => {
     }
     case "GroupEvent": {
       return <GroupEventTitle {...props} />;
+    }
+    case "GroupAutoCreatedEventType":
+    case "GroupAutoCreateRejectedEventType":
+    case "GroupAutoCreateCappedEventType": {
+      return <GroupAutoCreateEventTitle {...props} />;
     }
     case "ArtifactEvent": {
       return <ArtifactEventTitle {...props} />;

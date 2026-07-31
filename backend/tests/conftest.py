@@ -5,7 +5,7 @@ import os
 import sys
 import tempfile
 import time
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, TypeVar
@@ -15,6 +15,9 @@ import pytest_asyncio
 import ujson
 from fast_depends import Provider
 from fast_depends import dependency_provider as provider
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.branch import BranchData
+from infrahub_sdk.uuidt import UUIDT
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 from prefect import settings as prefect_settings
@@ -51,6 +54,7 @@ from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
+from infrahub.git import InfrahubRepository
 from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.lock import initialize_lock
 from infrahub.menu.constants import DEFAULT_MENU
@@ -77,7 +81,9 @@ from tests.helpers.constants import (
     PORT_REDIS,
 )
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
+from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
+from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
 
 ResponseClass = TypeVar("ResponseClass")
@@ -111,11 +117,6 @@ def pytest_configure(config: pytest.Config) -> None:
     # thus we directly set level of corresponding loggers.
     logging.getLogger().setLevel(log_level)  # root logger
     logging.getLogger("prefect").setLevel(log_level)  # prefect logger
-
-
-@pytest.fixture(scope="session", autouse=True)
-def add_tracker() -> None:
-    os.environ["PYTEST_RUNNING"] = "true"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -249,12 +250,26 @@ async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema:
     return None
 
 
-@pytest.fixture
-def default_permission_backend() -> Generator[None, Any, Any]:
+@contextmanager
+def _use_default_permission_backend() -> Generator[None, Any, Any]:
     previous_backends = registry.permission_backends
     registry.permission_backends = [LocalPermissionBackend()]
-    yield
-    registry.permission_backends = previous_backends
+    try:
+        yield
+    finally:
+        registry.permission_backends = previous_backends
+
+
+@pytest.fixture
+async def default_permission_backend() -> AsyncGenerator[None, None]:
+    with _use_default_permission_backend():
+        yield
+
+
+@pytest.fixture(scope="class")
+def default_permission_backend_scope_class() -> Generator[None, Any, Any]:
+    with _use_default_permission_backend():
+        yield
 
 
 @pytest.fixture
@@ -464,7 +479,8 @@ def nats_container(request: pytest.FixtureRequest, load_settings_before_session:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.NATS:
         return None
 
-    container = DockerContainer(image="nats:alpine").with_command("--jetstream").with_exposed_ports(PORT_NATS)
+    # Per-message (per-key) TTL in KV buckets requires NATS 2.11 or later; pinned to a recent release.
+    container = DockerContainer(image="nats:2.14.3-alpine").with_command("--jetstream").with_exposed_ports(PORT_NATS)
 
     container.start()
     wait_for_logs(container, "Server is ready")  # wait_container_is_ready does not seem to be enough
@@ -750,6 +766,18 @@ async def car_person_schema(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
 ) -> SchemaBranch:
     return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+
+
+@pytest.fixture(scope="class")
+async def car_person_schema_scope_class(
+    db: InfrahubDatabase,
+    default_branch_scope_class: Branch,
+    node_group_schema_scope_class: None,
+    data_schema_scope_class: None,
+) -> SchemaBranch:
+    return registry.schema.register_schema(
+        schema=do_car_person_schema_unregistered(), branch=default_branch_scope_class.name
+    )
 
 
 @pytest.fixture
@@ -1080,6 +1108,17 @@ async def dependent_generics_schema(
 
 @pytest.fixture
 async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
+    do_node_group_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def node_group_schema_scope_class(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, data_schema_scope_class: None
+) -> None:
+    do_node_group_schema(branch=default_branch_scope_class)
+
+
+def do_node_group_schema(branch: Branch) -> None:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -1124,7 +1163,7 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    registry.schema.register_schema(schema=schema, branch=branch.name)
 
 
 @pytest.fixture
@@ -1177,6 +1216,74 @@ def git_repos_source_dir_module_scope(tmp_path_module_scope: Path) -> Path:
     repos_dir = tmp_path_module_scope / "source"
     repos_dir.mkdir()
     return repos_dir
+
+
+@pytest.fixture
+def git_repos_dir(tmp_path: Path) -> Generator[Path, None, None]:
+    repos_dir = tmp_path / "repositories"
+    repos_dir.mkdir()
+    original = config.SETTINGS.git.repositories_directory
+    config.SETTINGS.git.repositories_directory = str(repos_dir)
+    yield repos_dir
+    config.SETTINGS.git.repositories_directory = original
+
+
+@pytest.fixture
+def branch01() -> BranchData:
+    return BranchData(
+        id="6c915158-d8ef-4169-9b00-59f94716b8c3",
+        name="branch01",
+        sync_with_git=False,
+        is_default=False,
+        branched_from="main",
+        has_schema_changes=False,
+    )
+
+
+@pytest.fixture
+def branch02() -> BranchData:
+    return BranchData(
+        id="7708dcea-f7b4-4f5a-b5e9-a0605d4c11ba",
+        name="branch02",
+        sync_with_git=False,
+        is_default=False,
+        branched_from="main",
+        has_schema_changes=False,
+    )
+
+
+@pytest.fixture
+def branch99() -> BranchData:
+    return BranchData(
+        id="2e933717-086c-47cf-8242-21421dd3c2bb",
+        name="branch99",
+        sync_with_git=False,
+        is_default=False,
+        branched_from="main",
+        has_schema_changes=False,
+    )
+
+
+@pytest.fixture
+def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
+    """Git repository with 4 branches: main, branch01, branch02, and clean-branch.
+
+    There is a conflict between branch01 and branch02.
+    """
+    name = "infrahub-test-fixture-01"
+    file_repo = FileRepo(name=name, sources_directory=git_sources_dir)
+    return {"name": name, "path": Path(file_repo.path)}
+
+
+@pytest.fixture
+async def git_repo_01(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> InfrahubRepository:
+    """Git Repository with git_upstream_repo_01 as remote."""
+    return await InfrahubRepository.new(
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=str(git_upstream_repo_01["path"]),
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
 
 
 class BusRPCMock(InfrahubMessageBus):

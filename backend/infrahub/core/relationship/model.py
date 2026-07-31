@@ -13,7 +13,6 @@ from typing import (
     Mapping,
     Sequence,
     TypeVar,
-    cast,
     overload,
 )
 
@@ -89,6 +88,7 @@ class RelationshipUpdateDetails:
 @dataclass
 class PeerWithRelationshipMetadata:
     peer: Node | str
+    peer_kind: str | None = None
     created_at: Timestamp | None = None
     created_by: str | None = None
     updated_at: Timestamp | None = None
@@ -140,6 +140,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self._peer: Node | str | None = None
         self.peer_id: str | None = None
         self.peer_hfid: list[str] | None = None
+        self._resolved_peer_kind: str | None = None
         self.data: dict | RelationshipPeerData | str | Node | None = None
 
         self.from_pool: dict[str, Any] | None = None
@@ -175,6 +176,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             return self.schema.peer
 
         return self._peer.get_kind()
+
+    def get_concrete_peer_kind(self) -> str | None:
+        """Return the peer's concrete kind, or None when only the schema's (possibly generic) peer kind is known."""
+        if self._peer and not isinstance(self._peer, str):
+            return self._peer.get_kind()
+
+        return self._resolved_peer_kind
 
     @property
     def node_id(self) -> str:
@@ -223,6 +231,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     def _process_relationship_peer_data(self, data: RelationshipPeerData) -> None:
         self.set_peer(value=str(data.peer_id))
+        self._resolved_peer_kind = data.peer_kind
 
         if not self.id and data.rel_node_id:
             self.id = data.rel_node_id
@@ -263,6 +272,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     def _process_peer_with_relationship_metadata(self, data: PeerWithRelationshipMetadata) -> None:
         self.set_peer(value=data.peer)
+        self._resolved_peer_kind = data.peer_kind
         self._set_created_at(data.created_at)
         self._set_created_by(data.created_by)
         self._set_updated_at(data.updated_at)
@@ -579,7 +589,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 results = await registry.manager.query(
                     db=db, schema=InfrahubKind.RESOURCEPOOL, filters={"name__value": pool_id}, branch=self.branch
                 )
-                results = cast("list[Node]", results)
                 pool = results[0] if results else None
 
             if not pool:
@@ -858,7 +867,7 @@ class RelationshipValidatorList:
         self.validate_max()
 
 
-class RelationshipManager:
+class RelationshipManager[RelationshipManagerPeerType]:
     def __init__(
         self, schema: RelationshipSchema, branch: Branch, at: Timestamp, node: Node, is_from_profile: bool = False
     ) -> None:
@@ -997,7 +1006,7 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: None = ...,
         raise_on_error: Literal[False] = ...,
-    ) -> Node | None: ...
+    ) -> RelationshipManagerPeerType | None: ...
 
     @overload
     async def get_peer(
@@ -1005,7 +1014,7 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: None = ...,
         raise_on_error: Literal[True] = ...,
-    ) -> Node: ...
+    ) -> RelationshipManagerPeerType: ...
 
     @overload
     async def get_peer(
@@ -1013,7 +1022,7 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: None = ...,
         raise_on_error: bool = ...,
-    ) -> Node: ...
+    ) -> RelationshipManagerPeerType: ...
 
     async def get_peer(
         self,
@@ -1048,7 +1057,7 @@ class RelationshipManager:
         peer_type: None = None,
         branch_agnostic: bool = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
-    ) -> Mapping[str, Node]: ...
+    ) -> Mapping[str, RelationshipManagerPeerType]: ...
 
     async def get_peers(
         self,

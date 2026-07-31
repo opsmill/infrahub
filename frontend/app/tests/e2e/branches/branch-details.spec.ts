@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { generateRandomBranchName } from "../../utils";
+import { createBranchAPI } from "../utils/graphql";
 
 test.describe("Branch details view", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
@@ -77,26 +79,21 @@ test.describe("Branch details view", () => {
       await page.goto(`/branches/${BRANCH_NAME}`);
 
       const tabsNav = page.getByRole("navigation", { name: "Tabs" });
-      // Click on Data tab
+
       await tabsNav.getByText("Data").click();
-      await expect(page).toHaveURL(/.*branch_tab=data/);
+      await expect(page).toHaveURL(new RegExp(`/branches/${BRANCH_NAME}/data`));
 
-      // Click on Files tab
       await tabsNav.getByText("Files").click();
-      await expect(page).toHaveURL(/.*branch_tab=files/);
+      await expect(page).toHaveURL(new RegExp(`/branches/${BRANCH_NAME}/files`));
 
-      // Click on Artifacts tab
       await tabsNav.getByText("Artifacts").click();
-      await expect(page).toHaveURL(/.*branch_tab=artifacts/);
+      await expect(page).toHaveURL(new RegExp(`/branches/${BRANCH_NAME}/artifacts`));
 
-      // Click on Schema tab
       await tabsNav.getByText("Schema").click();
-      await expect(page).toHaveURL(/.*branch_tab=schema/);
+      await expect(page).toHaveURL(new RegExp(`/branches/${BRANCH_NAME}/schema`));
 
-      // Go back to Details tab (first tab clears the QSP)
       await tabsNav.getByText("Details").click();
-      // First tab doesn't set QSP, so URL should not contain branch_tab
-      await expect(page).not.toHaveURL(/.*branch_tab=details/);
+      await expect(page).toHaveURL(new RegExp(`/branches/${BRANCH_NAME}$`));
     });
 
     test("should display node metadata when clicking metadata button", async ({ page }) => {
@@ -108,6 +105,36 @@ test.describe("Branch details view", () => {
       await expect(page.getByText("Created by")).toBeVisible();
       await expect(page.getByText("Updated at")).toBeVisible();
       await expect(page.getByText("Updated by")).toBeVisible();
+    });
+  });
+
+  test.describe("branch name containing a slash", () => {
+    test("opens the detail page from the branches list", async ({ page, request }) => {
+      const branchName = generateRandomBranchName("playwright/slash-");
+      await createBranchAPI(request, branchName);
+
+      await page.goto("/branches");
+      await page.getByRole("link", { name: branchName, exact: true }).click();
+
+      await expect(page.getByRole("heading", { name: branchName })).toBeVisible();
+      await expect(page.getByRole("navigation", { name: "Tabs" })).toBeVisible();
+      await expect(page).toHaveURL(
+        (url) => url.pathname === `/branches/${encodeURIComponent(branchName)}`
+      );
+    });
+
+    test("navigates to a path-based tab", async ({ page, request }) => {
+      const branchName = generateRandomBranchName("playwright/slash-");
+      await createBranchAPI(request, branchName);
+
+      await page.goto(`/branches/${encodeURIComponent(branchName)}`);
+
+      await page.getByRole("navigation", { name: "Tabs" }).getByText("Data").click();
+
+      await expect(page.getByRole("heading", { name: branchName })).toBeVisible();
+      await expect(page).toHaveURL(
+        (url) => url.pathname === `/branches/${encodeURIComponent(branchName)}/data`
+      );
     });
   });
 });

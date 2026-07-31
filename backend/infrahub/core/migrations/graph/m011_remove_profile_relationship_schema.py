@@ -39,6 +39,7 @@ class Migration011Query01(Query):
 
 class Migration011(GraphMigration):
     name: str = "011_remove_profiles_relationship_schemas"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [Migration011Query01]
     minimum_version: int = 10
 

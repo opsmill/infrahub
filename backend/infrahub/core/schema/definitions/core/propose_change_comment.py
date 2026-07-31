@@ -18,9 +18,10 @@ core_propose_change_comment = GenericSchema(
     namespace="Core",
     description="A comment on a Proposed Change",
     label="Comment",
-    display_labels=["text__value"],
+    display_label="text__value",
     include_in_menu=False,
     branch=BranchSupportType.AGNOSTIC,
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(name="text", kind="TextArea", description="Content of the comment", unique=False, optional=False),
     ],
@@ -34,6 +35,7 @@ core_thread = GenericSchema(
     label="Thread",
     branch=BranchSupportType.AGNOSTIC,
     include_in_menu=False,
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(name="label", kind="Text", optional=True),
         Attr(
@@ -144,7 +146,7 @@ core_change_comment = NodeSchema(
     include_in_menu=False,
     label="Change Comment",
     default_filter="text__value",
-    display_labels=["text__value"],
+    display_label="text__value",
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.COMMENT],
     generate_profile=False,
@@ -166,7 +168,7 @@ core_thread_comment = NodeSchema(
     include_in_menu=False,
     label="Thread Comment",
     default_filter="text__value",
-    display_labels=["text__value"],
+    display_label="text__value",
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.COMMENT],
     generate_profile=False,

@@ -18,7 +18,7 @@ from tests.helpers.permissions import define_permissions
 from tests.helpers.schema import COLOR, TSHIRT
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 

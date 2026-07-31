@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
 from neo4j import (
     READ_ACCESS,
     WRITE_ACCESS,
+    Address,
     AsyncDriver,
     AsyncGraphDatabase,
     AsyncResult,
@@ -33,7 +34,7 @@ from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
 )
 from infrahub.core.query import QueryType
-from infrahub.exceptions import DatabaseError
+from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
@@ -318,9 +319,10 @@ class InfrahubDatabase:
         name: str = "undefined",
         context: dict[str, str] | None = None,
         type: QueryType | None = None,
+        timeout_seconds: float | None = None,
     ) -> list[Record]:
         results, _ = await self.execute_query_with_metadata(
-            query=query, params=params, name=name, context=context, type=type
+            query=query, params=params, name=name, context=context, type=type, timeout_seconds=timeout_seconds
         )
         return results
 
@@ -331,6 +333,7 @@ class InfrahubDatabase:
         name: str = "undefined",
         context: dict[str, str] | None = None,
         type: QueryType | None = None,
+        timeout_seconds: float | None = None,
     ) -> tuple[list[Record], dict[str, Any]]:
         connpool_usage = self._driver._pool.in_use_connection_count(self._driver._pool.address)
         CONNECTION_POOL_USAGE.labels(self._driver._pool.address).set(float(connpool_usage))
@@ -383,24 +386,43 @@ class InfrahubDatabase:
                 )
 
             with QUERY_EXECUTION_METRICS.labels(**labels).time():
-                response = await self.run_query(query=query, params=params, name=name)
-                if response is None:
-                    span.set_attribute("rows", "empty")
-                    return [], {}
-                results = [item async for item in response]
+                try:
+                    response = await self.run_query(
+                        query=query, params=params, name=name, timeout_seconds=timeout_seconds
+                    )
+                    if response is None:
+                        span.set_attribute("rows", "empty")
+                        return [], {}
+                    results = [item async for item in response]
+                except ClientError as exc:
+                    # A server-side transaction timeout surfaces as a ClientError while the
+                    # result is consumed; translate it into a domain error callers can handle.
+                    if exc.code and "TransactionTimedOut" in exc.code:
+                        raise QueryTimeoutError(
+                            message=f"Query '{name}' exceeded its execution time budget of {timeout_seconds}s"
+                        ) from exc
+                    raise
                 span.set_attribute("rows", len(results))
                 return results, response._metadata or {}
 
     async def run_query(
-        self, query: str, params: dict[str, Any] | None = None, name: str | None = "undefined"
+        self,
+        query: str,
+        params: dict[str, Any] | None = None,
+        name: str | None = "undefined",
+        timeout_seconds: float | None = None,
     ) -> AsyncResult:
         _query: str | Query = query
         if self.is_transaction:
+            # An explicit transaction's timeout is fixed at begin_transaction time, so a
+            # per-query timeout cannot be applied here; auto-commit queries carry it on the
+            # Query wrapper below.
             execution_method = await self.transaction(name=name)
         else:
             _query = Query(
                 text=query,
                 metadata={"name": name, "infrahub_id": f"{trace.get_current_span().get_span_context().span_id:x}"},
+                timeout=timeout_seconds,
             )
             execution_method = await self.session()
 
@@ -448,7 +470,9 @@ class InfrahubDatabase:
 
 async def create_database(driver: AsyncDriver, database_name: str) -> None:
     default_db = driver.session()
-    await default_db.run(f"CREATE DATABASE {database_name} WAIT")
+    # Backtick-quote so dashes and dots in the name are not parsed as Cypher operators.
+    escaped_name = database_name.replace("`", "``")
+    await default_db.run(f"CREATE DATABASE `{escaped_name}` WAIT")
 
 
 async def validate_database(
@@ -484,6 +508,25 @@ async def validate_database(
     return True
 
 
+def build_address_resolver(members: list[str], default_port: int) -> Callable[[Address], list[Address]]:
+    """Build a driver address resolver that expands the initial address into all configured cluster members.
+
+    The driver tries the returned addresses in order, providing failover for the initial
+    connection when one of the members is unreachable. The driver invokes the resolver for
+    every connection it opens, including ones targeting specific servers discovered through
+    a routing table, so any address other than the initial one is passed through unchanged.
+    """
+    addresses = [Address.parse(member, default_port=default_port) for member in members]
+    initial_address = addresses[0]
+
+    def resolver(address: Address) -> list[Address]:
+        if (address.host, address.port) == (initial_address.host, initial_address.port):
+            return addresses
+        return [address]
+
+    return resolver
+
+
 async def get_db(retry: int = 0) -> AsyncDriver:
     trusted_certificates = TrustSystemCAs()
     if config.SETTINGS.database.tls_insecure:
@@ -491,11 +534,24 @@ async def get_db(retry: int = 0) -> AsyncDriver:
     elif config.SETTINGS.database.tls_ca_file:
         trusted_certificates = TrustCustomCAs(config.SETTINGS.database.tls_ca_file)
 
+    address_resolver = None
+    members = config.SETTINGS.database.address_members
+    if len(members) > 1:
+        if config.SETTINGS.database.protocol == "bolt":
+            log.warning(
+                "Multiple database members are configured with the 'bolt' protocol: "
+                "the driver will pin all traffic to the first reachable member, without "
+                "routing awareness. The 'neo4j' protocol is recommended for clusters.",
+                members=members,
+            )
+        address_resolver = build_address_resolver(members=members, default_port=config.SETTINGS.database.port)
+
     driver = AsyncGraphDatabase.driver(
         config.SETTINGS.database.database_uri,
         auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
         encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,
+        resolver=address_resolver,
         notifications_disabled_classifications=[
             NotificationDisabledClassification.UNRECOGNIZED,
             # Suppress spurious warnings for optional relationship types not yet in DB schema (HAS_OWNER, HAS_SOURCE, etc.)

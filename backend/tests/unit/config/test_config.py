@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
@@ -8,8 +9,13 @@ from pydantic import ValidationError
 
 from infrahub.config import (
     SETTINGS,
+    DatabaseSettings,
     GitSettings,
     MainSettings,
+    SecurityOAuth2Provider1,
+    SecurityOAuth2Provider2,
+    SecurityOIDCProvider1,
+    SecurityOIDCProvider2,
     SecurityOIDCSettings,
     Settings,
     StorageSettings,
@@ -74,6 +80,34 @@ def test_storage_max_file_size_environment_variable() -> None:
     assert isinstance(SETTINGS.storage.max_file_size, int)
 
 
+def test_database_address_single_member() -> None:
+    settings = DatabaseSettings(address="localhost")
+    assert settings.address_members == ["localhost"]
+    assert settings.database_uri == "bolt://localhost:7687"
+
+
+def test_database_address_multiple_members() -> None:
+    settings = DatabaseSettings(address="member1, member2:7777,member3")
+    assert settings.address_members == ["member1", "member2:7777", "member3"]
+    assert settings.database_uri == "bolt://member1:7687"
+
+
+def test_database_address_first_member_with_port() -> None:
+    settings = DatabaseSettings(address="member1:9999,member2")
+    assert settings.database_uri == "bolt://member1:9999"
+
+
+def test_database_address_ipv6_member() -> None:
+    settings = DatabaseSettings(address="[::1]:9999,member2")
+    assert settings.address_members == ["[::1]:9999", "member2"]
+    assert settings.database_uri == "bolt://[::1]:9999"
+
+
+def test_database_uri_with_policy() -> None:
+    settings = DatabaseSettings(address="member1,member2", policy="europe")
+    assert settings.database_uri == "bolt://member1:7687?policy=europe"
+
+
 def _make_oidc_provider(verify_signature: bool) -> SecurityOIDCSettings:
     return SecurityOIDCSettings(
         client_id="testing-client",
@@ -97,3 +131,154 @@ def test_oidc_default_signature_verification_is_silent(caplog: pytest.LogCapture
 
     assert provider.id_token_verify_signature is True
     assert not [record for record in caplog.records if "OIDC id_token verification is disabled" in record.message]
+
+
+def _build_oauth2_provider(groups_claim: str = "groups") -> SecurityOAuth2Provider1:
+    return SecurityOAuth2Provider1(
+        client_id="infrahub-client",
+        client_secret="secret",
+        authorization_url="https://idp.example.com/auth",
+        token_url="https://idp.example.com/token",
+        userinfo_url="https://idp.example.com/userinfo",
+        groups_claim=groups_claim,
+    )
+
+
+def _build_oauth2_provider_2(groups_claim: str = "groups") -> SecurityOAuth2Provider2:
+    return SecurityOAuth2Provider2(
+        client_id="infrahub-client",
+        client_secret="secret",
+        authorization_url="https://idp.example.com/auth",
+        token_url="https://idp.example.com/token",
+        userinfo_url="https://idp.example.com/userinfo",
+        groups_claim=groups_claim,
+    )
+
+
+def _build_oidc_provider(groups_claim: str = "groups") -> SecurityOIDCProvider1:
+    return SecurityOIDCProvider1(
+        client_id="infrahub-client",
+        client_secret="secret",
+        discovery_url="https://idp.example.com/.well-known/openid-configuration",
+        groups_claim=groups_claim,
+    )
+
+
+def _build_oidc_provider_2(groups_claim: str = "groups") -> SecurityOIDCProvider2:
+    return SecurityOIDCProvider2(
+        client_id="infrahub-client",
+        client_secret="secret",
+        discovery_url="https://idp.example.com/.well-known/openid-configuration",
+        groups_claim=groups_claim,
+    )
+
+
+def test_groups_claim_default_is_groups() -> None:
+    assert _build_oauth2_provider().groups_claim == "groups"
+    assert _build_oauth2_provider_2().groups_claim == "groups"
+    assert _build_oidc_provider().groups_claim == "groups"
+    assert _build_oidc_provider_2().groups_claim == "groups"
+
+
+@pytest.mark.parametrize("empty_value", ["", " ", "\t", "\n", "  \t\n  "])
+def test_groups_claim_empty_string_is_rejected_at_startup_oauth2(empty_value: str) -> None:
+    with pytest.raises(ValidationError, match=r"groups_claim must not be empty or whitespace-only"):
+        _build_oauth2_provider(groups_claim=empty_value)
+
+
+@pytest.mark.parametrize("empty_value", ["", " ", "\t", "\n", "  \t\n  "])
+def test_groups_claim_empty_string_is_rejected_at_startup_oidc(empty_value: str) -> None:
+    with pytest.raises(ValidationError, match=r"groups_claim must not be empty or whitespace-only"):
+        _build_oidc_provider(groups_claim=empty_value)
+
+
+@dataclass
+class GroupsClaimStripCase:
+    name: str
+    value: str
+    expected: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        GroupsClaimStripCase(name="trailing_space", value="groups ", expected="groups"),
+        GroupsClaimStripCase(name="leading_space", value=" groups", expected="groups"),
+        GroupsClaimStripCase(name="surrounding_whitespace", value="  roles\t\n", expected="roles"),
+    ],
+    ids=lambda case: case.name,
+)
+def test_groups_claim_is_stripped_oauth2(case: GroupsClaimStripCase) -> None:
+    assert _build_oauth2_provider(groups_claim=case.value).groups_claim == case.expected
+    assert _build_oauth2_provider_2(groups_claim=case.value).groups_claim == case.expected
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        GroupsClaimStripCase(name="trailing_space", value="groups ", expected="groups"),
+        GroupsClaimStripCase(name="leading_space", value=" groups", expected="groups"),
+        GroupsClaimStripCase(name="surrounding_whitespace", value="  roles\t\n", expected="roles"),
+    ],
+    ids=lambda case: case.name,
+)
+def test_groups_claim_is_stripped_oidc(case: GroupsClaimStripCase) -> None:
+    assert _build_oidc_provider(groups_claim=case.value).groups_claim == case.expected
+    assert _build_oidc_provider_2(groups_claim=case.value).groups_claim == case.expected
+
+
+@dataclass
+class DatabaseNameCase:
+    name: str
+    value: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        DatabaseNameCase(name="simple", value="infrahub"),
+        DatabaseNameCase(name="minimum_length", value="abc"),
+        DatabaseNameCase(name="with_digits", value="infrahub2"),
+        DatabaseNameCase(name="leading_digit", value="1nfrahub"),
+        DatabaseNameCase(name="with_dash", value="my-database"),
+        DatabaseNameCase(name="with_dot", value="my.database"),
+        DatabaseNameCase(name="dash_and_dot", value="my-infrahub.db"),
+        DatabaseNameCase(name="maximum_length", value="a" * 63),
+        DatabaseNameCase(name="default_neo4j", value="neo4j"),
+        DatabaseNameCase(name="default_memgraph", value="memgraph"),
+    ],
+    ids=lambda case: case.name,
+)
+def test_database_name_accepts_valid_neo4j_names(case: DatabaseNameCase) -> None:
+    assert DatabaseSettings(database=case.value).database == case.value
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        DatabaseNameCase(name="too_short", value="ab"),
+        DatabaseNameCase(name="too_long", value="a" * 64),
+        DatabaseNameCase(name="trailing_dot", value="infrahub."),
+        DatabaseNameCase(name="trailing_dash", value="infrahub-"),
+        DatabaseNameCase(name="leading_dot", value=".infrahub"),
+        DatabaseNameCase(name="leading_dash", value="-infrahub"),
+        DatabaseNameCase(name="uppercase", value="Infrahub"),
+        DatabaseNameCase(name="underscore", value="my_database"),
+        DatabaseNameCase(name="space", value="my database"),
+        DatabaseNameCase(name="backtick", value="my`database"),
+    ],
+    ids=lambda case: case.name,
+)
+def test_database_name_rejects_invalid_neo4j_names(case: DatabaseNameCase) -> None:
+    with pytest.raises(ValidationError, match="String should match pattern"):
+        DatabaseSettings(database=case.value)
+
+
+def test_fixture_loaded_providers_have_expected_groups_claim(helper: TestHelper) -> None:
+    config_file = str(helper.get_fixtures_dir() / "config_files" / "sso_config_methods.toml")
+    config = load(config_file_name=config_file)
+
+    assert config.security.get_oauth2_provider("provider1").groups_claim == "roles"
+    assert config.security.get_oauth2_provider("provider2").groups_claim == "groups"
+    assert config.security.get_oidc_provider("provider1").groups_claim == "roles"
+    assert config.security.get_oidc_provider("provider2").groups_claim == "groups"

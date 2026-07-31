@@ -214,7 +214,9 @@ class ProcessRepository(Mutation):
             infrahub_branch_name=branch.name,
         )
         workflow = await graphql_context.active_service.workflow.submit_workflow(
-            workflow=GIT_REPOSITORIES_IMPORT_OBJECTS, context=graphql_context.get_context(), parameters={"model": model}
+            workflow=GIT_REPOSITORIES_IMPORT_OBJECTS,
+            context=graphql_context.get_context(),
+            parameters={"model": model},
         )
         task = {"id": workflow.id}
         return cls(ok=True, task=task)
@@ -305,5 +307,11 @@ class ValidateRepositoryConnectivity(Mutation):
             response = await graphql_context.service.message_bus.rpc(
                 message=message, response_class=GitRepositoryConnectivityResponse
             )
+            # Persist the outcome so the repository's operational status reflects the connectivity
+            # check rather than remaining stuck on its last-known value.
+            repo.operational_status.value = response.data.operational_status
+            # Scope the write to operational_status: the node was loaded before the connectivity
+            # RPC, so persisting every field could clobber concurrent edits with stale values.
+            await cast("Node", repo).save(db=graphql_context.db, fields=["operational_status"])
 
         return {"ok": response.data.success, "message": response.data.message}

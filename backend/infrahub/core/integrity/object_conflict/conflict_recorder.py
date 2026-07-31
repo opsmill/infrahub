@@ -1,11 +1,11 @@
 from typing import Sequence, cast
 
 from infrahub import lock
-from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
+from infrahub.core.constants import ValidatorConclusion, ValidatorState
 from infrahub.core.diff.model.diff import ObjectConflict
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreProposedChange
+from infrahub.core.protocols import CoreProposedChange, CoreValidator
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
@@ -21,16 +21,15 @@ class ObjectConflictValidatorRecorder:
     async def record_conflicts(self, proposed_change_id: str, conflicts: Sequence[ObjectConflict]) -> list[Node]:
         try:
             proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-                id=proposed_change_id, kind=InfrahubKind.PROPOSEDCHANGE, db=self.db
+                id=proposed_change_id, kind=CoreProposedChange, db=self.db
             )
         except NodeNotFoundError:
             return []
-        proposed_change = cast("CoreProposedChange", proposed_change)
         validator = await self.get_or_create_validator(proposed_change)
         await self.initialize_validator(validator)
 
-        previous_checks = await validator.checks.get_peers(db=self.db)  # type: ignore[attr-defined]
-        previous_checks_by_conflict_id = {check.enriched_conflict_id.value: check for check in previous_checks.values()}
+        previous_checks = await validator.checks.get_peers(db=self.db, peer_type=Node)  # type: ignore[attr-defined]
+        previous_checks_by_conflict_id = {check.enriched_conflict_id.value: check for check in previous_checks.values()}  # type: ignore[attr-defined]
         is_success = False
 
         current_checks: list[Node] = []
@@ -95,7 +94,7 @@ class ObjectConflictValidatorRecorder:
         await self.finalize_validator(validator, is_success)
         return current_checks
 
-    async def get_validator(self, proposed_change: CoreProposedChange) -> Node | None:
+    async def get_validator(self, proposed_change: CoreProposedChange) -> CoreValidator | None:
         validations = await proposed_change.validations.get_peers(db=self.db, branch_agnostic=True)
 
         for validation in validations.values():
@@ -103,13 +102,13 @@ class ObjectConflictValidatorRecorder:
                 return validation
         return None
 
-    async def get_or_create_validator(self, proposed_change: CoreProposedChange) -> Node:
+    async def get_or_create_validator(self, proposed_change: CoreProposedChange) -> CoreValidator:
         lock_name = f"{proposed_change.get_id()}__{self.validator_kind}"
         async with lock.registry.get(name=lock_name, namespace="validator-create"):
             validator_obj = await self.get_validator(proposed_change=proposed_change)
             if validator_obj:
                 return validator_obj
-            validator_obj = await Node.init(db=self.db, schema=self.validator_kind)
+            validator_obj = cast("CoreValidator", await Node.init(db=self.db, schema=self.validator_kind))
             await validator_obj.new(
                 db=self.db,
                 label=self.validator_label,
@@ -120,16 +119,16 @@ class ObjectConflictValidatorRecorder:
             await validator_obj.save(db=self.db)
             return validator_obj
 
-    async def initialize_validator(self, validator: Node) -> None:
-        validator.state.value = ValidatorState.IN_PROGRESS.value  # type: ignore[attr-defined]
-        validator.conclusion.value = ValidatorConclusion.UNKNOWN.value  # type: ignore[attr-defined]
+    async def initialize_validator(self, validator: CoreValidator) -> None:
+        validator.state.value = ValidatorState.IN_PROGRESS.value  # type: ignore[misc]
+        validator.conclusion.value = ValidatorConclusion.UNKNOWN.value  # type: ignore[misc]
         validator.started_at.value = Timestamp().to_string()  # type: ignore[attr-defined]
         validator.completed_at.value = ""  # type: ignore[attr-defined]
         await validator.save(db=self.db)
 
-    async def finalize_validator(self, validator: Node, is_success: bool) -> None:
-        validator.state.value = ValidatorState.COMPLETED.value  # type: ignore[attr-defined]
-        validator.conclusion.value = (  # type: ignore[attr-defined]
+    async def finalize_validator(self, validator: CoreValidator, is_success: bool) -> None:
+        validator.state.value = ValidatorState.COMPLETED.value  # type: ignore[misc]
+        validator.conclusion.value = (  # type: ignore[misc]
             ValidatorConclusion.SUCCESS.value if is_success else ValidatorConclusion.FAILURE.value
         )
         validator.completed_at.value = Timestamp().to_string()  # type: ignore[attr-defined]

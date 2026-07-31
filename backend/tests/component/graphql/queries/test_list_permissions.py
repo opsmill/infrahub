@@ -6,7 +6,8 @@ from uuid import uuid4
 
 import pytest
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.core.initialization import create_branch

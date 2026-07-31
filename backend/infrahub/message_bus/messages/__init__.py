@@ -6,6 +6,7 @@ from .refresh_git_fetch import RefreshGitFetch
 from .refresh_git_repository_branch_deleted import RefreshGitRepositoryBranchDeleted
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
+from .refresh_settings_response_delay import RefreshSettingsResponseDelay
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
@@ -15,6 +16,7 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "refresh.git.branch_deleted": RefreshGitRepositoryBranchDeleted,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
+    "refresh.settings.response_delay": RefreshSettingsResponseDelay,
     "send.echo.request": SendEchoRequest,
 }
 

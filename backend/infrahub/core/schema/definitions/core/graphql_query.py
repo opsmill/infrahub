@@ -1,6 +1,7 @@
 from infrahub.core.constants import (
     BranchSupportType,
     InfrahubKind,
+    RelationshipDeleteBehavior,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
@@ -20,7 +21,7 @@ core_graphql_query = NodeSchema(
     label="GraphQL Query",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     generate_profile=False,
     branch=BranchSupportType.AWARE,
     uniqueness_constraints=[["name__value"]],
@@ -74,6 +75,14 @@ core_graphql_query = NodeSchema(
             kind=RelKind.ATTRIBUTE,
             optional=True,
             cardinality=Cardinality.MANY,
+        ),
+        Rel(
+            name="query_groups",
+            peer=InfrahubKind.GRAPHQLQUERYGROUP,
+            kind=RelKind.GENERIC,
+            cardinality=Cardinality.MANY,
+            optional=True,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
         ),
     ],
 )

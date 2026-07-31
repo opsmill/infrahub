@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from itertools import starmap
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipStatus
@@ -89,10 +90,7 @@ class AttributeRemoveQuery(Query):
             subquery.append("RETURN peer_node as p2")
             return "\n".join(subquery)
 
-        sub_queries = [
-            render_sub_query_per_rel_type(rel_type, rel_def)
-            for rel_type, rel_def in GraphAttributeRelationships.model_fields.items()
-        ]
+        sub_queries = list(starmap(render_sub_query_per_rel_type, GraphAttributeRelationships.model_fields.items()))
         sub_query_all = "\nUNION\n".join(sub_queries)
 
         node_kinds_str = "|".join(self.node_kinds + profile_kinds_to_update + template_kinds_to_update)

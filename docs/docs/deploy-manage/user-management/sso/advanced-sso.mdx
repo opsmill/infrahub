@@ -1,5 +1,6 @@
 ---
 title: Advanced SSO configuration
+toc_max_heading_level: 4
 ---
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
@@ -47,13 +48,20 @@ oidc_providers = ["provider1", "provider2"]
 
 ## Group mapping
 
-Infrahub can automatically assign users to groups based on information from your identity provider.
+When a user signs in through SSO, Infrahub maps the group claims your identity provider sends to membership in Infrahub account groups. You have three ways to turn a claim into membership:
 
-:::warning
-Infrahub won't automatically create groups based on identity provider data. You must create the corresponding groups in Infrahub first.
+- **[Map to existing groups](#map-to-existing-groups)** — create the groups yourself and match them by name.
+- **[Auto-create groups](#auto-create-groups-from-claims)** — let Infrahub create groups from the claims on first login.
+- **[Set a default group](#set-a-default-group)** — assign a fallback group when no claim maps to one.
+
+:::warning Membership is additive
+Group memberships derived from provider claims are evaluated on **every** login and are **additive**: each login adds the user to the groups their claims map to. Infrahub never removes a user from a group based on claims — if a group is dropped from the provider, that removal is **not** synced automatically. If an administrator removes a user from a group that still appears in provider claims, the user is added back on the next login. Revoking group membership permanently requires updating provider claims and removing membership in Infrahub.
+All three rely on your identity provider sending group information in the first place. Configure that first, then pick an approach. [How Infrahub resolves membership](#how-infrahub-resolves-membership) explains how the approaches interact on each login.
+
+The [default group](#set-a-default-group) is the one exception: it is applied only on a user's first login, not on every login.
 :::
 
-### Step 1: Configure group claims in your identity provider
+### Send group claims from your identity provider
 
 Configure your identity provider application to include group information in the authentication tokens sent to Infrahub.
 
@@ -65,15 +73,19 @@ Refer to your provider's documentation for instructions on "group claims" or "co
 For OIDC, the `id_token` is verified (signature, audience and issuer) by default before its claims are used. Setting `INFRAHUB_OIDC_<SLOT>_ID_TOKEN_VERIFY_SIGNATURE=false` disables this and makes Infrahub trust any token presented to the callback; use it only as a temporary workaround for a misconfigured provider.
 :::
 
-### Step 2: Create corresponding groups in Infrahub
+Every SSO authentication attempt is logged in the Infrahub server logs, including the groups received from your identity provider:
 
-Create groups in Infrahub that match the groups sent by your identity provider.
+```log
+SSO user authenticated  [infrahub] app=infrahub.api body={'user_name': 'Otto the otter', 'groups': ['Admin Otter']}
+```
+
+### Map to existing groups
+
+Create groups in Infrahub whose names match the groups your identity provider sends. On login, Infrahub adds the user to every existing account group whose name matches a received claim.
 
 :::danger
 Some providers send group IDs instead of display names. Create groups in Infrahub with the exact same IDs your provider sends, and use the label field to store human-friendly names.
 :::
-
-Follow these steps to create groups:
 
 1. Navigate to `Admin` > `Users and Permissions` > `Groups`
 2. Click `+ Create Account Group`
@@ -82,24 +94,101 @@ Follow these steps to create groups:
 5. Click `Save`
 6. Repeat for each group you want to map
 
-:::info
-Every SSO authentication attempt is logged in the Infrahub server logs. These logs contain detailed information about the groups received from your identity provider.
-
-For example:
-
-```log
-SSO user authenticated  [infrahub] app=infrahub.api body={'user_name': 'Otto the otter', 'groups': ['Admin Otter']}
-```
-
-:::
-
 :::success
 To confirm group mapping is working, log in through SSO and check your user Profile in Infrahub. You should see the groups assigned based on your identity provider's data.
 :::
 
-### Step 3: Configure default group assignment (optional)
+### Auto-create groups from claims
 
-If your identity provider cannot provide group information, configure a default group for SSO users.
+Infrahub can create local groups on demand from the claims your identity provider sends, so you don't have to mirror every provider group by hand. The feature is **opt-in**: it activates only when a regular-expression filter is configured.
+
+#### How it works
+
+:::info Applied on first login only
+The default group is assigned only on a user's **first** login, when their account is created. It is not re-applied on subsequent logins, so once an administrator removes a user from the default group — or moves them to a different group — that change sticks and the default group is not added back.
+:::
+
+On every SSO login, each provider-supplied claim is matched against the configured filter. The first matching pattern derives an **effective name** — either from a `(?P<name>...)` named capture group or, when the pattern has no named capture, from the full matched claim. Infrahub then finds-or-creates a `CoreAccountGroup` with that name and adds the logging-in account as a member. A claim that does not match the filter is ignored.
+
+#### Configure the filter
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+# Capture everything after `LDAP/group/` as the local group name
+export INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_FILTER='^LDAP/group/(?P<name>.+)$'
+
+# Cap how many new groups one login may create (existing-group reuse is uncapped)
+export INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_MAX_PER_LOGIN=50
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[security]
+auto_create_groups_filter = "^LDAP/group/(?P<name>.+)$"
+auto_create_groups_max_per_login = 50
+```
+
+</TabItem>
+</Tabs>
+
+With the example above, a claim `LDAP/group/network-engineering` produces a local group named `network-engineering`.
+
+:::warning
+Anchor your regex (`^...$`) and scope it tightly. A permissive pattern can create unintended groups on any login.
+:::
+
+#### Use multiple filters
+
+The filter also accepts an ordered list of patterns. Each claim is tested against the patterns in declared order, and the first one that matches wins — later patterns are not tried for that claim. Each pattern can use its own `(?P<name>...)` capture, or none.
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+# Provide a list as a JSON array string
+export INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_FILTER='["^LDAP/group/(?P<name>.+)$", "^okta-(?P<name>.+)$"]'
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[security]
+auto_create_groups_filter = ["^LDAP/group/(?P<name>.+)$", "^okta-(?P<name>.+)$"]
+```
+
+</TabItem>
+</Tabs>
+
+Through an environment variable, the list must be a JSON array string — a comma-separated value is treated as one pattern, not split. Every pattern is compiled at startup; an invalid regex stops startup with an error that names its position in the list.
+
+#### Per-login cap
+
+`auto_create_groups_max_per_login` bounds how many **new** groups a single login can create. Reuse of already-existing groups is uncapped. When the cap is reached, further claims that would require a fresh group are dropped and the login still completes. The login then emits a single `GroupAutoCreateCappedEvent` carrying the cap value and the dropped claims.
+
+#### Provenance: the `origin` attribute
+
+Every auto-created `CoreAccountGroup` row stores the configured **provider name** (for example, `"AzureAD-corp"`) on its `origin` attribute. The value is written verbatim at creation time and is never overwritten on subsequent logins, so the audit trail of which IdP first provisioned a group is preserved.
+
+`origin` is read-only and hidden from the default UI; toggle the **Show extra attributes** view to inspect it, or query it via the GraphQL API.
+
+#### Audit events
+
+Three event types are emitted on the standard event bus — useful for compliance pipelines and operational dashboards:
+
+- `GroupAutoCreatedEvent` — a new group was created from a claim
+- `GroupAutoCreateRejectedEvent` — a claim matched but produced an invalid effective name (empty or whitespace-only)
+- `GroupAutoCreateCappedEvent` — the per-login cap was reached and surplus claims were dropped
+
+See the [group events reference](../../../reference/infrahub-events/group.mdx) for full payload shapes.
+
+### Set a default group
+
+When your identity provider sends no group information, assign a default group to SSO users. The default group applies to SSO logins only; accounts that sign in with a local username and password are unaffected and keep the groups they already belong to.
 
 :::warning
 You must create this default group in Infrahub before configuring it here.
@@ -123,6 +212,17 @@ sso_user_default_group = "default-group"
 
 </TabItem>
 </Tabs>
+
+### How Infrahub resolves membership
+
+How a claim becomes membership depends on whether auto-creation is enabled:
+
+- **Auto-creation enabled** (a filter is configured): Infrahub evaluates each claim against the filter and grants membership to the matching groups, creating them or reusing existing ones. If no claim grants membership, Infrahub assigns the default group, when one is configured.
+- **Auto-creation disabled** (no filter): Infrahub adds the user to existing account groups whose names exactly match the received claims. When the provider sends no group claims, Infrahub assigns the default group, when one is configured.
+
+:::warning
+Enabling auto-creation changes how unmatched claims are handled. With a filter configured, only claims that match it grant membership — a claim that doesn't match no longer falls through to an existing group of the same name. If you map claims manually and then enable auto-creation, widen the filter to cover those claims too; auto-creation reuses an existing group with the same name instead of creating a duplicate.
+:::
 
 :::success
 Now that group mapping is configured, manage user permissions in Infrahub by [assigning permissions and roles](../permissions-roles/manage-accounts-and-permissions.mdx) to these groups.

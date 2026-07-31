@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from cachetools import TTLCache
@@ -13,8 +14,14 @@ from prefect.cache_policies import NONE
 from pydantic import Field
 
 from infrahub import config
+from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
-from infrahub.exceptions import CommitNotFoundError, RepositoryError
+from infrahub.exceptions import (
+    CommitNotFoundError,
+    RepositoryConnectionError,
+    RepositoryCredentialsError,
+    RepositoryError,
+)
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
 
@@ -31,6 +38,34 @@ class PendingObjectImport:
     infrahub_branch_name: str
     commit: str
     git_branch_name: str | None = None
+
+
+class ImportStep(StrEnum):
+    """The phase of a branch synchronization in which a failure occurred."""
+
+    COLLECTION = "collection"
+    IMPORT = "import"
+
+
+@dataclass
+class FailedImport:
+    """A branch that could not be synchronized, with the phase that failed and why."""
+
+    branch_name: str
+    step: ImportStep
+    reason: str
+
+
+@dataclass
+class CollectedImports:
+    """Outcome of the git/branch-setup phase of a sync.
+
+    ``imports`` are the branches ready to have their objects imported. ``failed_imports`` are the
+    branches whose git or branch setup failed, each carrying the phase that failed and the reason.
+    """
+
+    imports: list[PendingObjectImport] = field(default_factory=list)
+    failed_imports: list[FailedImport] = field(default_factory=list)
 
 
 class InfrahubRepository(InfrahubRepositoryIntegrator):
@@ -70,31 +105,42 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return response
 
-    async def sync(self, staging_branch: str | None = None) -> None:
-        """Synchronize the repository with its remote origin and with the database.
-
-        By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
+    def raise_if_branches_failed(self, failed_imports: list[FailedImport]) -> None:
+        """Log every branch that failed to synchronize and surface them as a single error.
 
         Raises:
-            GraphQLError: When a branch or commit update against the database fails.
+            RepositoryError: When at least one branch failed to synchronize.
 
         """
-        for pending in await self.collect_pending_imports(staging_branch=staging_branch):
-            await self.import_objects_from_files(
-                infrahub_branch_name=pending.infrahub_branch_name,
-                git_branch_name=pending.git_branch_name,
-                commit=pending.commit,
+        if not failed_imports:
+            return
+
+        for failed in failed_imports:
+            log.warning(
+                "Failed to synchronize branch, skipping it.",
+                repository=self.name,
+                branch=failed.branch_name,
+                step=failed.step.value,
+                reason=failed.reason,
             )
 
-    async def collect_pending_imports(self, staging_branch: str | None = None) -> list[PendingObjectImport]:
+        branches = ", ".join(failed.branch_name for failed in failed_imports)
+        raise RepositoryError(
+            identifier=self.name,
+            message=f"Unable to synchronize the following branches of repository {self.name}: {branches}",
+        )
+
+    async def collect_pending_imports(self, staging_branch: str | None = None) -> CollectedImports:
         """Run the git and branch-setup side of a sync and return the imports it produced.
 
         Brings the local clone in line with the remote and records the affected branches and their
         commits in the database, pinning a per-commit worktree for each. Returns one entry per branch
-        whose objects still need importing into the graph. A per-branch git failure is logged and skipped so the
-        other branches' imports are still returned.
+        whose objects still need importing into the graph, alongside the branches whose git setup
+        failed and the reason each one failed.
 
         Raises:
+            RepositoryConnectionError: When the remote repository is unreachable.
+            RepositoryCredentialsError: When the credentials for the remote repository are invalid.
             GraphQLError: When a branch or commit update against the database fails.
 
         """
@@ -104,14 +150,20 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         new_branches, updated_branches = await self.compare_local_remote()
 
-        pending_imports: list[PendingObjectImport] = []
         if not new_branches and not updated_branches:
-            return pending_imports
+            return CollectedImports()
 
         log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
 
+        imports: list[PendingObjectImport] = []
+        failed_imports: list[FailedImport] = []
+
         # TODO need to handle properly the situation when a branch is not valid.
         if self.internal_status == RepositoryInternalStatus.ACTIVE.value:
+            # A branch that has been merged (or is being deleted) is read-only: recording its commit
+            # would be rejected by the graph and abort the whole sync, so drop those branches here.
+            new_branches, updated_branches = await self._exclude_read_only_branches(new_branches, updated_branches)
+
             for branch_name in new_branches:
                 is_valid = self.validate_remote_branch(branch_name=branch_name)
                 if not is_valid:
@@ -131,18 +183,19 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     commit = self.get_commit_value(branch_name=branch_name, remote=False)
                     self.create_commit_worktree(commit=commit)
                     await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
+                except (RepositoryConnectionError, RepositoryCredentialsError):
+                    # The remote itself is unreachable or unauthorized; iterating the remaining
+                    # branches is pointless, so let it abort the whole sync.
+                    raise
                 except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
-                    # Isolate per-branch git failures so imports already collected for the other
-                    # branches are still returned and applied.
-                    log.warning(
-                        "Failed to prepare branch for import, skipping it.",
-                        repository=self.name,
-                        branch=branch_name,
-                        exc_info=exc,
+                    # Isolate per-branch git failures so the other branches are still collected;
+                    # graph errors are left to propagate.
+                    failed_imports.append(
+                        FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
                     )
                     continue
 
-                pending_imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit))
+                imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit))
 
             for branch_name in updated_branches:
                 is_valid = self.validate_remote_branch(branch_name=branch_name)
@@ -153,21 +206,18 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
                 try:
                     commit_after = await self.pull(branch_name=branch_name)
+                except (RepositoryConnectionError, RepositoryCredentialsError):
+                    raise
                 except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
-                    # Isolate per-branch git failures so imports already collected for the other
-                    # branches are still returned and applied; graph errors are left to propagate.
-                    log.warning(
-                        "Failed to pull branch for import, skipping it.",
-                        repository=self.name,
-                        branch=branch_name,
-                        exc_info=exc,
+                    # Isolate per-branch git failures so the other branches are still collected;
+                    # graph errors are left to propagate.
+                    failed_imports.append(
+                        FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
                     )
                     continue
 
                 if isinstance(commit_after, str):
-                    pending_imports.append(
-                        PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit_after)
-                    )
+                    imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit_after))
 
                 elif commit_after is True:
                     log.warning(
@@ -176,10 +226,26 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         branch=branch_name,
                     )
 
-        pending_imports.extend(
+        imports.extend(
             await self._collect_staging_imports(staging_branch=staging_branch, updated_branches=updated_branches)
         )
-        return pending_imports
+        return CollectedImports(imports=imports, failed_imports=failed_imports)
+
+    async def _exclude_read_only_branches(
+        self, new_branches: list[str], updated_branches: list[str]
+    ) -> tuple[list[str], list[str]]:
+        """Drop branches whose Infrahub branch is in a terminal status (merged or being deleted).
+
+        Such branches are read-only, so recording their commit is rejected by the graph. The default
+        branch is never terminal, so filtering here does not affect the staging-import path.
+        """
+        terminal_status_values = {status.value for status in TERMINAL_BRANCH_STATUSES}
+        graph_branches = await self.sdk.branch.all()
+        read_only = {name for name, branch in graph_branches.items() if branch.status.value in terminal_status_values}
+        return (
+            [name for name in new_branches if self._get_mapped_target_branch(branch_name=name) not in read_only],
+            [name for name in updated_branches if self._get_mapped_target_branch(branch_name=name) not in read_only],
+        )
 
     async def _collect_staging_imports(
         self, staging_branch: str | None, updated_branches: list[str]

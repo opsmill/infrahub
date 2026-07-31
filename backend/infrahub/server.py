@@ -100,7 +100,6 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     await service.initialize_workflow(is_initial_setup=is_initial_setup)
 
     application.state.service = service
-    application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
 
     if enable_scheduler:
         await service.scheduler.start_schedule()
@@ -238,7 +237,7 @@ async def documentation() -> RedirectResponse:
 
 @app.get("/{rest_of_path:path}", include_in_schema=False)
 async def react_app(req: Request, rest_of_path: str) -> Response:  # noqa: ARG001
-    return templates.TemplateResponse("index.html", {"request": req})
+    return templates.TemplateResponse(request=req, name="index.html")
 
 
 def _validate_feature_selection(configuration: config.Settings) -> None:

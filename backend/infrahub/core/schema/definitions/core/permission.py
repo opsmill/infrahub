@@ -5,6 +5,7 @@ from infrahub.core.constants import (
     InfrahubKind,
     PermissionAction,
     PermissionDecision,
+    SchemaAttributeDisplay,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
@@ -25,6 +26,7 @@ core_base_permission = GenericSchema(
     icon="mdi:user-key",
     include_in_menu=False,
     generate_profile=False,
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(name="description", kind="Text", optional=True),
         Attr(
@@ -132,7 +134,7 @@ core_account_role = NodeSchema(
     icon="mdi:user-badge",
     include_in_menu=False,
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     human_friendly_id=["name__value"],
     generate_profile=False,
     attributes=[Attr(name="name", kind="Text", unique=True)],
@@ -164,11 +166,22 @@ core_account_group = NodeSchema(
     icon="mdi:account-group",
     include_in_menu=False,
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     human_friendly_id=["name__value"],
     generate_profile=False,
     inherit_from=[InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE, InfrahubKind.GENERICGROUP],
     branch=BranchSupportType.AGNOSTIC,
+    attributes=[
+        Attr(
+            name="origin",
+            kind="Text",
+            description="Identity provider name that auto-created this group; null on manual / bootstrap / pre-upgrade groups.",
+            optional=True,
+            read_only=True,
+            allow_override=AllowOverrideType.NONE,
+            display=SchemaAttributeDisplay.EXTRA,
+        ),
+    ],
     relationships=[
         Rel(
             name="roles",

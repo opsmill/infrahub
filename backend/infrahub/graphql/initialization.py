@@ -20,9 +20,10 @@ if TYPE_CHECKING:
     from graphql import GraphQLSchema
     from starlette.requests import HTTPConnection
 
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.events.models import EventContext
     from infrahub.services import InfrahubServices
 
 
@@ -86,6 +87,9 @@ class GraphqlContext:
     def get_context(self) -> InfrahubContext:
         return InfrahubContext.init(branch=self.branch, account=self.active_account_session)
 
+    def to_event_context(self) -> EventContext:
+        return self.get_context().to_event_context()
+
     @property
     def assigned_user_id(self) -> str:
         """Return the user ID to be used for assignments in this context."""
@@ -122,8 +126,9 @@ async def prepare_graphql_params(
     permissions: PermissionManager | None = None
     if account_session:
         async with db.start_session(read_only=True) as database:
-            permissions = PermissionManager(account_session=account_session)
-            await permissions.load_permissions(db=database, branch=branch)
+            permissions = await PermissionManager.load_for_account(
+                db=database, branch=branch, default_branch_name=registry.default_branch, account_session=account_session
+            )
 
     return GraphqlParams(
         schema=gql_schema,

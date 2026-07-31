@@ -1,0 +1,11 @@
+query GetJinjaDevice($ids: [ID!]!) {
+    TestNetworkDevice(ids: $ids) {
+        edges {
+            node {
+                name {
+                    value
+                }
+            }
+        }
+    }
+}

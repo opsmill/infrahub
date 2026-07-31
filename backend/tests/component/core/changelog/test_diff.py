@@ -30,7 +30,9 @@ async def test_events_from_diff(
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch1)
     diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch1)
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch1)
-    diff = await diff_merger.merge_graph(at=at)
+    await diff_merger.merge_graph(at=at)
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch1)
+    diff = await diff_repository.get_one(diff_branch_name=branch1.name)
     diff_events = DiffChangelogCollector(diff=diff, db=db, branch=branch1)
     changelogs = diff_events.collect_changelogs()
     assert len(changelogs) == 2
@@ -93,7 +95,9 @@ async def test_merge_diff_changelogs(
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch5)
     diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch5)
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch5)
-    diff = await diff_merger.merge_graph(at=at)
+    await diff_merger.merge_graph(at=at)
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch5)
+    diff = await diff_repository.get_one(diff_branch_name=branch5.name)
     diff_events = DiffChangelogCollector(diff=diff, db=db, branch=branch5)
     events = diff_events.collect_changelogs()
     assert len(events) == 5
@@ -221,7 +225,8 @@ class TestConflict:
         for conflict in conflicts_map.values():
             await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        diff = await diff_merger.merge_graph(at=at)
+        await diff_merger.merge_graph(at=at)
+        diff = await diff_repository.get_one(diff_branch_name=branch2.name)
         diff_events = DiffChangelogCollector(diff=diff, db=db, branch=branch2)
         events = diff_events.collect_changelogs()
 
@@ -278,7 +283,8 @@ class TestConflict:
         conflict = next(iter(conflicts_map.values()))
         await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        diff = await diff_merger.merge_graph(at=at)
+        await diff_merger.merge_graph(at=at)
+        diff = await diff_repository.get_one(diff_branch_name=branch2.name)
         diff_events = DiffChangelogCollector(diff=diff, db=db, branch=branch2)
         events = diff_events.collect_changelogs()
         match conflict_selection:

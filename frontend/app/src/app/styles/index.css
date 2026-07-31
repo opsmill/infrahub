@@ -4,6 +4,8 @@
 @import "tailwindcss";
 
 @config "../../../tailwind.config.js";
+@source "../../../../packages/schema-visualizer/src/**/*.{js,ts,jsx,tsx}";
+@source "../../../../packages/ui/src/**/*.{js,ts,jsx,tsx}";
 
 @font-face {
   font-family: InterVariable;
@@ -13,6 +15,12 @@
 }
 
 @layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;

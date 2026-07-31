@@ -1,7 +1,8 @@
+import { LinkButton } from "@infrahub/ui";
 import type { PressEvent } from "react-aria-components";
 
+import type { overrideQueryParams } from "@/shared/api/rest/fetch";
 import { Checkbox } from "@/shared/components/aria/checkbox";
-import { LinkButton } from "@/shared/components/ui/button";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
@@ -13,6 +14,7 @@ export interface TableIdentifierCellProps {
   label: React.ReactNode;
   isSelected?: boolean;
   onClickCheckbox?: (e: PressEvent) => void;
+  overrideParams?: overrideQueryParams[];
 }
 
 export function TableIdentifierCell({
@@ -21,6 +23,7 @@ export function TableIdentifierCell({
   label,
   isSelected,
   onClickCheckbox,
+  overrideParams,
 }: TableIdentifierCellProps) {
   const { isAuthenticated } = useAuth();
   return (
@@ -36,7 +39,7 @@ export function TableIdentifierCell({
       <LinkButton
         variant="ghost"
         size="sm"
-        to={getObjectDetailsUrl(objectKind, objectId)}
+        href={getObjectDetailsUrl(objectKind, objectId, overrideParams)}
         className="-mx-1 truncate rounded-xl px-2 text-custom-blue-700 hover:underline"
       >
         {label}

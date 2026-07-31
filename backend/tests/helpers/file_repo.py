@@ -48,10 +48,12 @@ class FileRepo:
                 self.repo.git.checkout(self._initial_branch)
             else:
                 self._branches.append(branch)
+                self.repo.git.checkout(self._initial_branch)
                 self.repo.git.checkout("-b", branch)
             shutil.copytree(pull_request, self.sources_directory / self.name, dirs_exist_ok=True)
             self.repo.git.add(".")
-            self.repo.git.commit("-m", pull_request)
+            if self.repo.is_dirty(index=True, working_tree=False):
+                self.repo.git.commit("-m", pull_request)
 
     def __post_init__(self) -> None:
         repo_base = Path(self.local_repo_base_path, self.name)

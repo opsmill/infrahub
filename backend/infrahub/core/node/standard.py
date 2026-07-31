@@ -3,7 +3,8 @@ from __future__ import annotations
 import inspect
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Union, get_args, get_origin
+from types import UnionType
+from typing import TYPE_CHECKING, Any, Union, get_args, get_origin
 from uuid import UUID
 
 import ujson
@@ -45,12 +46,12 @@ class StandardNodeQueryFields:
 
 
 class StandardNode(BaseModel):
-    id: Optional[str] = None
-    uuid: Optional[UUID] = None
-    created_at: Optional[str] = Field(default=None, validate_default=True)
+    id: str | None = None
+    uuid: UUID | None = None
+    created_at: str | None = Field(default=None, validate_default=True)
     created_by: str = Field(default=SYSTEM_USER_ID)
-    updated_by: Optional[str] = Field(default=None)
-    updated_at: Optional[str] = Field(default=None, validate_default=True)
+    updated_by: str | None = Field(default=None)
+    updated_at: str | None = Field(default=None, validate_default=True)
 
     _query: type[StandardNodeQuery] = StandardNodeCreateQuery
     _exclude_attrs: list[str] = ["id", "uuid", "_query"]
@@ -79,9 +80,15 @@ class StandardNode(BaseModel):
         annotation_origin = get_origin(field.annotation)
         annotation_args = get_args(field.annotation)
 
-        if (annotation_origin == Union and len(annotation_args) == 2 and type(None) in annotation_args) or (
-            annotation_origin is list and len(annotation_args)
-        ):
+        # `Optional[X]` resolves to `Union` while `X | None` resolves to `UnionType` on Python < 3.14,
+        # where the two are distinct; both must be recognized as nullable fields.
+        if annotation_origin in (Union, UnionType) and len(annotation_args) == 2 and type(None) in annotation_args:
+            # Union member order is preserved, so pick the non-None member rather than assuming its
+            # position: `X | None` and `None | X` must both resolve to `X`.
+            wrapped = next(arg for arg in annotation_args if arg is not type(None))
+            return get_origin(wrapped) or wrapped
+
+        if annotation_origin is list and len(annotation_args):
             return get_origin(annotation_args[0]) or annotation_args[0]
 
         return annotation_origin or field.annotation
@@ -220,7 +227,7 @@ class StandardNode(BaseModel):
         return True
 
     @classmethod
-    async def get(cls, id: str, db: InfrahubDatabase) -> Optional[Self]:
+    async def get(cls, id: str, db: InfrahubDatabase) -> Self | None:
         """Get a node from the database identified by its ID."""
         node = await cls._get_item_raw(id=id, db=db)
         if node:
@@ -229,7 +236,7 @@ class StandardNode(BaseModel):
         return None
 
     @classmethod
-    async def _get_item_raw(cls, id: str, db: InfrahubDatabase) -> Neo4jNode:
+    async def _get_item_raw(cls, id: str, db: InfrahubDatabase) -> Neo4jNode | None:
         query: Query = await StandardNodeGetItemQuery.init(db=db, node_id=id, node_type=cls.get_type())
         await query.execute(db=db)
 
@@ -237,10 +244,10 @@ class StandardNode(BaseModel):
         if not result:
             return None
 
-        return result.get("n")
+        return result.get_node("n")
 
     @classmethod
-    def from_db(cls, node: Neo4jNode, extras: Optional[dict[str, Any]] = None) -> Self:
+    def from_db(cls, node: Neo4jNode, extras: dict[str, Any] | None = None) -> Self:
         """Convert a Neo4j Node to a Infrahub StandardNode.
 
         Args:
@@ -250,7 +257,7 @@ class StandardNode(BaseModel):
             StandardNode: Proper StandardNode object
 
         """
-        attrs = {}
+        attrs: dict[str, Any] = {}
         node_data = dict(node)
         extras = extras or {}
         node_data.update(extras)
@@ -327,4 +334,4 @@ class StandardNode(BaseModel):
         )
         await query.execute(db=db)
 
-        return [cls.from_db(result.get("n")) for result in query.get_results()]
+        return [cls.from_db(result.get_node("n")) for result in query.get_results()]

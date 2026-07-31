@@ -106,6 +106,19 @@ This design enables powerful patterns:
 
 The Transformation logic remains group-agnostic, while artifact definitions and Generators provide the targeting mechanism. See [Groups](../groups/overview) for details on creating target groups.
 
+## Dependency tracking and regeneration
+
+When a Transformation feeds an [artifact](../artifacts/overview), Infrahub regenerates that artifact only when something it actually depends on changes. Each Transformation has a **dependency closure** — the set of files whose contents affect its output — computed when the repository is imported and stored on the Transformation.
+
+Infrahub builds the closure differently per language:
+
+- **Jinja2**: the template itself, plus every template it reaches through static `{% include %}`, `{% import %}`, or `{% extends %}`, resolved transitively. See [Write a Jinja2 Transformation](./jinja2#dependency-tracking).
+- **Python**: every Git-tracked file in the directory that contains the transform's `file_path`. See [Write a Python Transformation](./python#dependency-tracking).
+
+A change to a file outside a Transformation's closure no longer regenerates its artifacts. When automatic detection can't follow a dependency — a template name resolved at runtime, or a module imported from another package — declare the extra files with the [`watch` key](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch) in `.infrahub.yml`.
+
+For how these decisions surface during a proposed change, see [Understanding artifact regeneration](../proposed-changes/overview#understanding-artifact-regeneration).
+
 ## Unit testing for Transformations
 
 Infrahub provides a framework to create unit tests for your Transformations with very minimal code/configuration.

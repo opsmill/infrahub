@@ -1,4 +1,15 @@
 {
+  "version": "0.11.9",
+  "integration_state_schema": 1,
+  "installed_integrations": [
+    "claude"
+  ],
+  "integration_settings": {
+    "claude": {
+      "script": "sh",
+      "invoke_separator": "-"
+    }
+  },
   "integration": "claude",
-  "version": "0.8.1"
+  "default_integration": "claude"
 }

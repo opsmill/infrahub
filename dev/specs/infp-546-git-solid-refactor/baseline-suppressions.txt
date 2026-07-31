@@ -1,0 +1,135 @@
+# Type-checker suppression baseline for `infrahub.git`
+# Captured: 2026-05-19 (T002, branch git-solid-refactor-infp-546)
+# Source: pyproject.toml + grep across backend/infrahub/git/
+#
+# This file is the FR-018 reference point. Every PR in this refactor MUST verify
+# the union of (module-pattern, error-code) cells affecting `infrahub.git` has
+# NOT grown when compared against this baseline. FR-019 requires obsoleted
+# suppressions to be removed in the same PR that makes them unnecessary.
+
+================================================================================
+mypy `[[tool.mypy.overrides]]` blocks (from pyproject.toml)
+================================================================================
+
+# pyproject.toml:358-365
+[[tool.mypy.overrides]]
+module = "infrahub.git.base"
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "index",
+    "return-value",
+]
+
+# pyproject.toml:367-374
+[[tool.mypy.overrides]]
+module = "infrahub.git.repository"
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "call-overload",
+    "return-value",
+]
+
+# Note: no per-module override for `infrahub.git.integrator`,
+# `infrahub.git.tasks`, `infrahub.git.models`, or `infrahub.git.utils`.
+
+================================================================================
+ty `[[tool.ty.overrides]]` block (from pyproject.toml)
+================================================================================
+
+# pyproject.toml:1340-1355
+[[tool.ty.overrides]]
+include = ["backend/infrahub/git/**"]
+
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-await = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+unused-type-ignore-comment = "ignore"  # Clashes with mypy's type ignore comments
+
+================================================================================
+Inline `# type: ignore` markers (total: 25)
+================================================================================
+
+# By module:
+#   backend/infrahub/git/integrator.py — 16
+#   backend/infrahub/git/tasks.py      —  9
+#   backend/infrahub/git/base.py       —  0
+#   backend/infrahub/git/repository.py —  0
+#   backend/infrahub/git/models.py     —  0
+#   backend/infrahub/git/utils.py      —  0
+#   backend/infrahub/git/__init__.py   —  0
+#   backend/infrahub/git/directory.py  —  0
+#   backend/infrahub/git/constants.py  —  0
+#   backend/infrahub/git/worktree.py   —  0
+
+# By error code:
+#   [call-overload] — 23
+#   [arg-type]      —  2 (both in tasks.py:307 and tasks.py:343, on @task decorators)
+
+# Full list (file:line — error-code):
+backend/infrahub/git/integrator.py:200  [call-overload]
+backend/infrahub/git/integrator.py:201  [call-overload]
+backend/infrahub/git/integrator.py:206  [call-overload]
+backend/infrahub/git/integrator.py:211  [call-overload]
+backend/infrahub/git/integrator.py:212  [call-overload]
+backend/infrahub/git/integrator.py:215  [call-overload]
+backend/infrahub/git/integrator.py:218  [call-overload]
+backend/infrahub/git/integrator.py:692  [call-overload]
+backend/infrahub/git/integrator.py:855  [call-overload]
+backend/infrahub/git/integrator.py:1227 [call-overload]
+backend/infrahub/git/integrator.py:1228 [call-overload]
+backend/infrahub/git/integrator.py:1229 [call-overload]
+backend/infrahub/git/integrator.py:1412 [call-overload]
+backend/infrahub/git/integrator.py:1424 [call-overload]
+backend/infrahub/git/integrator.py:1475 [call-overload]
+backend/infrahub/git/integrator.py:1484 [call-overload]
+backend/infrahub/git/tasks.py:84       [call-overload]
+backend/infrahub/git/tasks.py:120      [call-overload]
+backend/infrahub/git/tasks.py:263      [call-overload]
+backend/infrahub/git/tasks.py:272      [call-overload]
+backend/infrahub/git/tasks.py:307      [arg-type]
+backend/infrahub/git/tasks.py:343      [arg-type]
+backend/infrahub/git/tasks.py:555      [call-overload]
+backend/infrahub/git/tasks.py:655      [call-overload]
+backend/infrahub/git/tasks.py:1043     [call-overload]
+
+================================================================================
+FR-018 invariant check
+================================================================================
+
+The union of suppressed (module-pattern, error-code) cells today:
+
+mypy:
+  ("infrahub.git.base",       arg-type)
+  ("infrahub.git.base",       attr-defined)
+  ("infrahub.git.base",       index)
+  ("infrahub.git.base",       return-value)
+  ("infrahub.git.repository", arg-type)
+  ("infrahub.git.repository", assignment)
+  ("infrahub.git.repository", call-overload)
+  ("infrahub.git.repository", return-value)
+  → 8 cells
+
+ty (treating "backend/infrahub/git/**" as one module-pattern):
+  ("backend/infrahub/git/**", invalid-argument-type)
+  ("backend/infrahub/git/**", invalid-assignment)
+  ("backend/infrahub/git/**", invalid-await)
+  ("backend/infrahub/git/**", invalid-return-type)
+  ("backend/infrahub/git/**", no-matching-overload)
+  ("backend/infrahub/git/**", possibly-missing-attribute)
+  ("backend/infrahub/git/**", unresolved-attribute)
+  ("backend/infrahub/git/**", unused-type-ignore-comment)  ← keep (cross-tool quirk)
+  → 8 cells
+
+Inline:
+  25 markers across 2 files (integrator.py, tasks.py)
+
+Across-PR invariant: this set MUST NOT grow. New entries are forbidden;
+narrowing or removing entries is encouraged whenever a structural change
+makes one of them unnecessary (FR-019).

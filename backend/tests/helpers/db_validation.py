@@ -1,10 +1,10 @@
 from typing import Any
 
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.node import Node
 from infrahub.core.query import Query, QueryType
+from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 
 
@@ -272,7 +272,16 @@ CALL (rel, branch, branch_created_at, peer) {
 // Count peers where the latest visible edge is active
 // ----------------
 WITH rel, branch,
-    CASE WHEN r.status = "active" AND r.to IS NULL THEN 1 ELSE NULL END AS is_active
+    CASE
+        WHEN r.status = "active"
+        AND (
+            r.to IS NULL
+            OR (branch <> $default_branch AND r.branch = $default_branch AND r.to > branch_created_at)
+        )
+        THEN 1
+        ELSE NULL
+    END AS is_active
+
 WITH rel, branch, count(is_active) AS active_count
 WHERE active_count <> 0 AND active_count <> 2
 RETURN rel.name AS rel_name, rel.uuid AS rel_uuid, branch, active_count

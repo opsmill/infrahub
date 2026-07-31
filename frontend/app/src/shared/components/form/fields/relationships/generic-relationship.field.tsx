@@ -1,6 +1,8 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { useFormContext } from "react-hook-form";
 
 import { Col } from "@/shared/components/container";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import type { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
 import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
@@ -21,6 +23,8 @@ import { Input } from "@/shared/components/ui/input";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useDefaultParent } from "@/entities/nodes/relationships/ui/queries/get-default-parent.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
+import { useCommonParentFilter } from "./useCommonParentFilter";
 
 interface GenericOption extends Node {
   id: string;
@@ -55,6 +59,10 @@ export const GenericRelationshipField = ({
   );
 
   const parentRelationship = selectedGeneric?.id && getParentRelationship(selectedGeneric.id);
+  const commonParent = useCommonParentFilter(relationship, name);
+  // When common_parent drives the filter from a sibling field, the manual "Parent" picker
+  // is redundant — hide it and source the peer filter from the sibling value instead.
+  const showManualParent = !commonParent.isActive && !!parentRelationship;
 
   const { data: defaultParent } = useDefaultParent({
     defaultValue,
@@ -68,6 +76,7 @@ export const GenericRelationshipField = ({
   });
 
   const [selectedParent, setSelectedParent] = useState<Node | null>(defaultParent || null);
+  const hasDerivedKindFromDefault = useRef(false);
 
   const genericOptions = (isGeneric ? (peerSchema?.used_by ?? []) : [])
     .map((name: string) => {
@@ -100,9 +109,43 @@ export const GenericRelationshipField = ({
     }
   }
 
+  // A default value (e.g. a parent pre-filled from the object being viewed) carries
+  // its concrete node kind. Derive the selected kind from it once, so the value is shown
+  // even when the generic is implemented by more than one node and cannot auto-select —
+  // without re-selecting after the user has explicitly cleared the kind.
+  const defaultValueKind =
+    defaultValue?.value && !Array.isArray(defaultValue.value)
+      ? (defaultValue.value as Node).__typename
+      : undefined;
+  if (
+    defaultValueKind &&
+    !selectedGeneric &&
+    !hasDerivedKindFromDefault.current &&
+    genericOptions?.length
+  ) {
+    const foundOption = genericOptions.find((option) => option.id === defaultValueKind);
+    if (foundOption) {
+      hasDerivedKindFromDefault.current = true;
+      setSelectedGeneric(foundOption);
+    }
+  }
+
   if (!selectedParent && defaultParent) {
     setSelectedParent(defaultParent);
   }
+
+  const form = useFormContext();
+
+  // A user switching the kind invalidates any node picked under the previous kind, along with
+  // the parent used to filter it, so clear both. Only wired to the picker, not the automatic
+  // derivation above, so a pre-filled value is preserved on mount. Validation is not forced
+  // here — flagging the field required before the user can pick a node under the new kind
+  // would be premature.
+  const handleKindChange = (value: GenericOption | null) => {
+    setSelectedGeneric(value);
+    setSelectedParent(null);
+    form.setValue(name, DEFAULT_FORM_FIELD_VALUE, { shouldDirty: true });
+  };
 
   return (
     <div className="space-y-2">
@@ -116,10 +159,10 @@ export const GenericRelationshipField = ({
       <GenericSchemaPicker
         genericOptions={genericOptions}
         selectedGeneric={selectedGeneric}
-        setSelectedGeneric={setSelectedGeneric}
+        setSelectedGeneric={handleKindChange}
       />
 
-      {parentRelationship && (
+      {showManualParent && parentRelationship && (
         <Col>
           <LabelFormField
             label={parentRelationship?.label ?? "Parent"}
@@ -183,7 +226,12 @@ export const GenericRelationshipField = ({
                       field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
                     }}
                     peer={selectedGeneric?.id ?? ""}
-                    parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
+                    parent={
+                      commonParent.isActive
+                        ? commonParent.parent
+                        : { name: parentRelationship?.name, value: selectedParent?.id }
+                    }
+                    addNewInitialObject={commonParent.addNewInitialObject}
                     disabled={props.disabled || !selectedGeneric?.id}
                   />
                 </FormInput>

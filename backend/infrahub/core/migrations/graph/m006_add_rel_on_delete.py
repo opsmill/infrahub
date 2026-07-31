@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 class Migration006(InternalSchemaMigration):
     name: str = "006_add_rel_on_delete"
+    description: str = "N/A"
     minimum_version: int = 5
 
     @classmethod

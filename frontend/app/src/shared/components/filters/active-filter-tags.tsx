@@ -1,9 +1,9 @@
+import { ScrollArea } from "@infrahub/ui";
 import { useRef, useState } from "react";
 import { type Selection, TagGroup, type TagGroupProps, TagList } from "react-aria-components";
 
 import { Popover } from "@/shared/components/aria/popover";
 import { Row } from "@/shared/components/container";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 import { formatFullDate } from "@/shared/utils/date";

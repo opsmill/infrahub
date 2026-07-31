@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Self
 from infrahub.core.registry import registry
 from infrahub.events import NodeUpdatedEvent
 from infrahub.trigger.constants import NAME_SEPARATOR
-from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerBranchDefinition, TriggerType
+from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerBranchDefinition, TriggerType, jinja_parameter
 
 if TYPE_CHECKING:
     from infrahub.workflows.models import WorkflowDefinition
@@ -44,9 +44,9 @@ class ProfileRefreshTriggerDefinition(TriggerBranchDefinition):
         workflow_action = ExecuteWorkflow(
             workflow=workflow,
             parameters={
-                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
                 "profile_kind": profile_kind,
-                "profile_id": "{{ event.resource['infrahub.node.id'] }}",
+                "profile_id": jinja_parameter("{{ event.resource['infrahub.node.id'] }}"),
                 "context": {
                     "__prefect_kind": "json",
                     "value": {

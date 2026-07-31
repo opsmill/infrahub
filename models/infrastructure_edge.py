@@ -845,6 +845,24 @@ VLANS = (
 )
 
 
+async def save_connected_interfaces(
+    first_interface: InfraInterfaceL2 | InfraInterfaceL3,
+    second_interface: InfraInterfaceL2 | InfraInterfaceL3,
+) -> None:
+    """Save the two sides of one symmetric connected_endpoint pair SEQUENTIALLY.
+
+    `connected_endpoint` is a SYMMETRIC, cardinality-one relationship: when the two
+    sides are saved concurrently (separate batch tasks at concurrency > 1), each
+    side's transaction misses the other's freshly created edge and writes its own,
+    leaving the nodes with 2 peers — which the card-one validation then rejects
+    ("has 2 peers for connected__endpoint, maximum of 1 allowed"). Saving the pair
+    inside one batch task keeps pairs concurrent with each other while the two
+    sides stay ordered: the second save is an idempotent update of the same edge.
+    """
+    await first_interface.save()
+    await second_interface.save()
+
+
 async def find_and_connect_interfaces(
     client: InfrahubClient,
     batch: InfrahubBatch,
@@ -861,11 +879,21 @@ async def find_and_connect_interfaces(
 
     first_interface.description.value = f"Connected to {second_device_name}::{second_interface.name.value}"
     first_interface.connected_endpoint = second_interface
-    batch.add(task=first_interface.save, node=first_interface)
 
-    # Adjust description on second interface
+    # `connected_endpoint` is a SYMMETRIC peer relationship (Infra/Endpoint.connected__endpoint),
+    # so set it explicitly on this side too: otherwise saving the second interface with an unset
+    # peer clears the link the first save just established (serialized loads,
+    # INFRAHUB_MAX_CONCURRENT_EXECUTION=1). Both sides are saved by ONE batch task so they never
+    # run concurrently (see save_connected_interfaces).
     second_interface.description.value = f"Connected to {first_device_name}::{first_interface.name.value}"
-    batch.add(task=second_interface.save, node=second_interface)
+    second_interface.connected_endpoint = first_interface
+
+    batch.add(
+        task=save_connected_interfaces,
+        node=first_interface,
+        first_interface=first_interface,
+        second_interface=second_interface,
+    )
 
     log.info(
         f" - Connected '{first_device_name}::{first_interface_name}' <> '{second_device_name}::{second_interface_name}'"

@@ -26,13 +26,13 @@ jobs:
       latest_tag: ${{ steps.release.outputs.latest_tag }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
 
       - name: "Set up Python"
         id: python
-        uses: "actions/setup-python@v6"
+        uses: "actions/setup-python@v7"
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
 
@@ -112,6 +112,15 @@ jobs:
   publish-helm-chart:
     needs: check_release
     if: github.event.release.prerelease == false
+    # A job-level permissions block replaces the inherited workflow-level set, so
+    # every scope the reusable workflow needs must be re-declared here. The reusable
+    # publish-helm-chart.yml's cut-release job requires contents: write; id-token and
+    # packages are re-declared because packaging/pushing the chart to the OCI registry
+    # relies on them and they would otherwise be dropped from the inherited set.
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
     uses: opsmill/infrahub-helm/.github/workflows/publish-helm-chart.yml@stable
     secrets: inherit
     with:

@@ -1,3 +1,4 @@
+import { Spinner } from "@infrahub/ui";
 import React from "react";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -7,8 +8,8 @@ import {
   ComboboxList,
   type ComboboxListProps,
 } from "@/shared/components/ui/combobox";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
+import { isUuid } from "@/shared/utils/is-uuid";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
@@ -23,6 +24,9 @@ export interface RelationshipComboboxListProps
   value?: RelationshipNode | null;
   filterItem?: (relationshipNode: RelationshipNode) => boolean;
   filterQuery?: Record<string, string | number | boolean | string[]>;
+  // Keep filterQuery applied even on a UUID search. Used when the filter is a hard constraint
+  // (e.g. common_parent) that a UUID lookup must not bypass.
+  enforceFilterQueryOnIdSearch?: boolean;
 }
 
 export const RelationshipComboboxList = ({
@@ -32,12 +36,24 @@ export const RelationshipComboboxList = ({
   onSelect,
   filterItem,
   filterQuery,
+  enforceFilterQueryOnIdSearch,
   ...props
 }: RelationshipComboboxListProps) => {
   const [search, setSearch] = React.useState("");
   const { schema } = useSchema(peer);
+  // When the user types or pastes a UUID, switch the underlying query from a label search to an
+  // ids filter. UUID is a maximally specific match, so it overrides a caller-provided filterQuery
+  // by default — unless enforceFilterQueryOnIdSearch keeps the filter as a hard constraint.
+  const isUuidSearch = search.length > 0 && isUuid(search);
+  const idSearchFilterQuery = enforceFilterQueryOnIdSearch
+    ? { ...filterQuery, ids: [search.trim()] }
+    : { ids: [search.trim()] };
   const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useRelationships({ peer, search, filterQuery });
+    useRelationships({
+      peer,
+      search: isUuidSearch ? undefined : search,
+      filterQuery: isUuidSearch ? idSearchFilterQuery : filterQuery,
+    });
 
   if (error) return <ErrorScreen message={error.message} />;
 
@@ -48,6 +64,7 @@ export const RelationshipComboboxList = ({
       ref={ref}
       onValueChange={(newValue) => setSearchDebounced(newValue)}
       shouldFilter={false}
+      placeholder="Search by value or UUID..."
       {...props}
     >
       {isPending ? (

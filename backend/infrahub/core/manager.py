@@ -15,9 +15,11 @@ from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.order import OrderModel
+from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import (
     AttributeFromDB,
     GroupedPeerNodes,
+    NodeGetByHFIDQuery,
     NodeGetHierarchyQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
@@ -74,7 +76,7 @@ def get_schema[SchemaProtocol](
 ) -> MainSchemaTypes:
     if isinstance(node_schema, str):
         return db.schema.get(name=node_schema, branch=branch.name, duplicate=duplicate)
-    if hasattr(node_schema, "_is_runtime_protocol") and node_schema._is_runtime_protocol:
+    if isinstance(node_schema, type) and issubclass(node_schema, CoreNode):
         return db.schema.get(name=node_schema.__name__, branch=branch.name, duplicate=duplicate)
     if not isinstance(node_schema, (MainSchemaTypes)):
         raise ValueError(f"Invalid schema provided {node_schema}")
@@ -100,7 +102,7 @@ class NodeManager:
         partial_match: bool = ...,
         branch_agnostic: bool = ...,
         order: OrderModel | None = ...,
-    ) -> list[Any]: ...
+    ) -> list[Node]: ...
 
     @overload
     @classmethod
@@ -137,7 +139,7 @@ class NodeManager:
         partial_match: bool = False,
         branch_agnostic: bool = False,
         order: OrderModel | None = None,
-    ) -> list[Any]:
+    ) -> list[Node] | list[SchemaProtocol]:
         """Query one or multiple nodes of a given type based on filter arguments.
 
         Args:
@@ -284,6 +286,7 @@ class NodeManager:
         branch_agnostic: bool = False,
         fetch_peers: bool = False,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
+        order: OrderModel | None = None,
     ) -> list[Relationship]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -306,6 +309,7 @@ class NodeManager:
             at=at,
             branch_agnostic=branch_agnostic,
             include_metadata=relationship_metadata_options,
+            requested_order=order,
         )
         await query.execute(db=db)
 
@@ -384,6 +388,7 @@ class NodeManager:
         limit: int | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
+        order: OrderModel | None = None,
     ) -> dict[str, Node]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -398,6 +403,7 @@ class NodeManager:
             limit=limit,
             at=at,
             branch=branch,
+            order=order,
         )
         await query.execute(db=db)
 
@@ -768,48 +774,36 @@ class NodeManager:
                 message=f"Unable to lookup node by HFID, schema '{node_schema.kind}' HFID does not contain the same number of elements as {hfid}",
             )
 
-        filters = {}
-        for key, item in zip(node_schema.human_friendly_id, hfid, strict=False):
-            path = node_schema.parse_schema_path(path=key, schema=registry.schema.get_schema_branch(name=branch.name))
-
-            if path.is_type_relationship and path.related_schema:
-                rel_schema = path.related_schema
-                # Keep the relationship attribute path and parse it
-                path = rel_schema.parse_schema_path(
-                    path=key.split("__", maxsplit=1)[1],
-                    schema=registry.schema.get_schema_branch(name=branch.name),
-                )
-
-            filters[key] = path.active_attribute_schema.get_class().deserialize_from_string(item)
-
-        items = await NodeManager.query(
-            db=db,
-            schema=node_schema,
-            fields=fields,
-            limit=2,
-            filters=filters,
-            branch=branch,
-            at=at,
-            include_metadata=include_metadata,
-            prefetch_relationships=prefetch_relationships,
-            branch_agnostic=branch_agnostic,
-            order=OrderModel(disable=True),
+        query = await NodeGetByHFIDQuery.init(
+            db=db, branch=branch, at=at, node_kind=kind_str, hfids=[hfid], branch_agnostic=branch_agnostic
         )
+        await query.execute(db=db)
+        node_uuids = query.get_node_uuids()
 
-        if len(items) < 1:
+        if len(node_uuids) < 1:
             if raise_on_error:
                 raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=hfid_str)
             return None
 
-        if len(items) > 1:
+        if len(node_uuids) > 1:
             raise NodeNotFoundError(
                 branch_name=branch.name,
                 node_type=kind_str,
                 identifier=hfid_str,
-                message=f"Unable to find node {hfid_str!r}, {len(items)} nodes returned, expected 1",
+                message=f"Unable to find node {hfid_str!r}, {len(node_uuids)} nodes returned, expected 1",
             )
 
-        return items[0]
+        return await cls.get_one(
+            id=node_uuids[0],
+            db=db,
+            kind=kind,
+            fields=fields,
+            at=at,
+            branch=branch,
+            include_metadata=include_metadata,
+            prefetch_relationships=prefetch_relationships,
+            branch_agnostic=branch_agnostic,
+        )
 
     @overload
     @classmethod
@@ -839,7 +833,7 @@ class NodeManager:
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node: ...
 
     @classmethod
     async def get_one_by_id_or_default_filter(
@@ -853,7 +847,7 @@ class NodeManager:
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
         branch_agnostic: bool = False,
-    ) -> Any:
+    ) -> Node | SchemaProtocol:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -1334,7 +1328,9 @@ class NodeManager:
                     direction=rel_schema.direction,
                     peer_id=peer_id,
                 )
-                peer_with_metadata = PeerWithRelationshipMetadata(peer=peer)
+                peer_with_metadata = PeerWithRelationshipMetadata(
+                    peer=peer, peer_kind=grouped_peer_nodes.get_peer_kind(peer_id=peer_id)
+                )
                 if not metadata_map:
                     rel_peers_with_metadata.append(peer_with_metadata)
                     continue

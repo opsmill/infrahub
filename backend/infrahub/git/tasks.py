@@ -26,6 +26,7 @@ from infrahub.core.constants import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.exceptions import CheckError, CommitNotFoundError, RepositoryError
+from infrahub.git.graphql_queries import GitRepositoryNodeQuery
 from infrahub.message_bus import Meta, messages
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.validators.tasks import start_validator
@@ -163,7 +164,9 @@ async def create_branch(branch: str, branch_id: str) -> None:
 
     client = get_client()
 
-    repositories: list[CoreRepository] = await client.filters(kind=CoreRepository)
+    repo_query = GitRepositoryNodeQuery()
+    response = await client.execute_graphql(query=repo_query.render_query())
+    repositories = repo_query.parse_response(response=response)
     batch = await client.create_batch()
     for repository in repositories:
         batch.add(
@@ -171,9 +174,9 @@ async def create_branch(branch: str, branch_id: str) -> None:
             client=client,
             branch=branch,
             branch_id=branch_id,
-            repository_name=repository.name.value,
+            repository_name=repository.name,
             repository_id=repository.id,
-            repository_location=repository.location.value,
+            repository_location=repository.location,
             message_bus=await get_message_bus(),
         )
 
@@ -185,16 +188,18 @@ async def create_branch(branch: str, branch_id: str) -> None:
 async def delete_git_branch(branch: str) -> None:
     """Fan out branch deletion across all CoreRepository instances."""
     client = get_client()
-    repositories: list[CoreRepository] = await client.filters(kind=CoreRepository)
+    repo_query = GitRepositoryNodeQuery()
+    response = await client.execute_graphql(query=repo_query.render_query())
+    repositories = repo_query.parse_response(response=response)
     batch = await client.create_batch()
     for repository in repositories:
         batch.add(
             task=git_branch_delete,
             client=client,
             branch=branch,
-            repository_name=repository.name.value,
+            repository_name=repository.name,
             repository_id=repository.id,
-            repository_location=repository.location.value,
+            repository_location=repository.location,
         )
     async for _, _ in batch.execute():
         pass
@@ -295,16 +300,18 @@ async def bootstrap_local_repository(
 
         if default_import_git_branch is not None:
             # Pin the commit while the lock is held so the import below reads an immutable
-            # worktree even though it runs after the lock is released.
+            # worktree even though it is built after the lock is released.
             pinned_import_commit = repo.get_commit_value(branch_name=default_import_git_branch, remote=False)
 
     if default_import_git_branch is not None:
         try:
-            await repo.import_objects_from_files(  # type: ignore[call-overload]
+            plan = await repo.build_import_plan(
                 git_branch_name=default_import_git_branch,
                 infrahub_branch_name=infrahub_branch,
                 commit=pinned_import_commit,
             )
+            async with lock.registry.get(name=repo_name, namespace="repository"):
+                await repo.apply_import_plan(plan)
         except (RepositoryError, CommitNotFoundError) as exc:
             log.info(exc.message)
             return None
@@ -403,7 +410,7 @@ async def sync_remote_repositories() -> None:
         )
 
 
-@task(  # type: ignore[arg-type]
+@task(
     name="git-branch-create",
     task_run_name="Create branch '{branch}' in repository {repository_name}",
     cache_policy=NONE,
@@ -445,7 +452,7 @@ async def git_branch_create(
         log.debug("Sent message to all workers to fetch the latest version of the repository (RefreshGitFetch)")
 
 
-@task(  # type: ignore[arg-type]
+@task(
     name="git-branch-delete",
     task_run_name="Delete branch '{branch}' in repository {repository_name}",
     cache_policy=NONE,
@@ -773,7 +780,9 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
         repository_kind=model.repository_kind,
         commit=model.commit,
     )
-    await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)  # type: ignore[call-overload]
+    plan = await repo.build_import_plan(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
+    async with lock.registry.get(name=model.repository_name, namespace="repository"):
+        await repo.apply_import_plan(plan)
 
 
 @flow(
