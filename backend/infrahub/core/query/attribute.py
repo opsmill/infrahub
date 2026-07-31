@@ -616,6 +616,14 @@ async def default_attribute_query_filter(
 
 
 class AttributeAddQuery(Query):
+    """Create the database row for an attribute on nodes that do not have one yet.
+
+    Materialises the Attribute node together with its default value and protected flag. Nodes are matched by
+    kind, optionally narrowed to specific uuids, and only those without an active row for the attribute are
+    written. This backs both the add-attribute schema migration and the create half of the attribute save path
+    for attributes that exist in the schema but were never written for a node.
+    """
+
     name = "attribute_add"
     type = QueryType.WRITE
 
@@ -690,11 +698,15 @@ class AttributeAddQuery(Query):
             """ % {"attr_value_label": attr_value_label}
 
         node_kinds_str = "|".join(self.node_kinds)
+        node_match = "MATCH (n:%(node_kinds_str)s)" % {"node_kinds_str": node_kinds_str}
+        if self.uuids:
+            self.params["node_uuids"] = self.uuids
+            node_match += "\n        WHERE n.uuid IN $node_uuids"
         query = """
         %(match_query)s
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
         WITH av, is_protected_value
-        MATCH (n:%(node_kinds_str)s)
+        %(node_match)s
         CALL (n) {
             MATCH (:Root)<-[r:IS_PART_OF]-(n)
             WHERE %(branch_filter)s
@@ -727,9 +739,9 @@ class AttributeAddQuery(Query):
         """ % {
             "match_query": match_query,
             "branch_filter": branch_filter,
-            "node_kinds_str": node_kinds_str,
+            "node_match": node_match,
             "uuid_generation": db.render_uuid_generation(node_label="a", node_attr="uuid"),
         }
 
         self.add_to_query(query)
-        self.return_labels = ["n.uuid", "a.uuid"]
+        self.return_labels = ["n.uuid", "a.uuid", "a"]
