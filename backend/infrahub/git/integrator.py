@@ -33,6 +33,7 @@ from infrahub_sdk.schema.repository import (
     InfrahubRepositoryConfig,
     InfrahubWatchConfig,
 )
+from infrahub_sdk.schema.validate import validate_schema as validate_write_schema
 from infrahub_sdk.spec.menu import MenuFile
 from infrahub_sdk.spec.object import ObjectFile
 from infrahub_sdk.template import Jinja2Template
@@ -865,14 +866,16 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         # Valid data format of content
         for schema_file in schemas_data:
-            try:
-                self.sdk.schema.validate(schema_file.content)
-            except PydanticValidationError as exc:
-                log.error(f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}")
-                raise ValidationError(
-                    identifier=str(self.id),
-                    message=f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}",
-                ) from exc
+            result = validate_write_schema(schema=schema_file.content or {})
+            for warning in result.warnings:
+                log.warning(f"{schema_file.identifier}: {warning.message}")
+            if not result.valid:
+                message = (
+                    f"Schema not valid, found '{len(result.errors)}' error(s) in "
+                    f"{schema_file.identifier} : {'; '.join(result.messages)}"
+                )
+                log.error(message)
+                raise ValidationError(identifier=str(self.id), message=message)
 
         response = await self.sdk.schema.load(
             schemas=[item.content for item in schemas_data], branch=branch_name, wait_until_converged=True

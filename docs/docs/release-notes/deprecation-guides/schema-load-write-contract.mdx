@@ -5,17 +5,20 @@ user-facing **write** contract. The contract defines which fields a user may set
 values those fields accept, and which fields are required. Invalid values are reported
 as field-level errors naming the field and the value that was rejected.
 
-Fields a user may not set are **tolerated and dropped**, not rejected, so reading a schema
-back from Infrahub, editing it, and loading it again keeps working without stripping
-anything first.
+Fields a user may not set are **reported and dropped**. A read-only field — one Infrahub
+returns and computes itself — is reported as a warning, so reading a schema back from
+Infrahub, editing it, and loading it again keeps working without stripping anything first.
+Any other unrecognized field is an error.
 
 This guide explains what changed, who is affected, and how to check a payload before
 submitting it.
 
 :::warning
-Two categories of payload that earlier versions accepted are now rejected: a payload whose
-settable values are invalid (out of the allowed set, out of range, or the wrong type), and
-a payload with no `version` key. Extra fields are not one of those categories.
+Three categories of payload that earlier versions accepted are now rejected: a payload whose
+settable values are invalid (out of the allowed set, out of range, or the wrong type), a
+payload with no `version` key, and a payload carrying a field the contract does not
+recognize. Read-only fields are not one of those categories — they are accepted with a
+warning.
 :::
 
 ## What changed
@@ -32,17 +35,48 @@ Schema fields are now classified by who may see or set them:
 `POST /api/schema/load` validates each submitted node, generic, and extension against the
 write contract.
 
-### Extra fields are dropped
+### Read-only fields are reported as a warning
 
-Read-only fields, internal fields, and fields the contract does not know about at all — a
-typo, or a field removed in a newer version — are dropped before the schema is applied. This
-happens at every level of the payload: on nodes, generics, extensions, and on their nested
-attributes and relationships. No error is raised, and the dropped values have no effect on
-the loaded schema.
+A read-only field is dropped before the schema is applied and reported on the response, so the
+submitted value never takes effect but you are told it was ignored. This happens at every level
+of the payload: on nodes, generics, extensions, and on their nested attributes, relationships,
+parameters and choices.
 
 That means the read-back, edit, re-load round trip works as it always did. A schema fetched
 with `GET /api/schema` carries `inherited`, `used_by`, and the derived `kind`; submitting it
-back unchanged is accepted, and Infrahub re-derives those fields itself.
+back unchanged is accepted, Infrahub re-derives those fields itself, and the response lists
+one warning per read-only field naming the kinds that carried it:
+
+```text
+'inherited' is a read-only field, the submitted value is ignored [InfraDevice.name, InfraDevice.interfaces]
+```
+
+Alongside the read-only fields listed above, this also covers a field that belongs somewhere
+else in the contract rather than at the place it was used: the `id` and `state` bookkeeping
+that a schema dumped from Infrahub's own models carries on nested blocks, and a field
+belonging to another variant of the same block — for example `transform` on a computed
+attribute whose `kind` is `Jinja2`.
+
+`infrahubctl schema load` and `infrahubctl schema check` print these warnings after loading;
+`infrahubctl validate schema` prints them without contacting a server.
+
+### Unrecognized fields are rejected
+
+A field the contract does not know about at all — a typo, or a field removed in a newer
+version — is an error naming the field path and the value received:
+
+```text
+nodes[0].attributes[0].optionl: Unknown field, it is not part of the schema (received: True)
+```
+
+Earlier 1.x versions dropped these silently, which meant a misspelled key produced a schema
+that quietly differed from the one you wrote. Attribute `parameters` that belong to a
+different attribute `kind` fall in this category too, since they configure nothing on the kind
+they were set on:
+
+```text
+nodes[0].attributes[0].parameters.start_range: Unknown field, it is not part of the schema (received: 1)
+```
 
 ### Invalid values are rejected
 
@@ -81,12 +115,13 @@ and `used_by`.
 ## Who is affected
 
 You are affected if you submit schemas to `POST /api/schema/load` — directly, through
-`infrahubctl schema load`, or through the Python SDK — and your payload sets a value the
-write contract does not accept, or omits `version`. Values that a previous version stored
-without complaint now produce an error instead.
+`infrahubctl schema load`, through a repository import, or through the Python SDK — and your
+payload sets a value the write contract does not accept, omits `version`, or carries a field
+Infrahub does not recognize. Values that a previous version stored without complaint now
+produce an error instead.
 
-You are not affected by extra fields. A payload that echoes back derived or read-only
-fields, or that contains a field Infrahub no longer recognizes, still loads.
+You are not affected by read-only fields. A payload that echoes back derived or read-only
+fields still loads, with a warning for each.
 
 ## Check a payload offline
 
@@ -100,6 +135,8 @@ from infrahub_sdk.schema.validate import validate_schema
 
 # schema is your schema-root payload: {"version": "1.0", "nodes": [...], "generics": [...]}
 result = validate_schema(schema=schema)
+for message in result.warning_messages:
+    print(message)
 if not result.valid:
     for message in result.messages:
         print(message)
@@ -115,7 +152,8 @@ nodes[0].relationships[0].cardinality: Input should be 'one' or 'many' (received
 
 Every entry in `result.errors` carries the field path in `.field` and the full message in
 `.message`. `result.raise_for_status()` raises a `ValueError` joining all the messages when
-the payload is invalid.
+the payload is invalid. Each entry in `result.warnings` additionally names the offending field
+in `.name` and the schema kind and element that carried it in `.kind` and `.element`.
 
 To make a rejected payload submittable:
 
@@ -123,11 +161,18 @@ To make a rejected payload submittable:
    value.
 2. Correct the value so it satisfies the contract — pick an allowed value for a constrained
    field, bring an out-of-range value into range, or supply a missing required field.
-3. Add `version` at the root of the payload if it is absent.
-4. Re-run `validate_schema()` until it returns `valid = True`, then load.
+3. Remove or fix any field reported as unknown. A typo is the usual cause; check the spelling
+   against the [node schema reference](../../reference/schema/node).
+4. Add `version` at the root of the payload if it is absent.
+5. Re-run `validate_schema()` until it returns `valid = True`, then load.
 
-You do not need to remove read-only or unrecognized fields. Leaving them in place is
-harmless.
+You do not need to remove read-only fields. Leaving them in place is harmless, and the
+warnings tell you which values had no effect.
+
+Extra fields are only reported once the payload is otherwise valid, because the contract that
+applies at a given place in the payload is resolved from the validated document. A payload
+rejected for another reason reports that reason first, and names its extra fields on the next
+run.
 
 Because the write model is versioned and shipped inside the SDK package, installing the SDK
 that matches your Infrahub version gives you the exact contract the server enforces.

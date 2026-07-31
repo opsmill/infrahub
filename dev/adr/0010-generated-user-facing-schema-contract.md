@@ -34,9 +34,18 @@ and emitted into the Python SDK as committed, shipped artifacts. The server vali
 through the SDK-hosted write models rather than through a backend-local copy, so one
 implementation produces both the server's verdict and the client's offline verdict.
 
-Submission **ignores** fields outside the write contract rather than rejecting them: read-only,
-internal, and unknown fields are dropped, and only invalid *settable* values are rejected. This
-half of the decision reverses the original design, which rejected them.
+Submission never applies a field outside the write contract, and reports it according to what it
+is. A field the contract knows at that location but the user may not set — a read-only field, the
+bookkeeping a schema dumped from the internal models carries, a field belonging to a sibling
+variant of a discriminated union — is dropped and reported as a warning. Any other extra field is
+rejected, because the only ways to produce one are a typo and a field that no longer exists.
+Invalid *settable* values are rejected as before.
+
+The warning/error split is driven by a generated table of the non-settable fields of each write
+class, and applied by walking the submitted payload alongside the validated write document: the
+validated document resolves which model applies at each location, including which member of a
+discriminated union an attribute matched, so the payload is compared against the fields that
+location actually accepts.
 
 `invoke backend.validate-generated` regenerates the models and fails on any diff, in the backend
 tree and inside the SDK submodule, and CI runs it. A unit test asserts that no field classified
@@ -66,10 +75,16 @@ How the visibility axis, the generated families, and the load boundary work is d
   direction.
 - Changing a schema field spans two repositories: the generated artifact must be regenerated,
   committed in the submodule, and released in step with the server.
-- A mistyped field name is silently dropped instead of reported, so a typo in a schema file fails
-  quietly rather than loudly. Revisit this if it proves to be a common source of confusion —
-  reporting unrecognised fields as warnings would preserve the round-trip while restoring the
-  feedback.
+- Payloads that earlier versions accepted now fail: a mistyped field name, and attribute
+  `parameters` belonging to a different attribute `kind`. Both were silently dropped before, so the
+  schema quietly differed from the one the author wrote; the cost of reporting them is that a
+  repository whose committed schema carries one stops importing until it is corrected.
+- Extra fields are reported only once the payload validates against the write models, since the
+  validated document is what resolves the contract applying at each location. A payload rejected
+  for another reason names its extra fields on the next run rather than in the same response.
+- Read-only fields ride the existing `deprecation` warning type rather than a dedicated one, so
+  that an SDK older than this change can still parse a load response. A dedicated type has to wait
+  until an SDK tolerant of unknown warning types is the supported floor.
 
 ### Neutral
 
@@ -98,7 +113,25 @@ be proven by a test rather than following from construction.
 The original design — implemented, then reversed in review. Rejecting them broke the read → edit →
 load path for every client that round-trips a schema, and what it bought was a clearer error for a
 field the user had not intended to set. An `ignore_extras` opt-in flag was also considered and
-rejected: tolerance as the default achieves the same result without a second code path.
+rejected: tolerance as the default achieves the same result without a second code path. Splitting
+the two cases, as the decision above now does, keeps the round-trip working *and* restores the
+error for the fields where an error is the only useful answer.
+
+### Generate a third model family to classify extra fields
+
+A `tolerant` variant carrying the read-level field set with `extra="allow"`, validated alongside
+the write models, would have let pydantic classify extra fields with no traversal code. Rejected as
+disproportionate: it is a second full family of generated models, and a validated write document
+plus a generated table of non-settable field names answers the same question. It also risked
+extras leaking into the document the server loads.
+
+### Classify extra fields with a `mode="before"` validator on the write models
+
+A hook on every generated write class, appending findings to the pydantic validation context, needs
+no traversal code and fires even when validation fails elsewhere. Rejected because a before-validator
+does not know where it sits in the document, so a finding could name neither the path nor the owning
+kind — and reconstructing the parent chain would mean stateful validators pushing and popping
+context.
 
 ### Filter non-write fields with a hand-written projection step
 

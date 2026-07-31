@@ -601,13 +601,13 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert schema.parent == "TestLocation"
         assert schema.children == "TestLocation"
 
-    async def test_schema_load_tolerates_non_write_and_unknown_fields(
+    async def test_schema_load_accepts_read_level_field_and_warns(
         self,
         initial_dataset: str,
         test_client: InfrahubTestClient,
         api_admin_token: str,
     ) -> None:
-        """Accept a payload carrying a read-level field plus an unknown field."""
+        """Accept a payload carrying a read-level field and report it as a warning."""
         payload = {
             "schemas": [
                 {
@@ -616,14 +616,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
                         {
                             "name": "Device",
                             "namespace": "Test",
-                            "attributes": [
-                                {
-                                    "name": "name",
-                                    "kind": "Text",
-                                    "inherited": True,
-                                    "not_a_real_field": "value",
-                                }
-                            ],
+                            "attributes": [{"name": "name", "kind": "Text", "inherited": True}],
                         }
                     ],
                 }
@@ -637,6 +630,47 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         )
 
         assert response.status_code == 200
+        warnings = response.json()["warnings"]
+        assert [warning["message"] for warning in warnings] == [
+            "'inherited' is a read-only field, the submitted value is ignored"
+        ]
+        assert warnings[0]["kinds"] == [{"kind": "TestDevice", "field": "name"}]
+
+    async def test_schema_load_rejects_unknown_field(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        """Reject a payload carrying a field the contract does not know, naming the field."""
+        payload = {
+            "schemas": [
+                {
+                    "version": "1.0",
+                    "nodes": [
+                        {
+                            "name": "Device",
+                            "namespace": "Test",
+                            "attributes": [{"name": "name", "kind": "Text", "not_a_real_field": "value"}],
+                        }
+                    ],
+                }
+            ]
+        }
+
+        response = await test_client.post(
+            "/api/schema/load",
+            json=payload,
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+
+        assert response.status_code == 422
+        messages = [item["msg"] for item in response.json()["detail"]]
+        assert len(messages) == 1, messages
+        assert (
+            "nodes[0].attributes[0].not_a_real_field: Unknown field, it is not part of the schema "
+            "(received: 'value')" in messages[0]
+        ), messages[0]
 
     async def test_schema_load_rejects_out_of_enum_attribute_kind(
         self,
@@ -675,15 +709,15 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert "Input tag 'NotARealKind' found using 'kind' does not match any of the expected tags" in message, message
         assert "(received: {'name': 'name', 'kind': 'NotARealKind'})" in message, message
 
-    async def test_schema_load_tolerates_non_write_and_unknown_fields_in_extensions(
+    async def test_schema_load_accepts_read_level_field_in_extensions(
         self,
         initial_dataset: str,
         test_client: InfrahubTestClient,
         api_admin_token: str,
     ) -> None:
-        """Accept an extension attribute carrying a read-level field and an unknown field."""
+        """Accept an extension attribute carrying a read-level field, and report it as a warning."""
         # Define a fresh node (no existing instances) so the extension is applicable, then extend it
-        # with an optional attribute carrying a read-level field and an unknown field.
+        # with an optional attribute carrying a read-level field.
         base = {
             "schemas": [
                 {
@@ -709,15 +743,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
                         "nodes": [
                             {
                                 "kind": "TestGadget",
-                                "attributes": [
-                                    {
-                                        "name": "extra",
-                                        "kind": "Text",
-                                        "optional": True,
-                                        "inherited": True,
-                                        "not_a_real_field": "value",
-                                    }
-                                ],
+                                "attributes": [{"name": "extra", "kind": "Text", "optional": True, "inherited": True}],
                             }
                         ]
                     },
@@ -732,6 +758,9 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         )
 
         assert response.status_code == 200
+        assert [warning["message"] for warning in response.json()["warnings"]] == [
+            "'inherited' is a read-only field, the submitted value is ignored"
+        ]
 
     async def test_schema_load_rejects_out_of_enum_relationship_cardinality(
         self,
@@ -884,9 +913,9 @@ class TestLoadSchemaAPI(TestInfrahubApp):
     ) -> None:
         """The same payload yields the same verdict offline (SDK) and via POST /api/schema/load.
 
-        A valid payload passes both; a payload carrying only non-write/unknown fields is tolerated by
-        both (the extra fields are dropped); an out-of-enum value is rejected by both, and the invalid
-        value the SDK names offline appears in the server's rejection response.
+        A valid payload passes both; a payload carrying a read-level field is accepted by both with
+        the same warning; an unknown field and an out-of-enum value are rejected by both, and the
+        offending value the SDK names offline appears in the server's rejection response.
         """
         valid_schema_root = {
             "version": "1.0",
@@ -904,14 +933,17 @@ class TestLoadSchemaAPI(TestInfrahubApp):
                 {
                     "name": "Device",
                     "namespace": "Test",
-                    "attributes": [
-                        {
-                            "name": "name",
-                            "kind": "Text",
-                            "inherited": True,
-                            "not_a_real_field": "value",
-                        }
-                    ],
+                    "attributes": [{"name": "name", "kind": "Text", "inherited": True}],
+                }
+            ],
+        }
+        unknown_field_schema_root = {
+            "version": "1.0",
+            "nodes": [
+                {
+                    "name": "Device",
+                    "namespace": "Test",
+                    "attributes": [{"name": "name", "kind": "Text", "not_a_real_field": "value"}],
                 }
             ],
         }
@@ -936,15 +968,35 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         )
         assert response_valid.status_code == 200
 
-        # Non-write/unknown fields: tolerated offline and accepted by the server (the fields are dropped).
+        # Read-level field: accepted by both, and both name it as a warning rather than an error.
         offline_tolerated = validate_schema(schema=tolerated_schema_root)
         assert offline_tolerated.valid is True
+        assert [warning.name for warning in offline_tolerated.warnings] == ["inherited"]
         response_tolerated = await test_client.post(
             "/api/schema/load",
             json={"schemas": [tolerated_schema_root]},
             headers={"X-INFRAHUB-KEY": api_admin_token},
         )
         assert response_tolerated.status_code == 200
+        assert [warning["message"] for warning in response_tolerated.json()["warnings"]] == [
+            "'inherited' is a read-only field, the submitted value is ignored"
+        ]
+
+        # Unknown field: SDK offline verdict is "invalid" and the server rejects it (422) with the
+        # same field-level message.
+        offline_unknown = validate_schema(schema=unknown_field_schema_root)
+        assert offline_unknown.valid is False
+        assert len(offline_unknown.messages) == 1, offline_unknown.messages
+        unknown_message = offline_unknown.messages[0]
+        response_unknown = await test_client.post(
+            "/api/schema/load",
+            json={"schemas": [unknown_field_schema_root]},
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+        assert response_unknown.status_code == 422
+        unknown_server_messages = [item["msg"] for item in response_unknown.json()["detail"]]
+        assert len(unknown_server_messages) == 1, unknown_server_messages
+        assert unknown_message in unknown_server_messages[0], (unknown_message, unknown_server_messages)
 
         # Out-of-enum value: SDK offline verdict is "invalid" and the server rejects it (422),
         # naming the invalid value the SDK named offline.

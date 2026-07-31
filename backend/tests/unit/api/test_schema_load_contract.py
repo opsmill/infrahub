@@ -5,10 +5,12 @@ from typing import Any
 
 import pytest
 from infrahub_sdk.schema import validate_schema
+from infrahub_sdk.schema.generated.contract import READ_ONLY_FIELDS
+from infrahub_sdk.schema.generated.write import InfrahubSchemaWrite
 
-from infrahub.api.schema import SchemaLoadAPI
+from infrahub.api.schema import SchemaLoadAPI, SchemaReadAPI
 from infrahub.core.constants import ComputedAttributeKind, HashableModelState
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import SchemaRoot, SchemaWarningType
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 
 
@@ -26,7 +28,7 @@ class LoadContractCase:
 
 
 LOAD_CONTRACT_CASES = [
-    LoadContractCase(name="full-internal-dump-tolerated", use_full_dump=True, accepted=True),
+    LoadContractCase(name="full-internal-dump-accepted", use_full_dump=True, accepted=True),
     LoadContractCase(
         name="minimal-write-payload",
         payload={
@@ -36,33 +38,45 @@ LOAD_CONTRACT_CASES = [
         accepted=True,
     ),
     LoadContractCase(
-        name="non-write-field-on-extension-tolerated",
+        name="unknown-field-on-extension-rejected",
         payload={"version": "1.0", "extensions": {"nodes": [{"kind": "BuiltinTag", "namespace": "Dropped"}]}},
-        accepted=True,
+        accepted=False,
     ),
     LoadContractCase(
-        name="unknown-field-on-node-tolerated",
+        name="unknown-field-on-node-rejected",
         payload={"version": "1.0", "nodes": [{"namespace": "Test", "name": "Widget", "not_a_field": 1}]},
-        accepted=True,
+        accepted=False,
     ),
     LoadContractCase(
-        name="non-write-and-unknown-fields-on-attribute-tolerated",
+        name="read-only-field-on-attribute-accepted",
         payload={
             "version": "1.0",
             "nodes": [
                 {
                     "namespace": "Test",
                     "name": "Widget",
-                    "attributes": [
-                        {"name": "field_one", "kind": "Text", "not_a_field": 1, "inherited": True, "state": "present"}
-                    ],
+                    "attributes": [{"name": "field_one", "kind": "Text", "inherited": True, "state": "present"}],
                 }
             ],
         },
         accepted=True,
     ),
     LoadContractCase(
-        name="non-write-and-unknown-fields-on-relationship-tolerated",
+        name="unknown-field-on-attribute-rejected",
+        payload={
+            "version": "1.0",
+            "nodes": [
+                {
+                    "namespace": "Test",
+                    "name": "Widget",
+                    "attributes": [{"name": "field_one", "kind": "Text", "not_a_field": 1}],
+                }
+            ],
+        },
+        accepted=False,
+    ),
+    LoadContractCase(
+        name="read-only-field-on-relationship-accepted",
         payload={
             "version": "1.0",
             "nodes": [
@@ -70,18 +84,28 @@ LOAD_CONTRACT_CASES = [
                     "namespace": "Test",
                     "name": "Widget",
                     "relationships": [
-                        {
-                            "name": "gadgets",
-                            "peer": "TestGadget",
-                            "cardinality": "many",
-                            "not_a_field": 1,
-                            "inherited": True,
-                        }
+                        {"name": "gadgets", "peer": "TestGadget", "cardinality": "many", "inherited": True}
                     ],
                 }
             ],
         },
         accepted=True,
+    ),
+    LoadContractCase(
+        name="unknown-field-on-relationship-rejected",
+        payload={
+            "version": "1.0",
+            "nodes": [
+                {
+                    "namespace": "Test",
+                    "name": "Widget",
+                    "relationships": [
+                        {"name": "gadgets", "peer": "TestGadget", "cardinality": "many", "not_a_field": 1}
+                    ],
+                }
+            ],
+        },
+        accepted=False,
     ),
     LoadContractCase(
         name="computed-attribute-accepted",
@@ -100,7 +124,6 @@ LOAD_CONTRACT_CASES = [
                             "computed_attribute": {
                                 "kind": "Jinja2",
                                 "jinja2_template": "{{ name__value }}",
-                                "not_a_field": 1,
                             },
                         }
                     ],
@@ -108,6 +131,30 @@ LOAD_CONTRACT_CASES = [
             ],
         },
         accepted=True,
+    ),
+    LoadContractCase(
+        name="unknown-field-on-computed-attribute-rejected",
+        payload={
+            "version": "1.0",
+            "nodes": [
+                {
+                    "namespace": "Test",
+                    "name": "Widget",
+                    "attributes": [
+                        {
+                            "name": "field_one",
+                            "kind": "Text",
+                            "computed_attribute": {
+                                "kind": "Jinja2",
+                                "jinja2_template": "{{ name__value }}",
+                                "not_a_field": 1,
+                            },
+                        }
+                    ],
+                }
+            ],
+        },
+        accepted=False,
     ),
     LoadContractCase(
         name="computed-attribute-unknown-kind-rejected",
@@ -164,49 +211,98 @@ def test_offline_validation_matches_load_contract_verdict(case: LoadContractCase
     assert result.valid is case.accepted, result.messages
 
 
-def test_non_write_fields_do_not_reach_the_internal_schema() -> None:
-    # Non-write and unknown keys are tolerated at every nesting level, but a submitted value must
-    # never win over the server-owned one: ``inherited`` stays False even though the payload set it.
-    payload = {
+def _read_only_payload() -> dict[str, Any]:
+    return {
         "version": "1.0",
         "nodes": [
             {
                 "namespace": "Test",
                 "name": "Widget",
-                "not_a_field": 1,
-                "attributes": [
-                    {"name": "field_one", "kind": "Text", "inherited": True, "state": "absent", "not_a_field": 1}
-                ],
-                "relationships": [
-                    {
-                        "name": "gadgets",
-                        "peer": "TestGadget",
-                        "cardinality": "many",
-                        "inherited": True,
-                        "not_a_field": 1,
-                    }
-                ],
+                "hierarchy": "TestThing",
+                "attributes": [{"name": "field_one", "kind": "Text", "inherited": True, "state": "absent"}],
+                "relationships": [{"name": "gadgets", "peer": "TestGadget", "cardinality": "many", "inherited": True}],
             }
         ],
-        "extensions": {"nodes": [{"kind": "BuiltinTag", "namespace": "Dropped"}]},
     }
 
-    loaded = SchemaLoadAPI.model_validate(payload)
+
+def test_read_only_fields_do_not_reach_the_internal_schema() -> None:
+    # A read-only field is accepted so a schema read back from Infrahub still loads, but the
+    # submitted value must never win over the server-owned one: ``inherited`` stays False.
+    loaded = SchemaLoadAPI.model_validate(_read_only_payload())
 
     node = loaded.internal_schema.nodes[0]
     assert node.attributes[0].inherited is False
     assert node.relationships[0].inherited is False
     # ``state`` is settable, so the submitted value must survive where ``inherited`` did not
     assert node.attributes[0].state is HashableModelState.ABSENT
-    assert "not_a_field" not in loaded.model_dump()["nodes"][0]
-    assert "not_a_field" not in loaded.model_dump()["nodes"][0]["attributes"][0]
-    assert "not_a_field" not in loaded.model_dump()["nodes"][0]["relationships"][0]
-    assert "namespace" not in loaded.model_dump()["extensions"]["nodes"][0]
+    assert loaded.internal_schema.nodes[0].hierarchy is None
+
+
+def test_read_only_fields_are_reported_as_warnings_grouped_by_field() -> None:
+    # The load response carries these back to the user, so each distinct read-only field is one
+    # warning naming every kind and element that set it, not one warning per occurrence.
+    loaded = SchemaLoadAPI.model_validate(_read_only_payload())
+
+    assert [warning.type for warning in loaded.contract_warnings] == [
+        SchemaWarningType.DEPRECATION,
+        SchemaWarningType.DEPRECATION,
+    ]
+    reported = {
+        warning.message: sorted((kind.kind, kind.field) for kind in warning.kinds)
+        for warning in loaded.contract_warnings
+    }
+    assert reported == {
+        "'hierarchy' is a read-only field, the submitted value is ignored": [("TestWidget", None)],
+        "'inherited' is a read-only field, the submitted value is ignored": [
+            ("TestWidget", "field_one"),
+            ("TestWidget", "gadgets"),
+        ],
+    }
+
+
+def test_a_payload_without_read_only_fields_reports_no_warning() -> None:
+    payload = {
+        "version": "1.0",
+        "nodes": [{"namespace": "Test", "name": "Widget", "attributes": [{"name": "field_one", "kind": "Text"}]}],
+    }
+
+    assert SchemaLoadAPI.model_validate(payload).contract_warnings == []
+
+
+def test_root_read_only_fields_cover_the_read_api_response() -> None:
+    # A raw GET /api/schema body resubmitted to the load endpoint must warn rather than fail, so
+    # every top-level key the read response adds over the write root is classified as read-only.
+    read_only = READ_ONLY_FIELDS[InfrahubSchemaWrite.__name__]
+
+    assert set(SchemaReadAPI.model_fields) - set(InfrahubSchemaWrite.model_fields) == read_only
+
+
+def test_unknown_field_is_rejected_naming_the_field() -> None:
+    payload = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "namespace": "Test",
+                "name": "Widget",
+                "attributes": [{"name": "field_one", "kind": "Text", "inheritd": True}],
+            }
+        ],
+    }
+
+    with pytest.raises(
+        ValueError,
+        match=r"nodes\[0\]\.attributes\[0\]\.inheritd: Unknown field, it is not part of the schema "
+        r"\(received: True\)",
+    ):
+        SchemaLoadAPI.model_validate(payload)
 
 
 def test_computed_attribute_survives_its_discriminated_union() -> None:
     # Each attribute kind and computed-attribute kind is a separate variant of a discriminated
-    # union; dropping non-write keys must not collapse a variant onto the wrong one.
+    # union; dropping the fields of a sibling variant must not collapse a variant onto the wrong
+    # one. ``transform`` belongs to the TransformPython variant, so setting it on a Jinja2 one is
+    # tolerated with a warning rather than switching the variant.
     payload = {
         "version": "1.0",
         "nodes": [
@@ -222,7 +318,7 @@ def test_computed_attribute_survives_its_discriminated_union() -> None:
                         "computed_attribute": {
                             "kind": "Jinja2",
                             "jinja2_template": "{{ name__value }}",
-                            "not_a_field": 1,
+                            "transform": "my_transform",
                         },
                     }
                 ],
@@ -237,7 +333,10 @@ def test_computed_attribute_survives_its_discriminated_union() -> None:
     assert computed.kind is ComputedAttributeKind.JINJA2
     assert computed.jinja2_template == "{{ name__value }}"
     assert computed.transform is None
-    assert "not_a_field" not in loaded.model_dump()["nodes"][0]["attributes"][0]["computed_attribute"]
+    assert "transform" not in loaded.model_dump()["nodes"][0]["attributes"][0]["computed_attribute"]
+    assert [warning.message for warning in loaded.contract_warnings] == [
+        "'transform' is a read-only field, the submitted value is ignored"
+    ]
 
 
 def test_out_of_enum_attribute_kind_is_rejected_naming_the_value() -> None:

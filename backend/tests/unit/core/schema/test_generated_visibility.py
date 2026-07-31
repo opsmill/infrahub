@@ -5,7 +5,9 @@ import types
 import typing
 
 import pytest
+from infrahub_sdk.schema.generated import read as sdk_read
 from infrahub_sdk.schema.generated import write as sdk_write
+from infrahub_sdk.schema.generated.contract import READ_ONLY_FIELDS
 
 from infrahub.core.constants import Visibility
 from infrahub.core.schema.definitions.internal import (
@@ -16,6 +18,9 @@ from infrahub.core.schema.definitions.internal import (
     relationship_schema,
 )
 from infrahub.types import ATTRIBUTE_KIND_LABELS
+
+if typing.TYPE_CHECKING:
+    from pydantic import BaseModel
 
 # Map each schema-definition family to the generated SDK *write* model it produces. The attribute
 # family is a discriminated union on kind; its shared fields live on AttributeSchemaBaseWrite, so
@@ -108,6 +113,41 @@ def test_write_model_publishes_allowed_values(family: str) -> None:
             f"{write_model.__name__}.{field.name} allowed values {sorted(values)} "
             f"do not match the internal set {sorted(field.enum)}"
         )
+
+
+# Each generated write model paired with the read model of the same family. The read-only table
+# consumed by the offline validator must be exactly the delta between the two.
+WRITE_TO_READ_MODEL = {
+    "attribute": (sdk_write.AttributeSchemaBaseWrite, sdk_read.AttributeSchemaBaseRead),
+    "relationship": (sdk_write.RelationshipSchemaWrite, sdk_read.RelationshipSchemaRead),
+    "base_node": (sdk_write.BaseNodeSchemaWrite, sdk_read.BaseNodeSchemaRead),
+    "node": (sdk_write.NodeSchemaWrite, sdk_read.NodeSchemaRead),
+    "generic": (sdk_write.GenericSchemaWrite, sdk_read.GenericSchemaRead),
+}
+
+
+def _declared_read_only_fields(model: type[BaseModel]) -> set[str]:
+    """Read-only names the table declares for a model, including those it inherits."""
+    names: set[str] = set()
+    for klass in model.__mro__:
+        names |= READ_ONLY_FIELDS.get(klass.__name__, frozenset())
+    return names
+
+
+@pytest.mark.parametrize("family", list(WRITE_TO_READ_MODEL))
+def test_read_only_table_matches_the_read_write_delta(family: str) -> None:
+    """The generated read-only table is exactly what the read model adds over the write model.
+
+    The table decides whether an extra field in a submitted payload is a warning or an error, so a
+    field appearing on read but missing from the table would be rejected instead of tolerated, and
+    breaking the read-back, edit, re-load round trip.
+    """
+    write_model, read_model = WRITE_TO_READ_MODEL[family]
+
+    # A computed field is part of the read payload even though it is not a model field.
+    read_names = set(read_model.model_fields) | set(read_model.model_computed_fields)
+
+    assert _declared_read_only_fields(write_model) == read_names - set(write_model.model_fields)
 
 
 def test_attribute_kind_variants_partition_all_kinds() -> None:
