@@ -14,6 +14,7 @@ import { CHECK_OBJECT } from "@/entities/diff/domain/model/check";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
+import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/use-cases/get-proposed-changes";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary/proposed-change-diff-summary";
 import { ProposedChangesActionCell } from "@/entities/proposed-changes/ui/proposed-changes-actions-cell";
@@ -25,8 +26,11 @@ type ProposedChangesItemProps = {
 };
 
 export const ProposedChangesItem = ({ proposedChange }: ProposedChangesItemProps) => {
-  const { permission } = useObjectTableContext();
+  const { permission, selectedSchema } = useObjectTableContext();
+  const { appliedSort } = useSort(selectedSchema);
   const { node, metadata } = proposedChange;
+
+  const showUpdatedAt = appliedSort.some((sort) => sort.field === "node_metadata__updated_at");
 
   return (
     <ListBoxItem className="flex items-center p-2">
@@ -39,7 +43,7 @@ export const ProposedChangesItem = ({ proposedChange }: ProposedChangesItemProps
           isDraft={!!node.is_draft?.value}
           isApproved={!!node.approved_by.edges.length}
           createdAt={metadata.created_at}
-          updatedAt={metadata.updated_at}
+          updatedAt={showUpdatedAt ? metadata.updated_at : null}
           branchName={node.source_branch?.value}
         />
 
@@ -68,7 +72,7 @@ type ProposedChangesInfoProps = {
   isDraft: boolean;
   isApproved: boolean;
   createdAt: string | null;
-  updatedAt: string | null;
+  updatedAt?: string | null;
   branchName?: string;
 };
 
@@ -113,7 +117,7 @@ const ProposedChangesInfo = ({
             {branchName}
           </span>
           Opened <DateDisplay date={createdAt} /> by {author}
-          {updatedAt && updatedAt !== createdAt && (
+          {updatedAt && (
             <>
               <ClockIcon className="size-3" /> Updated <DateDisplay date={updatedAt} />
             </>

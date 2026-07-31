@@ -167,7 +167,12 @@ class TestProposedChangesOrdering:
         await admin_page.goto("/proposed-changes?pr_state=closed")
         await expect(admin_page.locator(f'a[href*="/proposed-changes/{newest.id}"]')).to_be_visible()
 
+        listbox = admin_page.get_by_role("listbox")
+        await expect(listbox.get_by_text("Updated")).to_have_count(0)
+
         await _add_sort(admin_page, "Updated at", "Descending")
+
+        await expect(listbox.get_by_text("Updated").first).to_be_visible()
 
         await expect(admin_page).to_have_url(re.compile(r"sort=node_metadata__updated_at__desc"))
         updated_order = await _rendered_pc_order(admin_page)
