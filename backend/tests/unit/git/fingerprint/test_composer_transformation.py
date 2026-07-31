@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+import pytest
 from infrahub_sdk.schema.repository import InfrahubWatchConfig
 
 from infrahub.git.closure_builder.post_processing import MANIFEST_PATH
@@ -151,3 +154,62 @@ def test_jinja2_excludes_manifest_blob_from_closure() -> None:
         return build_composer(blob_shas=blobs, registry=registry).compose_transformation(_jinja2_input())
 
     assert digest(J2_BLOBS) == digest({**J2_BLOBS, MANIFEST_PATH: "sha-manifest-edited"})
+
+
+@dataclass
+class Jinja2CommitFoldCase:
+    name: str
+    watch: InfrahubWatchConfig | None
+    dependencies_complete: bool
+    seed_query: bool
+    stable: bool
+
+
+JINJA2_COMMIT_FOLD_CASES = [
+    Jinja2CommitFoldCase(
+        name="complete_closure_without_watch_is_stable",
+        watch=None,
+        dependencies_complete=True,
+        seed_query=True,
+        stable=True,
+    ),
+    Jinja2CommitFoldCase(
+        name="complete_closure_with_empty_watch_is_stable",
+        watch=InfrahubWatchConfig(files=[]),
+        dependencies_complete=True,
+        seed_query=True,
+        stable=True,
+    ),
+    Jinja2CommitFoldCase(
+        name="incomplete_closure_without_watch_folds_commit_id",
+        watch=None,
+        dependencies_complete=False,
+        seed_query=True,
+        stable=False,
+    ),
+    Jinja2CommitFoldCase(
+        name="unresolved_query_folds_commit_id_despite_complete_closure",
+        watch=None,
+        dependencies_complete=True,
+        seed_query=False,
+        stable=False,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", JINJA2_COMMIT_FOLD_CASES, ids=lambda case: case.name)
+def test_jinja2_commit_id_folding(case: Jinja2CommitFoldCase) -> None:
+    # A complete Jinja2 closure is trusted on its own, so the commit id is omitted and the
+    # fingerprint is stable across unrelated commits even without a watch declaration. An
+    # incomplete closure or an unresolved upstream still folds the commit id.
+    def digest(*, commit: str) -> str:
+        registry = FingerprintRegistry()
+        if case.seed_query:
+            _seed_query(registry)
+        return build_composer(blob_shas=J2_BLOBS, commit=commit, registry=registry).compose_transformation(
+            _jinja2_input(watch=case.watch, dependencies_complete=case.dependencies_complete)
+        )
+
+    first = digest(commit="commit-1")
+    second = digest(commit="commit-2")
+    assert (first == second) is case.stable

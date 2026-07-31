@@ -54,6 +54,33 @@ class TestFingerprintTransformation(FingerprintImportTestBase):
         after = (await client.get(kind=CoreTransformJinja2, name__value="person_with_cars")).fingerprint.value
         assert before != after
 
+    async def test_unrelated_commit_keeps_complete_jinja2_stable_but_folds_python(
+        self, repository_id: str, client: InfrahubClient, file_repo: FileRepo
+    ) -> None:
+        # Neither transform declares a watch. person_with_cars is a Jinja2 transform whose
+        # template has no includes, so its closure is complete; CarSpecMarkdown is a Python
+        # transform whose completeness is only the unsound package-directory floor.
+        jinja2_before = (await client.get(kind=CoreTransformJinja2, name__value="person_with_cars")).fingerprint.value
+        python_before = (await client.get(kind=CoreTransformPython, name__value="CarSpecMarkdown")).fingerprint.value
+        assert jinja2_before
+        assert python_before
+
+        await self._commit_edit_and_reimport(
+            client=client,
+            repository_id=repository_id,
+            file_repo=file_repo,
+            edits={"README.md": _append_comment("README.md", file_repo)},
+        )
+
+        jinja2_after = (await client.get(kind=CoreTransformJinja2, name__value="person_with_cars")).fingerprint.value
+        python_after = (await client.get(kind=CoreTransformPython, name__value="CarSpecMarkdown")).fingerprint.value
+
+        # The complete Jinja2 closure is trusted on its own, so an unrelated commit no longer
+        # churns its fingerprint. The Python transform still folds the commit id without a
+        # watch, so the same unrelated commit changes its fingerprint.
+        assert jinja2_after == jinja2_before
+        assert python_after != python_before
+
 
 def _append_comment(relative_path: str, file_repo: FileRepo) -> str:
     current = (Path(file_repo.path) / relative_path).read_text(encoding="utf-8")

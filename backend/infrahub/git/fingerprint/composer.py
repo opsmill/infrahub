@@ -19,21 +19,34 @@ if TYPE_CHECKING:
     from infrahub.git.fingerprint.blob_resolver import BlobResolver
 
 
-def fold_commit_id(*, commit: str, watch: InfrahubWatchConfig | None, closure_complete: bool) -> str | None:
+def fold_commit_id(
+    *, commit: str, watch: InfrahubWatchConfig | None, closure_complete: bool, watch_required: bool
+) -> str | None:
     """Return the commit id to fold into a fingerprint, or None to omit it.
 
     The commit id is folded (making the fingerprint change on every commit, the safe
-    over-regenerating default) whenever the definition's inputs cannot be pinned down:
+    over-regenerating default) whenever the definition's inputs cannot be pinned down.
 
-    - `watch` is absent (`None`): the definition has not declared its dependencies.
-    - the dependency closure is incomplete: some output-affecting dependency could not be
-      resolved, so hashing only the resolved paths would leave the fingerprint stable over
-      an input the system already knows is unknown - an under-regeneration risk.
+    An incomplete closure always folds the commit id: some output-affecting dependency could
+    not be resolved, so hashing only the resolved paths would leave the fingerprint stable
+    over an input the system already knows is unknown - an under-regeneration risk.
 
-    Only a definition with a present `watch` and a complete closure omits the commit id and
-    gets a stable, precise fingerprint.
+    A complete closure is trusted differently depending on the builder, expressed through
+    `watch_required`:
+
+    - `watch_required=True` (Python transforms, generators): the builder's completeness flag
+      is unsound (it only asserts the definition's own package directory was enumerated, so a
+      helper imported from outside that directory is silently missed). A present `watch` is
+      the only signal trusted to close the set, so the commit id is folded whenever `watch`
+      is absent (`None`).
+    - `watch_required=False` (Jinja2): completeness comes from a real transitive parse of the
+      template include/import/extends graph and is sound. A complete closure alone yields a
+      stable, precise fingerprint with no `watch` needed; a dynamic reference drops the flag
+      to False, which keeps the commit id folded.
     """
-    if watch is None or not closure_complete:
+    if not closure_complete:
+        return commit
+    if watch_required and watch is None:
         return commit
     return None
 
@@ -148,8 +161,10 @@ class FingerprintComposer:
             case PythonTransformationFingerprintInput():
                 terms.append(f"class_name={inputs.class_name}")
                 terms.append(f"convert_query_response={inputs.convert_query_response}")
+                watch_required = True
             case Jinja2TransformationFingerprintInput():
                 terms.append(f"template_path={inputs.template_path}")
+                watch_required = False
             case _:  # pragma: no cover - exhaustiveness guard for a new transform kind
                 assert_never(inputs)
 
@@ -157,6 +172,7 @@ class FingerprintComposer:
             watch=inputs.watch,
             closure_complete=inputs.dependencies_complete,
             upstream_resolved=query_fingerprint is not None,
+            watch_required=watch_required,
         )
         if commit_term is not None:
             terms.append(f"commit_id={commit_term}")
@@ -194,6 +210,7 @@ class FingerprintComposer:
             watch=inputs.watch,
             closure_complete=inputs.dependencies_complete,
             upstream_resolved=query_fingerprint is not None,
+            watch_required=True,
         )
         if commit_term is not None:
             terms.append(f"commit_id={commit_term}")
@@ -203,7 +220,12 @@ class FingerprintComposer:
         return fingerprint
 
     def _resolve_commit_term(
-        self, *, watch: InfrahubWatchConfig | None, closure_complete: bool, upstream_resolved: bool
+        self,
+        *,
+        watch: InfrahubWatchConfig | None,
+        closure_complete: bool,
+        upstream_resolved: bool,
+        watch_required: bool,
     ) -> str | None:
         """Return the commit-id term for a transform/generator, or None to omit it.
 
@@ -212,7 +234,12 @@ class FingerprintComposer:
         the commit id is folded in and the fingerprint can never be stable over an upstream it
         could not read.
         """
-        return fold_commit_id(commit=self._commit, watch=watch, closure_complete=closure_complete and upstream_resolved)
+        return fold_commit_id(
+            commit=self._commit,
+            watch=watch,
+            closure_complete=closure_complete and upstream_resolved,
+            watch_required=watch_required,
+        )
 
     def _closure_term(self, dependencies: Iterable[str]) -> str:
         hashed_paths = self._closure_selector.select(dependencies)
