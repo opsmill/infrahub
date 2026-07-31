@@ -334,8 +334,10 @@ def test_computed_attribute_survives_its_discriminated_union() -> None:
     assert computed.jinja2_template == "{{ name__value }}"
     assert computed.transform is None
     assert "transform" not in loaded.model_dump()["nodes"][0]["attributes"][0]["computed_attribute"]
+    # Named relative to its owner: `transform` is settable on a TransformPython computed
+    # attribute, so the warning has to say which block the ignored value sat in.
     assert [warning.message for warning in loaded.contract_warnings] == [
-        "'transform' is a read-only field, the submitted value is ignored"
+        "'computed_attribute.transform' is a read-only field, the submitted value is ignored"
     ]
 
 
