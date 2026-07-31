@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core import registry
 from infrahub.core.migrations.query.attribute_remove import AttributeRemoveQuery
+from infrahub.core.query.attribute import AttributeAddQuery
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
-from ..query.attribute_add import AttributeAddQuery
 from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:

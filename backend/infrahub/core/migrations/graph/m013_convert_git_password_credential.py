@@ -13,9 +13,9 @@ from infrahub.core.constants import (
 )
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
+from infrahub.core.query.attribute import AttributeAddQuery
 from infrahub.core.timestamp import Timestamp
 
-from ..query.attribute_add import AttributeAddQuery
 from ..query.delete_element_in_schema import DeleteElementInSchemaQuery
 from ..shared import GraphMigration
 
