@@ -8,8 +8,13 @@ from infrahub_sdk.protocols import CoreGeneratorGroup
 
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.timestamp import Timestamp
+from infrahub.generators.models import RequestGeneratorDefinitionRun
+
+from .models import CascadeSourceOutput
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
@@ -37,7 +42,22 @@ class GeneratorMutationDiffCapturer(Protocol):
     async def capture(self, *, since: Timestamp, generator_definition_names: list[str]) -> list[NodeDiff]: ...
 
 
-class GeneratorTrackingGroupDiffCapturer:
+class GeneratorCascadeOutput(CascadeSourceOutput[RequestGeneratorDefinitionRun]):
+    """The cascade output of a set of generators, captured through their per-member tracking groups.
+
+    Holds only the capturer; the runs to capture arrive per call, so it reads their definition names
+    itself and the follow-up need not handle that kind-specific step.
+    """
+
+    def __init__(self, capturer: GeneratorMutationDiffCapturer) -> None:
+        self._capturer = capturer
+
+    async def capture(self, *, since: Timestamp, requests: Sequence[RequestGeneratorDefinitionRun]) -> list[NodeDiff]:
+        definition_names = [run.generator_definition.definition_name for run in requests]
+        return await self._capturer.capture(since=since, generator_definition_names=definition_names)
+
+
+class GeneratorTrackingGroupDiffCapturer(GeneratorMutationDiffCapturer):
     """Capture a post-merge generator's own writes, scoped to the nodes it tracked.
 
     A time-window diff of the branch alone would also carry any concurrent write landing on it while the

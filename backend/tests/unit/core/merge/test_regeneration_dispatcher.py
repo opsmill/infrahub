@@ -12,7 +12,12 @@ from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
-from infrahub.core.merge.selective_regen.models import SelectiveRegenerationPlan
+from infrahub.core.merge.selective_regen.models import (
+    CascadeRole,
+    FullRegeneration,
+    PlannedRegeneration,
+    SelectiveRegenerationPlan,
+)
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.git.models import RequestArtifactDefinitionGenerate
@@ -26,7 +31,7 @@ from tests.adapters.cache import MemoryCache
 from tests.adapters.workflow import WorkflowRecorder
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Sequence
 
     from infrahub.core.timestamp import Timestamp
     from infrahub.events.models import EventContext
@@ -41,8 +46,38 @@ def _summary_cache(cache: MemoryCache) -> DiffSummaryCache:
     return DiffSummaryCache(cache=cache, serializer=DiffSummarySerializer(), key_namespace="branch_merge")
 
 
-class _FakeSelector:
-    """A RegenerationSelector that returns a canned plan or raises, recording its invocations."""
+def _plan(
+    *,
+    generator_runs: list[RequestGeneratorDefinitionRun] | None = None,
+    artifact_generates: list[RequestArtifactDefinitionGenerate] | None = None,
+    source_output: _FakeSourceOutput | None = None,
+) -> SelectiveRegenerationPlan:
+    """Build a plan the way the orchestrator does: one entry per planner, tagged by cascade role."""
+    return SelectiveRegenerationPlan(
+        entries=[
+            PlannedRegeneration(
+                workflow=REQUEST_GENERATOR_DEFINITION_RUN,
+                cascade_role=CascadeRole.SOURCE,
+                requests=generator_runs or [],
+                output=source_output,
+            ),
+            PlannedRegeneration(
+                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+                cascade_role=CascadeRole.TERMINAL,
+                requests=artifact_generates or [],
+            ),
+        ]
+    )
+
+
+def _submitted_entry(requests: list[RequestArtifactDefinitionGenerate]) -> PlannedRegeneration:
+    return PlannedRegeneration(
+        workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, cascade_role=CascadeRole.TERMINAL, requests=requests
+    )
+
+
+class _FakePlanner:
+    """A RegenerationPlanner that returns a canned plan or raises, recording its invocations."""
 
     def __init__(
         self,
@@ -50,40 +85,44 @@ class _FakeSelector:
         plan: SelectiveRegenerationPlan | None = None,
         error: Exception | None = None,
         artifact_plan: list[RequestArtifactDefinitionGenerate] | None = None,
+        submissions: list[PlannedRegeneration] | None = None,
     ) -> None:
         self._plan = plan
         self._error = error
         self._artifact_plan = artifact_plan or []
+        self._submissions = submissions
         self.calls = 0
-        self.select_artifacts_diffs: list[list] = []
+        self.reselect_diffs: list[list] = []
 
     async def build_plan(self, diff_summary: list, target_branch: str) -> SelectiveRegenerationPlan:
         self.calls += 1
         if self._error is not None:
             raise self._error
-        return (
-            self._plan
-            if self._plan is not None
-            else SelectiveRegenerationPlan(generator_runs=[], artifact_generates=[])
-        )
+        return self._plan if self._plan is not None else _plan()
 
-    async def select_artifacts(self, diff_summary: list, target_branch: str) -> list[RequestArtifactDefinitionGenerate]:
-        self.select_artifacts_diffs.append(diff_summary)
-        return self._artifact_plan
+    async def reselect_from_cascade_output(self, diff_summary: list, target_branch: str) -> list[PlannedRegeneration]:
+        self.reselect_diffs.append(diff_summary)
+        return [_submitted_entry(self._artifact_plan)]
+
+    def consolidate_submissions(self, entries: Sequence[PlannedRegeneration]) -> list[PlannedRegeneration]:
+        """Return the canned submissions when set, otherwise the entries unchanged."""
+        return self._submissions if self._submissions is not None else list(entries)
+
+    def terminal_full_regenerations(self, target_branch: str) -> list[FullRegeneration]:
+        """The blanket regeneration a single artifact terminal would contribute."""
+        return [FullRegeneration(workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE, parameters={"branch": target_branch})]
 
 
-class _FakeCapturer:
-    """A GeneratorMutationDiffCapturer returning a canned diff summary or raising, recording its calls."""
+class _FakeSourceOutput:
+    """A CascadeSourceOutput returning a canned diff or raising, recording its capture calls."""
 
     def __init__(self, *, diff_summary: list | None = None, error: Exception | None = None) -> None:
         self._diff_summary = diff_summary if diff_summary is not None else []
         self._error = error
         self.calls = 0
-        self.definition_names: list[list[str]] = []
 
-    async def capture(self, *, since: Timestamp, generator_definition_names: list[str]) -> list:
+    async def capture(self, *, since: Timestamp, requests: Sequence[Any]) -> list:
         self.calls += 1
-        self.definition_names.append(generator_definition_names)
         if self._error is not None:
             raise self._error
         return self._diff_summary
@@ -128,7 +167,7 @@ def _context() -> InfrahubContext:
     )
 
 
-def _plan_with_one_of_each() -> SelectiveRegenerationPlan:
+def _plan_with_one_of_each(source_output: _FakeSourceOutput | None = None) -> SelectiveRegenerationPlan:
     generator_definition = ProposedChangeGeneratorDefinition(
         definition_id="gd1",
         definition_name="gen",
@@ -145,13 +184,14 @@ def _plan_with_one_of_each() -> SelectiveRegenerationPlan:
         query_payload="query { TestDevice { edges { node { id } } } }",
         repository_id="repo-1",
     )
-    return SelectiveRegenerationPlan(
+    return _plan(
         generator_runs=[RequestGeneratorDefinitionRun(branch=TARGET_BRANCH, generator_definition=generator_definition)],
         artifact_generates=[
             RequestArtifactDefinitionGenerate(
                 branch=TARGET_BRANCH, artifact_definition_id="ad1", artifact_definition_name="art"
             )
         ],
+        source_output=source_output,
     )
 
 
@@ -175,20 +215,20 @@ def _generator_run(*, definition_id: str) -> RequestGeneratorDefinitionRun:
     return RequestGeneratorDefinitionRun(branch=TARGET_BRANCH, generator_definition=generator_definition)
 
 
-def _plan_with_two_generators() -> SelectiveRegenerationPlan:
-    return SelectiveRegenerationPlan(
+def _plan_with_two_generators(source_output: _FakeSourceOutput | None = None) -> SelectiveRegenerationPlan:
+    return _plan(
         generator_runs=[_generator_run(definition_id="gd1"), _generator_run(definition_id="gd2")],
         artifact_generates=[
             RequestArtifactDefinitionGenerate(
                 branch=TARGET_BRANCH, artifact_definition_id="ad1", artifact_definition_name="art"
             )
         ],
+        source_output=source_output,
     )
 
 
 def _plan_with_only_artifacts() -> SelectiveRegenerationPlan:
-    return SelectiveRegenerationPlan(
-        generator_runs=[],
+    return _plan(
         artifact_generates=[
             RequestArtifactDefinitionGenerate(
                 branch=TARGET_BRANCH, artifact_definition_id="ad1", artifact_definition_name="art"
@@ -198,16 +238,14 @@ def _plan_with_only_artifacts() -> SelectiveRegenerationPlan:
 
 
 def _dispatcher(
-    selector: _FakeSelector,
+    planner: _FakePlanner,
     cache: DiffSummaryCache,
     recorder: WorkflowRecorder,
-    capturer: _FakeCapturer | None = None,
 ) -> PostMergeRegenerationDispatcher:
     return PostMergeRegenerationDispatcher(
         workflow=recorder,
-        selector=selector,
+        planner=planner,
         summary_cache=cache,
-        generator_diff_capturer=capturer or _FakeCapturer(),
         log=logging.getLogger("test"),
     )
 
@@ -237,15 +275,15 @@ def _full_regen_submitted(recorder: WorkflowRecorder) -> bool:
 
 async def test_flag_off_submits_full_regeneration(disable_selective: None) -> None:
     recorder = WorkflowRecorder()
-    selector = _FakeSelector(plan=_plan_with_one_of_each())
+    planner = _FakePlanner(plan=_plan_with_one_of_each())
     cache = _summary_cache(MemoryCache())
     await cache.set(diff_id=DIFF_ID, diff_summary=[])
 
-    await _dispatcher(selector, cache, recorder).dispatch(
+    await _dispatcher(planner, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=DIFF_ID
     )
 
-    # Flag off reproduces the prior blanket path exactly, without consulting the selector.
+    # Flag off reproduces the prior blanket path exactly, without consulting the planner.
     assert _full_regen_submitted(recorder)
     assert recorder.get_submit_calls_for(TRIGGER_ARTIFACT_DEFINITION_GENERATE)[0]["parameters"] == {
         "branch": TARGET_BRANCH
@@ -256,58 +294,58 @@ async def test_flag_off_submits_full_regeneration(disable_selective: None) -> No
     }
     assert recorder.get_submit_calls_for(REQUEST_ARTIFACT_DEFINITION_GENERATE) == []
     assert recorder.get_submit_calls_for(REQUEST_GENERATOR_DEFINITION_RUN) == []
-    assert selector.calls == 0
+    assert planner.calls == 0
 
 
 async def test_missing_key_submits_full_regeneration() -> None:
     recorder = WorkflowRecorder()
-    selector = _FakeSelector(plan=_plan_with_one_of_each())
+    planner = _FakePlanner(plan=_plan_with_one_of_each())
     cache = _summary_cache(MemoryCache())
 
-    await _dispatcher(selector, cache, recorder).dispatch(
+    await _dispatcher(planner, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=None
     )
 
     assert _full_regen_submitted(recorder)
-    assert selector.calls == 0
+    assert planner.calls == 0
 
 
 async def test_cache_miss_submits_full_regeneration() -> None:
     recorder = WorkflowRecorder()
-    selector = _FakeSelector(plan=_plan_with_one_of_each())
+    planner = _FakePlanner(plan=_plan_with_one_of_each())
     cache = _summary_cache(MemoryCache())  # never seeded
 
-    await _dispatcher(selector, cache, recorder).dispatch(
+    await _dispatcher(planner, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=DIFF_ID
     )
 
     assert _full_regen_submitted(recorder)
-    assert selector.calls == 0
+    assert planner.calls == 0
 
 
 async def test_malformed_summary_submits_full_regeneration() -> None:
     recorder = WorkflowRecorder()
-    selector = _FakeSelector(plan=_plan_with_one_of_each())
+    planner = _FakePlanner(plan=_plan_with_one_of_each())
     memory = MemoryCache()
     memory.storage[f"branch_merge:diff_id:{DIFF_ID}:diff_summary"] = "{not-valid-json"
     cache = _summary_cache(memory)
 
-    await _dispatcher(selector, cache, recorder).dispatch(
+    await _dispatcher(planner, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=DIFF_ID
     )
 
     assert _full_regen_submitted(recorder)
-    assert selector.calls == 0
+    assert planner.calls == 0
     assert recorder.get_submit_calls_for(REQUEST_ARTIFACT_DEFINITION_GENERATE) == []
 
 
 async def test_empty_plan_dispatches_nothing() -> None:
     recorder = WorkflowRecorder()
-    selector = _FakeSelector(plan=SelectiveRegenerationPlan(generator_runs=[], artifact_generates=[]))
+    planner = _FakePlanner(plan=_plan())
     cache = _summary_cache(MemoryCache())
     await cache.set(diff_id=DIFF_ID, diff_summary=[])
 
-    await _dispatcher(selector, cache, recorder).dispatch(
+    await _dispatcher(planner, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=DIFF_ID
     )
 
@@ -316,15 +354,15 @@ async def test_empty_plan_dispatches_nothing() -> None:
 
 async def test_selection_failure_falls_back_to_full_regeneration() -> None:
     recorder = WorkflowRecorder()
-    selector = _FakeSelector(error=RuntimeError("boom"))
+    planner = _FakePlanner(error=RuntimeError("boom"))
     cache = _summary_cache(MemoryCache())
     await cache.set(diff_id=DIFF_ID, diff_summary=[])
 
-    await _dispatcher(selector, cache, recorder).dispatch(
+    await _dispatcher(planner, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=DIFF_ID
     )
 
-    assert selector.calls == 1
+    assert planner.calls == 1
     assert _full_regen_submitted(recorder)
     assert recorder.get_submit_calls_for(REQUEST_ARTIFACT_DEFINITION_GENERATE) == []
 
@@ -337,22 +375,24 @@ def _targeted_artifact() -> RequestArtifactDefinitionGenerate:
 
 async def test_merge_targets_artifacts_from_generator_output() -> None:
     recorder = WorkflowRecorder()
-    selector = _FakeSelector(plan=_plan_with_one_of_each(), artifact_plan=[_targeted_artifact()])
-    capturer = _FakeCapturer(diff_summary=[{"kind": "TestDevice"}])
+    source_output = _FakeSourceOutput(diff_summary=[{"kind": "TestDevice"}])
+    planner = _FakePlanner(
+        plan=_plan_with_one_of_each(source_output=source_output), artifact_plan=[_targeted_artifact()]
+    )
     cache = _summary_cache(MemoryCache())
     await cache.set(diff_id=DIFF_ID, diff_summary=[])
 
-    await _dispatcher(selector, cache, recorder, capturer).dispatch(
+    await _dispatcher(planner, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=DIFF_ID
     )
 
-    # The generator is awaited (not submitted), its output is captured, and the artifacts are selected
-    # from that captured diff -- alongside the merge-diff artifact -- with no blanket regeneration.
+    # The generator is awaited (not submitted), its output is captured by the source itself, and the
+    # terminals are selected from that captured diff -- alongside the merge-diff artifact -- with no
+    # blanket regeneration.
     assert [call["workflow"] for call in recorder.execute_calls] == [REQUEST_GENERATOR_DEFINITION_RUN]
     assert recorder.get_submit_calls_for(REQUEST_GENERATOR_DEFINITION_RUN) == []
-    assert capturer.calls == 1
-    assert capturer.definition_names == [["gen"]]
-    assert selector.select_artifacts_diffs == [[{"kind": "TestDevice"}]]
+    assert source_output.calls == 1
+    assert planner.reselect_diffs == [[{"kind": "TestDevice"}]]
     submitted = [
         call["parameters"]["model"].artifact_definition_name
         for call in recorder.get_submit_calls_for(REQUEST_ARTIFACT_DEFINITION_GENERATE)
@@ -363,18 +403,18 @@ async def test_merge_targets_artifacts_from_generator_output() -> None:
 
 async def test_awaits_every_generator_before_capturing_output() -> None:
     recorder = WorkflowRecorder()
-    selector = _FakeSelector(plan=_plan_with_two_generators())
-    capturer = _FakeCapturer(diff_summary=[{"kind": "TestDevice"}])
+    source_output = _FakeSourceOutput(diff_summary=[{"kind": "TestDevice"}])
+    planner = _FakePlanner(plan=_plan_with_two_generators(source_output=source_output))
     cache = _summary_cache(MemoryCache())
     await cache.set(diff_id=DIFF_ID, diff_summary=[])
 
-    await _dispatcher(selector, cache, recorder, capturer).dispatch(
+    await _dispatcher(planner, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=DIFF_ID
     )
 
-    # Racing the tail would capture against a partially-mutated graph.
-    assert capturer.calls == 1
-    assert capturer.definition_names == [["gd1", "gd2"]]
+    # Both generators are awaited before the single capture; racing the tail would capture against a
+    # partially-mutated graph.
+    assert source_output.calls == 1
     assert [(call["kind"], call["workflow"]) for call in recorder.calls] == [
         ("execute", REQUEST_GENERATOR_DEFINITION_RUN),
         ("execute", REQUEST_GENERATOR_DEFINITION_RUN),
@@ -384,17 +424,16 @@ async def test_awaits_every_generator_before_capturing_output() -> None:
 
 async def test_merge_without_generator_keeps_selective_artifacts() -> None:
     recorder = WorkflowRecorder()
-    selector = _FakeSelector(plan=_plan_with_only_artifacts())
-    capturer = _FakeCapturer()
+    planner = _FakePlanner(plan=_plan_with_only_artifacts())
     cache = _summary_cache(MemoryCache())
     await cache.set(diff_id=DIFF_ID, diff_summary=[])
 
-    await _dispatcher(selector, cache, recorder, capturer).dispatch(
+    await _dispatcher(planner, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=DIFF_ID
     )
 
-    # No generator ran, so no output is captured and the artifact selection stays narrow.
-    assert capturer.calls == 0
+    # No source ran, so no output is captured and the artifact selection stays narrow.
+    assert planner.reselect_diffs == []
     assert len(recorder.get_submit_calls_for(REQUEST_ARTIFACT_DEFINITION_GENERATE)) == 1
     assert recorder.get_submit_calls_for(TRIGGER_ARTIFACT_DEFINITION_GENERATE) == []
     assert recorder.execute_calls == []
@@ -402,12 +441,12 @@ async def test_merge_without_generator_keeps_selective_artifacts() -> None:
 
 async def test_generator_output_capture_failure_falls_back_to_blanket_artifacts() -> None:
     recorder = WorkflowRecorder()
-    selector = _FakeSelector(plan=_plan_with_one_of_each())
-    capturer = _FakeCapturer(error=RuntimeError("capture boom"))
+    source_output = _FakeSourceOutput(error=RuntimeError("capture boom"))
+    planner = _FakePlanner(plan=_plan_with_one_of_each(source_output=source_output))
     cache = _summary_cache(MemoryCache())
     await cache.set(diff_id=DIFF_ID, diff_summary=[])
 
-    await _dispatcher(selector, cache, recorder, capturer).dispatch(
+    await _dispatcher(planner, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=DIFF_ID
     )
 
@@ -421,12 +460,12 @@ async def test_generator_output_capture_failure_falls_back_to_blanket_artifacts(
 
 async def test_generator_run_failure_is_isolated_and_regenerates_artifacts_not_generators() -> None:
     recorder = _FailingGeneratorRecorder(fail_definition="gd1")
-    selector = _FakeSelector(plan=_plan_with_two_generators())
-    capturer = _FakeCapturer(diff_summary=[{"kind": "TestDevice"}])
+    source_output = _FakeSourceOutput(diff_summary=[{"kind": "TestDevice"}])
+    planner = _FakePlanner(plan=_plan_with_two_generators(source_output=source_output))
     cache = _summary_cache(MemoryCache())
     await cache.set(diff_id=DIFF_ID, diff_summary=[])
 
-    await _dispatcher(selector, cache, recorder, capturer).dispatch(
+    await _dispatcher(planner, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=DIFF_ID
     )
 
@@ -441,43 +480,40 @@ async def test_generator_run_failure_is_isolated_and_regenerates_artifacts_not_g
     ] == [TARGET_BRANCH]
     assert recorder.get_submit_calls_for(REQUEST_ARTIFACT_DEFINITION_GENERATE) == []
     assert recorder.get_submit_calls_for(TRIGGER_GENERATOR_DEFINITION_RUN) == []
-    assert capturer.calls == 0
+    # A failed generator short-circuits to blanket regeneration; its output is never captured.
+    assert source_output.calls == 0
 
 
-async def test_merge_consolidates_artifacts_selected_by_both_diffs() -> None:
+async def test_merge_submits_what_the_planner_consolidates() -> None:
+    """The dispatcher submits exactly the entries the planner's consolidation returns, via their workflow.
+
+    Consolidating the requests (deduping a definition selected by more than one diff) is the planner's
+    job, unit-tested on the planner; here the dispatcher must submit that result verbatim.
+    """
     recorder = WorkflowRecorder()
-    plan = SelectiveRegenerationPlan(
-        generator_runs=[_generator_run(definition_id="gd1")],
-        artifact_generates=[
-            RequestArtifactDefinitionGenerate(
-                branch=TARGET_BRANCH, artifact_definition_id="ad1", artifact_definition_name="art", members=["m1"]
-            ),
-            RequestArtifactDefinitionGenerate(
-                branch=TARGET_BRANCH, artifact_definition_id="ad2", artifact_definition_name="art2"
-            ),
-        ],
-    )
-    generator_output = [
-        RequestArtifactDefinitionGenerate(
-            branch=TARGET_BRANCH, artifact_definition_id="ad1", artifact_definition_name="art", members=["m2"]
-        ),
-        RequestArtifactDefinitionGenerate(
-            branch=TARGET_BRANCH, artifact_definition_id="ad2", artifact_definition_name="art2", members=["m3"]
-        ),
+    consolidated = [
+        _submitted_entry(
+            [
+                RequestArtifactDefinitionGenerate(
+                    branch=TARGET_BRANCH, artifact_definition_id="ad1", artifact_definition_name="art"
+                ),
+                RequestArtifactDefinitionGenerate(
+                    branch=TARGET_BRANCH, artifact_definition_id="ad2", artifact_definition_name="art2"
+                ),
+            ]
+        )
     ]
-    selector = _FakeSelector(plan=plan, artifact_plan=generator_output)
-    capturer = _FakeCapturer(diff_summary=[{"kind": "TestDevice"}])
+    source_output = _FakeSourceOutput(diff_summary=[{"kind": "TestDevice"}])
+    planner = _FakePlanner(plan=_plan_with_one_of_each(source_output=source_output), submissions=consolidated)
     cache = _summary_cache(MemoryCache())
     await cache.set(diff_id=DIFF_ID, diff_summary=[])
 
-    await _dispatcher(selector, cache, recorder, capturer).dispatch(
+    await _dispatcher(planner, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=DIFF_ID
     )
 
-    submits = recorder.get_submit_calls_for(REQUEST_ARTIFACT_DEFINITION_GENERATE)
-    by_def = {call["parameters"]["model"].artifact_definition_id: call["parameters"]["model"] for call in submits}
-    # One request per definition -- ad1, selected by both diffs, is not dispatched twice.
-    assert len(submits) == 2
-    # Member filters are unioned; an unfiltered (all-members) request wins.
-    assert sorted(by_def["ad1"].members) == ["m1", "m2"]
-    assert by_def["ad2"].members == []
+    submitted = [
+        call["parameters"]["model"].artifact_definition_id
+        for call in recorder.get_submit_calls_for(REQUEST_ARTIFACT_DEFINITION_GENERATE)
+    ]
+    assert submitted == ["ad1", "ad2"]

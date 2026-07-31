@@ -40,6 +40,9 @@ def artifact_selector(
 
 @pytest.fixture
 def generator_selector(
-    client: InfrahubClient, gate: DefinitionGate, impacted_resolver: ImpactedSubscriberResolver, log: logging.Logger
+    client: InfrahubClient,
+    gate: DefinitionGate,
+    impacted_resolver: ImpactedSubscriberResolver,
+    log: logging.Logger,
 ) -> GeneratorSelector:
     return GeneratorSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log)

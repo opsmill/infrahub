@@ -33,7 +33,10 @@ from infrahub.core.merge.recompute_coalescing import (
 )
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher, submit_full_regeneration
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
-from infrahub.core.merge.selective_regen.generator_diff_capturer import GeneratorTrackingGroupDiffCapturer
+from infrahub.core.merge.selective_regen.generator_output import (
+    GeneratorCascadeOutput,
+    GeneratorTrackingGroupDiffCapturer,
+)
 from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
@@ -494,18 +497,19 @@ async def _build_post_merge_regeneration_dispatcher(
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    output_capturer = GeneratorTrackingGroupDiffCapturer(
+        diff_coordinator=diff_coordinator,
+        diff_repository=diff_repository,
+        serializer=DiffSummarySerializer(),
+        client=get_client(),
+        branch=branch,
+    )
+    generator_output = GeneratorCascadeOutput(capturer=output_capturer)
     return PostMergeRegenerationDispatcher(
         workflow=get_workflow(),
-        selector=build_merge_selective_regeneration(client=get_client(), log=log),
+        planner=build_merge_selective_regeneration(client=get_client(), log=log, generator_output=generator_output),
         summary_cache=DiffSummaryCache(
             cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
-        ),
-        generator_diff_capturer=GeneratorTrackingGroupDiffCapturer(
-            diff_coordinator=diff_coordinator,
-            diff_repository=diff_repository,
-            serializer=DiffSummarySerializer(),
-            client=get_client(),
-            branch=branch,
         ),
         log=log,
     )
