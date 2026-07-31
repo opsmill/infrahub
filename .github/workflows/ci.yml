@@ -87,7 +87,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -112,11 +112,11 @@ jobs:
         with:
           submodules: true
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
         with:
           node-version: 24
       - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
         with:
           version: 10
           cache: true
@@ -145,11 +145,11 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
         with:
           node-version: 24
       - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
         with:
           version: 10
           cache: true
@@ -188,11 +188,11 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1  # v4
         with:
           version: 10
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
         with:
           node-version: 24
           cache: pnpm
@@ -229,11 +229,11 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
         with:
           node-version: 24
       - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
         with:
           version: 10
           cache: true
@@ -269,7 +269,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -312,7 +312,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
 
@@ -389,7 +389,7 @@ jobs:
 
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
 
@@ -445,7 +445,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
@@ -491,7 +491,7 @@ jobs:
           submodules: true
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
@@ -540,7 +540,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
@@ -597,7 +597,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
@@ -644,7 +644,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
@@ -694,7 +694,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install tini
@@ -790,12 +790,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -822,12 +822,12 @@ jobs:
         with:
           submodules: true
       - name: Install NodeJS
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
         with:
           # https://github.com/microsoft/playwright/issues/41000
           node-version: 24.15.0
       - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
         with:
           version: 10
           cache: true
@@ -866,7 +866,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -892,7 +892,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -919,7 +919,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -949,14 +949,14 @@ jobs:
         with:
           submodules: true
       - name: Install NodeJS
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
         with:
           node-version: 24
           cache: 'npm'
           cache-dependency-path: docs/package-lock.json
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -987,14 +987,14 @@ jobs:
         with:
           submodules: true
       - name: Install NodeJS
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
         with:
           node-version: 24
           cache: 'npm'
           cache-dependency-path: docs/package-lock.json
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -1125,22 +1125,22 @@ jobs:
     env: ${{ matrix.env }}
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           submodules: true
       - name: Install NodeJS
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
         with:
           node-version: 24
       - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
         with:
           version: 10
           cache: true
           cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -1247,7 +1247,7 @@ jobs:
 
       - name: playwright-report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: ${{ matrix.name }}
           path: frontend/app/playwright-report/
@@ -1325,12 +1325,12 @@ jobs:
       PYTEST_XDIST_WORKER_COUNT: 1
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -1377,7 +1377,7 @@ jobs:
         run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/tutorial
       - name: playwright-report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: E2E-testing-pytest-playwright-${{ matrix.shard }}
           path: |
@@ -1406,13 +1406,13 @@ jobs:
       group: huge-runners
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           submodules: true
 
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -1503,12 +1503,12 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
