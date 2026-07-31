@@ -11,6 +11,8 @@ When a node kind newly inherits a generic, pre-existing nodes never get attribut
 1. **PR 1 — forward fix**: `NodeKindUpdateMigration` runs a `NodeAttributeAddMigration` (with a new `force_inherited=True` opt-in) per newly-inherited attribute after vertex duplication commits; schema-migration execution becomes two-phase (kind-updates first, everything else second, phase 2 skipped on phase-1 errors) via a pure `split_migrations_by_phase` helper.
 2. **PR 2 — healing migration**: new numbered graph migration `m075` (`ArbitraryMigration`, free-form) detects and backfills every missing (active node, schema-defined attribute) row — default branch plus branch-scoped passes over all existing branches — with retroactive timestamps derived from the schema graph, run-time NumberPool allocation, strict idempotency, and self-validation that fails the upgrade loudly.
 
+Both PRs reference IFC-2619 and MUST land in the same release (spec assumption); PR 2's merge checklist includes verifying PR 1 is in the same release milestone.
+
 ## Technical Context
 
 **Language/Version**: Python 3.13 (backend only)
@@ -104,16 +106,22 @@ changelog/
 
 2. **`NodeKindUpdateMigration.execute()` override** (`node_kind_update.py`): call `super().execute()` (commits vertex duplication with the new label set), bail on errors, then for each attribute in `_newly_inherited_attributes()` run a `NodeAttributeAddMigration(force_inherited=True, ...)` with a `SchemaPath` targeting that attribute; accumulate errors/counters, stop on first error. Do **not** hook `execute_post_queries` (nested-transaction failure — research R2). `_newly_inherited_attributes()` = attributes in `new_schema` but not `previous_schema`, filtered to `inherited`, sorted (research R3). Name/namespace updates yield an empty set — no-op preserved. NumberPool allocation and profile/template coverage come free and verified from reusing the full sub-migration (research R4, R5) — satisfies FR-001, FR-004.
 
+   **Partial-failure convergence**: a failure mid-sequence leaves duplication committed and some attribute-adds done; the `schema_path_migrate` retry (retries=3) re-runs the whole migration, where `NodeDuplicateQuery` no-ops via `already_migrated` and completed adds no-op via `AttributeAddQuery`'s existence guard — the rerun converges. Pinned by a dedicated component test (rerun of a partially-completed kind-update).
+
 3. **Two-phase batching** (`tasks.py`): pure `split_migrations_by_phase(migrations)` returns (kind-update-backed, rest) derived from `MIGRATION_MAP`; `schema_apply_migrations` executes phase 1 to completion, skips phase 2 if phase 1 errored (FR-003, FR-012). Extract the existing loop body into a per-batch helper. Sole caller `SchemaUpdateCoordinator` unchanged (research R6).
 
 ### PR 2 — Healing migration
 
 4. **Damage-detection query** (`migrations/query/attribute_heal.py`, the deep module): batched per-kind (FR-011); for (kind, [schema attributes]) returns (node uuid, attribute name, derived retroactive timestamp) for every active node lacking an active attribute row — treating tombstone-only as damaged, clamping timestamps to not predate tombstones (FR-005, FR-006 timestamp rule; research R8, R9). A branch-scoped variant considers only data changed on the branch (FR-009).
 
+   **Duplicated schema vertices (critique E2)**: schema name/namespace/inheritance updates create same-UUID *copies* of schema nodes, so "when did the kind begin inheriting" is not readable off a single vertex's edges. Timestamp derivation MUST resolve the edge timeline across the full same-UUID vertex set of the schema node and its attribute vertices (UUID for identity; internal vertex id only within one copy's edge set), taking the earliest active `inherit_from`/attribute edge. Component tests include a kind renamed after gaining inheritance.
+
 5. **`m075_heal_missing_attribute_rows`** (`ArbitraryMigration`; `GRAPH_VERSION` → 75; research R7):
+   - **Schema acquisition (critique E1)**: schemas are loaded from the database at migration time and passed to the detection query as schema objects (never registry state): the default branch's schema for pass 1; each branch's own schema for pass 2, with fallback-to-default semantics when a branch has no schema changes of its own (a branch-schema load can return an empty schema branch — known gotcha).
    - **Pass 1 (default branch)**: per kind, detect → repair. Default-backed attributes: batched creation of attribute rows at the derived retroactive timestamps, reusing PR 1's attribute-add machinery/queries (research R11). NumberPool attributes: per-node allocation at run time via the reservation-aware path (FR-007; research R10).
    - **Pass 2 (branches)**: iterate existing branches, branch-scoped detect → repair at branch level (FR-009).
    - **Self-validation**: re-run detection across the repaired scope; any remaining pair fails the migration with per-kind actionable errors, failing the upgrade (FR-010, SC-001). All repair queries idempotent → rerun-safe, strict no-op on healthy data (FR-008, SC-003).
+   - **Audit trail (critique P1)**: on success, the migration logs per-kind repaired-row counts (default branch and per branch) so administrators have a record of what was repaired; zero-count output on healthy installs doubles as the no-op proof.
 
 6. **Implementation-time verification gate (from spec Assumptions)**: before trusting run-time NumberPool allocations, verify `CoreNumberPool.get_resource`'s uniqueness check is correctly branch- and time-scoped; fix or wrap if not.
 
@@ -128,7 +136,7 @@ changelog/
 Per spec Testing Decisions and Constitution IV — assert on user-observable graph behavior, never on which migration produced rows:
 
 - **Unit**: `split_migrations_by_phase` only (the one pure function).
-- **Component**: kind-update suite (inherited-attr creation incl. profiles/templates, unique/read-only gating, NumberPool allocation + single-pool assertion, name-update no-op); attribute-add guard/bypass; m075 suite (damaged default branch, branch-scoped damage, tombstone case, NumberPool case, healthy no-op, idempotent rerun, self-validation failure path); detection-query suite (completeness + timestamp derivation).
+- **Component**: kind-update suite (inherited-attr creation incl. profiles/templates, unique/read-only gating, NumberPool allocation + single-pool assertion, name-update no-op, partial-failure rerun converges); attribute-add guard/bypass; m075 suite (damaged default branch, branch-scoped damage, tombstone case, NumberPool case, healthy no-op, idempotent rerun, self-validation failure path, branch predating the damage window correctly sees no attribute); detection-query suite (completeness + timestamp derivation incl. a kind renamed after gaining inheritance). "Zero writes" assertions (SC-003) measure objectively via the driver's write-counter deltas, not implementation internals.
 - **Integration**: `test_schema_add_inherited_generic.py` — #9284 end-to-end through the public API (load v1 → create node → load v2 → read non-null `id`, update persists with `is_default: false`, filter matches); existing rollback suite unchanged.
 - **E2E (manual/CI)**: quickstart.md walks the issue's two schema files against a live stack, and a damaged-install upgrade.
 
