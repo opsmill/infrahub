@@ -1,1 +1,0 @@
-`RelationshipManager.update()` now accepts any sequence of peers rather than only a `list`, so callers holding a more specific peer list no longer need a type-checker suppression. Passing a non-list sequence such as a tuple is now handled as a collection of peers instead of being mistaken for a single peer.
