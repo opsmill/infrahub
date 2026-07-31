@@ -48,6 +48,7 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
     case ATTRIBUTE_KIND.FILE:
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
+    case ATTRIBUTE_KIND.IP_ADDRESS:
     case ATTRIBUTE_KIND.NODE_KIND:
     case ATTRIBUTE_KIND.TEXTAREA: {
       if (attributeSchema.name === "node_kind") {

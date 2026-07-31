@@ -26,6 +26,7 @@ export const ATTRIBUTE_ICONS: Record<AttributeKind, string> = {
   Bandwidth: "mdi:gauge",
   IPHost: "mdi:ip-network-outline",
   IPNetwork: "mdi:ip-network-outline",
+  IPAddress: "mdi:ip-outline",
   Checkbox: "mdi:checkbox-marked-circle-outline",
   List: "mdi:format-list-bulleted-square",
   JSON: "mdi:code-json",

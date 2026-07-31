@@ -25,6 +25,7 @@ describe("getAttributesVisibleInListView", () => {
       generateAttributeSchema({ name: "bandwidth", kind: "Bandwidth", label: "Bandwidth" }),
       generateAttributeSchema({ name: "iphost", kind: "IPHost", label: "IPHost" }),
       generateAttributeSchema({ name: "ipnetwork", kind: "IPNetwork", label: "IPNetwork" }),
+      generateAttributeSchema({ name: "ipaddress", kind: "IPAddress", label: "IPAddress" }),
       generateAttributeSchema({ name: "checkbox", kind: "Checkbox", label: "Checkbox" }),
       generateAttributeSchema({ name: "list", kind: "List", label: "List" }),
       generateAttributeSchema({ name: "json", kind: "JSON", label: "JSON" }),
@@ -49,6 +50,7 @@ describe("getAttributesVisibleInListView", () => {
       "Bandwidth",
       "IPHost",
       "IPNetwork",
+      "IPAddress",
     ]);
   });
 

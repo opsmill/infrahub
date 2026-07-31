@@ -8628,6 +8628,24 @@ type HttpResponse {
   status_code: Int
 }
 
+"""Attribute of type IPAddress"""
+type IPAddress implements AttributeInterface {
+  id: String
+  is_default: Boolean
+  is_from_profile: Boolean
+  is_protected: Boolean
+  owner: LineageOwner
+  permissions: PermissionType
+  source: LineageSource
+  """
+  Date/Time when the attribute was last modified by a user or a system task
+  """
+  updated_at: DateTime
+  updated_by: CoreGenericAccount
+  value: String
+  version: Int
+}
+
 type IPAddressGetNextAvailable {
   address: String!
 }
