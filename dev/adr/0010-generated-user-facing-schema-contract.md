@@ -75,10 +75,12 @@ How the visibility axis, the generated families, and the load boundary work is d
   direction.
 - Changing a schema field spans two repositories: the generated artifact must be regenerated,
   committed in the submodule, and released in step with the server.
-- Payloads that earlier versions accepted now fail: a mistyped field name, and attribute
-  `parameters` belonging to a different attribute `kind`. Both were silently dropped before, so the
-  schema quietly differed from the one the author wrote; the cost of reporting them is that a
-  repository whose committed schema carries one stops importing until it is corrected.
+- One payload shape that the last released version accepted now fails: attribute `parameters`
+  belonging to a different attribute `kind`, which were accepted and then discarded, so the schema
+  quietly differed from the one the author wrote. The cost of reporting them is that a repository
+  whose committed schema carries one stops importing until it is corrected. A mistyped field name
+  was already rejected before this work, since the load endpoint validated through a model with
+  `extra="forbid"`; only the wording of that rejection changes.
 - Extra fields are reported only once the payload validates against the write models, since the
   validated document is what resolves the contract applying at each location. A payload rejected
   for another reason names its extra fields on the next run rather than in the same response.

@@ -8,17 +8,15 @@ as field-level errors naming the field and the value that was rejected.
 Fields a user may not set are **reported and dropped**. A read-only field — one Infrahub
 returns and computes itself — is reported as a warning, so reading a schema back from
 Infrahub, editing it, and loading it again keeps working without stripping anything first.
-Any other unrecognized field is an error.
 
 This guide explains what changed, who is affected, and how to check a payload before
 submitting it.
 
 :::warning
-Three categories of payload that earlier versions accepted are now rejected: a payload whose
-settable values are invalid (out of the allowed set, out of range, or the wrong type), a
-payload with no `version` key, and a payload carrying a field the contract does not
-recognize. Read-only fields are not one of those categories — they are accepted with a
-warning.
+Two categories of payload that earlier versions accepted are now rejected: a payload whose
+settable values are invalid (out of the allowed set, out of range, or the wrong type), and
+attribute `parameters` that belong to a different attribute `kind`. Read-only fields are not
+one of those categories — they are accepted with a warning.
 :::
 
 ## What changed
@@ -69,10 +67,13 @@ version — is an error naming the field path and the value received:
 nodes[0].attributes[0].optionl: Unknown field, it is not part of the schema (received: True)
 ```
 
-Earlier 1.x versions dropped these silently, which meant a misspelled key produced a schema
-that quietly differed from the one you wrote. Attribute `parameters` that belong to a
-different attribute `kind` fall in this category too, since they configure nothing on the kind
-they were set on:
+Earlier versions rejected these too, so this is not a change in whether the payload loads —
+only in how the problem is reported. The path is now field-level, and the same message is
+available offline before you submit.
+
+Attribute `parameters` that belong to a different attribute `kind` are a change: they
+configure nothing on the kind they were set on, and earlier versions accepted them and then
+discarded the values, so the setting silently had no effect.
 
 ```text
 nodes[0].attributes[0].parameters.start_range: Unknown field, it is not part of the schema (received: 1)
@@ -80,16 +81,19 @@ nodes[0].attributes[0].parameters.start_range: Unknown field, it is not part of 
 
 ### Invalid values are rejected
 
-What the contract does reject is a field a user *may* set carrying a value it cannot hold:
+What the contract does reject is a field a user *may* set carrying a value it cannot hold.
+These two are new:
 
 - A **constrained** field set outside its allowed values, for example a relationship
   `cardinality` or an attribute `kind`.
 - A value **out of range** or of the wrong type for its field, for example an attribute
   `name` that is shorter than the minimum length or does not match the allowed pattern.
+
+These two were already rejected and are listed only so the contract reads completely:
+
 - A **missing required** field, for example a node without a `name`, or an attribute without
   a `kind`.
-- A missing `version` at the root of the payload. `version` is required on the write
-  contract.
+- A missing `version` at the root of the payload.
 
 Each rejection names the field path and, where applicable, the value received:
 
@@ -116,9 +120,9 @@ and `used_by`.
 
 You are affected if you submit schemas to `POST /api/schema/load` — directly, through
 `infrahubctl schema load`, through a repository import, or through the Python SDK — and your
-payload sets a value the write contract does not accept, omits `version`, or carries a field
-Infrahub does not recognize. Values that a previous version stored without complaint now
-produce an error instead.
+payload sets a value the write contract does not accept, or sets attribute `parameters` that
+belong to a different attribute `kind`. Values that a previous version stored, or accepted and
+discarded, without complaint now produce an error instead.
 
 You are not affected by read-only fields. A payload that echoes back derived or read-only
 fields still loads, with a warning for each.
@@ -152,8 +156,10 @@ nodes[0].relationships[0].cardinality: Input should be 'one' or 'many' (received
 
 Every entry in `result.errors` carries the field path in `.field` and the full message in
 `.message`. `result.raise_for_status()` raises a `ValueError` joining all the messages when
-the payload is invalid. Each entry in `result.warnings` additionally names the offending field
-in `.name` and the schema kind and element that carried it in `.kind` and `.element`.
+the payload is invalid. Each entry in `result.warnings` additionally carries the schema kind
+and element that set the field in `.kind` and `.element`, and in `.name` the field named
+relative to them — so a nested block is unambiguous (`parameters.id` rather than `id`, which
+*is* settable on the attribute itself).
 
 To make a rejected payload submittable:
 
