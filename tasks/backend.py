@@ -666,7 +666,8 @@ def _write_sdk_generated_contract(generated: str, read_only_fields: dict[str, fr
         "a field the read API returns, the bookkeeping a schema dumped from the internal models\n"
         "carries, or a field belonging to a sibling variant of a discriminated union. Submitting one\n"
         "is reported as a warning and the value is dropped, where an extra field that is not listed\n"
-        "is an error. Lookups union the entries of every class in the model's MRO.\n"
+        "is an error. Each entry already includes what the class inherits, so a lookup is by class\n"
+        "name alone.\n"
         '"""\n'
         "\n"
         "READ_ONLY_FIELDS: dict[str, frozenset[str]] = {\n"
@@ -1146,6 +1147,9 @@ class SdkSchemaGenerator:
         variant does not, and a field the internal counterpart of a value model declares and the
         generated write model does not. Deriving both here rather than reading the emitted modules
         keeps the table in step with the definitions the models themselves come from.
+
+        Each entry is resolved through the parent chain, so a consumer looks a class up by name and
+        needs to know nothing about how the generated models inherit from each other.
         """
         from infrahub.core.constants import Visibility
 
@@ -1153,13 +1157,17 @@ class SdkSchemaGenerator:
         write_declared = self._declared_names(write_families)
         read_declared = self._declared_names(self._families_for_contract(Visibility.READ))
 
-        read_only = {
+        # An entry is kept for every class, including the empty ones, so resolving through the
+        # parent chain does not stop at a class that declares no read-only field of its own.
+        declared = {
             class_name: fields - write_declared.get(class_name, set()) for class_name, fields in read_declared.items()
         }
         for class_name, fields in self._value_model_read_only_fields(
             write_names=self._inherited_names(families=write_families, declared=write_declared)
         ).items():
-            read_only[class_name] = read_only.get(class_name, set()) | fields
+            declared[class_name] = declared.get(class_name, set()) | fields
+
+        read_only = self._inherited_names(families=write_families, declared=declared)
         read_only["InfrahubSchemaWrite"] = set(_ROOT_READ_ONLY_FIELDS)
 
         return {class_name: frozenset(fields) for class_name, fields in read_only.items() if fields}

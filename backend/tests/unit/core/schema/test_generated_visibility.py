@@ -152,26 +152,19 @@ READ_ONLY_DELTA_CASES = [
 ]
 
 
-def _declared_read_only_fields(model: type[BaseModel]) -> set[str]:
-    """Read-only names the table declares for a model, including those it inherits."""
-    names: set[str] = set()
-    for klass in model.__mro__:
-        names |= READ_ONLY_FIELDS.get(klass.__name__, frozenset())
-    return names
-
-
 @pytest.mark.parametrize("case", [pytest.param(tc, id=tc.name) for tc in READ_ONLY_DELTA_CASES])
 def test_read_only_table_matches_the_read_write_delta(case: ReadOnlyDeltaCase) -> None:
     """The generated read-only table is exactly what the read model adds over the write model.
 
     The table decides whether an extra field in a submitted payload is a warning or an error, so a
     field appearing on read but missing from the table would be rejected instead of tolerated, and
-    breaking the read-back, edit, re-load round trip.
+    breaking the read-back, edit, re-load round trip. Each entry resolves what the class inherits,
+    so a consumer looks it up by name without walking the model hierarchy.
     """
     # A computed field is part of the read payload even though it is not a model field.
     read_names = set(case.read_model.model_fields) | set(case.read_model.model_computed_fields)
 
-    assert _declared_read_only_fields(case.write_model) == read_names - set(case.write_model.model_fields)
+    assert READ_ONLY_FIELDS[case.write_model.__name__] == read_names - set(case.write_model.model_fields)
 
 
 def test_attribute_kind_variants_partition_all_kinds() -> None:
