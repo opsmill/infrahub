@@ -3,6 +3,7 @@ from __future__ import annotations
 import enum
 import types
 import typing
+from dataclasses import dataclass
 
 import pytest
 from infrahub_sdk.schema.generated import read as sdk_read
@@ -115,15 +116,40 @@ def test_write_model_publishes_allowed_values(family: str) -> None:
         )
 
 
-# Each generated write model paired with the read model of the same family. The read-only table
-# consumed by the offline validator must be exactly the delta between the two.
-WRITE_TO_READ_MODEL = {
-    "attribute": (sdk_write.AttributeSchemaBaseWrite, sdk_read.AttributeSchemaBaseRead),
-    "relationship": (sdk_write.RelationshipSchemaWrite, sdk_read.RelationshipSchemaRead),
-    "base_node": (sdk_write.BaseNodeSchemaWrite, sdk_read.BaseNodeSchemaRead),
-    "node": (sdk_write.NodeSchemaWrite, sdk_read.NodeSchemaRead),
-    "generic": (sdk_write.GenericSchemaWrite, sdk_read.GenericSchemaRead),
-}
+@dataclass(frozen=True)
+class ReadOnlyDeltaCase:
+    name: str
+    write_model: type[BaseModel]
+    read_model: type[BaseModel]
+
+
+READ_ONLY_DELTA_CASES = [
+    ReadOnlyDeltaCase(
+        name="attribute",
+        write_model=sdk_write.AttributeSchemaBaseWrite,
+        read_model=sdk_read.AttributeSchemaBaseRead,
+    ),
+    ReadOnlyDeltaCase(
+        name="relationship",
+        write_model=sdk_write.RelationshipSchemaWrite,
+        read_model=sdk_read.RelationshipSchemaRead,
+    ),
+    ReadOnlyDeltaCase(
+        name="base_node",
+        write_model=sdk_write.BaseNodeSchemaWrite,
+        read_model=sdk_read.BaseNodeSchemaRead,
+    ),
+    ReadOnlyDeltaCase(
+        name="node",
+        write_model=sdk_write.NodeSchemaWrite,
+        read_model=sdk_read.NodeSchemaRead,
+    ),
+    ReadOnlyDeltaCase(
+        name="generic",
+        write_model=sdk_write.GenericSchemaWrite,
+        read_model=sdk_read.GenericSchemaRead,
+    ),
+]
 
 
 def _declared_read_only_fields(model: type[BaseModel]) -> set[str]:
@@ -134,20 +160,18 @@ def _declared_read_only_fields(model: type[BaseModel]) -> set[str]:
     return names
 
 
-@pytest.mark.parametrize("family", list(WRITE_TO_READ_MODEL))
-def test_read_only_table_matches_the_read_write_delta(family: str) -> None:
+@pytest.mark.parametrize("case", [pytest.param(tc, id=tc.name) for tc in READ_ONLY_DELTA_CASES])
+def test_read_only_table_matches_the_read_write_delta(case: ReadOnlyDeltaCase) -> None:
     """The generated read-only table is exactly what the read model adds over the write model.
 
     The table decides whether an extra field in a submitted payload is a warning or an error, so a
     field appearing on read but missing from the table would be rejected instead of tolerated, and
     breaking the read-back, edit, re-load round trip.
     """
-    write_model, read_model = WRITE_TO_READ_MODEL[family]
-
     # A computed field is part of the read payload even though it is not a model field.
-    read_names = set(read_model.model_fields) | set(read_model.model_computed_fields)
+    read_names = set(case.read_model.model_fields) | set(case.read_model.model_computed_fields)
 
-    assert _declared_read_only_fields(write_model) == read_names - set(write_model.model_fields)
+    assert _declared_read_only_fields(case.write_model) == read_names - set(case.write_model.model_fields)
 
 
 def test_attribute_kind_variants_partition_all_kinds() -> None:
