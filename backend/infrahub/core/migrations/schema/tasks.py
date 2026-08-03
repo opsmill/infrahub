@@ -59,8 +59,12 @@ async def _apply_migration_batch(
     message: SchemaApplyMigrationData,
     migrations: Sequence[SchemaUpdateMigrationInfo],
     log: logging.Logger | LoggingAdapter,
+    max_concurrent_execution: int | None = None,
 ) -> list[str]:
-    batch = InfrahubBatch()
+    if max_concurrent_execution:
+        batch = InfrahubBatch(max_concurrent_execution=max_concurrent_execution)
+    else:
+        batch = InfrahubBatch()
     error_messages: list[str] = []
 
     if not migrations:
@@ -114,7 +118,14 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
 
     kind_update_migrations, other_migrations = split_migrations_by_phase(migrations=message.migrations)
 
-    error_messages.extend(await _apply_migration_batch(message=message, migrations=kind_update_migrations, log=log))
+    # kind-update migrations duplicate node vertices and re-point their edges; two concurrent
+    # duplications over overlapping vertices can each create a replacement vertex, so they must
+    # run one at a time
+    error_messages.extend(
+        await _apply_migration_batch(
+            message=message, migrations=kind_update_migrations, log=log, max_concurrent_execution=1
+        )
+    )
     if error_messages:
         log.warning("Kind-update migrations reported errors, skipping the remaining migrations")
         return error_messages
