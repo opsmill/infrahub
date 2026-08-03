@@ -26,7 +26,6 @@ import BranchCreateForm from "@/entities/branches/ui/branch-create-form";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { useSwitchBranch } from "@/entities/branches/ui/hooks/use-switch-branch";
 import { useGetBranchesPaginated } from "@/entities/branches/ui/queries/get-branches.query";
 
 // textValue for the "Create branch X" item.
@@ -100,7 +99,7 @@ interface BranchListProps {
 }
 
 function BranchList({ closePopover, openCreateForm }: BranchListProps) {
-  const { currentBranch, switchBranch } = useSwitchBranch();
+  const { currentBranch, setCurrentBranch } = useCurrentBranch();
   const { isAuthenticated } = useAuth();
   const [search, setSearch] = React.useState("");
   const trimmedSearch = search.trim();
@@ -111,7 +110,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
   const branches = data?.pages.flat() ?? [];
 
   function handleBranchChange(branch: BranchListItem) {
-    switchBranch(branch);
+    setCurrentBranch(branch);
     closePopover();
   }
 

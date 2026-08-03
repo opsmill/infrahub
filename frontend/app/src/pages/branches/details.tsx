@@ -23,7 +23,7 @@ function BranchDetailsLayout() {
 
   if (branches.length === 0) {
     return (
-      <Content.Card className="flex min-h-[400px] items-center justify-center p-5">
+      <Content.Card className="flex min-h-100 items-center justify-center p-5">
         <Spinner />
       </Content.Card>
     );

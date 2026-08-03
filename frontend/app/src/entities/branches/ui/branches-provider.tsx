@@ -17,6 +17,11 @@ import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.quer
 
 type BranchContext = {
   currentBranch: BranchListItem;
+  /**
+   * Targets a branch for the whole session. The query string is the source of truth and the atom is
+   * derived from it, so both must move together — writing the atom alone strands the provider on its
+   * loading guard.
+   */
   setCurrentBranch: (branch: BranchListItem) => void;
 };
 
@@ -33,16 +38,24 @@ export function useCurrentBranch() {
 
 export const BranchesProvider = ({ children }: { children?: React.ReactNode }) => {
   const { data: branches, isPending, error } = useGetBranches();
-  const [currentBranch, setCurrentBranch] = useAtom(currentBranchAtom);
-  const [branchInQueryString] = useQueryState(QSP.BRANCH);
+  const [currentBranch, setCurrentBranchAtom] = useAtom(currentBranchAtom);
+  const [branchInQueryString, setBranchInQueryString] = useQueryState(QSP.BRANCH);
   const navigate = useNavigate();
+
+  function setCurrentBranch(branch: BranchListItem) {
+    // The default branch is represented by an absent query string, not by its name.
+    setBranchInQueryString(branch.is_default ? null : branch.name);
+    setCurrentBranchAtom(branch);
+  }
 
   useEffect(() => {
     if (!branches) return;
 
+    // Mirrors the query string into the atom, so it writes the atom only — going through
+    // setCurrentBranch here would have the effect steering the value it reacts to.
     const selectedBranch = findSelectedBranch(branches, branchInQueryString);
     if (selectedBranch) {
-      setCurrentBranch(selectedBranch);
+      setCurrentBranchAtom(selectedBranch);
       return;
     }
 
@@ -58,7 +71,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
       />
     );
     const mainBranch = findSelectedBranch(branches, DEFAULT_BRANCH_NAME);
-    setCurrentBranch(mainBranch);
+    setCurrentBranchAtom(mainBranch);
     navigate("/");
   }, [branches, branchInQueryString]);
 
