@@ -16,6 +16,10 @@ We document significant architectural decisions using ADRs.
 | [0008](0008-client-declared-request-priority.md) | Client-declared Request Priority, Cooperatively Trusted | Accepted | 2026-07-26 |
 | [0009](0009-per-worker-coordination-free-admission.md) | Per-worker, Coordination-free Admission Capacity | Accepted | 2026-07-26 |
 | [0010](0010-generated-user-facing-schema-contract.md) | Generated User-Facing Schema Contract, Hosted in the SDK | Accepted | 2026-07-26 |
+| [0011](0011-node-mutation-origin-label-suppression.md) | Suppress Coalesced-Family Triggers with a Node-Mutation Origin Label | Accepted | 2026-07-31 |
+| [0012](0012-coalesced-merge-rebase-recompute.md) | Coalesced Deduplicated Recompute Pass on Merge and Rebase | Accepted | 2026-07-31 |
+| [0013](0013-static-transform-lifecycle-triggers.md) | Static Kind-Scoped Lifecycle Triggers for Python-Transform Recompute | Accepted | 2026-07-31 |
+| [0014](0014-transform-lifecycle-owns-node-input-reconciliation.md) | Transform Lifecycle Flow Owns Node-Input Automation Reconciliation | Accepted | 2026-07-31 |
 
 ## Creating a New ADR
 

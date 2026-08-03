@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-16
 
-**Status**: Draft
+**Status**: Extracted
 
 **Input**: Jira epic IFC-2804 - "Recompute a Python transform-based computed attribute only when the transform that feeds it actually changed, instead of on every commit to any linked repository". First consumer of the definition fingerprint foundation (IFC-2844).
 

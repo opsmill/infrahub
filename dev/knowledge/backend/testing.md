@@ -217,6 +217,27 @@ async def test_message_sent(bus_simulator: BusSimulator, ...):
 - `FakeLogger` - Captures log output for assertions
 - `RecordingLockRegistry` / `LockTimeline` - Records lock acquire/release order so tests can assert what runs inside versus outside a critical section
 
+**Event and Workflow Adapters:**
+
+To observe what a flow emits and submits without running a worker, inject recorder adapters through the dependency provider:
+
+- `MemoryInfrahubEvent` (`backend/tests/adapters/event.py`) - an `InfrahubEventService` that records every emitted event in `.events` instead of publishing it.
+- `WorkflowRecorder` (`backend/tests/adapters/workflow.py`) - an `InfrahubWorkflow` that records `submit_workflow` / `execute_workflow` calls (`.submit_calls`, `.execute_calls`, `get_submit_calls_for(...)`) without executing them.
+
+Inject them for the duration of the call with `dependency_provider.scope`, the same mechanism the `memory_cache` fixture uses:
+
+```python
+with (
+    dependency_provider.scope(build_event_service, lambda: event_recorder),
+    dependency_provider.scope(build_workflow, lambda: workflow_recorder),
+):
+    await merge_branch(branch=branch_name, context=context)
+
+assert workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_JINJA2)
+```
+
+This drives a real merge or rebase in a component test and asserts exactly which recompute workflows it submits, deterministically and with no task worker. Node mutation events go through the event service, not the message bus (`NodeMutatedEvent.get_messages()` returns `[]`), so a `BusRecorder` records nothing for them; use `MemoryInfrahubEvent` to assert on emitted node events.
+
 ## Supporting Directories
 
 ### Fixtures (`backend/tests/fixtures/`)
