@@ -12,14 +12,12 @@ import {
   Tooltip,
 } from "@infrahub/ui";
 import { ArrowUpRightIcon, CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
-import { useQueryState } from "nuqs";
 import React from "react";
 import { type ButtonProps as AriaButtonProps, Collection } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Separator } from "@/shared/components/aria/separator";
 import { Row } from "@/shared/components/container";
-import { QSP } from "@/shared/config/qsp";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
@@ -28,6 +26,7 @@ import BranchCreateForm from "@/entities/branches/ui/branch-create-form";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { useSwitchBranch } from "@/entities/branches/ui/hooks/use-switch-branch";
 import { useGetBranchesPaginated } from "@/entities/branches/ui/queries/get-branches.query";
 
 // textValue for the "Create branch X" item.
@@ -101,8 +100,7 @@ interface BranchListProps {
 }
 
 function BranchList({ closePopover, openCreateForm }: BranchListProps) {
-  const { currentBranch, setCurrentBranch } = useCurrentBranch();
-  const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
+  const { currentBranch, switchBranch } = useSwitchBranch();
   const { isAuthenticated } = useAuth();
   const [search, setSearch] = React.useState("");
   const trimmedSearch = search.trim();
@@ -113,8 +111,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
   const branches = data?.pages.flat() ?? [];
 
   function handleBranchChange(branch: BranchListItem) {
-    setBranchInQueryString(branch.is_default ? null : branch.name);
-    setCurrentBranch(branch);
+    switchBranch(branch);
     closePopover();
   }
 

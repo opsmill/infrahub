@@ -16,6 +16,10 @@ test.describe("Branch details view", () => {
       await expect(page.getByText("default", { exact: true })).toBeVisible();
       await expect(page.getByRole("button", { name: "View node metadata" })).toBeVisible();
 
+      // Already working on main, so there is nothing to switch to
+      await expect(page.getByTestId("branch-working-notice")).toBeVisible();
+      await expect(page.getByTestId("switch-to-viewed-branch")).not.toBeVisible();
+
       // Tabs
       await expect(page.getByRole("navigation", { name: "Tabs" })).not.toBeVisible();
 
@@ -94,6 +98,30 @@ test.describe("Branch details view", () => {
 
       await tabsNav.getByText("Details").click();
       await expect(page).toHaveURL(new RegExp(`/branches/${BRANCH_NAME}$`));
+    });
+
+    test("should switch to the viewed branch from the mismatch notice", async ({ page }) => {
+      await page.goto(`/branches/${BRANCH_NAME}`);
+
+      await expect(page.getByTestId("branch-mismatch-notice")).toContainText(
+        `You're viewing ${BRANCH_NAME} but working on main`
+      );
+
+      await page.getByTestId("switch-to-viewed-branch").click();
+
+      await expect(page.getByTestId("branch-working-notice")).toBeVisible();
+      await expect(page.getByTestId("branch-mismatch-notice")).not.toBeVisible();
+      await expect(page.getByTestId("branch-selector-trigger")).toContainText(BRANCH_NAME);
+    });
+
+    test("should restore the previous branch when undoing a switch", async ({ page }) => {
+      await page.goto(`/branches/${BRANCH_NAME}`);
+      await page.getByTestId("switch-to-viewed-branch").click();
+
+      await page.getByTestId("undo-branch-switch").click();
+
+      await expect(page.getByTestId("branch-mismatch-notice")).toBeVisible();
+      await expect(page.getByTestId("branch-selector-trigger")).toContainText("main");
     });
 
     test("should display node metadata when clicking metadata button", async ({ page }) => {
