@@ -35,6 +35,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes
 from infrahub.database import InfrahubDatabase
 from tests.db_snapshot import DbSnapshotter
+from tests.helpers.db_validation import verify_graph
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 
 
@@ -56,6 +57,20 @@ async def schema_aware() -> NodeSchema:
         "branch": "aware",
         "attributes": [
             {"name": "nbr_doors", "kind": "Number", "branch": "aware"},
+        ],
+    }
+
+    return NodeSchema(**SCHEMA)
+
+
+@pytest.fixture
+async def schema_aware_inherited() -> NodeSchema:
+    SCHEMA = {
+        "name": "Car",
+        "namespace": "Test",
+        "branch": "aware",
+        "attributes": [
+            {"name": "nbr_doors", "kind": "Number", "branch": "aware", "inherited": True},
         ],
     }
 
@@ -270,6 +285,62 @@ async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, b
     assert attr._get_created_by() == test_user_id
     assert attr._get_updated_at() == migration_time
     assert attr._get_updated_by() == test_user_id
+
+
+async def test_migration_skips_inherited_attribute_by_default(
+    db: InfrahubDatabase, default_branch: Branch, init_database: None, schema_aware_inherited: NodeSchema
+) -> None:
+    node = schema_aware_inherited
+
+    assert await count_nodes(db=db, label="TestCar") == 5
+    assert await count_nodes(db=db, label="Attribute") == 0
+
+    migration = NodeAttributeAddMigration(
+        new_node_schema=node,
+        previous_node_schema=node,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_doors"),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+
+    assert not execution_result.errors
+    assert execution_result.nbr_migrations_executed == 0
+    assert await count_nodes(db=db, label="Attribute") == 0
+
+
+async def test_migration_force_inherited_creates_attributes(
+    db: InfrahubDatabase, default_branch: Branch, init_database: None, schema_aware_inherited: NodeSchema
+) -> None:
+    node = schema_aware_inherited
+
+    assert await count_nodes(db=db, label="TestCar") == 5
+    assert await count_nodes(db=db, label="Attribute") == 0
+
+    migration = NodeAttributeAddMigration(
+        new_node_schema=node,
+        previous_node_schema=node,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_doors"),
+        force_inherited=True,
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+
+    assert not execution_result.errors
+    assert execution_result.nbr_migrations_executed == 5
+    assert await count_nodes(db=db, label="Attribute") == 5
+
+    # A second forced run must be a no-op
+    rerun_migration = NodeAttributeAddMigration(
+        new_node_schema=node,
+        previous_node_schema=node,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_doors"),
+        force_inherited=True,
+    )
+    rerun_result = await rerun_migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+
+    assert not rerun_result.errors
+    assert rerun_result.nbr_migrations_executed == 0
+    assert await count_nodes(db=db, label="Attribute") == 5
+
+    await verify_graph(db=db)
 
 
 # -----------------------------------------------------------------------------

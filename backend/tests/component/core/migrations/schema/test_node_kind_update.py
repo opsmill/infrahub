@@ -1,23 +1,37 @@
 from typing import Any
 
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SYSTEM_USER_ID, MetadataOptions, RelationshipHierarchyDirection, SchemaPathType
+from infrahub.core.constants import (
+    SYSTEM_USER_ID,
+    BranchSupportType,
+    InfrahubKind,
+    MetadataOptions,
+    NumberPoolType,
+    RelationshipHierarchyDirection,
+    SchemaPathType,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration, NodeKindUpdateMigrationQuery01
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.node import NodeGetHierarchyQuery
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, GenericSchema, MainSchemaTypes, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 from tests.constants import TestKind
 from tests.db_snapshot import DbSnapshotter
-from tests.helpers.db_validation import validate_node_relationships, verify_no_duplicate_paths
+from tests.helpers.db_validation import validate_node_relationships, verify_graph, verify_no_duplicate_paths
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 from tests.helpers.schema import LOCATION_SCHEMA, load_schema
 
@@ -329,3 +343,263 @@ async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, b
     )
     assert len(results) == 1, "Expected exactly one deleted edge on old node"
     assert results[0]["from_user_id"] == test_user_id
+
+
+# -----------------------------------------------------------------------------
+# Newly-inherited attribute tests
+# -----------------------------------------------------------------------------
+
+
+@pytest.fixture
+async def car_person_template_schema(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
+) -> SchemaBranch:
+    registry.schema.register_schema(
+        schema=SchemaRoot(generics=[core_object_template, core_object_component_template]), branch=default_branch.name
+    )
+    for node in car_person_schema_unregistered.nodes:
+        node.generate_template = True
+    return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+
+
+def _make_kind_inherit_generic(
+    branch: Branch, generic: GenericSchema, kind: str
+) -> tuple[MainSchemaTypes, MainSchemaTypes]:
+    """Register the generic, add it to the kind's inherit_from and reprocess the schema branch.
+
+    Returns the (previous, new) node schemas around the change.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    previous_schema = schema_branch.get(name=kind, duplicate=True)
+
+    registry.schema.set(name=generic.kind, schema=generic, branch=branch.name)
+    node_schema = schema_branch.get_node(name=kind, duplicate=True)
+    node_schema.inherit_from = list(node_schema.inherit_from) + [generic.kind]
+    registry.schema.set(name=kind, schema=node_schema, branch=branch.name)
+    registry.schema.process_schema_branch(name=branch.name)
+
+    new_schema = registry.schema.get(name=kind, branch=branch.name, duplicate=False)
+    return previous_schema, new_schema
+
+
+async def _count_attribute_vertices(db: InfrahubDatabase, node_label: str, attribute_name: str) -> int:
+    query = """
+    MATCH (n:%(node_label)s)-[:HAS_ATTRIBUTE]->(a:Attribute { name: $attr_name })
+    RETURN count(a) AS attr_count
+    """ % {"node_label": node_label}
+    results = await db.execute_query(query=query, params={"attr_name": attribute_name})
+    return results[0]["attr_count"]
+
+
+async def test_migration_newly_inherited_attributes(
+    db: InfrahubDatabase, default_branch: Branch, car_person_template_schema: SchemaBranch
+) -> None:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="John", height=180)
+    await person.save(db=db)
+
+    car_accord = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car_accord.new(db=db, name="accord", nbr_seats=5, is_electric=True, owner=person)
+    await car_accord.save(db=db)
+    car_camry = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car_camry.new(db=db, name="camry", nbr_seats=5, is_electric=False, owner=person)
+    await car_camry.save(db=db)
+
+    profile = await Node.init(db=db, schema="ProfileTestCar", branch=default_branch)
+    await profile.new(db=db, profile_name="car-profile1", nbr_seats=4)
+    await profile.save(db=db)
+
+    template_person = await Node.init(db=db, schema="TemplateTestPerson", branch=default_branch)
+    await template_person.new(db=db, template_name="Template Person 1")
+    await template_person.save(db=db)
+    template_car = await Node.init(db=db, schema="TemplateTestCar", branch=default_branch)
+    await template_car.new(db=db, template_name="Template Car 1", nbr_seats=5, owner=template_person)
+    await template_car.save(db=db)
+
+    generic = GenericSchema(
+        name="Asset",
+        namespace="Test",
+        branch=BranchSupportType.AWARE,
+        attributes=[
+            AttributeSchema(name="status", kind="Text", default_value="active", optional=True),
+            AttributeSchema(name="serial", kind="Text", unique=True, optional=True),
+        ],
+    )
+    previous_schema, new_schema = _make_kind_inherit_generic(branch=default_branch, generic=generic, kind="TestCar")
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=previous_schema,
+        new_node_schema=new_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from"),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+
+    assert not execution_result.errors
+    # the counter aggregates the duplicated vertices with the attribute rows created by the
+    # sub-migrations: 2 duplicated cars + (status on 2 cars, 1 profile and 1 template) + serial on 2 cars
+    assert execution_result.nbr_migrations_executed == 8
+
+    assert await _count_attribute_vertices(db=db, node_label="TestCar", attribute_name="status") == 2
+    assert await _count_attribute_vertices(db=db, node_label="ProfileTestCar", attribute_name="status") == 1
+    assert await _count_attribute_vertices(db=db, node_label="TemplateTestCar", attribute_name="status") == 1
+
+    # The unique attribute must not land on profile or template instances
+    assert await _count_attribute_vertices(db=db, node_label="TestCar", attribute_name="serial") == 2
+    assert await _count_attribute_vertices(db=db, node_label="ProfileTestCar", attribute_name="serial") == 0
+    assert await _count_attribute_vertices(db=db, node_label="TemplateTestCar", attribute_name="serial") == 0
+
+    # Reads return a real attribute with the generic's default value
+    accord = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord.id)
+    status_attr = accord.get_attribute(name="status")
+    assert status_attr.id is not None
+    assert status_attr.value == "active"
+    assert status_attr.is_default is True
+
+    profile_node = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id)
+    assert profile_node.get_attribute(name="status").id is not None
+
+    # Updates persist across a re-read
+    status_attr.value = "maintenance"
+    await accord.save(db=db)
+    accord_refreshed = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord.id)
+    assert accord_refreshed.get_attribute(name="status").value == "maintenance"
+    assert accord_refreshed.get_attribute(name="status").is_default is False
+
+    # Attribute-value filters match
+    matches = await NodeManager.query(
+        db=db, schema="TestCar", filters={"status__value": "active"}, branch=default_branch
+    )
+    assert [node.id for node in matches] == [car_camry.id]
+
+    await verify_no_duplicate_paths(db=db)
+
+
+async def test_migration_newly_inherited_numberpool(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+
+    server_schema = NodeSchema(
+        name="Server",
+        namespace="Test",
+        branch=BranchSupportType.AWARE,
+        attributes=[AttributeSchema(name="name", kind="Text", unique=True, branch=BranchSupportType.AWARE)],
+    )
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[server_schema]), branch=default_branch.name)
+
+    servers = []
+    for index in range(3):
+        server = await Node.init(db=db, schema="TestServer", branch=default_branch)
+        await server.new(db=db, name=f"server-{index}")
+        await server.save(db=db)
+        servers.append(server)
+
+    generic = GenericSchema(
+        name="Asset",
+        namespace="Test",
+        branch=BranchSupportType.AWARE,
+        attributes=[
+            AttributeSchema(
+                name="rack_unit",
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                branch=BranchSupportType.AWARE,
+                parameters=NumberPoolParameters(start_range=1, end_range=100),
+            ),
+        ],
+    )
+    previous_schema, new_schema = _make_kind_inherit_generic(branch=default_branch, generic=generic, kind="TestServer")
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=previous_schema,
+        new_node_schema=new_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestServer", field_name="inherit_from"),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not execution_result.errors
+
+    # Exactly one pool exists and it is registered against the generic's kind
+    pools = await NodeManager.query(
+        db=db,
+        schema="CoreNumberPool",
+        filters={"pool_type__value": NumberPoolType.SCHEMA.value},
+        branch_agnostic=True,
+    )
+    assert len(pools) == 1
+    assert pools[0].get_attribute(name="node").value == "TestAsset"
+    assert pools[0].get_attribute(name="node_attribute").value == "rack_unit"
+
+    # Every pre-existing node received a distinct allocated number from the pool
+    servers_map = await NodeManager.get_many(db=db, branch=default_branch, ids=[server.id for server in servers])
+    rack_units = [server.get_attribute(name="rack_unit").value for server in servers_map.values()]
+    assert all(value is not None for value in rack_units)
+    assert len(set(rack_units)) == 3
+    for value in rack_units:
+        assert isinstance(value, int)
+        assert 1 <= value <= 100
+
+
+async def test_migration_name_update_creates_no_attributes(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate_schema = schema.duplicate()
+    car_schema = candidate_schema.get(name="TestCar")
+    candidate_schema.delete(name="TestCar")
+    car_schema.name = "NewCar"
+    car_schema.namespace = "Test2"
+    candidate_schema.set(name="Test2NewCar", schema=car_schema)
+
+    count_attrs = await count_nodes(db=db, label="Attribute")
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestCar"),
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+
+    assert not execution_result.errors
+    assert execution_result.nbr_migrations_executed == 2
+    assert await count_nodes(db=db, label="Attribute") == count_attrs
+
+    await verify_graph(db=db)
+
+
+async def test_migration_partial_failure_rerun_converges(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
+    generic = GenericSchema(
+        name="Asset",
+        namespace="Test",
+        branch=BranchSupportType.AWARE,
+        attributes=[AttributeSchema(name="status", kind="Text", default_value="active", optional=True)],
+    )
+    previous_schema, new_schema = _make_kind_inherit_generic(branch=default_branch, generic=generic, kind="TestCar")
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=previous_schema,
+        new_node_schema=new_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from"),
+    )
+
+    # Simulate a failure after vertex duplication but before the attribute rows are created
+    duplication_query = await migration.queries[0].init(db=db, branch=default_branch, migration=migration)
+    await duplication_query.execute(db=db)
+    assert duplication_query.get_nbr_migrations_executed() == 2
+    assert await _count_attribute_vertices(db=db, node_label="TestCar", attribute_name="status") == 0
+
+    # A rerun of the full migration converges to the complete state
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not execution_result.errors
+    assert execution_result.nbr_migrations_executed == 2
+    assert await _count_attribute_vertices(db=db, node_label="TestCar", attribute_name="status") == 2
+
+    # A second full rerun performs no work
+    rerun_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not rerun_result.errors
+    assert rerun_result.nbr_migrations_executed == 0
+    assert await _count_attribute_vertices(db=db, node_label="TestCar", attribute_name="status") == 2
+
+    await verify_graph(db=db)
