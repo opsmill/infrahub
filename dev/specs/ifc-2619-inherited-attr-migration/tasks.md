@@ -106,7 +106,7 @@ No foundational phase: the feature modifies existing migration infrastructure, a
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [ ] T024 [P] Run quickstart.md end-to-end: automated suites (PR 1 + PR 2 sections) plus the manual damaged-install upgrade walk-through (seed damage on a pre-fix version, upgrade, verify reads/updates/filters on default branch and a pre-existing branch, rerun upgrade → zero writes) — SC-001..SC-004
-- [ ] T025 [P] File the two follow-up issues from spec Out of Scope: (1) refactor the migration-within-a-migration pattern shared with `node_uniqueness_constraints_update.py`; (2) stale `Template{generic}` labels on pre-existing template vertices
+- [ ] T025 [P] File the three follow-up issues from spec Out of Scope: (1) refactor the migration-within-a-migration pattern shared with `node_uniqueness_constraints_update.py`; (2) stale `Template{generic}` labels on pre-existing template vertices; (3) consolidate the Cypher graph-validation helpers (`verify_no_duplicate_relationships`, `verify_no_edges_added_after_node_delete`, `validate_no_duplicate_attributes`) into one `verify_graph()` entry point with an optional kind filter and adopt it at all existing call sites
 - [ ] T026 PR 2 gate: `uv run invoke format && uv run invoke lint`, `/pre-ci`; PR 2 description records the governance flag (new numbered graph migration every install executes) and verifies PR 1 is in the same release milestone (critique X1)
 
 ---
