@@ -67,6 +67,44 @@ describe("TaskStatus", () => {
     expect(component.getByTestId("pulse").query()).toBeNull();
   });
 
+  test("links to the tasks page with the current branch, not the branch in the URL", async () => {
+    // GIVEN
+    useCurrentBranchMock.mockReturnValue({
+      currentBranch: generateBranch({ name: "branch1", is_default: false }),
+      setCurrentBranch: () => {},
+    });
+    getBranchTaskStatusFromApiMock.mockResolvedValue({
+      data: { InfrahubTaskBranchStatus: { count: 0 } },
+    } as Awaited<ReturnType<typeof getBranchTaskStatusFromApi>>);
+
+    // WHEN
+    const component = await render(<TaskStatus />);
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: "View branch tasks" }))
+      .toHaveAttribute("href", expect.stringContaining("branch=branch1"));
+  });
+
+  test("omits the branch query param when the current branch is the default one", async () => {
+    // GIVEN
+    useCurrentBranchMock.mockReturnValue({
+      currentBranch: generateBranch({ name: "main", is_default: true }),
+      setCurrentBranch: () => {},
+    });
+    getBranchTaskStatusFromApiMock.mockResolvedValue({
+      data: { InfrahubTaskBranchStatus: { count: 0 } },
+    } as Awaited<ReturnType<typeof getBranchTaskStatusFromApi>>);
+
+    // WHEN
+    const component = await render(<TaskStatus />);
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: "View branch tasks" }))
+      .toHaveAttribute("href", expect.not.stringContaining("branch="));
+  });
+
   test("renders error icon with tooltip when query fails", async () => {
     // GIVEN
     useCurrentBranchMock.mockReturnValue({
