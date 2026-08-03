@@ -10,6 +10,7 @@ from prefect.logging import get_run_logger
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations import MIGRATION_MAP
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.timestamp import Timestamp
@@ -19,23 +20,53 @@ from infrahub.workflows.utils import add_branch_tag
 from .models import SchemaApplyMigrationData, SchemaMigrationPathResponseData
 
 if TYPE_CHECKING:
+    import logging
+    from collections.abc import Sequence
+
+    from prefect.logging.loggers import LoggingAdapter
+
+    from infrahub.core.models import SchemaUpdateMigrationInfo
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
-@flow(name="schema_apply_migrations", flow_run_name="Apply schema migrations", persist_result=True)
-async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str]:
-    await add_branch_tag(branch_name=message.branch.name)
-    log = get_run_logger()
+def split_migrations_by_phase(
+    migrations: Sequence[SchemaUpdateMigrationInfo],
+) -> tuple[list[SchemaUpdateMigrationInfo], list[SchemaUpdateMigrationInfo]]:
+    """Split migrations into (kind-update migrations, everything else), preserving relative order.
 
+    Kind-update migrations duplicate node vertices with a new label set. Every other migration
+    must only see the duplicated vertices, so the first group has to complete before the second
+    group starts.
+    """
+    kind_update_names = {
+        migration_name
+        for migration_name, migration_class in MIGRATION_MAP.items()
+        if migration_class is NodeKindUpdateMigration
+    }
+    kind_update_migrations: list[SchemaUpdateMigrationInfo] = []
+    other_migrations: list[SchemaUpdateMigrationInfo] = []
+    for migration in migrations:
+        if migration.migration_name in kind_update_names:
+            kind_update_migrations.append(migration)
+        else:
+            other_migrations.append(migration)
+    return kind_update_migrations, other_migrations
+
+
+async def _apply_migration_batch(
+    message: SchemaApplyMigrationData,
+    migrations: Sequence[SchemaUpdateMigrationInfo],
+    log: logging.Logger | LoggingAdapter,
+) -> list[str]:
     batch = InfrahubBatch()
     error_messages: list[str] = []
 
-    if not message.migrations:
+    if not migrations:
         return error_messages
 
-    for migration in message.migrations:
+    for migration in migrations:
         log.info(f"Preparing migration for {migration.migration_name!r} ({migration.routing_key})")
 
         new_node_schema: MainSchemaTypes | None = None
@@ -67,6 +98,28 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
 
     async for _, result in batch.execute():
         error_messages.extend(result.errors)
+
+    return error_messages
+
+
+@flow(name="schema_apply_migrations", flow_run_name="Apply schema migrations", persist_result=True)
+async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str]:
+    await add_branch_tag(branch_name=message.branch.name)
+    log = get_run_logger()
+
+    error_messages: list[str] = []
+
+    if not message.migrations:
+        return error_messages
+
+    kind_update_migrations, other_migrations = split_migrations_by_phase(migrations=message.migrations)
+
+    error_messages.extend(await _apply_migration_batch(message=message, migrations=kind_update_migrations, log=log))
+    if error_messages:
+        log.warning("Kind-update migrations reported errors, skipping the remaining migrations")
+        return error_messages
+
+    error_messages.extend(await _apply_migration_batch(message=message, migrations=other_migrations, log=log))
 
     return error_messages
 
