@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 TELEMETRY_KIND: str = "community"
-TELEMETRY_VERSION: str = "20250318"
+TELEMETRY_VERSION: str = "20260628"
 
 
 class RemoteSendStatus(StrEnum):

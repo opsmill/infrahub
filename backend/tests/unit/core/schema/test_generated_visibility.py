@@ -3,9 +3,13 @@ from __future__ import annotations
 import enum
 import types
 import typing
+from dataclasses import dataclass
 
 import pytest
+from infrahub_sdk.schema.generated import read as sdk_read
 from infrahub_sdk.schema.generated import write as sdk_write
+from infrahub_sdk.schema.generated.contract import READ_ONLY_FIELDS
+from pydantic import BaseModel
 
 from infrahub.core.constants import Visibility
 from infrahub.core.schema.definitions.internal import (
@@ -108,6 +112,78 @@ def test_write_model_publishes_allowed_values(family: str) -> None:
             f"{write_model.__name__}.{field.name} allowed values {sorted(values)} "
             f"do not match the internal set {sorted(field.enum)}"
         )
+
+
+@dataclass(frozen=True)
+class ReadOnlyDeltaCase:
+    name: str
+    write_model: type[BaseModel]
+    read_model: type[BaseModel]
+
+
+READ_ONLY_DELTA_CASES = [
+    ReadOnlyDeltaCase(
+        name="attribute",
+        write_model=sdk_write.AttributeSchemaBaseWrite,
+        read_model=sdk_read.AttributeSchemaBaseRead,
+    ),
+    ReadOnlyDeltaCase(
+        name="relationship",
+        write_model=sdk_write.RelationshipSchemaWrite,
+        read_model=sdk_read.RelationshipSchemaRead,
+    ),
+    ReadOnlyDeltaCase(
+        name="base_node",
+        write_model=sdk_write.BaseNodeSchemaWrite,
+        read_model=sdk_read.BaseNodeSchemaRead,
+    ),
+    ReadOnlyDeltaCase(
+        name="node",
+        write_model=sdk_write.NodeSchemaWrite,
+        read_model=sdk_read.NodeSchemaRead,
+    ),
+    ReadOnlyDeltaCase(
+        name="generic",
+        write_model=sdk_write.GenericSchemaWrite,
+        read_model=sdk_read.GenericSchemaRead,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(tc, id=tc.name) for tc in READ_ONLY_DELTA_CASES])
+def test_read_only_table_matches_the_read_write_delta(case: ReadOnlyDeltaCase) -> None:
+    """The generated read-only table is exactly what the read model adds over the write model.
+
+    The table decides whether an extra field in a submitted payload is a warning or an error, so a
+    field appearing on read but missing from the table would be rejected instead of tolerated, and
+    breaking the read-back, edit, re-load round trip. Each entry resolves what the class inherits,
+    so a consumer looks it up by name without walking the model hierarchy.
+    """
+    # A computed field is part of the read payload even though it is not a model field.
+    read_names = set(case.read_model.model_fields) | set(case.read_model.model_computed_fields)
+
+    assert READ_ONLY_FIELDS[case.write_model.__name__] == read_names - set(case.write_model.model_fields)
+
+
+def test_read_only_table_entries_are_fully_resolved() -> None:
+    """No generated write class inherits a read-only field its own table entry omits.
+
+    The offline validator looks a class up by name alone. Were the generator to emit only a class's
+    own read-only fields, an inherited one would fall through as an unknown field, turning a value
+    that must be tolerated on a round trip into a hard error.
+    """
+    incomplete: dict[str, list[str]] = {}
+    for obj in vars(sdk_write).values():
+        if not (isinstance(obj, type) and issubclass(obj, BaseModel)):
+            continue
+        inherited: set[str] = set()
+        for base in obj.__mro__[1:]:
+            inherited |= READ_ONLY_FIELDS.get(base.__name__, frozenset())
+        missing = inherited - READ_ONLY_FIELDS.get(obj.__name__, frozenset())
+        if missing:
+            incomplete[obj.__name__] = sorted(missing)
+
+    assert incomplete == {}
 
 
 def test_attribute_kind_variants_partition_all_kinds() -> None:

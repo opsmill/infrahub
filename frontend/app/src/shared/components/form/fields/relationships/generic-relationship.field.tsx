@@ -24,6 +24,8 @@ import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useDefaultParent } from "@/entities/nodes/relationships/ui/queries/get-default-parent.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
+import { useCommonParentFilter } from "./useCommonParentFilter";
+
 interface GenericOption extends Node {
   id: string;
   display_label: string;
@@ -57,6 +59,10 @@ export const GenericRelationshipField = ({
   );
 
   const parentRelationship = selectedGeneric?.id && getParentRelationship(selectedGeneric.id);
+  const commonParent = useCommonParentFilter(relationship, name);
+  // When common_parent drives the filter from a sibling field, the manual "Parent" picker
+  // is redundant — hide it and source the peer filter from the sibling value instead.
+  const showManualParent = !commonParent.isActive && !!parentRelationship;
 
   const { data: defaultParent } = useDefaultParent({
     defaultValue,
@@ -156,7 +162,7 @@ export const GenericRelationshipField = ({
         setSelectedGeneric={handleKindChange}
       />
 
-      {parentRelationship && (
+      {showManualParent && parentRelationship && (
         <Col>
           <LabelFormField
             label={parentRelationship?.label ?? "Parent"}
@@ -220,7 +226,12 @@ export const GenericRelationshipField = ({
                       field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
                     }}
                     peer={selectedGeneric?.id ?? ""}
-                    parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
+                    parent={
+                      commonParent.isActive
+                        ? commonParent.parent
+                        : { name: parentRelationship?.name, value: selectedParent?.id }
+                    }
+                    addNewInitialObject={commonParent.addNewInitialObject}
                     disabled={props.disabled || !selectedGeneric?.id}
                   />
                 </FormInput>

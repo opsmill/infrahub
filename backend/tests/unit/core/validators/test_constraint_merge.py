@@ -46,27 +46,28 @@ class TestConstraintInfoMergerPrecedence:
 
     def test_full_scan_wins_over_node_scoped(self) -> None:
         # a constraint both broadened (schema diff, full scan) and data-changed collapses to a full scan
-        merger = build_constraint_info_merger(schema_branch=_schema_branch())
+        merger = build_constraint_info_merger()
         data_diff = [_uniqueness_info("TestCar", node_uuids=["a", "b"])]
         schema_diff = [_uniqueness_info("TestCar", node_uuids=None)]
 
-        result = merger.merge(data_diff, schema_diff)
+        result = merger.merge(_schema_branch(), data_diff, schema_diff)
 
         assert result == [_uniqueness_info("TestCar", node_uuids=None)]
 
     def test_full_scan_wins_regardless_of_order(self) -> None:
-        merger = build_constraint_info_merger(schema_branch=_schema_branch())
+        merger = build_constraint_info_merger()
         schema_diff = [_uniqueness_info("TestCar", node_uuids=None)]
         data_diff = [_uniqueness_info("TestCar", node_uuids=["a", "b"])]
 
-        result = merger.merge(schema_diff, data_diff)
+        result = merger.merge(_schema_branch(), schema_diff, data_diff)
 
         assert result == [_uniqueness_info("TestCar", node_uuids=None)]
 
     def test_two_node_scoped_entries_union_their_nodes(self) -> None:
-        merger = build_constraint_info_merger(schema_branch=_schema_branch())
+        merger = build_constraint_info_merger()
 
         result = merger.merge(
+            _schema_branch(),
             [_uniqueness_info("TestCar", node_uuids=["a", "b"])],
             [_uniqueness_info("TestCar", node_uuids=["b", "c"])],
         )
@@ -74,9 +75,10 @@ class TestConstraintInfoMergerPrecedence:
         assert result == [_uniqueness_info("TestCar", node_uuids=["a", "b", "c"])]
 
     def test_distinct_constraints_are_preserved(self) -> None:
-        merger = build_constraint_info_merger(schema_branch=_schema_branch())
+        merger = build_constraint_info_merger()
 
         result = merger.merge(
+            _schema_branch(),
             [_uniqueness_info("TestCar", node_uuids=["a"])],
             [_uniqueness_info("TestPerson", node_uuids=["b"])],
         )
@@ -88,14 +90,14 @@ class TestConstraintInfoMerger:
     def test_merges_then_deduplicates(self) -> None:
         # the data diff scopes the generic; the schema diff broadens it to the full population; and
         # the inherited node check must be dropped as covered by the generic
-        merger = build_constraint_info_merger(schema_branch=_schema_branch())
+        merger = build_constraint_info_merger()
         data_diff = [
             _uniqueness_info("TestCar", node_uuids=["e1"]),
             _uniqueness_info("TestElectricCar", node_uuids=["e1"]),
         ]
         schema_diff = [_uniqueness_info("TestCar", node_uuids=None)]
 
-        result = merger.merge(data_diff, schema_diff)
+        result = merger.merge(_schema_branch(), data_diff, schema_diff)
 
         # merge precedence keeps the full-population generic; dedup then removes the covered node
         assert result == [_uniqueness_info("TestCar", node_uuids=None)]

@@ -229,7 +229,7 @@ function ColumnHeaderMenu({
           <FieldSchemaIcon fieldSchema={columnSchema} />
 
           <span className="mr-2 truncate">{label}</span>
-          <Row className="ml-auto">
+          <Row className="ml-auto min-w-4 justify-end">
             {activeSort &&
               (activeSort.direction === SORT_DIRECTION.DESC ? (
                 <>

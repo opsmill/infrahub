@@ -186,9 +186,9 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         with pytest.raises(GraphQLError) as exc:
             await client.branch.rebase(branch_name=branch_2.name)
 
-            assert initial_dataset["accord"] in exc.value.message
-            assert another_civic.id in exc.value.message
-            assert "node.uniqueness_constraints.update" in exc.value.message
+        assert initial_dataset["accord"] in exc.value.message
+        assert another_civic.id in exc.value.message
+        assert "node.uniqueness_constraints.update" in exc.value.message
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)

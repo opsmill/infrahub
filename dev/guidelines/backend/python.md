@@ -173,6 +173,35 @@ branch_data = {"name": "feature-x", "description": None}
 branch_data = BranchCreateInput(name="feature-x")
 ```
 
+### Use dict.get() for Default Values
+
+Prefer `dict.get(key, default)` over an existence check or `try/except` when reading a key that may be missing. It is more concise and avoids the cost of raising and catching `KeyError`:
+
+```python
+config: dict[str, int] = {"timeout": 30}
+
+# ❌ Bad - verbose existence check
+if "retries" in config:
+    retries = config["retries"]
+else:
+    retries = 3
+
+# ❌ Bad - exception handling for an expected-missing key
+try:
+    retries = config["retries"]
+except KeyError:
+    retries = 3
+
+# ✅ Good - get() with an explicit default
+retries = config.get("retries", 3)
+```
+
+Guidelines:
+
+- `get()` without a second argument returns `None` for missing keys.
+- Chain for nested access: `config.get("db", {}).get("host", "localhost")`.
+- Use `setdefault()` when the default is a mutable object you intend to build up: `cache.setdefault("results", []).append(42)`.
+
 ## Docstrings (Google-style)
 
 All public functions and classes must have Google-style docstrings:

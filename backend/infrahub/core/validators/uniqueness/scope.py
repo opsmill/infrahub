@@ -72,26 +72,25 @@ class UniquenessConstraintScoper:
 
     def __init__(
         self,
-        schema_branch: SchemaBranch,
         dependent_resolver: UniquenessDependentResolverInterface,
         node_diff_index: NodeDiffIndex,
     ) -> None:
-        self.schema_branch = schema_branch
         self.dependent_resolver = dependent_resolver
         self.node_diff_index = node_diff_index
         # scopes are recomputed for the same kind across the trigger check and the uuid resolution;
-        # the cache is valid only for the node-diff index's current contents
+        # the cache is valid only for the node-diff index's current contents and the schema branch
+        # the scopes were computed against
         self._scope_cache: dict[str, UniquenessScopeForKind] = {}
 
     def reset(self) -> None:
         """Drop cached scopes so the next lookup recomputes against the current node-diff index."""
         self._scope_cache = {}
 
-    def requires_validation(self, schema: MainSchemaTypes) -> bool:
-        return self._scope(schema=schema).requires_validation
+    def requires_validation(self, schema_branch: SchemaBranch, schema: MainSchemaTypes) -> bool:
+        return self._scope(schema_branch=schema_branch, schema=schema).requires_validation
 
-    async def affected_node_uuids(self, schema: MainSchemaTypes) -> list[str] | None:
-        scope = self._scope(schema=schema)
+    async def affected_node_uuids(self, schema_branch: SchemaBranch, schema: MainSchemaTypes) -> list[str] | None:
+        scope = self._scope(schema_branch=schema_branch, schema=schema)
         node_uuids = set(scope.object_uuids)
         for peer_change in scope.cross_kind_peer_changes:
             if not peer_change.changed_peer_uuids:
@@ -135,14 +134,14 @@ class UniquenessConstraintScoper:
                 uuids |= self.node_diff_index.get_uuids_for_attribute(kind=kind, name=field_name)
         return uuids
 
-    def _scope(self, schema: MainSchemaTypes) -> UniquenessScopeForKind:
+    def _scope(self, schema_branch: SchemaBranch, schema: MainSchemaTypes) -> UniquenessScopeForKind:
         cached = self._scope_cache.get(schema.kind)
         if cached is None:
-            cached = self._compute_scope(schema=schema)
+            cached = self._compute_scope(schema_branch=schema_branch, schema=schema)
             self._scope_cache[schema.kind] = cached
         return cached
 
-    def _compute_scope(self, schema: MainSchemaTypes) -> UniquenessScopeForKind:
+    def _compute_scope(self, schema_branch: SchemaBranch, schema: MainSchemaTypes) -> UniquenessScopeForKind:
         """Compute why and how a data change implicates `schema`'s uniqueness.
 
         Uniqueness spans single unique attributes and multi-field constraint groups, each element of
@@ -151,7 +150,7 @@ class UniquenessConstraintScoper:
         """
         fragments = [
             *self._unique_attribute_fragments(schema=schema),
-            *self._uniqueness_constraint_fragments(schema=schema),
+            *self._uniqueness_constraint_fragments(schema_branch=schema_branch, schema=schema),
         ]
         return UniquenessScopeForKind(
             requires_validation=bool(fragments),
@@ -168,12 +167,14 @@ class UniquenessConstraintScoper:
         )
         return [fragment for fragment in fragments if fragment is not None]
 
-    def _uniqueness_constraint_fragments(self, schema: MainSchemaTypes) -> list[UniquenessScopeFragment]:
+    def _uniqueness_constraint_fragments(
+        self, schema_branch: SchemaBranch, schema: MainSchemaTypes
+    ) -> list[UniquenessScopeFragment]:
         fragments: list[UniquenessScopeFragment] = []
         for constraint_group in schema.uniqueness_constraints or []:
             for constraint_path in constraint_group:
                 try:
-                    schema_path = schema.parse_schema_path(path=constraint_path, schema=self.schema_branch)
+                    schema_path = schema.parse_schema_path(path=constraint_path, schema=schema_branch)
                 except AttributePathParsingError:
                     LOG.warning(f"Cannot parse {schema.kind}.uniqueness_constraints element '{constraint_path}'")
                     continue

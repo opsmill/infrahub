@@ -208,6 +208,9 @@ class Branch(StandardNode):
         partial_match: bool = False,
         branch_filters: BranchListFilters | None = None,
         node_ordering: StandardNodeOrdering | None = None,
+        exclude_global: bool = False,
+        exclude_default: bool = False,
+        exclude_terminal: bool = False,
         **_kwargs: Any,
     ) -> int:
         if branch_filters is None:
@@ -223,7 +226,9 @@ class Branch(StandardNode):
             node_class=cls,
             branch_filters=branch_filters,
             limit=limit,
-            exclude_global=True,
+            exclude_global=exclude_global,
+            exclude_default=exclude_default,
+            exclude_terminal=exclude_terminal,
             node_ordering=node_ordering,
         )
         return await query.count(db=db)

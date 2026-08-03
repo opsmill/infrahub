@@ -213,6 +213,58 @@ def test_query_rel_one(
     )
 
 
+def test_query_rel_one_id_only(
+    exec_async: Callable[..., Any],
+    aio_benchmark: Callable[..., Any],
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dataset04: None,
+) -> None:
+    query = """
+    query {
+        CoreGraphQLQuery {
+            count
+            edges {
+                node {
+                    id
+                    display_label
+                    name {
+                        value
+                    }
+                    repository {
+                        node {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = exec_async(prepare_graphql_params, db=db, branch=default_branch)
+
+    for _ in range(NBR_WARMUP):
+        exec_async(
+            graphql,
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+
+    aio_benchmark(
+        graphql,
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+
 # @pytest.mark.xfail(reason="Disabling for now but it's not producing consistent results")
 # def test_query_rel_one_filter_rel_many(aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
 #     query = """

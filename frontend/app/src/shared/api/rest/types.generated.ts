@@ -873,7 +873,7 @@ export interface components {
              * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
              * @enum {string}
              */
-            kind: "Any" | "Bandwidth" | "Boolean" | "Checkbox" | "Color" | "DateTime" | "Dropdown" | "Email" | "File" | "HashedPassword" | "ID" | "IPHost" | "IPNetwork" | "JSON" | "MacAddress" | "Password" | "URL";
+            kind: "Any" | "Bandwidth" | "Boolean" | "Checkbox" | "Color" | "DateTime" | "Dropdown" | "Email" | "File" | "HashedPassword" | "ID" | "IPAddress" | "IPHost" | "IPNetwork" | "JSON" | "MacAddress" | "Password" | "URL";
             /**
              * Enum
              * @description Define a list of valid values for the attribute.
@@ -995,7 +995,7 @@ export interface components {
              * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
              * @enum {string}
              */
-            kind: "Any" | "Bandwidth" | "Boolean" | "Checkbox" | "Color" | "DateTime" | "Dropdown" | "Email" | "File" | "HashedPassword" | "ID" | "IPHost" | "IPNetwork" | "JSON" | "MacAddress" | "Password" | "URL";
+            kind: "Any" | "Bandwidth" | "Boolean" | "Checkbox" | "Color" | "DateTime" | "Dropdown" | "Email" | "File" | "HashedPassword" | "ID" | "IPAddress" | "IPHost" | "IPNetwork" | "JSON" | "MacAddress" | "Password" | "URL";
             /**
              * Enum
              * @description Define a list of valid values for the attribute.
