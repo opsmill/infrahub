@@ -18,8 +18,9 @@ class FoldCase:
 
 
 FOLD_CASES = [
-    # watch_required=True mirrors Python transforms and generators: the completeness flag is
-    # unsound, so a present watch is the only signal trusted to stabilize the fingerprint.
+    # watch_required=True is how Python transforms and generators behave: their dependency list
+    # is only the files next to the source file, so it can be missing an import from elsewhere
+    # and a hand-written watch is the only thing that makes the fingerprint stable.
     FoldCase(
         name="watch_required_absent_watch_folds",
         watch=None,
@@ -48,8 +49,9 @@ FOLD_CASES = [
         watch_required=True,
         folds=True,
     ),
-    # watch_required=False mirrors Jinja2: a complete closure is trusted on its own, so no
-    # watch is needed for a stable fingerprint, but an incomplete closure still folds.
+    # watch_required=False is how Jinja2 transforms behave: their dependency list is parsed out
+    # of the template, so a complete one needs no watch to make the fingerprint stable. An
+    # incomplete list means a reference could not be followed, which still folds the commit id.
     FoldCase(
         name="watch_optional_absent_watch_complete_closure_omits",
         watch=None,

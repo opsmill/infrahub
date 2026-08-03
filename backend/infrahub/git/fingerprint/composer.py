@@ -22,27 +22,29 @@ if TYPE_CHECKING:
 def fold_commit_id(
     *, commit: str, watch: InfrahubWatchConfig | None, closure_complete: bool, watch_required: bool
 ) -> str | None:
-    """Return the commit id to fold into a fingerprint, or None to omit it.
+    """Return the commit id to mix into a fingerprint, or None to leave it out.
 
-    The commit id is folded (making the fingerprint change on every commit, the safe
-    over-regenerating default) whenever the definition's inputs cannot be pinned down.
+    Mixing the commit id in makes the fingerprint change on every commit: the definition is
+    regenerated more often than it needs to be, but a change is never missed. Leaving it out
+    makes the fingerprint change only when one of the listed dependencies changes. So the
+    commit id goes in whenever we cannot be sure the dependency list names every file that
+    affects the definition's output.
 
-    An incomplete closure always folds the commit id: some output-affecting dependency could
-    not be resolved, so hashing only the resolved paths would leave the fingerprint stable
-    over an input the system already knows is unknown - an under-regeneration risk.
+    `closure_complete=False` means the dependency scan gave up on at least one reference, so
+    the system already knows a file is missing from the list. The commit id always goes in.
 
-    A complete closure is trusted differently depending on the builder, expressed through
-    `watch_required`:
+    When the list is complete, how far that can be trusted depends on how it was built, which
+    the caller states through `watch_required`:
 
-    - `watch_required=True` (Python transforms, generators): the builder's completeness flag
-      is unsound (it only asserts the definition's own package directory was enumerated, so a
-      helper imported from outside that directory is silently missed). A present `watch` is
-      the only signal trusted to close the set, so the commit id is folded whenever `watch`
-      is absent (`None`).
-    - `watch_required=False` (Jinja2): completeness comes from a real transitive parse of the
-      template include/import/extends graph and is sound. A complete closure alone yields a
-      stable, precise fingerprint with no `watch` needed; a dynamic reference drops the flag
-      to False, which keeps the commit id folded.
+    - `watch_required=True` - the list is a directory listing rather than a real dependency
+      scan: every tracked file that happens to sit next to the entry point. "Complete" only
+      means the listing succeeded, so a helper imported from another directory is missing from
+      the list without anything noticing. Only a `watch` declaration, where the author names
+      the extra files by hand, is trusted to close the list; without one the commit id goes in.
+    - `watch_required=False` - the list was built by parsing the source and following every
+      reference it declares, and any reference that could not be followed already set
+      `closure_complete=False`. A complete list is therefore trustworthy by itself, and no
+      `watch` declaration is needed to leave the commit id out.
     """
     if not closure_complete:
         return commit
@@ -161,9 +163,15 @@ class FingerprintComposer:
             case PythonTransformationFingerprintInput():
                 terms.append(f"class_name={inputs.class_name}")
                 terms.append(f"convert_query_response={inputs.convert_query_response}")
+                # A Python transform's dependencies are the files sitting next to its source
+                # file, so an import from anywhere else is absent from the list: the author has
+                # to name those files in `watch` before the fingerprint can drop the commit id.
                 watch_required = True
             case Jinja2TransformationFingerprintInput():
                 terms.append(f"template_path={inputs.template_path}")
+                # A Jinja2 transform's dependencies come from parsing the template and following
+                # every include/import/extends it declares, so a complete list already names
+                # every file that affects the rendered output.
                 watch_required = False
             case _:  # pragma: no cover - exhaustiveness guard for a new transform kind
                 assert_never(inputs)

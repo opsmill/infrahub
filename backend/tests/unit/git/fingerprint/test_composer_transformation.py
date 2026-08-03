@@ -199,9 +199,10 @@ JINJA2_COMMIT_FOLD_CASES = [
 
 @pytest.mark.parametrize("case", JINJA2_COMMIT_FOLD_CASES, ids=lambda case: case.name)
 def test_jinja2_commit_id_folding(case: Jinja2CommitFoldCase) -> None:
-    # A complete Jinja2 closure is trusted on its own, so the commit id is omitted and the
-    # fingerprint is stable across unrelated commits even without a watch declaration. An
-    # incomplete closure or an unresolved upstream still folds the commit id.
+    # A Jinja2 transform's dependency list is parsed out of the template, so a complete one is
+    # trusted on its own: the fingerprint stays the same across unrelated commits with no watch
+    # declared. If a reference could not be followed, or the query the transform reads was never
+    # fingerprinted, the commit id goes back in and the fingerprint changes on every commit.
     def digest(*, commit: str) -> str:
         registry = FingerprintRegistry()
         if case.seed_query:
