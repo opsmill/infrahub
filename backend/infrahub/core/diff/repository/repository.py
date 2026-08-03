@@ -597,8 +597,8 @@ class DiffRepository:
                 diff_branch_name=diff_branch_name,
                 tracking_id=tracking_id,
                 diff_id=diff_id,
-                node_offset=node_offset,
-                node_limit=node_limit,
+                offset=node_offset,
+                limit=node_limit,
             )
             await query.execute(db=self.db)
             num_nodes = 0

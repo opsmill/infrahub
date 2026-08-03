@@ -18,20 +18,19 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
 
     name = "enriched_diff_node_field_summary"
     type = QueryType.READ
+    insert_limit = False
 
     def __init__(
         self,
         diff_branch_name: str,
-        node_offset: int,
-        node_limit: int,
+        limit: int,
         tracking_id: TrackingId | None = None,
         diff_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.diff_branch_name = diff_branch_name
-        self.node_offset = node_offset
-        self.node_limit = node_limit
+        self.limit = limit
         self.tracking_id = tracking_id
         self.diff_id = diff_id
 
@@ -43,8 +42,8 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
             "diff_branch": self.diff_branch_name,
             "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,
             "diff_id": self.diff_id,
-            "node_offset": self.node_offset,
-            "node_limit": self.node_limit,
+            "node_offset": self.offset or 0,
+            "node_limit": self.limit,
         }
         query = """
         MATCH (diff_root:DiffRoot)
@@ -86,8 +85,8 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
             if not kind or not node_uuid:
                 continue
             summary = NodeDiffFieldSummary(kind=kind)
-            for attr_name in result.get_as_type(label="attr_names", return_type=list[str]):
+            for attr_name in result.get_as_list_of_type(label="attr_names", return_type=str):
                 summary.add_attribute_node_uuid(name=attr_name, node_uuid=node_uuid)
-            for rel_name in result.get_as_type(label="rel_names", return_type=list[str]):
+            for rel_name in result.get_as_list_of_type(label="rel_names", return_type=str):
                 summary.add_relationship_node_uuid(name=rel_name, node_uuid=node_uuid)
             yield summary

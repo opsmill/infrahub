@@ -12,10 +12,12 @@ from infrahub.core.diff.model.path import (
     NodeDiffFieldSummary,
 )
 from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
+from infrahub.core.diff.query.field_summary import EnrichedDiffNodeFieldSummaryQuery
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.diff_factories import (
     EnrichedAttributeFactory,
     EnrichedNodeFactory,
@@ -30,12 +32,17 @@ from .base import DiffRepositoryTestBase
 class PageSizeCase:
     name: str
     query_size_limit: int
+    expected_query_count: int
 
 
+NUM_CHANGED_NODES = 10
+
+# One query per page, where the last page is the first to come back shorter than the page size. A
+# node count that is an exact multiple of the page size therefore needs one extra, empty page.
 PAGE_SIZE_CASES = [
-    PageSizeCase(name="partial_last_page", query_size_limit=4),
-    PageSizeCase(name="node_count_exact_multiple_of_page", query_size_limit=5),
-    PageSizeCase(name="single_page", query_size_limit=50),
+    PageSizeCase(name="partial_last_page", query_size_limit=4, expected_query_count=3),
+    PageSizeCase(name="node_count_exact_multiple_of_page", query_size_limit=5, expected_query_count=3),
+    PageSizeCase(name="single_page", query_size_limit=50, expected_query_count=1),
 ]
 
 
@@ -46,17 +53,32 @@ class TestDiffNodeFieldSummaries(DiffRepositoryTestBase):
     diff_to_time = Timestamp("2024-06-15T18:49:40Z")
 
     @pytest.fixture
-    def diff_repository(self, db: InfrahubDatabase) -> Generator[DiffRepository, None, None]:
+    def database_settings(self) -> Generator[None, None, None]:
         original_depth = config.SETTINGS.database.max_depth_search_hierarchy
         original_size = config.SETTINGS.database.query_size_limit
         config.SETTINGS.database.max_depth_search_hierarchy = 10
         config.SETTINGS.database.query_size_limit = 50
-        diff_repository = DiffRepository(
-            db=db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()), max_save_batch_size=30
-        )
-        yield diff_repository
+        yield
         config.SETTINGS.database.max_depth_search_hierarchy = original_depth
         config.SETTINGS.database.query_size_limit = original_size
+
+    @pytest.fixture
+    def diff_repository(self, db: InfrahubDatabase, database_settings: None) -> DiffRepository:
+        return DiffRepository(
+            db=db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()), max_save_batch_size=30
+        )
+
+    @pytest.fixture
+    def counting_db(self, db: InfrahubDatabase) -> CountingInfrahubDatabase:
+        return CountingInfrahubDatabase.from_db(db=db)
+
+    @pytest.fixture
+    def counting_diff_repository(
+        self, counting_db: CountingInfrahubDatabase, database_settings: None
+    ) -> DiffRepository:
+        return DiffRepository(
+            db=counting_db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()), max_save_batch_size=30
+        )
 
     def _build_named_field_node(
         self,
@@ -215,19 +237,26 @@ class TestDiffNodeFieldSummaries(DiffRepositoryTestBase):
 
     @pytest.mark.parametrize("case", PAGE_SIZE_CASES, ids=lambda c: c.name)
     async def test_get_node_field_summaries_batched(
-        self, diff_repository: DiffRepository, reset_database: None, case: PageSizeCase
+        self,
+        counting_diff_repository: DiffRepository,
+        counting_db: CountingInfrahubDatabase,
+        reset_database: None,
+        case: PageSizeCase,
     ) -> None:
-        """Per-kind summaries are complete when the changed nodes span multiple retrieval pages.
+        """Per-kind summaries are complete, and cost one query per page, when nodes span pages.
 
         Ten changed nodes of two kinds are saved, so each page size below ten forces every kind
         across a page boundary; one node has only unchanged fields, so it fills a page slot without
         contributing a summary.
+
+        The query count pins the retrieval cost. Improperly configured Query subclasses can cause
+        duplicate queries to run.
         """
         tracking_id = BranchTrackingId(name=self.diff_branch_name)
         kinds = ["TestingKindAlpha", "TestingKindBravo"]
         nodes: set[EnrichedDiffNode] = set()
         expected_by_kind: dict[str, NodeDiffFieldSummary] = {}
-        for index in range(9):
+        for index in range(NUM_CHANGED_NODES - 1):
             kind = kinds[index % len(kinds)]
             node = self._build_named_field_node(
                 kind=kind,
@@ -261,13 +290,15 @@ class TestDiffNodeFieldSummaries(DiffRepositoryTestBase):
             tracking_id=tracking_id,
         )
         await self._save_single_diff(
-            diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+            diff_repository=counting_diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
         )
 
         config.SETTINGS.database.query_size_limit = case.query_size_limit
-        retrieved = await diff_repository.get_node_field_summaries(
+        counting_db.reset_counts()
+        retrieved = await counting_diff_repository.get_node_field_summaries(
             diff_branch_name=self.diff_branch_name, tracking_id=tracking_id
         )
 
         assert len(retrieved) == len(expected_by_kind)
         assert {summary.kind: summary for summary in retrieved} == expected_by_kind
+        assert counting_db.count_for(EnrichedDiffNodeFieldSummaryQuery.name) == case.expected_query_count
