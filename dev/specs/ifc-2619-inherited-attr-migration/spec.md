@@ -129,6 +129,7 @@ A branch user whose branch introduced the damaging schema change gets repaired d
 
 - Refactoring the migration-within-a-migration pattern (follow-up issue).
 - Stale template-generic labels on existing template vertices — a pre-existing gap distinct from #9284 (follow-up issue).
+- Consolidating the Cypher graph-validation helpers used by tests (`verify_no_duplicate_relationships`, `verify_no_edges_added_after_node_delete` in `infrahub.database.validation`; `validate_no_duplicate_attributes` in `tests.helpers.db_validation`) into a single `verify_graph()` entry point with an optional kind filter, adopted everywhere the individual checks are called today (follow-up issue).
 - Continuous or scheduled invariant repair — healing is a one-shot upgrade migration; the forward fix prevents recurrence.
 - API/interface surface: no GraphQL, REST, or SDK changes; no frontend changes; no CLI changes (the existing upgrade command picks up the new migration).
 
