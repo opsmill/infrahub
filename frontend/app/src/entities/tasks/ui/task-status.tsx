@@ -29,8 +29,8 @@ export function TaskStatus() {
     value: currentBranch.name,
   };
 
-  // constructPath reads window.location, which nuqs updates one render later than the branch
-  // context, so the branch has to come from currentBranch to avoid linking to the previous one.
+  // The branch must come from the context, not the URL: nuqs writes it one render later, so a
+  // param inherited from the URL would still point at the previous branch.
   const branchParam: overrideQueryParams = currentBranch.is_default
     ? { name: QSP.BRANCH, exclude: true }
     : { name: QSP.BRANCH, value: currentBranch.name };
