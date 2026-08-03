@@ -32,7 +32,7 @@ schema at `schema/`, changelog fragments at `changelog/`.
 
 **Purpose**: Confirm the working environment is ready. No project init needed (existing repo).
 
-- [ ] T001 Confirm the feature branch is checked out and dependencies are installed: `uv sync --all-groups` and `cd frontend/app && pnpm install`
+- [X] T001 Confirm the feature branch is checked out and dependencies are installed: `uv sync --all-groups` and `cd frontend/app && pnpm install`
 
 ---
 
@@ -43,8 +43,8 @@ mutation payload, and the frontend read from. It must exist before any story wor
 
 **⚠️ CRITICAL**: No user story can be completed until this phase is done.
 
-- [ ] T002 Add a `schema_differs_from_default_branch` `@property` (typed `-> bool`) holding the existing divergence computation to the `Branch` model in `backend/infrahub/core/branch/models.py`, and rewrite the existing `has_schema_changes` property to `return self.schema_differs_from_default_branch` (delegation, no logic change; keep it for the deprecation window)
-- [ ] T003 Repoint the two internal backend readers from `has_schema_changes` to `schema_differs_from_default_branch` in `backend/infrahub/core/branch/tasks.py` (the two `if user_branch.has_schema_changes:` gates in the `rebase_branch()` flow, ~L204 and ~L232)
+- [X] T002 Add a `schema_differs_from_default_branch` `@property` (typed `-> bool`) holding the existing divergence computation to the `Branch` model in `backend/infrahub/core/branch/models.py`, and rewrite the existing `has_schema_changes` property to `return self.schema_differs_from_default_branch` (delegation, no logic change; keep it for the deprecation window)
+- [X] T003 Repoint the two internal backend readers from `has_schema_changes` to `schema_differs_from_default_branch` in `backend/infrahub/core/branch/tasks.py` (the two `if user_branch.has_schema_changes:` gates in the `rebase_branch()` flow, ~L204 and ~L232)
 
 **Checkpoint**: The value is available under the new property name and internal consumers use it. GraphQL/frontend story work can begin.
 
@@ -61,13 +61,13 @@ branch after the default changed (expect `true`); query both fields together and
 
 ### Tests for User Story 1 ⚠️ (write first, expect failure before T006)
 
-- [ ] T004 [P] [US1] Add a component GraphQL test asserting `schema_differs_from_default_branch` returns `false`/`true` across the three branch states (contract C1-C3) in `backend/tests/component/graphql/queries/test_branch.py`
-- [ ] T005 [P] [US1] Add a component GraphQL test asserting `has_schema_changes` and `schema_differs_from_default_branch` return identical values in one query (contract C4, SC-001) in `backend/tests/component/graphql/queries/test_branch.py`
+- [X] T004 [P] [US1] Add a component GraphQL test asserting `schema_differs_from_default_branch` returns `false`/`true` across the three branch states (contract C1-C3) in `backend/tests/component/graphql/queries/test_branch.py`
+- [X] T005 [P] [US1] Add a component GraphQL test asserting `has_schema_changes` and `schema_differs_from_default_branch` return identical values in one query (contract C4, SC-001) in `backend/tests/component/graphql/queries/test_branch.py`
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Add the `schema_differs_from_default_branch` graphene field to both `BranchType` (`Boolean(required=False)`) and `InfrahubBranch` (`Field(NonRequiredBooleanValueField, required=False)`) in `backend/infrahub/graphql/types/branch.py`
-- [ ] T007 [US1] Regenerate the GraphQL schema artifact with `uv run invoke schema.generate-graphqlschema` and confirm `schema/schema.graphql` gains `schema_differs_from_default_branch` on both `Branch` and `InfrahubBranch`
+- [X] T006 [US1] Add the `schema_differs_from_default_branch` graphene field to both `BranchType` (`Boolean(required=False)`) and `InfrahubBranch` (`Field(NonRequiredBooleanValueField, required=False)`) in `backend/infrahub/graphql/types/branch.py`
+- [X] T007 [US1] Regenerate the GraphQL schema artifact with `uv run invoke schema.generate-graphqlschema` and confirm `schema/schema.graphql` gains `schema_differs_from_default_branch` on both `Branch` and `InfrahubBranch`
 
 **Checkpoint**: New field resolves correctly on both query types and in mutation payloads, and is present in the generated schema.
 
@@ -84,14 +84,14 @@ Infrahub 1.14.0; query the old field and confirm it still returns the correct va
 
 ### Tests for User Story 2 ⚠️ (write first, expect failure before T010)
 
-- [ ] T008 [P] [US2] Add a test verifying `has_schema_changes` is deprecated on both `Branch` and `InfrahubBranch` via introspection, with a reason naming the replacement and Infrahub 1.14.0 (contract C6, SC-002) in `backend/tests/component/graphql/queries/test_branch.py`
-- [ ] T009 [P] [US2] Add/extend a test confirming `has_schema_changes` still returns its correct value after the change (contract C5, SC-004) in `backend/tests/component/graphql/queries/test_branch.py`
+- [X] T008 [P] [US2] Add a test verifying `has_schema_changes` is deprecated on both `Branch` and `InfrahubBranch` via introspection, with a reason naming the replacement and Infrahub 1.14.0 (contract C6, SC-002) in `backend/tests/component/graphql/queries/test_branch.py`
+- [X] T009 [P] [US2] Add/extend a test confirming `has_schema_changes` still returns its correct value after the change (contract C5, SC-004) in `backend/tests/component/graphql/queries/test_branch.py`
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Define a shared module-level deprecation-reason constant (message: `Use schema_differs_from_default_branch instead. has_schema_changes is scheduled for removal in Infrahub 1.14.0.`) and apply `deprecation_reason=` to `has_schema_changes` on both `BranchType` and `InfrahubBranch` in `backend/infrahub/graphql/types/branch.py` (depends on T006 - same file)
-- [ ] T011 [P] [US2] Update the schema-lifecycle integration assertions to cover the new field and parity while both exist in `backend/tests/integration/schema_lifecycle/test_migration_relationship_branch.py`, `test_schema_migration_branch.py`, `test_migration_attribute_branch.py`, `test_unique_field_updates.py`, and the branch fixtures in `backend/tests/conftest.py`
-- [ ] T012 [US2] Regenerate the GraphQL schema with `uv run invoke schema.generate-graphqlschema` and confirm `schema/schema.graphql` shows `@deprecated(reason: ...)` on `has_schema_changes` for both types (depends on T007 - same generated file)
+- [X] T010 [US2] Define a shared module-level deprecation-reason constant (message: `Use schema_differs_from_default_branch instead. has_schema_changes is scheduled for removal in Infrahub 1.14.0.`) and apply `deprecation_reason=` to `has_schema_changes` on both `BranchType` and `InfrahubBranch` in `backend/infrahub/graphql/types/branch.py` (depends on T006 - same file)
+- [ ] T011 [P] [US2] DEFERRED to T023 (blocked on the SDK query change). The schema-lifecycle integration tests (`backend/tests/integration/schema_lifecycle/test_migration_relationship_branch.py`, `test_schema_migration_branch.py`, `test_migration_attribute_branch.py`, `test_unique_field_updates.py`) and the branch fixtures in `backend/tests/conftest.py` read branch data through the SDK client, whose `BranchData` only carries a value for `schema_differs_from_default_branch` once the SDK query (`BRANCH_DATA`) selects it. Until then they keep asserting `has_schema_changes` still returns `True` (SC-004); new-field parity is already covered by the component tests (T005)
+- [X] T012 [US2] Regenerate the GraphQL schema with `uv run invoke schema.generate-graphqlschema` and confirm `schema/schema.graphql` shows `@deprecated(reason: ...)` on `has_schema_changes` for both types (depends on T007 - same generated file)
 
 **Checkpoint**: Old field works unchanged and is discoverably deprecated with replacement + removal version; both P1 stories complete (backend MVP).
 
@@ -107,17 +107,17 @@ indicator appears in the same positions with clarified wording, and requests sel
 
 ### Tests for User Story 3 ⚠️ (write first)
 
-- [ ] T013 [P] [US3] Update frontend fixtures/tests to the new field name in `frontend/app/tests/fake/branch.ts` and `frontend/app/src/shared/components/form/utils/getFormFieldsFromSchema.test.ts`
+- [X] T013 [P] [US3] Update frontend fixtures/tests to the new field name in `frontend/app/tests/fake/branch.ts` and `frontend/app/src/shared/components/form/utils/getFormFieldsFromSchema.test.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T014 [P] [US3] Request `schema_differs_from_default_branch` instead of `has_schema_changes` in the four branch operations: `frontend/app/src/entities/branches/api/get-branches-from-api.ts`, `get-branch-details-from-api.ts`, `create-branch-from-api.ts`, `rebase-branch-from-api.ts`
-- [ ] T015 [P] [US3] Rename the field through the data layer in `frontend/app/src/entities/branches/api/branch.mappers.ts`, `domain/model/branch.ts` (BranchListItem, BranchDetail), `domain/use-cases/create-branch.ts` (default value), and `ui/branches-to-select-options.ts`
-- [ ] T016 [US3] Replace the badge copy `schema updated` with `schema differs from default` (proposed default wording; fits the existing badge layout per FR-006) in `frontend/app/src/entities/branches/ui/branch-list-item/branch-schema-changes-badge.tsx`, and update its field references in `ui/branch-list-item/branch-list-item.tsx` and `ui/branches-table/cells/branch-name-cell.tsx`
-- [ ] T017 [US3] Replace the detail label `Has schema changes` with `Schema differs from default branch` (proposed default wording; fits the existing label layout per FR-006) and update the field reference in `frontend/app/src/entities/branches/ui/branch-details/branch-attributes.tsx`
-- [ ] T018 [US3] Update the E2E assertions of the detail label to the new T017 copy in `frontend/app/tests/e2e/branches/branch-details.spec.ts` (two assertions asserting `Has schema changes`) and `tests/e2e/branches/test_branch_details.py` (two assertions asserting `Has schema changes`); the string must match exactly what T017 chose (depends on T017)
-- [ ] T019 [US3] Regenerate frontend GraphQL types with `cd frontend/app && pnpm codegen` (reads the updated `schema/schema.graphql`; depends on T012 and T014)
-- [ ] T020 [US3] Run frontend unit tests with `cd frontend/app && pnpm test` and confirm branch fixtures/tests pass with the new field
+- [X] T014 [P] [US3] Request `schema_differs_from_default_branch` instead of `has_schema_changes` in the four branch operations: `frontend/app/src/entities/branches/api/get-branches-from-api.ts`, `get-branch-details-from-api.ts`, `create-branch-from-api.ts`, `rebase-branch-from-api.ts`
+- [X] T015 [P] [US3] Rename the field through the data layer in `frontend/app/src/entities/branches/api/branch.mappers.ts`, `domain/model/branch.ts` (BranchListItem, BranchDetail), `domain/use-cases/create-branch.ts` (default value), and `ui/branches-to-select-options.ts`
+- [X] T016 [US3] Replace the badge copy `schema updated` with `schema differs from default` (proposed default wording; fits the existing badge layout per FR-006) in `frontend/app/src/entities/branches/ui/branch-list-item/branch-schema-changes-badge.tsx`, and update its field references in `ui/branch-list-item/branch-list-item.tsx` and `ui/branches-table/cells/branch-name-cell.tsx`
+- [X] T017 [US3] Replace the detail label `Has schema changes` with `Schema differs from default branch` (proposed default wording; fits the existing label layout per FR-006) and update the field reference in `frontend/app/src/entities/branches/ui/branch-details/branch-attributes.tsx`
+- [X] T018 [US3] Update the E2E assertions of the detail label to the new T017 copy in `frontend/app/tests/e2e/branches/branch-details.spec.ts` (two assertions asserting `Has schema changes`) and `tests/e2e/branches/test_branch_details.py` (two assertions asserting `Has schema changes`); the string must match exactly what T017 chose (depends on T017)
+- [X] T019 [US3] Regenerate frontend GraphQL types with `cd frontend/app && pnpm codegen` (reads the updated `schema/schema.graphql`; depends on T012 and T014)
+- [X] T020 [US3] Run frontend unit tests with `cd frontend/app && pnpm test` and confirm branch fixtures/tests pass with the new field
 
 **Checkpoint**: UI consumes only the new field and shows clarified copy in the same positions (SC-003, SC-006).
 
@@ -127,9 +127,10 @@ indicator appears in the same positions with clarified wording, and requests sel
 
 **Purpose**: Documentation, changelog, follow-up tracking, and final gates.
 
-- [ ] T021 [P] Add a changelog `added` fragment `changelog/+schema-differs-from-default-branch.added.md` describing the new field (no ticket IDs in the body)
-- [ ] T022 [P] Add a changelog `deprecated` fragment `changelog/+schema-differs-from-default-branch.deprecated.md` noting `has_schema_changes` is deprecated and will be removed in Infrahub 1.14.0
-- [ ] T023 [P] Create a follow-up ticket for SDK adoption of `schema_differs_from_default_branch` (OOS-001) - must exist before this feature is considered done
+- [X] T021 [P] Add a changelog `added` fragment `changelog/+schema-differs-from-default-branch.added.md` describing the new field (no ticket IDs in the body)
+- [X] T022 [P] Add a changelog `deprecated` fragment `changelog/+schema-differs-from-default-branch.deprecated.md` noting `has_schema_changes` is deprecated and will be removed in Infrahub 1.14.0
+- [X] T023a Add `schema_differs_from_default_branch: bool | None = None` to `BranchData` in the `python_sdk` submodule (`infrahub_sdk/branch.py`). Forward-compatible, model-only: the SDK branch query (`BRANCH_DATA`) is intentionally left unchanged, so the field parses as `None` until the query switch. No SDK changelog fragment until that behaviour change lands. Lands via a separate `python_sdk` PR, then the submodule pointer bump here
+- [ ] T023 [P] Create a follow-up ticket for full SDK adoption of `schema_differs_from_default_branch` (OOS-001): the `BranchData` model field is already added (T023a); the follow-up covers switching the SDK branch query (`BRANCH_DATA`) to select the field - deferred until the SDK's minimum supported server exposes it - plus its changelog fragment and any downstream SDK consumers, then unblocking the integration parity assertions (T011). Must exist before this feature is considered done
 - [ ] T024 [P] Create a follow-up ticket to remove `has_schema_changes`, pinned to the Infrahub 1.14.0 milestone (OOS-005) - must exist before this feature is considered done
 - [ ] T025 Run `uv run invoke format lint` and `cd frontend/app && pnpm biome:fix` and resolve any findings
 - [ ] T026 Run `/pre-ci` and walk through `quickstart.md` to validate all success criteria (SC-001 through SC-006)
@@ -206,7 +207,7 @@ non-generated frontend edits; US3's `pnpm codegen` and tests wait for the backen
 
 - [P] = different files, no dependency on an incomplete task.
 - Do not rename `SchemaAnalyzer.has_schema_changes()` or touch its callers (OOS-004); it is unrelated.
-- Do not modify the Python SDK here (OOS-001); track it as a follow-up (T023).
+- In the Python SDK, add only the forward-compatible `BranchData` model field (T023a); defer the SDK query change and full adoption to the follow-up (T023, OOS-001).
 - Do not change the divergence computation itself (OOS-003) - delegation only.
 - The mock GraphQL branch responses in `backend/tests/component/git/conftest.py` keep `has_schema_changes` unchanged: the old field is retained so those fixtures stay valid, and they are intentionally not migrated.
 - If US1 and US2 land together (the recommended MVP path), a single `uv run invoke schema.generate-graphqlschema` run after T010 produces both the new field and the `@deprecated` annotation - T007 and T012 collapse into one regeneration rather than two.

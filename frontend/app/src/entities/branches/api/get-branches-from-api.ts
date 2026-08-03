@@ -30,7 +30,7 @@ const GET_BRANCHES = graphql(`
           is_default {
             value
           }
-          has_schema_changes {
+          schema_differs_from_default_branch {
             value
           }
         }
