@@ -109,6 +109,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/events.md` - Events system; read when adding or changing an event
 - `dev/knowledge/backend/async-tasks.md` - Prefect workflows, priority lanes, failure/best-effort handling; read before creating or changing a workflow
 - `dev/knowledge/backend/message-bus.md` - Message bus system; read when adding or changing a message
+- `dev/knowledge/backend/telemetry.md` - Anonymous usage telemetry (categories, windowing, retention, degradation); read when adding or changing telemetry metrics or the collection window
 - `dev/knowledge/backend/webhooks.md` - Webhook delivery and failure classification; read when touching webhook delivery
 - `dev/knowledge/backend/computed-attributes.md` - Jinja2 computed attributes and their recompute paths; read when touching Jinja2 computed attributes
 - `dev/knowledge/backend/display-labels-and-hfid.md` - Display-label and human-friendly-id derivation; read when touching either
@@ -118,7 +119,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 ### Guides (How to do X)
 
 - `dev/guides/backend/creating-events.md` - Creating new events
-- `dev/guides/backend/creating-async-tasks.md` - Creating async tasks
+- `dev/guides/backend/creating-async-tasks.md` - How to create an async task, with a pre-submit checklist. Load when adding a `@task`/`@flow`.
 - `dev/guides/backend/creating-messages.md` - Creating message bus messages
 
 ### ADRs (Why we decided)

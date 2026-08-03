@@ -4,6 +4,31 @@
 
 All database access in Infrahub goes through Query classes that encapsulate Cypher queries with proper parameterization, branch-awareness, and temporal versioning. Queries return typed dataclass results for type safety and clear API contracts.
 
+## Accessing schema: inject `SchemaManager`, else `db.schema`, never `registry`
+
+The `registry` is a legitimate in-memory cache (schemas, branches, node classes) but a global singleton imported across ~150 modules — a source of circular imports and coupling. Encapsulate and inject it instead. Preference order:
+
+1. **Inject `SchemaManager`** into the constructor, built at the entry point (task/flow/API/CLI) — never import `registry` inside a component.
+2. **`db.schema`** when injection isn't practical — temporally correct against the operation's branch/time; `registry.schema` is not.
+3. **`registry.schema`** — avoid.
+
+```python
+# ✅ Best - inject SchemaManager, constructed at the entry point
+class MyComponent:
+    def __init__(self, schema_manager: SchemaManager) -> None:
+        self.schema_manager = schema_manager
+
+# ✅ OK - db.schema when injection isn't practical (temporally correct)
+schema = db.schema.get(name="MyNode", branch=branch)
+
+# ❌ Avoid - global singleton, loses temporal flexibility
+schema = registry.schema.get(name="MyNode")
+```
+
+Components already accept `schema_manager` (the merge orchestrator, diff calculator, schema update coordinator, …); entry points still pass `registry.schema`, concentrating the access at the boundary. The next step is an accessor like the existing `get_database()` / `get_component()` so entry points can drop `registry` entirely.
+
+Exception: `registry` stays for hot (per-request) in-memory reads where a DB round-trip is a real regression (e.g. `registry.branch`); cold paths (daily tasks) use the DB. New-code preference — don't sweep existing call sites.
+
 ## Query Lifecycle
 
 ### Initialization
@@ -485,12 +510,7 @@ Specialized base classes for different domains:
 
 **Database Object in Initialization:** The `InfrahubDatabase` object is passed during initialization for:
 
-1. **Schema access via database proxy:** Enables temporal queries using previous schema versions
-
-   ```python
-   schema = db.schema.get(name="MyNode", branch=branch)  # Good
-   schema = registry.schema.get(name="MyNode")  # Avoid: loses temporal flexibility
-   ```
+1. **Schema access via database proxy:** Enables temporal queries using previous schema versions — see [Accessing schema: inject `SchemaManager`, else `db.schema`, never `registry`](#accessing-schema-inject-schemamanager-else-dbschema-never-registry).
 
 2. **Database type abstraction:** Contains database-specific functions
 
