@@ -24,7 +24,7 @@ MERGE_IN_PROGRESS_MESSAGE = "A merge is currently in progress; writes are tempor
 
 MERGE_RECOVERY_REQUIRED_MESSAGE = (
     "A previous merge failed and left the default branch protected. Writes stay blocked until an "
-    "administrator runs `infrahub recover`. Please contact an administrator."
+    "administrator runs `infrahub recover merge`. Please contact an administrator."
 )
 
 
@@ -58,7 +58,7 @@ class BranchStatusChecker:
           - MERGING: transient — the default branch becomes writable again once the merge completes,
             so the target gate raises the retryable MergeInProgressError, and
           - MERGE_FAILED: durable — a previous merge died, so the gate raises MergeRecoveryRequiredError
-            (a distinct, non-retryable code) until an administrator runs ``infrahub recover``.
+            (a distinct, non-retryable code) until an administrator runs ``infrahub recover merge``.
 
         If the cache lookup fails — unreachable backend, or a present-but-corrupt value that cannot be
         interpreted as "no merge in progress" — the gate falls back to the durable branch status in the

@@ -178,7 +178,7 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
             CatalogueEntry(
                 description=(
                     "The write was rejected because a previous branch merge failed and left the default "
-                    "branch protected. Recovery is required: an administrator must run `infrahub recover`. "
+                    "branch protected. Recovery is required: an administrator must run `infrahub recover merge`. "
                     "Unlike MERGE_IN_PROGRESS this is not retryable."
                 ),
                 stability="evolving",
