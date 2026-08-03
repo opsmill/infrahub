@@ -214,9 +214,17 @@ class TestDiffNodeFieldSummaries(DiffRepositoryTestBase):
         assert retrieved_by_diff_id == expected_summaries
 
     async def test_get_node_field_summaries_empty_diff(
-        self, diff_repository: DiffRepository, reset_database: None
+        self,
+        counting_diff_repository: DiffRepository,
+        counting_db: CountingInfrahubDatabase,
+        reset_database: None,
     ) -> None:
-        """A diff root with no diff nodes at all yields no summaries."""
+        """A diff root with no diff nodes at all yields no summaries, and costs a single query.
+
+        Such a root still produces one node-less row, which occupies a page slot without being a node.
+        Counting that row as a consumed node would keep pagination going past the only page, so the
+        page size here is one: it is the only size at which that miscount changes the query count.
+        """
         tracking_id = BranchTrackingId(name=self.diff_branch_name)
         enriched_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
@@ -227,13 +235,16 @@ class TestDiffNodeFieldSummaries(DiffRepositoryTestBase):
             tracking_id=tracking_id,
         )
         await self._save_single_diff(
-            diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+            diff_repository=counting_diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
         )
 
-        retrieved = await diff_repository.get_node_field_summaries(
+        config.SETTINGS.database.query_size_limit = 1
+        counting_db.reset_counts()
+        retrieved = await counting_diff_repository.get_node_field_summaries(
             diff_branch_name=self.diff_branch_name, tracking_id=tracking_id
         )
         assert retrieved == []
+        assert counting_db.count_for(EnrichedDiffNodeFieldSummaryQuery.name) == 1
 
     @pytest.mark.parametrize("case", PAGE_SIZE_CASES, ids=lambda c: c.name)
     async def test_get_node_field_summaries_batched(
