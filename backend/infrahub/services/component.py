@@ -11,7 +11,7 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
-from infrahub.telemetry.resources import ProcessResources, WorkerResourceReading
+from infrahub.telemetry.resources import RESOURCE_READ_FAILURES, ProcessResources, WorkerResourceReading
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -151,7 +151,7 @@ class InfrahubComponent:
         for _ in range(RESOURCE_READ_MAX_ATTEMPTS):
             try:
                 return self.process_resources.read()
-            except Exception as exc:
+            except RESOURCE_READ_FAILURES as exc:
                 last_error = exc
 
         log.warning(
