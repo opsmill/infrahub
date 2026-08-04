@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypedDict, TypeVar
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
@@ -387,6 +387,18 @@ class QueryStat:
     def from_metadata(cls, data: dict[str, Any]) -> Self:
         data = {key.replace("-", "_"): value for key, value in data.items()}
         return cls(**data)
+
+
+class QueryInitKwargs(TypedDict, total=False):
+    """Keyword arguments every query constructor accepts and forwards to its base."""
+
+    branch: Branch | None
+    at: Timestamp | str | None
+    limit: int | None
+    offset: int | None
+    order_by: list[str] | None
+    branch_agnostic: bool
+    user_id: str
 
 
 class Query:
