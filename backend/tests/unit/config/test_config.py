@@ -109,8 +109,8 @@ def test_database_uri_with_policy() -> None:
 
 
 def test_database_max_connection_pool_size() -> None:
-    assert DatabaseSettings().max_connection_pool_size == 50
-    assert DatabaseSettings(max_connection_pool_size=100).max_connection_pool_size == 100
+    assert DatabaseSettings().max_connection_pool_size == 100
+    assert DatabaseSettings(max_connection_pool_size=50).max_connection_pool_size == 50
 
 
 @pytest.mark.parametrize("invalid_value", [0, -10])

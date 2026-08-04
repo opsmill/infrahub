@@ -361,7 +361,7 @@ class DatabaseSettings(BaseSettings):
         ),
     )
     max_connection_pool_size: int = Field(
-        default=50,
+        default=100,
         ge=1,
         description="Maximum number of connections the driver keeps in its pool per remote address.",
     )
