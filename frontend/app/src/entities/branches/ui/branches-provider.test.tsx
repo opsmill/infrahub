@@ -49,13 +49,6 @@ function BranchProbe({ switchTo }: { switchTo?: BranchListItem }) {
   );
 }
 
-const renderProvider = (switchTo?: BranchListItem) =>
-  render(
-    <BranchesProvider>
-      <BranchProbe switchTo={switchTo} />
-    </BranchesProvider>
-  );
-
 describe("BranchesProvider", () => {
   beforeEach(() => {
     window.history.replaceState(null, "", window.location.pathname);
@@ -66,7 +59,11 @@ describe("BranchesProvider", () => {
     mockFetchedBranches();
 
     // WHEN
-    const component = await renderProvider();
+    const component = await render(
+      <BranchesProvider>
+        <BranchProbe />
+      </BranchesProvider>
+    );
 
     // THEN
     await expect.element(component.getByText("Current branch: primary")).toBeVisible();
@@ -78,7 +75,11 @@ describe("BranchesProvider", () => {
     seedBranchInUrl(featureBranch.name);
 
     // WHEN
-    const component = await renderProvider();
+    const component = await render(
+      <BranchesProvider>
+        <BranchProbe />
+      </BranchesProvider>
+    );
 
     // THEN
     await expect.element(component.getByText("Current branch: feature-1")).toBeVisible();
@@ -89,7 +90,11 @@ describe("BranchesProvider", () => {
     mockBranchesQuery({ isPending: true, error: null });
 
     // WHEN
-    const component = await renderProvider();
+    const component = await render(
+      <BranchesProvider>
+        <BranchProbe />
+      </BranchesProvider>
+    );
 
     // THEN
     await expect.element(component.getByText("Loading branches...")).toBeVisible();
@@ -101,7 +106,11 @@ describe("BranchesProvider", () => {
     mockBranchesQuery({ isPending: false, error: new Error("Branches are unreachable") });
 
     // WHEN
-    const component = await renderProvider();
+    const component = await render(
+      <BranchesProvider>
+        <BranchProbe />
+      </BranchesProvider>
+    );
 
     // THEN
     await expect.element(component.getByText("Branches are unreachable")).toBeVisible();
@@ -111,7 +120,11 @@ describe("BranchesProvider", () => {
     // GIVEN
     mockFetchedBranches();
     seedBranchInUrl(featureBranch.name);
-    const component = await renderProvider(defaultBranch);
+    const component = await render(
+      <BranchesProvider>
+        <BranchProbe switchTo={defaultBranch} />
+      </BranchesProvider>
+    );
 
     // WHEN
     await component.getByRole("button", { name: "Switch branch" }).click();
@@ -123,7 +136,11 @@ describe("BranchesProvider", () => {
   test("writes the branch name when switching to a non-default branch", async () => {
     // GIVEN
     mockFetchedBranches();
-    const component = await renderProvider(featureBranch);
+    const component = await render(
+      <BranchesProvider>
+        <BranchProbe switchTo={featureBranch} />
+      </BranchesProvider>
+    );
 
     // WHEN
     await component.getByRole("button", { name: "Switch branch" }).click();
@@ -138,7 +155,11 @@ describe("BranchesProvider", () => {
     seedBranchInUrl("does-not-exist");
 
     // WHEN
-    const component = await renderProvider();
+    const component = await render(
+      <BranchesProvider>
+        <BranchProbe />
+      </BranchesProvider>
+    );
 
     // THEN
     await expect
