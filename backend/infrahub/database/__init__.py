@@ -558,6 +558,7 @@ async def get_db(retry: int = 0) -> AsyncDriver:
             NotificationDisabledClassification.SCHEMA,
         ],
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
+        max_connection_pool_size=config.SETTINGS.database.max_connection_pool_size,
     )
 
     if config.SETTINGS.database.database_name not in validated_database:

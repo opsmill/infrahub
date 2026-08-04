@@ -108,6 +108,22 @@ def test_database_uri_with_policy() -> None:
     assert settings.database_uri == "bolt://member1:7687?policy=europe"
 
 
+def test_database_max_connection_pool_size() -> None:
+    assert DatabaseSettings().max_connection_pool_size == 50
+    assert DatabaseSettings(max_connection_pool_size=100).max_connection_pool_size == 100
+
+
+@pytest.mark.parametrize("invalid_value", [0, -10])
+def test_database_max_connection_pool_size_rejects_invalid_values(invalid_value: int) -> None:
+    with pytest.raises(ValidationError, match="greater than or equal to 1"):
+        DatabaseSettings(max_connection_pool_size=invalid_value)
+
+
+def test_database_max_connection_pool_size_environment_variable() -> None:
+    with patch.dict(os.environ, {"INFRAHUB_DB_MAX_CONNECTION_POOL_SIZE": "25"}):
+        assert DatabaseSettings().max_connection_pool_size == 25
+
+
 def _make_oidc_provider(verify_signature: bool) -> SecurityOIDCSettings:
     return SecurityOIDCSettings(
         client_id="testing-client",

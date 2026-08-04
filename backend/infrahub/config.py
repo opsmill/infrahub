@@ -360,6 +360,11 @@ class DatabaseSettings(BaseSettings):
             "the query is aborted once it is exceeded."
         ),
     )
+    max_connection_pool_size: int = Field(
+        default=50,
+        ge=1,
+        description="Maximum number of connections the driver keeps in its pool per remote address.",
+    )
 
     @property
     def address_members(self) -> list[str]:
