@@ -162,7 +162,11 @@ class RedisMessageBus(InfrahubMessageBus):
             ack_messages: Whether to acknowledge messages after processing.
 
         """
-        last_id = ">" if group else "$"
+        # Group-less consumption starts at "0" and then tracks concrete entry ids.
+        # The only stream consumed this way is the per-process callback stream, so
+        # replaying from the start is safe, while "$" would silently drop entries
+        # added before the first XREAD or between two XREADs on an idle stream.
+        last_id = ">" if group else "0"
 
         while not self._shutdown_event.is_set():
             try:
