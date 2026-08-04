@@ -244,14 +244,20 @@ async def test_redis_callback(redis_api: RedisManager, fake_log: FakeLogger) -> 
     bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
     service = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
 
+    echo_message = messages.SendEchoRequest(message="Hello there")
     with patch("infrahub.message_bus.operations.send.echo.get_logger", return_value=fake_log):
-        await service.message_bus.send(message=messages.SendEchoRequest(message="Hello there"))
+        # Publish before the consumer's first read to ensure no message published
+        # right after stream creation is dropped.
+        await redis_api.publish_message(
+            stream=bus.callback_stream,
+            routing_key="send.echo.request",
+            body=echo_message.body.decode(),
+        )
         await asyncio.sleep(delay=1)
         await service.shutdown()
 
-    # Note: The API server doesn't consume from RPC stream by default,
-    # this test validates the message was published.
-    # The actual callback processing happens in the GIT_AGENT.
+    assert fake_log.info_logs == ["Received message: Hello there"]
+    assert fake_log.error_logs == []
 
 
 async def test_redis_callback_with_invalid_routing_key(redis_api: RedisManager, fake_log: FakeLogger) -> None:
