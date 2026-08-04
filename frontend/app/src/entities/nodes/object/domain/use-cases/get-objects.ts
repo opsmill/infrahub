@@ -23,6 +23,7 @@ export type GetObjectsParams = ContextParams &
     getRelationshipsVisible?: (relationships: RelationshipSchema[]) => RelationshipSchema[];
     attributesOptions?: AddAttributesToRequestOptions;
     relationshipsOptions?: AddAttributesToRequestOptions;
+    signal?: AbortSignal;
   };
 
 export type GetObjects = (args: GetObjectsParams) => Promise<Array<NodeObject>>;
@@ -39,6 +40,7 @@ export const getObjects: GetObjects = async ({
   getRelationshipsVisible = getRelationshipsVisibleInListView,
   attributesOptions,
   relationshipsOptions,
+  signal,
 }) => {
   const attributesVisible = getAttributesVisible(schema.attributes ?? []);
   const relationshipsVisible = getRelationshipsVisible(schema.relationships ?? []);
@@ -57,6 +59,7 @@ export const getObjects: GetObjects = async ({
     sort,
     attributesOptions,
     relationshipsOptions,
+    signal,
   });
 
   if (errors) {

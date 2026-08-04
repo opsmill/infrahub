@@ -12,12 +12,14 @@ export const getObjectsCount: GetObjectsCount = async ({
   branchName,
   atDate,
   filters = [],
+  signal,
 }) => {
   const { data, errors } = await getObjectsCountFromApi({
     objectKind,
     branchName,
     atDate,
     filters,
+    signal,
   });
 
   if (errors?.[0]?.message) {

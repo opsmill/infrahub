@@ -7,6 +7,8 @@ import {
   formatDocument,
   makeOperation,
   mapExchange,
+  type OperationResult,
+  type OperationResultSource,
 } from "@urql/core";
 import { authExchange } from "@urql/exchange-auth";
 
@@ -80,6 +82,60 @@ function getGraphqlClient(branch?: string | null, date?: Date | null): Client {
   return client;
 }
 
+// urql keeps an operation alive until its last subscriber leaves, and merges any identical
+// operation raised in the meantime into that one instead of reaching the server. `toPromise()`
+// only leaves once the response lands, so a caller that walks away from a request it no longer
+// wants still holds the operation open, and the caller that replaces it is handed the abandoned
+// request's snapshot. Unsubscribing on abort releases the operation so the replacement is a real
+// round trip.
+function resolveOperation<TResult extends OperationResult>(
+  source: OperationResultSource<TResult>,
+  signal?: AbortSignal
+): Promise<TResult> {
+  if (!signal) {
+    return source.toPromise();
+  }
+
+  return resolveAbortableOperation(source, signal);
+}
+
+function resolveAbortableOperation<TResult extends OperationResult>(
+  source: OperationResultSource<TResult>,
+  signal: AbortSignal
+): Promise<TResult> {
+  if (signal.aborted) {
+    return Promise.reject(signal.reason);
+  }
+
+  return new Promise<TResult>((resolve, reject) => {
+    let unsubscribe: (() => void) | undefined;
+    let isSettled = false;
+
+    const settle = (): boolean => {
+      if (isSettled) return false;
+      isSettled = true;
+      signal.removeEventListener("abort", onAbort);
+      unsubscribe?.();
+      return true;
+    };
+
+    function onAbort() {
+      if (settle()) reject(signal.reason);
+    }
+
+    signal.addEventListener("abort", onAbort, { once: true });
+
+    // Mirrors `toPromise()`: the first result that is neither stale nor a partial payload.
+    const subscription = source.subscribe((result) => {
+      if (result.stale || result.hasNext) return;
+      if (settle()) resolve(result);
+    });
+
+    unsubscribe = () => subscription.unsubscribe();
+    if (isSettled) unsubscribe();
+  });
+}
+
 // Map urql result to the preserved `{ data, errors }` shape and run error routing.
 function toGraphQLResult<TData>(
   data: TData | undefined,
@@ -117,18 +173,26 @@ export const graphqlClient = {
   async query<TData = any, TVars extends AnyVariables = AnyVariables>(
     args: QueryArgs<TData, TVars>
   ): Promise<GraphQLResult<TData>> {
-    const result = await getGraphqlClient(args.context?.branch, args.context?.date)
-      .query<TData, TVars>(args.query, args.variables as TVars)
-      .toPromise();
+    const result = await resolveOperation(
+      getGraphqlClient(args.context?.branch, args.context?.date).query<TData, TVars>(
+        args.query,
+        args.variables as TVars
+      ),
+      args.context?.signal
+    );
     return toGraphQLResult(result.data, result.error, args.context);
   },
 
   async mutate<TData = any, TVars extends AnyVariables = AnyVariables>(
     args: MutateArgs<TData, TVars>
   ): Promise<GraphQLResult<TData>> {
-    const result = await getGraphqlClient(args.context?.branch, args.context?.date)
-      .mutation<TData, TVars>(args.mutation, args.variables as TVars)
-      .toPromise();
+    const result = await resolveOperation(
+      getGraphqlClient(args.context?.branch, args.context?.date).mutation<TData, TVars>(
+        args.mutation,
+        args.variables as TVars
+      ),
+      args.context?.signal
+    );
     return toGraphQLResult(result.data, result.error, args.context);
   },
 };

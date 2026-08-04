@@ -4,6 +4,7 @@ export interface GraphQLRequestContext {
   branch?: string | null;
   date?: Date | null;
   processErrorMessage?: (message: string) => void;
+  signal?: AbortSignal;
 }
 
 export interface GraphQLResult<TData> {

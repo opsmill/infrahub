@@ -65,7 +65,9 @@ const getObjectsQuery = ({
 export interface GetObjectsFromApiParams
   extends ContextParams,
     PaginationParams,
-    GetObjectsQueryParams {}
+    GetObjectsQueryParams {
+  signal?: AbortSignal;
+}
 
 export async function getObjectsFromApi({
   schemaKind,
@@ -79,6 +81,7 @@ export async function getObjectsFromApi({
   sort,
   attributesOptions,
   relationshipsOptions,
+  signal,
 }: GetObjectsFromApiParams) {
   return graphqlClient.query({
     query: getObjectsQuery({
@@ -95,6 +98,7 @@ export async function getObjectsFromApi({
     context: {
       branch: branchName,
       date: atDate,
+      signal,
     },
   });
 }

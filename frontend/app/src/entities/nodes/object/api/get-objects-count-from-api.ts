@@ -30,6 +30,7 @@ const getObjectsCountQuery = ({ objectKind, filters }: getObjectsCountQueryParam
 export interface GetObjectsCountFromApiParams extends ContextParams {
   objectKind: string;
   filters?: Array<Filter>;
+  signal?: AbortSignal;
 }
 
 export const getObjectsCountFromApi = async ({
@@ -37,6 +38,7 @@ export const getObjectsCountFromApi = async ({
   filters,
   branchName,
   atDate,
+  signal,
 }: GetObjectsCountFromApiParams) => {
   return graphqlClient.query({
     query: getObjectsCountQuery({ objectKind, filters }),
@@ -44,6 +46,7 @@ export const getObjectsCountFromApi = async ({
       branch: branchName,
       date: atDate,
       processErrorMessage: () => {},
+      signal,
     },
   });
 };

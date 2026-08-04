@@ -34,7 +34,10 @@ export function infiniteQueryOptionsWithOptimizedPageSize<
 >(
   options: {
     queryKey: TQueryKey;
-    queryFn: (context: { pageParam: OffsetPagination }) => Promise<TQueryFnData>;
+    queryFn: (context: {
+      pageParam: OffsetPagination;
+      signal: AbortSignal;
+    }) => Promise<TQueryFnData>;
     staleTime?: number;
     gcTime?: number;
   },

@@ -14,8 +14,8 @@ import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query
 export function getObjectsCountQueryOptions(params: GetObjectsCountParams) {
   return queryOptions({
     queryKey: objectQueryKeys.count(params),
-    queryFn: async () => {
-      return getObjectsCount(params);
+    queryFn: async ({ signal }) => {
+      return getObjectsCount({ ...params, signal });
     },
   });
 }

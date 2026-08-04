@@ -25,11 +25,12 @@ export function getObjectsInfiniteQueryOptions(
   return infiniteQueryOptionsWithOptimizedPageSize(
     {
       queryKey: objectQueryKeys.list({ ...params, objectKind: params.schema.kind! }),
-      queryFn: ({ pageParam }) =>
+      queryFn: ({ pageParam, signal }) =>
         getObjects({
           ...params,
           offset: pageParam.offset,
           limit: pageParam.limit,
+          signal,
         }),
     },
     config
