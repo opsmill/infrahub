@@ -1,0 +1,25 @@
+backend/infrahub/config.py
+  s_cc23bb5658950a::t_69351b00994dac 364
+backend/tests/unit/config/test_config.py
+  s_cc23bb5658950a::t_47b4b79ebec40e 112-113
+docker-compose.yml
+  s_cc23bb5658950a::t_0f2ec93c19e606 55
+docs/docs/reference/configuration.mdx
+  s_cc23bb5658950a::t_25430d65fa5eeb 110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ecb869cef104e59cea18a65072ab7dad1b858cbf",
+  "prompts": {},
+  "sessions": {
+    "s_cc23bb5658950a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7be26c30-7ba2-406f-b618-97627518913b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}
