@@ -1,0 +1,104 @@
+---
+title: Tune performance
+---
+
+Infrahub's defaults target a general-purpose deployment. As an instance grows — more objects in the database, more open branches, more automation — some of those defaults stop matching the workload. The settings below are the ones worth revisiting, each with the symptom it addresses and what you give up in exchange.
+
+Start with the [hardware requirements](./hardware-requirements.mdx): no setting compensates for an undersized machine or slow storage. Then change one setting at a time and measure the result against your own data.
+
+| Symptom | Setting | Default |
+|---|---|---|
+| Merges queue a burst of tasks while several branches are open | `INFRAHUB_DIFF_UPDATE_AFTER_MERGE` | `true` |
+| Queries over a large dataset make many database round trips | `INFRAHUB_DB_QUERY_SIZE_LIMIT` | `5000` |
+| The database is saturated under concurrent load | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES` | `0` (unlimited) |
+| Graph traversal queries are truncated or time out | `INFRAHUB_DB_PATH_TRAVERSAL_QUERY_TIMEOUT`, `INFRAHUB_DB_REACHABLE_NODES_QUERY_TIMEOUT` | `30`, `75` |
+| Hierarchy queries traverse further than your model needs | `INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY` | `5` |
+| The task list is slow on an instance with a long task history | `INFRAHUB_WORKFLOW_FLOW_RUN_COUNT_CACHE_THRESHOLD` | `100000` |
+
+:::note
+
+For how to set an environment variable and apply it, see [Configure Infrahub](./configure-infrahub.mdx). Set these on both the Infrahub server and the task workers — both read the same configuration.
+
+:::
+
+## Diff updates after a merge
+
+Merging a branch changes the branch you merged into, which makes the stored diff of every other open branch out of date. Infrahub queues a diff update for each of them. With a few branches open this is not noticeable. With dozens of long-lived branches, a single merge queues dozens of diff recalculations, and they compete with generators, artifacts, and checks for task workers.
+
+Turn the automatic update off when you routinely keep many branches open at the same time, or when merges into the default branch are frequent:
+
+```bash title=".env"
+INFRAHUB_DIFF_UPDATE_AFTER_MERGE=false
+```
+
+**What you trade.** Stored diffs are no longer refreshed after a merge, so a branch diff you open later reflects the state before that merge until it is recalculated. Refresh it from the diff view, or through the `DiffUpdate` GraphQL mutation. A proposed change recalculates its own diff every time its pipeline runs, so proposed changes under active review are unaffected.
+
+## Query size on large datasets
+
+Queries that can return many records fetch them in pages of `INFRAHUB_DB_QUERY_SIZE_LIMIT` records, repeating with an increasing offset until a page comes back short. Over a large dataset, one logical query becomes many round trips to the database. Diff calculation and diff storage derive their own batch sizes from the same value.
+
+Raise it when the database holds a large number of objects and the server and workers have memory to spare:
+
+```bash title=".env"
+INFRAHUB_DB_QUERY_SIZE_LIMIT=10000
+```
+
+**What you trade.** Each page is held in the process that issued the query, so peak memory per query grows with the value. Raise it in steps, and watch memory on both `infrahub-server` and the task workers before going further.
+
+## Concurrent queries against the database
+
+By default Infrahub issues as many queries as the workload produces. `INFRAHUB_DB_MAX_CONCURRENT_QUERIES` caps them: before running a query, Infrahub compares the number of in-use connections in the driver pool against the limit, and while it is above, waits `INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY` seconds and checks again.
+
+Use it when the database is the bottleneck rather than the application. That is most often the case on Neo4j Community, which runs queries on a single core: [more cores do not increase throughput](./install/overview.mdx), and neither do more queries in parallel.
+
+```bash title=".env"
+INFRAHUB_DB_MAX_CONCURRENT_QUERIES=50
+INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY=0.01
+```
+
+The `infrahub_db_last_connection_pool_usage` Prometheus metric reports the in-use connection count this limit is compared against. Use it to pick a starting value.
+
+**What you trade.** Queries above the limit wait inside the application, so request latency rises under load. A limit set too low starves the pipeline: workers wait instead of running tasks.
+
+## Graph traversal timeouts
+
+Path traversal runs many small queries, one depth at a time. When a single query exceeds `INFRAHUB_DB_PATH_TRAVERSAL_QUERY_TIMEOUT`, the search stops and returns the paths found so far with `truncated_at_depth` set, rather than failing the request. `INFRAHUB_DB_REACHABLE_NODES_QUERY_TIMEOUT` bounds reachable-nodes queries, which abort with an error once it is exceeded.
+
+```bash title=".env"
+INFRAHUB_DB_PATH_TRAVERSAL_QUERY_TIMEOUT=30
+INFRAHUB_DB_REACHABLE_NODES_QUERY_TIMEOUT=75
+```
+
+Lower them to stop exploratory traversals from occupying the database on a large graph. Raise them when legitimate queries are truncated more often than they complete.
+
+**What you trade.** A lower timeout truncates more searches, so broad queries return partial results more often. Before changing the server-side budget, narrow the search itself with the per-query limits — `max_depth`, `max_paths`, `max_results`, and the kind and namespace filters documented in the [graph traversal reference](../../reference/graph-traversal.mdx).
+
+## Hierarchy search depth
+
+`INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY` bounds how far hierarchy queries traverse: the number of levels to search, applied as a maximum relationship path length of twice that value. The default is 5 and the maximum is 20.
+
+```bash title=".env"
+INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY=5
+```
+
+**What you trade.** Every additional level widens the search space for hierarchy queries and for the diff engine, which uses the same bound. Raise it only when your hierarchy is deeper than the default.
+
+## Task list on a long task history
+
+Infrahub counts task runs to paginate the task list. Counts at or above `INFRAHUB_WORKFLOW_FLOW_RUN_COUNT_CACHE_THRESHOLD` are cached for one minute; counts below it are recomputed on every request. On a busy instance the count is expensive to compute, and with the default threshold of `100000` most counts fall below it and are never cached.
+
+Set it to `0` to cache every count:
+
+```bash title=".env"
+INFRAHUB_WORKFLOW_FLOW_RUN_COUNT_CACHE_THRESHOLD=0
+```
+
+**What you trade.** A cached count can be up to a minute old, so the total shown alongside a task list lags behind tasks that started or finished within that window.
+
+## Related resources
+
+- [Configure Infrahub](./configure-infrahub.mdx) — how to set and apply an environment variable
+- [Configuration reference](../../reference/configuration.mdx) — every available setting, with types and defaults
+- [Hardware requirements](./hardware-requirements.mdx) — sizing, cloud machine types, and the benchmark utility
+- [What drives Infrahub performance at scale](../../faq/faq.mdx#what-drives-infrahub-performance-at-scale-and-what-can-i-tune) — query patterns and pipeline bottlenecks beyond configuration
+- [Community vs Enterprise](../../overview/community-vs-enterprise.mdx) — where the scaling limits of each edition sit
