@@ -16,13 +16,7 @@ vi.mock("@/entities/branches/ui/queries/get-branches.query");
 const defaultBranch = generateBranch({ id: "branch-default", name: "primary", is_default: true });
 const featureBranch = generateBranch({ id: "branch-feature", name: "feature-1" });
 
-type BranchesQueryState = {
-  data?: Array<BranchListItem>;
-  isPending: boolean;
-  error: Error | null;
-};
-
-const mockBranchesQuery = (state: BranchesQueryState) =>
+const mockBranchesQuery = (state: Partial<ReturnType<typeof useGetBranches>>) =>
   vi.mocked(useGetBranches).mockReturnValue(state as ReturnType<typeof useGetBranches>);
 
 const mockFetchedBranches = () =>
@@ -85,6 +79,23 @@ describe("BranchesProvider", () => {
     await expect.element(component.getByText("Current branch: feature-1")).toBeVisible();
   });
 
+  test("resolves the default branch when the URL names it explicitly", async () => {
+    // GIVEN
+    mockFetchedBranches();
+    seedBranchInUrl(defaultBranch.name);
+
+    // WHEN
+    const component = await render(
+      <BranchesProvider>
+        <BranchProbe />
+      </BranchesProvider>
+    );
+
+    // THEN
+    await expect.element(component.getByText("Current branch: primary")).toBeVisible();
+    expect(getBranchInUrl()).toBe("primary");
+  });
+
   test("hides its children while the branches are being fetched", async () => {
     // GIVEN
     mockBranchesQuery({ isPending: true, error: null });
@@ -99,6 +110,27 @@ describe("BranchesProvider", () => {
     // THEN
     await expect.element(component.getByText("Loading branches...")).toBeVisible();
     expect(component.getByText(/Current branch/).query()).toBeNull();
+  });
+
+  test("keeps its children mounted while the branches are refetched in the background", async () => {
+    // GIVEN
+    mockBranchesQuery({
+      data: [defaultBranch, featureBranch],
+      isPending: false,
+      isFetching: true,
+      error: null,
+    });
+
+    // WHEN
+    const component = await render(
+      <BranchesProvider>
+        <BranchProbe />
+      </BranchesProvider>
+    );
+
+    // THEN
+    await expect.element(component.getByText("Current branch: primary")).toBeVisible();
+    expect(component.getByText("Loading branches...").query()).toBeNull();
   });
 
   test("shows an error screen when the branches cannot be fetched", async () => {
