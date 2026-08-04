@@ -2,9 +2,15 @@
 
 Each process reports the logical CPU count it can see, the CPU quota enforced on
 it by its container control group (``None`` when nothing is enforced), and its
-memory capacity and free memory. The container control group is consulted first
-(cgroup v2, then v1); a host without one — a developer laptop, an unusual mount —
+memory capacity and free memory. The process's own control group is resolved
+from ``/proc/self/cgroup`` and every level up to the root is consulted, because
+a limit may be enforced on an ancestor — under a private cgroup namespace (the
+modern container default) that path collapses to the apparent root, while a host
+namespace or a systemd service exposes the full hierarchy. cgroup v2 is read
+first, then v1; a host with neither — a developer laptop, an unusual mount —
 falls back to the whole-host figures from psutil and reports no CPU quota.
+Limits above a private namespace root (for example a pod-level limit when the
+container itself has none) are invisible from inside and cannot be reported.
 
 The values that cannot change for the lifetime of a process (the host identifier,
 the logical CPU count, the enforced CPU quota and the memory capacity) are read
@@ -20,6 +26,7 @@ from __future__ import annotations
 import math
 import socket
 from dataclasses import dataclass
+from operator import itemgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -30,6 +37,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 CGROUP_ROOT = Path("/sys/fs/cgroup")
+PROC_SELF_CGROUP = Path("/proc/self/cgroup")
 
 # The default CPU period the kernel uses when a cgroup v2 ``cpu.max`` line omits it.
 _DEFAULT_CPU_PERIOD_US = 100000
@@ -132,56 +140,108 @@ def _quota_to_cores(quota: int, period: int) -> int | None:
     return math.ceil(quota / period)
 
 
-def _read_cgroup_cpu_quota(cgroup_root: Path) -> int | None:
+def _own_cgroup_dirs(cgroup_root: Path, proc_cgroup: Path) -> list[Path]:
+    """Return this process's cgroup directory and its ancestors, leaf first.
+
+    Under a private cgroup namespace (the modern container default) the process
+    sits at the apparent root and the list collapses to ``[cgroup_root]``. Without
+    one — an older runtime, an explicit host namespace, a systemd service — the
+    ``0::<path>`` line of the proc file locates the real cgroup, and every level
+    up to the root is returned because a limit may be enforced on any ancestor.
+    An unreadable proc file, a missing v2 line, or a path that does not exist
+    under the root all fall back to ``[cgroup_root]``, preserving the plain read.
+    """
+    content = _read_text_file(proc_cgroup)
+    if content is None:
+        return [cgroup_root]
+    for line in content.splitlines():
+        if not line.startswith("0::"):
+            continue
+        relative = line[3:].strip().lstrip("/")
+        if not relative or ".." in relative.split("/"):
+            return [cgroup_root]
+        leaf = cgroup_root / relative
+        if not leaf.is_dir():
+            return [cgroup_root]
+        dirs = [leaf]
+        for parent in leaf.parents:
+            dirs.append(parent)
+            if parent == cgroup_root:
+                break
+        return dirs
+    return [cgroup_root]
+
+
+def _parse_cpu_max(line: str) -> int | None:
+    """Parse one cgroup v2 ``cpu.max`` line ("<quota> <period>", "max" = unbounded)."""
+    parts = line.split()
+    if not parts or parts[0] == "max":
+        return None
+    try:
+        quota = int(parts[0])
+        period = int(parts[1]) if len(parts) > 1 else _DEFAULT_CPU_PERIOD_US
+    except ValueError:
+        return None
+    return _quota_to_cores(quota=quota, period=period)
+
+
+def _read_cgroup_cpu_quota(cgroup_dirs: list[Path]) -> int | None:
     """Return the enforced CPU limit in whole cores, or ``None`` when unbounded.
 
-    cgroup v2 ``cpu.max`` ("<quota> <period>", or "max <period>" when unbounded)
-    is read first; a host on cgroup v1 uses the ``cpu.cfs_quota_us`` /
-    ``cpu.cfs_period_us`` pair, where a quota of ``-1`` means unbounded.
+    Every level of the process's cgroup path may carry a v2 ``cpu.max``; the
+    effective limit is the most restrictive one. A hierarchy with no readable
+    ``cpu.max`` at any level is treated as cgroup v1, whose ``cpu.cfs_quota_us``
+    / ``cpu.cfs_period_us`` pair (quota ``-1`` = unbounded) lives at the
+    controller mount root inside a container.
     """
-    v2_line = _read_text_file(cgroup_root / "cpu.max")
-    if v2_line is not None:
-        parts = v2_line.split()
-        if not parts or parts[0] == "max":
-            return None
-        try:
-            v2_quota = int(parts[0])
-            v2_period = int(parts[1]) if len(parts) > 1 else _DEFAULT_CPU_PERIOD_US
-        except ValueError:
-            return None
-        return _quota_to_cores(quota=v2_quota, period=v2_period)
+    v2_lines = [line for directory in cgroup_dirs if (line := _read_text_file(directory / "cpu.max")) is not None]
+    if v2_lines:
+        cores = [value for line in v2_lines if (value := _parse_cpu_max(line)) is not None]
+        return min(cores) if cores else None
 
-    quota = _read_int_file(cgroup_root / "cpu" / "cpu.cfs_quota_us")
-    period = _read_int_file(cgroup_root / "cpu" / "cpu.cfs_period_us")
+    root = cgroup_dirs[-1]
+    quota = _read_int_file(root / "cpu" / "cpu.cfs_quota_us")
+    period = _read_int_file(root / "cpu" / "cpu.cfs_period_us")
     if quota is None or period is None:
         return None
     return _quota_to_cores(quota=quota, period=period)
 
 
-def _read_cgroup_memory_limit(cgroup_root: Path) -> tuple[int | None, Path | None]:
+def _read_cgroup_memory_limit(cgroup_dirs: list[Path]) -> tuple[int | None, Path | None]:
     """Return ``(limit_bytes, current_usage_path)`` for the memory control group.
 
-    ``limit_bytes`` is ``None`` when memory is unbounded or no control group is
-    readable; ``current_usage_path`` points at the file holding current usage so
-    free memory can be recomputed cheaply on each heartbeat. cgroup v2
-    ``memory.max`` ("max" when unbounded) takes precedence over the v1
-    ``memory.limit_in_bytes`` value, which reports a near-``INT64_MAX`` sentinel
-    when unbounded.
+    Every level of the process's cgroup path may carry a v2 ``memory.max``
+    ("max" = unbounded); the effective limit is the smallest, and usage is read
+    from that same level — an ancestor limit is shared with siblings, so free
+    memory within it is the limit minus the whole subtree's usage. A hierarchy
+    with no readable ``memory.max`` at any level is treated as cgroup v1, whose
+    ``memory.limit_in_bytes`` reports a near-``INT64_MAX`` sentinel when
+    unbounded. ``(None, None)`` means no limit is enforced anywhere.
     """
-    v2_max = _read_text_file(cgroup_root / "memory.max")
-    if v2_max is not None:
-        if v2_max == "max":
-            return None, None
+    limits: list[tuple[int, Path]] = []
+    v2_seen = False
+    for directory in cgroup_dirs:
+        raw = _read_text_file(directory / "memory.max")
+        if raw is None:
+            continue
+        v2_seen = True
+        if raw == "max":
+            continue
         try:
-            v2_limit = int(v2_max)
+            limits.append((int(raw), directory))
         except ValueError:
+            continue
+    if v2_seen:
+        if not limits:
             return None, None
-        return v2_limit, cgroup_root / "memory.current"
+        limit, directory = min(limits, key=itemgetter(0))
+        return limit, directory / "memory.current"
 
-    limit = _read_int_file(cgroup_root / "memory" / "memory.limit_in_bytes")
-    if limit is None or limit >= _CGROUP_MEMORY_UNLIMITED_THRESHOLD:
+    root = cgroup_dirs[-1]
+    v1_limit = _read_int_file(root / "memory" / "memory.limit_in_bytes")
+    if v1_limit is None or v1_limit >= _CGROUP_MEMORY_UNLIMITED_THRESHOLD:
         return None, None
-    return limit, cgroup_root / "memory" / "memory.usage_in_bytes"
+    return v1_limit, root / "memory" / "memory.usage_in_bytes"
 
 
 def _host_memory_total() -> int | None:
@@ -200,17 +260,19 @@ class ProcessResources:
     only free memory, which moves with usage.
     """
 
-    def __init__(self, cgroup_root: Path = CGROUP_ROOT) -> None:
+    def __init__(self, cgroup_root: Path = CGROUP_ROOT, proc_cgroup: Path = PROC_SELF_CGROUP) -> None:
         self._cgroup_root = cgroup_root
+        self._proc_cgroup = proc_cgroup
         self._static: _StaticResources | None = None
 
     def _read_static(self) -> _StaticResources:
-        memory_limit, memory_current_path = _read_cgroup_memory_limit(self._cgroup_root)
+        cgroup_dirs = _own_cgroup_dirs(cgroup_root=self._cgroup_root, proc_cgroup=self._proc_cgroup)
+        memory_limit, memory_current_path = _read_cgroup_memory_limit(cgroup_dirs)
         memory_total = memory_limit if memory_limit is not None else _host_memory_total()
         return _StaticResources(
             host=socket.gethostname(),
             processor_available=psutil.cpu_count(logical=True),
-            processor_assigned=_read_cgroup_cpu_quota(self._cgroup_root),
+            processor_assigned=_read_cgroup_cpu_quota(cgroup_dirs),
             memory_total=memory_total,
             memory_limit=memory_limit,
             memory_current_path=memory_current_path,
