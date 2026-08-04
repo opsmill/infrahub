@@ -18,6 +18,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type {
   NodeCore,
   NodeFieldsWithMetadata,
@@ -71,6 +72,7 @@ export function CoreFileForm({
   isUpdate = false,
 }: CoreFileFormProps) {
   const auth = useAuth();
+  const { currentBranch } = useCurrentBranch();
   const { parentData, parentSchema } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
   const updateObject = useUpdateObjectMutation();
@@ -90,6 +92,7 @@ export function CoreFileForm({
     initialObject: currentObject,
     objectTemplate,
     auth,
+    isDefaultBranch: !!currentBranch.is_default,
     isFilterForm,
     pools: numberPools,
     isUpdate,

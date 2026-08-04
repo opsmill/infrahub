@@ -12,14 +12,12 @@ import {
   Tooltip,
 } from "@infrahub/ui";
 import { ArrowUpRightIcon, CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
-import { useQueryState } from "nuqs";
 import React from "react";
 import { type ButtonProps as AriaButtonProps, Collection } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Separator } from "@/shared/components/aria/separator";
 import { Row } from "@/shared/components/container";
-import { QSP } from "@/shared/config/qsp";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
@@ -102,7 +100,6 @@ interface BranchListProps {
 
 function BranchList({ closePopover, openCreateForm }: BranchListProps) {
   const { currentBranch, setCurrentBranch } = useCurrentBranch();
-  const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
   const { isAuthenticated } = useAuth();
   const [search, setSearch] = React.useState("");
   const trimmedSearch = search.trim();
@@ -113,7 +110,6 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
   const branches = data?.pages.flat() ?? [];
 
   function handleBranchChange(branch: BranchListItem) {
-    setBranchInQueryString(branch.is_default ? null : branch.name);
     setCurrentBranch(branch);
     closePopover();
   }
