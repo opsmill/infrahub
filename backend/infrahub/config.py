@@ -467,6 +467,8 @@ class BrokerSettings(BaseSettings):
         default_ports: dict[bool, int] = {True: 5671, False: 5672}
         if self.driver == BrokerDriver.NATS:
             return self.port or 4222
+        if self.driver == BrokerDriver.Redis:
+            return self.port or 6379
         return self.port or default_ports[self.tls_enabled]
 
 

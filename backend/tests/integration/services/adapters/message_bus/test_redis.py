@@ -15,8 +15,10 @@ from infrahub.components import ComponentType
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.send_echo_request import SendEchoRequestResponse
 from infrahub.message_bus.operations import execute_message
+from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.redis import RedisMessageBus
+from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import build_message_bus
 
 if TYPE_CHECKING:
@@ -199,17 +201,16 @@ async def test_redis_initial_setup(redis_api: RedisManager) -> None:
     agent_rpcs_groups = await redis_api.get_consumer_groups(f"{redis_api.namespace}:rpcs")
     await bus.shutdown()
 
-    # Check that events stream was created with expected consumer group
-    events_stream = next((s for s in api_streams if s.name == f"{redis_api.namespace}:events"), None)
-    assert events_stream is not None
-    assert f"{redis_api.namespace}-events" in events_stream.groups
-
-    # Check that RPCs stream was created
+    # The API server creates the work queue with its single consumer group so
+    # work published before the first git worker boots is not lost
     rpcs_stream = next((s for s in api_streams if s.name == f"{redis_api.namespace}:rpcs"), None)
     assert rpcs_stream is not None
-    assert f"{redis_api.namespace}-rpcs" in rpcs_stream.groups
+    assert rpcs_stream.groups == ["git-workers"]
 
-    # Check that git worker created its consumer group
+    # Event subscriptions are group-less, so no events consumer group exists
+    assert not any(f"{redis_api.namespace}-events" in s.groups for s in api_streams)
+
+    # Check that the git worker uses the same work queue group
     assert any(g.name == "git-workers" for g in agent_rpcs_groups)
 
 
@@ -288,7 +289,7 @@ async def _process_rpc_entry(
         body = body.encode()
     await execute_message(routing_key=routing_key, message_body=body, message_bus=bus)
     conn = await redis_api.get_connection()
-    await conn.xack(f"{redis_api.namespace}:rpcs", f"{redis_api.namespace}-rpcs", message_id)
+    await conn.xack(f"{redis_api.namespace}:rpcs", RedisMessageBus.RPCS_GROUP, message_id)
 
 
 async def _consume_rpc_messages(redis_api: RedisManager, bus: RedisMessageBus) -> None:
@@ -297,7 +298,7 @@ async def _consume_rpc_messages(redis_api: RedisManager, bus: RedisMessageBus) -
     while True:
         try:
             entries = await conn.xreadgroup(
-                groupname=f"{redis_api.namespace}-rpcs",
+                groupname=RedisMessageBus.RPCS_GROUP,
                 consumername="test-consumer",
                 streams={f"{redis_api.namespace}:rpcs": ">"},
                 count=1,
@@ -372,3 +373,119 @@ async def test_redis_on_message_invalid_routing_key(redis_api: RedisManager, fak
 
     assert fake_log.info_logs == []
     assert fake_log.error_logs == ["Invalid message received"]
+
+
+async def test_redis_event_broadcast(redis_api: RedisManager, fake_log: FakeLogger) -> None:
+    """Validates that events are delivered to every worker, including the publisher."""
+    api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+    git_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+
+    with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
+        await api_bus.publish(
+            message=messages.SendEchoRequest(message="broadcast"), routing_key="refresh.registry.invalid"
+        )
+        await asyncio.sleep(delay=1)
+        await api_bus.shutdown()
+        await git_bus.shutdown()
+
+    assert fake_log.error_logs == ["Invalid message received", "Invalid message received"]
+
+
+async def test_redis_event_binding_filter(redis_api: RedisManager, fake_log: FakeLogger) -> None:
+    """Validates that workers ignore events outside their bindings."""
+    bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+
+    with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
+        # refresh.git.* events are only bound by git workers, the API server must skip them
+        await bus.publish(message=messages.SendEchoRequest(message="git only"), routing_key="refresh.git.invalid")
+        await bus.publish(message=messages.SendEchoRequest(message="for api"), routing_key="refresh.registry.invalid")
+        await asyncio.sleep(delay=1)
+        await bus.shutdown()
+
+    assert fake_log.error_logs == ["Invalid message received"]
+
+
+async def test_redis_delayed_retry_republished(redis_api: RedisManager) -> None:
+    """Validates that failed-message retries are re-published after their delay."""
+    bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+    conn = await redis_api.get_connection()
+    rpcs_stream = f"{redis_api.namespace}:rpcs"
+
+    await bus.send(message=messages.SendEchoRequest(message="try again"), delay=MessageTTL.FIVE, is_retry=True)
+
+    assert await conn.xlen(rpcs_stream) == 0
+    await asyncio.sleep(delay=6)
+    assert await conn.xlen(rpcs_stream) == 1
+
+    await bus.shutdown()
+
+
+async def test_redis_pending_messages_reclaimed(redis_api: RedisManager, fake_log: FakeLogger) -> None:
+    """Validates that unacknowledged messages of dead consumers are re-processed."""
+    api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+    await api_bus.send(message=messages.SendEchoRequest(message="orphaned"))
+    await api_bus.shutdown()
+
+    # Simulate a worker that died mid-processing: deliver without acknowledging
+    conn = await redis_api.get_connection()
+    entries = await conn.xreadgroup(
+        groupname=RedisMessageBus.RPCS_GROUP,
+        consumername="dead-worker",
+        streams={f"{redis_api.namespace}:rpcs": ">"},
+        count=1,
+    )
+    assert entries
+
+    git_bus = RedisMessageBus(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+    git_bus.DELIVER_TIMEOUT = 0  # claim immediately instead of after 30 minutes
+    with patch("infrahub.message_bus.operations.send.echo.get_logger", return_value=fake_log):
+        await git_bus._initialize()
+        await asyncio.sleep(delay=1)
+        await git_bus.shutdown()
+
+    assert fake_log.info_logs == ["Received message: orphaned"]
+    assert fake_log.error_logs == []
+
+
+async def test_redis_worked_stream_trimmed(redis_api: RedisManager, fake_log: FakeLogger) -> None:
+    """Validates that acknowledged entries are trimmed from the work queue."""
+    api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+    git_bus = RedisMessageBus(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+    git_bus.MAINTENANCE_INTERVAL = 0.5
+
+    conn = await redis_api.get_connection()
+    rpcs_stream = f"{redis_api.namespace}:rpcs"
+
+    with patch("infrahub.message_bus.operations.send.echo.get_logger", return_value=fake_log):
+        await git_bus._initialize()
+        for index in range(3):
+            await api_bus.send(message=messages.SendEchoRequest(message=f"echo {index}"))
+        await asyncio.sleep(delay=3)
+        await git_bus.shutdown()
+        await api_bus.shutdown()
+
+    assert len(fake_log.info_logs) == 3
+    assert fake_log.error_logs == []
+    # Everything before the last delivered entry is trimmed away
+    assert await conn.xlen(rpcs_stream) <= 1
+
+
+async def test_redis_consumer_deregistered_on_shutdown(redis_api: RedisManager) -> None:
+    """Validates that a worker removes its work queue consumer when shutting down."""
+    bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+
+    consumers: list[str] = []
+    for _ in range(50):
+        groups = await redis_api.get_consumer_groups(f"{redis_api.namespace}:rpcs")
+        rpcs_group = next((g for g in groups if g.name == RedisMessageBus.RPCS_GROUP), None)
+        if rpcs_group and rpcs_group.consumers:
+            consumers = rpcs_group.consumers
+            break
+        await asyncio.sleep(delay=0.1)
+    assert consumers == [f"git-worker-{WORKER_IDENTITY}"]
+
+    await bus.shutdown()
+
+    groups = await redis_api.get_consumer_groups(f"{redis_api.namespace}:rpcs")
+    rpcs_group = next(g for g in groups if g.name == RedisMessageBus.RPCS_GROUP)
+    assert rpcs_group.consumers == []

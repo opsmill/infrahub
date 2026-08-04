@@ -10,6 +10,8 @@ from pydantic import ValidationError
 from infrahub.config import (
     SETTINGS,
     ApiSettings,
+    BrokerDriver,
+    BrokerSettings,
     DatabaseSettings,
     GitSettings,
     MainSettings,
@@ -359,3 +361,41 @@ def test_fixture_loaded_providers_have_expected_groups_claim(helper: TestHelper)
     assert config.security.get_oauth2_provider("provider2").groups_claim == "groups"
     assert config.security.get_oidc_provider("provider1").groups_claim == "roles"
     assert config.security.get_oidc_provider("provider2").groups_claim == "groups"
+
+
+@dataclass
+class BrokerServicePortCase:
+    name: str
+    driver: BrokerDriver
+    port: int | None
+    tls_enabled: bool
+    expected: int
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        BrokerServicePortCase(
+            name="rabbitmq_default", driver=BrokerDriver.RabbitMQ, port=None, tls_enabled=False, expected=5672
+        ),
+        BrokerServicePortCase(
+            name="rabbitmq_tls_default", driver=BrokerDriver.RabbitMQ, port=None, tls_enabled=True, expected=5671
+        ),
+        BrokerServicePortCase(
+            name="nats_default", driver=BrokerDriver.NATS, port=None, tls_enabled=False, expected=4222
+        ),
+        BrokerServicePortCase(
+            name="redis_default", driver=BrokerDriver.Redis, port=None, tls_enabled=False, expected=6379
+        ),
+        BrokerServicePortCase(
+            name="redis_tls_default", driver=BrokerDriver.Redis, port=None, tls_enabled=True, expected=6379
+        ),
+        BrokerServicePortCase(
+            name="redis_explicit_port", driver=BrokerDriver.Redis, port=7000, tls_enabled=False, expected=7000
+        ),
+    ],
+    ids=lambda case: case.name,
+)
+def test_broker_service_port(case: BrokerServicePortCase) -> None:
+    settings = BrokerSettings(driver=case.driver, port=case.port, tls_enabled=case.tls_enabled)
+    assert settings.service_port == case.expected
