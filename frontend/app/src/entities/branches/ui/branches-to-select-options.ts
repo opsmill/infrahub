@@ -12,8 +12,8 @@ export const branchesToSelectOptions = (branches: BranchListItem[]) =>
       created_at: branch.created_at,
     }))
     .sort((a, b) => {
-      // "main" always pins to the top.
-      if (a.name === "main") return -1;
-      if (b.name === "main") return 1;
+      // The default branch always pins to the top.
+      if (a.is_default) return -1;
+      if (b.is_default) return 1;
       return a.name.localeCompare(b.name);
     });

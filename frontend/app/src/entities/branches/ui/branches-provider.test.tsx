@@ -195,7 +195,7 @@ describe("BranchesProvider", () => {
 
     // THEN
     await expect
-      .element(component.getByText(/not found, you have been redirected to the main branch/))
+      .element(component.getByText(/not found, you have been redirected to the default branch/))
       .toBeVisible();
     await expect.poll(getBranchInUrl).toBeNull();
   });

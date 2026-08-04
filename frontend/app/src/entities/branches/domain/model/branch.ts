@@ -2,8 +2,6 @@ import type { BranchStatus } from "@/shared/api/graphql/generated/types";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
-export const DEFAULT_BRANCH_NAME = "main";
-
 // Explains the sync_with_git flag: it controls the Infrahub -> Git direction only,
 // and is not an indicator of whether a branch originated from Git.
 export const SYNC_WITH_GIT_DESCRIPTION =
