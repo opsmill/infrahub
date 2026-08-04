@@ -37,6 +37,10 @@ class TestBranchDetailsDefaultBranch:
         await expect(admin_page.get_by_text("default", exact=True)).to_be_visible()
         await expect(admin_page.get_by_role("button", name="View node metadata")).to_be_visible()
 
+        # Already working on main, so there is nothing to switch to
+        await expect(admin_page.get_by_test_id("branch-working-notice")).to_be_visible()
+        await expect(admin_page.get_by_test_id("switch-to-viewed-branch")).not_to_be_visible()
+
         # Tabs
         await expect(admin_page.get_by_role("navigation", name="Tabs")).not_to_be_visible()
 
@@ -112,6 +116,21 @@ class TestBranchDetailsNonDefaultBranch:
         # Going back to the Details tab (first tab) returns to the bare branch URL.
         await tabs_nav.get_by_text("Details").click()
         await expect(admin_page).to_have_url(re.compile(rf"/branches/{NON_DEFAULT_BRANCH}$"))
+
+    async def test_switch_to_viewed_branch_from_mismatch_notice(
+        self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle
+    ) -> None:
+        await admin_page.goto(f"/branches/{NON_DEFAULT_BRANCH}")
+
+        await expect(admin_page.get_by_test_id("branch-mismatch-notice")).to_contain_text(
+            f"You're viewing {NON_DEFAULT_BRANCH} but working on main"
+        )
+
+        await admin_page.get_by_test_id("switch-to-viewed-branch").click()
+
+        await expect(admin_page.get_by_test_id("branch-working-notice")).to_be_visible()
+        await expect(admin_page.get_by_test_id("branch-mismatch-notice")).not_to_be_visible()
+        await expect(admin_page.get_by_test_id("branch-selector-trigger")).to_contain_text(NON_DEFAULT_BRANCH)
 
     async def test_display_node_metadata(
         self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle

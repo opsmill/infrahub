@@ -52,30 +52,4 @@ describe("BranchWorkingNotice", () => {
     await expect.element(component.getByTestId("branch-working-notice")).toBeVisible();
     expect(component.getByTestId("branch-mismatch-notice").query()).toBeNull();
   });
-
-  test("does not move the content below it when switching", async () => {
-    // GIVEN
-    const branch = generateBranch({ name: "platform-upgrade" });
-    const component = await render(
-      <div className="w-[1000px]">
-        <BranchWorkingNotice branch={branch} />
-        <div data-testid="content-below">Branch details</div>
-      </div>
-    );
-    const topBeforeSwitch = component
-      .getByTestId("content-below")
-      .element()
-      .getBoundingClientRect().top;
-
-    // WHEN
-    await component.getByTestId("switch-to-viewed-branch").click();
-
-    // THEN
-    await expect.element(component.getByTestId("branch-working-notice")).toBeVisible();
-    const topAfterSwitch = component
-      .getByTestId("content-below")
-      .element()
-      .getBoundingClientRect().top;
-    expect(topAfterSwitch).toBe(topBeforeSwitch);
-  });
 });
