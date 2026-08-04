@@ -39,6 +39,12 @@ _DEFAULT_CPU_PERIOD_US = 100000
 # sits far above any real memory size yet below every kernel/page-size sentinel.
 _CGROUP_MEMORY_UNLIMITED_THRESHOLD = 2**62
 
+# Everything a resource self-read can raise: I/O failures (hostname lookup, the
+# pseudo-filesystem reads behind psutil) and psutil's own error family. Parse
+# errors never escape — every cgroup value is guarded where it is read — so a
+# caller retrying these is retrying transient conditions, not bugs.
+RESOURCE_READ_FAILURES = (OSError, psutil.Error)
+
 
 class WorkerResourceReading(BaseModel):
     """One process's view of its own CPU and memory allocation.
