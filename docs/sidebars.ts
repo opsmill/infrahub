@@ -383,6 +383,7 @@ const sidebars: SidebarsConfig = {
             },
             // Configure Infrahub (PR 4)
             { type: 'doc', id: 'deploy-manage/install-configure/configure-infrahub', label: 'Configure Infrahub' },
+            { type: 'doc', id: 'deploy-manage/install-configure/performance-tuning', label: 'Tune performance' },
             // Configuration reference — stays in reference/, cross-linked here (PR 4)
             { type: 'ref', id: 'reference/configuration', label: 'Configuration reference' },
           ],
