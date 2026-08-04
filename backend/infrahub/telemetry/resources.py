@@ -60,6 +60,27 @@ class WorkerResourceReading(BaseModel):
     memory_total: int | None = None
     memory_available: int | None = None
 
+    @classmethod
+    def failed(cls) -> WorkerResourceReading:
+        """The reading written when a process's self-read failed outright.
+
+        It carries no figures and a host stand-in, so it is recognisable as
+        failed (see ``is_failed``) and is dropped from aggregation rather than
+        summed or used for host dedup.
+        """
+        return cls(host="unknown")
+
+    @property
+    def is_failed(self) -> bool:
+        """Whether this reading is a failed self-read rather than a contribution.
+
+        A healthy host always reports at least its logical CPU count and memory
+        capacity; only a read that failed after its retries carries every figure
+        as ``None``. Derived from the field set so a new figure is covered
+        automatically.
+        """
+        return all(value is None for value in self.model_dump(exclude={"host"}).values())
+
 
 @dataclass(frozen=True)
 class ResourceAggregate:
@@ -227,21 +248,6 @@ def _sum_over_hosts(values: list[int | None]) -> int | None:
     return sum(value for value in values if value is not None)
 
 
-def _is_failed_reading(reading: WorkerResourceReading) -> bool:
-    """A reading carrying a host but no figure at all is a failed self-read.
-
-    A healthy host always reports its logical CPU count and memory capacity; only a
-    read that failed after its retries carries every figure as ``None``. Such a
-    reading is not a real contribution and must not null the fleet.
-    """
-    return (
-        reading.processor_available is None
-        and reading.processor_assigned is None
-        and reading.memory_total is None
-        and reading.memory_available is None
-    )
-
-
 def aggregate(readings: Iterable[WorkerResourceReading]) -> ResourceAggregate:
     """Collapse per-process readings into one figure per field for a component.
 
@@ -253,7 +259,7 @@ def aggregate(readings: Iterable[WorkerResourceReading]) -> ResourceAggregate:
     """
     by_host: dict[str, WorkerResourceReading] = {}
     for reading in readings:
-        if _is_failed_reading(reading):
+        if reading.is_failed:
             continue
         by_host.setdefault(reading.host, reading)
 

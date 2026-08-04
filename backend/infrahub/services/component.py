@@ -21,17 +21,16 @@ if TYPE_CHECKING:
 
 PRIMARY_API_SERVER = "workers:primary:api_server"
 WORKER_MATCH = re.compile(r":worker:([^:]+)")
-RESOURCE_COMPONENT_MATCH = re.compile(r"workers:resources:([^:]+):worker:")
+
+# Single owner of the resource-key layout: the writer f-string, the list-keys glob
+# and the parse regex are all derived from this prefix so they cannot drift apart.
+RESOURCE_KEY_PREFIX = "workers:resources:"
+RESOURCE_COMPONENT_MATCH = re.compile(re.escape(RESOURCE_KEY_PREFIX) + r"([^:]+):worker:")
 
 # The per-process resource read can transiently fail (a psutil hiccup, a momentary
 # hostname-lookup failure); a few immediate retries cover that before the reading
 # is written as null and the failure logged for traceability.
 RESOURCE_READ_MAX_ATTEMPTS = 3
-
-# Host stand-in written when the resource read fails outright; such a reading
-# carries no figures and is dropped from the aggregate, so the value is never
-# summed and only needs to be non-raising.
-_UNKNOWN_HOST = "unknown"
 
 log = get_logger()
 
@@ -129,7 +128,7 @@ class InfrahubComponent:
                 expires=KVTTL.FIFTEEN,
             )
             await self.cache.set(
-                key=f"workers:resources:{component}:worker:{WORKER_IDENTITY}",
+                key=f"{RESOURCE_KEY_PREFIX}{component}:worker:{WORKER_IDENTITY}",
                 value=self._read_own_resources().model_dump_json(),
                 expires=KVTTL.FIFTEEN,
             )
@@ -160,7 +159,7 @@ class InfrahubComponent:
             worker_id=WORKER_IDENTITY,
             error=str(last_error),
         )
-        return WorkerResourceReading(host=_UNKNOWN_HOST)
+        return WorkerResourceReading.failed()
 
     async def read_worker_resources(self) -> dict[str, dict[str, WorkerResourceReading]]:
         """Return the latest worker resource readings grouped by component and host.
@@ -169,7 +168,7 @@ class InfrahubComponent:
         report identical values, so a later reading for a host simply overwrites
         the earlier one.
         """
-        keys = await self.cache.list_keys(filter_pattern="workers:resources:*")
+        keys = await self.cache.list_keys(filter_pattern=f"{RESOURCE_KEY_PREFIX}*")
         values = await self.cache.get_values(keys=keys)
 
         grouped: dict[str, dict[str, WorkerResourceReading]] = {}
