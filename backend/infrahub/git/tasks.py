@@ -6,8 +6,13 @@ from infrahub_sdk.protocols import (
     CoreArtifact,
     CoreArtifactDefinition,
     CoreCheckDefinition,
+    CoreFileCheck,
+    CoreGenericRepository,
+    CoreProposedChange,
+    CoreReadOnlyRepository,
     CoreRepository,
     CoreRepositoryValidator,
+    CoreStandardCheck,
     CoreUserValidator,
 )
 from infrahub_sdk.uuidt import UUIDT
@@ -586,9 +591,7 @@ async def generate_request_artifact_definition(
     repository = transformation_repository.peer
     branch = await client.branch.get(branch_name=model.branch)
     if branch.sync_with_git:
-        repository = await client.get(
-            kind=InfrahubKind.GENERICREPOSITORY, id=repository.id, branch=model.branch, fragment=True
-        )
+        repository = await client.get(kind=CoreGenericRepository, id=repository.id, branch=model.branch, fragment=True)
     transform_location = ""
 
     convert_query_response = False
@@ -737,10 +740,8 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
         and model.repository_kind == InfrahubKind.REPOSITORY
     ):
         log.info(f"Merging {model.repository_kind}")
-        repo_source = await client.get(
-            kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id, branch=model.source_branch
-        )
-        repo_main = await client.get(kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id)
+        repo_source = await client.get(kind=CoreGenericRepository, id=model.repository_id, branch=model.source_branch)
+        repo_main = await client.get(kind=CoreGenericRepository, id=model.repository_id)
         repo_main.internal_status.value = RepositoryInternalStatus.ACTIVE.value
         repo_main.sync_status.value = repo_source.sync_status.value
 
@@ -751,11 +752,9 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
         log.info(f"Finished merging {model.repository_kind}")
 
     elif model.repository_kind == InfrahubKind.READONLYREPOSITORY:
-        repo_source = await client.get(
-            kind=InfrahubKind.READONLYREPOSITORY, id=model.repository_id, branch=model.source_branch
-        )
+        repo_source = await client.get(kind=CoreReadOnlyRepository, id=model.repository_id, branch=model.source_branch)
         repo_destination = await client.get(
-            kind=InfrahubKind.READONLYREPOSITORY, id=model.repository_id, branch=model.destination_branch
+            kind=CoreReadOnlyRepository, id=model.repository_id, branch=model.destination_branch
         )
 
         if (
@@ -873,7 +872,7 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
     client.request_context = context.to_request_context()
 
     definition = await client.get(kind=CoreCheckDefinition, id=model.check_definition_id, branch=model.branch_name)
-    proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+    proposed_change = await client.get(kind=CoreProposedChange, id=model.proposed_change)
     validator_execution_id = str(UUIDT())
     check_execution_ids: list[str] = []
     await proposed_change.validations.fetch()
@@ -989,7 +988,7 @@ async def trigger_user_checks(model: TriggerRepositoryUserChecks, context: Infra
     client.request_context = context.to_request_context()
 
     repository = await client.get(
-        kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id, branch=model.source_branch, fragment=True
+        kind=CoreGenericRepository, id=model.repository_id, branch=model.source_branch, fragment=True
     )
     await repository.checks.fetch()
 
@@ -1027,8 +1026,8 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, contex
     client = get_client()
     client.request_context = context.to_request_context()
 
-    repository = await client.get(kind=InfrahubKind.GENERICREPOSITORY, id=model.repository, branch=model.source_branch)
-    proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+    repository = await client.get(kind=CoreGenericRepository, id=model.repository, branch=model.source_branch)
+    proposed_change = await client.get(kind=CoreProposedChange, id=model.proposed_change)
 
     validator_execution_id = str(UUIDT())
     check_execution_ids: list[str] = []
@@ -1101,7 +1100,7 @@ async def run_check_merge_conflicts(model: CheckRepositoryMergeConflicts) -> Val
     client = get_client()
 
     success_condition = "-"
-    validator = await client.get(kind=InfrahubKind.REPOSITORYVALIDATOR, id=model.validator_id)
+    validator = await client.get(kind=CoreRepositoryValidator, id=model.validator_id)
     await validator.checks.fetch()
 
     repo = await get_initialized_repo(
@@ -1133,7 +1132,7 @@ async def run_check_merge_conflicts(model: CheckRepositoryMergeConflicts) -> Val
                 existing_checks.pop(conflict_key)
             else:
                 check = await client.create(
-                    kind=InfrahubKind.FILECHECK,
+                    kind=CoreFileCheck,
                     data={
                         "name": conflict,
                         "origin": "ConflictCheck",
@@ -1156,7 +1155,7 @@ async def run_check_merge_conflicts(model: CheckRepositoryMergeConflicts) -> Val
     else:
         validator_conclusion = ValidatorConclusion.SUCCESS
         check = await client.create(
-            kind=InfrahubKind.FILECHECK,
+            kind=CoreFileCheck,
             data={
                 "name": "Merge Conflict Check",
                 "origin": "ConflictCheck",
@@ -1183,7 +1182,7 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
     log = get_run_logger()
     client = get_client()
 
-    validator = await client.get(kind=InfrahubKind.USERVALIDATOR, id=model.validator_id)
+    validator = await client.get(kind=CoreUserValidator, id=model.validator_id)
     await validator.checks.fetch()
 
     repo = await get_initialized_repo(
@@ -1236,7 +1235,7 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
         await check.save()
     else:
         check = await client.create(
-            kind=InfrahubKind.STANDARDCHECK,
+            kind=CoreStandardCheck,
             data={
                 "name": model.name,
                 "origin": model.repository_id,

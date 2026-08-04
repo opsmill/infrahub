@@ -363,8 +363,6 @@ disable_error_code = [
 module = "infrahub.git.base"
 disable_error_code = [
     "arg-type",
-    "attr-defined",
-    "index",
     "return-value",
 ]
 
@@ -374,7 +372,6 @@ disable_error_code = [
     "arg-type",
     "assignment",
     "call-overload",
-    "return-value",
 ]
 
 [[tool.mypy.overrides]]
@@ -1680,18 +1677,64 @@ invalid-context-manager = "ignore"
 include = ["backend/infrahub/git/**"]
 
 [tool.ty.overrides.rules]
-##################################################################################################
-# The ignored rules below should be removed once the code has been updated, they are included    #
-# like this so that we can reactivate them one by one.                                           #
-##################################################################################################
-invalid-argument-type = "ignore"
-invalid-assignment = "ignore"
-invalid-await = "ignore"
-invalid-return-type = "ignore"
-no-matching-overload = "ignore"
-possibly-missing-attribute = "ignore"
-unresolved-attribute = "ignore"
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+##################################################################################################
+# backend/infrahub/git/** type-check debt, scoped per file instead of module-wide.               #
+#                                                                                                #
+# Each override's `include` list IS the remaining to-do list for that rule: fix a file, remove   #
+# it from the list, and that file starts being enforced. When a list is empty, delete the rule.  #
+# Every path in git/ not listed below is fully enforced for these rules.                         #
+##################################################################################################
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/git/base.py",
+    "backend/infrahub/git/integrator.py",
+    "backend/infrahub/git/repository.py",
+    "backend/infrahub/git/tasks.py",
+    "backend/infrahub/git/utils.py",
+]
+
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/git/integrator.py",
+    "backend/infrahub/git/tasks.py",
+    "backend/infrahub/git/utils.py",
+]
+
+[tool.ty.overrides.rules]
+invalid-assignment = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/git/integrator.py",
+    "backend/infrahub/git/tasks.py",
+    "backend/infrahub/git/utils.py",
+]
+
+[tool.ty.overrides.rules]
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = [
+    "backend/infrahub/git/base.py",
+    "backend/infrahub/git/integrator.py",
+    "backend/infrahub/git/repository.py",
+    "backend/infrahub/git/tasks.py",
+]
+
+[tool.ty.overrides.rules]
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/git/base.py"]
+
+[tool.ty.overrides.rules]
+invalid-return-type = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/database/**"]
