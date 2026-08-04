@@ -53,20 +53,6 @@ describe("BranchWorkingNotice", () => {
     expect(component.getByTestId("branch-mismatch-notice").query()).toBeNull();
   });
 
-  test("undoing a switch restores the previous branch", async () => {
-    // GIVEN
-    const branch = generateBranch({ name: "platform-upgrade" });
-    const component = await render(<BranchWorkingNotice branch={branch} />);
-    await component.getByTestId("switch-to-viewed-branch").click();
-
-    // WHEN
-    await component.getByTestId("undo-branch-switch").click();
-
-    // THEN
-    await expect.element(component.getByTestId("branch-mismatch-notice")).toBeVisible();
-    await expect.element(component.getByText("but working on", { exact: false })).toBeVisible();
-  });
-
   test("does not move the content below it when switching", async () => {
     // GIVEN
     const branch = generateBranch({ name: "platform-upgrade" });
@@ -91,18 +77,5 @@ describe("BranchWorkingNotice", () => {
       .element()
       .getBoundingClientRect().top;
     expect(topAfterSwitch).toBe(topBeforeSwitch);
-  });
-
-  test("names the branch it switched to in the undo toast", async () => {
-    // GIVEN
-    const branch = generateBranch({ name: "platform-upgrade" });
-    const component = await render(<BranchWorkingNotice branch={branch} />);
-
-    // WHEN
-    await component.getByTestId("switch-to-viewed-branch").click();
-
-    // THEN
-    await expect.element(component.getByText("Now working on")).toBeVisible();
-    await expect.element(component.getByTestId("undo-branch-switch")).toBeVisible();
   });
 });

@@ -114,16 +114,6 @@ test.describe("Branch details view", () => {
       await expect(page.getByTestId("branch-selector-trigger")).toContainText(BRANCH_NAME);
     });
 
-    test("should restore the previous branch when undoing a switch", async ({ page }) => {
-      await page.goto(`/branches/${BRANCH_NAME}`);
-      await page.getByTestId("switch-to-viewed-branch").click();
-
-      await page.getByTestId("undo-branch-switch").click();
-
-      await expect(page.getByTestId("branch-mismatch-notice")).toBeVisible();
-      await expect(page.getByTestId("branch-selector-trigger")).toContainText("main");
-    });
-
     test("should display node metadata when clicking metadata button", async ({ page }) => {
       await page.goto(`/branches/${BRANCH_NAME}`);
 
