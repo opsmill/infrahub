@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import time
+from dataclasses import dataclass
+from fnmatch import fnmatch
 from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, TypeVar
 
 import redis.asyncio as redis
@@ -19,13 +22,13 @@ from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
+    from redis.typing import EncodableT, FieldT
+
     from infrahub.config import BrokerSettings
     from infrahub.message_bus.types import MessageTTL
 
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
-
-publish_tasks: set[asyncio.Task] = set()
 
 
 async def _add_request_id(message: InfrahubMessage) -> None:
@@ -34,25 +37,53 @@ async def _add_request_id(message: InfrahubMessage) -> None:
     message.meta.request_id = log_data.get("request_id", "")
 
 
+@dataclass
+class StreamSubscription:
+    """Describes how one consumer task reads a Redis stream.
+
+    Without a group the stream is read directly from `start_id`, tracking
+    concrete entry ids afterwards. With a group, entries are read through
+    `XREADGROUP` and acknowledged when `ack_messages` is set. When `bindings`
+    is set, entries whose routing key matches no pattern are skipped.
+    """
+
+    stream: str
+    consumer: str
+    callback: Callable[[dict], Awaitable[None]]
+    group: str | None = None
+    ack_messages: bool = False
+    start_id: str = "0"
+    bindings: list[str] | None = None
+
+
 class RedisMessageBus(InfrahubMessageBus):
     """Message bus implementation using Redis Streams.
 
-    This implementation uses Redis Streams for message queuing with consumer groups
-    for reliable message delivery and processing.
+    Events are broadcast by having every worker read the shared events stream
+    independently, work-queue messages are distributed through a consumer
+    group, and RPC replies flow through a per-worker callback stream.
     """
 
     # Stream and consumer group names
     EVENTS_STREAM = "events"
     RPCS_STREAM = "rpcs"
     CALLBACK_STREAM_PREFIX = "callback"
-    CONSUMER_GROUP = "workers"
+    RPCS_GROUP = "git-workers"
+
+    # Approximate upper bound for the events stream; events are fire-and-forget
+    # broadcasts so older entries only need to survive long enough for live
+    # readers to catch up.
+    EVENTS_STREAM_MAXLEN = 10_000
+
+    # Seconds between the pending-claim and trim passes of a group consumer.
+    MAINTENANCE_INTERVAL: float = 60.0
 
     def __init__(self, component_type: ComponentType, settings: BrokerSettings | None = None) -> None:
         self.settings = settings or config.SETTINGS.broker
         self.connection: redis.Redis
-        self.callback_stream: str
-        self.events_stream: str
-        self.rpcs_stream: str
+        self.events_stream = f"{self.settings.namespace}:{self.EVENTS_STREAM}"
+        self.rpcs_stream = f"{self.settings.namespace}:{self.RPCS_STREAM}"
+        self.callback_stream = f"{self.settings.namespace}:{self.CALLBACK_STREAM_PREFIX}:{WORKER_IDENTITY}"
         self.message_enrichers: list[MessageFunction] = []
 
         self.loop = asyncio.get_running_loop()
@@ -60,6 +91,8 @@ class RedisMessageBus(InfrahubMessageBus):
 
         self.component_type: ComponentType = component_type
         self._consumer_tasks: list[asyncio.Task] = []
+        self._publish_tasks: set[asyncio.Task] = set()
+        self._group_memberships: list[tuple[str, str, str]] = []
         self._shutdown_event: asyncio.Event = asyncio.Event()
 
     @classmethod
@@ -100,11 +133,6 @@ class RedisMessageBus(InfrahubMessageBus):
             decode_responses=False,  # We handle decoding ourselves for binary data
         )
 
-        # Set up stream names with namespace
-        self.events_stream = f"{self.settings.namespace}:{self.EVENTS_STREAM}"
-        self.rpcs_stream = f"{self.settings.namespace}:{self.RPCS_STREAM}"
-        self.callback_stream = f"{self.settings.namespace}:{self.CALLBACK_STREAM_PREFIX}:{WORKER_IDENTITY}"
-
         if self.component_type == ComponentType.API_SERVER:
             await self._initialize_api_server()
         elif self.component_type == ComponentType.GIT_AGENT:
@@ -114,17 +142,38 @@ class RedisMessageBus(InfrahubMessageBus):
         """Shutdown the message bus and clean up resources."""
         self._shutdown_event.set()
 
-        # Cancel consumer tasks
         for task in self._consumer_tasks:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
+
+        for task in list(self._publish_tasks):
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+        with contextlib.suppress(redis.RedisError):
+            await self._deregister_consumers()
 
         # Clean up callback stream
         with contextlib.suppress(redis.RedisError):
             await self.connection.delete(self.callback_stream)
 
         await self.connection.aclose()
+
+    async def _deregister_consumers(self) -> None:
+        """Remove this worker's consumers from their groups.
+
+        A consumer that still owns pending entries is kept: it may have been
+        cancelled mid-message, and deleting it would discard those entries
+        instead of leaving them for a peer to claim.
+        """
+        for stream, group, consumer in self._group_memberships:
+            pending = await self.connection.xpending_range(
+                stream, group, min="-", max="+", count=1, consumername=consumer
+            )
+            if not pending:
+                await self.connection.xgroup_delconsumer(stream, group, consumer)
 
     async def _create_stream_and_group(self, stream: str, group: str) -> None:
         """Create a stream and consumer group if they don't exist.
@@ -144,70 +193,80 @@ class RedisMessageBus(InfrahubMessageBus):
             if "BUSYGROUP" not in str(exc):
                 raise
 
-    async def _consume_stream(
-        self,
-        stream: str,
-        group: str | None,
-        consumer: str,
-        callback: Callable[[dict], Awaitable[None]],
-        ack_messages: bool = True,
-    ) -> None:
-        """Consume messages from a Redis stream.
+    async def _get_last_stream_id(self, stream: str) -> str:
+        """Return the id of the most recent entry in a stream, or "0" if the stream doesn't exist."""
+        try:
+            info = await self.connection.xinfo_stream(stream)
+        except redis.ResponseError:
+            return "0"
+        last_id = info.get("last-generated-id", "0")
+        if isinstance(last_id, bytes):
+            return last_id.decode()
+        return last_id
+
+    def _maintenance_due(self, last_maintenance: float | None) -> bool:
+        return last_maintenance is None or time.monotonic() - last_maintenance > self.MAINTENANCE_INTERVAL
+
+    async def _consume_stream(self, subscription: StreamSubscription) -> None:
+        """Consume messages from a Redis stream until shutdown.
 
         Args:
-            stream: The stream name to consume from.
-            group: The consumer group name (None for direct stream reads).
-            consumer: The consumer name.
-            callback: Async callback function to process messages.
-            ack_messages: Whether to acknowledge messages after processing.
+            subscription: The stream subscription to consume.
 
         """
-        # Group-less consumption starts at "0" and then tracks concrete entry ids.
-        # The only stream consumed this way is the per-process callback stream, so
-        # replaying from the start is safe, while "$" would silently drop entries
-        # added before the first XREAD or between two XREADs on an idle stream.
-        last_id = ">" if group else "0"
+        last_id = ">" if subscription.group else subscription.start_id
+        last_maintenance: float | None = None
 
         while not self._shutdown_event.is_set():
             try:
-                entries, last_id = await self._read_stream_entries(stream, group, consumer, last_id)
+                if subscription.group and self._maintenance_due(last_maintenance):
+                    await self._claim_pending_messages(subscription)
+                    await self._trim_worked_stream(subscription)
+                    last_maintenance = time.monotonic()
+
+                entries, last_id = await self._read_stream_entries(subscription, last_id)
                 if not entries:
                     continue
 
-                await self._process_stream_entries(entries, stream, group, callback, ack_messages)
+                await self._process_stream_entries(entries, subscription)
 
             except asyncio.CancelledError:
                 break
-            except redis.RedisError:
+            except redis.RedisError as exc:
+                if subscription.group and isinstance(exc, redis.ResponseError) and "NOGROUP" in str(exc):
+                    get_logger().warning(
+                        "Stream or consumer group missing, recreating",
+                        stream=subscription.stream,
+                        group=subscription.group,
+                    )
+                    with contextlib.suppress(redis.RedisError):
+                        await self._create_stream_and_group(subscription.stream, subscription.group)
+                    continue
                 get_logger().exception("Redis error in consumer")
                 await asyncio.sleep(1)  # Back off on errors
 
-    async def _read_stream_entries(
-        self, stream: str, group: str | None, consumer: str, last_id: str
-    ) -> tuple[list, str]:
+    async def _read_stream_entries(self, subscription: StreamSubscription, last_id: str) -> tuple[list, str]:
         """Read entries from a Redis stream.
 
         Args:
-            stream: The stream name to read from.
-            group: The consumer group name (None for direct reads).
-            consumer: The consumer name.
+            subscription: The stream subscription to read for.
             last_id: The last message ID read.
 
         Returns:
             A tuple of (entries list, updated last_id).
 
         """
-        if group:
+        if subscription.group:
             entries = await self.connection.xreadgroup(
-                groupname=group,
-                consumername=consumer,
-                streams={stream: last_id},
+                groupname=subscription.group,
+                consumername=subscription.consumer,
+                streams={subscription.stream: last_id},
                 count=1,
                 block=1000,
             )
         else:
             entries = await self.connection.xread(
-                streams={stream: last_id},
+                streams={subscription.stream: last_id},
                 count=1,
                 block=1000,
             )
@@ -216,58 +275,109 @@ class RedisMessageBus(InfrahubMessageBus):
 
         return entries or [], last_id
 
-    async def _process_stream_entries(
-        self,
-        entries: list,
-        stream: str,
-        group: str | None,
-        callback: Callable[[dict], Awaitable[None]],
-        ack_messages: bool,
-    ) -> None:
+    async def _process_stream_entries(self, entries: list, subscription: StreamSubscription) -> None:
         """Process entries from a Redis stream.
 
         Args:
             entries: List of stream entries to process.
-            stream: The stream name.
-            group: The consumer group name.
-            callback: Async callback function to process messages.
-            ack_messages: Whether to acknowledge messages after processing.
+            subscription: The stream subscription the entries were read for.
 
         """
         for _stream_name, stream_entries in entries:
             for message_id, message_data in stream_entries:
-                await self._process_single_message(message_id, message_data, stream, group, callback, ack_messages)
+                await self._process_single_message(message_id, message_data, subscription)
 
     async def _process_single_message(
-        self,
-        message_id: bytes,
-        message_data: dict,
-        stream: str,
-        group: str | None,
-        callback: Callable[[dict], Awaitable[None]],
-        ack_messages: bool,
+        self, message_id: bytes, message_data: dict, subscription: StreamSubscription
     ) -> None:
         """Process a single message from a stream.
 
         Args:
             message_id: The message ID.
             message_data: The message data.
-            stream: The stream name.
-            group: The consumer group name.
-            callback: Async callback function.
-            ack_messages: Whether to acknowledge the message.
+            subscription: The stream subscription the message was read for.
 
         """
         try:
-            await callback(message_data)
-            if ack_messages and group:
-                await self.connection.xack(stream, group, message_id)
+            if self._matches_bindings(message_data=message_data, bindings=subscription.bindings):
+                await subscription.callback(message_data)
         except Exception:
+            # Failed messages are retried through a delayed re-publish, so the
+            # original entry is acknowledged either way.
             get_logger().exception("Error processing message", message_id=message_id)
-            if ack_messages and group:
-                # Acknowledge even on error to avoid infinite retries
-                # The execute_message handles retries internally
-                await self.connection.xack(stream, group, message_id)
+        if subscription.ack_messages and subscription.group:
+            await self.connection.xack(subscription.stream, subscription.group, message_id)
+
+    @staticmethod
+    def _matches_bindings(message_data: dict, bindings: list[str] | None) -> bool:
+        """Check whether an entry's routing key matches one of the binding patterns."""
+        if bindings is None:
+            return True
+        routing_key = message_data.get(b"routing_key") or message_data.get("routing_key") or b""
+        if isinstance(routing_key, bytes):
+            routing_key = routing_key.decode()
+        return any(fnmatch(routing_key, pattern) for pattern in bindings)
+
+    async def _claim_pending_messages(self, subscription: StreamSubscription) -> None:
+        """Take over entries whose owner stopped before acknowledging them.
+
+        An entry left pending for longer than DELIVER_TIMEOUT is considered
+        abandoned by a dead worker and is re-processed here; nothing
+        legitimately runs longer than that, so live handlers are never
+        double-executed.
+        """
+        if not subscription.group:
+            return
+
+        start_id = "0-0"
+        while not self._shutdown_event.is_set():
+            response = await self.connection.xautoclaim(
+                name=subscription.stream,
+                groupname=subscription.group,
+                consumername=subscription.consumer,
+                min_idle_time=self.DELIVER_TIMEOUT * 1000,
+                start_id=start_id,
+                count=10,
+            )
+            next_start_id, claimed = response[0], response[1]
+            if not claimed:
+                break
+
+            for message_id, message_data in claimed:
+                if message_data is None:
+                    # The entry was trimmed while pending; acknowledge to stop re-claiming it.
+                    await self.connection.xack(subscription.stream, subscription.group, message_id)
+                    continue
+                await self._process_single_message(message_id, message_data, subscription)
+
+            start_id = next_start_id
+
+    async def _trim_worked_stream(self, subscription: StreamSubscription) -> None:
+        """Delete entries the consumer group is done with.
+
+        The stream is trimmed up to the oldest entry still pending in the
+        group, so entries a crashed worker never acknowledged stay claimable.
+        With nothing pending, everything before the group's last delivered
+        entry is acknowledged history and can go.
+        """
+        if not subscription.group:
+            return
+
+        pending_summary = await self.connection.xpending(subscription.stream, subscription.group)
+        threshold = pending_summary.get("min") if pending_summary.get("pending") else None
+
+        if threshold is None:
+            group_name = subscription.group.encode()
+            groups = await self.connection.xinfo_groups(subscription.stream)
+            for group_info in groups:
+                if group_info.get("name") in (group_name, subscription.group):
+                    threshold = group_info.get("last-delivered-id")
+                    break
+
+        if threshold in (None, b"0-0", "0-0"):
+            return
+
+        await self.connection.xtrim(subscription.stream, minid=threshold, approximate=False)
 
     def _decode_message_data(self, data: dict) -> dict:
         """Decode message data from Redis bytes to strings/dicts.
@@ -355,33 +465,38 @@ class RedisMessageBus(InfrahubMessageBus):
                     body = data.get("body", b"")
                     if isinstance(body, str):
                         body = body.encode()
-                    delay = await execute_message(routing_key=routing_key, message_body=body, message_bus=self)
-                    if delay:
-                        # Schedule retry with delay
-                        await asyncio.sleep(delay / 1000)
+                    # Failure retries are re-published with a delay, so there is
+                    # nothing to do with the returned TTL here.
+                    await execute_message(routing_key=routing_key, message_body=body, message_bus=self)
                 else:
                     get_logger().error("Invalid message received", message=f"{data!r}")
         finally:
             if token is not None:
                 context.detach(token)
 
-    async def _subscribe_events(self, identity: str) -> None:
-        """Subscribe to event streams.
+    async def _subscribe_events(self, identity: str, bindings: list[str]) -> None:
+        """Subscribe this worker to the shared events stream.
+
+        Every worker reads the stream independently starting from its current
+        tail, giving broadcast semantics without durable per-worker state: a
+        worker that goes away leaves nothing behind, and one that starts up
+        only sees events published from that point on.
 
         Args:
             identity: Consumer identity string.
+            bindings: Routing key patterns this worker handles.
 
         """
-        # For events, we use a pattern-based approach with consumer groups
-        await self._create_stream_and_group(self.events_stream, f"{self.settings.namespace}-events")
-
+        start_id = await self._get_last_stream_id(self.events_stream)
         task = asyncio.create_task(
             self._consume_stream(
-                stream=self.events_stream,
-                group=f"{self.settings.namespace}-events",
-                consumer=identity,
-                callback=self.on_callback,
-                ack_messages=True,
+                StreamSubscription(
+                    stream=self.events_stream,
+                    consumer=identity,
+                    callback=self.on_callback,
+                    start_id=start_id,
+                    bindings=bindings,
+                )
             )
         )
         self._consumer_tasks.append(task)
@@ -389,60 +504,62 @@ class RedisMessageBus(InfrahubMessageBus):
     async def _setup_callback(self, identity: str) -> None:
         """Set up callback stream for RPC responses.
 
+        The callback stream is unique to this process, so reading from "0" is
+        safe, while "$" would silently drop entries added before the first
+        XREAD or between two XREADs on an idle stream.
+
         Args:
             identity: Consumer identity string.
 
         """
-        # Callback stream doesn't use consumer groups - direct reads
         task = asyncio.create_task(
             self._consume_stream(
-                stream=self.callback_stream,
-                group=None,
-                consumer=identity,
-                callback=self.on_callback,
-                ack_messages=False,
+                StreamSubscription(
+                    stream=self.callback_stream,
+                    consumer=identity,
+                    callback=self.on_callback,
+                )
             )
         )
         self._consumer_tasks.append(task)
 
     async def _initialize_api_server(self) -> None:
         """Initialize message bus for API server component."""
-        # Create events stream and consumer group
-        await self._create_stream_and_group(self.events_stream, f"{self.settings.namespace}-events")
+        # Create the work queue group up front so work published before the
+        # first git worker boots is delivered once one joins.
+        await self._create_stream_and_group(self.rpcs_stream, self.RPCS_GROUP)
 
-        # Create RPC stream and consumer group
-        await self._create_stream_and_group(self.rpcs_stream, f"{self.settings.namespace}-rpcs")
+        await self._subscribe_events(identity=f"api-worker-{WORKER_IDENTITY}", bindings=self.event_bindings)
 
-        # Subscribe to events
-        await self._subscribe_events(f"api-worker-{WORKER_IDENTITY}")
-
-        # Set up callback queue for RPC responses
-        await self._setup_callback(f"api-worker-{WORKER_IDENTITY}")
+        await self._setup_callback(identity=f"api-worker-{WORKER_IDENTITY}")
 
         self.message_enrichers.append(_add_request_id)
 
     async def _initialize_git_worker(self) -> None:
         """Initialize message bus for Git worker component."""
-        # Subscribe to events
-        await self._subscribe_events(f"git-worker-{WORKER_IDENTITY}")
+        await self._subscribe_events(
+            identity=f"git-worker-{WORKER_IDENTITY}",
+            bindings=self.event_bindings + self.broadcasted_event_bindings,
+        )
 
-        # Create consumer group for RPC stream
-        await self._create_stream_and_group(self.rpcs_stream, "git-workers")
+        await self._create_stream_and_group(self.rpcs_stream, self.RPCS_GROUP)
 
-        # Start consuming from RPC stream
+        consumer = f"git-worker-{WORKER_IDENTITY}"
+        self._group_memberships.append((self.rpcs_stream, self.RPCS_GROUP, consumer))
         task = asyncio.create_task(
             self._consume_stream(
-                stream=self.rpcs_stream,
-                group="git-workers",
-                consumer=f"git-worker-{WORKER_IDENTITY}",
-                callback=self.on_message,
-                ack_messages=True,
+                StreamSubscription(
+                    stream=self.rpcs_stream,
+                    group=self.RPCS_GROUP,
+                    consumer=consumer,
+                    callback=self.on_message,
+                    ack_messages=True,
+                )
             )
         )
         self._consumer_tasks.append(task)
 
-        # Set up callback queue
-        await self._setup_callback(f"git-worker-{WORKER_IDENTITY}")
+        await self._setup_callback(identity=consumer)
 
     async def _publish_with_delay(self, message: InfrahubMessage, routing_key: str, delay: MessageTTL) -> None:
         """Publish a message after a delay.
@@ -457,7 +574,11 @@ class RedisMessageBus(InfrahubMessageBus):
         await self.publish(message, routing_key)
 
     async def publish(
-        self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
+        self,
+        message: InfrahubMessage,
+        routing_key: str,
+        delay: MessageTTL | None = None,
+        is_retry: bool = False,  # noqa: ARG002
     ) -> None:
         """Publish a message to the appropriate stream.
 
@@ -472,13 +593,11 @@ class RedisMessageBus(InfrahubMessageBus):
             span.set_attribute("routing_key", routing_key)
 
             if delay:
-                if is_retry:
-                    # Delayed retries are handled in the message processor
-                    return
-                # Use asyncio task for delayed publish
+                # Redis has no broker-side delayed delivery; the pending publish
+                # only survives as long as this process does.
                 task = asyncio.create_task(self._publish_with_delay(message, routing_key, delay))
-                publish_tasks.add(task)
-                task.add_done_callback(publish_tasks.discard)
+                self._publish_tasks.add(task)
+                task.add_done_callback(self._publish_tasks.discard)
                 return
 
             for enricher in self.message_enrichers:
@@ -504,15 +623,16 @@ class RedisMessageBus(InfrahubMessageBus):
             # Determine which stream to publish to based on routing key
             stream = self._get_stream_for_routing_key(routing_key)
 
-            await self.connection.xadd(
-                stream,
-                {
-                    "routing_key": routing_key,
-                    "body": message.body,
-                    "headers": ujson.dumps(headers),
-                    "priority": str(message.meta.priority or 0),
-                },
-            )
+            fields: dict[FieldT, EncodableT] = {
+                "routing_key": routing_key,
+                "body": message.body,
+                "headers": ujson.dumps(headers),
+                "priority": str(message.meta.priority or 0),
+            }
+            if stream == self.events_stream:
+                await self.connection.xadd(stream, fields, maxlen=self.EVENTS_STREAM_MAXLEN, approximate=True)
+            else:
+                await self.connection.xadd(stream, fields)
 
     def _get_stream_for_routing_key(self, routing_key: str) -> str:
         """Determine the appropriate stream for a routing key.
@@ -525,7 +645,7 @@ class RedisMessageBus(InfrahubMessageBus):
 
         """
         # Events go to events stream, work items go to RPCs stream
-        if routing_key.startswith(("refresh.registry.", "refresh.git.")):
+        if any(fnmatch(routing_key, pattern) for pattern in self.event_bindings + self.broadcasted_event_bindings):
             return self.events_stream
         return self.rpcs_stream
 

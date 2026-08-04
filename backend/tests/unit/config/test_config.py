@@ -11,6 +11,8 @@ from structlog.testing import capture_logs
 from infrahub.config import (
     SETTINGS,
     ApiSettings,
+    BrokerDriver,
+    BrokerSettings,
     CacheSettings,
     DatabaseSettings,
     GitSettings,
@@ -485,3 +487,38 @@ def test_cache_url_supersedes_a_username_without_password() -> None:
     settings = CacheSettings(url=SecretStr("redis://user:secret@cache:6379/0"), username="user")
 
     assert settings.url is not None
+
+
+@dataclass
+class BrokerServicePortCase:
+    name: str
+    driver: BrokerDriver
+    port: int | None
+    tls_enabled: bool
+    expected: int
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        BrokerServicePortCase(
+            name="rabbitmq_default", driver=BrokerDriver.RabbitMQ, port=None, tls_enabled=False, expected=5672
+        ),
+        BrokerServicePortCase(
+            name="rabbitmq_tls_default", driver=BrokerDriver.RabbitMQ, port=None, tls_enabled=True, expected=5671
+        ),
+        BrokerServicePortCase(
+            name="redis_default", driver=BrokerDriver.Redis, port=None, tls_enabled=False, expected=6379
+        ),
+        BrokerServicePortCase(
+            name="redis_tls_default", driver=BrokerDriver.Redis, port=None, tls_enabled=True, expected=6379
+        ),
+        BrokerServicePortCase(
+            name="redis_explicit_port", driver=BrokerDriver.Redis, port=7000, tls_enabled=False, expected=7000
+        ),
+    ],
+    ids=lambda case: case.name,
+)
+def test_broker_service_port(case: BrokerServicePortCase) -> None:
+    settings = BrokerSettings(driver=case.driver, port=case.port, tls_enabled=case.tls_enabled)
+    assert settings.service_port == case.expected
