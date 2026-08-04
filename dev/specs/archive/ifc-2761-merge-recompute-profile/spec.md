@@ -2,7 +2,7 @@
 
 **Feature Branch**: `merge-recompute-profile-ifc-2761`
 **Created**: 2026-06-22
-**Status**: Draft
+**Status**: Extracted
 **Jira**: [IFC-2761](https://opsmill.atlassian.net/browse/IFC-2761) (epic [IFC-2705](https://opsmill.atlassian.net/browse/IFC-2705)) — first task only
 **Input**: Profile branch merge and rebase recompute cost at scale to locate the dominant cost center before any coalescing redesign.
 

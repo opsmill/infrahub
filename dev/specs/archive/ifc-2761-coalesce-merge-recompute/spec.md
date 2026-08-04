@@ -2,7 +2,7 @@
 
 **Feature Branch**: `coalesce-merge-recompute-ifc-2761`
 **Created**: 2026-06-25
-**Status**: Draft
+**Status**: Extracted
 **Jira**: [IFC-2761](https://opsmill.atlassian.net/browse/IFC-2761) (the coalescing redesign, the work after the profile) · epic [INFP-608](https://opsmill.atlassian.net/browse/INFP-608)
 **Input**: Coalesce the merge and rebase recompute fan-out so recompute work after a merge or rebase scales with the number of affected derived values, not with the changed-node count times automations.
 
