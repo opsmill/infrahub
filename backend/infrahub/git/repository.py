@@ -367,16 +367,18 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         return self
 
     async def resolve_checkout_ref(self) -> str:
-        if not self.ref:
+        ref = self.ref
+        if not ref:
             repository = await self.sdk.get(
                 kind=CoreReadOnlyRepository,
                 name__value=self.name,
                 exclude=["tags", "credential"],
                 raise_when_missing=True,
             )
-            self.ref = repository.ref.value
+            ref = repository.ref.value
+            self.ref = ref
 
-        return self.ref
+        return ref
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:  # noqa: ARG002
         """Always get the latest commit for this repository's ref on the remote.
