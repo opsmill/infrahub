@@ -579,7 +579,7 @@ class BrokerSettings(BaseSettings):
     )
     driver: BrokerDriver = Field(
         default=BrokerDriver.RabbitMQ,
-        description="Message bus implementation. RabbitMQ is the only supported value.",
+        description="Message bus implementation. The redis driver is experimental.",
     )
     queue_type: BrokerQueueType = Field(
         default=BrokerQueueType.CLASSIC,
