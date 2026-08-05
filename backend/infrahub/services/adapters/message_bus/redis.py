@@ -713,9 +713,7 @@ class RedisMessageBus(InfrahubMessageBus):
                         "Failed to deliver delayed messages, retrying after a delay", count=len(retried)
                     )
                 if dead:
-                    get_logger().error(
-                        "Parked undeliverable delayed messages in the dead-letter list", count=len(dead)
-                    )
+                    get_logger().error("Parked undeliverable delayed messages in the dead-letter list", count=len(dead))
             except asyncio.CancelledError:
                 break
             except redis.RedisError:
