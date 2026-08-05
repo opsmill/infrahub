@@ -446,6 +446,34 @@ async def test_redis_delayed_retry_survives_publisher_shutdown(redis_api: RedisM
     assert stream_messages[0]["data"]["routing_key"] == "send.echo.request"
 
 
+async def test_redis_delayed_delivery_isolates_bad_entries(redis_api: RedisManager, fake_log: FakeLogger) -> None:
+    """Validates that an undeliverable delayed entry neither blocks nor duplicates the other entries."""
+    conn = await redis_api.get_connection()
+    delayed_queue = f"{redis_api.namespace}:delayed"
+    poison_stream = f"{redis_api.namespace}:poison"
+    good_stream = f"{redis_api.namespace}:rpcs"
+
+    # XADD onto a key holding a plain string fails with WRONGTYPE
+    await conn.set(poison_stream, "not-a-stream")
+
+    entry_fields = {"routing_key": "send.echo.request", "body": "{}", "headers": "{}", "priority": "3"}
+    poison_member = ujson.dumps({"id": "poison", "stream": poison_stream, "fields": entry_fields})
+    good_member = ujson.dumps({"id": "good", "stream": good_stream, "fields": entry_fields})
+    malformed_member = "not json"
+    # All three entries are due immediately; the failing ones sort first
+    await conn.zadd(delayed_queue, {poison_member: 1, malformed_member: 2, good_member: 3})
+
+    with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
+        bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+        # Several delivery scans pass; re-delivery of the good entry would show up as extra stream entries
+        await asyncio.sleep(delay=2.5)
+        await bus.shutdown()
+
+    assert await conn.xlen(good_stream) == 1
+    assert set(await conn.zrange(delayed_queue, 0, -1)) == {poison_member, malformed_member}
+    assert "Failed to deliver delayed messages, keeping them queued for retry" in fake_log.error_logs
+
+
 async def test_redis_pending_messages_reclaimed(redis_api: RedisManager, fake_log: FakeLogger) -> None:
     """Validates that unacknowledged messages of dead consumers are re-processed."""
     api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)

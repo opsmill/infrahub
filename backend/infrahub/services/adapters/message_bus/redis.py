@@ -33,29 +33,41 @@ if TYPE_CHECKING:
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
 
-# Atomically re-publishes due entries of the delayed queue onto their target
-# streams. Script atomicity guarantees each entry is delivered exactly once
-# even though every worker polls the shared queue. The target streams cannot
-# be declared as KEYS up front, so this requires a non-clustered Redis.
+# Re-publishes due entries of the delayed queue onto their target streams.
+# Every entry is removed right after its own successful XADD, and a failing
+# entry is skipped and returned to the caller, so one bad entry can neither
+# replay already-delivered ones on the next scan nor block the rest of the
+# queue (script errors abort without rolling back applied effects). The whole
+# script still runs serialized, so concurrent pollers never deliver an entry
+# twice. The target streams cannot be declared as KEYS up front, so this
+# requires a non-clustered Redis.
 DELIVER_DUE_MESSAGES_LUA = """
 local due = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1], 'LIMIT', 0, ARGV[2])
+local failed = {}
 for _, member in ipairs(due) do
-    local entry = cjson.decode(member)
-    local fields = {}
-    for key, value in pairs(entry.fields) do
-        fields[#fields + 1] = key
-        fields[#fields + 1] = value
+    local delivered = false
+    local ok, entry = pcall(cjson.decode, member)
+    if ok and type(entry) == 'table' and type(entry.fields) == 'table' and entry.stream then
+        local fields = {}
+        for key, value in pairs(entry.fields) do
+            fields[#fields + 1] = key
+            fields[#fields + 1] = value
+        end
+        local result
+        if entry.maxlen then
+            result = redis.pcall('XADD', entry.stream, 'MAXLEN', '~', entry.maxlen, '*', unpack(fields))
+        else
+            result = redis.pcall('XADD', entry.stream, '*', unpack(fields))
+        end
+        delivered = not (type(result) == 'table' and result.err)
     end
-    if entry.maxlen then
-        redis.call('XADD', entry.stream, 'MAXLEN', '~', entry.maxlen, '*', unpack(fields))
+    if delivered then
+        redis.call('ZREM', KEYS[1], member)
     else
-        redis.call('XADD', entry.stream, '*', unpack(fields))
+        failed[#failed + 1] = member
     end
 end
-if #due > 0 then
-    redis.call('ZREM', KEYS[1], unpack(due))
-end
-return #due
+return failed
 """
 
 
@@ -632,10 +644,14 @@ class RedisMessageBus(InfrahubMessageBus):
         """Re-publish scheduled messages whose delay has elapsed, until shutdown."""
         while not self._shutdown_event.is_set():
             try:
-                await self._deliver_due_script(
+                failed = await self._deliver_due_script(
                     keys=[self.delayed_queue],
                     args=[await self._server_time_ms(), self.DELAYED_DELIVERY_BATCH],
                 )
+                if failed:
+                    get_logger().error(
+                        "Failed to deliver delayed messages, keeping them queued for retry", count=len(failed)
+                    )
             except asyncio.CancelledError:
                 break
             except redis.RedisError:
