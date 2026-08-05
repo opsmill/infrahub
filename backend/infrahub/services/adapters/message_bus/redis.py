@@ -85,6 +85,8 @@ class StreamSubscription:
     concrete entry ids afterwards. With a group, entries are read through
     `XREADGROUP` and acknowledged when `ack_messages` is set. When `bindings`
     is set, entries whose routing key matches no pattern are skipped.
+    `owns_stream` marks a stream with no other reader, allowing the consumer
+    to trim entries it has already read.
     """
 
     stream: str
@@ -94,6 +96,7 @@ class StreamSubscription:
     ack_messages: bool = False
     start_id: str = "0"
     bindings: list[str] | None = None
+    owns_stream: bool = False
 
 
 class RedisMessageBus(InfrahubMessageBus):
@@ -117,10 +120,11 @@ class RedisMessageBus(InfrahubMessageBus):
     # readers to catch up.
     EVENTS_STREAM_MAXLEN = 10_000
 
-    # Approximate upper bound for a per-worker callback stream; a reply only
-    # matters until the RPC call awaiting it is resolved or times out, so the
-    # unread backlog is bounded by one process's in-flight RPC calls.
-    CALLBACK_STREAM_MAXLEN = 1_000
+    # Backstop cap for a per-worker callback stream, protecting Redis from
+    # streams orphaned by a worker that died without its shutdown cleanup. A
+    # live worker trims its own stream up to the last-read entry instead, so
+    # the cap only needs to stay far above any momentary unread backlog.
+    CALLBACK_STREAM_MAXLEN: int = 10_000
 
     # Seconds between the pending-claim and trim passes of a group consumer.
     MAINTENANCE_INTERVAL: float = 60.0
@@ -271,9 +275,12 @@ class RedisMessageBus(InfrahubMessageBus):
 
         while not self._shutdown_event.is_set():
             try:
-                if subscription.group and self._maintenance_due(last_maintenance):
-                    await self._claim_pending_messages(subscription)
-                    await self._trim_worked_stream(subscription)
+                if self._maintenance_due(last_maintenance) and (subscription.group or subscription.owns_stream):
+                    if subscription.group:
+                        await self._claim_pending_messages(subscription)
+                        await self._trim_worked_stream(subscription)
+                    else:
+                        await self._trim_owned_stream(subscription, last_id)
                     last_maintenance = time.monotonic()
 
                 entries, last_id = await self._read_stream_entries(subscription, last_id)
@@ -436,6 +443,19 @@ class RedisMessageBus(InfrahubMessageBus):
 
         await self.connection.xtrim(subscription.stream, minid=threshold, approximate=False)
 
+    async def _trim_owned_stream(self, subscription: StreamSubscription, last_id: str | bytes) -> None:
+        """Drop entries this consumer has already read from a stream it owns.
+
+        Trimming up to the last-read id can never discard an unread entry, so
+        this is only safe for streams with a single reader. The newest read
+        entry itself is kept, sparing the trim threshold an id increment.
+        """
+        if not subscription.owns_stream or subscription.group:
+            return
+        if last_id in ("0", b"0"):
+            return
+        await self.connection.xtrim(subscription.stream, minid=last_id, approximate=False)
+
     def _decode_message_data(self, data: dict) -> dict:
         """Decode message data from Redis bytes to strings/dicts.
 
@@ -571,6 +591,7 @@ class RedisMessageBus(InfrahubMessageBus):
                     stream=self.callback_stream,
                     consumer=identity,
                     callback=self.on_callback,
+                    owns_stream=True,
                 )
             )
         )
