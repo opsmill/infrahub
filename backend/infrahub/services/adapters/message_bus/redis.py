@@ -817,7 +817,7 @@ class RedisMessageBus(InfrahubMessageBus):
 
         await self.send(message=message)
 
-        timeout = timeout or self.RPC_TIMEOUT
+        timeout = self.RPC_TIMEOUT if timeout is None else timeout
         try:
             response: dict = await asyncio.wait_for(future, timeout=timeout)
         except TimeoutError as exc:
