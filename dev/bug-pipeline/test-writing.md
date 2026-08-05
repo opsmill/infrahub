@@ -6,6 +6,22 @@ Read this file when directed by your main prompt.
 Before starting, you should already have:
 - The root cause analysis (root cause, affected files, fix strategy)
 
+## Step -1: Verify the analysis before trusting it
+
+The analysis is an input, not a ground truth. Check two fields before writing any test:
+
+1. **Environment provenance.** If the analysis (or the issue) reports a revision or image
+   digest, confirm the described feature exists at that revision (`git ls-tree <sha> -- <path>`).
+   If the analysis has no provenance field, do this check yourself.
+2. **Reproduction status.** If the analysis says **INFERRED**, your first task is to
+   perform the confirming observation the analyst specified -- BEFORE investing in a
+   full test. Drive the real code (scratch script, vitest browser mode for frontend
+   components, targeted pytest) and see whether the wrong behavior actually happens.
+
+If the confirming observation shows **correct behavior on every interaction path you can
+exercise**, the analysis is refuted. Do not manufacture a failing test anyway. Follow
+"Failure handling: refuted analysis" at the bottom of this file.
+
 ## Step 0: Create working branch
 
 Create a working branch from `origin/stable`:
@@ -61,6 +77,10 @@ Use the "When to use" / "When NOT to use" guidance in
 - **Frontend:** Vitest for unit/component tests (colocated with source as `.test.ts`),
   Playwright for E2E (`frontend/app/tests/e2e/`).
   Use BDD GIVEN/WHEN/THEN structure. Use factories from `tests/fake/`.
+  For UI-interaction bugs, prefer a vitest **browser-mode component test** that renders
+  the real component and drives the real interaction (real third-party widgets, real
+  hooks, real URL serialization) over a unit test of an extracted function -- the bug is
+  usually in the wiring between segments, and only a real-interaction test exercises it.
 
 ## Step 6: Write the test
 
@@ -96,8 +116,13 @@ Write a single targeted test that reproduces the bug:
   described by the analyst. For example, if the root cause is "no uniqueness enforcement,"
   the failure should be something like `AssertionError: Expected ValidationError but none
   was raised` or `assert 2 == 1` (found 2 duplicates when expecting 1).
-- If the test **PASSES**, your assertions are wrong -- you are likely asserting buggy
-  behavior instead of correct behavior. Flip your assertions to assert what SHOULD happen.
+- If the test **PASSES**, first check WHICH behavior you asserted:
+  - If you asserted the buggy behavior, flip your assertions to assert what SHOULD happen.
+  - If you already asserted the CORRECT behavior and it passes, do NOT contort the test
+    into failing. Re-drive the real code across the other interaction paths (different
+    inputs, orderings, state round-trips). If correct behavior holds on every path, the
+    defect is not present at this revision -- the analysis is refuted. Follow
+    "Failure handling: refuted analysis" below.
 - If the test fails for the **wrong reason** (import error, fixture missing, syntax error),
   fix those issues and re-run until it fails for the reason described in the root cause.
 
@@ -182,3 +207,15 @@ Post a short comment on the issue linking to the draft PR.
 If the test cannot be made to fail for the right reason after 3 attempts, **STOP**
 and escalate as described in your main prompt. Do NOT open a PR or include the
 `AGENT_TEST_COMPLETE` marker.
+
+## Failure handling: refuted analysis
+
+This is a different outcome from "could not write the test": you drove the real code and
+the correct behavior held everywhere. That is **evidence**, and it must be reported, not
+discarded. Do NOT open a PR or include the `AGENT_TEST_COMPLETE` marker. Instead escalate
+as described in your main prompt, with a report containing:
+
+- a table of every interaction path you exercised and the (correct) value each produced,
+- why the analyst's mechanism does not hold (cite the specific claim and what disproves it),
+- the provenance check result if the reported environment was inconsistent,
+- a recommendation: re-verify on a current build, or re-scope the analysis.

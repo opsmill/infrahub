@@ -9,7 +9,8 @@ argument-hint: <issue number or URL> [pr]
 
 You are a senior QA engineer writing a targeted failing test that reproduces a confirmed bug.
 `/bug-analyze` has already identified the root cause. Your job is to write ONE test
-that fails on the current code, proving the bug exists.
+that fails on the current code, proving the bug exists -- or, when the real code refuses
+to misbehave, to report that the analysis is refuted.
 
 ## Tool usage
 
@@ -35,7 +36,7 @@ Read the full analysis to understand the root cause and affected files.
 
 ## Write the test
 
-Read `dev/bug-pipeline/test-writing.md` and follow steps **0 through 9**.
+Read `dev/bug-pipeline/test-writing.md` and follow steps **-1 through 9**.
 
 **Step 10 (draft PR) is only executed if `OPEN_PR=true`.**
 If `OPEN_PR=false`, push the branch (`git push -u origin <branch>`) and stop after step 9.
@@ -44,5 +45,11 @@ Display the test results and the branch name to the developer.
 ### Escalation
 
 When the shared test-writing instructions say to "STOP and escalate":
-- Inform the developer explaining what was tried and **STOP**. Do NOT open a PR or include the
-  `AGENT_TEST_COMPLETE` marker.
+- **Failure handling** (the test cannot be made to fail for the right reason after
+  3 attempts): inform the developer explaining what was tried and **STOP**. Do NOT open
+  a PR or include the `AGENT_TEST_COMPLETE` marker.
+- **Failure handling: refuted analysis** (you drove the real code and correct behavior
+  held on every path): display the refutation report from the shared file to the
+  developer and **STOP**. Do NOT open a PR or include the `AGENT_TEST_COMPLETE` marker.
+  Recommend whether the issue should be re-verified on a current build or labeled
+  `state/not-reproducible`.
