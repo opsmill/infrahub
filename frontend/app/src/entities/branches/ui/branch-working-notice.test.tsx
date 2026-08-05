@@ -1,8 +1,9 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
 import { BranchWorkingNotice } from "./branch-working-notice";
+import { BranchContext } from "./branches-provider";
 
 // The render helper seeds the branch context with generateBranch(), so a branch
 // named "test-branch" is the one being worked on.
@@ -40,16 +41,20 @@ describe("BranchWorkingNotice", () => {
     await expect.element(component.getByTestId("switch-to-viewed-branch")).toBeVisible();
   });
 
-  test("switching replaces the warning with the working notice", async () => {
+  test("asks to work on the viewed branch when the switch is pressed", async () => {
     // GIVEN
     const branch = generateBranch({ name: "platform-upgrade" });
-    const component = await render(<BranchWorkingNotice branch={branch} />);
+    const setCurrentBranch = vi.fn();
+    const component = await render(
+      <BranchContext value={{ currentBranch: generateBranch(), setCurrentBranch }}>
+        <BranchWorkingNotice branch={branch} />
+      </BranchContext>
+    );
 
     // WHEN
     await component.getByTestId("switch-to-viewed-branch").click();
 
     // THEN
-    await expect.element(component.getByTestId("branch-working-notice")).toBeVisible();
-    expect(component.getByTestId("branch-mismatch-notice").query()).toBeNull();
+    expect(setCurrentBranch).toHaveBeenCalledWith(branch);
   });
 });
