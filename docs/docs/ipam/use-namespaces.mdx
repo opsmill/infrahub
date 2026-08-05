@@ -1,0 +1,66 @@
+---
+title: Use namespaces
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import VideoPlayer from '../../src/components/VideoPlayer';
+
+Use IP namespaces to isolate sets of IP prefixes and addresses within the same Infrahub instance — for example, to give each customer or business unit its own IP space, even when their ranges overlap.
+
+<center>
+  <VideoPlayer url='https://www.youtube.com/watch?v=T5Qiy-13kYg' light />
+</center>
+
+## Understanding IP namespaces
+
+If you are familiar with networking concepts, an IP namespace is analogous to:
+
+- A VRF (Virtual Routing and Forwarding) instance
+- A routing table or routing instance
+- A separate IP address space in a multi-tenant environment
+
+Just as a VRF lets a single router maintain multiple independent routing tables, IP namespaces let Infrahub manage multiple independent sets of IP resources. Each namespace is a boundary: IP prefixes and addresses in one namespace are separate from those in another.
+
+## The default namespace
+
+Infrahub creates a namespace called `default` automatically on first start. This namespace holds IP resources when you don't specify a namespace.
+
+For deployments managing a single network or organization, the default namespace is usually sufficient — create IP prefixes and addresses without configuring a namespace first.
+
+## When to use multiple namespaces
+
+- **Multi-tenant environments** — create a namespace per customer. Each customer can use the same RFC 1918 range (for example `10.0.0.0/8`) without conflict.
+- **Overlapping IP ranges** — track multiple isolated networks that reuse the same IP ranges, each in its own namespace.
+- **Organizational boundaries** — namespace per business unit, region, or data center to keep ownership and separation clear.
+- **Network segmentation** — model networks with separate routing domains, such as production versus lab, as distinct namespaces.
+
+## How namespaces work
+
+Every IP prefix and IP address belongs to exactly one namespace. An IP resource created without a namespace is assigned to `default`.
+
+Within a namespace, IP prefixes form hierarchical trees based on their network containment, and IP addresses are associated automatically with their most specific containing prefix. A prefix such as `10.0.0.0/24` can exist in multiple namespaces at the same time without conflict — the same applies to IP addresses.
+
+:::warning
+
+Deleting a namespace deletes every IP prefix and IP address it contains.
+
+:::
+
+## Practical example
+
+Consider an Internet Service Provider (ISP) that provides managed network services to three customers. Each customer uses the 10.0.0.0/8 private address range internally.
+
+Without namespaces, the ISP could not track these overlapping ranges in a single IPAM system. With namespaces, the ISP creates three namespaces (one per customer) and manages each customer's IP space independently:
+
+- **customer-a** namespace: Contains Customer A's 10.0.0.0/8 and its subnets
+- **customer-b** namespace: Contains Customer B's 10.0.0.0/8 and its subnets
+- **customer-c** namespace: Contains Customer C's 10.0.0.0/8 and its subnets
+
+Each namespace maintains its own hierarchy, utilization calculations, and address assignments. The ISP can query, report on, and manage each customer's IP space without any overlap or confusion.
+
+## Switch the active namespace
+
+The IPAM section of the web interface scopes the prefix and address tree to one namespace at a time. Use the **IP Namespace** selector in the IPAM header to switch — the tree, filters, and utilization figures update to the selected namespace.
+
+The Python SDK and GraphQL API don't have an equivalent "active namespace" concept — every query or mutation for a prefix or address takes the namespace explicitly, either as an `ip_namespace` filter or as part of the object's data.

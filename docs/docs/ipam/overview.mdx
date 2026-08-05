@@ -4,44 +4,57 @@ title: IP Address Management
 
 import VideoPlayer from '../../src/components/VideoPlayer';
 
-IP address management (IPAM) in Infrahub gives you a structured, version-controlled capability to manage your IP resources. IP Prefixes and IP Addresses are first-class objects in Infrahub — they form hierarchies, track utilization automatically, and integrate with the rest of your infrastructure data. Both IPv4 and IPv6 are supported.
+Use Infrahub IPAM to manage IP prefixes, IP addresses, and namespaces alongside the rest of your infrastructure data. Prefixes and addresses are ordinary Infrahub objects, so you can add relationships to devices, interfaces, and services the same way you would on any other node. Infrahub computes hierarchy automatically and calculates utilization on read. Every change is branch-aware. Both IPv4 and IPv6 are supported.
 
 ![IPAM prefix hierarchy](../media/ipam.png)
 
-## IPAM generics
+:::tip Migrating from another system?
 
-Infrahub ships three built-in generics that you inherit from when building your IPAM schema:
-
-- `BuiltinIPNamespace` — schema node to isolate IP resources (analogous to a VRF or routing instance)
-- `BuiltinIPPrefix` — schema node to model a network (supernet, subnet)
-- `BuiltinIPAddress` — schema node to model a single IP address
-
-By default, Infrahub includes a schema node called `IpamNamespace` that inherits from `BuiltinIPNamespace`, and a "default" namespace object is created automatically on first start.
-
-:::info
-
-Building an IPAM with these generics serves a different purpose from using `IPHost` or `IPNetwork` attribute kinds on other nodes. The IPAM feature leverages those attribute kinds under the hood.
+Once your IPAM schema is in place, use [Infrahub Sync](https://docs.infrahub.app/sync) to bring in your existing IP data from a prior source of truth.
 
 :::
 
-## How IPAM hierarchy works
+## Built-in generics
 
-IPAM generics and schema nodes that inherit from them have relationships and a hierarchy. An IP prefix can be related to other prefixes (as a parent or a child), an IP address can be related to an IP prefix, and both are related to an IP namespace.
+Infrahub provides three built-in generics to inherit from when building your IPAM schema:
 
-To simplify day-to-day usage, relationships for IP prefixes and IP addresses are **automatically managed**. When an IP prefix is created or updated, relations with a parent prefix, children prefixes, and IP addresses that belong to it are discovered automatically. The same applies when an IP address is created — the most specific containing prefix is found automatically. This results in trees of IP prefixes and IP addresses being built without manual intervention.
+- `BuiltinIPNamespace` — isolates a set of IP prefixes and addresses. Comparable to a VRF or routing instance.
+- `BuiltinIPPrefix` — models an IPv4 or IPv6 network in CIDR notation.
+- `BuiltinIPAddress` — models a single IPv4 or IPv6 host address.
 
-These hierarchies allow Infrahub to determine how IP prefixes and IP addresses are nested, and to compute utilization of recorded IP spaces.
+Infrahub includes a schema node called `IpamNamespace` that inherits from `BuiltinIPNamespace`, and creates a `default` namespace object automatically on first start.
 
-## Prefix utilization
+:::info
 
-IP prefixes have a read-only `utilization` field computed on the fly based on the `member_type` field. Member type refers to the kind of objects that an IP prefix contains — either other prefixes or IP addresses.
+Building an IPAM with these generics serves a different purpose from using the `IPHost` or `IPNetwork` attribute kinds on other nodes. The IPAM generics use those attribute kinds internally.
 
-When `member_type` is set to `prefix`, utilization is computed using the children prefixes and their sizes. For example, if `192.0.2.0/24` has one subnet `192.0.2.0/26`, its utilization reports 25%.
+:::
 
-When `member_type` is set to `address`, utilization is computed using the number of IP addresses the prefix contains. For example, `192.0.2.0/26` can hold up to 62 IP addresses (excluding network and broadcast). With 20 addresses assigned, its utilization reports 32%. Broadcast and network addresses can be included for IPv4 prefixes if `is_pool` is set to `true`, or if the prefix length is 31 as defined in [RFC 3021](https://datatracker.ietf.org/doc/html/rfc3021).
+## Hierarchy
 
-## In this section
+IP prefixes and addresses form a tree based on network containment — a prefix can be the parent or child of another prefix, and an address always belongs to the most specific prefix that contains it. Infrahub reconciles this tree automatically on every create, update, or delete, so parent, child, and address-to-prefix relationships stay correct without manual intervention. See [Query IPAM data](./query-ipam-data.mdx) for the relationships exposed on prefixes and addresses.
 
-- [IP Namespaces](./ip-namespaces.mdx) — Understand namespace isolation, when to use multiple namespaces, and multi-tenant patterns
-- [Building your IPAM schema](./building-your-schema.mdx) — Define your IPAM nodes, load the schema, and query IP resources via GraphQL
-- [Automate with Resource Manager](./automate-with-resource-manager.mdx) — Use IPAM prefixes as pool sources for automated IP allocation
+## Utilization
+
+Every IP prefix exposes a read-only `utilization` attribute, computed on read from the graph, using one of two formulas based on `member_type`:
+
+- **`prefix` mode** — utilization is the address space of the child prefixes, divided by the address space of the prefix itself. For example, `192.0.2.0/24` with one `192.0.2.0/26` child reports 25%.
+- **`address` mode** — utilization is the number of IP addresses assigned to the prefix, divided by the number of usable addresses in the prefix. For example, `192.0.2.0/26` holds up to 62 usable addresses (excluding network and broadcast); with 20 addresses assigned, it reports 32%.
+
+Network and broadcast addresses count toward the usable total when `is_pool` is `true`, for IPv4 prefixes with a `/31` length (per [RFC 3021](https://datatracker.ietf.org/doc/html/rfc3021)), and for `/32` prefixes.
+
+## Namespaces
+
+Every IP prefix and IP address belongs to exactly one IP namespace. Namespaces isolate IP space — the same prefix or address can exist in multiple namespaces without conflict, similar to how a VRF isolates a routing table. Use additional namespaces when you need that isolation, for example between customers or business units with overlapping address ranges.
+
+Deleting a namespace deletes every IP prefix and IP address it contains. The `default` namespace cannot be deleted.
+
+## Branching
+
+Creating, updating, or deleting an IP namespace, prefix, or address is supported on any branch. Hierarchy reconciliation runs immediately after each mutation, and again when the branch is merged or rebased into another branch — Infrahub reads the diff between the two branches, identifies which prefixes and addresses changed, and reconciles only those. See [Plan changes on a branch](./plan-changes-on-a-branch.mdx) for the full workflow, including concurrency control for concurrent branch-based changes.
+
+## Resource Manager
+
+Resource Pool is the recommended way to allocate IP addresses and prefixes in automation — provisioning pipelines, generators, and CI/CD workflows. A `CoreIPAddressPool` or `CoreIPPrefixPool` draws from your IPAM prefixes as its resources and returns the next available address or subnet. Passing the same identifier on repeated calls returns the same allocation, so a provisioning script can run more than once without allocating the same resource twice.
+
+Infrahub also exposes lower-level GraphQL queries — `InfrahubIPAddressGetNextAvailable` and `InfrahubIPPrefixGetNextAvailable` — that return the next free address or subnet without creating a record and without the pool's cross-branch allocation guarantees. Use Resource Pool for production workflows; reach for these only to look up a value without persisting it.

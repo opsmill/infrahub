@@ -1,0 +1,73 @@
+---
+title: Build your IPAM schema
+---
+
+Infrahub includes the `IpamNamespace` node and the `BuiltinIPNamespace`, `BuiltinIPPrefix`, and `BuiltinIPAddress` generics by default — but no concrete IP prefix or address node until you load one.
+
+## Load the IPAM schema
+
+If the IPAM entry already appears in the left-side menu, a schema is already loaded — this is the case after completing a quick start. Otherwise, load the base collection from the Marketplace:
+
+```shell
+infrahubctl marketplace get infrahub/base-schemas --collection
+infrahubctl schema load schemas/
+```
+
+To inspect the IPAM schema alone without loading it, fetch it with `--stdout`:
+
+```shell
+infrahubctl marketplace get infrahub/ipam --stdout
+```
+
+See [Infrahub Marketplace](../schema/marketplace/index.mdx) for the full fetch-and-load workflow.
+
+## VLAN, VRF, RIR, and other extensions
+
+VLAN, VRF, RIR, and aggregate are Marketplace extensions, not part of the base IPAM schema — fetch them individually:
+
+```shell
+infrahubctl marketplace get infrahub/vrf
+infrahubctl marketplace get infrahub/vlan
+```
+
+Browse [marketplace.infrahub.app](https://marketplace.infrahub.app) for the full catalog of extensions. Load extension schemas on a branch, not `main` — see [Create and load schema](../schema/create-and-load.mdx).
+
+## Extend IPAM with a relationship to another object
+
+Relationships from IPAM to other Infrahub objects are ordinary schema relationships, not metadata fields. The [Service Catalog demo](https://github.com/opsmill/infrahub-demo-service-catalog) relates `IpamIPPrefix` and `IpamIPAddress` to a `ServiceGeneric` node this way, declaring both directions and pairing them by `identifier`.
+
+Declare the relationship from the `Service` side first — inbound, paired by `identifier`:
+
+```yaml title="example/service.yml"
+nodes:
+  - name: Service
+    namespace: Customer
+    inherit_from:
+      - InfraService
+    attributes:
+      - name: service_identifier
+        kind: Text
+        unique: true
+    relationships:
+      - name: assigned_prefix
+        label: "Assigned prefix"
+        peer: IpamIPPrefix
+        optional: false
+        kind: Attribute
+        direction: inbound
+        cardinality: one
+```
+
+To add the relationship from the IPAM side instead — so you can query and filter from `IpamIPPrefix` or `IpamIPAddress` directly — extend the IPAM kind with an `extensions.nodes` block.
+
+```yaml title="Adapted from opsmill/infrahub-demo-service-catalog: schemas/service/service.yml"
+extensions:
+  nodes:
+    - kind: IpamIPPrefix
+      relationships:
+        - name: service
+          peer: ServiceGeneric
+          cardinality: one
+          direction: outbound
+          identifier: service_prefix
+```
