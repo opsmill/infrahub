@@ -1411,6 +1411,14 @@ jobs:
       needs.files-changed.outputs.e2e == 'true'
     runs-on:
       group: huge-runners
+    env:
+      # TEMPORARY (Redis message bus evaluation): this job pulls the latest
+      # released image, which predates the Redis driver, so it must keep
+      # running against RabbitMQ. Revert before merge.
+      INFRAHUB_BROKER_DRIVER: rabbitmq
+      INFRAHUB_BROKER_ADDRESS: message-queue
+      INFRAHUB_BROKER_USERNAME: infrahub
+      INFRAHUB_BROKER_PASSWORD: infrahub
     steps:
       - name: Check out repository code
         uses: actions/checkout@v7
