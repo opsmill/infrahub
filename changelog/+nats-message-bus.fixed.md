@@ -1,0 +1,1 @@
+Fixed the NATS message bus driver: work-queue messages and RPCs were never delivered to git workers, and `refresh.git.*` broadcast events could not be published. RPC replies now flow through core-NATS inboxes instead of leaving a JetStream stream behind for every worker that ever ran.

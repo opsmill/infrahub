@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import ssl
 from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, TypeVar
 
@@ -26,8 +27,6 @@ if TYPE_CHECKING:
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
 
-publish_tasks = set()
-
 
 async def _add_request_id(message: InfrahubMessage) -> None:
     log_data = get_log_data()
@@ -40,7 +39,7 @@ class NATSMessageBus(InfrahubMessageBus):
 
         self.connection: nats.NATS
         self.jetstream: nats.js.JetStreamContext
-        self.callback_queue: nats.js.api.StreamInfo
+        self.callback_inbox: str = ""
         self.events_queue: nats.js.api.StreamInfo
         self.message_enrichers: list[MessageFunction] = []
 
@@ -48,6 +47,7 @@ class NATSMessageBus(InfrahubMessageBus):
         self.futures: MutableMapping[str, asyncio.Future] = {}
 
         self.component_type: ComponentType = component_type
+        self._publish_tasks: set[asyncio.Task] = set()
 
     @classmethod
     async def new(cls, component_type: ComponentType, settings: BrokerSettings | None = None) -> NATSMessageBus:
@@ -80,9 +80,15 @@ class NATSMessageBus(InfrahubMessageBus):
             await self._initialize_git_worker()
 
     async def shutdown(self) -> None:
+        for task in list(self._publish_tasks):
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
         await self.connection.drain()
 
     async def on_callback(self, message: nats.aio.msg.Msg) -> None:
+        token = None
         if is_instrumentation_enabled() and message.headers:
             ctx = propagate.extract(message.headers)
             token = context.attach(ctx)
@@ -107,10 +113,11 @@ class NATSMessageBus(InfrahubMessageBus):
                 else:
                     get_logger().error("Invalid message received", message=f"{message!r}")
         finally:
-            if is_instrumentation_enabled() and message.headers:
+            if token is not None:
                 context.detach(token)
 
     async def on_message(self, message: nats.aio.msg.Msg) -> None:
+        token = None
         if is_instrumentation_enabled() and message.headers:
             ctx = propagate.extract(message.headers)
             token = context.attach(ctx)
@@ -131,7 +138,7 @@ class NATSMessageBus(InfrahubMessageBus):
 
                 return await message.ack()
         finally:
-            if is_instrumentation_enabled() and message.headers:
+            if token is not None:
                 context.detach(token)
 
     async def _subscribe_events(self, events: list[str], identity: str) -> None:
@@ -143,25 +150,24 @@ class NATSMessageBus(InfrahubMessageBus):
                 cb=self.on_callback,
             )
 
-    async def _setup_callback(self, identity: str) -> None:
-        self.callback_queue = await self.jetstream.add_stream(
-            name=f"{self.settings.namespace}-callback-{WORKER_IDENTITY}",
-            retention=nats.js.api.RetentionPolicy.LIMITS,
-        )
+    async def _setup_callback(self) -> None:
+        # RPC replies are transient, so a plain core-NATS inbox subscription is the
+        # per-worker reply channel: nothing durable is left behind when the worker
+        # goes away, unlike a JetStream stream per worker identity.
+        self.callback_inbox = self.connection.new_inbox()
+        await self.connection.subscribe(self.callback_inbox, cb=self.on_callback)
 
-        await self.jetstream.subscribe(
-            subject="*",
-            stream=f"{self.settings.namespace}-callback-{WORKER_IDENTITY}",
-            cb=self.on_callback,
-            config=nats.js.api.ConsumerConfig(ack_policy=nats.js.api.AckPolicy.NONE, description=identity),
-        )
-
-    async def _initialize_api_server(self) -> None:
-        self.events_queue = await self.jetstream.add_stream(
+    async def _ensure_streams(self) -> None:
+        events_config = nats.js.api.StreamConfig(
             name=f"{self.settings.namespace}-events",
-            subjects=self.event_bindings,
+            subjects=self.event_bindings + self.broadcasted_event_bindings,
             retention=nats.js.api.RetentionPolicy.INTEREST,
         )
+        try:
+            self.events_queue = await self.jetstream.add_stream(config=events_config)
+        except nats.js.errors.BadRequestError:
+            # The stream exists with an older subject list; bring it up to date.
+            self.events_queue = await self.jetstream.update_stream(config=events_config)
 
         await self.jetstream.add_stream(
             name=f"{self.settings.namespace}-rpcs",
@@ -169,15 +175,21 @@ class NATSMessageBus(InfrahubMessageBus):
             retention=nats.js.api.RetentionPolicy.WORK_QUEUE,
         )
 
+    async def _initialize_api_server(self) -> None:
+        await self._ensure_streams()
+
         await self._subscribe_events(self.event_bindings, f"api-worker-{WORKER_IDENTITY}")
 
-        await self._setup_callback(f"api-worker-{WORKER_IDENTITY}")
+        await self._setup_callback()
 
         self.message_enrichers.append(_add_request_id)
 
     async def _initialize_git_worker(self) -> None:
-        bindings = self.event_bindings + self.broadcasted_event_bindings
-        await self._subscribe_events(bindings, f"git-worker-{WORKER_IDENTITY}")
+        await self._ensure_streams()
+
+        await self._subscribe_events(
+            self.event_bindings + self.broadcasted_event_bindings, f"git-worker-{WORKER_IDENTITY}"
+        )
 
         consumer_config = nats.js.api.ConsumerConfig(
             ack_policy=nats.js.api.AckPolicy.EXPLICIT,
@@ -187,7 +199,7 @@ class NATSMessageBus(InfrahubMessageBus):
             # max_ack_pending=self.settings.maximum_concurrent_messages,
             # flow_control=True,
             # idle_heartbeat=5.0,  # default value
-            filter_subjects=bindings,
+            filter_subjects=self.worker_bindings,
             durable_name="git-workers",
             deliver_group="git-workers",
             deliver_subject=self.connection.new_inbox(),
@@ -199,7 +211,7 @@ class NATSMessageBus(InfrahubMessageBus):
             if exc.err_code != 10013:  # consumer name already in use
                 raise
 
-        for subject in bindings:
+        for subject in self.worker_bindings:
             await self.jetstream.subscribe(
                 subject=subject,
                 queue="git-workers",
@@ -209,7 +221,7 @@ class NATSMessageBus(InfrahubMessageBus):
                 manual_ack=True,
             )
 
-        await self._setup_callback(f"git-worker-{WORKER_IDENTITY}")
+        await self._setup_callback()
 
     async def _publish_with_delay(self, message: InfrahubMessage, routing_key: str, delay: MessageTTL) -> None:
         await asyncio.sleep(delay.value / 1000)
@@ -227,8 +239,8 @@ class NATSMessageBus(InfrahubMessageBus):
                     return
                 # Use asyncio task for delayed publish since NATS does not support that out of the box
                 task = asyncio.create_task(self._publish_with_delay(message, routing_key, delay))
-                publish_tasks.add(task)
-                task.add_done_callback(publish_tasks.discard)
+                self._publish_tasks.add(task)
+                task.add_done_callback(self._publish_tasks.discard)
                 return
 
             for enricher in self.message_enrichers:
@@ -275,7 +287,8 @@ class NATSMessageBus(InfrahubMessageBus):
         if is_instrumentation_enabled():
             propagate.inject(headers)
 
-        await self.jetstream.publish(
+        # Replies target a core-NATS inbox subject, not a JetStream stream.
+        await self.connection.publish(
             subject=routing_key,
             payload=message.body,
             headers=headers,
@@ -294,9 +307,7 @@ class NATSMessageBus(InfrahubMessageBus):
 
         log_data = get_log_data()
         request_id = log_data.get("request_id", "")
-        message.meta = Meta(
-            request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_queue.config.name
-        )
+        message.meta = Meta(request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_inbox)
 
         await self.send(message=message)
 
