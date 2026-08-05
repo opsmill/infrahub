@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from infrahub.core import registry
+from infrahub.core.branch.deleter import BranchDeleter
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import RelationshipHierarchyDirection
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -42,7 +43,7 @@ class TestHierarchyCorrected:
         await diff_merger.merge_graph(at=at)
 
         # delete the branch
-        await branch.delete(db=db)
+        await BranchDeleter(db=db, batch_size=5).delete(branch=branch)
 
         # remove the hierarchy property on main
         query = """

@@ -5,6 +5,7 @@ from infrahub_sdk.exceptions import TimestampFormatError
 from pydantic import ValidationError as PydanticValidationError
 
 from infrahub.core.branch import Branch
+from infrahub.core.branch.deleter import BranchDeleter
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
@@ -314,7 +315,9 @@ async def test_delete_branch(
     params = {"branch_name": branch_name}
     pre_delete = await db.execute_query(query=relationship_query, params=params)
 
-    await branch.delete(db=db)
+    # A batch size well below the number of edges on the branch, so the batching loop has to run
+    # more than once to finish.
+    await BranchDeleter(db=db, batch_size=5).delete(branch=branch)
     post_delete = await db.execute_query(query=relationship_query, params=params)
 
     assert branch.id == found.id
@@ -362,7 +365,7 @@ async def test_delete_branch_with_agnostic_attrs_and_rels(
     rel_uuid = agnostic_rel.id
 
     # Delete the branch
-    await branch.delete(db=db)
+    await BranchDeleter(db=db, batch_size=5).delete(branch=branch)
 
     # Verify the branch is deleted
     with pytest.raises(BranchNotFoundError):
@@ -425,7 +428,7 @@ async def test_delete_branch_after_merge_preserves_node(
     assert device_on_main.get_attribute("serial_number").value == "SN-67890"
 
     # Delete the branch
-    await branch.delete(db=db)
+    await BranchDeleter(db=db, batch_size=5).delete(branch=branch)
 
     # Verify the branch is deleted
     with pytest.raises(BranchNotFoundError):

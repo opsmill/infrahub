@@ -13,6 +13,7 @@ from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.creator import BranchCreator
+from infrahub.core.branch.deleter import BranchDeleter
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
 from infrahub.core.constants import DiffAction, MutationAction
@@ -545,7 +546,8 @@ async def delete_branch(
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
         await diff_repository.freeze_diffs_for_branch(branch_name=branch)
 
-        await obj.delete(db=db)
+        deleter = BranchDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit)
+        await deleter.delete(branch=obj)
 
         event_context = context.to_event_context()
         event = BranchDeletedEvent(
