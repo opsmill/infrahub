@@ -1,6 +1,5 @@
-import { useAtom } from "jotai";
 import { useQueryState } from "nuqs";
-import React, { useEffect } from "react";
+import React from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
@@ -10,9 +9,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/shared/config/qsp";
 
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
-import { DEFAULT_BRANCH_NAME } from "@/entities/branches/domain/model/branch";
 import { findSelectedBranch } from "@/entities/branches/domain/rules/find-selected-branch";
-import { currentBranchAtom } from "@/entities/branches/stores";
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 
 type BranchContext = {
@@ -33,23 +30,18 @@ export function useCurrentBranch() {
 
 export const BranchesProvider = ({ children }: { children?: React.ReactNode }) => {
   const { data: branches, isPending, error } = useGetBranches();
-  const [currentBranch, setCurrentBranchAtom] = useAtom(currentBranchAtom);
   const [branchInQueryString, setBranchInQueryString] = useQueryState(QSP.BRANCH);
   const navigate = useNavigate();
 
-  function setCurrentBranch(branch: BranchListItem) {
+  const currentBranch = branches ? findSelectedBranch(branches, branchInQueryString) : null;
+
+  // The branch QSP is the source of truth: the default branch is represented by its absence
+  const setCurrentBranch = (branch: BranchListItem) => {
     setBranchInQueryString(branch.is_default ? null : branch.name);
-    setCurrentBranchAtom(branch);
-  }
+  };
 
-  useEffect(() => {
-    if (!branches) return;
-
-    const selectedBranch = findSelectedBranch(branches, branchInQueryString);
-    if (selectedBranch) {
-      setCurrentBranchAtom(selectedBranch);
-      return;
-    }
+  React.useEffect(() => {
+    if (!branches || currentBranch) return;
 
     toast(
       <Alert
@@ -62,10 +54,8 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
         }
       />
     );
-    const mainBranch = findSelectedBranch(branches, DEFAULT_BRANCH_NAME);
-    setCurrentBranchAtom(mainBranch);
     navigate("/");
-  }, [branches, branchInQueryString]);
+  }, [branches, currentBranch]);
 
   if (isPending) {
     return <InfrahubLoading>Loading branches...</InfrahubLoading>;
@@ -75,7 +65,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
     return <ErrorScreen message={error.message} />;
   }
 
-  if (currentBranch?.name !== (branchInQueryString ?? DEFAULT_BRANCH_NAME)) {
+  if (!currentBranch) {
     return <InfrahubLoading>Loading branches...</InfrahubLoading>;
   }
 

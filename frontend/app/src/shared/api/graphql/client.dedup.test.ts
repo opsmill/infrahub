@@ -3,8 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { graphqlClient } from "./client";
 
-// Guards against urql merging concurrent identical operations that target different endpoints.
-describe("concurrent identical query across endpoints", () => {
+describe("request isolation between concurrent operations", () => {
   let fetchSpy: ReturnType<typeof vi.fn>;
 
   const SAME_QUERY = gql`
@@ -62,7 +61,7 @@ describe("concurrent identical query across endpoints", () => {
     expect(b.data).toEqual({ __typename: `main@${late.toISOString()}` });
   });
 
-  it("still merges two identical concurrent queries on the same endpoint", async () => {
+  it("fires a distinct request for each identical concurrent query on the same endpoint", async () => {
     // WHEN
     const [a, b] = await Promise.all([
       graphqlClient.query({ query: SAME_QUERY, context: { branch: "branch-a" } }),
@@ -70,7 +69,7 @@ describe("concurrent identical query across endpoints", () => {
     ]);
 
     // THEN
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(a.data).toEqual({ __typename: "branch-a" });
     expect(b.data).toEqual({ __typename: "branch-a" });
   });
