@@ -34,7 +34,12 @@ class BusRecorder(InfrahubMessageBus):
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         raise ValueError("BusRecorder.reply should not be called")
 
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: int | None = None,  # noqa: ASYNC109
+    ) -> ResponseClass:
         raise ValueError("BusRecorder.rpc should not be called")
 
 
@@ -59,7 +64,12 @@ class BusSimulator(InfrahubMessageBus):
         correlation_id = message.meta.correlation_id or "default"
         self.replies[correlation_id].append(message)
 
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: int | None = None,  # noqa: ASYNC109
+    ) -> ResponseClass:
         routing_key = ROUTING_KEY_MAP.get(type(message), "")
 
         correlation_id = str(UUIDT())

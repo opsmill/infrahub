@@ -1299,7 +1299,12 @@ class BusRPCMock(InfrahubMessageBus):
     def add_mock_reply(self, response: InfrahubResponse) -> None:
         self.response.append(response)
 
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: int | None = None,  # noqa: ASYNC109
+    ) -> ResponseClass:
         self.messages.append(message)
         response = self.response.pop()
         data = ujson.loads(response.body)

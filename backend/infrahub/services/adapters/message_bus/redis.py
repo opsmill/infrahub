@@ -15,6 +15,7 @@ from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 
 from infrahub import config
 from infrahub.components import ComponentType
+from infrahub.exceptions import RPCError
 from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
@@ -428,9 +429,11 @@ class RedisMessageBus(InfrahubMessageBus):
                 if correlation_id:
                     span.set_attribute("correlation_id", correlation_id)
                     future = self.futures.pop(correlation_id, None)
-                    if future:
+                    if future and not future.done():
                         future.set_result(data)
-                        return
+                    else:
+                        get_logger().info("Discarding reply to an expired RPC request", correlation_id=correlation_id)
+                    return
 
                 clear_log_context()
                 if routing_key in messages.MESSAGE_MAP:
@@ -686,15 +689,24 @@ class RedisMessageBus(InfrahubMessageBus):
             },
         )
 
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: int | None = None,  # noqa: ASYNC109
+    ) -> ResponseClass:
         """Make an RPC call and wait for the response.
 
         Args:
             message: The RPC request message.
             response_class: The expected response class type.
+            timeout: Seconds to wait for the reply; RPC_TIMEOUT when unset.
 
         Returns:
             The deserialized response object.
+
+        Raises:
+            RPCError: If no reply arrives within the timeout.
 
         """
         correlation_id = str(UUIDT())
@@ -708,7 +720,12 @@ class RedisMessageBus(InfrahubMessageBus):
 
         await self.send(message=message)
 
-        response: dict = await future
+        timeout = timeout or self.RPC_TIMEOUT
+        try:
+            response: dict = await asyncio.wait_for(future, timeout=timeout)
+        except TimeoutError as exc:
+            self.futures.pop(correlation_id, None)
+            raise RPCError(message=f"No response to RPC message '{type(message).__name__}' within {timeout}s") from exc
         body = response.get("body", b"")
         if isinstance(body, bytes):
             body = body.decode()

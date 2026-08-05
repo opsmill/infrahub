@@ -9,6 +9,7 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
 from infrahub.components import ComponentType
+from infrahub.exceptions import RPCError
 from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
@@ -91,11 +92,12 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
     async def on_callback(self, message: AbstractIncomingMessage) -> None:
         if message.correlation_id:
-            future: asyncio.Future = self.futures.pop(message.correlation_id)
-
-            if future:
+            future = self.futures.pop(message.correlation_id, None)
+            if future and not future.done():
                 future.set_result(message)
-                return
+            else:
+                get_logger().info("Discarding reply to an expired RPC request", correlation_id=message.correlation_id)
+            return
 
         clear_log_context()
         if message.routing_key in messages.MESSAGE_MAP:
@@ -205,7 +207,12 @@ class RabbitMQMessageBus(InfrahubMessageBus):
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         await self.channel.default_exchange.publish(self.format_message(message=message), routing_key=routing_key)
 
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: int | None = None,  # noqa: ASYNC109
+    ) -> ResponseClass:
         correlation_id = str(UUIDT())
 
         future = self.loop.create_future()
@@ -217,7 +224,12 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
         await self.send(message=message)
 
-        response: AbstractIncomingMessage = await future
+        timeout = timeout or self.RPC_TIMEOUT
+        try:
+            response: AbstractIncomingMessage = await asyncio.wait_for(future, timeout=timeout)
+        except TimeoutError as exc:
+            self.futures.pop(correlation_id, None)
+            raise RPCError(message=f"No response to RPC message '{type(message).__name__}' within {timeout}s") from exc
         data = ujson.loads(response.body)
         return response_class(**data)
 
