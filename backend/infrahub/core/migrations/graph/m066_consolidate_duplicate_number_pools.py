@@ -79,7 +79,10 @@ class Migration066(ArbitraryMigration):
 
                 await self._update_schema_parameters(db=dbt, pool_id_map=pool_id_map, console=console)
 
-            # Failures become MigrationResult errors so the runner reports them instead of crashing
+            # Failures become MigrationResult errors so the runner reports them instead of crashing.
+            # CAVEAT: returning here from inside the transaction context means that context sees no
+            # exception and commits, so a mid-loop failure can persist partial consolidation.
+            # Re-raising (or moving this handler outside the transaction) is a separate follow-up.
             except Exception as exc:  # noqa: BLE001
                 error_msg = str(exc) or f"{type(exc).__name__}: {repr(exc)}"
                 return MigrationResult(errors=[error_msg])
