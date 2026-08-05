@@ -369,6 +369,7 @@ except NodeNotFoundError:
 
 Guidelines:
 
+- **Ask whether you need a `try`/`except` at all.** A catch earns its place only around a call that can raise in a way the caller must handle. There is nothing to catch when the guarded step is entirely in your control (assembling an object from already-validated data) or when its failure cannot reach the caller (handing a message to an internal queue). If the concern is a non-critical side effect like telemetry or a notification, move it off the request path — a background task that runs after the response — instead of silencing it in place; see [Post-commit follow-up work is best-effort](../../knowledge/backend/async-tasks.md#post-commit-follow-up-work-is-best-effort).
 - **Name the exceptions.** Catch the narrowest type(s) that the called code actually raises. If several are handled the same way, group them: `except (NodeNotFoundError, BranchNotFoundError):`.
 - **Check the hierarchy before narrowing.** Infrahub's exception types are mostly direct `Error` subclasses, not a tree — `QueryTimeoutError` is a *sibling* of `DatabaseError`, so catching `DatabaseError` does not cover query timeouts. Verify in `backend/infrahub/exceptions.py` which types the call path actually raises before writing the tuple.
 - **Keep the `try` body small.** Wrap only the statement that can raise, not a whole block, so an unexpected error elsewhere isn't caught by accident.
@@ -385,6 +386,44 @@ except Exception as exc:
 ```
 
 A broad `except Exception` is justified only at a top-level boundary (a task worker loop, a request handler) whose job is to prevent one failure from taking down the process — and even there, log the exception and re-raise or record it, never discard it.
+
+### `# noqa: BLE001`
+
+Narrowing is the default answer when ruff flags a broad `except Exception` — most call sites raise a
+knowable set of types (see above). Suppress the rule only when catching everything is deliberate, and
+name which case it is in the comment above it:
+
+- a top-level boundary (worker loop, request handler) that must not let one failure take down the process
+- a loop that turns a per-item failure into a reported result instead of aborting the whole run
+- a side effect that must not fail the primary operation — after checking the catch is needed at all
+
+All three still log or record the failure; none discards it.
+
+Inside a transaction, catching and returning commits the partial work: `__aexit__` rolls back only
+when an exception leaves the `async with` block. Re-raise inside and convert outside, and write what
+the code does rather than what it was meant to do.
+
+```python
+# ❌ Bad - the comment claims a clean failure, but the transaction commits whatever step_one wrote
+async with db.start_transaction() as dbt:
+    try:
+        await step_one(dbt)
+        await step_two(dbt)
+    # Failures become MigrationResult errors so the runner reports them
+    except Exception as exc:  # noqa: BLE001
+        return MigrationResult(errors=[str(exc)])
+
+# ✅ Good - the exception leaves the block, so it rolls back before being reported
+try:
+    async with db.start_transaction() as dbt:
+        await step_one(dbt)
+        await step_two(dbt)
+except Exception as exc:  # noqa: BLE001
+    return MigrationResult(errors=[str(exc)])
+```
+
+If a suppression exposes a pre-existing bug, file it separately; see
+[Pull Requests](../git-workflow.md#pull-requests).
 
 ## ASGI Middleware
 
