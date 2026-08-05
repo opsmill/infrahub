@@ -558,7 +558,8 @@ async def test_branch_delete_retries_a_branch_left_deleting(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
-    session_admin: AccountSession,
+    first_account: Node,
+    session_first_account: AccountSession,
     local_services: InfrahubServices,
 ) -> None:
     """A delete that failed part way through can be retried.
@@ -566,7 +567,7 @@ async def test_branch_delete_retries_a_branch_left_deleting(
     The first attempt leaves the branch in DELETING, which the default branch lookup hides. Without
     accepting that status the retry would report the branch as missing and its data would be unreachable.
     """
-    branch = await create_branch(branch_name="stuck-deleting-branch", db=db)
+    branch = await _create_branch(branch_name="stuck-deleting-branch", db=db, owner=first_account)
     branch.status = BranchStatus.DELETING
     await branch.save(db=db)
 
@@ -575,7 +576,7 @@ async def test_branch_delete_retries_a_branch_left_deleting(
             query='mutation { BranchDelete(data: { name: "stuck-deleting-branch" }) { ok } }',
             db=db,
             branch=default_branch,
-            account_session=session_admin,
+            account_session=session_first_account,
             service=local_services,
         )
 
