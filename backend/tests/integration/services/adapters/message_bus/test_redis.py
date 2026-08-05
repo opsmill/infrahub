@@ -223,7 +223,6 @@ async def test_redis_publish(redis_api: RedisManager) -> None:
     normal_message = messages.SendEchoRequest(message="normal")
 
     await bus.send(message=normal_message)
-    # Note: Redis implementation handles delays differently - using asyncio.sleep
 
     # Give time for message to be published
     await asyncio.sleep(0.1)
@@ -411,14 +410,40 @@ async def test_redis_delayed_retry_republished(redis_api: RedisManager) -> None:
     bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
     conn = await redis_api.get_connection()
     rpcs_stream = f"{redis_api.namespace}:rpcs"
+    delayed_queue = f"{redis_api.namespace}:delayed"
 
     await bus.send(message=messages.SendEchoRequest(message="try again"), delay=MessageTTL.FIVE, is_retry=True)
 
+    # The pending retry is durably recorded before the publish call returns
+    assert await conn.zcard(delayed_queue) == 1
     assert await conn.xlen(rpcs_stream) == 0
     await asyncio.sleep(delay=6)
     assert await conn.xlen(rpcs_stream) == 1
+    assert await conn.zcard(delayed_queue) == 0
 
     await bus.shutdown()
+
+
+async def test_redis_delayed_retry_survives_publisher_shutdown(redis_api: RedisManager) -> None:
+    """Validates that a pending retry outlives the worker that scheduled it."""
+    publisher = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+    conn = await redis_api.get_connection()
+    rpcs_stream = f"{redis_api.namespace}:rpcs"
+
+    await publisher.send(message=messages.SendEchoRequest(message="survivor"), delay=MessageTTL.FIVE, is_retry=True)
+    await publisher.shutdown()
+
+    assert await conn.zcard(f"{redis_api.namespace}:delayed") == 1
+
+    other_worker = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+    await asyncio.sleep(delay=6)
+    await other_worker.shutdown()
+
+    stream_messages = await redis_api.get_stream_messages(rpcs_stream)
+    assert len(stream_messages) == 1
+    delivered = messages.SendEchoRequest(**ujson.loads(stream_messages[0]["data"]["body"]))
+    assert delivered.message == "survivor"
+    assert stream_messages[0]["data"]["routing_key"] == "send.echo.request"
 
 
 async def test_redis_pending_messages_reclaimed(redis_api: RedisManager, fake_log: FakeLogger) -> None:

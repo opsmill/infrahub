@@ -5,7 +5,7 @@ import contextlib
 import time
 from dataclasses import dataclass
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, TypeVar
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, MutableMapping, TypeVar
 
 import redis.asyncio as redis
 import ujson
@@ -23,6 +23,7 @@ from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
+    from redis.commands.core import AsyncScript
     from redis.typing import EncodableT, FieldT
 
     from infrahub.config import BrokerSettings
@@ -30,6 +31,31 @@ if TYPE_CHECKING:
 
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
+
+# Atomically re-publishes due entries of the delayed queue onto their target
+# streams. Script atomicity guarantees each entry is delivered exactly once
+# even though every worker polls the shared queue. The target streams cannot
+# be declared as KEYS up front, so this requires a non-clustered Redis.
+DELIVER_DUE_MESSAGES_LUA = """
+local due = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1], 'LIMIT', 0, ARGV[2])
+for _, member in ipairs(due) do
+    local entry = cjson.decode(member)
+    local fields = {}
+    for key, value in pairs(entry.fields) do
+        fields[#fields + 1] = key
+        fields[#fields + 1] = value
+    end
+    if entry.maxlen then
+        redis.call('XADD', entry.stream, 'MAXLEN', '~', entry.maxlen, '*', unpack(fields))
+    else
+        redis.call('XADD', entry.stream, '*', unpack(fields))
+    end
+end
+if #due > 0 then
+    redis.call('ZREM', KEYS[1], unpack(due))
+end
+return #due
+"""
 
 
 async def _add_request_id(message: InfrahubMessage) -> None:
@@ -62,13 +88,15 @@ class RedisMessageBus(InfrahubMessageBus):
 
     Events are broadcast by having every worker read the shared events stream
     independently, work-queue messages are distributed through a consumer
-    group, and RPC replies flow through a per-worker callback stream.
+    group, and RPC replies flow through a per-worker callback stream. Delayed
+    deliveries wait in a shared sorted set until they come due.
     """
 
-    # Stream and consumer group names
+    # Stream, sorted set, and consumer group names
     EVENTS_STREAM = "events"
     RPCS_STREAM = "rpcs"
     CALLBACK_STREAM_PREFIX = "callback"
+    DELAYED_QUEUE = "delayed"
     RPCS_GROUP = "git-workers"
 
     # Approximate upper bound for the events stream; events are fire-and-forget
@@ -84,12 +112,19 @@ class RedisMessageBus(InfrahubMessageBus):
     # Seconds between the pending-claim and trim passes of a group consumer.
     MAINTENANCE_INTERVAL: float = 60.0
 
+    # Seconds between two scans of the delayed queue, and the maximum number
+    # of due entries one scan delivers; anything beyond the batch is picked up
+    # by the next scan.
+    DELAYED_POLL_INTERVAL: float = 1.0
+    DELAYED_DELIVERY_BATCH = 100
+
     def __init__(self, component_type: ComponentType, settings: BrokerSettings | None = None) -> None:
         self.settings = settings or config.SETTINGS.broker
         self.connection: redis.Redis
         self.events_stream = f"{self.settings.namespace}:{self.EVENTS_STREAM}"
         self.rpcs_stream = f"{self.settings.namespace}:{self.RPCS_STREAM}"
         self.callback_stream = f"{self.settings.namespace}:{self.CALLBACK_STREAM_PREFIX}:{WORKER_IDENTITY}"
+        self.delayed_queue = f"{self.settings.namespace}:{self.DELAYED_QUEUE}"
         self.message_enrichers: list[MessageFunction] = []
 
         self.loop = asyncio.get_running_loop()
@@ -97,7 +132,7 @@ class RedisMessageBus(InfrahubMessageBus):
 
         self.component_type: ComponentType = component_type
         self._consumer_tasks: list[asyncio.Task] = []
-        self._publish_tasks: set[asyncio.Task] = set()
+        self._deliver_due_script: AsyncScript
         self._group_memberships: list[tuple[str, str, str]] = []
         self._shutdown_event: asyncio.Event = asyncio.Event()
 
@@ -144,16 +179,14 @@ class RedisMessageBus(InfrahubMessageBus):
         elif self.component_type == ComponentType.GIT_AGENT:
             await self._initialize_git_worker()
 
+        self._deliver_due_script = self.connection.register_script(DELIVER_DUE_MESSAGES_LUA)
+        self._consumer_tasks.append(asyncio.create_task(self._deliver_delayed_messages()))
+
     async def shutdown(self) -> None:
         """Shutdown the message bus and clean up resources."""
         self._shutdown_event.set()
 
         for task in self._consumer_tasks:
-            task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
-
-        for task in list(self._publish_tasks):
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
@@ -313,8 +346,8 @@ class RedisMessageBus(InfrahubMessageBus):
             if self._matches_bindings(message_data=message_data, bindings=subscription.bindings):
                 await subscription.callback(message_data)
         except Exception:
-            # Failed messages are retried through a delayed re-publish, so the
-            # original entry is acknowledged either way.
+            # Failed messages are durably re-scheduled before their handler
+            # returns, so the original entry is acknowledged either way.
             get_logger().exception("Error processing message", message_id=message_id)
         if subscription.ack_messages and subscription.group:
             await self.connection.xack(subscription.stream, subscription.group, message_id)
@@ -478,8 +511,8 @@ class RedisMessageBus(InfrahubMessageBus):
                     body = data.get("body", b"")
                     if isinstance(body, str):
                         body = body.encode()
-                    # Failure retries are re-published with a delay, so there is
-                    # nothing to do with the returned TTL here.
+                    # Failure retries are durably re-scheduled with a delay, so
+                    # there is nothing to do with the returned TTL here.
                     await execute_message(routing_key=routing_key, message_body=body, message_bus=self)
                 else:
                     get_logger().error("Invalid message received", message=f"{data!r}")
@@ -574,17 +607,47 @@ class RedisMessageBus(InfrahubMessageBus):
 
         await self._setup_callback(identity=consumer)
 
-    async def _publish_with_delay(self, message: InfrahubMessage, routing_key: str, delay: MessageTTL) -> None:
-        """Publish a message after a delay.
+    async def _server_time_ms(self) -> int:
+        """Return the Redis server clock in epoch milliseconds."""
+        seconds, microseconds = await self.connection.time()
+        return seconds * 1000 + microseconds // 1000
 
-        Args:
-            message: The message to publish.
-            routing_key: The routing key for the message.
-            delay: The delay before publishing.
+    async def _schedule_delayed(
+        self, stream: str, fields: dict[FieldT, EncodableT], delay: MessageTTL, maxlen: int | None
+    ) -> None:
+        """Persist a message for delivery once its delay elapses.
 
+        The entry lives in a sorted set scored by its due time, so a pending
+        delay survives the scheduling process; whichever worker scans the
+        queue first after the due time delivers it.
         """
-        await asyncio.sleep(delay.value / 1000)
-        await self.publish(message, routing_key)
+        entry: dict[str, Any] = {
+            # A unique id keeps identical payloads scheduled at different
+            # times from collapsing into a single sorted set member.
+            "id": str(UUIDT()),
+            "stream": stream,
+            "fields": {key: value.decode() if isinstance(value, bytes) else value for key, value in fields.items()},
+        }
+        if maxlen is not None:
+            entry["maxlen"] = maxlen
+        due_time = await self._server_time_ms() + delay.value
+        await self.connection.zadd(self.delayed_queue, {ujson.dumps(entry): due_time})
+
+    async def _deliver_delayed_messages(self) -> None:
+        """Re-publish scheduled messages whose delay has elapsed, until shutdown."""
+        while not self._shutdown_event.is_set():
+            try:
+                await self._deliver_due_script(
+                    keys=[self.delayed_queue],
+                    args=[await self._server_time_ms(), self.DELAYED_DELIVERY_BATCH],
+                )
+            except asyncio.CancelledError:
+                break
+            except redis.RedisError:
+                get_logger().exception("Redis error delivering delayed messages")
+            except Exception:
+                get_logger().exception("Unexpected error delivering delayed messages")
+            await asyncio.sleep(self.DELAYED_POLL_INTERVAL)
 
     async def publish(
         self,
@@ -604,14 +667,6 @@ class RedisMessageBus(InfrahubMessageBus):
         """
         with trace.get_tracer(__name__).start_as_current_span("publish_message") as span:
             span.set_attribute("routing_key", routing_key)
-
-            if delay:
-                # Redis has no broker-side delayed delivery; the pending publish
-                # only survives as long as this process does.
-                task = asyncio.create_task(self._publish_with_delay(message, routing_key, delay))
-                self._publish_tasks.add(task)
-                task.add_done_callback(self._publish_tasks.discard)
-                return
 
             for enricher in self.message_enrichers:
                 await enricher(message)
@@ -635,6 +690,7 @@ class RedisMessageBus(InfrahubMessageBus):
 
             # Determine which stream to publish to based on routing key
             stream = self._get_stream_for_routing_key(routing_key)
+            maxlen = self.EVENTS_STREAM_MAXLEN if stream == self.events_stream else None
 
             fields: dict[FieldT, EncodableT] = {
                 "routing_key": routing_key,
@@ -642,8 +698,10 @@ class RedisMessageBus(InfrahubMessageBus):
                 "headers": ujson.dumps(headers),
                 "priority": str(message.meta.priority or 0),
             }
-            if stream == self.events_stream:
-                await self.connection.xadd(stream, fields, maxlen=self.EVENTS_STREAM_MAXLEN, approximate=True)
+            if delay:
+                await self._schedule_delayed(stream=stream, fields=fields, delay=delay, maxlen=maxlen)
+            elif maxlen is not None:
+                await self.connection.xadd(stream, fields, maxlen=maxlen, approximate=True)
             else:
                 await self.connection.xadd(stream, fields)
 
