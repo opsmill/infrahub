@@ -197,7 +197,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             self.validate_local_directories()
         except RepositoryInvalidFileSystemError:
             await self.ensure_location_is_defined()
-            await self.create_locally(infrahub_branch_name=self.infrahub_branch_name, update_commit_value=False)
+            await self.create_locally(
+                checkout_ref=await self.resolve_checkout_ref(),
+                infrahub_branch_name=self.infrahub_branch_name,
+                update_commit_value=False,
+            )
             self.reinitialized = True
             log.info(f"Initialized the local directory for {self.name} because it was missing.")
 
