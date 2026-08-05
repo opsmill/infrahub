@@ -140,11 +140,12 @@ class RedisMessageBus(InfrahubMessageBus):
     # readers to catch up.
     EVENTS_STREAM_MAXLEN = 10_000
 
-    # Backstop cap for a per-worker callback stream, protecting Redis from
-    # streams orphaned by a worker that died without its shutdown cleanup. A
-    # live worker trims its own stream up to the last-read entry instead, so
-    # the cap only needs to stay far above any momentary unread backlog.
-    CALLBACK_STREAM_MAXLEN: int = 10_000
+    # Expiry for per-worker callback streams. A live worker keeps pushing its
+    # stream's expiry out and trims read entries, so the expiry only ever
+    # lapses for a stream orphaned by a worker that died without its shutdown
+    # cleanup. Sized to the RPC timeout: an owner starved for longer has no
+    # reply worth keeping anyway.
+    CALLBACK_STREAM_TTL: int = InfrahubMessageBus.DELIVER_TIMEOUT
 
     # Seconds between the pending-claim and trim passes of a group consumer.
     MAINTENANCE_INTERVAL: float = 60.0
@@ -309,7 +310,7 @@ class RedisMessageBus(InfrahubMessageBus):
                         await self._claim_pending_messages(subscription)
                         await self._trim_worked_stream(subscription)
                     else:
-                        await self._trim_owned_stream(subscription, last_id)
+                        await self._maintain_owned_stream(subscription, last_id)
                     last_maintenance = time.monotonic()
 
                 entries, last_id = await self._read_stream_entries(subscription, last_id)
@@ -472,18 +473,20 @@ class RedisMessageBus(InfrahubMessageBus):
 
         await self.connection.xtrim(subscription.stream, minid=threshold, approximate=False)
 
-    async def _trim_owned_stream(self, subscription: StreamSubscription, last_id: str | bytes) -> None:
-        """Drop entries this consumer has already read from a stream it owns.
+    async def _maintain_owned_stream(self, subscription: StreamSubscription, last_id: str | bytes) -> None:
+        """Trim read entries and push out the expiry of a stream this consumer owns.
 
         Trimming up to the last-read id can never discard an unread entry, so
         this is only safe for streams with a single reader. The newest read
-        entry itself is kept, sparing the trim threshold an id increment.
+        entry itself is kept, sparing the trim threshold an id increment. The
+        refreshed expiry lets a stream whose owner is gone delete itself
+        instead of accumulating replies forever.
         """
         if not subscription.owns_stream or subscription.group:
             return
-        if last_id in ("0", b"0"):
-            return
-        await self.connection.xtrim(subscription.stream, minid=last_id, approximate=False)
+        if last_id not in ("0", b"0"):
+            await self.connection.xtrim(subscription.stream, minid=last_id, approximate=False)
+        await self.connection.expire(subscription.stream, self.CALLBACK_STREAM_TTL)
 
     def _decode_message_data(self, data: dict) -> dict:
         """Decode message data from Redis bytes to strings/dicts.
@@ -822,9 +825,10 @@ class RedisMessageBus(InfrahubMessageBus):
                 "body": message.body,
                 "headers": ujson.dumps(headers),
             },
-            maxlen=self.CALLBACK_STREAM_MAXLEN,
-            approximate=True,
         )
+        # nx only sets an expiry where none exists, so this can never shorten
+        # the refresh maintained by the stream's owner.
+        await self.connection.expire(routing_key, self.CALLBACK_STREAM_TTL, nx=True)
 
     async def rpc(
         self,
