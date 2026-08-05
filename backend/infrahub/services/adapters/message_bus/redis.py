@@ -244,6 +244,11 @@ class RedisMessageBus(InfrahubMessageBus):
                     continue
                 get_logger().exception("Redis error in consumer")
                 await asyncio.sleep(1)  # Back off on errors
+            except Exception:
+                # A malformed entry or driver surprise must not silently kill the
+                # consumer task; log and keep consuming.
+                get_logger().exception("Unexpected error in consumer")
+                await asyncio.sleep(1)  # Back off on errors
 
     async def _read_stream_entries(self, subscription: StreamSubscription, last_id: str) -> tuple[list, str]:
         """Read entries from a Redis stream.
