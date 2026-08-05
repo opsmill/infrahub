@@ -21,6 +21,7 @@ from infrahub_sdk.protocols import (
     CoreGeneratorDefinition,
     CoreGenericRepository,
     CoreGraphQLQuery,
+    CoreGroup,
     CoreTransformation,
     CoreTransformJinja2,
     CoreTransformPython,
@@ -504,7 +505,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         # Resolve each query reference to its node id now that the queries have been applied.
         for transform in local_transforms.values():
             graphql_query = await self.sdk.get(
-                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform.query), populate_store=True
+                kind=CoreGraphQLQuery, branch=branch_name, id=str(transform.query), populate_store=True
             )
             transform.query = graphql_query.id
 
@@ -551,7 +552,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name)
         payload_data = {**data.payload, "fingerprint": fingerprint}
         create_payload = self.sdk.schema.generate_payload_create(
-            schema=schema, data=payload_data, source=self.id, is_protected=True
+            schema=schema, data=payload_data, source=str(self.id), is_protected=True
         )
         obj = await self.sdk.create(kind=CoreTransformJinja2, branch=branch_name, **create_payload)
         await obj.save()
@@ -711,13 +712,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         branch_name: str,
         data: InfrahubRepositoryArtifactDefinitionConfig,
         fingerprint: str | None = None,
-    ) -> InfrahubNode:
+    ) -> CoreArtifactDefinition:
         schema = await self.sdk.schema.get(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch_name)
         payload_data = {**data.model_dump(), "fingerprint": fingerprint}
         create_payload = self.sdk.schema.generate_payload_create(
-            schema=schema, data=payload_data, source=self.id, is_protected=True
+            schema=schema, data=payload_data, source=str(self.id), is_protected=True
         )
-        obj = await self.sdk.create(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch_name, **create_payload)
+        obj = await self.sdk.create(kind=CoreArtifactDefinition, branch=branch_name, **create_payload)
         await obj.save()
         return obj
 
@@ -858,15 +859,29 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             # and send an empty list to the API
             return
 
+        # A file that failed to load carries no content, so it cannot be validated or sent to the
+        # API. Report the reason the loader recorded rather than letting the empty content surface
+        # later as an opaque schema validation failure. Each payload travels next to its file
+        # because re-reading the content attribute in the loops below would lose the narrowing.
+        unloadable: list[SchemaFile] = []
+        payloads: list[tuple[SchemaFile, dict[str, Any]]] = []
         for schema_file in schemas_data:
-            if schema_file.valid:
+            if not schema_file.valid or schema_file.content is None:
+                unloadable.append(schema_file)
+                log.error(f"Unable to load the file {schema_file.identifier}, {schema_file.error_message}")
                 continue
-            log.error(f"Unable to load the file {schema_file.identifier}, {schema_file.error_message}")
+            payloads.append((schema_file, schema_file.content))
+
+        if unloadable:
+            details = ", ".join(f"{item.identifier} ({item.error_message})" for item in unloadable)
+            raise ValidationError(
+                identifier=str(self.id), message=f"Unable to load {len(unloadable)} schema file(s): {details}"
+            )
 
         # Valid data format of content
-        for schema_file in schemas_data:
+        for schema_file, payload in payloads:
             try:
-                self.sdk.schema.validate(schema_file.content)
+                self.sdk.schema.validate(payload)
             except PydanticValidationError as exc:
                 log.error(f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}")
                 raise ValidationError(
@@ -875,7 +890,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 ) from exc
 
         response = await self.sdk.schema.load(
-            schemas=[item.content for item in schemas_data], branch=branch_name, wait_until_converged=True
+            schemas=[payload for _, payload in payloads], branch=branch_name, wait_until_converged=True
         )
 
         if response.errors:
@@ -1015,7 +1030,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         create_payload = self.sdk.schema.generate_payload_create(
             schema=schema,
             data=data,
-            source=self.id,
+            source=str(self.id),
             is_protected=True,
         )
         obj = await self.sdk.create(kind=CoreGraphQLQuery, branch=branch_name, **create_payload)
@@ -1092,7 +1107,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         # Resolve each query reference to its node id now that the queries have been applied.
         for check in local_check_definitions.values():
             graphql_query = await self.sdk.get(
-                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(check.query), populate_store=True
+                kind=CoreGraphQLQuery, branch=branch_name, id=str(check.query), populate_store=True
             )
             check.query = str(graphql_query.id)
 
@@ -1170,7 +1185,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 worktree_directory=commit_wt.directory,
             )
 
-            generator.load_class(import_root=self.directory_root, relative_path=file_info.relative_repo_path_dir)
+            generator.load_class(import_root=str(self.directory_root), relative_path=file_info.relative_repo_path_dir)
 
             closure = closure_builder.build(
                 transform_config=generator,
@@ -1264,7 +1279,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def _resolve_target_group_id(self, branch_name: str, group_name: str) -> str | None:
         """Resolve a target group name to its node id for the group-identity fingerprint term."""
         targets = await self.sdk.filters(
-            kind=InfrahubKind.GENERICGROUP,
+            kind=CoreGroup,
             branch=branch_name,
             name__value=group_name,
             populate_store=True,
@@ -1280,12 +1295,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         closure: ClosureResult,
     ) -> bool:
         graphql_queries = await self.sdk.filters(
-            kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, name__value=generator.query, populate_store=True
+            kind=CoreGraphQLQuery, branch=branch_name, name__value=generator.query, populate_store=True
         )
         if graphql_queries:
             generator.query = graphql_queries[0].id
         targets = await self.sdk.filters(
-            kind=InfrahubKind.GENERICGROUP,
+            kind=CoreGroup,
             branch=branch_name,
             name__value=generator.targets,
             populate_store=True,
@@ -1411,7 +1426,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         # Resolve each query reference to its node id now that the queries have been applied.
         for transform in local_transform_definitions.values():
             graphql_query = await self.sdk.get(
-                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform.query), populate_store=True
+                kind=CoreGraphQLQuery, branch=branch_name, id=str(transform.query), populate_store=True
             )
             transform.query = str(graphql_query.id)
 
@@ -1614,7 +1629,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         branch_name: str,
         closure: ClosureResult,
         fingerprint: str | None = None,
-    ) -> InfrahubNode:
+    ) -> CoreGeneratorDefinition:
         # `watch` is an SDK-config-only field that drives closure detection; it is not a
         # graph attribute, so it must not reach the node create payload.
         data = generator.model_dump(exclude_none=True, exclude={"file_path", "watch"})
@@ -1632,7 +1647,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             source=str(self.id),
             is_protected=True,
         )
-        obj = await self.sdk.create(kind=InfrahubKind.GENERATORDEFINITION, branch=branch_name, **create_payload)
+        obj = await self.sdk.create(kind=CoreGeneratorDefinition, branch=branch_name, **create_payload)
         await obj.save()
 
         return obj
@@ -1700,7 +1715,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         create_payload = self.sdk.schema.generate_payload_create(
             schema=schema,
             data=data,
-            source=self.id,
+            source=str(self.id),
             is_protected=True,
         )
         obj = await self.sdk.create(kind=CoreCheckDefinition, branch=branch_name, data=create_payload)
@@ -2025,7 +2040,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 
-        if artifact.checksum.value == checksum:
+        # The storage id is written in the same save() as the checksum, so a matching checksum
+        # means the content was uploaded. Regenerate if that pairing was ever broken, rather than
+        # reporting a result with no storage id.
+        if artifact.checksum.value == checksum and artifact.storage_id.value:
             return ArtifactGenerateResult(
                 changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
             )
@@ -2085,7 +2103,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 
-        if artifact.checksum.value == checksum:
+        # The storage id is written in the same save() as the checksum, so a matching checksum
+        # means the content was uploaded. Regenerate if that pairing was ever broken, rather than
+        # reporting a result with no storage id.
+        if artifact.checksum.value == checksum and artifact.storage_id.value:
             return ArtifactGenerateResult(
                 changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
             )
