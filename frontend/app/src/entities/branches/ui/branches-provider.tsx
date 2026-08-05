@@ -48,7 +48,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
         type={ALERT_TYPES.ERROR}
         message={
           <>
-            Branch <b>{branchInQueryString}</b> not found, you have been redirected to the main
+            Branch <b>{branchInQueryString}</b> not found, you have been redirected to the default
             branch.
           </>
         }

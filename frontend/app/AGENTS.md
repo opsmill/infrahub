@@ -54,6 +54,7 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 - `dev/knowledge/frontend/design-system.md` - `@infrahub/ui` package (Button, Card, Modal, Spinner)
 - `dev/knowledge/frontend/file-components.md` - DataViewer and file handling components
 - `dev/knowledge/frontend/auth-methods.md` - Auth method registry, picker, token persistence boundaries
+- `dev/knowledge/frontend/branches.md` - Read before writing code that depends on which branch is current, or on the default branch — the default branch name is deployment-configurable
 
 ### Guides (How to do X)
 

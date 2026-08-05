@@ -32,9 +32,9 @@ export function GlobalBranchFilter({ ...props }: FilterTagProps) {
   };
 
   useEffect(() => {
-    if (currentBranch.name === "main" || currentFilter) return;
+    if (currentBranch.is_default || currentFilter) return;
 
-    // Set the current branch if it's not main and if it has not been removed from the filters
+    // Set the current branch if it's not the default one and if it has not been removed from the filters
     setFilters([...filters, { name: branchFilterName, value: currentBranch.name }]);
   }, []);
 
