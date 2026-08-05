@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 class InfrahubMessageBus(ABC):
     DELIVER_TIMEOUT: int = 30 * 60  # 30 minutes
+    RPC_TIMEOUT: int = DELIVER_TIMEOUT  # seconds to wait for an RPC reply
     worker_bindings: list[str] = [
         "check.*.*",
         "event.*.*",
@@ -63,7 +64,27 @@ class InfrahubMessageBus(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: int | None = None,  # noqa: ASYNC109
+    ) -> ResponseClass:
+        """Send an RPC request and wait for its reply.
+
+        The timeout is a parameter rather than a caller-side `asyncio.timeout()`
+        because the adapter must discard its pending reply future when the wait
+        expires.
+
+        Args:
+            message: The RPC request message.
+            response_class: The expected response class type.
+            timeout: Seconds to wait for the reply; RPC_TIMEOUT when unset.
+
+        Raises:
+            RPCError: If no reply arrives within the timeout.
+
+        """
         raise NotImplementedError()
 
     async def send(self, message: InfrahubMessage, delay: MessageTTL | None = None, is_retry: bool = False) -> None:

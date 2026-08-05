@@ -14,6 +14,7 @@ from aio_pika import Message
 
 from infrahub import config
 from infrahub.components import ComponentType
+from infrahub.exceptions import RPCError
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.send_echo_request import SendEchoRequestResponse
 from infrahub.message_bus.operations import execute_message
@@ -465,3 +466,19 @@ async def test_rabbitmq_on_message_invalid_routing_key(rabbitmq_api: RabbitMQMan
 
 async def on_callback(message: AbstractIncomingMessage, message_bus: InfrahubMessageBus) -> None:
     await execute_message(routing_key=message.routing_key or "", message_body=message.body, message_bus=message_bus)
+
+
+async def test_rabbitmq_rpc_timeout(rabbitmq_api: RabbitMQManager) -> None:
+    """Validates that an RPC call fails cleanly when no worker replies."""
+    bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
+
+    with pytest.raises(RPCError) as exc:
+        await bus.rpc(
+            message=messages.SendEchoRequest(message="nobody is listening"),
+            response_class=SendEchoRequestResponse,
+            timeout=1,
+        )
+
+    assert exc.value.message == "No response to RPC message 'SendEchoRequest' within 1s"
+    assert bus.futures == {}
+    await bus.shutdown()

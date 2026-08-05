@@ -12,6 +12,7 @@ import ujson
 
 from infrahub import config
 from infrahub.components import ComponentType
+from infrahub.exceptions import RPCError
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.send_echo_request import SendEchoRequestResponse
 from infrahub.message_bus.operations import execute_message
@@ -489,3 +490,19 @@ async def test_redis_consumer_deregistered_on_shutdown(redis_api: RedisManager) 
     groups = await redis_api.get_consumer_groups(f"{redis_api.namespace}:rpcs")
     rpcs_group = next(g for g in groups if g.name == RedisMessageBus.RPCS_GROUP)
     assert rpcs_group.consumers == []
+
+
+async def test_redis_rpc_timeout(redis_api: RedisManager) -> None:
+    """Validates that an RPC call fails cleanly when no worker replies."""
+    bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+
+    with pytest.raises(RPCError) as exc:
+        await bus.rpc(
+            message=messages.SendEchoRequest(message="nobody is listening"),
+            response_class=SendEchoRequestResponse,
+            timeout=1,
+        )
+
+    assert exc.value.message == "No response to RPC message 'SendEchoRequest' within 1s"
+    assert bus.futures == {}
+    await bus.shutdown()

@@ -42,7 +42,12 @@ class BusSimulator(InfrahubMessageBus):
         correlation_id = message.meta.correlation_id or "default"
         self.replies[correlation_id].append(message)
 
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: int | None = None,  # noqa: ARG002, ASYNC109
+    ) -> ResponseClass:
         routing_key = ROUTING_KEY_MAP.get(type(message), "")
 
         correlation_id = str(UUIDT())

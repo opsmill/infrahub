@@ -12,6 +12,7 @@ from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 
 from infrahub import config
 from infrahub.components import ComponentType
+from infrahub.exceptions import RPCError
 from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
@@ -91,12 +92,14 @@ class NATSMessageBus(InfrahubMessageBus):
                 span.set_attribute("routing_key", message.subject)
 
                 if message.headers and "correlation_id" in message.headers:
-                    span.set_attribute("correlation_id", message.headers["correlation_id"])
-                    future: asyncio.Future = self.futures.pop(message.headers["correlation_id"])
-
-                    if future:
+                    correlation_id = message.headers["correlation_id"]
+                    span.set_attribute("correlation_id", correlation_id)
+                    future = self.futures.pop(correlation_id, None)
+                    if future and not future.done():
                         future.set_result(message)
-                        return
+                    else:
+                        get_logger().info("Discarding reply to an expired RPC request", correlation_id=correlation_id)
+                    return
 
                 clear_log_context()
                 if message.subject in messages.MESSAGE_MAP:
@@ -278,7 +281,12 @@ class NATSMessageBus(InfrahubMessageBus):
             headers=headers,
         )
 
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: int | None = None,  # noqa: ASYNC109
+    ) -> ResponseClass:
         correlation_id = str(UUIDT())
 
         future = self.loop.create_future()
@@ -292,6 +300,11 @@ class NATSMessageBus(InfrahubMessageBus):
 
         await self.send(message=message)
 
-        response: nats.aio.msg.Msg = await future
+        timeout = timeout or self.RPC_TIMEOUT
+        try:
+            response: nats.aio.msg.Msg = await asyncio.wait_for(future, timeout=timeout)
+        except TimeoutError as exc:
+            self.futures.pop(correlation_id, None)
+            raise RPCError(message=f"No response to RPC message '{type(message).__name__}' within {timeout}s") from exc
         data = ujson.loads(response.data)
         return response_class(**data)
