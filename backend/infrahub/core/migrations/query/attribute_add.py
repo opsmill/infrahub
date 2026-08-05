@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import NULL_VALUE, RelationshipStatus
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, NULL_VALUE, BranchSupportType, RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeValueIndexedNode, GraphAttributeValueNode
 from infrahub.core.query import Query, QueryType
+from infrahub.core.timestamp import Timestamp
 from infrahub.types import is_large_attribute_type
 
 if TYPE_CHECKING:
@@ -12,6 +13,17 @@ if TYPE_CHECKING:
 
 
 class AttributeAddQuery(Query):
+    """Create missing attribute rows on the nodes of the given kinds.
+
+    ``uuids`` optionally restricts the write to specific nodes. ``write_at``
+    optionally backdates the created rows: node selection still happens at the
+    query's regular ``at`` time, while the new edges carry ``write_at`` as their
+    ``from``.
+
+    Created edges live on the query's branch, except when ``branch_support`` is
+    agnostic: those rows belong to the global branch, visible from every branch.
+    """
+
     name = "attribute_add"
     type = QueryType.WRITE
 
@@ -23,6 +35,7 @@ class AttributeAddQuery(Query):
         branch_support: str,
         default_value: Any | None = None,
         uuids: list[str] | None = None,
+        write_at: Timestamp | str | None = None,
         **kwargs: Any,
     ) -> None:
         self.node_kinds = node_kinds
@@ -31,16 +44,21 @@ class AttributeAddQuery(Query):
         self.branch_support = branch_support
         self.default_value = default_value
         self.uuids = uuids
+        self.write_at = Timestamp(write_at) if write_at else None
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
+        write_time = (self.write_at or self.at).to_string()
+
         self.params["node_kinds"] = self.node_kinds
+        self.params["node_uuids"] = self.uuids
         self.params["attr_name"] = self.attribute_name
         self.params["branch_support"] = self.branch_support
-        self.params["current_time"] = self.at.to_string()
+        # TODO: current_time is a misleading name. it sounds like the timestamp is for ~this instant. from_time or write_tie is better
+        self.params["current_time"] = write_time
 
         if self.default_value is not None:
             self.params["attr_value"] = self.default_value
@@ -49,11 +67,18 @@ class AttributeAddQuery(Query):
 
         self.params["user_id"] = self.user_id
 
+        if self.branch_support == BranchSupportType.AGNOSTIC.value:
+            edge_branch_name = GLOBAL_BRANCH_NAME
+            edge_branch_level = 1
+        else:
+            edge_branch_name = self.branch.name
+            edge_branch_level = self.branch.hierarchy_level
+
         self.params["rel_props"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
+            "branch": edge_branch_name,
+            "branch_level": edge_branch_level,
             "status": RelationshipStatus.ACTIVE.value,
-            "from": self.at.to_string(),
+            "from": write_time,
             "from_user_id": self.user_id,
         }
 
@@ -91,6 +116,7 @@ class AttributeAddQuery(Query):
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
         WITH av, is_protected_value
         MATCH (n:%(node_kinds_str)s)
+        WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids
         CALL (n) {
             MATCH (:Root)<-[r:IS_PART_OF]-(n)
             WHERE %(branch_filter)s
