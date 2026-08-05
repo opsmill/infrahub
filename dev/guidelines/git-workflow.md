@@ -122,6 +122,12 @@ code diff — no spec-kit design record (`dev/specs/<feature>/`, see
 `creating-changelog-entries` skill). Trim both before opening the PR if the workflow that produced
 the change generated them by default.
 
+**A lint- or rule-suppression PR ships the suppression only.** If resolving a lint violation
+(e.g. adding a justified `# noqa`) surfaces a pre-existing behavioral bug in the code you're
+annotating, don't fix the bug in the same PR — keep the diff limited to the annotation and file
+the bug separately. The justification comment may record what you found (see
+[Exception Handling](backend/python.md#exception-handling)), but the fix belongs in its own PR.
+
 ## Critical Rules
 
 - Never force push to `stable` or `develop`
