@@ -546,12 +546,14 @@ async def test_redis_consumer_deregistered_on_shutdown(redis_api: RedisManager) 
 
 
 async def test_redis_callback_stream_capped(redis_api: RedisManager) -> None:
-    """Validates that a callback stream does not grow without bound as replies accumulate."""
+    """Validates that an orphaned callback stream does not grow without bound as replies accumulate."""
     bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+    bus.CALLBACK_STREAM_MAXLEN = 200  # shrink the backstop so the test stays fast
     conn = await redis_api.get_connection()
+    # Nothing reads this stream, as when its worker died without cleaning up
     requester_callback_stream = f"{redis_api.namespace}:callback:other-worker"
 
-    reply_count = RedisMessageBus.CALLBACK_STREAM_MAXLEN * 2
+    reply_count = bus.CALLBACK_STREAM_MAXLEN * 2
     for index in range(reply_count):
         await bus.reply(
             message=messages.SendEchoRequest(message=f"reply {index}"), routing_key=requester_callback_stream
@@ -560,9 +562,31 @@ async def test_redis_callback_stream_capped(redis_api: RedisManager) -> None:
     length = await conn.xlen(requester_callback_stream)
     # Trimming is approximate: Redis keeps at least MAXLEN entries and removes
     # whole macro nodes (100 entries by default), so allow that much slack.
-    assert RedisMessageBus.CALLBACK_STREAM_MAXLEN <= length <= RedisMessageBus.CALLBACK_STREAM_MAXLEN + 200
+    assert bus.CALLBACK_STREAM_MAXLEN <= length <= bus.CALLBACK_STREAM_MAXLEN + 200
 
     await bus.shutdown()
+
+
+async def test_redis_callback_stream_trimmed_after_read(redis_api: RedisManager, fake_log: FakeLogger) -> None:
+    """Validates that a worker trims its own callback stream once replies are read."""
+    bus = RedisMessageBus(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+    bus.MAINTENANCE_INTERVAL = 0.5
+    conn = await redis_api.get_connection()
+
+    with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
+        await bus._initialize()
+        for index in range(20):
+            reply = messages.SendEchoRequest(message=f"reply {index}")
+            reply.meta.correlation_id = f"expired-{index}"
+            await bus.reply(message=reply, routing_key=bus.callback_stream)
+        await asyncio.sleep(delay=2)
+        length = await conn.xlen(bus.callback_stream)
+        await bus.shutdown()
+
+    # Every reply was read (and discarded as expired), then trimmed away; only
+    # the newest read entry may remain below the trim threshold.
+    assert len(fake_log.info_logs) == 20
+    assert length <= 1
 
 
 async def test_redis_rpc_timeout(redis_api: RedisManager) -> None:
