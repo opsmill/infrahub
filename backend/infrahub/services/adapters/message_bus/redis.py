@@ -33,21 +33,28 @@ if TYPE_CHECKING:
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
 
-# Re-publishes due entries of the delayed queue onto their target streams.
-# Every entry is removed right after its own successful XADD, and a failing
-# entry is skipped and returned to the caller, so one bad entry can neither
-# replay already-delivered ones on the next scan nor block the rest of the
-# queue (script errors abort without rolling back applied effects). The whole
-# script still runs serialized, so concurrent pollers never deliver an entry
-# twice. The target streams cannot be declared as KEYS up front, so this
-# requires a non-clustered Redis.
+# Re-publishes due entries of the delayed queue (KEYS[1]) onto their target
+# streams. Every entry is removed right after its own successful XADD, so a
+# failure can never replay already-delivered entries (script errors abort
+# without rolling back applied effects). A failing entry is rescored to a
+# later due time instead of staying at the head of every scan; once it
+# exhausts its delivery attempts (tracked in KEYS[2]) it is parked in the
+# dead-letter list (KEYS[3]) for inspection. Retried and parked members are
+# returned to the caller for logging. The whole script runs serialized, so
+# concurrent pollers never deliver an entry twice. The target streams cannot
+# be declared as KEYS up front, so this requires a non-clustered Redis.
 DELIVER_DUE_MESSAGES_LUA = """
 local due = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1], 'LIMIT', 0, ARGV[2])
-local failed = {}
+local retried = {}
+local dead = {}
 for _, member in ipairs(due) do
     local delivered = false
+    local entry_id = member
     local ok, entry = pcall(cjson.decode, member)
     if ok and type(entry) == 'table' and type(entry.fields) == 'table' and entry.stream then
+        if entry.id then
+            entry_id = entry.id
+        end
         local fields = {}
         for key, value in pairs(entry.fields) do
             fields[#fields + 1] = key
@@ -63,11 +70,22 @@ for _, member in ipairs(due) do
     end
     if delivered then
         redis.call('ZREM', KEYS[1], member)
+        redis.call('HDEL', KEYS[2], entry_id)
     else
-        failed[#failed + 1] = member
+        local attempts = redis.call('HINCRBY', KEYS[2], entry_id, 1)
+        if attempts < tonumber(ARGV[4]) then
+            redis.call('ZADD', KEYS[1], tonumber(ARGV[1]) + tonumber(ARGV[3]), member)
+            retried[#retried + 1] = member
+        else
+            redis.call('ZREM', KEYS[1], member)
+            redis.call('RPUSH', KEYS[3], member)
+            redis.call('LTRIM', KEYS[3], -tonumber(ARGV[5]), -1)
+            redis.call('HDEL', KEYS[2], entry_id)
+            dead[#dead + 1] = member
+        end
     end
 end
-return failed
+return {retried, dead}
 """
 
 
@@ -113,6 +131,8 @@ class RedisMessageBus(InfrahubMessageBus):
     RPCS_STREAM = "rpcs"
     CALLBACK_STREAM_PREFIX = "callback"
     DELAYED_QUEUE = "delayed"
+    DELAYED_ATTEMPTS = "delayed:attempts"
+    DELAYED_DEAD_LETTER = "delayed:dead"
     RPCS_GROUP = "git-workers"
 
     # Approximate upper bound for the events stream; events are fire-and-forget
@@ -135,6 +155,13 @@ class RedisMessageBus(InfrahubMessageBus):
     DELAYED_POLL_INTERVAL: float = 1.0
     DELAYED_DELIVERY_BATCH = 100
 
+    # A delayed entry that fails to deliver becomes due again after this
+    # backoff (milliseconds); once it exhausts its delivery attempts it is
+    # parked in the dead-letter list, which keeps the newest entries only.
+    DELAYED_RETRY_DELAY_MS: int = 60_000
+    DELAYED_MAX_ATTEMPTS: int = 5
+    DELAYED_DEAD_LETTER_MAXLEN: int = 1_000
+
     def __init__(self, component_type: ComponentType, settings: BrokerSettings | None = None) -> None:
         self.settings = settings or config.SETTINGS.broker
         self.connection: redis.Redis
@@ -142,6 +169,8 @@ class RedisMessageBus(InfrahubMessageBus):
         self.rpcs_stream = f"{self.settings.namespace}:{self.RPCS_STREAM}"
         self.callback_stream = f"{self.settings.namespace}:{self.CALLBACK_STREAM_PREFIX}:{WORKER_IDENTITY}"
         self.delayed_queue = f"{self.settings.namespace}:{self.DELAYED_QUEUE}"
+        self.delayed_attempts = f"{self.settings.namespace}:{self.DELAYED_ATTEMPTS}"
+        self.delayed_dead_letter = f"{self.settings.namespace}:{self.DELAYED_DEAD_LETTER}"
         self.message_enrichers: list[MessageFunction] = []
 
         self.loop = asyncio.get_running_loop()
@@ -651,7 +680,8 @@ class RedisMessageBus(InfrahubMessageBus):
         """
         entry: dict[str, Any] = {
             # A unique id keeps identical payloads scheduled at different
-            # times from collapsing into a single sorted set member.
+            # times from collapsing into a single sorted set member, and
+            # keys the entry's delivery-attempt counter.
             "id": str(UUIDT()),
             "stream": stream,
             "fields": {key: value.decode() if isinstance(value, bytes) else value for key, value in fields.items()},
@@ -665,13 +695,23 @@ class RedisMessageBus(InfrahubMessageBus):
         """Re-publish scheduled messages whose delay has elapsed, until shutdown."""
         while not self._shutdown_event.is_set():
             try:
-                failed = await self._deliver_due_script(
-                    keys=[self.delayed_queue],
-                    args=[await self._server_time_ms(), self.DELAYED_DELIVERY_BATCH],
+                retried, dead = await self._deliver_due_script(
+                    keys=[self.delayed_queue, self.delayed_attempts, self.delayed_dead_letter],
+                    args=[
+                        await self._server_time_ms(),
+                        self.DELAYED_DELIVERY_BATCH,
+                        self.DELAYED_RETRY_DELAY_MS,
+                        self.DELAYED_MAX_ATTEMPTS,
+                        self.DELAYED_DEAD_LETTER_MAXLEN,
+                    ],
                 )
-                if failed:
+                if retried:
+                    get_logger().warning(
+                        "Failed to deliver delayed messages, retrying after a delay", count=len(retried)
+                    )
+                if dead:
                     get_logger().error(
-                        "Failed to deliver delayed messages, keeping them queued for retry", count=len(failed)
+                        "Parked undeliverable delayed messages in the dead-letter list", count=len(dead)
                     )
             except asyncio.CancelledError:
                 break

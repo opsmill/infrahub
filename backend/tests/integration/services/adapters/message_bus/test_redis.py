@@ -446,8 +446,12 @@ async def test_redis_delayed_retry_survives_publisher_shutdown(redis_api: RedisM
     assert stream_messages[0]["data"]["routing_key"] == "send.echo.request"
 
 
-async def test_redis_delayed_delivery_isolates_bad_entries(redis_api: RedisManager, fake_log: FakeLogger) -> None:
-    """Validates that an undeliverable delayed entry neither blocks nor duplicates the other entries."""
+async def test_redis_delayed_delivery_dead_letters_bad_entries(redis_api: RedisManager, fake_log: FakeLogger) -> None:
+    """Validates that an undeliverable delayed entry neither blocks nor duplicates the other entries.
+
+    Failing entries are retried with a backoff and parked in the dead-letter
+    list once their attempts are exhausted, instead of being retried forever.
+    """
     conn = await redis_api.get_connection()
     delayed_queue = f"{redis_api.namespace}:delayed"
     poison_stream = f"{redis_api.namespace}:poison"
@@ -463,15 +467,23 @@ async def test_redis_delayed_delivery_isolates_bad_entries(redis_api: RedisManag
     # All three entries are due immediately; the failing ones sort first
     await conn.zadd(delayed_queue, {poison_member: 1, malformed_member: 2, good_member: 3})
 
+    bus = RedisMessageBus(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+    bus.DELAYED_POLL_INTERVAL = 0.2
+    bus.DELAYED_RETRY_DELAY_MS = 100
+    bus.DELAYED_MAX_ATTEMPTS = 2
+
     with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
-        bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+        await bus._initialize()
         # Several delivery scans pass; re-delivery of the good entry would show up as extra stream entries
         await asyncio.sleep(delay=2.5)
         await bus.shutdown()
 
     assert await conn.xlen(good_stream) == 1
-    assert set(await conn.zrange(delayed_queue, 0, -1)) == {poison_member, malformed_member}
-    assert "Failed to deliver delayed messages, keeping them queued for retry" in fake_log.error_logs
+    assert await conn.zcard(delayed_queue) == 0
+    assert set(await conn.lrange(f"{redis_api.namespace}:delayed:dead", 0, -1)) == {poison_member, malformed_member}
+    assert await conn.hlen(f"{redis_api.namespace}:delayed:attempts") == 0
+    assert "Failed to deliver delayed messages, retrying after a delay" in fake_log.warning_logs
+    assert "Parked undeliverable delayed messages in the dead-letter list" in fake_log.error_logs
 
 
 async def test_redis_pending_messages_reclaimed(redis_api: RedisManager, fake_log: FakeLogger) -> None:
