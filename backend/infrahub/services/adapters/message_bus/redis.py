@@ -5,7 +5,7 @@ import contextlib
 import time
 from dataclasses import dataclass
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, MutableMapping, TypeVar
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterator, MutableMapping, TypeVar
 
 import redis.asyncio as redis
 import ujson
@@ -23,6 +23,7 @@ from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
+    from opentelemetry.trace import Span
     from redis.commands.core import AsyncScript
     from redis.typing import EncodableT, FieldT
 
@@ -442,83 +443,77 @@ class RedisMessageBus(InfrahubMessageBus):
                 decoded[key_str] = value
         return decoded
 
+    @contextlib.contextmanager
+    def _traced_message(self, message_data: dict, span_name: str) -> Iterator[tuple[dict, dict, Span]]:
+        """Decode a raw stream entry and set up its tracing context.
+
+        Yields the decoded entry data, its parsed headers, and the active
+        span; the propagated trace context is detached again on exit.
+        """
+        data = self._decode_message_data(message_data)
+        headers = ujson.loads(data.get("headers", "{}"))
+        if is_instrumentation_enabled() and headers:
+            token = context.attach(propagate.extract(headers))
+        else:
+            token = None
+
+        try:
+            with trace.get_tracer(__name__).start_as_current_span(span_name) as span:
+                span.set_attribute("routing_key", data.get("routing_key", ""))
+                yield data, headers, span
+        finally:
+            if token is not None:
+                context.detach(token)
+
+    async def _dispatch(self, data: dict) -> None:
+        """Execute a decoded entry with the handler registered for its routing key."""
+        clear_log_context()
+        routing_key = data.get("routing_key", "")
+        if routing_key not in messages.MESSAGE_MAP:
+            get_logger().error("Invalid message received", message=f"{data!r}")
+            return
+        body = data.get("body", b"")
+        if isinstance(body, str):
+            body = body.encode()
+        # Failure retries are durably re-scheduled with a delay, so there is
+        # nothing to do with the returned TTL here.
+        await execute_message(routing_key=routing_key, message_body=body, message_bus=self)
+
     async def on_callback(self, message_data: dict) -> None:
         """Handle callback messages (responses and events).
+
+        An entry carrying a correlation id is an RPC reply and resolves the
+        future awaiting it; anything else is dispatched as a regular message.
 
         Args:
             message_data: The raw message data from Redis.
 
         """
-        data = self._decode_message_data(message_data)
-
-        headers = ujson.loads(data.get("headers", "{}"))
-        if is_instrumentation_enabled() and headers:
-            ctx = propagate.extract(headers)
-            token = context.attach(ctx)
-        else:
-            token = None
-
-        try:
-            with trace.get_tracer(__name__).start_as_current_span("on_callback") as span:
-                routing_key = data.get("routing_key", "")
-                span.set_attribute("routing_key", routing_key)
-
-                correlation_id = headers.get("correlation_id")
-                if correlation_id:
-                    span.set_attribute("correlation_id", correlation_id)
-                    future = self.futures.pop(correlation_id, None)
-                    if future and not future.done():
-                        future.set_result(data)
-                    else:
-                        get_logger().info("Discarding reply to an expired RPC request", correlation_id=correlation_id)
-                    return
-
-                clear_log_context()
-                if routing_key in messages.MESSAGE_MAP:
-                    body = data.get("body", b"")
-                    if isinstance(body, str):
-                        body = body.encode()
-                    await execute_message(routing_key=routing_key, message_body=body, message_bus=self)
+        with self._traced_message(message_data, "on_callback") as (data, headers, span):
+            correlation_id = headers.get("correlation_id")
+            if correlation_id:
+                span.set_attribute("correlation_id", correlation_id)
+                future = self.futures.pop(correlation_id, None)
+                if future and not future.done():
+                    future.set_result(data)
                 else:
-                    get_logger().error("Invalid message received", message=f"{data!r}")
-        finally:
-            if token is not None:
-                context.detach(token)
+                    get_logger().info("Discarding reply to an expired RPC request", correlation_id=correlation_id)
+                return
+
+            await self._dispatch(data)
 
     async def on_message(self, message_data: dict) -> None:
         """Handle work queue messages (RPCs).
 
+        RPC requests carry a correlation id for their reply, so unlike
+        callback entries they are always dispatched to a handler.
+
         Args:
             message_data: The raw message data from Redis.
 
         """
-        data = self._decode_message_data(message_data)
-
-        headers = ujson.loads(data.get("headers", "{}"))
-        if is_instrumentation_enabled() and headers:
-            ctx = propagate.extract(headers)
-            token = context.attach(ctx)
-        else:
-            token = None
-
-        try:
-            with trace.get_tracer(__name__).start_as_current_span("on_message") as span:
-                routing_key = data.get("routing_key", "")
-                span.set_attribute("routing_key", routing_key)
-
-                clear_log_context()
-                if routing_key in messages.MESSAGE_MAP:
-                    body = data.get("body", b"")
-                    if isinstance(body, str):
-                        body = body.encode()
-                    # Failure retries are durably re-scheduled with a delay, so
-                    # there is nothing to do with the returned TTL here.
-                    await execute_message(routing_key=routing_key, message_body=body, message_bus=self)
-                else:
-                    get_logger().error("Invalid message received", message=f"{data!r}")
-        finally:
-            if token is not None:
-                context.detach(token)
+        with self._traced_message(message_data, "on_message") as (data, _headers, _span):
+            await self._dispatch(data)
 
     async def _subscribe_events(self, identity: str, bindings: list[str]) -> None:
         """Subscribe this worker to the shared events stream.
