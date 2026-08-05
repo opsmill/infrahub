@@ -5,7 +5,7 @@ import inspect
 import time
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import patch
 
 import pytest
@@ -25,7 +25,7 @@ from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import build_message_bus
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable
+    from collections.abc import AsyncGenerator, Awaitable, Callable
 
     from fast_depends import Provider
 
@@ -502,7 +502,8 @@ async def test_redis_delayed_delivery_dead_letters_bad_entries(redis_api: RedisM
     bus.DELAYED_MAX_ATTEMPTS = 2
 
     async def all_bad_entries_parked() -> bool:
-        return await conn.llen(f"{redis_api.namespace}:delayed:dead") == 2
+        # cast: redis-py types list commands for both sync and async clients
+        return await cast("Awaitable[int]", conn.llen(f"{redis_api.namespace}:delayed:dead")) == 2
 
     with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
         await bus._initialize()
@@ -511,8 +512,10 @@ async def test_redis_delayed_delivery_dead_letters_bad_entries(redis_api: RedisM
 
     assert await conn.xlen(good_stream) == 1
     assert await conn.zcard(delayed_queue) == 0
-    assert set(await conn.lrange(f"{redis_api.namespace}:delayed:dead", 0, -1)) == {poison_member, malformed_member}
-    assert await conn.hlen(f"{redis_api.namespace}:delayed:attempts") == 0
+    # cast: redis-py types list and hash commands for both sync and async clients
+    dead_members = await cast("Awaitable[list[str]]", conn.lrange(f"{redis_api.namespace}:delayed:dead", 0, -1))
+    assert set(dead_members) == {poison_member, malformed_member}
+    assert await cast("Awaitable[int]", conn.hlen(f"{redis_api.namespace}:delayed:attempts")) == 0
     assert "Failed to deliver delayed messages, retrying after a delay" in fake_log.warning_logs
     assert "Parked undeliverable delayed messages in the dead-letter list" in fake_log.error_logs
 
