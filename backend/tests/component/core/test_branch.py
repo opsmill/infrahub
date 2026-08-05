@@ -301,7 +301,9 @@ async def test_branch_delete_method_is_refused(db: InfrahubDatabase, default_bra
     """Deleting through the model would drop the Branch node and orphan all of its data."""
     branch = await create_branch(branch_name="refuse-me", db=db)
 
-    with pytest.raises(NotImplementedError, match=r"^Unable to delete a Branch directly, use BranchDataDeleter instead\.$"):
+    with pytest.raises(
+        NotImplementedError, match=r"^Unable to delete a Branch directly, use BranchDataDeleter instead\.$"
+    ):
         await branch.delete(db=db)
 
     # The branch is untouched: still listed, still OPEN.
