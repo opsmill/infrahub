@@ -32,8 +32,10 @@ class BranchDeleter:
         self.db = db
         self.batch_size = batch_size
 
-    async def delete(self, branch: Branch) -> None:
+    async def delete(self, branch: Branch) -> int:
         """Remove the branch's data and then the branch itself.
+
+        Returns the number of edges removed.
 
         Raises:
             ValidationError: When the branch is the default branch or an internal one.
@@ -47,15 +49,21 @@ class BranchDeleter:
         branch.status = BranchStatus.DELETING
         await branch.save(db=self.db)
 
-        await self.delete_branch_data(branch_name=branch.name)
+        edges_removed = await self.delete_branch_data(branch_name=branch.name)
 
         query = await StandardNodeDeleteQuery.init(db=self.db, node=branch)
         await query.execute(db=self.db)
 
-    async def delete_branch_data(self, branch_name: str) -> None:
-        """Remove a branch's data without requiring the branch itself to still exist."""
+        return edges_removed
+
+    async def delete_branch_data(self, branch_name: str) -> int:
+        """Remove a branch's data without requiring the branch itself to still exist.
+
+        Returns the number of edges removed, so a caller whose own logging is the only thing the
+        operator can see is able to report progress.
+        """
         await self._delete_agnostic_peers(branch_name=branch_name)
-        await self._delete_edges(branch_name=branch_name)
+        return await self._delete_edges(branch_name=branch_name)
 
     async def _delete_agnostic_peers(self, branch_name: str) -> None:
         """Drop the agnostic attributes and relationships of Nodes that exist on no other branch.
@@ -74,7 +82,8 @@ class BranchDeleter:
         )
         await attributes_query.execute(db=self.db)
 
-    async def _delete_edges(self, branch_name: str) -> None:
+    async def _delete_edges(self, branch_name: str) -> int:
+        edges_removed = 0
         for edge_type in DatabaseEdgeType:
             deleted_total = 0
             while True:
@@ -92,9 +101,12 @@ class BranchDeleter:
             if deleted_total:
                 # Counts every edge the batches removed, including those pulled out by the vertex
                 # cleanup, so it can exceed the number of edges of this type.
+                edges_removed += deleted_total
                 log.info(
                     "Deleted branch edges",
                     branch=branch_name,
                     edge_type=edge_type.value,
                     edges_removed=deleted_total,
                 )
+
+        return edges_removed
