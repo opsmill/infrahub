@@ -540,7 +540,8 @@ async def delete_branch(
     await add_tags(branches=[branch], nodes=[proposed_change_id] if proposed_change_id else None)
     database = await get_database()
     async with database.start_session() as db:
-        obj = await Branch.get_by_name(db=db, name=str(branch))
+        # ignore_deleting=False so that a delete which failed part way through can be run again:
+        obj = await Branch.get_by_name(db=db, name=str(branch), ignore_deleting=False)
 
         component_registry = get_component_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)

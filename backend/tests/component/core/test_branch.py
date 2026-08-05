@@ -6,6 +6,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from infrahub.core.branch import Branch
 from infrahub.core.branch.deleter import BranchDeleter
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
@@ -294,6 +295,33 @@ async def test_is_isolated(db: InfrahubDatabase, base_dataset_02: dict) -> None:
     assert len(cars) == 3
     assert cars[0].id == "c1"
     assert cars[0].name.value == "volt"
+
+
+async def test_branch_delete_method_is_refused(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """Deleting through the model would drop the Branch node and orphan all of its data."""
+    branch = await create_branch(branch_name="refuse-me", db=db)
+
+    with pytest.raises(NotImplementedError, match=r"^Unable to delete a Branch directly, use BranchDeleter instead\.$"):
+        await branch.delete(db=db)
+
+    # The branch is untouched: still listed, still OPEN.
+    reloaded = await Branch.get_by_name(name="refuse-me", db=db)
+    assert reloaded.status == BranchStatus.OPEN
+
+
+async def test_branch_deleter_refuses_default_and_global_branches(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """The guards that used to live on Branch.delete still apply on the deleter."""
+    deleter = BranchDeleter(db=db, batch_size=5)
+
+    with pytest.raises(ValidationError, match=r"Unable to delete .* it is the default branch\."):
+        await deleter.delete(branch=default_branch)
+
+    global_branch = registry.get_global_branch()
+    with pytest.raises(ValidationError, match=r"Unable to delete .* this is an internal branch\."):
+        await deleter.delete(branch=global_branch)
+
+    # Neither branch was altered before the guard fired.
+    assert (await Branch.get_by_name(name=default_branch.name, db=db)).status == BranchStatus.OPEN
 
 
 async def test_delete_branch(

@@ -19,6 +19,11 @@ if TYPE_CHECKING:
 
 log = get_logger()
 
+# The agnostic cleanup batches Nodes, and each one can drag an unbounded number of peer vertices
+# into the transaction with it, so its batch is far smaller than the edge deletion's, where one row
+# is one edge and the work per row is fixed.
+AGNOSTIC_PEER_BATCH_SIZE = 500
+
 
 class BranchDeleter:
     """Remove a branch, every edge belonging to it, and the vertices that only it kept alive.
@@ -73,12 +78,12 @@ class BranchDeleter:
         way through this stage is safe for the same reason: no IS_PART_OF edge has been touched yet.
         """
         relationships_query = await DeleteBranchAgnosticRelationshipsQuery.init(
-            db=self.db, branch_name=branch_name, batch_size=self.batch_size
+            db=self.db, branch_name=branch_name, batch_size=AGNOSTIC_PEER_BATCH_SIZE
         )
         await relationships_query.execute(db=self.db)
 
         attributes_query = await DeleteBranchAgnosticAttributesQuery.init(
-            db=self.db, branch_name=branch_name, batch_size=self.batch_size
+            db=self.db, branch_name=branch_name, batch_size=AGNOSTIC_PEER_BATCH_SIZE
         )
         await attributes_query.execute(db=self.db)
 
@@ -99,8 +104,6 @@ class BranchDeleter:
                 deleted_total += deleted
 
             if deleted_total:
-                # Counts every edge the batches removed, including those pulled out by the vertex
-                # cleanup, so it can exceed the number of edges of this type.
                 edges_removed += deleted_total
                 log.info(
                     "Deleted branch edges",

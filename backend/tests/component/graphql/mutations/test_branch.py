@@ -554,6 +554,36 @@ async def test_branch_delete_own_branch_succeeds(
     assert delete_result.data["BranchDelete"]["ok"] is True
 
 
+async def test_branch_delete_retries_a_branch_left_deleting(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    session_admin: AccountSession,
+    local_services: InfrahubServices,
+) -> None:
+    """A delete that failed part way through can be retried.
+
+    The first attempt leaves the branch in DELETING, which the default branch lookup hides. Without
+    accepting that status the retry would report the branch as missing and its data would be unreachable.
+    """
+    branch = await create_branch(branch_name="stuck-deleting-branch", db=db)
+    branch.status = BranchStatus.DELETING
+    await branch.save(db=db)
+
+    with patch.object(local_services.workflow, "execute_workflow", new=AsyncMock(return_value=None)):
+        delete_result = await graphql_mutation(
+            query='mutation { BranchDelete(data: { name: "stuck-deleting-branch" }) { ok } }',
+            db=db,
+            branch=default_branch,
+            account_session=session_admin,
+            service=local_services,
+        )
+
+    assert delete_result.errors is None
+    assert delete_result.data
+    assert delete_result.data["BranchDelete"]["ok"] is True
+
+
 async def test_branch_delete_others_branch_denied(
     db: InfrahubDatabase,
     default_branch: Branch,
