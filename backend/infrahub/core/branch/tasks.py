@@ -549,11 +549,10 @@ async def delete_branch(
 
         deleter = BranchDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit)
         delete_result = await deleter.delete(branch=obj)
-        if not delete_result.branch_deleted:
-            # Another run removed the branch first, so it owns everything below.
-            get_run_logger().info(f"Branch '{branch}' was already deleted, nothing further to do")
-            return
-
+    if not delete_result.branch_deleted:
+        # Another run removed the branch first, so it owns these tasks/events.
+        get_run_logger().info(f"Branch '{branch}' was already deleted")
+    else:
         event_context = context.to_event_context()
         event = BranchDeletedEvent(
             branch_name=branch,
@@ -570,6 +569,7 @@ async def delete_branch(
         event_service = await get_event_service()
         await event_service.send(event=event)
 
+    # always execute in case concurrent delete process with delete_from_git=False won the delete race.
     should_delete_git = (config.SETTINGS.git.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git
     if should_delete_git:
         await get_workflow().submit_workflow(
