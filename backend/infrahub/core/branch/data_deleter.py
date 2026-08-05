@@ -18,8 +18,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch.models import Branch
     from infrahub.database import InfrahubDatabase
 
-log = get_logger()
-
 # The agnostic cleanup batches Nodes, and each one can drag an unbounded number of peer vertices
 # into the transaction with it, so its batch is capped low.
 MAX_AGNOSTIC_PEER_BATCH_SIZE = 500

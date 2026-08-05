@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from infrahub.events.branch_action import BranchDeletedEvent
 from infrahub.events.models import EventMeta
+from infrahub.exceptions import ValidationError
 from infrahub.workflows.catalogue import BRANCH_CANCEL_PROPOSED_CHANGES, GIT_REPOSITORIES_DELETE_BRANCH
 
 if TYPE_CHECKING:
@@ -54,9 +55,17 @@ class BranchDeleteOrchestrator:
     ) -> BranchDeleteResult:
         """Remove the branch, then cancel its proposed changes, announce it, and drop its Git branch.
 
-        Freezing the diffs first is required: they are located by branch name, which the deletion
-        takes away.
+        Raises:
+            ValidationError: When the branch is the default branch or an internal one.
+
         """
+        # Before the freeze, not after: a refused delete has to leave the branch's diffs alone.
+        if branch.is_default:
+            raise ValidationError(f"Unable to delete {branch.name} it is the default branch.")
+        if branch.is_global:
+            raise ValidationError(f"Unable to delete {branch.name} this is an internal branch.")
+
+        # Freezing has to precede the deletion, which takes away the branch name they are found by.
         await self.diff_freezer.freeze_diffs_for_branch(branch_name=branch.name)
 
         result = await self.data_deleter.delete(branch=branch)
