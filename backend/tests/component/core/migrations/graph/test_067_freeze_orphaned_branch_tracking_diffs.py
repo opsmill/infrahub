@@ -20,7 +20,7 @@ import pytest
 from infrahub_sdk.timestamp import Timestamp
 
 from infrahub.core.branch import Branch
-from infrahub.core.branch.deleter import BranchDeleter
+from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffs, FrozenTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -144,7 +144,7 @@ class TestMigration067:
             from_time=deleted_from,
             to_time=deleted_from.add(seconds=60),
         )
-        await BranchDeleter(db=db, batch_size=5).delete(branch=deleted_branch)
+        await BranchDataDeleter(db=db, batch_size=5).delete(branch=deleted_branch)
         expectations.append(
             DiffExpectation(
                 name="deleted branch frozen",
@@ -185,7 +185,7 @@ class TestMigration067:
             from_time=v1_from,
             to_time=v1_from.add(seconds=60),
         )
-        await BranchDeleter(db=db, batch_size=5).delete(branch=reused_v1)
+        await BranchDataDeleter(db=db, batch_size=5).delete(branch=reused_v1)
         reused_v2 = await create_branch(db=db, branch_name=reused_name)
         v2_from = Timestamp(reused_v2.get_branched_from())
         reused_v2_diff, reused_v2_base = await self._create_diff_pair(
@@ -221,7 +221,7 @@ class TestMigration067:
             to_time=frozen_from.add(seconds=60),
         )
         await diff_repository.freeze_diffs_for_branch(branch_name=frozen_branch.name)
-        await BranchDeleter(db=db, batch_size=5).delete(branch=frozen_branch)
+        await BranchDataDeleter(db=db, batch_size=5).delete(branch=frozen_branch)
         expectations.append(
             DiffExpectation(
                 name="already frozen unchanged",
@@ -244,7 +244,7 @@ class TestMigration067:
         lifecycle_v1.status = BranchStatus.MERGED
         await lifecycle_v1.save(db=db)
         await diff_repository.mark_tracking_ids_merged(tracking_ids=[BranchTrackingId(name=lifecycle_name)])
-        await BranchDeleter(db=db, batch_size=5).delete(branch=lifecycle_v1)
+        await BranchDataDeleter(db=db, batch_size=5).delete(branch=lifecycle_v1)
         lifecycle_v2 = await create_branch(db=db, branch_name=lifecycle_name)
         lc_v2_from = Timestamp(lifecycle_v2.get_branched_from())
         lc_v2_diff, lc_v2_base = await self._create_diff_pair(

@@ -5,7 +5,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.branch.deleter import BranchDeleter
+from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
@@ -391,7 +391,7 @@ class TestDiffTreeTerminalBranch:
         merged_branch: Branch,
     ) -> Branch:
         """Delete the branch and remove it from registry."""
-        await BranchDeleter(db=db, batch_size=5).delete(branch=merged_branch)
+        await BranchDataDeleter(db=db, batch_size=5).delete(branch=merged_branch)
         registry.branch.pop(merged_branch.name, None)
         return merged_branch
 

@@ -5,7 +5,7 @@ from infrahub_sdk.exceptions import TimestampFormatError
 from pydantic import ValidationError as PydanticValidationError
 
 from infrahub.core.branch import Branch
-from infrahub.core.branch.deleter import BranchDeleter
+from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -301,7 +301,7 @@ async def test_branch_delete_method_is_refused(db: InfrahubDatabase, default_bra
     """Deleting through the model would drop the Branch node and orphan all of its data."""
     branch = await create_branch(branch_name="refuse-me", db=db)
 
-    with pytest.raises(NotImplementedError, match=r"^Unable to delete a Branch directly, use BranchDeleter instead\.$"):
+    with pytest.raises(NotImplementedError, match=r"^Unable to delete a Branch directly, use BranchDataDeleter instead\.$"):
         await branch.delete(db=db)
 
     # The branch is untouched: still listed, still OPEN.
@@ -311,7 +311,7 @@ async def test_branch_delete_method_is_refused(db: InfrahubDatabase, default_bra
 
 async def test_branch_deleter_refuses_default_and_global_branches(db: InfrahubDatabase, default_branch: Branch) -> None:
     """The guards that used to live on Branch.delete still apply on the deleter."""
-    deleter = BranchDeleter(db=db, batch_size=5)
+    deleter = BranchDataDeleter(db=db, batch_size=5)
 
     with pytest.raises(ValidationError, match=r"Unable to delete .* it is the default branch\."):
         await deleter.delete(branch=default_branch)
@@ -333,7 +333,7 @@ async def test_branch_deleter_reports_who_removed_the_branch(
     await person.new(name="Bobby", height=175, db=db)
     await person.save(db=db)
 
-    deleter = BranchDeleter(db=db, batch_size=5)
+    deleter = BranchDataDeleter(db=db, batch_size=5)
 
     first = await deleter.delete(branch=branch)
     assert first.branch_deleted is True
@@ -366,7 +366,7 @@ async def test_delete_branch(
 
     # A batch size well below the number of edges on the branch, so the batching loop has to run
     # more than once to finish.
-    await BranchDeleter(db=db, batch_size=5).delete(branch=branch)
+    await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch)
     post_delete = await db.execute_query(query=relationship_query, params=params)
 
     assert branch.id == found.id
@@ -414,7 +414,7 @@ async def test_delete_branch_with_agnostic_attrs_and_rels(
     rel_uuid = agnostic_rel.id
 
     # Delete the branch
-    await BranchDeleter(db=db, batch_size=5).delete(branch=branch)
+    await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch)
 
     # Verify the branch is deleted
     with pytest.raises(BranchNotFoundError):
@@ -477,7 +477,7 @@ async def test_delete_branch_after_merge_preserves_node(
     assert device_on_main.get_attribute("serial_number").value == "SN-67890"
 
     # Delete the branch
-    await BranchDeleter(db=db, batch_size=5).delete(branch=branch)
+    await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch)
 
     # Verify the branch is deleted
     with pytest.raises(BranchNotFoundError):

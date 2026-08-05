@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub import config
-from infrahub.core.branch.deleter import BranchDeleter
+from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.log import get_logger
@@ -84,7 +84,7 @@ class Migration032(ArbitraryMigration):
 
             log.info(f"Found {len(orphaned_branch_names)} orphaned branch names: {orphaned_branch_names}")
 
-            deleter = BranchDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit)
+            deleter = BranchDataDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit)
             for branch_name in orphaned_branch_names:
                 log.info(f"Cleaning up branch '{branch_name}'...")
                 await deleter.delete_branch_data(branch_name=branch_name)

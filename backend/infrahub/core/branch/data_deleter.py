@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
 
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants.database import DatabaseEdgeType
@@ -37,7 +37,19 @@ class BranchDeleteResult:
     edges_removed: int
 
 
-class BranchDeleter:
+class BranchDataDeleterInterface(Protocol):
+    """The database side of a branch delete."""
+
+    async def delete(self, branch: Branch) -> BranchDeleteResult: ...
+
+
+class LoggerInterface(Protocol):
+    """Just enough of a logger for progress reporting."""
+
+    def info(self, message: str, /) -> Any: ...
+
+
+class BranchDataDeleter:
     """Remove a branch, every edge belonging to it, and the vertices that only it kept alive.
 
     The graph work is split into one bounded query per batch so that no single transaction has to
@@ -45,9 +57,10 @@ class BranchDeleter:
     an interrupted delete can be resumed by running the whole thing again.
     """
 
-    def __init__(self, db: InfrahubDatabase, batch_size: int) -> None:
+    def __init__(self, db: InfrahubDatabase, batch_size: int, log: LoggerInterface | None = None) -> None:
         self.db = db
         self.batch_size = batch_size
+        self.log = log or get_logger()
 
     async def delete(self, branch: Branch) -> BranchDeleteResult:
         """Remove the branch's data and then the branch itself.
@@ -112,7 +125,9 @@ class BranchDeleter:
             "relationships_deleted"
         ) + attributes_query.stats.get_counter("relationships_deleted")
         if edges_removed:
-            log.info("Deleted agnostic peers of branch-only nodes", branch=branch_name, edges_removed=edges_removed)
+            self.log.info(
+                f"Deleted agnostic peers of nodes only on branch '{branch_name}', {edges_removed} edge(s) removed"
+            )
         return edges_removed
 
     async def _delete_edges(self, branch_name: str) -> int:
@@ -133,11 +148,6 @@ class BranchDeleter:
 
             if deleted_total:
                 edges_removed += deleted_total
-                log.info(
-                    "Deleted branch edges",
-                    branch=branch_name,
-                    edge_type=edge_type.value,
-                    edges_removed=deleted_total,
-                )
+                self.log.info(f"Deleted {deleted_total} {edge_type.value} edge(s) on branch '{branch_name}'")
 
         return edges_removed

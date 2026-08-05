@@ -1,11 +1,11 @@
 import pytest
 
-from infrahub.core.branch.deleter import BranchDeleter, BranchDeleteResult
+from infrahub.core.branch.data_deleter import BranchDataDeleter, BranchDataDeleterInterface, BranchDeleteResult
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m075_finish_deleting_branches import BranchDeleterInterface, Migration075
+from infrahub.core.migrations.graph.m075_finish_deleting_branches import Migration075
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -19,7 +19,7 @@ class FailingBranchDeleter:
     called delete again but nothing was reclaimed".
     """
 
-    def __init__(self, deleter: BranchDeleter, failing_branch_name: str) -> None:
+    def __init__(self, deleter: BranchDataDeleter, failing_branch_name: str) -> None:
         self.deleter = deleter
         self.failing_branch_name = failing_branch_name
         self.attempted: list[str] = []
@@ -39,9 +39,9 @@ class Migration075WithFailingDeleter(Migration075):
 
     model_config = {"arbitrary_types_allowed": True}
 
-    def build_deleter(self, db: InfrahubDatabase) -> BranchDeleterInterface:
+    def build_deleter(self, db: InfrahubDatabase) -> BranchDataDeleterInterface:
         self.deleter = FailingBranchDeleter(
-            deleter=BranchDeleter(db=db, batch_size=5), failing_branch_name=self.failing_branch_name
+            deleter=BranchDataDeleter(db=db, batch_size=5), failing_branch_name=self.failing_branch_name
         )
         return self.deleter
 

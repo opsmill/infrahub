@@ -323,7 +323,7 @@ class Branch(StandardNode):
             NotImplementedError: Always.
 
         """
-        raise NotImplementedError("Unable to delete a Branch directly, use BranchDeleter instead.")
+        raise NotImplementedError("Unable to delete a Branch directly, use BranchDataDeleter instead.")
 
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Timestamp] = None, include_outside_parentheses: bool = False

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any
 
 from infrahub import config
 from infrahub.core.branch import Branch
-from infrahub.core.branch.deleter import BranchDeleter, BranchDeleteResult
+from infrahub.core.branch.data_deleter import BranchDataDeleter, BranchDataDeleterInterface
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
@@ -13,12 +13,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 console = get_migration_console()
-
-
-class BranchDeleterInterface(Protocol):
-    """The part of the deleter this migration drives, so a failing stand-in can be supplied."""
-
-    async def delete(self, branch: Branch) -> BranchDeleteResult: ...
 
 
 class DeletingBranchNamesQuery(Query):
@@ -60,8 +54,8 @@ class Migration075(ArbitraryMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    def build_deleter(self, db: InfrahubDatabase) -> BranchDeleterInterface:
-        return BranchDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit)
+    def build_deleter(self, db: InfrahubDatabase) -> BranchDataDeleterInterface:
+        return BranchDataDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit)
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db
