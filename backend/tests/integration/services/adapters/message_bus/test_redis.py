@@ -492,6 +492,26 @@ async def test_redis_consumer_deregistered_on_shutdown(redis_api: RedisManager) 
     assert rpcs_group.consumers == []
 
 
+async def test_redis_callback_stream_capped(redis_api: RedisManager) -> None:
+    """Validates that a callback stream does not grow without bound as replies accumulate."""
+    bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+    conn = await redis_api.get_connection()
+    requester_callback_stream = f"{redis_api.namespace}:callback:other-worker"
+
+    reply_count = RedisMessageBus.CALLBACK_STREAM_MAXLEN * 2
+    for index in range(reply_count):
+        await bus.reply(
+            message=messages.SendEchoRequest(message=f"reply {index}"), routing_key=requester_callback_stream
+        )
+
+    length = await conn.xlen(requester_callback_stream)
+    # Trimming is approximate: Redis keeps at least MAXLEN entries and removes
+    # whole macro nodes (100 entries by default), so allow that much slack.
+    assert RedisMessageBus.CALLBACK_STREAM_MAXLEN <= length <= RedisMessageBus.CALLBACK_STREAM_MAXLEN + 200
+
+    await bus.shutdown()
+
+
 async def test_redis_rpc_timeout(redis_api: RedisManager) -> None:
     """Validates that an RPC call fails cleanly when no worker replies."""
     bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
