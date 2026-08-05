@@ -548,7 +548,11 @@ async def delete_branch(
         await diff_repository.freeze_diffs_for_branch(branch_name=branch)
 
         deleter = BranchDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit)
-        await deleter.delete(branch=obj)
+        delete_result = await deleter.delete(branch=obj)
+        if not delete_result.branch_deleted:
+            # Another run removed the branch first, so it owns everything below.
+            get_run_logger().info(f"Branch '{branch}' was already deleted, nothing further to do")
+            return
 
         event_context = context.to_event_context()
         event = BranchDeletedEvent(

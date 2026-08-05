@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from infrahub import config
 from infrahub.core.branch import Branch
-from infrahub.core.branch.deleter import BranchDeleter
+from infrahub.core.branch.deleter import BranchDeleter, BranchDeleteResult
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
@@ -18,7 +18,7 @@ console = get_migration_console()
 class BranchDeleterInterface(Protocol):
     """The part of the deleter this migration drives, so a failing stand-in can be supplied."""
 
-    async def delete(self, branch: Branch) -> int: ...
+    async def delete(self, branch: Branch) -> BranchDeleteResult: ...
 
 
 class DeletingBranchNamesQuery(Query):
@@ -86,11 +86,14 @@ class Migration075(ArbitraryMigration):
             console.log(f"Cleaning up branch '{branch_name}' left in the DELETING state...")
             try:
                 branch = await Branch.get_by_name(db=db, name=branch_name, ignore_deleting=False)
-                edges_removed = await deleter.delete(branch=branch)
+                delete_result = await deleter.delete(branch=branch)
             except Exception as exc:
                 console.log(f"Branch '{branch_name}' could not be deleted: {exc}")
                 errors.append(f"branch '{branch_name}': {exc}")
                 continue
-            console.log(f"Branch '{branch_name}' deleted, {edges_removed} edge(s) removed.")
+            if delete_result.branch_deleted:
+                console.log(f"Branch '{branch_name}' deleted, {delete_result.edges_removed} edge(s) removed.")
+            else:
+                console.log(f"Branch '{branch_name}' was already gone, {delete_result.edges_removed} edge(s) removed.")
 
         return MigrationResult(errors=errors)

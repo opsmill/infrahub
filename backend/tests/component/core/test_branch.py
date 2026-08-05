@@ -324,6 +324,27 @@ async def test_branch_deleter_refuses_default_and_global_branches(db: InfrahubDa
     assert (await Branch.get_by_name(name=default_branch.name, db=db)).status == BranchStatus.OPEN
 
 
+async def test_branch_deleter_reports_who_removed_the_branch(
+    db: InfrahubDatabase, default_branch: Branch, repos_in_main: dict, car_person_schema: SchemaBranch
+) -> None:
+    """Only the attempt that removes the branch reports having done so."""
+    branch = await create_branch(branch_name="claim-me", db=db)
+    person = await Node.init(schema="TestPerson", branch=branch.name, db=db)
+    await person.new(name="Bobby", height=175, db=db)
+    await person.save(db=db)
+
+    deleter = BranchDeleter(db=db, batch_size=5)
+
+    first = await deleter.delete(branch=branch)
+    assert first.branch_deleted is True
+    assert first.edges_removed > 0
+
+    # Deleting the same branch again is harmless, but must not claim to have done it.
+    second = await deleter.delete(branch=branch)
+    assert second.branch_deleted is False
+    assert second.edges_removed == 0
+
+
 async def test_delete_branch(
     db: InfrahubDatabase, default_branch: Branch, repos_in_main: dict, car_person_schema: SchemaBranch
 ) -> None:

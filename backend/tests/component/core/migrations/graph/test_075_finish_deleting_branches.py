@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core.branch.deleter import BranchDeleter
+from infrahub.core.branch.deleter import BranchDeleter, BranchDeleteResult
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
@@ -24,7 +24,7 @@ class FailingBranchDeleter:
         self.failing_branch_name = failing_branch_name
         self.attempted: list[str] = []
 
-    async def delete(self, branch: Branch) -> int:
+    async def delete(self, branch: Branch) -> BranchDeleteResult:
         self.attempted.append(branch.name)
         if branch.name == self.failing_branch_name:
             raise ValueError("FAILED")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.core.branch.enums import BranchStatus
@@ -24,6 +25,18 @@ log = get_logger()
 MAX_AGNOSTIC_PEER_BATCH_SIZE = 500
 
 
+@dataclass(frozen=True)
+class BranchDeleteResult:
+    """What a delete attempt actually did.
+
+    `branch_deleted` is false when the branch had already been removed by the time this attempt got
+    to it, which is how a caller knows not to repeat the work that follows a delete.
+    """
+
+    branch_deleted: bool
+    edges_removed: int
+
+
 class BranchDeleter:
     """Remove a branch, every edge belonging to it, and the vertices that only it kept alive.
 
@@ -36,10 +49,11 @@ class BranchDeleter:
         self.db = db
         self.batch_size = batch_size
 
-    async def delete(self, branch: Branch) -> int:
+    async def delete(self, branch: Branch) -> BranchDeleteResult:
         """Remove the branch's data and then the branch itself.
 
-        Returns the number of edges removed.
+        Returns whether the Branch object was actually deleted in case multiple processes try to
+        delete concurrently so the caller can know which delete really succeeded.
 
         Raises:
             ValidationError: When the branch is the default branch or an internal one.
@@ -50,15 +64,17 @@ class BranchDeleter:
         if branch.is_global:
             raise ValidationError(f"Unable to delete {branch.name} this is an internal branch.")
 
-        branch.status = BranchStatus.DELETING
-        await branch.save(db=self.db)
+        if branch.status != BranchStatus.DELETING:
+            branch.status = BranchStatus.DELETING
+            await branch.save(db=self.db)
 
         edges_removed = await self.delete_branch_data(branch_name=branch.name)
 
         query = await StandardNodeDeleteQuery.init(db=self.db, node=branch)
         await query.execute(db=self.db)
+        branch_deleted = query.stats.get_counter("nodes_deleted") > 0
 
-        return edges_removed
+        return BranchDeleteResult(branch_deleted=branch_deleted, edges_removed=edges_removed)
 
     async def delete_branch_data(self, branch_name: str) -> int:
         """Remove a branch's data without requiring the branch itself to still exist.
@@ -66,9 +82,9 @@ class BranchDeleter:
         Returns the number of edges removed, so a caller whose own logging is the only thing the
         operator can see is able to report progress.
         """
-        agnostic_edges = await self._delete_agnostic_peers(branch_name=branch_name)
-        branch_edges = await self._delete_edges(branch_name=branch_name)
-        return agnostic_edges + branch_edges
+        agnostic_edges_count = await self._delete_agnostic_peers(branch_name=branch_name)
+        branch_edges_count = await self._delete_edges(branch_name=branch_name)
+        return agnostic_edges_count + branch_edges_count
 
     async def _delete_agnostic_peers(self, branch_name: str) -> int:
         """Drop the agnostic attributes and relationships of Nodes that exist on no other branch.
