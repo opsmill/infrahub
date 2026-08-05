@@ -138,7 +138,9 @@ class RabbitMQManager:
 
 
 @pytest.fixture
-async def rabbitmq_api(rabbitmq: None) -> RabbitMQManager:
+async def rabbitmq_api(rabbitmq: dict[int, int] | None) -> RabbitMQManager:
+    if rabbitmq is None:
+        pytest.skip("Requires the RabbitMQ broker driver")
     settings = deepcopy(config.SETTINGS.broker)
     settings.virtualhost = "integration-tests"
     manager = RabbitMQManager(settings=settings)

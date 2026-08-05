@@ -49,7 +49,7 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_SECURITY_SECRET_KEY": "327f747f-efac-42be-9e73-999f08f86b92",
     "INFRAHUB_TESTING_ADDRESS": "http://infrahub-server-lb:8000",
     "INFRAHUB_TESTING_INTERNAL_ADDRESS": "http://infrahub-server-lb:8000",
-    "INFRAHUB_TESTING_BROKER_ADDRESS": "message-queue",
+    "INFRAHUB_TESTING_BROKER_ADDRESS": "cache",  # TEMPORARY: Redis message bus evaluation
     "INFRAHUB_TESTING_CACHE_ADDRESS": "cache",
     "INFRAHUB_TESTING_WORKFLOW_ADDRESS": "task-manager",
     "INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE": "infrahubasync",
