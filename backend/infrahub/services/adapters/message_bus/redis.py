@@ -76,6 +76,11 @@ class RedisMessageBus(InfrahubMessageBus):
     # readers to catch up.
     EVENTS_STREAM_MAXLEN = 10_000
 
+    # Approximate upper bound for a per-worker callback stream; a reply only
+    # matters until the RPC call awaiting it is resolved or times out, so the
+    # unread backlog is bounded by one process's in-flight RPC calls.
+    CALLBACK_STREAM_MAXLEN = 1_000
+
     # Seconds between the pending-claim and trim passes of a group consumer.
     MAINTENANCE_INTERVAL: float = 60.0
 
@@ -687,6 +692,8 @@ class RedisMessageBus(InfrahubMessageBus):
                 "body": message.body,
                 "headers": ujson.dumps(headers),
             },
+            maxlen=self.CALLBACK_STREAM_MAXLEN,
+            approximate=True,
         )
 
     async def rpc(
