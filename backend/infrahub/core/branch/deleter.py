@@ -20,9 +20,8 @@ if TYPE_CHECKING:
 log = get_logger()
 
 # The agnostic cleanup batches Nodes, and each one can drag an unbounded number of peer vertices
-# into the transaction with it, so its batch is far smaller than the edge deletion's, where one row
-# is one edge and the work per row is fixed.
-AGNOSTIC_PEER_BATCH_SIZE = 500
+# into the transaction with it, so its batch is capped low.
+MAX_AGNOSTIC_PEER_BATCH_SIZE = 500
 
 
 class BranchDeleter:
@@ -67,25 +66,38 @@ class BranchDeleter:
         Returns the number of edges removed, so a caller whose own logging is the only thing the
         operator can see is able to report progress.
         """
-        await self._delete_agnostic_peers(branch_name=branch_name)
-        return await self._delete_edges(branch_name=branch_name)
+        agnostic_edges = await self._delete_agnostic_peers(branch_name=branch_name)
+        branch_edges = await self._delete_edges(branch_name=branch_name)
+        return agnostic_edges + branch_edges
 
-    async def _delete_agnostic_peers(self, branch_name: str) -> None:
+    async def _delete_agnostic_peers(self, branch_name: str) -> int:
         """Drop the agnostic attributes and relationships of Nodes that exist on no other branch.
 
         Both queries locate those Nodes through the branch's IS_PART_OF edges, so this has to
         finish before the edge deletion starts removing them. Resuming a delete that failed part
         way through this stage is safe for the same reason: no IS_PART_OF edge has been touched yet.
+
+        Returns the number of edges removed, which is every edge of the peers detached here, not
+        only the agnostic ones that led to them.
         """
+        batch_size = min(self.batch_size, MAX_AGNOSTIC_PEER_BATCH_SIZE)
+
         relationships_query = await DeleteBranchAgnosticRelationshipsQuery.init(
-            db=self.db, branch_name=branch_name, batch_size=AGNOSTIC_PEER_BATCH_SIZE
+            db=self.db, branch_name=branch_name, batch_size=batch_size
         )
         await relationships_query.execute(db=self.db)
 
         attributes_query = await DeleteBranchAgnosticAttributesQuery.init(
-            db=self.db, branch_name=branch_name, batch_size=AGNOSTIC_PEER_BATCH_SIZE
+            db=self.db, branch_name=branch_name, batch_size=batch_size
         )
         await attributes_query.execute(db=self.db)
+
+        edges_removed = relationships_query.stats.get_counter(
+            "relationships_deleted"
+        ) + attributes_query.stats.get_counter("relationships_deleted")
+        if edges_removed:
+            log.info("Deleted agnostic peers of branch-only nodes", branch=branch_name, edges_removed=edges_removed)
+        return edges_removed
 
     async def _delete_edges(self, branch_name: str) -> int:
         edges_removed = 0

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 from infrahub import config
 from infrahub.core.branch import Branch
@@ -15,13 +15,17 @@ if TYPE_CHECKING:
 console = get_migration_console()
 
 
+class BranchDeleterInterface(Protocol):
+    """The part of the deleter this migration drives, so a failing stand-in can be supplied."""
+
+    async def delete(self, branch: Branch) -> int: ...
+
+
 class DeletingBranchNamesQuery(Query):
     """Find the branches whose delete never finished."""
 
     name: str = "deleting_branch_names"
     insert_return: bool = False
-    insert_limit: bool = False
-
     type: QueryType = QueryType.READ
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
@@ -33,6 +37,7 @@ RETURN b.name AS branch_name
         self.params["deleting_status"] = BranchStatus.DELETING.value
         self.add_to_query(query)
         self.update_return_labels("branch_name")
+        self.order_by = ["branch_name"]
 
     def get_branch_names(self) -> list[str]:
         return [result.get_as_type(label="branch_name", return_type=str) for result in self.get_results()]
@@ -55,6 +60,9 @@ class Migration075(ArbitraryMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
+    def build_deleter(self, db: InfrahubDatabase) -> BranchDeleterInterface:
+        return BranchDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit)
+
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db
 
@@ -62,19 +70,27 @@ class Migration075(ArbitraryMigration):
             names_query = await DeletingBranchNamesQuery.init(db=db)
             await names_query.execute(db=db)
             branch_names = names_query.get_branch_names()
+        except Exception as exc:
+            return MigrationResult(errors=[f"Unable to look up branches in the DELETING state: {exc}"])
 
-            if not branch_names:
-                return MigrationResult()
+        if not branch_names:
+            return MigrationResult()
 
-            console.log(f"Found {len(branch_names)} branch(es) left in the DELETING state: {branch_names}")
+        console.log(f"Found {len(branch_names)} branch(es) left in the DELETING state: {branch_names}")
 
-            deleter = BranchDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit)
-            for branch_name in branch_names:
-                console.log(f"Cleaning up branch '{branch_name}' left in the DELETING state...")
+        # One branch failing must not hide the others: each is deleted in its own right, and the
+        # names of those that failed are reported so a re-run has something to act on.
+        errors: list[str] = []
+        deleter = self.build_deleter(db=db)
+        for branch_name in branch_names:
+            console.log(f"Cleaning up branch '{branch_name}' left in the DELETING state...")
+            try:
                 branch = await Branch.get_by_name(db=db, name=branch_name, ignore_deleting=False)
                 edges_removed = await deleter.delete(branch=branch)
-                console.log(f"Branch '{branch_name}' deleted, {edges_removed} edge(s) removed.")
-        except Exception as exc:
-            return MigrationResult(errors=[str(exc)])
+            except Exception as exc:
+                console.log(f"Branch '{branch_name}' could not be deleted: {exc}")
+                errors.append(f"branch '{branch_name}': {exc}")
+                continue
+            console.log(f"Branch '{branch_name}' deleted, {edges_removed} edge(s) removed.")
 
-        return MigrationResult()
+        return MigrationResult(errors=errors)
