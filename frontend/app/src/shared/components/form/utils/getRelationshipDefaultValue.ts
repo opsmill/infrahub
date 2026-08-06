@@ -13,6 +13,7 @@ import type {
   RelationshipValueFromUser,
   TemplateSource,
 } from "@/shared/components/form/type";
+import { makePoolSource } from "@/shared/components/form/utils/make-pool-source";
 
 import type {
   NodeFields,
@@ -104,12 +105,11 @@ const getRelationshipValueFromUser = (
 
     if (!resourceFromPoolRelationshipData?.node) return null;
     return {
-      source: {
-        type: "pool",
+      source: makePoolSource({
         label: getNodeLabel(resourceFromPoolRelationshipData.node),
         id: resourceFromPoolRelationshipData.node.id,
         kind: resourceFromPoolRelationshipData.node.__typename,
-      },
+      }),
       value: resourceFromPoolRelationshipData.node,
     };
   }
@@ -130,12 +130,11 @@ const getRelationshipValueFromUser = (
   // Handle pool sources
   if (!isGeneric && sourceSchema && sourceSchema.inherit_from?.includes(RESOURCE_GENERIC_KIND)) {
     return {
-      source: {
-        type: "pool",
+      source: makePoolSource({
         label: source.display_label ?? null,
         id: source.id as string,
         kind: source.__typename as string,
-      },
+      }),
       value: relationshipData.node,
     };
   }
@@ -227,13 +226,12 @@ export const getRelationshipDefaultValueFromTemplate = (
     if (!poolRelationship?.node) return null;
 
     return {
-      source: {
-        type: "pool",
+      source: makePoolSource({
         fromTemplate: true,
         label: getNodeLabel(poolRelationship.node),
         id: poolRelationship.node.id,
         kind: poolRelationship.node.__typename,
-      },
+      }),
       value: poolRelationship.node,
     };
   }

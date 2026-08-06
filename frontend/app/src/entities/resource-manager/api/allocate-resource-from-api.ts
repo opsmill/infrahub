@@ -3,15 +3,21 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { BranchContextParams } from "@/shared/api/types";
 
+/** The pool's GetResource input; the mandatory `id` is enforced at the call site. */
+export interface AllocateResourceInput {
+  id: string;
+  /** Address mask (address pool) or subnet size (prefix pool); omitted uses the pool default. */
+  prefix_length?: number;
+  data?: Record<string, unknown>;
+}
+
 export interface AllocateResourceFromApiParams extends BranchContextParams {
   poolGetResourceMutationName: string;
-  poolId: string;
-  data: Record<string, any>;
+  data: AllocateResourceInput;
 }
 
 export function allocateResourceFromApi({
   poolGetResourceMutationName,
-  poolId,
   data,
   branchName,
 }: AllocateResourceFromApiParams) {
@@ -19,10 +25,7 @@ export function allocateResourceFromApi({
     mutation: {
       [poolGetResourceMutationName]: {
         __args: {
-          data: {
-            id: poolId,
-            data,
-          },
+          data,
         },
         node: {
           id: true,

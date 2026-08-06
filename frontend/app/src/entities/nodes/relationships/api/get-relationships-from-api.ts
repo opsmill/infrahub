@@ -8,6 +8,9 @@ type GenerateRelationshipListQueryParams = PaginationParams & {
   parent?: { name: string; value: string };
   search?: string;
   filterQuery?: Record<string, string | number | boolean | string[]>;
+  // Extra node fields to select (json-to-graphql-query form), so callers request
+  // kind-specific fields without this builder knowing about any node kind.
+  additionalFields?: Record<string, unknown>;
 };
 
 const generateRelationshipListQuery = ({
@@ -17,6 +20,7 @@ const generateRelationshipListQuery = ({
   offset = 0,
   search = "",
   filterQuery = {},
+  additionalFields = {},
 }: GenerateRelationshipListQueryParams): string => {
   const defaultArgs = { limit, offset, any__value: search, partial_match: true };
 
@@ -38,6 +42,7 @@ const generateRelationshipListQuery = ({
             hfid: true,
             display_label: true,
             __typename: true,
+            ...additionalFields,
           },
         },
       },
@@ -58,9 +63,10 @@ export const getRelationshipsFromApi = async ({
   branchName,
   atDate,
   filterQuery,
+  additionalFields,
 }: getRelationshipsFromApiParams) => {
   const query = graphql(
-    generateRelationshipListQuery({ peer, limit, offset, search, filterQuery })
+    generateRelationshipListQuery({ peer, limit, offset, search, filterQuery, additionalFields })
   );
 
   return graphqlClient.query({
