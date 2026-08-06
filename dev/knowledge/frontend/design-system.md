@@ -14,9 +14,9 @@ Most components wrap `react-aria-components` primitives with Tailwind styling. C
 
 | Component family | Purpose |
 |---|---|
-| `Button` / `LinkButton` | Any clickable styled button (+ `buttonVariants`). Migrated in #9065. |
-| `Card` (`CardHeader`, `CardContent`) | Bordered + rounded + shadowed content surface. Migrated in #9048. |
-| `Modal` (`ModalOverlay`) | Dialog/overlay with focus trap and escape handling. Migrated in #9088. |
+| `Button` / `LinkButton` | Any clickable styled button (+ `buttonVariants`). |
+| `Card` (`CardHeader`, `CardContent`) | Bordered + rounded + shadowed content surface. |
+| `Modal` (`ModalOverlay`) | Dialog/overlay with focus trap and escape handling. |
 | `Sheet` | Side-panel overlay; integrates the dismiss guard (see hooks below). |
 | `Popover` (`PopoverDialog`, `PopoverTrigger`) | React-aria popover. See the app-popover duality note below. |
 | `Tooltip` | Hover/focus tooltip with arrow; supports non-interactive triggers. |
@@ -29,8 +29,8 @@ Most components wrap `react-aria-components` primitives with Tailwind styling. C
 | `Tree` (`TreeItem`, `TreeItemContent`, `TreeItemLoader`) | Expandable tree with lazy loading. |
 | `SortableList` / `SortableItem` | Drag-and-drop reorderable list (react-aria `useDragAndDrop`). |
 | `ResizablePanelGroup` / `ResizablePanel` / `ResizableHandle` | Split panes built on `react-resizable-panels`. |
-| `ScrollArea` | Styled scroll container. Migrated in #9101. |
-| `Meter` | Progress/utilization bar. Migrated in #9100. |
+| `ScrollArea` | Styled scroll container. |
+| `Meter` | Progress/utilization bar. |
 | `Spinner` | Loading indicator. |
 | `DismissGuardContext` / `useDismissGuard` | Hook + context to block overlay dismissal (used by `Sheet`; consumers such as dirty forms mark themselves undismissable). |
 
@@ -82,7 +82,7 @@ When you touch one of these and notice it could be a generic primitive, consider
 ## Migration policy
 
 - Net-new generic primitives (no Infrahub-specific data dependencies) should land in `@infrahub/ui` from day one.
-- Existing primitives in `shared/components/ui/` are migrated incrementally — see PRs #9048 (Card), #9065 (Button), #9088 (Modal) as references.
+- Existing primitives in `shared/components/ui/` are migrated incrementally — `Card`, `Button`, and `Modal` have already made the move; use them as reference examples of the pattern.
 - Migration PRs include: the component, its Storybook story, focus-visible styles, and call-site updates across the app.
 
 ## Storybook

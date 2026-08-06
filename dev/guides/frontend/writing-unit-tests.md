@@ -214,6 +214,14 @@ describe("TaskStatus", () => {
 });
 ```
 
+### Testing module-level singletons
+
+If the module under test lazily memoizes a resource at module scope (a `Map`/cache of clients,
+connections, or other stateful handles keyed by some input), the cached instance's internal state
+bleeds into later tests in the same file — Vitest isolates by file, not by `it()`. Export a
+test-only reset function (e.g. `__resetX()`) and call it in `afterEach`, or give the module a way
+to inject a fresh instance per test instead of reusing the module-level one.
+
 ## What to Test
 
 Focus on testing function behavior:
