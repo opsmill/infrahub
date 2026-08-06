@@ -253,12 +253,6 @@ disable_error_code = [
 ]
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.node.base"
-disable_error_code = [
-    "no-untyped-def",
-]
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.query"
 disable_error_code = [
     "arg-type",
