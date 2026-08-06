@@ -40,6 +40,10 @@ The boundary is: long-lived collaborators go in the constructor; transient work 
 
 Each component should have one reason to change. If a class is doing two unrelated things, split it. Prefer composition of small components over large multi-purpose ones.
 
+## Reset means reset everything derived
+
+A component that is reused across calls via an `initialize()`/`reset()` method (rather than being constructed fresh each time) must clear every value it memoized from the previous input in that same method — not just the field the method obviously replaces. A cache or derived value left over from the prior input silently serves stale results on the component's next call, and nothing else in the reuse pattern catches it.
+
 ## Persistence lives in Repository/Query classes, not on models
 
 For new code, database access and (de)serialization do not belong on the model. A model is a plain data holder; give it no `save`/`get`/`get_list`/`from_db`/`to_db` methods. Instead:

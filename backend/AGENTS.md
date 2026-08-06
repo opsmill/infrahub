@@ -93,6 +93,7 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 
 - `dev/guidelines/backend/python.md` - Python coding standards — load before writing backend Python (typing, imports, docstrings)
 - `dev/guidelines/backend/exceptions.md` - Exception handling — load when adding or changing a `try`/`except`, or when ruff flags a blind except
+- `dev/guidelines/backend/asgi-middleware.md` - ASGI middleware — load when adding or changing middleware in `server.py`
 - `dev/guidelines/backend/checklist.md` - feature checklist — walk when planning or implementing a backend feature (migrations, query efficiency, permissions)
 - Use the `creating-changelog-entries` skill - Changelog fragment creation
 

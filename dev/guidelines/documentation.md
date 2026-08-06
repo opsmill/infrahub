@@ -49,8 +49,9 @@ agents with a job to finish.
 - **Plain words**: say what happens — "the transaction commits", not "the exit hook takes the success
   path". Name a symbol only when the reader has to go find it
 - **Show instead of qualifying**: a ✅/❌ pair replaces a paragraph of caveats
-- **No provenance**: where a rule came from — a review thread, a ticket, a PR, a spec — belongs in the
-  commit message, not the doc (see `.agents/rules/code-doc-style.md`)
+- **No provenance**: where a rule came from — a review thread, a ticket, a PR, a spec, a line number —
+  belongs in the commit message, not the doc. See the last two entries under
+  [Don't](#dont) for what that rules out
 - **No padding**: cut "note that", "it's important to", "keep in mind", bolded whole sentences, and any
   sentence that restates the one before it
 - **Say it once**: if the rule is already written elsewhere, link to it instead of restating it
@@ -110,6 +111,7 @@ agents with a job to finish.
 - Skip definitions of technical terms
 - Focus on "how to" instead of "how it works" (in topics)
 - Reference Jira tickets, GitHub issues, PR numbers, or spec files as the reason for a rule — describe the underlying behavior or constraint instead. These rot once the item closes and the spec is forgotten, and a reader can't verify a closed reference the way a reviewer could at review time. Work-item IDs belong in commit messages, PR descriptions, and changelog fragments; track a significant architectural decision in `dev/adr/` (see `dev/adr/README.md`) instead, written as a self-contained Context/Decision/Consequences record independent of the spec that prompted it
+- Cite a `file.py:123` or `file.py:100-140` line location — reference the module path and symbol only (`core/regeneration/models.py::TargetSelection`). A symbol reference survives the code moving within a file or being renamed at the call site; a line number does not, and a spec's own line-numbered citations routinely rot before the feature it describes even merges
 
 ## Documentation Workflow
 

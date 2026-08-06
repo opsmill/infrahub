@@ -258,6 +258,20 @@ describe("TaskStatus", () => {
 });
 ```
 
+## Test Isolation
+
+If a test mutates shared global state — a Jotai atom in `store` (e.g. `nodeSchemasAtom`), `window.history`/query params, or a module-level mock reused across `test` blocks in the same file — restore it so later tests (in this file, or run in the same worker) don't inherit leftover state:
+
+```tsx
+const initialNodeSchemas = store.get(nodeSchemasAtom);
+beforeAll(() => store.set(nodeSchemasAtom, [generateNodeSchema()]));
+afterAll(() => store.set(nodeSchemasAtom, initialNodeSchemas));
+afterEach(() => {
+  vi.clearAllMocks();
+  window.history.replaceState(null, "", window.location.pathname);
+});
+```
+
 ## File Location
 
 Colocate tests with components using `.test.tsx` extension:

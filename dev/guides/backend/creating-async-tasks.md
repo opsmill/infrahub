@@ -169,6 +169,14 @@ async def my_workflow(branch: str, node_id: str, context: InfrahubContext) -> No
     # ... rest of implementation
 ```
 
+**Caution:** `add_tags()` rebuilds the tag list from the tags present at flow start, not from
+what an earlier `add_tags()` call in this same run just set — so if this flow (or a shared helper
+it calls, e.g. a recompute dispatcher) calls `add_tags` more than once, only the last call's own
+additions survive. Any tag another system filters on (the branch tag, for branch-filtered task
+queries) must be passed as a *creation* tag — via `tags=` on `submit_workflow`/`ExecuteWorkflow`,
+or the deployment's static `tags=` — not solely through an in-flow `add_tags()` call. See
+[Tagging System](../../knowledge/backend/async-tasks.md#tagging-system).
+
 ### Step 6: Invoke the Workflow
 
 Trigger the workflow from application code:

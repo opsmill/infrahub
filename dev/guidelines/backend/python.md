@@ -72,6 +72,15 @@ def collect_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
     ...
 ```
 
+**Exception — `tasks/*.py`:** keep `infrahub.*` and other heavy/optional imports function-local
+here. `tasks/__init__.py` eagerly imports every task submodule into the Invoke `Collection`, so a
+top-level backend import in any `tasks/*.py` file would load the full backend package on every
+`invoke` command, even unrelated ones (`invoke --list`, `invoke docs.*`, ...). This is a
+deliberate, documented exception: `pyproject.toml`'s `"tasks/**.py"` per-file-ignore disables the
+"import not at top level" lint rule for exactly this reason. Keep lightweight, always-needed
+imports (stdlib, `invoke`, sibling `.shared`/`.utils` modules) at the top; defer the rest into the
+function that needs them.
+
 ## Data Structures
 
 Use the appropriate data structure based on context. Do not use Pydantic everywhere.
@@ -326,6 +335,23 @@ So when a bug is caused by a **wrong type being passed** (e.g. a class where a `
 2. Re-enable the rule for that module and fix the whole typing chain it surfaces. Grandfather unrelated pre-existing violations with a scoped `# type: ignore[code]  # reason`, not by leaving the rule off.
 3. Fix the source. Never widen a parameter's type to silence the checker when the real contract is narrower — that entrenches the defect. mypy enforces argument types by default (modules opt out), so fix there; re-enabling ty's `invalid-argument-type` is a deliberate directory-wide effort, not a per-file exception.
 
+## Path Matching
+
+When matching a request path (or any string) against an exclusion or allow-list, never rely on
+`path.startswith(prefix)` alone — it also matches unrelated paths that merely share the prefix as
+a substring, e.g. `/healthcheck` incorrectly matches an excluded `/health`. Require the prefix to
+be the whole path or a slash-delimited ancestor:
+
+```python
+# ❌ Bad - "/healthcheck" bypasses an exclusion meant for "/health"
+if any(path.startswith(excluded) for excluded in excluded_paths):
+    return True
+
+# ✅ Good - exact match or a genuine descendant
+if any(path == excluded or path.startswith(f"{excluded}/") for excluded in excluded_paths):
+    return True
+```
+
 ## Python Version Compatibility
 
 The `python_testcontainers` package supports Python 3.10+, while the main backend requires Python 3.12+. When writing code that may be shared or used in `python_testcontainers`, be mindful of version-specific features.
@@ -378,45 +404,6 @@ Exceptions where positional arguments are acceptable:
 - Well-known stdlib patterns: `range(10)`, `print("message")`
 - First argument when it's unambiguous: `log.info("message")`
 
-## ASGI Middleware
-
-<!-- Extracted from specs/ifc-2886-priority-api-backpressure on 2026-07-26 -->
-
-Write middleware as **pure ASGI** — `async def __call__(self, scope, receive, send)`, subclassing
-nothing — when it runs on every request, may short-circuit a request, or sits anywhere near
-streaming or background tasks:
-
-```python
-class SomeMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
-        self.app = app
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
-        ...
-```
-
-The `@app.middleware("http")` decorator wraps `BaseHTTPMiddleware`, which buffers the entire
-response and interferes with streaming responses and background tasks. Reserve it for
-non-hot-path work where that cost is irrelevant.
-
-Rules that follow from the ASGI contract:
-
-- Always pass non-`http` scopes (`websocket`, `lifespan`) straight through untouched.
-- Short-circuit by constructing and sending the response yourself. Middleware runs outside the
-  exception-handler scope, so raising will not reach FastAPI's registered handlers, and those
-  handlers cannot attach custom response headers.
-- Registration order is inverted: Starlette inserts each `add_middleware(...)` at the front, so
-  the **last** registered runs **first** (outermost). Put a gate that must run before auth,
-  routing, and telemetry last in `server.py`.
-- Anything resolved by `Depends(...)` — including the authenticated user — is not available;
-  dependencies resolve per route, after all middleware.
-
-Worked example: `backend/infrahub/api/admission/middleware.py`, with the reasoning in
-[API Backpressure](../../knowledge/backend/api-backpressure.md#why-its-built-this-way).
-
 ## Testing
 
 - Unit tests: no external dependencies only file access
@@ -430,5 +417,6 @@ For additional information around testing patterns refer to [./testing.md](./tes
 ## See Also
 
 - [Exception Handling](exceptions.md) - Catching, scoping, and suppressing exceptions
+- [ASGI Middleware](asgi-middleware.md) - Writing FastAPI/Starlette middleware
 - [Backend Architecture](../../knowledge/backend/architecture.md) - Backend architecture overview
 - [Git Workflow](../git-workflow.md) - Git workflow and commit conventions

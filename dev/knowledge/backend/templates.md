@@ -14,7 +14,7 @@ Object Templates are user-defined "shape" objects: a template node holds default
 | `backend/infrahub/core/schema/schema_branch.py` | Generation of per-kind template schemas from `generate_template`-enabled nodes (`manage_object_template_schemas`, `add_relationships_to_template`, etc.). |
 | `backend/infrahub/core/relationship/constraints/template_resource_pool_exclusive.py` | Constraint preventing both a fixed value and a pool reference being set on the same template field. |
 | `backend/infrahub/core/node/create.py` | `handle_template_relationships()` recursively materializes component-template peers as real instances. |
-| `backend/infrahub/core/node/__init__.py` | `Node._apply_template()` (around line 480) is the call site that invokes `NodeTemplateApplier` during `Node.new()`. |
+| `backend/infrahub/core/node/__init__.py` | `Node.handle_object_template()` is the call site that constructs and invokes `NodeTemplateApplier` during node field processing. |
 
 ## Core Kinds
 
@@ -23,22 +23,22 @@ Every auto-generated template kind transitively inherits from one of two core ge
 - `CoreObjectTemplate` — for the user-facing template kinds (one per node with `generate_template: true`).
 - `CoreObjectComponentTemplate` — for sub-templates auto-generated for component peers (see [Subtemplates](#subtemplates)).
 
-The kind name is mechanical: a template for `InfraDevice` becomes `TemplateInfraDevice`, computed by `SchemaBranch._get_object_template_kind()` (`schema_branch.py:2532`).
+The kind name is mechanical: a template for `InfraDevice` becomes `TemplateInfraDevice`, computed by `SchemaBranch._get_object_template_kind()`.
 
 ## Schema Generation Flow
 
-Template schemas are generated during schema processing in `process_pre_validation` (`schema_branch.py:633` flow), in this order:
+Template schemas are generated during schema processing in `process_pre_validation`, in this order:
 
-1. **`manage_object_template_schemas()` (~line 2889)** — for every `NodeSchema` that sets `generate_template: true`, call `generate_object_template_from_node()` to construct a `TemplateSchema` (or a generic template for shared abstractions) and register it under the `Template{kind}` name. Identifies dependent component peers via `identify_required_object_templates()` so they get subtemplates too.
+1. **`manage_object_template_schemas()`** — for every `NodeSchema` that sets `generate_template: true`, call `generate_object_template_from_node()` to construct a `TemplateSchema` (or a generic template for shared abstractions) and register it under the `Template{kind}` name. Identifies dependent component peers via `identify_required_object_templates()` so they get subtemplates too.
 
-2. **`generate_object_template_from_node()` (~line 2759)** — builds the bare `TemplateSchema`: copies attributes that have `support_templates`, sets the `template_name__value` HFID, wires `inherit_from` to `CoreObjectTemplate` (or the auto-generated parent template if the source node inherits from one).
+2. **`generate_object_template_from_node()`** — builds the bare `TemplateSchema`: copies attributes that have `support_templates`, sets the `template_name__value` HFID, wires `inherit_from` to `CoreObjectTemplate` (or the auto-generated parent template if the source node inherits from one).
 
-3. **`add_relationships_to_template()` (~line 2669)** — walks the source node's relationships and copies the propagatable ones onto the template, with adjustments:
+3. **`add_relationships_to_template()`** — walks the source node's relationships and copies the propagatable ones onto the template, with adjustments:
    - Filters out `GENERICGROUP` and `PROFILE` peers, and any kind not in `[COMPONENT, PARENT, ATTRIBUTE, GENERIC]`.
    - For `COMPONENT` and `PARENT` peers, retargets the peer to the corresponding `Template*` kind so the template can hold a reference to a *subtemplate* instead of a real object.
    - Calls `_create_resource_pool_relationship()` for IP-typed peers and `_create_attribute_resource_pool_relationship()` for `Number` attributes — see [Resource Pool Integration](#resource-pool-integration).
 
-4. **`manage_object_template_relationships()` (~line 2535)** — adds an `object_template` relationship (kind `TEMPLATE`, identifier `node__objecttemplate`) on every template-eligible node so an instance can record which template it was created from.
+4. **`manage_object_template_relationships()`** — adds an `object_template` relationship (kind `TEMPLATE`, identifier `node__objecttemplate`) on every template-eligible node so an instance can record which template it was created from.
 
 These methods run before `process_post_validation`, which is also when `add_groups()` adds `member_of_groups` / `subscriber_of_groups` to *all* schemas (templates included — peers there make the template node itself a group member). On templates, `add_groups()` additionally emits `member_of_groups_for_instances` and `subscriber_of_groups_for_instances` (kind `GENERIC`, distinct identifiers `template_group_member_for_instances` and `template_group_subscriber_for_instances`). Peers on those fields drive per-instance group membership at template application time without affecting the template itself — see [Group Propagation](#group-propagation).
 
@@ -50,7 +50,7 @@ Subtemplates inherit from `CoreObjectComponentTemplate` rather than `CoreObjectT
 
 ## Application Flow
 
-When a user creates an object with `object_template={id: ...}`, `Node._apply_template()` is invoked from `Node.new()` (`core/node/__init__.py:480`). It:
+When a user creates an object with `object_template={id: ...}`, `Node.handle_object_template()` is invoked during field processing on node creation. It:
 
 1. Loads the referenced `CoreObjectTemplate` instance (via the GraphQL `object_template` input).
 2. Constructs a `NodeTemplateApplier` with a `DefaultPoolAllocator` (or `NoOpPoolAllocator` if pool processing is suppressed).
@@ -62,7 +62,7 @@ When a user creates an object with `object_template={id: ...}`, `Node._apply_tem
 4. Merges only previously-absent keys back into `fields`, preserving user input.
 5. Returns the set of `pool_pending_fields` — fields whose pool allocation was deferred (e.g., because the chosen allocator is the no-op variant).
 
-After save, `handle_template_relationships()` (`core/node/create.py:175`) walks the new node's `COMPONENT` relationships and recursively materializes any subtemplate peers as their own real objects, recursing into their components.
+After save, `handle_template_relationships()` walks the new node's `COMPONENT` relationships and recursively materializes any subtemplate peers as their own real objects, recursing into their components.
 
 ### Group Propagation
 

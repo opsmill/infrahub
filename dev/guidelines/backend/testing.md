@@ -284,6 +284,28 @@ If you find yourself wanting to mock:
 2. **Move up the test pyramid** - A component test requiring extensive mocking to simulate an end-to-end flow is often better written as an integration or functional test
 3. **Question the test scope** - If testing requires mocking half the system, the unit under test may be too large
 
+### Don't shape a mutation to serve its own test
+
+A method that performs a side effect (write/delete) should not also return data whose only purpose is to let a test assert it ran. If you need to verify the effect happened, assert against the actual state it changed — e.g. read the fake cache/store the method wrote to — rather than trusting a return value added for that purpose. A method either acts or returns something; bending that rule just for a test is a smell, not a shortcut.
+
+```python
+# ❌ Bad - return value exists only so the test can assert on it
+class StaleEntryCleaner:
+    async def clear_expired(self) -> list[str]:
+        deleted = [key async for key in self._sweep()]
+        return deleted
+
+# ✅ Good - no return; the test asserts against the fake store it wrote to
+class StaleEntryCleaner:
+    async def clear_expired(self) -> None:
+        async for key in self._sweep():
+            ...
+
+async def test_clears_expired_entries(cache: MemoryCache) -> None:
+    await cleaner.clear_expired()
+    assert cache.storage == {}
+```
+
 ### Acceptable exceptions
 
 - External HTTP APIs with no test mode (use `responses` or `httpx_mock` sparingly)
@@ -375,6 +397,7 @@ The exact-match principle above is not limited to error messages — it applies 
 - **Assert a positive count where the number matters.** A test that only checks "no failures" can pass while measuring zero of the thing it claims to test — e.g. if a workflow/name string changes so nothing is counted. Assert that the expected count is `> 0` (or the exact number) so a silently-zero run fails.
 - **Make the scenario actually hold.** A "missing row" test must not create the row; a "no second object" test must prove the count is one. Verify the setup produces the state under test.
 - **Denial tests must verify nothing changed.** When asserting an operation is rejected, also reload the target and assert its state is unchanged (or that no row was created/deleted). Asserting only that an error was returned does not prove the write was actually blocked.
+- **When a result is reachable via more than one code path, assert an intermediate signal too.** If "the lookup was never attempted" and "the lookup ran and found nothing" converge on the same final value (e.g. both produce an empty filter), asserting only that final value can't tell a working implementation from a regressed one that silently skipped the lookup. Also assert what was queried or which branch ran — a signal only the intended path produces.
 
 ## See Also
 

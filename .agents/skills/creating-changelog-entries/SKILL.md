@@ -88,6 +88,7 @@ uv run towncrier create -c "Migrated the frontend build to pnpm workspaces" +pnp
   reference and either skips the fragment or renders a bogus issue link instead of an orphan entry.
 - **Hand-writing the fragment file.** Use `towncrier create` so the name and location are correct.
 - **Placing it in a sub-package directory** (e.g. `backend/changelog/`) instead of the configured fragments directory.
+- **Naming the fragment after an internal tracker ID** (Jira, Linear, etc.) instead of the GitHub issue number or `+`. Towncrier's `issue_format` turns the fragment name straight into a GitHub issue URL — an internal ticket ID renders a broken link in the shipped changelog.
 - **Describing the implementation.** "Refactored the auth-token cache layer" → instead say what the user sees: "Fixed users being unexpectedly logged out".
 - **Wrong tense or multiple sentences.** One past-tense sentence.
 
