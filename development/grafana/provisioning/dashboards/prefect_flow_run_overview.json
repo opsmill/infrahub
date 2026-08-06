@@ -858,6 +858,7 @@
             "id": "organize",
             "options": {
               "excludeByName": {
+                "": true,
                 "Time": true,
                 "Value": true,
                 "__name__": true,
@@ -872,7 +873,6 @@
                 "instance": true,
                 "job": true,
                 "name": false,
-                "": true,
                 "pod": true,
                 "service": true,
                 "start_time": false,
@@ -881,6 +881,7 @@
                 "work_queue_name": true
               },
               "indexByName": {
+                "": 14,
                 "Time": 8,
                 "Value": 22,
                 "__name__": 9,
@@ -896,7 +897,6 @@
                 "flow_run_name": 0,
                 "instance": 12,
                 "job": 13,
-                "": 14,
                 "pod": 15,
                 "prefect_info_flow_runs": 23,
                 "run_count": 2,
@@ -974,7 +974,7 @@
               "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
-            "expr": "max(max(max_over_time(node__pod_container:container_cpu_usage_seconds_total:sum_irate{=\"$\", pod=~\".*$flow_name.*\"}[$__range])) by (pod))",
+            "expr": "max(max(max_over_time(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\".*$flow_name.*\"}[$__range])) by (pod))",
             "instant": false,
             "legendFormat": "__auto",
             "range": true,
@@ -1039,7 +1039,7 @@
               "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
-            "expr": "max(max(max_over_time(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", =\"$\", pod=~\".*$flow_name.*\", container!=\"\", image!=\"\"}[$__range])) by (pod))",
+            "expr": "max(max(max_over_time(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\".*$flow_name.*\", container!=\"\", image!=\"\"}[$__range])) by (pod))",
             "instant": false,
             "legendFormat": "__auto",
             "range": true,
@@ -1317,6 +1317,7 @@
             "id": "organize",
             "options": {
               "excludeByName": {
+                "": true,
                 "Time": true,
                 "Value": true,
                 "__name__": true,
@@ -1324,11 +1325,11 @@
                 "endpoint": true,
                 "instance": true,
                 "job": true,
-                "": true,
                 "pod": true,
                 "service": true
               },
               "indexByName": {
+                "": 9,
                 "Time": 2,
                 "Value": 12,
                 "__name__": 3,
@@ -1339,7 +1340,6 @@
                 "flow_name": 0,
                 "instance": 7,
                 "job": 8,
-                "": 9,
                 "pod": 10,
                 "service": 11
               },
@@ -1352,7 +1352,7 @@
       {
         "datasource": {
           "type": "prometheus",
-          "uid": "$datasource"
+          "uid": "${datasource_prometheus}"
         },
         "fieldConfig": {
           "defaults": {
@@ -1506,7 +1506,8 @@
         "targets": [
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "avg(sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\".*$flow_name.*\"}) by (pod))",
@@ -1518,7 +1519,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "kube_pod_container_resource_requests{job=\"kube-state-metrics\", namespace=\"$namespace\", pod=~\".*$flow_name.*\", resource=\"cpu\"}\n",
@@ -1530,7 +1532,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "kube_pod_container_resource_limits{job=\"kube-state-metrics\", namespace=\"$namespace\", pod=~\".*$flow_name.*\", resource=\"cpu\"}\n",
@@ -1547,7 +1550,7 @@
       {
         "datasource": {
           "type": "prometheus",
-          "uid": "$datasource"
+          "uid": "${datasource_prometheus}"
         },
         "fieldConfig": {
           "defaults": {
@@ -1701,7 +1704,8 @@
         "targets": [
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "avg(sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\".*$flow_name.*\", container!=\"\", image!=\"\"}) by (pod))",
@@ -1713,7 +1717,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "kube_pod_container_resource_requests{job=\"kube-state-metrics\", namespace=\"$namespace\", pod=~\".*$flow_name.*\", resource=\"memory\"}",
@@ -1725,7 +1730,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "kube_pod_container_resource_limits{job=\"kube-state-metrics\", namespace=\"$namespace\", pod=~\".*$flow_name.*\", resource=\"memory\"}",
@@ -2128,6 +2134,20 @@
           "name": "datasource_prometheus",
           "options": [],
           "query": "prometheus",
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "type": "datasource"
+        },
+        {
+          "current": {},
+          "hide": 0,
+          "includeAll": false,
+          "label": "Loki",
+          "multi": false,
+          "name": "datasource_loki",
+          "options": [],
+          "query": "loki",
           "refresh": 1,
           "regex": "",
           "skipUrlSync": false,
