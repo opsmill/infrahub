@@ -6,7 +6,11 @@ Infrahub includes the `IpamNamespace` node and the `BuiltinIPNamespace`, `Builti
 
 ## Load the IPAM schema
 
-If the IPAM entry already appears in the left-side menu, a schema is already loaded — this is the case after completing a quick start. Otherwise, load the base collection from the Marketplace:
+:::tip Already have IPAM in the menu?
+If the `IPAM` entry already appears in the left-side menu, a schema is already loaded — this is the case after completing a quick start. You can skip the rest of this section.
+:::
+
+Otherwise, load the base collection from the Marketplace:
 
 ```shell
 infrahubctl marketplace get infrahub/base-schemas --collection

@@ -137,20 +137,6 @@ for descendant in await prefix.descendants.fetch():
 </TabItem>
 </Tabs>
 
-Filter on a computed attribute the same way as any other attribute — for example, to find fully utilized prefixes:
-
-```graphql
-query {
-  IpamIPPrefix(utilization__value: 100) {
-    edges {
-      node {
-        prefix { value }
-      }
-    }
-  }
-}
-```
-
 ## Next
 
 - [IP Address Management](./overview.mdx) — the built-in generics and the hierarchy they participate in
