@@ -1,7 +1,5 @@
-import { ApolloProvider } from "@apollo/client";
 import { afterEach, describe, expect, test } from "vitest";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { store } from "@/shared/stores";
 
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -11,9 +9,6 @@ import { render } from "../../../../tests/components/render";
 import { Enum } from "./enum";
 
 const fieldSchema = { name: "group_type" } as AttributeSchema;
-
-const renderEnum = (ui: React.ReactElement) =>
-  render(<ApolloProvider client={graphqlClient}>{ui}</ApolloProvider>);
 
 describe("Enum delete button", () => {
   afterEach(() => {
@@ -26,7 +21,7 @@ describe("Enum delete button", () => {
     const schema = { kind: "CoreStandardGroup", namespace: "Core" } as ModelSchema;
 
     // WHEN the enum options are shown
-    const component = await renderEnum(
+    const component = await render(
       <Enum
         items={["default", "internal"]}
         value="default"
@@ -50,7 +45,7 @@ describe("Enum delete button", () => {
     const schema = { kind: "MyCustomNode", namespace: "Builtin" } as ModelSchema;
 
     // WHEN the enum options are shown
-    const component = await renderEnum(
+    const component = await render(
       <Enum
         items={["one", "two"]}
         value="one"

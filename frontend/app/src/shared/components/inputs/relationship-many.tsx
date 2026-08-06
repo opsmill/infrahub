@@ -9,7 +9,7 @@ import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import type { NodeCore, NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
@@ -21,6 +21,8 @@ export interface RelationshipManyInputProps
   peer: string;
   value: Array<NodeCore> | null;
   filterQuery?: Record<string, string | number | boolean | string[]>;
+  enforceFilterQueryOnIdSearch?: boolean;
+  addNewInitialObject?: NodeFieldsWithMetadata;
   ref?: React.Ref<HTMLButtonElement>;
 }
 
@@ -30,6 +32,8 @@ export function RelationshipManyInput({
   value,
   onChange,
   filterQuery,
+  enforceFilterQueryOnIdSearch,
+  addNewInitialObject,
   ref,
   ...props
 }: RelationshipManyInputProps) {
@@ -90,8 +94,13 @@ export function RelationshipManyInput({
           onSelect={handleSelect}
           filterItem={(node) => !value?.some((v) => v.id === node.id)}
           filterQuery={filterQuery}
+          enforceFilterQueryOnIdSearch={enforceFilterQueryOnIdSearch}
         />
-        <AddRelationshipAction peer={peer} onSuccess={handleSelect} />
+        <AddRelationshipAction
+          peer={peer}
+          initialObject={addNewInitialObject}
+          onSuccess={handleSelect}
+        />
       </ComboboxContent>
     </Combobox>
   );

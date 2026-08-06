@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { BranchContextParams } from "@/shared/api/types";
 import {
   RELATIONSHIP_BULK_ADD_PREFIX,
@@ -123,7 +122,7 @@ export function updateObjectFromApi({
   });
 
   return graphqlClient.mutate({
-    mutation: gql(mutation),
+    mutation: graphql(mutation),
     variables: file ? { file } : undefined,
     context: {
       branch: branchName,

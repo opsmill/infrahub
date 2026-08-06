@@ -1,8 +1,7 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
   type AddAttributesToRequestOptions,
   addAttributesToRequest,
@@ -39,7 +38,7 @@ const getObjectsQuery = ({
   attributesOptions,
   relationshipsOptions,
 }: GetObjectsQueryParams) => {
-  return gql(
+  return graphql(
     jsonToGraphQLQuery({
       query: {
         __name: `GetObjects${schemaKind}`,

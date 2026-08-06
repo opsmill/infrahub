@@ -147,9 +147,14 @@ For attribute kinds whose accepted input form differs from their normalized stor
 |------|-----------------|
 | `IPHost` | `ipaddress.ip_interface(value).with_prefixlen` (e.g. `192.0.2.1` → `192.0.2.1/32`) |
 | `IPNetwork` | `ipaddress.ip_network(value).with_prefixlen` (e.g. `2001:db8:0:0::/32` → `2001:db8::/32`) |
+| `IPAddress` | `str(ipaddress.ip_address(value))` (e.g. `2001:0DB8::0001` → `2001:db8::1`); a prefix or netmask is rejected outright rather than normalized |
 | `MacAddress` | `netaddr.EUI(addr=value).format(dialect=netaddr.mac_unix_expanded).upper()` (e.g. `aa-bb-cc-dd-ee-ff` → `AA:BB:CC:DD:EE:FF`) |
 
 `_normalize_value()` is intentionally a separate hook from `serialize_value()`. The latter is also used by `HashedPassword` (destructive hash), `ListAttribute`/`JSONAttribute` (type-changing JSON dump), and the base class (Enum unwrap) — transforms that cannot run on `attr.value` itself. For kinds that need input-time normalization, `serialize_value()` delegates to `_normalize_value(self.value)` so the normalized form has a single source of truth per class. When adding a new kind that needs input-time normalization, override `_normalize_value()` (not `serialize_value`).
+
+`_normalize_value()` is a `classmethod` so a value can be checked without building an attribute instance. `AttributeKindUpdateValidatorQuery` relies on that to enforce canonicality when an attribute's kind changes: a kind change runs no data migration over the stored values, so a value that parses under the new kind but is not already in its canonical form would survive un-rewritten and then miss every `__value` filter and uniqueness comparison. The check is unconditional — kinds that do not normalize inherit the identity `_normalize_value()`, so it is a no-op for them and a newly added normalizing kind is covered without touching the validator.
+
+The practical consequence is that a kind change into a normalizing kind is only allowed when the existing values are already canonical. Converting `Text` → `MacAddress` over `aa-bb-cc-dd-ee-ff` is refused, and `IPAddress` ↔ `IPHost` is refused in both directions because neither side's stored form is canonical for the other.
 
 
 ## Hierarchical Relationships and Inline Fragments

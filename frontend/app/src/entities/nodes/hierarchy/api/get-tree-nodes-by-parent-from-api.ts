@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
 export interface GetTreeNodesByParentQueryParams extends PaginationParams {
@@ -49,7 +48,7 @@ export function GetTreeNodesByParentFromApi({
   ...params
 }: GetTreeNodesByParentFromApiParams) {
   return graphqlClient.query({
-    query: gql(GetTreeNodesByParentQuery(params)),
+    query: graphql(GetTreeNodesByParentQuery(params)),
     context: {
       branch: branchName,
       date: atDate,

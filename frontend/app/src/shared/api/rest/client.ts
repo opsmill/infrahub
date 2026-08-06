@@ -58,13 +58,6 @@ export const authMiddleware: Middleware = {
     try {
       const newToken = await queryClient.fetchQuery(refreshAccessTokenQueryOptions());
 
-      if (!newToken?.access_token) {
-        // Refresh resolved but server returned no token — treat as failure
-        // and bounce to /login, matching the Apollo errorLink behaviour.
-        redirectToLogin();
-        return response;
-      }
-
       clonedRequest.headers.set("Authorization", `Bearer ${newToken.access_token}`);
       return fetch(clonedRequest);
     } catch (error) {

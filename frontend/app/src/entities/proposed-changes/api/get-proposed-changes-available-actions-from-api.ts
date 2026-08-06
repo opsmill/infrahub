@@ -1,7 +1,10 @@
-import { graphql, type ResultOf, type VariablesOf } from "gql.tada";
-
+import {
+  graphql,
+  graphqlClient,
+  type ResultOf,
+  type VariablesOf,
+} from "@/shared/api/graphql/client";
 import type { ActionAvailability } from "@/shared/api/graphql/generated/types";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 const QUERY = graphql(`
   query actions($proposedChangeId: String!) {

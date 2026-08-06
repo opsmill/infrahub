@@ -21,8 +21,8 @@ export function BranchesTable() {
     if (!data?.pages) return [];
 
     const allBranches = data.pages.flat();
-    const sortedBranches = sortByName(allBranches.filter((b) => b.name !== "main"));
-    const branches = [...allBranches.filter((b) => b.name === "main"), ...sortedBranches];
+    const sortedBranches = sortByName(allBranches.filter((b) => !b.is_default));
+    const branches = [...allBranches.filter((b) => b.is_default), ...sortedBranches];
 
     return branches;
   }, [data]);

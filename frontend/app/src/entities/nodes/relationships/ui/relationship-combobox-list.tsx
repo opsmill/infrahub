@@ -24,6 +24,9 @@ export interface RelationshipComboboxListProps
   value?: RelationshipNode | null;
   filterItem?: (relationshipNode: RelationshipNode) => boolean;
   filterQuery?: Record<string, string | number | boolean | string[]>;
+  // Keep filterQuery applied even on a UUID search. Used when the filter is a hard constraint
+  // (e.g. common_parent) that a UUID lookup must not bypass.
+  enforceFilterQueryOnIdSearch?: boolean;
 }
 
 export const RelationshipComboboxList = ({
@@ -33,19 +36,23 @@ export const RelationshipComboboxList = ({
   onSelect,
   filterItem,
   filterQuery,
+  enforceFilterQueryOnIdSearch,
   ...props
 }: RelationshipComboboxListProps) => {
   const [search, setSearch] = React.useState("");
   const { schema } = useSchema(peer);
-  // When the user types or pastes a UUID, switch the underlying query from a
-  // label search to an ids filter. UUID is a maximally specific match, so it
-  // intentionally overrides any caller-provided filterQuery.
+  // When the user types or pastes a UUID, switch the underlying query from a label search to an
+  // ids filter. UUID is a maximally specific match, so it overrides a caller-provided filterQuery
+  // by default — unless enforceFilterQueryOnIdSearch keeps the filter as a hard constraint.
   const isUuidSearch = search.length > 0 && isUuid(search);
+  const idSearchFilterQuery = enforceFilterQueryOnIdSearch
+    ? { ...filterQuery, ids: [search.trim()] }
+    : { ids: [search.trim()] };
   const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useRelationships({
       peer,
       search: isUuidSearch ? undefined : search,
-      filterQuery: isUuidSearch ? { ids: [search.trim()] } : filterQuery,
+      filterQuery: isUuidSearch ? idSearchFilterQuery : filterQuery,
     });
 
   if (error) return <ErrorScreen message={error.message} />;

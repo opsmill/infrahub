@@ -114,15 +114,43 @@ renders two model families from them by filtering each field on its visibility l
 
 - **write models** — include only `WRITE` fields and set `extra="ignore"`, so a read-only,
   internal, or unknown field in a submitted payload is dropped by pydantic itself instead of
-  rejected. That holds at every nesting level, and the per-kind discriminated unions
-  (attribute kinds, computed-attribute kinds) resolve first, so each variant keeps only the
-  fields valid for it. Constrained values that *are* settable are still validated and
+  reaching the loaded schema. That holds at every nesting level, and the per-kind discriminated
+  unions (attribute kinds, computed-attribute kinds) resolve first, so each variant keeps only
+  the fields valid for it. Constrained values that *are* settable are still validated and
   rejected when out of range. No hand-written filtering step is needed at the boundary.
 - **read models** — include `WRITE` and `READ` fields, describing the shape returned by
   `GET /api/schema`.
 
 Because both families are generated from the same definitions, a field's classification is
 declared once and both the write contract and the read shape follow automatically.
+
+### Reporting the fields a payload sets but the contract drops
+
+`extra="ignore"` decides that a non-write field has no effect; it does not decide whether the
+user hears about it. That split is driven by a third generated artifact,
+`python_sdk/infrahub_sdk/schema/generated/contract.py`, holding the non-settable field names of
+each write class:
+
+- a name **in** the table is dropped and reported as a **warning** — a `READ`-level field, the
+  `id`/`state` bookkeeping every internal schema model carries on the nested value models
+  (parameters, choices, computed attribute, extensions), or a field belonging to a sibling
+  variant of a discriminated union. These are all names a schema read back from Infrahub can
+  carry, so accepting them is what keeps the read → edit → load round trip working.
+- a name **not** in the table is an **error**, since the only ways to produce one are a typo and
+  a field that no longer exists.
+
+The table is built by `SdkSchemaGenerator._read_only_fields` from two diffs: the read variant of
+a class against its write variant, and the internal pydantic counterpart of a value model against
+its generated write model. Root-level keys that `GET /api/schema` adds over the write root
+(`main`, `profiles`, `templates`, `namespaces`) are listed explicitly and pinned against
+`SchemaReadAPI` by a test.
+
+Applying the table means knowing which model governs each place in the payload.
+`_collect_extra_fields` in `validate.py` walks the submitted payload alongside the *validated*
+write document: the validated document resolves the model at every location — including which
+union member an attribute matched — so the raw keys are compared against the fields that location
+actually accepts. One consequence: extra fields are reported only once the payload validates,
+so a payload rejected for another reason names them on the next run.
 
 A field whose valid values are a closed set is generated as a dedicated `(str, Enum)` class in
 `python_sdk/infrahub_sdk/schema/generated/enums.py` and referenced by both families, rather than
@@ -160,6 +188,7 @@ change; CI fails if the generated artifact is stale.
 | `Visibility` enum | `backend/infrahub/core/constants/schema.py` |
 | SDK write/read generator | `SdkSchemaGenerator` in `tasks/backend.py` |
 | Generated SDK write/read models (do not edit) | `python_sdk/infrahub_sdk/schema/generated/{write,read}.py` |
+| Generated non-settable field table (do not edit) | `python_sdk/infrahub_sdk/schema/generated/contract.py` |
 | Offline write-contract validator | `python_sdk/infrahub_sdk/schema/validate.py` |
 | RelationshipSchema class | `backend/infrahub/core/schema/relationship_schema.py` |
 | AttributeSchema class | `backend/infrahub/core/schema/attribute_schema.py` |
@@ -171,4 +200,4 @@ change; CI fails if the generated artifact is stale.
 - [Code Generation](code-generation.md) — How schema definitions become generated code
 - [Database Schema](database-schema.md) — How schemas map to Neo4j graph structure
 - [ADR 0010](../../adr/0010-generated-user-facing-schema-contract.md) — Why the user-facing
-  contract is generated into the SDK, and why submission ignores non-write fields
+  contract is generated into the SDK, and how submission reports the fields it does not apply

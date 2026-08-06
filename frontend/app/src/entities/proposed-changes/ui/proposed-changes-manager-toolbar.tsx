@@ -8,6 +8,7 @@ import { Row } from "@/shared/components/container";
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectItemsHeader } from "@/entities/nodes/object/ui/object-items-header";
+import { SortPicker } from "@/entities/nodes/sort/ui/sort-picker";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
@@ -28,6 +29,8 @@ export function ProposedChangesManagerToolbar({
 
       <Row className="p-2">
         <FilterSearchInput schema={schema} />
+
+        <SortPicker schema={schema} />
 
         <ActiveObjectFilterTags schema={schema} className="p-0" />
 

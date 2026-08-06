@@ -24,10 +24,9 @@ class UniquenessConstraintDeduplicator:
     (full-population) check is ever lost.
     """
 
-    def __init__(self, schema_branch: SchemaBranch) -> None:
-        self.schema_branch = schema_branch
-
-    def deduplicate(self, constraints: list[SchemaUpdateConstraintInfo]) -> list[SchemaUpdateConstraintInfo]:
+    def deduplicate(
+        self, schema_branch: SchemaBranch, constraints: list[SchemaUpdateConstraintInfo]
+    ) -> list[SchemaUpdateConstraintInfo]:
         uniqueness_infos = {
             constraint.path.schema_kind: constraint
             for constraint in constraints
@@ -40,7 +39,9 @@ class UniquenessConstraintDeduplicator:
         redundant_kinds = {
             kind
             for kind, info in uniqueness_infos.items()
-            if self._is_covered_by_generic(kind=kind, info=info, uniqueness_infos=uniqueness_infos)
+            if self._is_covered_by_generic(
+                schema_branch=schema_branch, kind=kind, info=info, uniqueness_infos=uniqueness_infos
+            )
         }
         if not redundant_kinds:
             return list(constraints)
@@ -53,9 +54,13 @@ class UniquenessConstraintDeduplicator:
         ]
 
     def _is_covered_by_generic(
-        self, kind: str, info: SchemaUpdateConstraintInfo, uniqueness_infos: dict[str, SchemaUpdateConstraintInfo]
+        self,
+        schema_branch: SchemaBranch,
+        kind: str,
+        info: SchemaUpdateConstraintInfo,
+        uniqueness_infos: dict[str, SchemaUpdateConstraintInfo],
     ) -> bool:
-        schema = self._get_schema_or_none(kind=kind)
+        schema = self._get_schema_or_none(schema_branch=schema_branch, kind=kind)
         if schema is None or isinstance(schema, GenericSchema):
             # a generic is the coverer, never the covered
             return False
@@ -70,7 +75,7 @@ class UniquenessConstraintDeduplicator:
                 continue
             if not self._scope_covers(node_info=info, generic_info=generic_info):
                 continue
-            generic_schema = self._get_schema_or_none(kind=generic_kind)
+            generic_schema = self._get_schema_or_none(schema_branch=schema_branch, kind=generic_kind)
             if generic_schema is None:
                 continue
             covered_groups |= self._constraint_groups(generic_schema)
@@ -92,8 +97,8 @@ class UniquenessConstraintDeduplicator:
     def _constraint_groups(self, schema: MainSchemaTypes) -> set[frozenset[str]]:
         return {frozenset(group) for group in schema.uniqueness_constraints or []}
 
-    def _get_schema_or_none(self, kind: str) -> MainSchemaTypes | None:
+    def _get_schema_or_none(self, schema_branch: SchemaBranch, kind: str) -> MainSchemaTypes | None:
         try:
-            return self.schema_branch.get(name=kind, duplicate=False)
+            return schema_branch.get(name=kind, duplicate=False)
         except SchemaNotFoundError:
             return None

@@ -11,11 +11,13 @@ from infrahub_sdk.schema.generated.read import (
     TemplateSchemaRead,
 )
 from infrahub_sdk.schema.generated.write import InfrahubSchemaWrite
+from infrahub_sdk.schema.validate import SchemaValidationWarningDetail
 from infrahub_sdk.schema.validate import validate_schema as validate_write_schema
 from pydantic import (
     BaseModel,
     Field,
     PrivateAttr,
+    ValidatorFunctionWrapHandler,
     computed_field,
     create_model,
     model_validator,
@@ -45,6 +47,8 @@ from infrahub.core.schema import (
     ProfileSchema,
     SchemaRoot,
     SchemaWarning,
+    SchemaWarningKind,
+    SchemaWarningType,
     TemplateSchema,
 )
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
@@ -99,18 +103,51 @@ class SchemaReadAPI(BaseModel):
     namespaces: list[SchemaNamespace] = Field(default_factory=list)
 
 
+def read_only_field_warnings(details: list[SchemaValidationWarningDetail]) -> list[SchemaWarning]:
+    """Aggregate read-only field findings into one warning per field name.
+
+    A payload read back from the schema API repeats the same read-only field on every node and
+    attribute it contains, so grouping by field name keeps the response proportional to the number
+    of distinct offending fields rather than to the size of the schema.
+    """
+    grouped: dict[str, list[SchemaWarningKind]] = {}
+    for detail in details:
+        kinds = grouped.setdefault(detail.name, [])
+        if detail.kind is None:
+            continue
+        kind = SchemaWarningKind(kind=detail.kind, field=detail.element)
+        if kind not in kinds:
+            kinds.append(kind)
+
+    return [
+        SchemaWarning(
+            type=SchemaWarningType.DEPRECATION,
+            kinds=kinds,
+            message=f"'{name}' is a read-only field, the submitted value is ignored",
+        )
+        for name, kinds in grouped.items()
+    ]
+
+
 class SchemaLoadAPI(InfrahubSchemaWrite):
     _internal_schema: SchemaRoot = PrivateAttr()
+    _contract_warnings: list[SchemaWarning] = PrivateAttr(default_factory=list)
 
-    @model_validator(mode="before")
+    @model_validator(mode="wrap")
     @classmethod
-    def validate_write_contract(cls, data: Any) -> Any:
+    def validate_write_contract(cls, data: Any, handler: ValidatorFunctionWrapHandler) -> Self:
+        # Wrapped rather than run before validation so the warnings, which are only visible on the
+        # raw payload, can be carried on the instance the handler returns.
+        result = validate_write_schema(schema=data) if isinstance(data, dict) else None
         # Raising here turns the field-level messages into a single request-validation error.
-        if isinstance(data, dict):
-            result = validate_write_schema(schema=data)
-            if not result.valid:
-                raise ValueError("; ".join(result.messages))
-        return data
+        if result is not None and not result.valid:
+            raise ValueError("; ".join(result.messages))
+
+        instance: Self = handler(data)
+
+        if result is not None:
+            instance._contract_warnings = read_only_field_warnings(details=result.warnings)
+        return instance
 
     @model_validator(mode="after")
     def build_internal_schema(self) -> Self:
@@ -121,6 +158,10 @@ class SchemaLoadAPI(InfrahubSchemaWrite):
     @property
     def internal_schema(self) -> SchemaRoot:
         return self._internal_schema
+
+    @property
+    def contract_warnings(self) -> list[SchemaWarning]:
+        return self._contract_warnings
 
 
 class SchemasLoadAPI(BaseModel):
@@ -367,6 +408,7 @@ async def load_schema(
         candidate_schemas.append(internal_schema)
         errors += internal_schema.validate_reserved_names()
         warnings += internal_schema.gather_warnings()
+        warnings += schema.contract_warnings
 
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
@@ -380,7 +422,7 @@ async def load_schema(
         )
 
         if not result.diff.all:
-            return SchemaUpdate(hash=original_hash, previous_hash=original_hash, diff=result.diff)
+            return SchemaUpdate(hash=original_hash, previous_hash=original_hash, diff=result.diff, warnings=warnings)
 
         # ----------------------------------------------------------
         # Validate if the new schema is valid with the content of the database
@@ -460,6 +502,7 @@ async def check_schema(
         candidate_schemas.append(internal_schema)
         errors += internal_schema.validate_reserved_names()
         warnings += internal_schema.gather_warnings()
+        warnings += schema.contract_warnings
 
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))

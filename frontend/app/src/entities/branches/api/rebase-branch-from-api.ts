@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 const BRANCH_REBASE = graphql(`
   mutation BRANCH_REBASE($name: String, $waitUntilCompletion: Boolean!) {

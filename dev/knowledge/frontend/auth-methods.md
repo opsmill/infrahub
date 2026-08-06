@@ -43,7 +43,9 @@ authentication/
 
 Import direction is the entity rule: `ui/ → domain/ → api/`. SSO has no api/domain/queries (it's a redirect link list, not a fetch). Storage keys live with their consumers: token keys in `api/token-storage.ts`, `LAST_USED_METHOD_KEY` in `ui/hooks/use-last-used-method.ts`.
 
-> `shared/` transport (`api/rest/client`, `api/graphql/graphqlClientApollo`, graphiql fetcher) imports this entity's token surface (`api/token-storage`, `domain/use-cases/redirect-to-login`) — the one sanctioned `shared → entity` transport edge (auth is cross-cutting). `api/rest/client` and `api/graphql/graphqlClientApollo` also import `ui/queries/refresh-access-token.query`, sharing one TanStack query so concurrent 401s trigger a single refresh.
+> `shared/` transport (`api/rest/client`, `api/graphql/client`, graphiql fetcher) imports this entity's token surface (`api/token-storage`, `domain/use-cases/redirect-to-login`) — the one sanctioned `shared → entity` transport edge (auth is cross-cutting). `api/rest/client` and `api/graphql/client` also import `ui/queries/refresh-access-token.query`, sharing one TanStack query so concurrent 401s trigger a single refresh.
+>
+> On the GraphQL side the refresh loop is `@urql/exchange-auth`: `didAuthError` matches the `TOKEN_EXPIRED` catalogue code, `refreshAuth` awaits that shared TanStack query, and the exchange pauses and replays the held operations itself — one refresh across concurrent operations, then a single replay. A refresh that throws, or an expiry that persists after the replay, redirects to `/login`.
 
 ## The registry
 

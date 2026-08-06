@@ -1,6 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 
 const UPSERT_USER_PREFERENCE = graphql(`
   mutation UpsertUserPreference($dateFormat: DateFormat, $timezone: String) {

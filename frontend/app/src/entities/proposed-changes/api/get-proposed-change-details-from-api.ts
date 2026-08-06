@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 const GET_PROPOSED_CHANGE_DETAILS = graphql(`
   query GET_PROPOSED_CHANGE_DETAILS($proposedChangeId: ID) {

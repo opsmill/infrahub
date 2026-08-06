@@ -7,6 +7,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type {
   ConvertFieldMapping,
   ConvertFormFieldValue,
@@ -56,10 +57,12 @@ export interface ConvertFormProps {
 
 function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: ConvertFormProps) {
   const navigate = useNavigate();
+  const { currentBranch } = useCurrentBranch();
   const { mutateAsync: convertObject } = useConvertObjectMutation();
 
   const fields = getFormFieldsFromSchema({
     schema: targetSchema,
+    isDefaultBranch: !!currentBranch.is_default,
     parentSchema: null,
     parentData: null,
   });

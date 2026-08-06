@@ -35,14 +35,10 @@ class _NoDependentsResolver:
         return set()
 
 
-def _build_determiner(schema_branch: SchemaBranch) -> ConstraintValidatorDeterminer:
+def _build_determiner() -> ConstraintValidatorDeterminer:
     node_diff_index = NodeDiffIndex()
-    scoper = UniquenessConstraintScoper(
-        schema_branch=schema_branch, dependent_resolver=_NoDependentsResolver(), node_diff_index=node_diff_index
-    )
-    return ConstraintValidatorDeterminer(
-        schema_branch=schema_branch, node_diff_index=node_diff_index, uniqueness_scoper=scoper
-    )
+    scoper = UniquenessConstraintScoper(dependent_resolver=_NoDependentsResolver(), node_diff_index=node_diff_index)
+    return ConstraintValidatorDeterminer(node_diff_index=node_diff_index, uniqueness_scoper=scoper)
 
 
 def node_constraint(kind: str, property_name: str) -> SchemaUpdateConstraintInfo:
@@ -190,9 +186,9 @@ def person_cars_node_diff(
 class TestConstraintDeterminer:
     async def test_no_node_diffs(self, car_person_schema: SchemaBranch, default_branch: Branch) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
 
-        constraints = await determiner.get_constraints(node_diffs=[])
+        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=[])
 
         assert constraints == []
 
@@ -203,10 +199,10 @@ class TestConstraintDeterminer:
         person_name_node_diff: tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]],
     ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         node_diff, constraint_info_set = person_name_node_diff
 
-        constraints = await determiner.get_constraints(node_diffs=[node_diff])
+        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=[node_diff])
 
         relevant_constraints = [
             c
@@ -224,10 +220,10 @@ class TestConstraintDeterminer:
         person_cars_node_diff: tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]],
     ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         node_diff, constraint_info_set = person_cars_node_diff
 
-        constraints = await determiner.get_constraints(node_diffs=[node_diff])
+        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=[node_diff])
 
         assert len(constraints) == len(constraint_info_set)
         assert constraint_info_set == set(constraints)
@@ -245,7 +241,7 @@ class TestConstraintDeterminer:
         name_attr_schema.parameters.max_length = 30
         car_schema = schema_branch.get(name="TestCar", duplicate=False)
         car_schema.uniqueness_constraints = [["owner", "color__value"]]
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         node_diff, constraint_info_set = person_name_node_diff
         max_length_param_constraint_info = SchemaUpdateConstraintInfo(
             constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE.value,
@@ -259,7 +255,7 @@ class TestConstraintDeterminer:
         constraint_info_set.add(node_uniqueness_constraint("TestPerson", node_uuids=[CHANGED_PERSON_UUID]))
         constraint_info_set.add(max_length_param_constraint_info)
 
-        constraints = await determiner.get_constraints(node_diffs=[node_diff])
+        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=[node_diff])
 
         assert set(constraints) == constraint_info_set
 
@@ -272,14 +268,14 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         car_schema = schema_branch.get(name="TestCar", duplicate=False)
         car_schema.uniqueness_constraints = [["owner__name", "color__value"]]
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         node_diff, constraint_info_set = person_name_node_diff
         constraint_info_set.add(node_uniqueness_constraint("TestPerson", node_uuids=[CHANGED_PERSON_UUID]))
         # TestCar's constraint reads the name attribute of the related TestPerson, so a TestPerson
         # data change can violate it even though TestCar itself has no diff.
         constraint_info_set.add(node_uniqueness_constraint("TestCar"))
 
-        constraints = await determiner.get_constraints(node_diffs=[node_diff])
+        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=[node_diff])
 
         assert set(constraints) == constraint_info_set
 
@@ -291,7 +287,7 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         generic_schema = schema_branch.get(name="TestCar", duplicate=False)
         generic_schema.uniqueness_constraints = [["name__value"]]
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         node_diff = NodeDiffFieldSummary(kind="TestElectricCar", attribute_node_uuids={"nbr_engine": set()})
         # nbr_engine participates in no uniqueness path, so the uniqueness check must not be
         # triggered on the implementation or on its generic; only the nbr_engine field constraints remain
@@ -301,7 +297,7 @@ class TestConstraintDeterminer:
             attribute_constraint("TestElectricCar", "nbr_engine", "unique"),
         }
 
-        constraints = await determiner.get_constraints(node_diffs=[node_diff])
+        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=[node_diff])
 
         assert set(constraints) == constraint_info_set
 
@@ -313,7 +309,7 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         generic_schema = schema_branch.get(name="TestCar", duplicate=False)
         generic_schema.uniqueness_constraints = [["name__value"]]
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         # `name` is inherited from the generic; a generic-level uniqueness check spans every
         # implementing node, so changing name on an implementation must trigger the check on the
         # generic (TestCar) as well as on the implementation (TestElectricCar)
@@ -321,7 +317,7 @@ class TestConstraintDeterminer:
             kind="TestElectricCar", attribute_node_uuids={"name": {CHANGED_ELECTRIC_CAR_UUID}}
         )
 
-        constraints = await determiner.get_constraints(node_diffs=[node_diff])
+        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=[node_diff])
 
         # both the generic and the implementation checks are scoped to the changed implementation node
         expected = {
@@ -344,10 +340,10 @@ class TestConstraintDeterminer:
         # reading the peer's `name` must fire when an implementation of that generic (LocationSite)
         # changes `name`, even though the peer kind named in the path (LocationGeneric) has no diff
         thing_schema.uniqueness_constraints = [["location__name"]]
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         node_diff = NodeDiffFieldSummary(kind="LocationSite", attribute_node_uuids={"name": set()})
 
-        constraints = await determiner.get_constraints(node_diffs=[node_diff])
+        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=[node_diff])
 
         assert node_uniqueness_constraint("TestThing") in set(constraints)
 
@@ -359,13 +355,13 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         car_schema = schema_branch.get(name="TestCar", duplicate=False)
         car_schema.uniqueness_constraints = [["owner__name", "color__value"]]
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         # TestCar's uniqueness constraints read TestPerson.name; a change to an unrelated
         # TestPerson attribute, height, does not participate, so neither kind's uniqueness
         # check should trigger
         node_diff = NodeDiffFieldSummary(kind="TestPerson", attribute_node_uuids={"height": set()})
 
-        constraints = await determiner.get_constraints(node_diffs=[node_diff])
+        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=[node_diff])
 
         constraint_set = set(constraints)
         assert node_uniqueness_constraint("TestCar") not in constraint_set
@@ -378,12 +374,13 @@ class TestConstraintDeterminer:
         person_name_node_diff: tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]],
     ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         node_diff, constraint_info_set = person_name_node_diff
         constraint_info_set.add(node_uniqueness_constraint("TestPerson", node_uuids=[CHANGED_PERSON_UUID]))
 
         constraints = await determiner.get_constraints(
-            node_diffs=[NodeDiffFieldSummary(kind="TestDeleted", attribute_node_uuids={"name": set()}), node_diff]
+            schema_branch=schema_branch,
+            node_diffs=[NodeDiffFieldSummary(kind="TestDeleted", attribute_node_uuids={"name": set()}), node_diff],
         )
 
         # TestDeleted is absent from the schema, so it contributes nothing; only TestPerson remains
@@ -398,21 +395,22 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.register_schema(
             schema=SchemaRoot(**internal_schema), branch=default_branch.name
         )
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         node_diff, constraint_info_set = person_name_node_diff
         constraint_info_set.add(node_uniqueness_constraint("TestPerson", node_uuids=[CHANGED_PERSON_UUID]))
 
-        constraints = await determiner.get_constraints(node_diffs=[node_diff])
+        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=[node_diff])
         # internal schema kinds are absent from the diff, so none contribute constraints
         assert set(constraints) == constraint_info_set
 
         internal_kinds = {"SchemaNode", "SchemaGeneric", "SchemaAttribute", "SchemaRelationship"}
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         constraints = await determiner.get_constraints(
+            schema_branch=schema_branch,
             node_diffs=[
                 node_diff,
                 *(NodeDiffFieldSummary(kind=kind, attribute_node_uuids={"name": set()}) for kind in internal_kinds),
-            ]
+            ],
         )
         # once an internal schema kind is in the diff, its uniqueness constraint must be validated
         # (this is what catches duplicate schema elements when a branch is merged)
@@ -426,7 +424,7 @@ class TestConstraintDeterminer:
         default_branch: Branch,
     ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         # A hierarchy edge change surfaces on both endpoints: the child (LocationRack) records its
         # `parent` change and the parent (LocationSite) records its `children` change. Each endpoint
         # emits only the hierarchy constraint whose relationship actually changed there, and no
@@ -442,7 +440,7 @@ class TestConstraintDeterminer:
             *(relationship_constraint("LocationSite", "children", p) for p in RELATIONSHIP_PROPERTIES),
         }
 
-        constraints = await determiner.get_constraints(node_diffs=node_diffs)
+        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=node_diffs)
 
         assert set(constraints) == expected
 
@@ -455,13 +453,13 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         person_schema = schema_branch.get(name="TestPerson", duplicate=False)
         person_schema.uniqueness_constraints = [["does_not_exist__value"]]
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         # `height` is not a unique attribute, so evaluating uniqueness must fall through to parsing
         # the (unparseable) constraint group rather than short-circuiting on a unique attribute.
         node_diff = NodeDiffFieldSummary(kind="TestPerson", attribute_node_uuids={"height": set()})
 
         with caplog.at_level(logging.WARNING):
-            constraints = await determiner.get_constraints(node_diffs=[node_diff])
+            constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=[node_diff])
 
         assert "Cannot parse TestPerson.uniqueness_constraints element 'does_not_exist__value'" in caplog.text
         # the unparseable element is skipped in isolation, so no uniqueness check is emitted for the kind
@@ -473,12 +471,12 @@ class TestConstraintDeterminer:
         default_branch: Branch,
     ) -> None:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        determiner = _build_determiner(schema_branch=schema_branch)
+        determiner = _build_determiner()
         # Re-parenting a rack changes only its `parent` relationship, so only the parent hierarchy
         # constraint may be emitted for that kind, never the children one.
         node_diffs = [NodeDiffFieldSummary(kind="LocationSite", relationship_node_uuids={"parent": set()})]
 
-        constraints = await determiner.get_constraints(node_diffs=node_diffs)
+        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=node_diffs)
 
         constraint_set = set(constraints)
         assert node_constraint("LocationSite", "parent") in constraint_set
