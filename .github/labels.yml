@@ -167,10 +167,6 @@
   description: "This issue is part of the backlog"
   color: "eeeeee"
 
-- name: "state/verified-2026-08"
-  description: "Checked against current code during the 2026-08 backlog triage, confirmed still valid"
-  color: "0e8a16"
-
 - name: "state/planned"
   description: "This issue is planned to be worked on in an upcoming release."
   color: "eeeeee"
