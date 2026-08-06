@@ -1600,7 +1600,7 @@ dev = [
     { name = "pytest-httpx", specifier = ">=0.33" },
     { name = "pytest-playwright-asyncio", specifier = ">=0.8.0" },
     { name = "pytest-timeout", specifier = "==2.3.1" },
-    { name = "pytest-xdist", specifier = ">=3.4,<3.5" },
+    { name = "pytest-xdist", specifier = ">=3.8,<3.9" },
     { name = "ruamel-yaml", specifier = "==0.18.6" },
     { name = "ruff", specifier = "==0.15.0" },
     { name = "semver", specifier = ">=3.0.2,<4" },
@@ -3463,15 +3463,15 @@ wheels = [
 
 [[package]]
 name = "pytest-xdist"
-version = "3.4.0"
+version = "3.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "execnet" },
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/07/61/3eb25e71d2368d59ce4ecdfb7197d7767772f81e00a57fe95280defcdf6d/pytest-xdist-3.4.0.tar.gz", hash = "sha256:3a94a931dd9e268e0b871a877d09fe2efb6175c2c23d60d56a6001359002b832", size = 78703, upload-time = "2023-11-11T16:10:20.912Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/78/b4/439b179d1ff526791eb921115fca8e44e596a13efeda518b9d845a619450/pytest_xdist-3.8.0.tar.gz", hash = "sha256:7e578125ec9bc6050861aa93f2d59f1d8d085595d6551c2c90b6f4fad8d3a9f1", size = 88069, upload-time = "2025-07-01T13:30:59.346Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c4/94/71d5bdffe6efc8f224154323bb3e026c5e961bd56bd2a5a20f23917377d4/pytest_xdist-3.4.0-py3-none-any.whl", hash = "sha256:e513118bf787677a427e025606f55e95937565e06dfaac8d87f55301e57ae607", size = 41925, upload-time = "2023-11-11T16:10:18.853Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/31/d4e37e9e550c2b92a9cbc2e4d0b7420a27224968580b5a447f420847c975/pytest_xdist-3.8.0-py3-none-any.whl", hash = "sha256:202ca578cfeb7370784a8c33d6d05bc6e13b4f25b5053c30a152269fd10f0b88", size = 46396, upload-time = "2025-07-01T13:30:56.632Z" },
 ]
 
 [[package]]

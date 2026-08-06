@@ -159,6 +159,28 @@ def neo4j(request, load_settings_before_session) -> dict[int, int] | None:
     }
 ```
 
+### Parallel execution and database isolation
+
+Component, core, functional and integration tests run under pytest-xdist (`-n <workers>`, see
+`tasks/backend.py`); unit tests do not. Each xdist worker is a separate process running its own
+pytest session, so the session-scoped container fixtures above execute **once per worker** — four
+workers means four Neo4j containers, each with its own graph.
+
+That per-worker isolation is what makes the destructive fixtures safe. `empty_database` runs
+`delete_all_nodes`, which is a bare `MATCH (n) DETACH DELETE n` over the entire graph, and several
+tests assert on global counts rather than on nodes they can identify as their own. Both are only
+correct while a worker owns its database outright.
+
+Two consequences worth remembering:
+
+- Do not introduce cross-worker container sharing (for example testcontainers' `reuse` support, or
+  keying a container off `PYTEST_XDIST_WORKER`) without first removing the whole-graph wipes.
+  Sharing one database between workers makes every `empty_database` test hostile to whatever else
+  is running.
+- Test ordering under `--dist loadscope` (set in `addopts`) is not stable across pytest-xdist
+  releases — scopes are sorted largest-first, so which modules run concurrently can change on an
+  upgrade. Tests must not depend on what else is or is not running.
+
 ### Base Test Classes
 
 Located in `backend/tests/helpers/test_app.py`:
