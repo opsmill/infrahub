@@ -83,6 +83,9 @@ uv run towncrier create -c "Migrated the frontend build to pnpm workspaces" +pnp
 
 ## Common Mistakes
 
+- **Omitting the `+` orphan prefix.** When there's no issue ID, the filename must start with `+`
+  (e.g. `+pnpm-workspaces.housekeeping.md`). Without it, Towncrier reads the name as an issue
+  reference and either skips the fragment or renders a bogus issue link instead of an orphan entry.
 - **Hand-writing the fragment file.** Use `towncrier create` so the name and location are correct.
 - **Placing it in a sub-package directory** (e.g. `backend/changelog/`) instead of the configured fragments directory.
 - **Describing the implementation.** "Refactored the auth-token cache layer" → instead say what the user sees: "Fixed users being unexpectedly logged out".
