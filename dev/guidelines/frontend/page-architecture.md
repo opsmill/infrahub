@@ -21,6 +21,7 @@ Every piece of state has exactly one owner. When in doubt, push it up; never dup
 - **Page `useState` shadowed by selector `useState` for the same field.** Lift to a single owner. If the selector is a form, expose `onSubmit(values)` and let the page commit the values to the URL.
 - **`useEffect` to copy props into local state.** Derive during render or use `defaultValues` on the form.
 - **Reading `searchParams` in two places.** One hook call per param, at the page level. Pass values down.
+- **Mirroring state that already has an owner into a second store.** URL state copied into a Jotai atom, or form values copied into a `useState`, gives you two values that can disagree and no way to tell which is current. Pick the owner from the table above and read from it; if you find yourself syncing the copy back, the owner is wrong, not missing.
 
 ## Pages own URL sync
 
