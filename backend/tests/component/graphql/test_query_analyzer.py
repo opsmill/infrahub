@@ -249,6 +249,50 @@ async def test_traversed_kinds(
     assert "TestPerson" in shared_kind.query_report.traversed_kinds
 
 
+async def test_requested_read_reports_unread_members_of_a_traversed_generic(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
+) -> None:
+    """Every member of a traversed generic is reported, with an empty read set when nothing is read.
+
+    A caller cannot treat presence in the map as proof the query depends on the kind; it has to
+    look at the fields. Reporting the member kinds keeps a permission check able to see them.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    query = """
+    query {
+        TestPerson {
+            edges {
+                node {
+                    name { value }
+                    cars {
+                        edges {
+                            node {
+                                ... on TestElectricCar {
+                                    nbr_engine { value }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    analyzer = InfrahubGraphQLQueryAnalyzer(
+        query=query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    report = analyzer.query_report
+
+    assert set(report.requested_read) == {"TestPerson", "TestCar", "TestElectricCar", "TestGazCar"}
+    assert report.requested_read["TestPerson"].fields == {"name", "cars"}
+    assert report.requested_read["TestElectricCar"].fields == {"nbr_engine"}
+    assert report.requested_read["TestCar"].fields == set()
+    assert report.requested_read["TestGazCar"].fields == set()
+
+
 async def test_query_report(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
 ) -> None:
