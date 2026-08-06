@@ -89,7 +89,7 @@ class InfrahubClientUser(User):
                 delete_this_node.delete()
 
             if "diff" in self.custom_options["stager"]:
-                self.client.branch.diff_data("DiffTestBranch")
+                self.client.get_diff_tree(branch="DiffTestBranch")
 
         # End with a branch merge
         if "diff" in self.custom_options["stager"]:
