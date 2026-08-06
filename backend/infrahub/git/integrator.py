@@ -207,6 +207,17 @@ class ObjectImportPlan:
     artifact_definitions: dict[str, InfrahubRepositoryArtifactDefinitionConfig]
 
 
+def find_unloadable_schema_files(schemas_data: list[SchemaFile]) -> list[SchemaFile]:
+    """Return the schema files whose content never loaded, and which therefore carry no payload."""
+    return [schema_file for schema_file in schemas_data if not schema_file.valid or schema_file.content is None]
+
+
+def format_unloadable_schema_files(unloadable: list[SchemaFile]) -> str:
+    """Report the reason the loader recorded for each file, rather than an opaque validation error."""
+    details = ", ".join(f"{item.identifier} ({item.error_message})" for item in unloadable)
+    return f"Unable to load {len(unloadable)} schema file(s): {details}"
+
+
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     """This class provides interfaces to read and process information from .infrahub.yml files and can perform.
 
@@ -859,29 +870,21 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             # and send an empty list to the API
             return
 
-        # A file that failed to load carries no content, so it cannot be validated or sent to the
-        # API. Report the reason the loader recorded rather than letting the empty content surface
-        # later as an opaque schema validation failure. Each payload travels next to its file
-        # because re-reading the content attribute in the loops below would lose the narrowing.
-        unloadable: list[SchemaFile] = []
-        payloads: list[tuple[SchemaFile, dict[str, Any]]] = []
-        for schema_file in schemas_data:
-            if not schema_file.valid or schema_file.content is None:
-                unloadable.append(schema_file)
-                log.error(f"Unable to load the file {schema_file.identifier}, {schema_file.error_message}")
-                continue
-            payloads.append((schema_file, schema_file.content))
-
+        # A file that failed to load carries no content, so it can be neither validated nor sent to
+        # the API. Report the reason the loader recorded rather than letting the missing content
+        # surface later as an opaque schema validation failure. Rejecting them here is also what
+        # makes `payload` below safe: it substitutes an empty dict for absent content, which would
+        # otherwise turn an unloadable file into a misleading schema error.
+        unloadable = find_unloadable_schema_files(schemas_data)
+        for schema_file in unloadable:
+            log.error(f"Unable to load the file {schema_file.identifier}, {schema_file.error_message}")
         if unloadable:
-            details = ", ".join(f"{item.identifier} ({item.error_message})" for item in unloadable)
-            raise ValidationError(
-                identifier=str(self.id), message=f"Unable to load {len(unloadable)} schema file(s): {details}"
-            )
+            raise ValidationError(identifier=str(self.id), message=format_unloadable_schema_files(unloadable))
 
         # Valid data format of content
-        for schema_file, payload in payloads:
+        for schema_file in schemas_data:
             try:
-                self.sdk.schema.validate(payload)
+                self.sdk.schema.validate(schema_file.payload)
             except PydanticValidationError as exc:
                 log.error(f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}")
                 raise ValidationError(
@@ -890,7 +893,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 ) from exc
 
         response = await self.sdk.schema.load(
-            schemas=[payload for _, payload in payloads], branch=branch_name, wait_until_converged=True
+            schemas=[item.payload for item in schemas_data], branch=branch_name, wait_until_converged=True
         )
 
         if response.errors:
