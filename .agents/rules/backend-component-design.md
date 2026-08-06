@@ -10,17 +10,17 @@ Applies when creating a new backend component or making significant changes to a
 
 ## Use modular components with dependency injection
 
-New logic should live in components that receive their collaborators through constructor injection rather than instantiating them internally. This keeps components composable, swappable, and testable without patching.
-
-## Required dependencies, not optional
-
-Constructor dependencies for new code are required parameters - not `collaborator: Collaborator | None = None` with an internal default. Optional injection hides that the dependency exists and lets a caller silently skip wiring it. Make every collaborator an explicit, required constructor argument - explicit is better than implicit.
+New logic lives in components that receive their collaborators through constructor injection rather than instantiating them internally, which keeps them composable, swappable, and testable without patching. Every collaborator is a **required** parameter — not `collaborator: Collaborator | None = None` with an internal default, which hides that the dependency exists and lets a caller silently skip wiring it.
 
 The single exception is editing existing code where adding a required parameter would force a large change across many call sites. There, an optional parameter is a transitional compromise to keep the change small - not the target shape for new components.
 
 ## Build components near the application entry point
 
 Construct components as close to the application entry point as possible. Use a builder class or factory function when wiring is non-trivial, and inject each sub-component rather than constructing it inside a parent component's `__init__`.
+
+**The whole graph is built there, in one pass, before the work starts.** A component that builds a collaborator part-way through a run — when the flow reaches the step that needs it — has the same problem as one that builds it in `__init__`, and is harder to follow because the wiring is spread across the execution. Pass the collaborator in, and pass per-run values to the entry method instead of holding them as constructor state.
+
+**Invalid wiring fails while you build the graph.** Validate the combination at construction and raise; never let a missing or mismatched collaborator surface later as a silently skipped step or a degraded fallback. Where a generic ties two sides together, parameterize both so the mismatch is a type error rather than a runtime discovery — a `Handler[Any]` paired with `Output[Any]` type-checks against anything and defers the failure to the run.
 
 Prefect `@flow` functions are application entry points: resolve singleton getters (`get_database()`, `get_workflow()`, …) at the top of the flow only — never inside helpers or component internals — then build the component and delegate to it. The flow body stays a thin composition root; the business logic lives in the component.
 

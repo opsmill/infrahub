@@ -39,6 +39,8 @@ Do not reference Jira tickets, GitHub issues, or spec-kit identifiers in docstri
 
 Why: these belong in the commit message and PR description. In source, they become noise once the ticket is closed and the codebase has moved on.
 
+Spec **vocabulary** goes the same way as spec IDs. A phrase coined in a spec ("the unsound package-directory floor") means nothing to a reader who never read that spec, and test names and docstrings are read by people who never will. Say what the code does in plain terms instead.
+
 Where IDs *do* belong:
 
 - Commit messages, PR titles/descriptions

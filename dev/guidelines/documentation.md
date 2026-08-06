@@ -57,6 +57,9 @@ agents with a job to finish.
 - **Say it once**: if the rule is already written elsewhere, link to it instead of restating it
 - **Budget**: a new rule is a few lines plus one example. If it needs more than that, it's an
   explanation for `dev/knowledge/`, not a guideline
+- **Relative numbers, not absolute ones**: a measurement is only meaningful as a comparison, since the
+  absolute figure depends on the environment it was taken in. Write "cuts merge wall time by roughly
+  4x", not "runs in 10s"
 - **Pay for it**: cut the prose the new rule supersedes, and check the file against its size range
   in [Repository Organization](repository-organization.md) before appending. A file over its range
   gets split or compressed, not extended

@@ -27,7 +27,8 @@ type LinkProps =
 
 - Prefix: `use*`
 - Let TypeScript infer return types (annotate only when complex)
-- Include all deps in useEffect/useCallback/useMemo arrays
+- Include all deps in the `useEffect` array. Don't reach for `useMemo`/`useCallback`/`memo` at all — the
+  React Compiler memoizes for you (see `dev/knowledge/frontend/react.md`)
 
 ## Type Safety
 

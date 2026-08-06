@@ -81,6 +81,10 @@ deliberate, documented exception: `pyproject.toml`'s `"tasks/**.py"` per-file-ig
 imports (stdlib, `invoke`, sibling `.shared`/`.utils` modules) at the top; defer the rest into the
 function that needs them.
 
+The exception covers a thin task wrapper, not logic that happens to live in `tasks/`. A task body
+needing a dozen deferred imports is telling you the logic belongs in a module of its own, which the
+task then imports once — put it there and the deferred imports mostly disappear with it.
+
 ## Data Structures
 
 Use the appropriate data structure based on context. Do not use Pydantic everywhere.

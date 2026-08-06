@@ -240,12 +240,10 @@ SCHEMA_VALIDATION_TEST_CASES: list[SchemaValidationTestCase] = [
 
 ### When to Use This Pattern
 
-Use the dataclass test case pattern when:
+Reach for the dataclass test case pattern when several scenarios share one structure and only the data
+varies — it keeps the pytest ids readable as the list grows.
 
-- Testing a function with multiple input/output scenarios
-- Test cases share a common structure
-- You want readable test IDs in pytest output
-- The test logic is the same but data varies
+Whichever you pick, the case data lives in the `parametrize` decorator. Don't parametrize over the keys of a module-level dict and look the values up inside the test — the reader has to hold two places in their head to see what a case actually asserts, and the pytest id no longer tells them.
 
 For simpler cases with only 2-3 scenarios, standard `@pytest.mark.parametrize` with tuples may be sufficient:
 

@@ -67,6 +67,22 @@ Follow BDD structure consistently:
 - A test that needs a second WHEN/THEN is exercising a multi-phase flow - split it into separate,
   single-phase tests instead of chaining WHEN → THEN → WHEN → THEN in one test.
 
+## The test has to fail when the behavior breaks
+
+Before you call a test done, ask what would make it fail. Two shapes pass no matter what the component
+does:
+
+- **An assertion on the static part of the output.** `getByText("Now working on")` passes when the
+  branch name beside it is wrong, missing, or blank. Assert the whole user-visible string, including the
+  value the change is about: `getByText("Now working on platform-upgrade")`.
+- **A setup flag the component never reads.** Setting `isFetching: true` on a mocked query hook proves
+  nothing if the component only destructures `isPending` — the test is indistinguishable from the one
+  above it. Check the component actually reads what you varied.
+
+A behavior change needs a test that exercises the new behavior, not the old default: replacing a
+hardcoded `"main"` with a `is_default` lookup is only covered by a case whose default branch *isn't*
+named `main`.
+
 ## Querying Elements
 
 Prefer accessibility-based queries in this order:
