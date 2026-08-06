@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
@@ -11,7 +12,6 @@ from typing import (
     Iterator,
     Literal,
     Mapping,
-    Sequence,
     TypeVar,
     overload,
 )
@@ -1210,7 +1210,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
     async def update(
         self,
-        data: list[str | Node | dict[str, Any] | PeerWithRelationshipMetadata]
+        data: Sequence[str | Node | dict[str, Any] | PeerWithRelationshipMetadata]
         | dict[str, Any]
         | str
         | Node
@@ -1227,7 +1227,8 @@ class RelationshipManager[RelationshipManagerPeerType]:
             ValidationError: When the supplied data cannot form a valid relationship.
 
         """
-        if not isinstance(data, list):
+        # A str satisfies Sequence but stands for a single peer id, so it must not be iterated.
+        if isinstance(data, str) or not isinstance(data, Sequence):
             list_data: Sequence[str | Node | dict[str, Any] | PeerWithRelationshipMetadata | None] = [data]
         else:
             list_data = data
