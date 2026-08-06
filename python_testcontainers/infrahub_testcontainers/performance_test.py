@@ -62,10 +62,18 @@ class InfrahubPerformanceTest:
         self.initialized = True
 
     def finalize(self, session: pytest.Session) -> None:
-        if self.initialized:
+        if not self.initialized:
+            return
+
+        try:
             self.end_time = datetime.now(timezone.utc)
             self.extract_test_session_information(session)
             self.send_results()
+        except BaseException as exc:
+            # Anything escaping here aborts the pytest session, skipping the remaining
+            # teardown that stops the compose stack. That includes KeyboardInterrupt:
+            # a cancelled CI job signals the process again while this is still running.
+            print(f"Failed to report performance results: {exc!r}")
 
     def extract_compose_information(self, compose: InfrahubDockerCompose) -> None:
         self.env_vars = compose.env_vars
