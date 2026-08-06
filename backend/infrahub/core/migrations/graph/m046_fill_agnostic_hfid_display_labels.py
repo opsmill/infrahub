@@ -138,7 +138,8 @@ class Migration046(ArbitraryMigration):
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         try:
             return await self._do_execute(migration_input=migration_input)
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             return MigrationResult(errors=[str(exc)])
 
     async def _do_execute(self, migration_input: MigrationInput) -> MigrationResult:
@@ -193,7 +194,8 @@ class Migration046(ArbitraryMigration):
                     execution_result = await migration.execute(migration_input=migration_input, branch=global_branch)
                     result.errors.extend(execution_result.errors)
                     progress.update(update_task, advance=1)
-                except Exception as exc:
+                # First failing sub-migration is recorded as a result error and aborts the remaining steps
+                except Exception as exc:  # noqa: BLE001
                     result.errors.append(str(exc))
                     return result
 

@@ -28,7 +28,7 @@ def _wait_for_http(url: str, timeout: int = 30) -> None:
             resp = httpx.get(url, timeout=1.0, follow_redirects=True)
             if resp.status_code < 500:
                 return
-        except Exception:  # noqa: S110
+        except httpx.HTTPError:
             pass
         time.sleep(0.5)
     pytest.fail(f"HTTP endpoint {url} did not become available within {timeout}s")
@@ -50,7 +50,7 @@ def _create_api_token(base_url: str) -> str:
             last_location = resp.headers.get("location", "")
             if resp.status_code == 201:
                 return resp.json()["sha1"]
-        except Exception:  # noqa: S110
+        except httpx.HTTPError:
             pass
         time.sleep(0.5)
     pytest.fail(f"Failed to create Gogs API token within 30s (last status={last_status}, location={last_location!r})")

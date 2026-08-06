@@ -379,7 +379,8 @@ class Migration044(MigrationRequiringRebase):
                         update_task=update_task,
                     )
 
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             return MigrationResult(errors=[str(exc)])
         return MigrationResult()
 
@@ -511,6 +512,7 @@ class Migration044(MigrationRequiringRebase):
                         at=at,
                     )
 
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             return MigrationResult(errors=[str(exc)])
         return MigrationResult()

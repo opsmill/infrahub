@@ -351,7 +351,8 @@ class SchemaUpdateCoordinator:
                 expected_return=list[str],
                 parameters={"message": apply_migration_data},
             )
-        except Exception as exc:
+        # Any migration failure must be captured so the caller can roll back before re-raising it
+        except Exception as exc:  # noqa: BLE001
             exception = exc
 
         return error_msgs, exception
@@ -366,7 +367,8 @@ class SchemaUpdateCoordinator:
 
         try:
             error_msgs = await schema_apply_migrations(message=apply_migration_data)
-        except Exception as exc:
+        # Any migration failure must be captured so the caller can roll back before re-raising it
+        except Exception as exc:  # noqa: BLE001
             exception = exc
 
         return error_msgs, exception

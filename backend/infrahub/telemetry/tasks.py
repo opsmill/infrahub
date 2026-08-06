@@ -126,7 +126,7 @@ async def send_telemetry_push() -> None:
     try:
         await repository.save(snapshot)
         log.info(f"Telemetry snapshot stored locally (uuid={snapshot.uuid}).")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning(f"Failed to store telemetry snapshot locally: {exc}")
         return
 
@@ -149,12 +149,14 @@ async def send_telemetry_push() -> None:
         await post_telemetry_data(url=config.SETTINGS.main.telemetry_endpoint, payload=payload)
         snapshot.remote_send_status = RemoteSendStatus.SENT
         log.info("Telemetry data sent to remote endpoint successfully.")
-    except Exception as exc:
+    # Best-effort telemetry: any send failure is recorded as FAILED on the snapshot, never propagated
+    except Exception as exc:  # noqa: BLE001
         snapshot.remote_send_status = RemoteSendStatus.FAILED
         log.warning(f"Failed to send telemetry data to remote endpoint: {exc}")
 
     # Update remote send status in DB
     try:
         await repository.save(snapshot)
-    except Exception as exc:
+    # Best-effort telemetry: failing to persist the send status only warrants a warning
+    except Exception as exc:  # noqa: BLE001
         log.warning(f"Failed to update snapshot remote send status: {exc}")

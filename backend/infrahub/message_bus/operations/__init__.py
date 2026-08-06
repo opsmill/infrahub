@@ -31,7 +31,8 @@ async def execute_message(
         if skip_flow and isinstance(func, Flow):
             func = func.fn
         await func(message=message)
-    except Exception as exc:
+    # Message-bus boundary: any handler failure must be routed to the reply/retry/dead-letter protocol, never crash the consumer
+    except Exception as exc:  # noqa: BLE001
         if message.reply_requested:
             response = RPCErrorResponse(errors=[str(exc)], initial_message=message.model_dump())
             await message_bus.reply_if_initiator_meta(message=response, initiator=message)

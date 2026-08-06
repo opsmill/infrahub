@@ -82,7 +82,8 @@ async def _drive_branch_to_merge_failed(
             await merge_task
         except asyncio.CancelledError:
             pass
-        except Exception as exc:
+        # Teardown: the deliberately-killed mutation may raise any SDK/transport error; retrieve and log it without masking the test result
+        except Exception as exc:  # noqa: BLE001
             # The mutation legitimately errors once its worker is SIGKILLed mid-flight; retrieve the
             # exception so an unrelated early failure (validation, connectivity) surfaces in the
             # captured test output instead of being lost as an unretrieved-task warning.
