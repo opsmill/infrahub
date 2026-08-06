@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 import type {
   GetReachableNodesParams,
@@ -68,7 +67,7 @@ export async function getReachableNodesFromApi(params: GetReachableNodesParams) 
   });
 
   return graphqlClient.query<{ InfrahubReachableNodes: ReachableNodesResponse }>({
-    query: gql(queryString),
+    query: graphql(queryString),
     context: { branch: branchName, date: atDate },
   });
 }

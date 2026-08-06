@@ -1,7 +1,5 @@
-import { ApolloProvider } from "@apollo/client";
 import { afterEach, describe, expect, test } from "vitest";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { store } from "@/shared/stores";
 
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -16,9 +14,6 @@ const items = [
   { value: "internal", label: "Internal" },
 ];
 
-const renderDropdown = (ui: React.ReactElement) =>
-  render(<ApolloProvider client={graphqlClient}>{ui}</ApolloProvider>);
-
 describe("Dropdown delete button", () => {
   afterEach(() => {
     store.set(namespacesAtom, []);
@@ -30,7 +25,7 @@ describe("Dropdown delete button", () => {
     const schema = { kind: "CoreStandardGroup", namespace: "Core" } as ModelSchema;
 
     // WHEN the dropdown options are shown
-    const component = await renderDropdown(
+    const component = await render(
       <Dropdown
         items={items}
         value="default"
@@ -54,7 +49,7 @@ describe("Dropdown delete button", () => {
     const schema = { kind: "MyCustomNode", namespace: "Builtin" } as ModelSchema;
 
     // WHEN the dropdown options are shown
-    const component = await renderDropdown(
+    const component = await render(
       <Dropdown
         items={items}
         value="default"

@@ -34,6 +34,7 @@ describe("getFormFieldFromAttribute", () => {
 
       const field = getFormFieldFromAttribute({
         auth: undefined,
+        isDefaultBranch: undefined,
         attributeSchema,
         currentObject: undefined,
         objectTemplate: undefined,
@@ -65,6 +66,7 @@ describe("getFormFieldFromAttribute", () => {
 
       const field = getFormFieldFromAttribute({
         auth: undefined,
+        isDefaultBranch: undefined,
         attributeSchema,
         currentObject: undefined,
         objectTemplate: undefined,

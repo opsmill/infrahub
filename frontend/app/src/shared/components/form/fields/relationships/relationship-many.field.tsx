@@ -12,6 +12,8 @@ import { classNames } from "@/shared/utils/common";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
+import { useCommonParentFilter } from "./useCommonParentFilter";
+
 export interface RelationshipManyInputProps extends DynamicRelationshipFieldProps {}
 
 export default function RelationshipManyField({
@@ -28,6 +30,8 @@ export default function RelationshipManyField({
   filterQuery,
   ...props
 }: RelationshipManyInputProps) {
+  const commonParent = useCommonParentFilter(relationship, name);
+
   return (
     <FormField
       key={name}
@@ -58,7 +62,13 @@ export default function RelationshipManyField({
                     "has-[>:last-child:focus]:border-red-500 has-[>:last-child:focus]:ring-red-500/25"
                 )}
                 peer={relationship.peer}
-                filterQuery={filterQuery}
+                filterQuery={
+                  commonParent.filterQuery
+                    ? { ...filterQuery, ...commonParent.filterQuery }
+                    : filterQuery
+                }
+                enforceFilterQueryOnIdSearch={commonParent.isActive}
+                addNewInitialObject={commonParent.addNewInitialObject}
                 value={fieldData.value as NodeCore[] | null}
                 onChange={(newValue) => {
                   field.onChange(

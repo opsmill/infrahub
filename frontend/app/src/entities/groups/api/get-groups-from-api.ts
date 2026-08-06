@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
 
 const getGroupsQuery = ({ objectKind }: { objectKind: string }) => {
@@ -54,7 +53,7 @@ export function getGroupsFromApi({
   branchName,
   atDate,
 }: GetGroupsFromApiParams) {
-  const query = gql(getGroupsQuery({ objectKind }));
+  const query = graphql(getGroupsQuery({ objectKind }));
 
   return graphqlClient.query({
     query,

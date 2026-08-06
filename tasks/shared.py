@@ -145,6 +145,7 @@ PYTHON_PRIMITIVE_MAP = {
     "dropdown": "str",
     "enum": "str",
     "hashedpassword": "str",
+    "ipaddress": "str",
     "iphost": "str",
     "ipnetwork": "str",
     "json": "dict",

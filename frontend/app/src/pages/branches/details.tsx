@@ -13,6 +13,7 @@ import { branchesState } from "@/entities/branches/stores";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { BranchTabs } from "@/entities/branches/ui/branch-tabs";
+import { BranchWorkingNotice } from "@/entities/branches/ui/branch-working-notice";
 import type { BranchDetailsOutletContext } from "@/entities/branches/ui/routing/use-branch-details-outlet";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 
@@ -22,7 +23,7 @@ function BranchDetailsLayout() {
 
   if (branches.length === 0) {
     return (
-      <Content.Card className="flex min-h-[400px] items-center justify-center p-5">
+      <Content.Card className="flex min-h-100 items-center justify-center p-5">
         <Spinner />
       </Content.Card>
     );
@@ -42,6 +43,8 @@ function BranchDetailsContent({ branch }: { branch: BranchListItem }) {
 
   return (
     <Content.Card>
+      <BranchWorkingNotice branch={branch} />
+
       <header className="p-5 pb-2">
         <Row>
           <h1 className="font-bold text-xl">{branch.name}</h1>

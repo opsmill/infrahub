@@ -21,16 +21,17 @@ trusted, and why the header is stamped at the transport boundary instead of at c
 - `PRIORITY_HEADER = 'X-Priority'`.
 - `resolvePriority(value)` — normalizes an untyped per-request value: returns `'low'`
   only for exactly `'low'`, everything else (`'medium'`, `undefined`, garbage) → `'high'`.
-  Each transport runs its value through this before writing the header, so a stray or
-  legacy value cannot leak an out-of-contract priority.
+  Any transport that accepts a per-request priority runs its value through this before
+  writing the header, so a stray or legacy value cannot leak an out-of-contract priority.
+  A transport that only ever emits the default writes `DEFAULT_PRIORITY` directly.
 
 ## Four injection points (default `high`)
 
 The header is stamped at each transport entry, not at call sites:
 
-1. **Apollo GraphQL** — `priorityLink` (`setContext`) in
-   `shared/api/graphql/graphqlClientApollo.tsx`, inserted into the link chain. Uploads
-   ride the same terminating `createUploadLink`, so they inherit it for free.
+1. **GraphQL (urql)** — the `fetchOptions` handed to each `Client` in
+   `shared/api/graphql/client.ts`, so every operation on that client carries it. Uploads ride
+   the same terminating `fetchExchange`, so they inherit it for free.
 2. **REST (`openapi-fetch`)** — `authMiddleware.onRequest` in `shared/api/rest/client.ts`.
    The header is set before the `Request` clone captured for 401 replay, so replay
    preserves it.
@@ -40,22 +41,19 @@ The header is stamped at each transport entry, not at call sites:
 4. **GraphiQL fetcher** — `shared/libs/graphiql/use-graphiql-fetcher.ts` sets
    `X-Priority: high` on its raw sandbox fetch.
 
-The header survives both 401-refresh replay paths (Apollo `...oldHeaders` spread; REST
-stored clone) and the file-upload rebuild path.
+The header survives both 401-refresh replay paths (urql's `authExchange` replays the operation
+with its context, including `fetchOptions`; REST replays a stored clone) and the file-upload
+rebuild path.
 
 ## Opting a request down to `low` (one convention per transport)
 
 The default is `high`; an undeclared request needs no change. To demote a single request,
 declare it at the call site using its transport's idiom:
 
-- **GraphQL** — `context: { priority: 'low' }` on the operation.
 - **REST** — pre-set the header via `params: { header: { 'X-Priority': 'low' } }`
   (openapi-fetch's `options` is read-only and exposes no custom field, so the header
   itself is the opt-in surface).
-- **Raw fetch** — the `{ priority: 'low' }` option argument to `fetchUrl`.
-
-No helper wraps these: the v1 `low` set is empty (no production caller demotes yet), so a
-helper would serve only tests (YAGNI). The mechanism plus convention is the deliverable.
+- **GraphQL** has no per-operation opt-down.
 
 ## Watched status stays `high`
 

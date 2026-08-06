@@ -228,6 +228,13 @@ Available dependencies:
 - `get_event_service()`: Event emission service
 - `get_component()`: Component registry access
 
+## Logging
+
+Prefect only surfaces logs from its own run logger plus the loggers named in the worker's task-logger set — `DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]` in `backend/infrahub/workers/infrahub_async.py`, extended by `config.SETTINGS.workflow.extra_loggers`. A bare `logging.getLogger(__name__)` sits outside that set, so its records never reach the task manager.
+
+- **Inside a `@flow` or `@task` body**, use Prefect's `get_run_logger()`.
+- **In a plain helper** that runs inside a flow but is not itself decorated — so it has no Prefect run context, and is typically also called directly from tests — use `infrahub.log.get_run_logger()`. It returns the `infrahub.tasks` stdlib logger, which the worker registers with Prefect and which is safe to call with no run context (Prefect's own `get_run_logger()` raises outside a run).
+
 ## Read Query Optimization in Prefect Tasks
 
 When a flow only needs a few fields from a node (e.g. `id`, `name`, `status`), avoid `client.all()`, `client.filters()`, or `client.get(prefetch_relationships=True)` — they fetch the full object graph. Use a targeted `execute_graphql()` call instead.

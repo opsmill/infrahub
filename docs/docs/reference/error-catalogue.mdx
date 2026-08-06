@@ -286,7 +286,7 @@ The write was rejected because a branch merge is in progress. The block is trans
 
 ### MERGE_RECOVERY_REQUIRED
 
-The write was rejected because a previous branch merge failed and left the default branch protected. Recovery is required: an administrator must run `infrahub recover`. Unlike MERGE_IN_PROGRESS this is not retryable.
+The write was rejected because a previous branch merge failed and left the default branch protected. Recovery is required: an administrator must run `infrahub recover merge`. Unlike MERGE_IN_PROGRESS this is not retryable.
 
 - **Stability**: `evolving`
 - **HTTP status**: `423`
@@ -305,7 +305,7 @@ The write was rejected because a previous branch merge failed and left the defau
   "data": null,
   "errors": [
     {
-      "message": "The write was rejected because a previous branch merge failed and left the default branch protected. Recovery is required: an administrator must run `infrahub recover`. Unlike MERGE_IN_PROGRESS this is not retryable.",
+      "message": "The write was rejected because a previous branch merge failed and left the default branch protected. Recovery is required: an administrator must run `infrahub recover merge`. Unlike MERGE_IN_PROGRESS this is not retryable.",
       "extensions": {
         "code": "MERGE_RECOVERY_REQUIRED",
         "http_status": 423,

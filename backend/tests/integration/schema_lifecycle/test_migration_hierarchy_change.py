@@ -124,6 +124,17 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
             schemas=[location_schema_02.model_dump(mode="json")], branch=branch_1.name
         )
         assert success
+        # Submitting a full internal dump carries the fields Infrahub owns and derives itself, so
+        # the check reports each of them rather than dropping the values silently.
+        assert [warning["message"] for warning in response.pop("warnings")] == [
+            "'hierarchy' is a read-only field, the submitted value is ignored",
+            "'used_by' is a read-only field, the submitted value is ignored",
+            "'inherited' is a read-only field, the submitted value is ignored",
+            "'parameters.id' is a read-only field, the submitted value is ignored",
+            "'parameters.state' is a read-only field, the submitted value is ignored",
+            "'extensions.id' is a read-only field, the submitted value is ignored",
+            "'extensions.state' is a read-only field, the submitted value is ignored",
+        ]
         assert response == {
             "diff": {
                 "added": {"LocationMetro": {"added": {}, "changed": {}, "removed": {}}},
@@ -155,7 +166,6 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
                     },
                 },
             },
-            "warnings": [],
         }
 
     async def test_load_schema_02(

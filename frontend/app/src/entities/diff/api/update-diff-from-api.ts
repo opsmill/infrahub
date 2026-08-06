@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 const DIFF_UPDATE = graphql(`
   mutation DIFF_UPDATE($branchName: String!, $waitUntilCompletion: Boolean) {

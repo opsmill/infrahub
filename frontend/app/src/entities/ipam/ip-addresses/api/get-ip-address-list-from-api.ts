@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import {
   addAttributesToRequest,
   addFiltersToRequest,
@@ -126,7 +125,7 @@ export function getIpAddressListWithAvailabilityFromApi({
   const graphqlQuery = getIpAddressListWithAvailabilityGraphQLQuery(params);
 
   return graphqlClient.query({
-    query: gql(graphqlQuery),
+    query: graphql(graphqlQuery),
     context: {
       branch: branchName,
       date: atDate,
@@ -142,7 +141,7 @@ export function getIpAddressListWithoutAvailabilityFromApi({
   const graphqlQuery = getIpAddressListWithoutAvailabilityGraphQLQuery(params);
 
   return graphqlClient.query({
-    query: gql(graphqlQuery),
+    query: graphql(graphqlQuery),
     context: {
       branch: branchName,
       date: atDate,

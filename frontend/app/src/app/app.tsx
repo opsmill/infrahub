@@ -1,4 +1,3 @@
-import { ApolloProvider } from "@apollo/client";
 import { addCollection } from "@iconify-icon/react";
 import mdiIcons from "@iconify-json/mdi/icons.json" with { type: "json" };
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -10,7 +9,6 @@ import { RouterProvider } from "react-router";
 import { TanStackQueryDevtools } from "@/app/devtools";
 import { router } from "@/app/router";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { ErrorBoundaryApp } from "@/shared/components/errors/error-boundary-app";
 import { store } from "@/shared/stores";
@@ -30,15 +28,13 @@ export function App() {
       <NuqsAdapter>
         <Provider store={store}>
           <QueryClientProvider client={queryClient}>
-            <ApolloProvider client={graphqlClient}>
-              <AuthProvider>
-                <ConfigProvider>
-                  <DatePreferencesProvider>
-                    <RouterProvider router={router} />
-                  </DatePreferencesProvider>
-                </ConfigProvider>
-              </AuthProvider>
-            </ApolloProvider>
+            <AuthProvider>
+              <ConfigProvider>
+                <DatePreferencesProvider>
+                  <RouterProvider router={router} />
+                </DatePreferencesProvider>
+              </ConfigProvider>
+            </AuthProvider>
             <TanStackQueryDevtools buttonPosition="bottom-left" />
           </QueryClientProvider>
         </Provider>

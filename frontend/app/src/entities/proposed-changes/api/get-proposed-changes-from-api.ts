@@ -1,17 +1,19 @@
-import { gql } from "@apollo/client";
-import { EnumType, jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import {
   addAttributesToRequest,
   addFiltersToRequest,
+  addOrderByToRequest,
   addRelationshipsToRequest,
 } from "@/shared/api/graphql/utils";
 import type { PaginationParams } from "@/shared/api/types";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
+import { PROPOSED_CHANGE_DEFAULT_SORT } from "@/entities/proposed-changes/domain/model/proposed-change-sort";
 import type {
   AttributeSchema,
   ModelSchema,
@@ -21,6 +23,7 @@ import type {
 export interface ProposedChangesFromApiParams extends PaginationParams {
   schema: ModelSchema;
   filters?: Array<Filter>;
+  sort?: Array<Sort>;
   getAttributesVisible: (attributes: AttributeSchema[]) => AttributeSchema[];
   getRelationshipsVisible: (relationships: RelationshipSchema[]) => RelationshipSchema[];
 }
@@ -30,6 +33,7 @@ export const getProposedChangesFromApi = async ({
   limit = DEFAULT_PAGE_SIZE,
   offset,
   filters,
+  sort,
   getAttributesVisible,
   getRelationshipsVisible,
 }: ProposedChangesFromApiParams) => {
@@ -45,9 +49,7 @@ export const getProposedChangesFromApi = async ({
         __args: {
           limit,
           offset,
-          order: {
-            by: [{ field: "node_metadata__created_at", direction: new EnumType("DESC") }],
-          },
+          ...addOrderByToRequest(sort?.length ? sort : [PROPOSED_CHANGE_DEFAULT_SORT]),
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
         count: true,
@@ -86,7 +88,7 @@ export const getProposedChangesFromApi = async ({
     },
   });
 
-  const query = gql(queryString);
+  const query = graphql(queryString);
   return graphqlClient.query({
     query,
   });

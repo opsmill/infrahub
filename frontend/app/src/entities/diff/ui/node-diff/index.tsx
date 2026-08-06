@@ -7,7 +7,6 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { QSP } from "@/shared/config/qsp";
 
-import { DEFAULT_BRANCH_NAME } from "@/entities/branches/domain/model/branch";
 import { useBranchExists } from "@/entities/branches/ui/hooks/use-branch-exists";
 import type { GetDiffSummaryParams } from "@/entities/diff/domain/use-cases/get-diff-summary";
 import {
@@ -76,7 +75,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
     return (
       <DiffComputing
         sourceBranch={branchName}
-        destinationBranch={proposedChangesDetails?.destination_branch?.value ?? DEFAULT_BRANCH_NAME}
+        destinationBranch={proposedChangesDetails?.destination_branch?.value ?? ""}
         hideActions={isMerged}
       />
     );

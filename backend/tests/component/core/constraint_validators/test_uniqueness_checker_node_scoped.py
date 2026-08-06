@@ -155,12 +155,12 @@ class TestUniquenessCheckerNodeScoped:
         registry.schema.register_schema(schema=SchemaRoot(nodes=[car_schema]), branch=branch.name)
         synced_schema = registry.schema.get_node_schema(name="TestCar", branch=branch, duplicate=False)
 
-        determiner = build_constraint_validator_determiner(
-            db=db, branch=branch, schema_branch=registry.schema.get_schema_branch(name=branch.name)
-        )
+        determiner = build_constraint_validator_determiner(db=db, branch=branch)
         person_change = NodeDiffFieldSummary(kind="TestPerson", attribute_node_uuids={"height": {person_john_main.id}})
 
-        constraints = await determiner.get_constraints(node_diffs=[person_change])
+        constraints = await determiner.get_constraints(
+            schema_branch=registry.schema.get_schema_branch(name=branch.name), node_diffs=[person_change]
+        )
 
         car_constraint = next(
             c

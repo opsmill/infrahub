@@ -30,11 +30,13 @@ import type {
   NumberAttributeParameters,
   TextAttributeParameters,
 } from "@/entities/schema/domain/model/schema";
+import { validateIpAddressAttribute } from "@/entities/schema/domain/rules/validation/validate-ip-address-attribute";
 import { validateNumberAttribute } from "@/entities/schema/domain/rules/validation/validate-number-attribute";
 import { validateTextAttribute } from "@/entities/schema/domain/rules/validation/validate-text-attribute";
 
 export const getFormFieldFromAttribute = ({
   auth,
+  isDefaultBranch,
   attributeSchema,
   currentObject,
   objectTemplate,
@@ -46,6 +48,7 @@ export const getFormFieldFromAttribute = ({
   profiles,
 }: {
   auth: AuthContextType | undefined;
+  isDefaultBranch: boolean | undefined;
   attributeSchema: AttributeSchema;
   currentObject: Record<string, AttributeType> | undefined;
   objectTemplate: NodeObject | null | undefined;
@@ -73,6 +76,7 @@ export const getFormFieldFromAttribute = ({
     attribute: attributeSchema,
     disabled: isFieldDisabled({
       auth,
+      isDefaultBranch,
       owner: attributeData?.owner,
       isProtected: !!attributeData?.is_protected,
       permissions: { update: attributeData?.permissions?.update_value },
@@ -117,6 +121,15 @@ export const getFormFieldFromAttribute = ({
             );
             return validation.success || validation.error;
           }
+        }
+
+        // IPAddress has no parameters, so this check sits outside the block above
+        if (attributeKind === ATTRIBUTE_KIND.IP_ADDRESS) {
+          const validation = validateIpAddressAttribute(
+            { isRequired: !attributeSchema.optional },
+            formFieldValue.value as string | null
+          );
+          return validation.success || validation.error;
         }
 
         if (attributeSchema.optional) return true;
