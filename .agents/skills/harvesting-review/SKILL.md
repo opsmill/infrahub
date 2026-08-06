@@ -28,6 +28,27 @@ the right internal-doc file.
 Counterpart to `audit-docs`: that sweeps a feature's *changes* for coverage; this starts from the
 *review threads*.
 
+## ⚠️ Refine, don't accrete — this outranks every other rule here
+
+**A harvest that only adds has made the repo worse, however good each individual rule is.** The
+internal-doc layer is context every teammate's agent pays to load; the routing rules below ("edit
+before create", "strengthen before duplicate") stop duplicate *rules*, not growth. Nothing else in
+this skill removes a single line, so it has to be you, on every lesson you apply:
+
+1. **Measure before appending.** `wc -l` the target file and compare it against its size range in
+   `dev/guidelines/repository-organization.md` (guidelines: 100-400 lines; knowledge: 200-400). A file
+   at or over its range gets **compressed or split, never extended**.
+2. **Cut what the new rule supersedes.** Weaker, stale, or now-duplicated prose in that file goes in
+   the same edit. Rewrite the section around the new rule instead of bolting it on the end.
+3. **Report added/removed line counts** when you finish. Zero deletions means you accreted rather than
+   refined — say that plainly instead of presenting it as a win.
+4. **Raise the bar as the file grows.** "True but rarely needed" loses to keeping the doc readable. The
+   best outcome of a harvest is often a *shorter* doc that now states the rule sharply.
+
+Write every edit in the house style — `dev/guidelines/documentation.md`, *Writing Style → For Internal
+Docs*: rule first, plain words, no padding, a few lines plus one example. Read that section before the
+first edit.
+
 ## Internal documentation (where lessons go)
 
 | Destination | What lives there | Cost / bar |
@@ -173,28 +194,19 @@ A reviewer flagged this, so the verdicts are not a pass/fail of the docs — the
     context when the author needed it. The fix is almost always **two coordinated edits, not a move**
     (the 1A+1B fix):
     - **1A — fix the load-trigger.** Add or upgrade the doc's entry in the router/index (the relevant
-      `AGENTS.md` "Knowledge/Guides" list) so it says *when* to load it — the triggering task or
-      symptom — not just *what* it covers. A `dev/knowledge`/`dev/guidelines` doc absent from that list,
-      or listed with a topic-only description ("Query patterns"), never gets loaded; most "covered but
-      ignored" rules fail here. **Keep the entry to one or two sentences, and rewrite rather than
-      append** — the router is a scannable index, not a second copy of the rule; once an entry swells
-      into a paragraph it stops being read, reopening the gap 1A exists to close. If the trigger can't
-      be stated briefly the doc's scope is too broad — that is not a licence for a longer entry. **Name
-      the trigger and
-      topic, not the rule's mechanics**: the entry says *when* to open the doc and roughly what it
-      covers, never the specific method/attribute name or the value the rule turns on — those live in
-      the doc, and copying them into the index rots the moment the symbol is renamed (write
+      `AGENTS.md` list) so it says *when* to load the doc — the triggering task or symptom — not just
+      what it covers. A doc absent from that list, or listed with a topic-only description ("Query
+      patterns"), never gets loaded; most "covered but ignored" rules fail here. Keep the entry to one
+      or two sentences and rewrite rather than append: the router is a scannable index, and an entry
+      that swells into a paragraph stops being read. Name the trigger and topic, never the rule's
+      mechanics — a symbol name copied into the index rots the moment it is renamed (write
       "workflow-name conventions", not "reference names via `SomeClass.name`").
     - **1B — strengthen the rule in place.** Promote it out of any niche section into a prominent home
       and add the carve-out — but leave it in its topically-correct doc.
 
-    Do **not** relocate a domain rule (schema, DB, events, async-tasks…) into a general style/guide doc
-    because that doc is read more often: a rule in the topically-wrong home is *less* trustworthy, not
-    more discoverable. `.agents/rules/*` auto-injects every turn; guidelines/knowledge load only when
-    the router points an agent at them, so the router entry *is* the discoverability mechanism. If your
-    proposed home is a doc whose subject doesn't match the rule (a schema/DB rule in a Python *style*
-    guide), you have mis-diagnosed "not discoverable" as "mis-homed" — fix the load-trigger, not the
-    location.
+    Never relocate a domain rule (schema, DB, events, async-tasks…) into a general style guide because
+    that doc is read more often: the topically-wrong home is *less* trustworthy, not more discoverable.
+    The router entry is the discoverability mechanism, so fix the load-trigger, not the location.
   - **mis-homed** — the rule genuinely sits in the wrong topical doc, or belongs in a task's pre-submit
     checklist → move it to the most-specific correct home (or add the checklist line), then apply 1A so
     that home is actually loadable.
@@ -213,8 +225,8 @@ A reviewer flagged this, so the verdicts are not a pass/fail of the docs — the
 Routing rule of thumb: **most-specific existing home wins; edit before create; strengthen before
 duplicate; fix the load-trigger before relocating; `.agents/rules` only for a true `always/never` that
 must fire while coding.** Confirm the target file exists (`ls`/grep it, match sibling naming) before you
-route a lesson there — never invent a plausible-looking path (e.g. `dev/guidelines/backend/changelog.md`
-when the real home is `dev/guidelines/changelog.md`).
+route a lesson there — never invent a plausible-looking path. Also check the topic still lives in `dev/`
+at all: changelog conventions, for one, moved out to the `creating-changelog-entries` skill.
 
 ### 5. Report
 
@@ -224,9 +236,15 @@ teammate's agent, so the blast radius is the whole team.
 ### 6. Apply (opt-in)
 
 Ask which to apply: **all / cherry-pick / none**. Only then edit, following the §4 routing (edit an
-existing section before adding one; keep `.agents/rules` lean). Match any example code to
-`.agents/rules/code-doc-style.md` (no ticket/issue IDs, no naming specific callers). **Never resolve
-review threads** — reply if useful, but resolution is the human reviewer's call. After applying, run:
+existing section before adding one; keep `.agents/rules` lean).
+
+**Now apply *Refine, don't accrete* (top of this file)** — measure the file against its size range, cut
+what the new rule supersedes, report the line counts. The investigation trail, the
+reviewer quotes, and the ticket and PR numbers belong in this report and in the commit message, never in
+the doc text. A lesson that needs three paragraphs to state has not been narrowed enough — go back to
+§3d. Match any example code to `.agents/rules/code-doc-style.md` (no ticket/issue IDs, no naming
+specific callers). **Never resolve review threads** — reply if useful, but resolution is the human
+reviewer's call. After applying, run:
 
 ```bash
 uv run invoke docs.lint
@@ -239,6 +257,8 @@ uv run invoke docs.lint
 
 ### Scope
 <!-- PR, branch, how many threads read (resolved + unresolved) -->
+<!-- After applying: lines added/removed per file, each file's size vs its range, what was cut. Zero
+     deletions is a finding about this harvest, not a detail to omit. -->
 
 ### Existing coverage to strengthen (Covered but still flagged)
 
@@ -261,7 +281,7 @@ For each:
   intent, (c) scope + the over-scoped reading ruled out
 - **Root cause**: why an agent would have proposed the rejected shape — what writing the rule prevents
 - **Home**: exact file (+ section) to create
-- **Proposed edit**: the concrete text to add
+- **Proposed edit**: the concrete text to add, already written in the house style (§6)
 
 ### Not Lessons (PR-local or demoted after investigation)
 <!-- One-off fixes, bugs, and design calls that do NOT generalize — and candidates the investigation

@@ -281,7 +281,7 @@ if isinstance(data, str) or not isinstance(data, Sequence):
     data = [data]
 ```
 
-This carve-out is easy to lose exactly when it matters most: widening a parameter from an invariant `list[T]` to a covariant `Sequence[T]` (e.g. to drop a call-site `# type: ignore[arg-type]`, see [When a wrong-type bug slips through](#when-a-wrong-type-bug-slips-through)) means widening this runtime check in step — an annotation that newly accepts `str` as a `Sequence` while the `isinstance` check still assumes only `list` reaches it will misroute every bare string. Add a test for both the bare-`str` case and the newly-accepted non-`list` sequence (e.g. a `tuple`).
+Widening a parameter from `list[T]` to `Sequence[T]` means widening this runtime check in step: an annotation that newly accepts `str` while the `isinstance` check still assumes a `list` misroutes every bare string. Test both the bare `str` and the newly-accepted non-`list` sequence (a `tuple`).
 
 ### Deterministic serialization for hashes and cache keys
 
