@@ -54,30 +54,23 @@ const authenticationExchange = authExchange(async (authUtilities) => {
   };
 });
 
-// Grows only with the branch/point-in-time endpoints a session visits, and dies with the page.
-const clientsByEndpoint = new Map<string, Client>();
-
-// urql's Client dedups concurrent operations by hash(query, variables) and ignores the URL.
-// but this app carries the branch/point-in-time in the URL, not in variables.
-// Without this, two concurrent identical query+variables on DIFFERENT branches share one network request
-// and both receive one branch's data.
-function getGraphqlClient(branch?: string | null, date?: Date | null): Client {
-  const url = CONFIG.GRAPHQL_URL(branch, date);
-  let client = clientsByEndpoint.get(url);
-  if (!client) {
-    client = new Client({
-      url,
-      preferGetMethod: false,
-      fetchOptions: {
-        headers: {
-          [PRIORITY_HEADER]: DEFAULT_PRIORITY,
-        },
+// A urql Client merges a query into an identical operation it already has in flight, keyed by
+// hash(query, variables) — which carries neither the endpoint nor the moment the caller asked. Reusing
+// a Client across calls therefore hands a caller a response computed before it asked: a refetch after
+// a write, a poll, or an event-driven refresh can all resolve with pre-change data and nothing
+// refetches again. React Query owns caching and deduplication here, so the transport keeps no state
+// across calls — each call gets its own Client and therefore its own request.
+function createGraphqlClient(branch?: string | null, date?: Date | null): Client {
+  return new Client({
+    url: CONFIG.GRAPHQL_URL(branch, date),
+    preferGetMethod: false,
+    fetchOptions: {
+      headers: {
+        [PRIORITY_HEADER]: DEFAULT_PRIORITY,
       },
-      exchanges: [addTypenameExchange, authenticationExchange, fetchExchange],
-    });
-    clientsByEndpoint.set(url, client);
-  }
-  return client;
+    },
+    exchanges: [addTypenameExchange, authenticationExchange, fetchExchange],
+  });
 }
 
 // Map urql result to the preserved `{ data, errors }` shape and run error routing.
@@ -117,7 +110,7 @@ export const graphqlClient = {
   async query<TData = any, TVars extends AnyVariables = AnyVariables>(
     args: QueryArgs<TData, TVars>
   ): Promise<GraphQLResult<TData>> {
-    const result = await getGraphqlClient(args.context?.branch, args.context?.date)
+    const result = await createGraphqlClient(args.context?.branch, args.context?.date)
       .query<TData, TVars>(args.query, args.variables as TVars)
       .toPromise();
     return toGraphQLResult(result.data, result.error, args.context);
@@ -126,7 +119,7 @@ export const graphqlClient = {
   async mutate<TData = any, TVars extends AnyVariables = AnyVariables>(
     args: MutateArgs<TData, TVars>
   ): Promise<GraphQLResult<TData>> {
-    const result = await getGraphqlClient(args.context?.branch, args.context?.date)
+    const result = await createGraphqlClient(args.context?.branch, args.context?.date)
       .mutation<TData, TVars>(args.mutation, args.variables as TVars)
       .toPromise();
     return toGraphQLResult(result.data, result.error, args.context);

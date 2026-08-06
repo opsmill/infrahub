@@ -36,6 +36,7 @@ import { validateTextAttribute } from "@/entities/schema/domain/rules/validation
 
 export const getFormFieldFromAttribute = ({
   auth,
+  isDefaultBranch,
   attributeSchema,
   currentObject,
   objectTemplate,
@@ -47,6 +48,7 @@ export const getFormFieldFromAttribute = ({
   profiles,
 }: {
   auth: AuthContextType | undefined;
+  isDefaultBranch: boolean | undefined;
   attributeSchema: AttributeSchema;
   currentObject: Record<string, AttributeType> | undefined;
   objectTemplate: NodeObject | null | undefined;
@@ -74,6 +76,7 @@ export const getFormFieldFromAttribute = ({
     attribute: attributeSchema,
     disabled: isFieldDisabled({
       auth,
+      isDefaultBranch,
       owner: attributeData?.owner,
       isProtected: !!attributeData?.is_protected,
       permissions: { update: attributeData?.permissions?.update_value },

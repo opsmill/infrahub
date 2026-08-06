@@ -28,6 +28,7 @@ interface GetFormFieldsFromSchema extends FormContextType {
   initialObject?: NodeFieldsWithMetadata;
   objectTemplate?: NodeObject | null;
   auth?: AuthContextType;
+  isDefaultBranch?: boolean;
   isFilterForm?: boolean;
   pools?: Array<NumberPool>;
   isUpdate?: boolean;
@@ -40,6 +41,7 @@ export const getFormFieldsFromSchema = ({
   initialObject,
   objectTemplate,
   auth,
+  isDefaultBranch,
   isFilterForm,
   pools = [],
   isUpdate,
@@ -116,6 +118,7 @@ export const getFormFieldsFromSchema = ({
       ...acc,
       getFormFieldFromAttribute({
         auth,
+        isDefaultBranch,
         attributeSchema: field,
         currentObject: initialObject as Record<string, AttributeType> | undefined,
         objectTemplate,

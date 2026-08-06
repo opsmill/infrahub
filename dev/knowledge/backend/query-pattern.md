@@ -171,6 +171,52 @@ class MyQuery(Query):
         self.add_to_query("RETURN n.uuid AS uuid, n.name AS name LIMIT 100")  # Manual pagination
 ```
 
+#### Paginating a query that expands each row
+
+The automatic clause is appended *after* the `RETURN`, so it bounds the rows a query returns, not the work it does to produce them. When a query expands each matched row — a per-row `CALL` subquery, a `collect()` over a traversal — that expansion has already run for every match by the time the automatic `LIMIT` applies, and an `ORDER BY` there forces every expanded row to be materialized before sorting. A query that must bound *that* work takes its page in the body, before the expansion:
+
+```python
+class PagedNodeFieldsQuery(Query):
+    name = "paged_node_fields"
+    type = QueryType.READ
+    insert_limit = False
+
+    def __init__(self, limit: int, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.limit = limit
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.params = {"page_offset": self.offset or 0, "page_limit": self.limit}
+        self.add_to_query("""
+        MATCH (n:Node)
+        WITH n
+        ORDER BY n.uuid, elementId(n)
+        SKIP $page_offset
+        LIMIT $page_limit
+        CALL (n) {
+            OPTIONAL MATCH (n)-[:HAS_ATTRIBUTE]->(a:Attribute)
+            RETURN collect(DISTINCT a.name) AS attr_names
+        }
+        """)
+        self.return_labels = ["n.uuid AS node_uuid", "attr_names"]
+```
+
+Three details make this correct:
+
+- Type the page size as `limit: int`, not `int | None`: a query that pages itself has no meaningful unpaged mode, and a required constructor parameter says so at the call site instead of failing later.
+- Read the bounds from the base class's `self.limit` and `self.offset` rather than adding parallel attributes, and bind them as query parameters. Reusing the base fields keeps one source of truth for the page size and is what `execute()` inspects (see below); parameters rather than interpolated literals let every page reuse one compiled plan.
+- Order strictly. `SKIP`/`LIMIT` over an unordered match can return one row on two pages and another on none; `elementId(n)` breaks ties when the sort property is not unique.
+
+`GetPathDetailsBranchQuery` in `backend/infrahub/core/migrations/query/path_details.py` is the reference implementation, driven by the caller loop in `backend/infrahub/core/migrations/helpers/attribute_recompute.py`.
+
+#### Always set self.limit on a self-paging read
+
+`Query.execute()` treats a READ with neither `limit` nor `offset` as unpaginated and routes it through `query_with_size_limit()`, which re-runs the query once per `database.query_size_limit` rows with a growing `SKIP` appended after the `RETURN`. Wrapped around a query that already pages itself, that costs one extra execution of the whole query per full page; the extra run's rows are all discarded by the outer `SKIP`, so results stay correct and only the cost shows up.
+
+With `insert_limit = False` it is worse than wasteful. The wrapper cannot append its `SKIP`/`LIMIT`, so every iteration re-sends identical text, and the loop ends only because a batch came back shorter than `query_size_limit`. A query whose own bound is greater than or equal to `query_size_limit` never produces a short batch, so the loop never terminates and keeps appending the same rows.
+
+Because the wasted execution changes no returned value, assertions on query results cannot detect it. `CountingInfrahubDatabase` in `backend/tests/helpers/db_query_counter.py` counts executions by query name, so a test can assert how many queries a paged read issues.
+
 ### Branch-Aware Edge Resolution
 
 Every edge in the graph has branch/temporal properties (`branch`, `branch_level`, `from`, `to`, `status`). When traversing multiple edges in a single query, filter each edge independently to resolve the correct active version:

@@ -11,6 +11,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type {
   NodeCore,
   NodeFieldsWithMetadata,
@@ -55,6 +56,7 @@ export const NodeForm = ({
   ...props
 }: NodeFormProps) => {
   const auth = useAuth();
+  const { currentBranch } = useCurrentBranch();
   const { parentData, parentSchema } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
 
@@ -74,6 +76,7 @@ export const NodeForm = ({
     initialObject: currentObject,
     objectTemplate,
     auth,
+    isDefaultBranch: !!currentBranch.is_default,
     isFilterForm,
     pools: numberPools,
     isUpdate,

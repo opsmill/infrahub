@@ -129,8 +129,8 @@ What this means in practice:
 The rules above are the target. These violations still exist in the codebase — do not copy them,
 and remove them when touching the code:
 
-- Entity-root state and files: `branches/stores.ts` (Jotai `branchesState`, `currentBranchAtom`),
-  `schema/stores/`, `proposed-changes/stores/`, and the stray root component
+- Entity-root state and files: `branches/stores.ts` (Jotai `branchesState`), `schema/stores/`,
+  `proposed-changes/stores/`, and the stray root component
   `nodes/getObjectItemDisplayValue.tsx`.
 - Global state in a use-case: `branches/domain/use-cases/get-branches.ts` imports `store` from
   `@/shared/stores` and calls `store.set(branchesState, branches)` inside `getAllBranches`.
@@ -332,7 +332,7 @@ entities/branches/
 │       ├── get-branches.ts           # calls api fetcher + api mapper; extracts filters via rules
 │       ├── create-branch.ts
 │       └── … (delete/merge/rebase/validate/count/details/action-state)
-├── stores.ts                         # branchesState, currentBranchAtom — migration debt, do not copy
+├── stores.ts                         # branchesState — migration debt, do not copy
 └── ui/
     ├── queries/
     │   ├── branch.query-keys.ts      # branchesQueryKeys factory

@@ -1,7 +1,7 @@
 """Port of frontend/app/tests/e2e/branches/branch-selector.spec.ts.
 
 The branch selector dropdown: create-disabled when anonymous, branch search and
-switching, quick-create form, and the redirect-to-main fallback for an unknown
+switching, quick-create form, and the redirect-to-default fallback for an unknown
 branch. Searching/switching to `atl1-delete-upstream` needs data_scenario_branches
 (searching "atl1" must yield exactly that one scenario branch).
 """
@@ -62,8 +62,8 @@ class TestBranchSelectorLoggedInAsAdmin:
         await admin_page.get_by_role("option", name="Create branch quick-branch-form").click()
         await expect(admin_page.get_by_label("New branch name *")).to_have_value("quick-branch-form")
 
-    async def test_unknown_branch_redirects_to_main(self, admin_page: Page) -> None:
+    async def test_unknown_branch_redirects_to_default(self, admin_page: Page) -> None:
         await admin_page.goto("/?branch=unknown-branch-for-testing")
-        await expect(admin_page.get_by_text("you have been redirected to the main branch")).to_be_visible()
+        await expect(admin_page.get_by_text("you have been redirected to the default branch")).to_be_visible()
         await expect(admin_page.get_by_role("button", name="Other")).to_be_visible()
         assert "/?branch=unknown-branch-for-testing" not in admin_page.url

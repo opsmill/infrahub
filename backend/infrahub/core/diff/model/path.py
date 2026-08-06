@@ -121,6 +121,20 @@ class NodeDiffFieldSummary:
         """Record that `node_uuid` is a node of this kind whose relationship `name` changed."""
         self.relationship_node_uuids.setdefault(name, set()).add(node_uuid)
 
+    def merge(self, other: NodeDiffFieldSummary) -> None:
+        """Fold another summary of the same kind into this one.
+
+        Raises:
+            ValueError: If the other summary is for a different kind.
+
+        """
+        if other.kind != self.kind:
+            raise ValueError(f"Cannot merge summary for kind {other.kind} into summary for kind {self.kind}")
+        for name, node_uuids in other.attribute_node_uuids.items():
+            self.attribute_node_uuids.setdefault(name, set()).update(node_uuids)
+        for name, node_uuids in other.relationship_node_uuids.items():
+            self.relationship_node_uuids.setdefault(name, set()).update(node_uuids)
+
     @property
     def attribute_names(self) -> set[str]:
         return set(self.attribute_node_uuids)

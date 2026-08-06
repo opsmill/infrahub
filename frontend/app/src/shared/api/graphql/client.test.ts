@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ERROR_CODES } from "@/shared/api/errors";
 import { PRIORITY_HEADER } from "@/shared/api/priority";
 import { queryClient } from "@/shared/api/rest/client";
-import { CONFIG } from "@/shared/config/config";
+import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/api/token-storage";
 import { __navigation } from "@/entities/authentication/domain/use-cases/redirect-to-login";
@@ -44,12 +44,12 @@ describe("graphqlClient — endpoint targeting", () => {
     vi.unstubAllGlobals();
   });
 
-  it("targets the default branch when the operation declares no context", async () => {
+  it("omits the branch segment when the operation declares no context", async () => {
     // WHEN
     await graphqlClient.query({ query: PING });
 
     // THEN
-    expect(fetchSpy.mock.calls[0]?.[0]).toBe(CONFIG.GRAPHQL_URL());
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(`${INFRAHUB_API_SERVER_URL}/graphql`);
   });
 
   it("targets the branch and point in time the operation declares", async () => {
@@ -60,7 +60,9 @@ describe("graphqlClient — endpoint targeting", () => {
     await graphqlClient.query({ query: PING, context: { branch: "feature", date } });
 
     // THEN
-    expect(fetchSpy.mock.calls[0]?.[0]).toBe(CONFIG.GRAPHQL_URL("feature", date));
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(
+      `${INFRAHUB_API_SERVER_URL}/graphql/feature?at=2026-01-01T00:00:00.000Z`
+    );
   });
 
   it("stamps X-Priority: high on every operation", async () => {
