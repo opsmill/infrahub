@@ -25,6 +25,10 @@ from .models import (
     MeasurementDefinition,
 )
 
+# Bounded so that a stalled endpoint cannot hold the session open indefinitely, while still
+# allowing for a payload that grows with the length of the run.
+RESULTS_UPLOAD_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
+
 
 class InfrahubPerformanceTest:
     context: dict[str, InfrahubResultContext]
@@ -165,19 +169,32 @@ class InfrahubPerformanceTest:
             "test_info": self.test_info,
         }
 
+    def _serialize_request(self) -> bytes:
+        """Encode the request body, hashing the encoded payload instead of re-encoding it.
+
+        The payload embeds every metric series scraped over the run, which makes it the most
+        expensive thing on the session-finish path. Encoding it once and wrapping the envelope
+        around those bytes halves that cost, and leaves the checksum covering exactly the bytes
+        that go on the wire.
+        """
+        data = json.dumps(self._get_payload(), separators=(",", ":")).encode()
+        envelope = json.dumps(
+            {
+                "kind": PERFORMANCE_TEST_KIND,
+                "payload_format": PERFORMANCE_TEST_VERSION,
+                "checksum": hashlib.sha256(data).hexdigest(),
+            },
+            separators=(",", ":"),
+        ).encode()
+
+        return envelope.removesuffix(b"}") + b',"data":' + data + b"}"
+
     def send_results(self) -> None:
-        data = self._get_payload()
+        body = self._serialize_request()
 
-        payload = {
-            "kind": PERFORMANCE_TEST_KIND,
-            "payload_format": PERFORMANCE_TEST_VERSION,
-            "data": data,
-            "checksum": hashlib.sha256(json.dumps(data, separators=(",", ":")).encode()).hexdigest(),
-        }
-
-        with httpx.Client() as client:
+        with httpx.Client(timeout=RESULTS_UPLOAD_TIMEOUT) as client:
             try:
-                response = client.post(self.results_url, json=payload)
+                response = client.post(self.results_url, content=body, headers={"Content-Type": "application/json"})
                 response.raise_for_status()
             except Exception as exc:
                 print(exc)
