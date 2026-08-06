@@ -40,6 +40,26 @@ Infrahub documentation follows the [Diataxis framework](https://diataxis.fr/), s
 - **Present tense**: "Infrahub uses branches to isolate changes"
 - **Third person acceptable**: "The schema defines the data model"
 
+### For Internal Docs
+
+Applies to `dev/`, the `AGENTS.md` files, and `.agents/`. These are read mid-task, by people and
+agents with a job to finish.
+
+- **Rule first**: open with the imperative, then the reason. One sentence of reason is usually enough
+- **Plain words**: say what happens — "the transaction commits", not "the exit hook takes the success
+  path". Name a symbol only when the reader has to go find it
+- **Show instead of qualifying**: a ✅/❌ pair replaces a paragraph of caveats
+- **No provenance**: where a rule came from — a review thread, a ticket, a PR, a spec — belongs in the
+  commit message, not the doc (see `.agents/rules/code-doc-style.md`)
+- **No padding**: cut "note that", "it's important to", "keep in mind", bolded whole sentences, and any
+  sentence that restates the one before it
+- **Say it once**: if the rule is already written elsewhere, link to it instead of restating it
+- **Budget**: a new rule is a few lines plus one example. If it needs more than that, it's an
+  explanation for `dev/knowledge/`, not a guideline
+- **Pay for it**: cut the prose the new rule supersedes, and check the file against its size range
+  in [Repository Organization](repository-organization.md) before appending. A file over its range
+  gets split or compressed, not extended
+
 ## Content Guidelines
 
 ### Do
