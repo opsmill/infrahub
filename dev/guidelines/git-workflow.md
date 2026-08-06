@@ -126,7 +126,7 @@ the change generated them by default.
 (e.g. adding a justified `# noqa`) surfaces a pre-existing behavioral bug in the code you're
 annotating, don't fix the bug in the same PR — keep the diff limited to the annotation and file
 the bug separately. The justification comment may record what you found (see
-[Exception Handling](backend/python.md#exception-handling)), but the fix belongs in its own PR.
+[Exception Handling](backend/exceptions.md)), but the fix belongs in its own PR.
 
 ## Critical Rules
 
