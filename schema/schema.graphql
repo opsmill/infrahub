@@ -11467,6 +11467,16 @@ type NodeMutatedEvent implements EventNodeInterface {
   relationships: [InfrahubMutatedRelationship!]!
 }
 
+"""
+A GraphQL scalar that validates non-negative integer values.
+
+It accepts integers >= 0 (and whole-number floats, matching the built-in Int
+scalar) and rejects negative, fractional or non-integer values by raising
+ValidationError, which the executor wraps with the argument type name and
+source location.
+"""
+scalar NonNegativeInt
+
 type NonRequiredBooleanValueField {
   value: Boolean
 }
@@ -25545,11 +25555,11 @@ type Query {
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreWeightedPoolResource!
-  DiffTree(branch: String, filters: DiffTreeQueryFilters, from_time: DateTime, include_parents: Boolean, limit: Int, name: String, offset: Int, proposed_change_id: String, root_node_uuids: [String] @deprecated(reason: "replaced by filters"), to_time: DateTime): DiffTree
+  DiffTree(branch: String, filters: DiffTreeQueryFilters, from_time: DateTime, include_parents: Boolean, limit: NonNegativeInt, name: String, offset: NonNegativeInt, proposed_change_id: String, root_node_uuids: [String] @deprecated(reason: "replaced by filters"), to_time: DateTime): DiffTree
   DiffTreeSummary(branch: String, filters: DiffTreeQueryFilters, from_time: DateTime, name: String, proposed_change_id: String, to_time: DateTime): DiffTreeSummary
   """Retrieve fields mapping for converting object type"""
   FieldsMappingTypeConversion(source_kind: String, target_kind: String): FieldsMapping!
-  InfrahubAccountToken(limit: Int, offset: Int): AccountTokenEdges!
+  InfrahubAccountToken(limit: NonNegativeInt, offset: NonNegativeInt): AccountTokenEdges!
   """Retrieve paginated information about active branches."""
   InfrahubBranch(
     """Filter branches rebased after this timestamp."""
@@ -25557,7 +25567,7 @@ type Query {
     """Filter branches rebased before this timestamp."""
     branched_from__before: DateTime
     ids: [ID]
-    limit: Int
+    limit: NonNegativeInt
     name__value: String
     """Filter branches created after this timestamp."""
     node_metadata__created_at__after: DateTime
@@ -25569,7 +25579,7 @@ type Query {
     node_metadata__updated_at__after: DateTime
     """Filter branches updated before this timestamp."""
     node_metadata__updated_at__before: DateTime
-    offset: Int
+    offset: NonNegativeInt
     """Define ordering of results for branch queries."""
     order: MetadataOrderInput
     partial_match: Boolean = false
@@ -25590,8 +25600,8 @@ type Query {
     has_children: Boolean
     ids: [String!]
     level: Int
-    limit: Int
-    offset: Int
+    limit: NonNegativeInt
+    offset: NonNegativeInt
     """Sort order of the events, defaults to descending order"""
     order: EventSortOrder = DESC
     """
@@ -25623,12 +25633,12 @@ type Query {
   InfrahubPermissions: AccountPermissionsEdges!
   """Find all nodes of specified kinds reachable from a source node"""
   InfrahubReachableNodes(data: ReachableNodesInput!): ReachableNodesResultType!
-  InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
+  InfrahubResourcePoolAllocated(limit: NonNegativeInt, offset: NonNegativeInt, pool_id: String!, resource_id: String!): PoolAllocated!
   InfrahubResourcePoolUtilization(pool_id: String!): PoolUtilization!
-  InfrahubSearchAnywhere(case_sensitive: Boolean, limit: Int, partial_match: Boolean, q: String!): NodeEdges!
+  InfrahubSearchAnywhere(case_sensitive: Boolean, limit: NonNegativeInt, partial_match: Boolean, q: String!): NodeEdges!
   """Retrieve the status of all infrahub workers."""
   InfrahubStatus: Status!
-  InfrahubTask(branch: String, ids: [String], limit: Int, log_limit: Int, log_offset: Int, offset: Int, q: String, related_node__ids: [String], state: [StateType], workflow: [String]): Tasks!
+  InfrahubTask(branch: String, ids: [String], limit: NonNegativeInt, log_limit: NonNegativeInt, log_offset: NonNegativeInt, offset: NonNegativeInt, q: String, related_node__ids: [String], state: [StateType], workflow: [String]): Tasks!
   """
   Return the list of all pending or running tasks that can modify the data, for a given branch
   """
@@ -26412,7 +26422,7 @@ type Query {
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
   ): PaginatedProfileIpamNamespace!
-  Relationship(excluded_namespaces: [String], ids: [String!]!, limit: Int, offset: Int): Relationships!
+  Relationship(excluded_namespaces: [String], ids: [String!]!, limit: NonNegativeInt, offset: NonNegativeInt): Relationships!
 }
 
 """

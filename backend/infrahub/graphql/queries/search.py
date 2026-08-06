@@ -12,6 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.query.ipam import IPParentPrefixLookupQuery
 from infrahub.core.query.node import NodeGetListByAttributeValueQuery
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.scalars import NonNegativeInt
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -196,7 +197,7 @@ async def search_resolver(
 InfrahubSearchAnywhere = Field(
     NodeEdges,
     q=String(required=True),
-    limit=Int(required=False),
+    limit=NonNegativeInt(required=False),
     partial_match=Boolean(required=False),
     case_sensitive=Boolean(required=False),
     resolver=search_resolver,

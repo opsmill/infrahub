@@ -8,6 +8,7 @@ from infrahub.core.constants import GlobalPermissions
 from infrahub.events.constants import ACCOUNT_EVENT_PREFIX, EventSortOrder
 from infrahub.exceptions import PermissionDeniedError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.scalars import NonNegativeInt
 from infrahub.graphql.types.event import EventNodes, EventTypeFilter
 from infrahub.permissions import define_global_permission_from_branch
 from infrahub.task_manager.event.models import InfrahubEventFilter
@@ -122,8 +123,8 @@ class Events(ObjectType):
 
 Event = Field(
     Events,
-    limit=Int(required=False),
-    offset=Int(required=False),
+    limit=NonNegativeInt(required=False),
+    offset=NonNegativeInt(required=False),
     level=Int(required=False),
     has_children=Boolean(required=False, description="Filter events based on if they can have children or not"),
     event_type=List(NonNull(String), description="Filter events that match a specific type"),

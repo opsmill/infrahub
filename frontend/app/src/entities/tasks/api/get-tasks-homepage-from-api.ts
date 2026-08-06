@@ -3,7 +3,7 @@ import { graphql, type VariablesOf } from "gql.tada";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 const GET_TASKS_HOMEPAGE = graphql(`
-  query GET_TASKS_HOMEPAGE($limit: Int, $branchName: String!, $states: [StateType]) {
+  query GET_TASKS_HOMEPAGE($limit: NonNegativeInt, $branchName: String!, $states: [StateType]) {
     InfrahubTask(limit: $limit, branch: $branchName, state: $states) {
       count
       edges {

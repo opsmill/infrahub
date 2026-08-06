@@ -5,7 +5,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 export const BRANCHES_PER_PAGE = 40;
 
 const GET_BRANCHES = graphql(`
-  query GetBranches($limit: Int, $offset: Int, $nameValue: String, $partialMatch: Boolean, $statusValue: BranchStatus, $createdById: ID, $branchedFromAfter: DateTime, $branchedFromBefore: DateTime, $createdAtAfter: DateTime, $createdAtBefore: DateTime, $updatedAtAfter: DateTime, $updatedAtBefore: DateTime) {
+  query GetBranches($limit: NonNegativeInt, $offset: NonNegativeInt, $nameValue: String, $partialMatch: Boolean, $statusValue: BranchStatus, $createdById: ID, $branchedFromAfter: DateTime, $branchedFromBefore: DateTime, $createdAtAfter: DateTime, $createdAtBefore: DateTime, $updatedAtAfter: DateTime, $updatedAtBefore: DateTime) {
     InfrahubBranch(limit: $limit, offset: $offset, name__value: $nameValue, partial_match: $partialMatch, status__value: $statusValue, node_metadata__created_by__id: $createdById, branched_from__after: $branchedFromAfter, branched_from__before: $branchedFromBefore, node_metadata__created_at__after: $createdAtAfter, node_metadata__created_at__before: $createdAtBefore, node_metadata__updated_at__after: $updatedAtAfter, node_metadata__updated_at__before: $updatedAtBefore) {
       edges {
         node {

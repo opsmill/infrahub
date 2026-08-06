@@ -4,8 +4,8 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 export const GET_TASK_LIST = graphql(`
   query GET_TASK_LIST(
-    $offset: Int
-    $limit: Int
+    $offset: NonNegativeInt
+    $limit: NonNegativeInt
     $search: String
     $branchName: String
     $state: [StateType]

@@ -6,8 +6,8 @@ const GET_RESOURCE_ALLOCATED = graphql(`
   query GET_RESOURCE_POOL_ALLOCATED(
     $poolId: String!
     $resourceId: String!
-    $limit: Int!
-    $offset: Int!
+    $limit: NonNegativeInt!
+    $offset: NonNegativeInt!
   ) {
     InfrahubResourcePoolAllocated(
       pool_id: $poolId

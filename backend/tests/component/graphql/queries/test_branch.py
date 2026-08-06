@@ -230,7 +230,7 @@ class TestBranchQuery(TestInfrahubApp):
             branch_map[branch_name] = branch_id
 
         query = """
-            query($offset: Int, $limit: Int, $name: String, $ids: [ID!]) {
+            query($offset: NonNegativeInt, $limit: NonNegativeInt, $name: String, $ids: [ID!]) {
                 InfrahubBranch(offset: $offset, limit: $limit, name__value: $name, ids: $ids) {
                     count
                     edges {
@@ -364,7 +364,10 @@ class TestBranchQuery(TestInfrahubApp):
         )
         assert all_branches.errors
         assert len(all_branches.errors)
-        assert all_branches.errors[0].message == "offset must be >= 0"
+        assert (
+            all_branches.errors[0].message
+            == "Expected value of type 'NonNegativeInt', found -1; Value must be a non-negative integer"
+        )
 
         query = """
             query {
@@ -1179,7 +1182,7 @@ class TestBranchQuery(TestInfrahubApp):
         # Query with status filter and pagination
         past_time = (datetime.now(UTC) - timedelta(days=1)).isoformat()
         query = """
-        query($status: BranchStatus, $after: DateTime, $limit: Int, $offset: Int) {
+        query($status: BranchStatus, $after: DateTime, $limit: NonNegativeInt, $offset: NonNegativeInt) {
             InfrahubBranch(
                 status__value: $status,
                 node_metadata__created_at__after: $after,

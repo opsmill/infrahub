@@ -459,7 +459,7 @@ query(
     $account__ids: [String!],
     $related_node__ids: [String!],
     $event_type_filter: EventTypeFilter
-    $limit: Int
+    $limit: NonNegativeInt
 ) {
   InfrahubEvent(
     branches: $branch,
