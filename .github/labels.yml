@@ -147,6 +147,10 @@
   description: "This issue needs more information"
   color: "cccccc"
 
+- name: "state/need-decision"
+  description: "Behaviour is intentional but contested, needs a human judgement call"
+  color: "fbca04"
+
 - name: "state/need-testing"
   description: "This issue is ready and needs to be tested."
   color: "cccccc"
