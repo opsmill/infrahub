@@ -1,5 +1,8 @@
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any
+
+import pytest
 
 from infrahub.computed_attribute.gather import (
     gather_trigger_computed_attribute_jinja2,
@@ -51,6 +54,25 @@ query PersonCars($id: ID!) {
                     edges {
                         node {
                             display_label
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+QUERY_THROUGH_GENERIC_HFID = """
+query PersonCars($id: ID!) {
+    TestPerson(ids: [$id]) {
+        edges {
+            node {
+                name { value }
+                cars {
+                    edges {
+                        node {
+                            hfid
                         }
                     }
                 }
@@ -231,51 +253,64 @@ async def test_gather_trigger_computed_attribute_python_only_on_branch(
     assert trigger.branch == "branch_with_computed_attr"
 
 
-async def test_gather_trigger_computed_attribute_python_query_skips_unread_kinds(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    car_person_schema_generics_unregistered: dict[str, Any],
-) -> None:
-    """A kind reached through a generic but never read from gets no trigger.
+@dataclass
+class QueryTriggerCase:
+    name: str
+    query: str
+    expected_fields_by_kind: dict[str, list[str]]
 
-    Such a trigger would carry no field filter, so it would fire on every update to that kind
-    and recompute a value those updates cannot change.
-    """
-    await _setup_person_transform(
-        db=db,
-        default_branch=default_branch,
-        schema_dict=car_person_schema_generics_unregistered,
+
+QUERY_TRIGGER_CASES = [
+    QueryTriggerCase(
+        name="unread_kind_behind_a_generic_gets_no_trigger",
         query=QUERY_THROUGH_GENERIC,
-    )
+        expected_fields_by_kind={"TestPerson": ["cars", "name"], "TestElectricCar": ["nbr_engine"]},
+    ),
+    QueryTriggerCase(
+        name="display_label_is_matched_as_a_field",
+        query=QUERY_THROUGH_GENERIC_DISPLAY_LABEL,
+        expected_fields_by_kind={
+            "TestPerson": ["cars", "name"],
+            "TestCar": ["display_label"],
+            "TestElectricCar": ["display_label"],
+            "TestGazCar": ["display_label"],
+        },
+    ),
+    QueryTriggerCase(
+        name="hfid_is_matched_under_its_schema_name",
+        query=QUERY_THROUGH_GENERIC_HFID,
+        expected_fields_by_kind={
+            "TestPerson": ["cars", "name"],
+            "TestCar": ["human_friendly_id"],
+            "TestElectricCar": ["human_friendly_id"],
+            "TestGazCar": ["human_friendly_id"],
+        },
+    ),
+]
 
-    _, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
-    triggers_by_kind = _triggers_by_kind(trigger_queries)
 
-    assert set(triggers_by_kind) == {"TestPerson", "TestElectricCar"}
-    assert sorted(triggers_by_kind["TestPerson"].trigger.match_related["infrahub.field.name"]) == ["cars", "name"]
-    assert triggers_by_kind["TestElectricCar"].trigger.match_related["infrahub.field.name"] == ["nbr_engine"]
-
-
-async def test_gather_trigger_computed_attribute_python_query_keeps_display_label_kinds(
+@pytest.mark.parametrize("case", QUERY_TRIGGER_CASES, ids=lambda case: case.name)
+async def test_gather_trigger_computed_attribute_python_query(
     db: InfrahubDatabase,
     default_branch: Branch,
     car_person_schema_generics_unregistered: dict[str, Any],
+    case: QueryTriggerCase,
 ) -> None:
-    """A kind read only through display_label keeps its trigger, matching on any field.
+    """The read set of the query decides which kinds get a trigger and which fields it matches.
 
-    The analyzer cannot tell which field updates change a display label, so the trigger stays
-    unfiltered on purpose. That is a non-empty read set and must not be confused with an unread kind.
+    A kind the query reads no field from gets none at all: with nothing to filter on, the trigger
+    would fire on every update to that kind and recompute a value those updates cannot change.
     """
     await _setup_person_transform(
         db=db,
         default_branch=default_branch,
         schema_dict=car_person_schema_generics_unregistered,
-        query=QUERY_THROUGH_GENERIC_DISPLAY_LABEL,
+        query=case.query,
     )
 
     _, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
-    triggers_by_kind = _triggers_by_kind(trigger_queries)
 
-    assert set(triggers_by_kind) == {"TestPerson", "TestCar", "TestElectricCar", "TestGazCar"}
-    for kind in ("TestCar", "TestElectricCar", "TestGazCar"):
-        assert "infrahub.field.name" not in triggers_by_kind[kind].trigger.match_related
+    assert {
+        kind: sorted(trigger.trigger.match_related["infrahub.field.name"])
+        for kind, trigger in _triggers_by_kind(trigger_queries).items()
+    } == {kind: sorted(fields) for kind, fields in case.expected_fields_by_kind.items()}

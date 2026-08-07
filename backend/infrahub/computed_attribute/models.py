@@ -241,10 +241,7 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
         }
 
-        if update_fields and "display_label" not in update_fields:
-            # The GraphQLQuery analyzer doesn't yet support figuring out which updates would match the "display label"
-            # of a query. Because of this we temporarily match any field if the display_label is part of the computed
-            # attribute query
+        if update_fields:
             event_trigger.match_related["infrahub.field.name"] = update_fields
 
         return cls(
@@ -297,13 +294,8 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(kind=kind)
         event_trigger.match_related = {
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
+            "infrahub.field.name": update_fields,
         }
-
-        if update_fields and "display_label" not in update_fields:
-            # The GraphQLQuery analyzer doesn't yet support figuring out which updates would match the "display label"
-            # of a query. Because of this we temporarily match any field if the display_label is part of the computed
-            # attribute query
-            event_trigger.match_related["infrahub.field.name"] = update_fields
 
         if branches_out_of_scope:
             event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]

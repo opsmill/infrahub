@@ -49,6 +49,9 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes, SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
 
+# Selectable like attributes but absent from a model's attribute list. Values are the schema names.
+NODE_PROPERTY_BY_QUERY_FIELD = {"display_label": "display_label", "hfid": "human_friendly_id"}
+
 
 class MutateAction(StrEnum):
     CREATE = "create"
@@ -707,8 +710,10 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         infrahub_node_models: list[MainSchemaTypes] = []
         if query_node.in_property_level:
             if model := query_node.context_model():
-                if node.name.value in model.attribute_names or node.name.value == "display_label":
+                if node.name.value in model.attribute_names:
                     query_node.append_attribute(attribute=node.name.value)
+                elif node_property := NODE_PROPERTY_BY_QUERY_FIELD.get(node.name.value):
+                    query_node.append_attribute(attribute=node_property)
                 elif node.name.value in model.relationship_names:
                     rel = model.get_relationship_or_none(name=node.name.value)
                     if rel:
