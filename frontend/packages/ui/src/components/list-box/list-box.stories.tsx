@@ -26,11 +26,13 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const ColumnLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-[10px] font-medium tracking-wider text-neutral-400 uppercase">
-    {children}
-  </div>
-);
+function ColumnLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-[10px] font-medium tracking-wider text-neutral-400 uppercase">
+      {children}
+    </div>
+  );
+}
 
 const FRUITS = ["Apple", "Banana", "Cherry"];
 

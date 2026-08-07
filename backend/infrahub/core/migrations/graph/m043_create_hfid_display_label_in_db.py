@@ -113,7 +113,8 @@ class Migration043(MigrationRequiringRebase):
                     execution_result = await migration.execute(migration_input=migration_input, branch=default_branch)
                     result.errors.extend(execution_result.errors)
                     progress.update(update_task, advance=1)
-                except Exception as exc:
+                # First failing sub-migration is recorded as a result error and aborts the remaining steps
+                except Exception as exc:  # noqa: BLE001
                     result.errors.append(str(exc))
                     return result
 
@@ -165,7 +166,8 @@ class Migration043(MigrationRequiringRebase):
                     execution_result = await migration.execute(migration_input=migration_input, branch=branch)
                     result.errors.extend(execution_result.errors)
                     progress.update(update_task, advance=1)
-                except Exception as exc:
+                # First failing sub-migration is recorded as a result error and aborts the remaining steps
+                except Exception as exc:  # noqa: BLE001
                     result.errors.append(str(exc))
                     return result
 

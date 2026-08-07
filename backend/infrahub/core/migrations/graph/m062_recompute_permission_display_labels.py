@@ -451,7 +451,8 @@ class Migration062(MigrationRequiringRebase):
                         update_task=update_task,
                     )
 
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             error_msg = str(exc) or f"{type(exc).__name__}: {repr(exc)}"
             return MigrationResult(errors=[error_msg])
 
@@ -470,7 +471,8 @@ class Migration062(MigrationRequiringRebase):
             await self._compute_object_permission_display_labels(
                 db=db, branch=branch, attribute_schema=display_label_attribute_schema, console=console
             )
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             error_msg = str(exc) or f"{type(exc).__name__}: {repr(exc)}"
             return MigrationResult(errors=[error_msg])
 

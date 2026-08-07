@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { BranchContextParams } from "@/shared/api/types";
 
 const GET_BRANCH_DETAILS = graphql(`

@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypedDict, TypeVar
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
@@ -15,7 +15,7 @@ from neo4j.graph import Relationship as Neo4jRelationship
 from opentelemetry import trace
 
 from infrahub import config
-from infrahub.core.constants import SYSTEM_USER_ID, PermissionLevel
+from infrahub.core.constants import SYSTEM_USER_ID, PermissionLevel, RelationshipDirection
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import QueryError
 
@@ -136,6 +136,36 @@ class QueryRel(QueryElement):
             return "-%s->" % main_str
 
         return "-%s-" % main_str
+
+
+@dataclass
+class QueryArrow:
+    start: str
+    end: str
+
+
+@dataclass
+class QueryArrowInbound(QueryArrow):
+    start: str = "<-"
+    end: str = "-"
+
+
+@dataclass
+class QueryArrowOutbound(QueryArrow):
+    start: str = "-"
+    end: str = "->"
+
+
+@dataclass
+class QueryArrowBidir(QueryArrow):
+    start: str = "-"
+    end: str = "-"
+
+
+@dataclass
+class QueryArrows:
+    left: QueryArrow
+    right: QueryArrow
 
 
 class QueryType(Enum):
@@ -359,6 +389,18 @@ class QueryStat:
         return cls(**data)
 
 
+class QueryInitKwargs(TypedDict, total=False):
+    """Keyword arguments every query constructor accepts and forwards to its base."""
+
+    branch: Branch | None
+    at: Timestamp | str | None
+    limit: int | None
+    offset: int | None
+    order_by: list[str] | None
+    branch_agnostic: bool
+    user_id: str
+
+
 class Query:
     name: str = "base-query"
     type: QueryType
@@ -442,6 +484,20 @@ class Query:
         Right now it's mainly used to add more labels to the metrics.
         """
         return {}
+
+    @staticmethod
+    def get_query_arrows(direction: RelationshipDirection) -> QueryArrows:
+        """Return the 2 arrows of the node→Relationship→peer path for a relationship direction.
+
+        The edges around a Relationship vertex are created in the direction of the relationship, so
+        a query must traverse them the same way to tell the two ends of the path apart.
+        """
+        if direction == RelationshipDirection.OUTBOUND:
+            return QueryArrows(left=QueryArrowOutbound(), right=QueryArrowOutbound())
+        if direction == RelationshipDirection.INBOUND:
+            return QueryArrows(left=QueryArrowInbound(), right=QueryArrowInbound())
+
+        return QueryArrows(left=QueryArrowOutbound(), right=QueryArrowInbound())
 
     @staticmethod
     @lru_cache(maxsize=1024)

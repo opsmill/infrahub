@@ -4,6 +4,31 @@
 
 All database access in Infrahub goes through Query classes that encapsulate Cypher queries with proper parameterization, branch-awareness, and temporal versioning. Queries return typed dataclass results for type safety and clear API contracts.
 
+## Accessing schema: inject `SchemaManager`, else `db.schema`, never `registry`
+
+The `registry` is a legitimate in-memory cache (schemas, branches, node classes) but a global singleton imported across ~150 modules — a source of circular imports and coupling. Encapsulate and inject it instead. Preference order:
+
+1. **Inject `SchemaManager`** into the constructor, built at the entry point (task/flow/API/CLI) — never import `registry` inside a component.
+2. **`db.schema`** when injection isn't practical — temporally correct against the operation's branch/time; `registry.schema` is not.
+3. **`registry.schema`** — avoid.
+
+```python
+# ✅ Best - inject SchemaManager, constructed at the entry point
+class MyComponent:
+    def __init__(self, schema_manager: SchemaManager) -> None:
+        self.schema_manager = schema_manager
+
+# ✅ OK - db.schema when injection isn't practical (temporally correct)
+schema = db.schema.get(name="MyNode", branch=branch)
+
+# ❌ Avoid - global singleton, loses temporal flexibility
+schema = registry.schema.get(name="MyNode")
+```
+
+Components already accept `schema_manager` (the merge orchestrator, diff calculator, schema update coordinator, …); entry points still pass `registry.schema`, concentrating the access at the boundary. The next step is an accessor like the existing `get_database()` / `get_component()` so entry points can drop `registry` entirely.
+
+Exception: `registry` stays for hot (per-request) in-memory reads where a DB round-trip is a real regression (e.g. `registry.branch`); cold paths (daily tasks) use the DB. New-code preference — don't sweep existing call sites.
+
 ## Query Lifecycle
 
 ### Initialization
@@ -86,6 +111,10 @@ self.add_to_query("MATCH (n { uuid: $uuid })")
 self.add_to_query(f"MATCH (n {{ uuid: '{user_provided_id}' }})")
 ```
 
+### Keep Cypher readable inline
+
+Readability of the raw query outranks deduplication. Do not extract repeated Cypher blocks into shared Python string-building helpers or fragment formatters just to avoid duplication — a query assembled from indirected fragments is much harder to read, review, and paste into a Neo4j console. Duplicating a few similar Cypher blocks inline is the accepted trade-off.
+
 ### Return Labels
 
 The RETURN clause is automatically generated from `return_labels`. Call `update_return_labels()` to specify what to return.
@@ -124,6 +153,11 @@ class MyQuery(Query):
 Pagination (`LIMIT`/`OFFSET`) is automatically appended based on constructor parameters. To write pagination directly in your query, set `insert_limit = False`:
 
 > **List reads default to a page limit (e.g. `Branch.get_list` defaults to `limit=1000`).** Any check that must reason over *all* matching rows — "is any branch merging?", "are there duplicates?" — must not rely on an unbounded read of a default page. Narrow the query with a filter (a status/kind predicate) or paginate explicitly; otherwise the check silently ignores everything past the first page once the table grows.
+>
+> Two corollaries:
+>
+> - **Never derive a count with `len()` on a list read.** `len(Branch.get_list(...))` caps at the page limit and silently under-reports. Use the dedicated count method (`Branch.get_list_count`) or add one — a count query is also far cheaper than materializing the rows.
+> - **A "pick the newest/best from a filtered list" reduction must page through *all* results first.** This applies to any paginated API, not just our Query classes (e.g. Prefect artifact listings): reducing over only the first page silently returns a stale or missing winner once results exceed the page size.
 
 ```python
 class MyQuery(Query):
@@ -136,6 +170,52 @@ class MyQuery(Query):
         self.add_to_query("MATCH (n:Node)")
         self.add_to_query("RETURN n.uuid AS uuid, n.name AS name LIMIT 100")  # Manual pagination
 ```
+
+#### Paginating a query that expands each row
+
+The automatic clause is appended *after* the `RETURN`, so it bounds the rows a query returns, not the work it does to produce them. When a query expands each matched row — a per-row `CALL` subquery, a `collect()` over a traversal — that expansion has already run for every match by the time the automatic `LIMIT` applies, and an `ORDER BY` there forces every expanded row to be materialized before sorting. A query that must bound *that* work takes its page in the body, before the expansion:
+
+```python
+class PagedNodeFieldsQuery(Query):
+    name = "paged_node_fields"
+    type = QueryType.READ
+    insert_limit = False
+
+    def __init__(self, limit: int, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.limit = limit
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.params = {"page_offset": self.offset or 0, "page_limit": self.limit}
+        self.add_to_query("""
+        MATCH (n:Node)
+        WITH n
+        ORDER BY n.uuid, elementId(n)
+        SKIP $page_offset
+        LIMIT $page_limit
+        CALL (n) {
+            OPTIONAL MATCH (n)-[:HAS_ATTRIBUTE]->(a:Attribute)
+            RETURN collect(DISTINCT a.name) AS attr_names
+        }
+        """)
+        self.return_labels = ["n.uuid AS node_uuid", "attr_names"]
+```
+
+Three details make this correct:
+
+- Type the page size as `limit: int`, not `int | None`: a query that pages itself has no meaningful unpaged mode, and a required constructor parameter says so at the call site instead of failing later.
+- Read the bounds from the base class's `self.limit` and `self.offset` rather than adding parallel attributes, and bind them as query parameters. Reusing the base fields keeps one source of truth for the page size and is what `execute()` inspects (see below); parameters rather than interpolated literals let every page reuse one compiled plan.
+- Order strictly. `SKIP`/`LIMIT` over an unordered match can return one row on two pages and another on none; `elementId(n)` breaks ties when the sort property is not unique.
+
+`GetPathDetailsBranchQuery` in `backend/infrahub/core/migrations/query/path_details.py` is the reference implementation, driven by the caller loop in `backend/infrahub/core/migrations/helpers/attribute_recompute.py`.
+
+#### Always set self.limit on a self-paging read
+
+`Query.execute()` treats a READ with neither `limit` nor `offset` as unpaginated and routes it through `query_with_size_limit()`, which re-runs the query once per `database.query_size_limit` rows with a growing `SKIP` appended after the `RETURN`. Wrapped around a query that already pages itself, that costs one extra execution of the whole query per full page; the extra run's rows are all discarded by the outer `SKIP`, so results stay correct and only the cost shows up.
+
+With `insert_limit = False` it is worse than wasteful. The wrapper cannot append its `SKIP`/`LIMIT`, so every iteration re-sends identical text, and the loop ends only because a batch came back shorter than `query_size_limit`. A query whose own bound is greater than or equal to `query_size_limit` never produces a short batch, so the loop never terminates and keeps appending the same rows.
+
+Because the wasted execution changes no returned value, assertions on query results cannot detect it. `CountingInfrahubDatabase` in `backend/tests/helpers/db_query_counter.py` counts executions by query name, so a test can assert how many queries a paged read issues.
 
 ### Branch-Aware Edge Resolution
 
@@ -476,12 +556,7 @@ Specialized base classes for different domains:
 
 **Database Object in Initialization:** The `InfrahubDatabase` object is passed during initialization for:
 
-1. **Schema access via database proxy:** Enables temporal queries using previous schema versions
-
-   ```python
-   schema = db.schema.get(name="MyNode", branch=branch)  # Good
-   schema = registry.schema.get(name="MyNode")  # Avoid: loses temporal flexibility
-   ```
+1. **Schema access via database proxy:** Enables temporal queries using previous schema versions — see [Accessing schema: inject `SchemaManager`, else `db.schema`, never `registry`](#accessing-schema-inject-schemamanager-else-dbschema-never-registry).
 
 2. **Database type abstraction:** Contains database-specific functions
 

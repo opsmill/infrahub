@@ -14,6 +14,7 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.workflows.catalogue import TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
+from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.workflow import WorkflowRecorder
 
 if TYPE_CHECKING:
@@ -103,6 +104,7 @@ async def test_submit_fans_out_recompute_for_each_fed_attribute(
     assert calls[0]["parameters"]["computed_attribute_name"] == "description"
     assert calls[0]["parameters"]["computed_attribute_kind"] == "TestingCar"
     assert calls[0]["parameters"]["branch_name"] == BRANCH
+    assert WorkflowTag.BRANCH.render(identifier=BRANCH) in calls[0]["tags"]
 
 
 async def test_submit_skips_a_missing_transform(schema_branch_with_transform: None) -> None:

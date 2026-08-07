@@ -9,9 +9,9 @@ import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { shouldAllowEmptySubmission } from "@/shared/components/form/utils/shouldAllowEmptySubmission";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type {
   NodeCore,
   NodeFieldsWithMetadata,
@@ -56,6 +56,7 @@ export const NodeForm = ({
   ...props
 }: NodeFormProps) => {
   const auth = useAuth();
+  const { currentBranch } = useCurrentBranch();
   const { parentData, parentSchema } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
 
@@ -75,6 +76,7 @@ export const NodeForm = ({
     initialObject: currentObject,
     objectTemplate,
     auth,
+    isDefaultBranch: !!currentBranch.is_default,
     isFilterForm,
     pools: numberPools,
     isUpdate,
@@ -123,7 +125,7 @@ export const NodeForm = ({
       onSubmit={(formData: Record<string, FormFieldValue>) =>
         onSubmit ? onSubmit({ formData, fields, profiles }) : onSubmitCreate(formData)
       }
-      className={classNames("overflow-auto", className)}
+      className={className}
       {...props}
     />
   );

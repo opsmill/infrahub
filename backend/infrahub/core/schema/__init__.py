@@ -91,7 +91,16 @@ class SchemaRoot(BaseModel):
 
         raise SchemaNotFoundError(branch_name="undefined", identifier=name)
 
-    def validate_namespaces(self) -> list[str]:
+    def validate_reserved_names(self) -> list[str]:
+        """Validate that no model, attribute or relationship uses a name reserved for internal use.
+
+        Returns:
+            One error message per restricted namespace and per reserved name suffix found, empty when the schema is valid.
+
+        """
+        return self._validate_namespaces() + self._validate_reserved_suffixes()
+
+    def _validate_namespaces(self) -> list[str]:
         models = self.nodes + self.generics
         errors: list[str] = []
         for model in models:
@@ -100,7 +109,7 @@ class SchemaRoot(BaseModel):
 
         return errors
 
-    def validate_reserved_suffixes(self) -> list[str]:
+    def _validate_reserved_suffixes(self) -> list[str]:
         models = self.nodes + self.generics + self.extensions.nodes
         errors: list[str] = []
         for model in models:

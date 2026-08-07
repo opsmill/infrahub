@@ -111,6 +111,8 @@ CALL (n) {
 
 `CALL ... IN TRANSACTIONS` requires the `MATCH` to be outside the subquery — move all matching up front.
 
+**Pitfall — don't carry candidate ids across phases in application memory.** A multi-phase migration (phase 1 computes candidate node/edge ids, phase 2 acts on them — e.g. deleting orphans or restoring metadata for what phase 1 touched) must not hold those candidates in a Python list to drive the later phase. A crash between phases loses that in-memory list, and a resumed run can no longer tell what still needs cleanup. Keep candidate selection and its dependent cleanup database-side: re-derive candidates by the same filter inside the same `CALL ... IN TRANSACTIONS` pass as the write that produces them, rather than collecting ids in Python. Distinct logical phases (e.g. reopening edges vs. deleting edges) can and should stay as separate passes when planner or transaction-memory limits require it — each pass just needs to clean up after its own candidates rather than depending on ids collected by an earlier pass. See [Merge Failure Recovery](../../knowledge/backend/merge-failure-recovery.md) for a worked example.
+
 ### Step 4: Beware of Shared Nodes
 
 Some nodes in the graph are de-duplicated via `MERGE` (e.g., `AttributeValue` on `value` + `is_default`). Multiple relationships from different parents can point to the same node. Before modifying a node's properties or labels, verify it isn't shared — or create a new node and transfer the relevant edges. See [Database Schema — AttributeValue](../../knowledge/backend/database-schema.md) for details.

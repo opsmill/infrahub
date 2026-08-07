@@ -2,11 +2,14 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
+from infrahub.core.initialization import create_branch
+from infrahub.core.models import HashableModelDiff, SchemaDiff
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import SchemaNotFoundError
 
 LOCATION_GENERIC = GenericSchema(
     name="Location",
@@ -135,6 +138,35 @@ INTERFACE_NODE = NodeSchema(
 )
 
 
+# Standalone nodes carrying generated kinds, one per schema change so no change touches
+# a kind another change depends on
+GADGET_NODE = NodeSchema(
+    name="Gadget",
+    namespace="Test",
+    label="Gadget",
+    include_in_menu=True,
+    default_filter="name__value",
+    generate_profile=True,
+    generate_template=True,
+    attributes=[
+        AttributeSchema(name="name", kind="Text", unique=True),
+    ],
+)
+
+DOODAD_NODE = NodeSchema(
+    name="Doodad",
+    namespace="Test",
+    label="Doodad",
+    include_in_menu=True,
+    default_filter="name__value",
+    generate_profile=True,
+    generate_template=True,
+    attributes=[
+        AttributeSchema(name="name", kind="Text", unique=True),
+    ],
+)
+
+
 @pytest.fixture
 def idempotency_schema() -> SchemaRoot:
     return SchemaRoot(
@@ -155,13 +187,13 @@ def _describe_hash_diff(before: SchemaBranch, after: SchemaBranch) -> str:
         try:
             obj_before = before.get(name=name, duplicate=False)
             dump_before = obj_before.model_dump()
-        except Exception:
+        except SchemaNotFoundError:
             lines.append(f"{name}: only in 'after'")
             continue
         try:
             obj_after = after.get(name=name, duplicate=False)
             dump_after = obj_after.model_dump()
-        except Exception:
+        except SchemaNotFoundError:
             lines.append(f"{name}: only in 'before'")
             continue
         if obj_before.get_hash() == obj_after.get_hash():
@@ -222,34 +254,128 @@ def test_process_idempotency(register_core_models_schema: SchemaBranch, idempote
     assert templates_after_first == templates_after_second, "template names changed after second process()"
 
 
-async def test_process_idempotency_after_db_roundtrip(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-    register_builtin_models_schema: SchemaBranch,
-    idempotency_schema: SchemaRoot,
-) -> None:
-    """Schema loaded, saved to DB, reloaded, and processed produces the same hash."""
-    schema_after_register = registry.schema.register_schema(schema=idempotency_schema, branch=default_branch.name)
+class TestSchemaBranchDbRoundtrip:
+    """Schema changes saved to the database must reload into the schema that produced them.
 
-    # load_schema_to_db mutates schema_after_register in-place (assigns DB ids),
-    # so capture the hash after the save, not before.
-    await registry.schema.load_schema_to_db(schema=schema_after_register, db=db, branch=default_branch)
-    hash_after_save = schema_after_register.get_hash()
+    The base schema is saved once for the whole class; each test applies its own change on its
+    own branch, so only the changed kind is written and the changes stay independent of each
+    other and of the order they run in.
+    """
 
-    # load_schema_from_db calls process() internally
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    loaded_schema = schema_branch.duplicate()
-    await registry.schema.load_schema_from_db(db=db, branch=default_branch, schema=loaded_schema)
+    @pytest.fixture(scope="class")
+    async def saved_schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> SchemaBranch:
+        """Register and persist the base schema once, and return it as saved."""
+        schema_root = SchemaRoot(
+            nodes=[CONTINENT_NODE, COUNTRY_NODE, SITE_NODE, DEVICE_NODE, INTERFACE_NODE, GADGET_NODE, DOODAD_NODE],
+            generics=[LOCATION_GENERIC, NETWORK_ELEMENT_GENERIC],
+        )
+        schema = registry.schema.register_schema(schema=schema_root, branch=default_branch_scope_class.name)
+        # load_schema_to_db mutates the schema in place to assign DB ids, so the saved state is
+        # only final once it returns
+        await registry.schema.load_schema_to_db(schema=schema, db=db, branch=default_branch_scope_class)
+        return schema
 
-    hash_after_reload = loaded_schema.get_hash()
+    async def test_reload_matches_saved_schema(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, saved_schema: SchemaBranch
+    ) -> None:
+        """Loading the saved schema into an empty branch reproduces it exactly."""
+        loaded_schema = await registry.schema.load_schema_from_db(
+            db=db,
+            branch=default_branch_scope_class,
+            schema=SchemaBranch(cache={}, name=default_branch_scope_class.name),
+        )
 
-    assert hash_after_save == hash_after_reload, (
-        f"Hash mismatch after DB roundtrip.\n"
-        f"  After save:   {hash_after_save}\n"
-        f"  After reload: {hash_after_reload}\n"
-        f"{_describe_hash_diff(schema_after_register, loaded_schema)}"
-    )
+        assert loaded_schema.get_hash() == saved_schema.get_hash(), (
+            f"Hash mismatch after DB roundtrip.\n{_describe_hash_diff(saved_schema, loaded_schema)}"
+        )
+        assert sorted(loaded_schema.node_names) == sorted(saved_schema.node_names)
+        assert sorted(loaded_schema.generic_names) == sorted(saved_schema.generic_names)
+        assert sorted(loaded_schema.profile_names) == sorted(saved_schema.profile_names)
+        assert sorted(loaded_schema.template_names) == sorted(saved_schema.template_names)
+        assert not saved_schema.diff(other=loaded_schema).all
 
-    diff = schema_after_register.diff(other=loaded_schema)
-    assert not diff.all, f"Unexpected diff after DB roundtrip: {diff.all}"
+    async def test_disabling_generate_template_drops_template(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, saved_schema: SchemaBranch
+    ) -> None:
+        """Turning generate_template off drops the template on a schema that still holds it.
+
+        The stale schema stands in for a worker that has not yet seen the change.
+        """
+        branch = await create_branch(branch_name="disable-generate-template", db=db)
+        stale_schema = registry.schema.get_schema_branch(name=branch.name).duplicate()
+        assert "TemplateTestDoodad" in stale_schema.template_names
+
+        candidate_schema = registry.schema.get_schema_branch(name=branch.name)
+        doodad = candidate_schema.get_node(name="TestDoodad", duplicate=True)
+        doodad.generate_template = False
+        candidate_schema.set(name="TestDoodad", schema=doodad)
+        await registry.schema.update_schema_branch(
+            schema=candidate_schema,
+            db=db,
+            branch=branch,
+            diff=SchemaDiff(changed={"TestDoodad": HashableModelDiff(changed={"generate_template": None})}),
+        )
+        updated_schema = registry.schema.get_schema_branch(name=branch.name)
+
+        assert "TestDoodad" in updated_schema.node_names
+        assert "TemplateTestDoodad" not in updated_schema.template_names
+        assert "ProfileTestDoodad" in updated_schema.profile_names
+
+        schema_diff = stale_schema.get_hash_full().compare(updated_schema.get_hash_full())
+        assert schema_diff is not None
+        assert schema_diff.changed_nodes == ["TestDoodad"]
+
+        refreshed_schema = await registry.schema.load_schema_from_db(
+            db=db, branch=branch, schema=stale_schema, schema_diff=schema_diff
+        )
+
+        assert refreshed_schema.get_hash() == updated_schema.get_hash(), (
+            f"Hash mismatch after disabling generate_template.\n{_describe_hash_diff(updated_schema, refreshed_schema)}"
+        )
+        assert "TemplateTestDoodad" not in refreshed_schema.template_names
+        assert sorted(refreshed_schema.template_names) == sorted(updated_schema.template_names)
+        assert sorted(refreshed_schema.profile_names) == sorted(updated_schema.profile_names)
+
+    async def test_removing_node_drops_its_generated_kinds(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, saved_schema: SchemaBranch
+    ) -> None:
+        """Removing a node with generated kinds reloads into a schema without any of them.
+
+        Removing the kind leaves the template and profile generated from it without an owner
+        until the schema is reprocessed, which is the state a refreshing worker starts from.
+        """
+        branch = await create_branch(branch_name="remove-generated-kinds", db=db)
+        candidate_schema = registry.schema.get_schema_branch(name=branch.name)
+        assert "TemplateTestGadget" in candidate_schema.template_names
+        assert "ProfileTestGadget" in candidate_schema.profile_names
+
+        await registry.schema.update_schema_branch(
+            schema=candidate_schema,
+            db=db,
+            branch=branch,
+            diff=SchemaDiff(removed={"TestGadget": HashableModelDiff()}),
+        )
+        updated_schema = registry.schema.get_schema_branch(name=branch.name)
+
+        assert "TestGadget" not in updated_schema.node_names
+        assert "TemplateTestGadget" not in updated_schema.template_names
+        assert "ProfileTestGadget" not in updated_schema.profile_names
+
+        reloaded_schema = await registry.schema.load_schema_from_db(
+            db=db, branch=branch, schema=SchemaBranch(cache={}, name=branch.name)
+        )
+
+        assert reloaded_schema.get_hash() == updated_schema.get_hash(), (
+            f"Hash mismatch after removing a node with generated kinds.\n"
+            f"{_describe_hash_diff(updated_schema, reloaded_schema)}"
+        )
+        assert sorted(reloaded_schema.node_names) == sorted(updated_schema.node_names)
+        assert sorted(reloaded_schema.generic_names) == sorted(updated_schema.generic_names)
+        assert sorted(reloaded_schema.profile_names) == sorted(updated_schema.profile_names)
+        assert sorted(reloaded_schema.template_names) == sorted(updated_schema.template_names)
+        assert not updated_schema.diff(other=reloaded_schema).all

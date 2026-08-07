@@ -1169,8 +1169,7 @@ class NodeManager:
             # Attributes
             # --------------------------------------------------------
             if node_id in node_attributes:
-                for attr_name, attr in node_attributes[node_id].attrs.items():
-                    new_node_data[attr_name] = attr
+                new_node_data.update(node_attributes[node_id].attrs)
 
             node_class = identify_node_class(node=node)
             node_branch = await registry.get_branch(db=db, branch=node.branch)
@@ -1328,7 +1327,9 @@ class NodeManager:
                     direction=rel_schema.direction,
                     peer_id=peer_id,
                 )
-                peer_with_metadata = PeerWithRelationshipMetadata(peer=peer)
+                peer_with_metadata = PeerWithRelationshipMetadata(
+                    peer=peer, peer_kind=grouped_peer_nodes.get_peer_kind(peer_id=peer_id)
+                )
                 if not metadata_map:
                     rel_peers_with_metadata.append(peer_with_metadata)
                     continue
@@ -1342,8 +1343,7 @@ class NodeManager:
                 rel_peers_with_metadata.append(peer_with_metadata)
 
             rel_manager.has_fetched_relationships = True
-            # invariant list parameter; update() only reads data, so the narrower element type is safe
-            await rel_manager.update(db=db, data=rel_peers_with_metadata)  # type: ignore[arg-type]
+            await rel_manager.update(db=db, data=rel_peers_with_metadata)
 
     @classmethod
     async def delete(

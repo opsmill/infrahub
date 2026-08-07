@@ -72,14 +72,18 @@ WorkflowDefinition(
 
 ### Flow Functions
 
-Async functions decorated with `@flow` containing business logic:
+Async functions decorated with `@flow`. A flow function is a **composition root, not the home of business logic**: it resolves the singleton services (`get_database()`, `get_workflow()`, …), builds a component with those dependencies injected, and delegates to it. Keep the flow body thin — the logic lives in the component, where it is testable without a running worker (see `.agents/rules/backend-component-design.md`).
 
 ```python
 @flow(name="branch-merge", flow_run_name="Merge branch {branch}")
 async def merge_branch(branch: str, context: InfrahubContext) -> None:
     database = await get_database()
-    # ... implementation
+    async with database.start_session() as db:
+        merger = BranchMerger(db=db, diff_coordinator=..., ...)  # collaborators injected here
+        await merger.merge()
 ```
+
+Singleton getters belong at this entry point only — do not call `get_database()`/`get_workflow()` inside helper functions or component internals; pass the resolved services down as constructor arguments.
 
 ### Task Functions
 
@@ -101,6 +105,8 @@ Names must use **lowercase with dashes** (not underscores):
 - Bad: `branch_merge`, `BranchMerge`, `branchMerge`
 
 All flows and tasks must have an explicit `name` parameter in their decorator.
+
+**Reference workflow names via the catalogue, never as re-typed string literals.** When code outside the flow needs a workflow's name — dispatching it, filtering its flow runs, labelling metrics — import the `WorkflowDefinition` from `backend/infrahub/workflows/catalogue.py` and use it (e.g. pass `workflow=WEBHOOK_PROCESS`, or read `WEBHOOK_PROCESS.name`). A duplicated literal drifts silently when the flow is renamed.
 
 ### Flow Run Names
 
@@ -144,6 +150,8 @@ Workflows receive metadata tags for organization and filtering:
 | Node | `infrahub.app/node/{id}` | Associate with specific node |
 | Workflow Type | `infrahub.app/workflow-type/{type}` | Categorize by type |
 | Database Change | `infrahub.app/database-change` | Flag database-modifying workflows |
+
+Tags come from two moments, and the difference matters: tags present at run creation (the deployment's static tags plus any `tags=` passed to `submit_workflow`) survive for the run's lifetime, while tags added mid-run via `add_tags` are rebuilt from the tags known at flow start, so a later in-flow tag update drops anything another in-flow update added before it. A tag that filtering depends on (the branch tag for branch-filtered task queries, for example) must therefore be passed at submission, not added from inside the flow.
 
 ## Execution Flow
 
@@ -219,6 +227,13 @@ Available dependencies:
 - `get_workflow()`: Workflow service for submitting child flows
 - `get_event_service()`: Event emission service
 - `get_component()`: Component registry access
+
+## Logging
+
+Prefect only surfaces logs from its own run logger plus the loggers named in the worker's task-logger set — `DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]` in `backend/infrahub/workers/infrahub_async.py`, extended by `config.SETTINGS.workflow.extra_loggers`. A bare `logging.getLogger(__name__)` sits outside that set, so its records never reach the task manager.
+
+- **Inside a `@flow` or `@task` body**, use Prefect's `get_run_logger()`.
+- **In a plain helper** that runs inside a flow but is not itself decorated — so it has no Prefect run context, and is typically also called directly from tests — use `infrahub.log.get_run_logger()`. It returns the `infrahub.tasks` stdlib logger, which the worker registers with Prefect and which is safe to call with no run context (Prefect's own `get_run_logger()` raises outside a run).
 
 ## Read Query Optimization in Prefect Tasks
 
@@ -298,6 +313,10 @@ Existing examples: `DisplayLabelNodeIDQuery`, `HFIDNodeIDQuery`, `ComputedAttrib
 ### A subflow succeeds only when it is completed
 
 When inspecting a subflow's terminal state, gate on `state.is_completed()`, not on the negation of `state.is_failed()`. `is_failed()` is only one terminal failure mode — a `CANCELLED` or `CRASHED` subflow is not failed but is also not a success, so `if not state.is_failed(): return` reports those as success. Treat "completed" as the only success and every other terminal state as a failure.
+
+### Observability side-writes must never change the primary outcome
+
+A write whose only purpose is observability — persisting a Prefect artifact that captures a request/response, emitting a metric, invoking a metrics-observer callback — is best-effort by definition. It must be exception-isolated (catch, log a warning, continue) so that its failure can never fail, retry, or alter the outcome of the operation it observes: a webhook delivery that succeeded must not be reported as failed because the capture artifact could not be written, and a metrics callback raising must not corrupt lock/pool state. The primary operation's result is decided before and independently of the telemetry write.
 
 ### Post-commit follow-up work is best-effort
 

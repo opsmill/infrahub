@@ -41,6 +41,8 @@ Many tests leverage the database and use TestContainers for external dependencie
 
 **When to use:** Testing individual components that require external services — database state, cache behavior, lock coordination, message bus interactions, or any business logic that depends on infrastructure. See the [Key Root Fixtures](#key-root-fixtures) and [Test Adapters](#test-adapters) sections below for available test infrastructure.
 
+**Testing invariant — duplicate-UUID nodes.** Any query or component test that filters or resolves Node vertices by UUID must include a case with a stale same-UUID duplicate left by a kind/inheritance migration alongside the current active one — see [Database Schema — Schema Migration](database-schema.md#schema-migration-namenamespaceinheritance). Skipping this case has caused real bugs; testing only the single-vertex case isn't sufficient coverage for UUID-based queries.
+
 ### Functional Tests (`backend/tests/functional/`)
 
 Multi-component tests running in a single thread/process. Async tasks execute inline without separate workers.
@@ -214,6 +216,27 @@ async def test_message_sent(bus_simulator: BusSimulator, ...):
 - `MemoryCache` - In-memory cache for fast tests
 - `FakeLogger` - Captures log output for assertions
 - `RecordingLockRegistry` / `LockTimeline` - Records lock acquire/release order so tests can assert what runs inside versus outside a critical section
+
+**Event and Workflow Adapters:**
+
+To observe what a flow emits and submits without running a worker, inject recorder adapters through the dependency provider:
+
+- `MemoryInfrahubEvent` (`backend/tests/adapters/event.py`) - an `InfrahubEventService` that records every emitted event in `.events` instead of publishing it.
+- `WorkflowRecorder` (`backend/tests/adapters/workflow.py`) - an `InfrahubWorkflow` that records `submit_workflow` / `execute_workflow` calls (`.submit_calls`, `.execute_calls`, `get_submit_calls_for(...)`) without executing them.
+
+Inject them for the duration of the call with `dependency_provider.scope`, the same mechanism the `memory_cache` fixture uses:
+
+```python
+with (
+    dependency_provider.scope(build_event_service, lambda: event_recorder),
+    dependency_provider.scope(build_workflow, lambda: workflow_recorder),
+):
+    await merge_branch(branch=branch_name, context=context)
+
+assert workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_JINJA2)
+```
+
+This drives a real merge or rebase in a component test and asserts exactly which recompute workflows it submits, deterministically and with no task worker. Node mutation events go through the event service, not the message bus (`NodeMutatedEvent.get_messages()` returns `[]`), so a `BusRecorder` records nothing for them; use `MemoryInfrahubEvent` to assert on emitted node events.
 
 ## Supporting Directories
 

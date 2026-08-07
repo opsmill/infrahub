@@ -104,7 +104,8 @@ class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
             try:
                 await worker.setup(client=client, metric_port=0)
                 await worker.sync_with_backend()
-            except BaseException as exc:
+            # Any failure (incl. CancelledError) must resolve the "ready" future, else the fixture awaiting it hangs forever
+            except BaseException as exc:  # noqa: BLE001
                 ready.set_exception(exc)
                 return
             ready.set_result(None)

@@ -73,6 +73,7 @@ Infrahub documentation follows the [Diataxis framework](https://diataxis.fr/), s
 - Link to topic/explanation docs for background information (in guides)
 - Link to guides for task instructions (in topics)
 - Define technical terms on first use
+- Before citing a specific test as verifying a scenario (a spec table, a status doc), confirm that test function actually exists in the change or repo — label not-yet-written coverage as planned/unverified instead of naming a test that isn't there
 
 ### Don't
 
@@ -88,6 +89,7 @@ Infrahub documentation follows the [Diataxis framework](https://diataxis.fr/), s
 - Use marketing language or hype (in topics)
 - Skip definitions of technical terms
 - Focus on "how to" instead of "how it works" (in topics)
+- Reference Jira tickets, GitHub issues, PR numbers, or spec files as the reason for a rule — describe the underlying behavior or constraint instead. These rot once the item closes and the spec is forgotten, and a reader can't verify a closed reference the way a reviewer could at review time. Work-item IDs belong in commit messages, PR descriptions, and changelog fragments; track a significant architectural decision in `dev/adr/` (see `dev/adr/README.md`) instead, written as a self-contained Context/Decision/Consequences record independent of the spec that prompted it
 
 ## Documentation Workflow
 

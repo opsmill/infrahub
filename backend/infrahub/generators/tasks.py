@@ -7,13 +7,14 @@ from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreGeneratorInstance
 from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig
-from prefect import State, flow, task
+from prefect import State, flow, get_run_logger, task
 from prefect.cache_policies import NONE
 from prefect.states import Completed, Failed
 
 from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001 needed for prefect flow
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
+from infrahub.core.regeneration.members import map_subscriber_ids_by_member
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import (
     GeneratorDefinitionModel,
@@ -140,7 +141,9 @@ async def run_generator_definition(
 ) -> None:
     await add_tags(branches=[branch])
 
-    generators = await get_client().filters(
+    client = get_client()
+    client.request_context = context.to_request_context()
+    generators = await client.filters(
         kind=InfrahubKind.GENERATORDEFINITION, prefetch_relationships=True, populate_store=True, branch=branch
     )
 
@@ -188,6 +191,7 @@ async def request_generator_definition_run(
     await add_tags(branches=[model.branch], nodes=[model.generator_definition.definition_id])
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     # Needs to be fetched before fetching group members otherwise `object` relationship would override
     # existing node in client store without the `name` attribute due to #521
@@ -202,9 +206,11 @@ async def request_generator_definition_run(
         client=client, branch=model.branch, definition=model.generator_definition
     )
 
-    instance_by_member = {}
-    for instance in existing_instances:
-        instance_by_member[instance.object.peer.id] = instance.id
+    instance_by_member = map_subscriber_ids_by_member(
+        existing_subscribers=existing_instances,
+        definition_name=model.generator_definition.definition_name,
+        log=get_run_logger(),
+    )
 
     repository = await client.get(
         kind=InfrahubKind.REPOSITORY,
@@ -250,5 +256,6 @@ async def request_generator_definition_run(
     try:
         await asyncio.gather(*tasks)
         return Completed(message=f"Successfully run {len(tasks)} generators")
-    except Exception as exc:
+    # Flow boundary: any generator failure must surface as a Failed state carrying the error, not a crashed flow run
+    except Exception as exc:  # noqa: BLE001
         return Failed(message="One or more generators failed", error=exc)

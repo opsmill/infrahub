@@ -173,6 +173,35 @@ branch_data = {"name": "feature-x", "description": None}
 branch_data = BranchCreateInput(name="feature-x")
 ```
 
+### Use dict.get() for Default Values
+
+Prefer `dict.get(key, default)` over an existence check or `try/except` when reading a key that may be missing. It is more concise and avoids the cost of raising and catching `KeyError`:
+
+```python
+config: dict[str, int] = {"timeout": 30}
+
+# ❌ Bad - verbose existence check
+if "retries" in config:
+    retries = config["retries"]
+else:
+    retries = 3
+
+# ❌ Bad - exception handling for an expected-missing key
+try:
+    retries = config["retries"]
+except KeyError:
+    retries = 3
+
+# ✅ Good - get() with an explicit default
+retries = config.get("retries", 3)
+```
+
+Guidelines:
+
+- `get()` without a second argument returns `None` for missing keys.
+- Chain for nested access: `config.get("db", {}).get("host", "localhost")`.
+- Use `setdefault()` when the default is a mutable object you intend to build up: `cache.setdefault("results", []).append(42)`.
+
 ## Docstrings (Google-style)
 
 All public functions and classes must have Google-style docstrings:
@@ -354,6 +383,7 @@ except NodeNotFoundError:
 Guidelines:
 
 - **Name the exceptions.** Catch the narrowest type(s) that the called code actually raises. If several are handled the same way, group them: `except (NodeNotFoundError, BranchNotFoundError):`.
+- **Check the hierarchy before narrowing.** Infrahub's exception types are mostly direct `Error` subclasses, not a tree — `QueryTimeoutError` is a *sibling* of `DatabaseError`, so catching `DatabaseError` does not cover query timeouts. Verify in `backend/infrahub/exceptions.py` which types the call path actually raises before writing the tuple.
 - **Keep the `try` body small.** Wrap only the statement that can raise, not a whole block, so an unexpected error elsewhere isn't caught by accident.
 - **Never silence.** A bare `except Exception: pass` hides real failures. If there is genuinely nothing to do, comment why, and at minimum `log.debug(...)`.
 - **Re-raise what you can't handle.** If you must catch broadly to add context or clean up, re-raise afterwards (`raise` to preserve the traceback, or `raise NewError(...) from exc` to chain).
@@ -368,6 +398,45 @@ except Exception as exc:
 ```
 
 A broad `except Exception` is justified only at a top-level boundary (a task worker loop, a request handler) whose job is to prevent one failure from taking down the process — and even there, log the exception and re-raise or record it, never discard it.
+
+## ASGI Middleware
+
+<!-- Extracted from specs/ifc-2886-priority-api-backpressure on 2026-07-26 -->
+
+Write middleware as **pure ASGI** — `async def __call__(self, scope, receive, send)`, subclassing
+nothing — when it runs on every request, may short-circuit a request, or sits anywhere near
+streaming or background tasks:
+
+```python
+class SomeMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        ...
+```
+
+The `@app.middleware("http")` decorator wraps `BaseHTTPMiddleware`, which buffers the entire
+response and interferes with streaming responses and background tasks. Reserve it for
+non-hot-path work where that cost is irrelevant.
+
+Rules that follow from the ASGI contract:
+
+- Always pass non-`http` scopes (`websocket`, `lifespan`) straight through untouched.
+- Short-circuit by constructing and sending the response yourself. Middleware runs outside the
+  exception-handler scope, so raising will not reach FastAPI's registered handlers, and those
+  handlers cannot attach custom response headers.
+- Registration order is inverted: Starlette inserts each `add_middleware(...)` at the front, so
+  the **last** registered runs **first** (outermost). Put a gate that must run before auth,
+  routing, and telemetry last in `server.py`.
+- Anything resolved by `Depends(...)` — including the authenticated user — is not available;
+  dependencies resolve per route, after all middleware.
+
+Worked example: `backend/infrahub/api/admission/middleware.py`, with the reasoning in
+[API Backpressure](../../knowledge/backend/api-backpressure.md#why-its-built-this-way).
 
 ## Testing
 

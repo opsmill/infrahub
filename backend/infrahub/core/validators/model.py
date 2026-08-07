@@ -16,6 +16,10 @@ class SchemaConstraintValidatorRequest(BaseModel):
     node_schema: NodeSchema | GenericSchema = Field(..., description="Schema of Node or Generic to validate")
     schema_path: SchemaPath = Field(..., description="SchemaPath to the element of the schema to validate")
     schema_branch: SchemaBranch = Field(..., description="SchemaBranch of the element to validate")
+    node_uuids: list[str] | None = Field(
+        default=None,
+        description="When set, restrict validation to these nodes; None validates the full population",
+    )
 
     @model_serializer()
     def serialize_model(self) -> dict[str, Any]:
@@ -25,6 +29,7 @@ class SchemaConstraintValidatorRequest(BaseModel):
             "node_schema": self.node_schema.model_dump(),
             "schema_path": self.schema_path.model_dump(),
             "schema_branch": self.schema_branch.to_dict_schema_object(),
+            "node_uuids": self.node_uuids,
         }
 
     @field_validator("schema_branch", mode="before")

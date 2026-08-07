@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
@@ -11,7 +12,6 @@ from typing import (
     Iterator,
     Literal,
     Mapping,
-    Sequence,
     TypeVar,
     overload,
 )
@@ -88,6 +88,7 @@ class RelationshipUpdateDetails:
 @dataclass
 class PeerWithRelationshipMetadata:
     peer: Node | str
+    peer_kind: str | None = None
     created_at: Timestamp | None = None
     created_by: str | None = None
     updated_at: Timestamp | None = None
@@ -139,6 +140,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self._peer: Node | str | None = None
         self.peer_id: str | None = None
         self.peer_hfid: list[str] | None = None
+        self._resolved_peer_kind: str | None = None
         self.data: dict | RelationshipPeerData | str | Node | None = None
 
         self.from_pool: dict[str, Any] | None = None
@@ -174,6 +176,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             return self.schema.peer
 
         return self._peer.get_kind()
+
+    def get_concrete_peer_kind(self) -> str | None:
+        """Return the peer's concrete kind, or None when only the schema's (possibly generic) peer kind is known."""
+        if self._peer and not isinstance(self._peer, str):
+            return self._peer.get_kind()
+
+        return self._resolved_peer_kind
 
     @property
     def node_id(self) -> str:
@@ -222,6 +231,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     def _process_relationship_peer_data(self, data: RelationshipPeerData) -> None:
         self.set_peer(value=str(data.peer_id))
+        self._resolved_peer_kind = data.peer_kind
 
         if not self.id and data.rel_node_id:
             self.id = data.rel_node_id
@@ -262,6 +272,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     def _process_peer_with_relationship_metadata(self, data: PeerWithRelationshipMetadata) -> None:
         self.set_peer(value=data.peer)
+        self._resolved_peer_kind = data.peer_kind
         self._set_created_at(data.created_at)
         self._set_created_by(data.created_by)
         self._set_updated_at(data.updated_at)
@@ -1210,7 +1221,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
     async def update(
         self,
-        data: list[str | Node | dict[str, Any] | PeerWithRelationshipMetadata]
+        data: Sequence[str | Node | dict[str, Any] | PeerWithRelationshipMetadata]
         | dict[str, Any]
         | str
         | Node
@@ -1227,7 +1238,8 @@ class RelationshipManager[RelationshipManagerPeerType]:
             ValidationError: When the supplied data cannot form a valid relationship.
 
         """
-        if not isinstance(data, list):
+        # A str satisfies Sequence but stands for a single peer id, so it must not be iterated.
+        if isinstance(data, str) or not isinstance(data, Sequence):
             list_data: Sequence[str | Node | dict[str, Any] | PeerWithRelationshipMetadata | None] = [data]
         else:
             list_data = data

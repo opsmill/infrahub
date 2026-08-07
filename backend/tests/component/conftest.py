@@ -1658,6 +1658,7 @@ async def all_attribute_types_schema(
             {"name": "myjson", "kind": "JSON", "optional": True},
             {"name": "ipaddress", "kind": "IPHost", "optional": True},
             {"name": "prefix", "kind": "IPNetwork", "optional": True},
+            {"name": "bare_address", "kind": "IPAddress", "optional": True},
         ],
     }
 

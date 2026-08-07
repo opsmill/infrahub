@@ -1,10 +1,10 @@
 # Coalesced Recompute on Merge and Rebase
 
-> Part of: `dev/knowledge/backend/` | Related: [computed-attributes.md](computed-attributes.md), [display-labels-and-hfid.md](display-labels-and-hfid.md), [events.md](events.md)
+> Part of: `dev/knowledge/backend/` | Related: [computed-attributes.md](computed-attributes.md), [display-labels-and-hfid.md](display-labels-and-hfid.md), [selective-merge-regeneration.md](selective-merge-regeneration.md), [events.md](events.md)
 
 A live edit recomputes derived values one node at a time (see [computed-attributes.md](computed-attributes.md)). A merge or rebase can change many nodes at once, so it uses a different path: one coalesced recompute for the whole change set, written in bulk, then chained to any value that reads what was written.
 
-This covers three derived-value families: Jinja2 computed attributes, display labels, and human-friendly ids. Python-transform computed attributes and profile refresh stay on the per-node path and are not part of this.
+This covers three derived-value families: Jinja2 computed attributes, display labels, and human-friendly ids. Python-transform computed attributes and profile refresh are not part of this coalesced pass; they are dispatched by their own automations, though the Python transforms process their fan-out as batches persisted through the same bulk writer (see [computed-attributes.md](computed-attributes.md)). Generator and artifact regeneration on merge takes its own selective path, described in [selective-merge-regeneration.md](selective-merge-regeneration.md).
 
 ## Why a separate path
 
@@ -77,6 +77,7 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 | File | What |
 |------|------|
 | `core/merge/recompute_coalescing.py` | `CoalescedRecomputeBuilder`, `CoalescedRecomputeSubmitter`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter`, `max_recompute_chain_depth` |
+| `display_labels/scoping.py`, `hfid/scoping.py` | `derive_display_label_targets` / `derive_hfid_targets`: the builder's derivation step, mapping a changed `(kind, field)` set to the display-label and HFID values it affects (computed attributes use `computed_attribute/scoping.py`) |
 | `core/recompute/bulk_write.py` | `BulkRecomputeWriter`, `AttributeValueWrite`, `WrittenNode` |
 | `core/recompute/dispatch.py` | `BulkRecomputeDispatcher`, `build_bulk_recompute_dispatcher` (bulk write, then chain on a coalesced pass) |
 | `core/merge/post_merge.py` | Merge: stamp `merge` origin, build and submit on the destination branch |
@@ -88,4 +89,6 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 
 - [Computed Attributes](computed-attributes.md) - the live evaluation paths for Jinja2 computed attributes
 - [Display Labels & HFID](display-labels-and-hfid.md) - the same for display labels and human-friendly ids
+- [Selective Post-Merge Regeneration](selective-merge-regeneration.md) - the sibling merge-followup path for generators and artifacts
 - [Events System](events.md) - node mutation events and the `origin` metadata
+- [Merge Failure Recovery](merge-failure-recovery.md) - reversing a merge that died before the post-`MERGED` recompute

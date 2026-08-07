@@ -7,8 +7,14 @@ from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.diff.summary_cache import DiffSummaryCache
+from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.registry import registry
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
+from infrahub.core.validators.constraint_merge import build_constraint_info_merger
+from infrahub.core.validators.determiner import build_constraint_validator_determiner
+from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.workers.dependencies import get_cache, get_event_service, get_workflow
 
@@ -42,7 +48,9 @@ async def build_branch_merge_orchestrator(
     component_registry = get_component_registry()
     workflow = get_workflow()
     event_service = await get_event_service()
-    merge_write_blocker = MergeWriteBlocker(cache=await get_cache())
+    cache = await get_cache()
+    merge_write_blocker = MergeWriteBlocker(cache=cache)
+    diff_summary_serializer = DiffSummarySerializer()
 
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=source_branch)
@@ -58,7 +66,13 @@ async def build_branch_merge_orchestrator(
         diff_repository=diff_repository,
         schema_manager=registry.schema,
     )
-    constraint_validator = MergeConstraintValidator(db=db, branch=source_branch, diff_repository=diff_repository)
+    constraint_validator = MergeConstraintValidator(
+        branch=source_branch,
+        diff_repository=diff_repository,
+        determiner=build_constraint_validator_determiner(db=db, branch=source_branch),
+        constraint_info_merger=build_constraint_info_merger(),
+        migration_validator=schema_validate_migrations,
+    )
     graph_merger = GraphMerger(
         db=db,
         source_branch=source_branch,
@@ -79,7 +93,11 @@ async def build_branch_merge_orchestrator(
         logger=logger,
     )
     schema_update_coordinator = SchemaUpdateCoordinator(
-        db=db, schema_manager=registry.schema, workflow=workflow, logger=logger
+        db=db,
+        schema_manager=registry.schema,
+        rollbacker=GraphRollbacker(db=db),
+        workflow=workflow,
+        logger=logger,
     )
     rollback_handler = MergeRollbackHandler(
         db=db,
@@ -112,5 +130,9 @@ async def build_branch_merge_orchestrator(
         merge_write_blocker=merge_write_blocker,
         ipam_diff_parser=ipam_diff_parser,
         diff_repository=diff_repository,
+        diff_serializer=diff_summary_serializer,
+        diff_summary_cache=DiffSummaryCache(
+            cache=cache, serializer=diff_summary_serializer, key_namespace="branch_merge"
+        ),
         logger=logger,
     )

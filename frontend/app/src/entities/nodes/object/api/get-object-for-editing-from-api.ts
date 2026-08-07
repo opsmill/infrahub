@@ -1,8 +1,7 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import type { ContextParams } from "@/shared/api/types";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
@@ -83,11 +82,10 @@ export async function getObjectForEditingFromApi({
   });
 
   return graphqlClient.query({
-    query: gql(queryString),
+    query: graphql(queryString),
     context: {
       branch: branchName,
       date: atDate,
     },
-    fetchPolicy: "no-cache",
   });
 }

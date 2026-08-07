@@ -46,7 +46,8 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
         check_message = "Artifact rendered successfully"
         conclusion = ValidatorConclusion.SUCCESS
 
-    except Exception as exc:
+    # Check boundary: any render failure must be recorded as a failed artifact check, not crash the flow
+    except Exception as exc:  # noqa: BLE001
         artifact.status.value = "Error"
         await artifact.save()
         severity = "critical"

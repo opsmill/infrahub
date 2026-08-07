@@ -126,7 +126,7 @@ Infrahub backend monolith: `backend/infrahub/...`; tests under `backend/tests/{u
 **PRs**: these distribute rather than forming one PR — T046 regen rides with **PR-3** (the enum); T044 audit rides with **PR-2** or a small follow-up hardening PR; T045 dev/knowledge note rides with **PR-5**; T047 test runs are per-PR CI; T048 `.spec-context` rides with the final PR.
 
 - [ ] T044 Audit that **every** mutating API path funnels through `BranchStatusChecker.check` (GraphQL mutations, REST writes incl. `api/schema.py`, `api/artifact.py`); add coverage for any path that bypasses it (FR-001/009).
-- [ ] T045 [P] Add a `dev/knowledge/backend/` note documenting recovery's dependency on the merge architecture (lock lifetime, bulk-merge `$at`, `previous_*` snapshots, IPAM reorder) so future merge-architecture changes re-evaluate it (contracts §10).
+- [X] T045 [P] Add a `dev/knowledge/backend/` note documenting recovery's dependency on the merge architecture (lock lifetime, bulk-merge `$at`, `previous_*` snapshots, IPAM reorder) so future merge-architecture changes re-evaluate it (contracts §10). → `dev/knowledge/backend/merge-failure-recovery.md`.
 - [X] T046 Regenerate offline artifacts touched by the enum (`uv run invoke backend.generate` → `schema/schema.graphql`; `cd frontend/app && pnpm codegen` only if the GraphQL schema changed) and run `uv run invoke format` + `uv run invoke lint`.
 - [ ] T047 Run unit + component + functional suites (`uv run invoke backend.test-unit`; targeted `uv run pytest backend/tests/component/core/merge backend/tests/functional/merge`) and the integration-docker SIGKILL test; fix failures.
 - [ ] T048 Update `.spec-context.json` step state.

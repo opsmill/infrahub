@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import { addFiltersToRequest } from "@/shared/api/graphql/utils";
 
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
@@ -15,7 +14,7 @@ export interface ProposedChangesCountsFromApiParams {
 export const getProposedChangesCountsFromApi = async ({
   filters,
 }: ProposedChangesCountsFromApiParams) => {
-  const query = gql(
+  const query = graphql(
     jsonToGraphQLQuery({
       query: {
         __name: "GET_PROPOSED_CHANGE_COUNTS",

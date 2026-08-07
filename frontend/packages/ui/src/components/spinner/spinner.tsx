@@ -6,7 +6,7 @@ export interface SpinnerProps extends Omit<React.HTMLAttributes<HTMLDivElement>,
   className?: React.HTMLAttributes<SVGSVGElement>["className"];
 }
 
-export const Spinner = ({ className, ...props }: SpinnerProps) => {
+export function Spinner({ className, ...props }: SpinnerProps) {
   return (
     // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role This is a generic loading indicator, not an output value.
     <div role="status" {...props}>
@@ -29,4 +29,4 @@ export const Spinner = ({ className, ...props }: SpinnerProps) => {
       <span className="sr-only">Loading...</span>
     </div>
   );
-};
+}

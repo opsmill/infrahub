@@ -1,5 +1,13 @@
+import typing
+
 import pytest
 from fastapi.testclient import TestClient
+from infrahub_sdk.schema.generated.read import (
+    AttributeSchemaRead,
+    GenericSchemaRead,
+    NodeSchemaRead,
+    RelationshipSchemaRead,
+)
 
 from infrahub import config
 from infrahub.core import registry
@@ -46,6 +54,73 @@ async def test_schema_read_endpoint_default_branch(
 
     generics = {item["kind"]: item for item in schema["generics"]}
     assert generics["TestCar"]["used_by"]
+
+
+async def test_schema_read_endpoint_visibility(
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    """GET /api/schema exposes read-level fields and never leaks internal or unclassified fields.
+
+    The read-back is serialised consistently with the generated read model: every read-level
+    field (``inherited``/``used_by`` and the derived hierarchy fields) is present, the internal
+    parent back-reference (``node``) is never returned, and no field outside the read model's
+    visibility appears in the payload. ``hash`` and ``kind`` are the only response-level additions.
+    """
+    with client:
+        response = client.get("/api/schema", headers=client_headers)
+
+    assert response.status_code == 200
+    schema = response.json()
+
+    response_additions = {"hash", "kind"}
+    node_allowed = set(NodeSchemaRead.model_fields) | response_additions
+    generic_allowed = set(GenericSchemaRead.model_fields) | response_additions
+    # AttributeSchemaRead is a discriminated union of per-kind variants; the read-back may carry any
+    # kind, so the allowed-field set is the union of every variant's fields.
+    attribute_union = typing.get_args(typing.get_args(AttributeSchemaRead)[0])
+    attribute_fields: set[str] = set().union(*(set(variant.model_fields) for variant in attribute_union))
+    relationship_fields = set(RelationshipSchemaRead.model_fields)
+
+    # A read-level field derived from generic inheritance is present and populated.
+    generics = {item["kind"]: item for item in schema["generics"]}
+    assert generics["TestCar"]["used_by"]
+
+    def assert_members_visibility(node: dict) -> bool:
+        saw_inherited = False
+        for attribute in node["attributes"]:
+            unexpected = set(attribute) - attribute_fields
+            assert not unexpected, f"attribute leaked non-read fields: {unexpected}"
+            assert "inherited" in attribute  # read-level field is visible on read-back
+            assert "node" not in attribute  # internal parent back-reference is never returned
+            saw_inherited = saw_inherited or bool(attribute["inherited"])
+        for relationship in node["relationships"]:
+            unexpected = set(relationship) - relationship_fields
+            assert not unexpected, f"relationship leaked non-read fields: {unexpected}"
+            assert "inherited" in relationship
+            assert "hierarchical" in relationship  # derived read-level field
+            assert "node" not in relationship
+        return saw_inherited
+
+    saw_inherited_attribute = False
+    for node in schema["nodes"]:
+        unexpected = set(node) - node_allowed
+        assert not unexpected, f"node leaked non-read fields: {unexpected}"
+        assert "hierarchy" in node  # derived read-level field
+        saw_inherited_attribute = assert_members_visibility(node) or saw_inherited_attribute
+
+    for generic in schema["generics"]:
+        unexpected = set(generic) - generic_allowed
+        assert not unexpected, f"generic leaked non-read fields: {unexpected}"
+        assert "used_by" in generic
+        assert_members_visibility(generic)
+
+    # At least one attribute inherited from a generic is flagged with the read-level `inherited`.
+    assert saw_inherited_attribute
 
 
 async def test_schema_read_endpoint_branch1(

@@ -109,6 +109,7 @@ export const DynamicField = (props: DynamicFieldProps) => {
     case ATTRIBUTE_KIND.ID:
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
+    case ATTRIBUTE_KIND.IP_ADDRESS:
     case ATTRIBUTE_KIND.MAC_ADDRESS:
     case ATTRIBUTE_KIND.TEXT:
     case ATTRIBUTE_KIND.URL: {

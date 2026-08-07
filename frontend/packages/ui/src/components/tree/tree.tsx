@@ -1,4 +1,5 @@
 import type React from "react";
+import type { TreeProps as AriaTreeProps } from "react-aria-components";
 
 import { ChevronRightIcon } from "lucide-react";
 import {
@@ -41,6 +42,7 @@ function DotIcon(props: React.HTMLAttributes<SVGSVGElement>) {
   );
 }
 
+export type TreeProps<T> = AriaTreeProps<T>;
 export const Tree = AriaTree;
 
 export interface TreeItemProps extends AriaTreeItemProps {}

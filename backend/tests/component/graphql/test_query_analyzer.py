@@ -190,6 +190,65 @@ async def test_get_models_in_use(
     assert gqa.query_report.requested_read[InfrahubKind.GENERICGROUP].relationships == set()
 
 
+async def test_traversed_kinds(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    query_01: str,
+    car_person_schema_generics: SchemaRoot,
+) -> None:
+    """Traversed kinds cover what the query reaches through a relationship, roots included when shared.
+
+    A caller mapping a data change back to the query's own targets needs the two apart, because a
+    kind read only by following a relationship is never one of those targets. The requested-read map
+    keys by kind alone, so a kind read on both paths has to count as traversed: once a change is in
+    hand there is no way to tell which path saw it.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    traversing = InfrahubGraphQLQueryAnalyzer(
+        query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    assert set(traversing.query_report.requested_read) == {"TestPerson", "TestCar", "TestElectricCar", "TestGazCar"}
+    assert traversing.query_report.traversed_kinds == {"TestCar", "TestElectricCar", "TestGazCar"}
+
+    generic_root_query = """
+    query {
+        TestCar {
+            edges {
+                node {
+                    name { value }
+                }
+            }
+        }
+    }
+    """
+    generic_root = InfrahubGraphQLQueryAnalyzer(
+        query=generic_root_query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    assert generic_root.query_report.traversed_kinds == set()
+
+    shared_kind_query = """
+    query {
+        TestPerson {
+            edges {
+                node {
+                    name { value }
+                    cars { edges { node { owner { node { name { value } } } } } }
+                }
+            }
+        }
+    }
+    """
+    shared_kind = InfrahubGraphQLQueryAnalyzer(
+        query=shared_kind_query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    # TestPerson is the root and is reached again through cars -> owner. Reporting it as traversed is
+    # what stops a change on one of those owners from being narrowed away.
+    assert "TestPerson" in shared_kind.query_report.traversed_kinds
+
+
 async def test_query_report(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
 ) -> None:

@@ -105,4 +105,34 @@ describe("RelationshipComboboxList", () => {
     const lastCall = useRelationshipsMock.mock.calls.at(-1)?.[0];
     expect(lastCall.filterQuery).toEqual({ ids: ["17a4cdef-1234-4abc-8def-0123456789ab"] });
   });
+
+  test("keeps the caller filterQuery on a UUID search when enforceFilterQueryOnIdSearch is set", async () => {
+    useRelationshipsMock.mockReturnValue(setupReturn());
+    useSchemaMock.mockReturnValue({ schema: { label: "Device" } });
+
+    const component = await render(
+      <RelationshipComboboxList
+        peer="InfraDevice"
+        onSelect={vi.fn()}
+        filterQuery={{ device__ids: ["dev-1"] }}
+        enforceFilterQueryOnIdSearch
+      />
+    );
+
+    // Clear previous calls from initial render
+    useRelationshipsMock.mockClear();
+
+    const input = component.getByRole("combobox");
+    await input.click();
+    await input.fill("17a4cdef-1234-4abc-8def-0123456789ab");
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    // The id restriction and the enforced parent filter are both applied.
+    const lastCall = useRelationshipsMock.mock.calls.at(-1)?.[0];
+    expect(lastCall.filterQuery).toEqual({
+      device__ids: ["dev-1"],
+      ids: ["17a4cdef-1234-4abc-8def-0123456789ab"],
+    });
+  });
 });

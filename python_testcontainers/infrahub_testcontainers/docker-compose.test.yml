@@ -58,6 +58,16 @@ services:
       NEO4J_server_memory_heap_initial__size: ${INFRAHUB_TESTING_DB_HEAP_INITIAL_SIZE}
       NEO4J_server_memory_heap_max__size: ${INFRAHUB_TESTING_DB_HEAP_MAX_SIZE}
       NEO4J_server_memory_pagecache_size: ${INFRAHUB_TESTING_DB_PAGECACHE_SIZE}
+      # Bolt connector worker threads. Neo4j defaults to 400; a wide computed-attribute
+      # fan-out on large datasets can exhaust it (Neo.TransientError.Request.NoThreadsAvailable),
+      # so make it tunable for the heavy perf/dataset runs.
+      NEO4J_server_bolt_thread__pool__max__size: ${INFRAHUB_TESTING_DB_BOLT_THREAD_POOL_MAX_SIZE}
+    ulimits:
+      # Default container soft limit (1024) is far too low for a wide recompute fan-out and
+      # produces "[Errno 24] Too many open files"; raise the file-descriptor ceiling.
+      nofile:
+        soft: 1048576
+        hard: 1048576
     volumes:
       - "database_data:/data"
       - "database_logs:/logs"
@@ -173,6 +183,12 @@ services:
       replicas: ${INFRAHUB_TESTING_API_SERVER_COUNT}
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
     command: ${INFRAHUB_TESTING_DOCKER_ENTRYPOINT}
+    ulimits:
+      # Raise the file-descriptor ceiling so a wide recompute fan-out doesn't hit
+      # "[Errno 24] Too many open files" on the API server's outbound connections.
+      nofile:
+        soft: 1048576
+        hard: 1048576
     environment:
       INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}
       INFRAHUB_LOG_LEVEL: ${INFRAHUB_TESTING_LOG_LEVEL:-INFO}
@@ -219,6 +235,12 @@ services:
       replicas: ${INFRAHUB_TESTING_TASK_WORKER_COUNT}
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
     command: prefect worker start --type ${INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE} --pool infrahub-worker --with-healthcheck
+    ulimits:
+      # The recompute fan-out runs here; the worker opens many concurrent DB/HTTP
+      # connections and hits "[Errno 24] Too many open files" at the default 1024 ceiling.
+      nofile:
+        soft: 1048576
+        hard: 1048576
     environment:
       INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}
       INFRAHUB_LOG_LEVEL: ${INFRAHUB_TESTING_LOG_LEVEL}
@@ -252,7 +274,7 @@ services:
     tty: true
 
   cadvisor:
-    image: "${CADVISOR_DOCKER_IMAGE:-gcr.io/cadvisor/cadvisor:v0.51.0}"
+    image: "${CADVISOR_DOCKER_IMAGE:-ghcr.io/google/cadvisor:v0.60.5}"
     command:
       - -disable_root_cgroup_stats=true
       - -docker_only=true

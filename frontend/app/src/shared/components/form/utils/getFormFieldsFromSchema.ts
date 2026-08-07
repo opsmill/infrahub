@@ -20,6 +20,7 @@ import type {
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 
 interface GetFormFieldsFromSchema extends FormContextType {
   schema: ModelSchema;
@@ -27,6 +28,7 @@ interface GetFormFieldsFromSchema extends FormContextType {
   initialObject?: NodeFieldsWithMetadata;
   objectTemplate?: NodeObject | null;
   auth?: AuthContextType;
+  isDefaultBranch?: boolean;
   isFilterForm?: boolean;
   pools?: Array<NumberPool>;
   isUpdate?: boolean;
@@ -39,6 +41,7 @@ export const getFormFieldsFromSchema = ({
   initialObject,
   objectTemplate,
   auth,
+  isDefaultBranch,
   isFilterForm,
   pools = [],
   isUpdate,
@@ -59,7 +62,7 @@ export const getFormFieldsFromSchema = ({
   const orderedFields = sortByOrderWeight(unorderedFields);
 
   return orderedFields.reduce((acc: Array<DynamicFieldProps>, field) => {
-    if ("peer" in field) {
+    if (isRelationshipSchema(field)) {
       if (isBulkUpdate && field.cardinality === "many") {
         return [
           ...acc,
@@ -115,6 +118,7 @@ export const getFormFieldsFromSchema = ({
       ...acc,
       getFormFieldFromAttribute({
         auth,
+        isDefaultBranch,
         attributeSchema: field,
         currentObject: initialObject as Record<string, AttributeType> | undefined,
         objectTemplate,

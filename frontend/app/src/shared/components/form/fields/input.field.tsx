@@ -77,9 +77,11 @@ const InputField = ({
 
               {pool && (
                 <PoolSelect
+                  name={name}
                   poolKind={pool.kind}
                   poolDefaultAllocatedObjectKind={pool.defaultAllocatedObjectKind}
                   selectedPoolId={selectedPoolId}
+                  value={fieldData}
                   onChange={(value) =>
                     field.onChange(updateAttributeFieldValue(value, defaultValue))
                   }

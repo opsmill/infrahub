@@ -35,12 +35,14 @@ export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => 
 
   const url = `${getProposedChangeDetailsUrl(proposedChange.id, "data")}#${id}`;
 
-  const mainChange = changes.find((change) => {
-    return change.branch === "main";
+  const destinationBranch = proposedChange.destination_branch.value;
+
+  const destinationChange = changes.find((change) => {
+    return change.branch === destinationBranch;
   });
 
   const branchChange = changes.find((change) => {
-    return change.branch !== "main";
+    return change.branch !== destinationBranch;
   });
 
   return (
@@ -66,10 +68,10 @@ export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => 
           }
           left={
             <div className="flex items-center gap-2">
-              {mainChange?.previous}
+              {destinationChange?.previous}
               <Icon icon="mdi:chevron-right" />
               <Badge variant="yellow" className="font-medium">
-                {mainChange?.new}
+                {destinationChange?.new}
               </Badge>
             </div>
           }

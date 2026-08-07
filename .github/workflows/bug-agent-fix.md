@@ -240,7 +240,7 @@ Create a changelog fragment for this bug fix. Use the issue number and the `fixe
 uv run towncrier create -c "<user-facing description of what was fixed>" <issue_number>.fixed.md
 ```
 Write the message from the user's perspective, in past tense, one sentence, no technical
-jargon (see `dev/guidelines/changelog.md`). Commit the generated file.
+jargon (use the `creating-changelog-entries` skill). Commit the generated file.
 
 ### Step 7: Scope check
 

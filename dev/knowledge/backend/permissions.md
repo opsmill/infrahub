@@ -36,6 +36,8 @@ Gate workflow actions and operational scope. Defined in `GlobalPermissions` enum
 
 Global permission resolution: deny preempts allow. If any loaded permission for an action has decision=DENY, the permission is denied regardless of other ALLOW entries.
 
+Any re-implementation of this check outside the backend — a frontend gate hiding UI behind a permission, for example — must mirror these exact semantics (DENY preemption, super admin bypass), not a naive "some grant allows it" test. A user holding both an ALLOW and a DENY grant would otherwise see UI the backend rejects.
+
 ### Object Permissions
 
 Gate CRUD operations on specific kinds. Defined by four fields:

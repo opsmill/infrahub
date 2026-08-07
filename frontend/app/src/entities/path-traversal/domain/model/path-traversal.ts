@@ -51,7 +51,7 @@ export type ReachableNodesResponse = {
 
 type ContextParams = {
   branchName?: string;
-  atDate?: Date | string | null;
+  atDate?: Date | null;
 };
 
 export type GetPathTraversalParams = ContextParams & {

@@ -85,6 +85,7 @@ export { Spinner, type SpinnerProps } from "./components/spinner/spinner";
 export { Tooltip, type TooltipProps } from "./components/tooltip/tooltip";
 export {
   Tree,
+  type TreeProps,
   TreeItem,
   TreeItemContent,
   type TreeItemContentProps,

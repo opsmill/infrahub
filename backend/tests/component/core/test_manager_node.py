@@ -14,7 +14,7 @@ from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeToProcess
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
-from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -372,6 +372,30 @@ async def test_iphost_attribute_value_is_normalized_after_save(db: InfrahubDatab
     reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
     assert reloaded is not None
     assert reloaded.address.value == "192.0.2.10/32"
+
+
+async def test_ipaddress_attribute_value_is_normalized_after_save(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """An IPAddress attribute exposes its bare normalized value after a save/reload cycle."""
+    schema_root = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="DnsRecord",
+                namespace="Test",
+                attributes=[AttributeSchema(name="address", kind="IPAddress")],
+            )
+        ]
+    )
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+
+    node = await Node.init(db=db, schema="TestDnsRecord", branch=default_branch)
+    await node.new(db=db, address="2001:0DB8::0001")
+    await node.save(db=db)
+
+    assert node.get_attribute("address").value == "2001:db8::1"
+
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
+    assert reloaded is not None
+    assert reloaded.get_attribute("address").value == "2001:db8::1"
 
 
 async def test_macaddress_attribute_value_is_normalized_after_save(

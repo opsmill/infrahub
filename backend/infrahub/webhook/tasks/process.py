@@ -17,6 +17,7 @@ from prefect.runtime import flow_run
 from prefect.states import Cancelled, Failed
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.events.models import EventContext as InfrahubEventContext
 from infrahub.message_bus.types import KVTTL
 from infrahub.task_manager.flow_run.constants import WEBHOOK_HTTP_ARTIFACT_KEY, WEBHOOK_HTTP_ARTIFACT_TYPE
 from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
@@ -36,6 +37,7 @@ from ..models import CustomWebhook, EventContext, HeaderKind, StandardWebhook, T
 
 if TYPE_CHECKING:
     from httpx import Response
+    from infrahub_sdk.context import RequestContext
     from prefect.client.schemas.objects import State
 
 
@@ -87,7 +89,8 @@ async def _record_http_capture(capture: CapturedHttp) -> None:
                 data=capture.to_artifact_data(),
                 flow_run_id=UUID(flow_run.id),
             )
-    except Exception as exc:
+    # Best-effort capture: an artifact write failure must never alter or mask the delivery outcome
+    except Exception as exc:  # noqa: BLE001
         get_run_logger().warning(f"Could not record the delivery capture: {exc}")
 
 
@@ -258,7 +261,17 @@ async def convert_node_to_webhook(webhook_node: CoreWebhook, client: InfrahubCli
     return CustomWebhook.from_object(obj=webhook_node, custom_headers=custom_headers)
 
 
-async def _resolve_webhook(webhook_id: str, webhook_kind: str) -> Webhook:
+def _request_context_from_event(event_payload: dict[str, Any]) -> RequestContext | None:
+    """Derive the SDK request context (account and priority) from a raw event payload."""
+    infrahub_context = event_payload.get("context")
+    if not infrahub_context:
+        return None
+    return InfrahubEventContext.model_validate(infrahub_context).to_request_context()
+
+
+async def _resolve_webhook(
+    webhook_id: str, webhook_kind: str, request_context: RequestContext | None = None
+) -> Webhook:
     """Return the webhook config from cache, or fetch it from the database and cache it.
 
     Raises:
@@ -267,6 +280,8 @@ async def _resolve_webhook(webhook_id: str, webhook_kind: str) -> Webhook:
     """
     log = get_run_logger()
     client = get_client()
+    if request_context is not None:
+        client.request_context = request_context
     cache = await get_cache()
 
     webhook_data_str = await cache.get(key=f"{CACHE_KEY_PREFIX}:{webhook_id}")
@@ -303,8 +318,11 @@ async def webhook_process(
     An unexpected error keeps its traceback so it surfaces as a genuine crash.
     """
     client = get_client()
+    request_context = _request_context_from_event(event_payload)
+    if request_context is not None:
+        client.request_context = request_context
 
-    webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
+    webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind, request_context=request_context)
     webhook_context = EventContext.from_event(
         event_id=event_id,
         event_type=event_type,

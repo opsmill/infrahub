@@ -153,8 +153,7 @@ class GeneratorRegenTestBase(TestInfrahubAppBase):
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:
-        workflow_recorder.execute_calls.clear()
-        workflow_recorder.submit_calls.clear()
+        workflow_recorder.reset()
 
     def _make_context(self, account: CoreAccount, default_branch: Branch) -> InfrahubContext:
         return InfrahubContext(
@@ -410,6 +409,29 @@ class TestGeneratorRegenSelection(GeneratorRegenTestBase):
             memory_cache=memory_cache,
             workflow_recorder=workflow_recorder,
             diff_summary=[make_node_diff(dataset["device_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"])],
+        )
+        assert selected == ["device-gen-a", "device-gen-a2", "device-gen-b", "device-gen-source-only"]
+
+    async def test_profile_change_selects_generators_reading_profiled_kind(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+    ) -> None:
+        """A change touching only a profile selects every generator whose query reads the profiled kind.
+
+        The diff carries the profile kind alone; the profiled node kind is what the queries read, so the
+        selection widens the profile to that node kind and dispatches every generator reading it.
+        """
+        selected = await self._selected_definitions(
+            dataset=dataset,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            memory_cache=memory_cache,
+            workflow_recorder=workflow_recorder,
+            diff_summary=[make_node_diff(str(uuid.uuid4()), "ProfileTestNetworkDevice", SOURCE_BRANCH, ["color"])],
         )
         assert selected == ["device-gen-a", "device-gen-a2", "device-gen-b", "device-gen-source-only"]
 

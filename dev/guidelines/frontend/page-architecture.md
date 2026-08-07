@@ -96,6 +96,12 @@ If the backend already filters, transforms, or defaults something, do not duplic
 
 If the client needs to *display* a server-side default, surface it via the API (extend a query or response field) rather than mirroring the constant.
 
+## Pagination and sort-change: know the current tradeoff
+
+Object list sorting today intentionally keeps the pagination offset unchanged when the active sort changes, matching how filter changes already behave. At scale (verified with ~10k rows) this produces a page-stitching bug: from a deep offset, changing sort direction shows the tail of the new order immediately followed by rows from the old, now-inconsistent offset. That fix — resetting the offset to its default (`offset: 0`) whenever sort changes — has not landed yet.
+
+For any *new* offset-paginated list that supports both sorting and pagination, prefer resetting the offset to its default value on sort change rather than repeating this known tradeoff.
+
 ## Anti-patterns observed in past PRs
 
 | Anti-pattern | Replacement |
@@ -106,6 +112,7 @@ If the client needs to *display* a server-side default, surface it via the API (
 | Two selectors with ~50% duplicated UI | Extract a `KindMultiSelect` / shared block once both exist |
 | Hand-rolling `gql` + `graphqlClient.query` in a `ui/` file | Use the entity layer (`useGetObject`, `ui/queries/`) |
 | Hardcoding `HIDDEN_NAMESPACES` on the client | Backend-authoritative; surface via schema if needed |
+| Sort change preserving pagination offset at scale — page-stitching bug, fix not yet landed | Reset the offset to its default (`0`) on sort change, once implemented |
 
 ## See also
 
