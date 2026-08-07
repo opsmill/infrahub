@@ -1,16 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphqlClient } from "@/shared/api/graphql/client";
 
-import { getSchema } from "@/entities/schema/domain/get-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 import { getDefaultParentFromApi } from "./get-default-parent-from-api";
 
-vi.mock("@/shared/api/graphql/graphqlClientApollo", () => ({
-  default: { query: vi.fn() },
+// `client` also re-exports gql.tada's `graphql` tag, which the module under test uses to build
+// the query. Keep that real and stub only the transport.
+vi.mock("@/shared/api/graphql/client", async () => ({
+  graphql: (await import("gql.tada")).graphql,
+  graphqlClient: { query: vi.fn() },
 }));
 
-vi.mock("@/entities/schema/domain/get-schema", () => ({
+vi.mock("@/entities/schema/domain/use-cases/get-schema", () => ({
   getSchema: vi.fn(),
 }));
 
