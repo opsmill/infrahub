@@ -163,9 +163,17 @@
   description: "The bug agent pipeline could not write a test for this issue automatically"
   color: "e34918"
 
+- name: "state/ai-pipeline-ready"
+  description: "Issue is approved for the automated bug-agent pipeline to act on"
+  color: "1d76db"
+
 - name: "state/backlog"
   description: "This issue is part of the backlog"
   color: "eeeeee"
+
+- name: "state/verified-2026-08"
+  description: "Checked against current code during the 2026-08 backlog triage, confirmed still valid"
+  color: "0e8a16"
 
 - name: "state/planned"
   description: "This issue is planned to be worked on in an upcoming release."
@@ -202,3 +210,28 @@
 - name: "stale"
   description: "Marks stale issues and pull requests"
   color: "ffffff"
+
+- name: "agentic-workflows"
+  description: "Related to the agentic workflows under .github/workflows"
+  color: "5319e7"
+
+- name: "review/release-1.11"
+  description: "Reviewed as part of the 1.11 release"
+  color: "c9510c"
+
+# ----------------------------------
+# DEPENDABOT
+# Applied automatically by Dependabot. They must be declared here or the label
+# sync deletes them on its next run.
+# ----------------------------------
+- name: "dependencies"
+  description: "Pull requests that update a dependency file"
+  color: "0366d6"
+
+- name: "javascript"
+  description: "Pull requests that update JavaScript code"
+  color: "f1e05a"
+
+- name: "python:uv"
+  description: "Pull requests that update Python dependencies managed by uv"
+  color: "3572a5"
