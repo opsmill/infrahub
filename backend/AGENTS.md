@@ -80,6 +80,9 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 - New database indexes
 - Core schema definition changes
 - New GraphQL mutations/queries
+- New REST endpoints — serve SDK/client needs through existing GraphQL queries first; every REST
+  endpoint is a second public contract that ripples into `schema/openapi.json` and the generated
+  frontend REST types
 
 ### Never Do
 
@@ -126,6 +129,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/guides/backend/creating-events.md` - Creating new events
 - `dev/guides/backend/creating-async-tasks.md` - How to create an async task, with a pre-submit checklist. Load when adding a `@task`/`@flow`.
 - `dev/guides/backend/creating-messages.md` - Creating message bus messages
+- `dev/guides/backend/creating-migrations.md` - Graph migrations (batching, idempotency, error handling); read before writing a migration or fixing data a migration got wrong
 
 ### ADRs (Why we decided)
 

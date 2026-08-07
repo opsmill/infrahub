@@ -152,6 +152,8 @@ class MyQuery(Query):
 
 Pagination (`LIMIT`/`OFFSET`) is automatically appended based on constructor parameters. Pass `limit` and `offset` through to `super().__init__()` — a subclass that keeps its own copies leaves the base `self.limit`/`self.offset` at `None`, and `execute()` reads those to decide how to run: with both unset it takes the `query_with_size_limit()` path, which re-runs the query in `query_size_limit` chunks with offsets of its own. The subclass then pages twice, against itself.
 
+Automatic pagination is only correct over a total order: give the query an `ORDER BY` on a unique key (add `elementId(n)` as a tiebreaker when the sort property is not unique). Neo4j does not guarantee disjoint pages otherwise, so chunked reads can skip or repeat rows.
+
 To write pagination directly in your query, set `insert_limit = False`:
 
 > **List reads default to a page limit (e.g. `Branch.get_list` defaults to `limit=1000`).** Any check that must reason over *all* matching rows — "is any branch merging?", "are there duplicates?" — must not rely on an unbounded read of a default page. Narrow the query with a filter (a status/kind predicate) or paginate explicitly; otherwise the check silently ignores everything past the first page once the table grows.
@@ -351,29 +353,8 @@ def get_data(self) -> Generator[NodeWithPeers, None, None]:
 ```
 
 
-### Query Method Patterns
-
-```python
-# Multiple results (standard pattern):
-# Query returns: RETURN n.uuid AS node_uuid, n.name AS node_name
-def get_data(self) -> Generator[MyQueryResult, None, None]:
-    for result in self.get_results():
-        yield MyQueryResult(
-            uuid=result.get_as_str("node_uuid"),
-            name=result.get_as_str("node_name"),
-        )
-
-# Single result:
-# Query returns: RETURN n.uuid AS node_uuid, n.name AS node_name
-def get_data(self) -> MyQueryResult | None:
-    result = self.get_result()
-    if result is None:
-        return None
-    return MyQueryResult(
-        uuid=result.get_as_str("node_uuid"),
-        name=result.get_as_str("node_name"),
-    )
-```
+For a query expected to yield at most one row, return `MyQueryResult | None` from a
+`self.get_result()` check instead of a generator.
 
 ### Guidelines
 
@@ -385,25 +366,9 @@ def get_data(self) -> MyQueryResult | None:
 - Use `get_as_str()`, `get_as_type()` for scalars, `get_as_optional_type()` for nullable values
 - Use `Generator` return type since `get_results()` returns a generator
 
-### Why Return Only Needed Properties
-
-Returning entire nodes (`RETURN n`) transfers all properties from the database, even those you don't use. This wastes:
-
-1. **Network bandwidth** between Neo4j and the application
-2. **Memory** for deserializing and storing unused data
-3. **CPU cycles** for parsing unnecessary properties
-
-```cypher
--- Bad: Returns all properties of n, r, and p
-MATCH (n:Node)-[r:REL]->(p:Peer)
-RETURN n, r, p
-
--- Good: Returns only the 3 properties actually needed
-MATCH (n:Node)-[r:REL]->(p:Peer)
-RETURN n.uuid AS node_uuid, n.name AS node_name, r.branch AS rel_branch
-```
-
-Use `elementId(n) AS db_id` when you need the database ID, rather than returning the full node just to access `node.element_id`.
+Use `elementId(n) AS db_id` when you need the database ID, rather than returning the full node just
+to access `node.element_id` (see [Return Labels](#return-labels) for why whole-node returns waste
+bandwidth and memory).
 
 ## Internals
 
