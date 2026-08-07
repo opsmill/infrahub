@@ -10,16 +10,20 @@ import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repo
 
 export type GitRepositoryData = {
   id: string;
+  __typename: string;
   display_label?: string | null;
   sync_status?: Dropdown | null;
 };
 
 export const GitRepositoryItem = ({ repository }: { repository: GitRepositoryData }) => {
-  const { id, display_label, sync_status } = repository;
+  const { id, __typename, display_label, sync_status } = repository;
 
   return (
     <ListBoxItem
-      href={getObjectDetailsUrl(GENERIC_REPOSITORY_KIND, id)}
+      // Link to the object's concrete kind (e.g. CoreRepository / CoreReadOnlyRepository)
+      // rather than the generic kind, so the details/edit routes resolve the schema that
+      // actually exposes its fields. Falls back to the generic kind if __typename is absent.
+      href={getObjectDetailsUrl(__typename ?? GENERIC_REPOSITORY_KIND, id)}
       className={classNames(
         focusVisibleStyle,
         "flex items-center justify-between p-4 text-sm",

@@ -8,7 +8,6 @@ import type { ContextParams } from "@/shared/api/types";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/schema";
-import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
@@ -56,9 +55,14 @@ export async function getObjectForEditingFromApi({
             ...addRelationshipsToRequest([...formRelationships, ...extraRelationships], {
               withMetadata: true,
             }),
-            ...(!isGenericSchema(objectSchema) &&
-            "generate_profile" in objectSchema &&
-            objectSchema.generate_profile
+            // Only request `profiles` when the schema actually exposes it. The backend
+            // adds a `profiles` relationship (peer CoreProfile) to any node OR generic
+            // whose namespace is not restricted (Builtin excepted), which mirrors exactly
+            // when the GraphQL type exposes the `profiles` field. Relying on the
+            // relationship keeps us correct for both nodes and profile-having generics
+            // (e.g. BuiltinIPAddress) while still omitting it for generics that lack it
+            // (e.g. CoreGenericRepository in the restricted Core namespace).
+            ...((objectSchema.relationships ?? []).some((rel) => rel.name === "profiles")
               ? {
                   profiles: {
                     edges: {
