@@ -13,6 +13,7 @@ import { useGetNextIpPrefixAvailable } from "@/entities/ipam/ip-prefixes/ui/quer
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { buildAllocateResourceInput } from "@/entities/resource-manager/domain/build-allocate-resource-input";
 import { getAllocateMutationNameFromSchema } from "@/entities/resource-manager/domain/rules/get-allocate-mutation-name-from-schema";
 import { useAllocateResourceMutation } from "@/entities/resource-manager/ui/queries/allocate-resource.mutation";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
@@ -99,11 +100,15 @@ function IpamCreationForm(props: IpamCreationFormProps) {
         const allocateMutationName = getAllocateMutationNameFromSchema(props.schema);
 
         if (fieldDataForIpField?.source?.type === "pool" && allocateMutationName) {
+          // IPAM allocates the IP node from the pool via the dedicated GetResource mutation.
           await allocateResource.mutateAsync(
             {
               poolGetResourceMutationName: allocateMutationName,
-              poolId: fieldDataForIpField.source.id,
-              data: getCreateMutationFromFormData(formFieldsWithoutIpField, formData),
+              data: buildAllocateResourceInput({
+                poolId: fieldDataForIpField.source.id,
+                poolFieldValue: fieldDataForIpField.value,
+                nodeData: getCreateMutationFromFormData(formFieldsWithoutIpField, formData),
+              }),
             },
             {
               onSuccess,

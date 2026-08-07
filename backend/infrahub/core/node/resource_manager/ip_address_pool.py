@@ -16,6 +16,7 @@ from infrahub.exceptions import PoolExhaustedError, ValidationError
 
 from .. import Node
 from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
+from .reservation import validate_reserved_prefix_length
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -51,6 +52,13 @@ class CoreIPAddressPool(Node):
                     node = await registry.manager.get_one(db=db, id=address.get("uuid"), branch=branch)
 
                     if node:
+                        validate_reserved_prefix_length(
+                            pool_kind="IPAddressPool",
+                            pool_name=str(self.get_attribute("name").value),
+                            reserved_value=node.get_attribute("address").value,
+                            prefixlen=prefixlen,
+                            data=data,
+                        )
                         return node
 
             data = data or {}

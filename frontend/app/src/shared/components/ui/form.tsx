@@ -115,16 +115,39 @@ export const FormInput = ({ className, ref, ...props }: FormInputProps) => {
   const { id, name } = React.use(FormFieldContext);
   const formState = useFormState({ name });
   const { error } = getFieldState(name, formState);
+  // Flag the input only for this field's own error. A field that merely contains a
+  // nested child field's error (e.g. a from-pool allocation's prefix-length field)
+  // gets a nested error object with no top-level `type`, so its primary input must
+  // not light up for an error the child already surfaces.
+  const hasOwnError = Boolean(error?.type);
 
   return (
     <Slot
       ref={ref}
       id={id}
-      className={classNames(error && inputErrorStyle, className)}
-      aria-invalid={!!error}
+      className={classNames(hasOwnError && inputErrorStyle, className)}
+      aria-invalid={hasOwnError}
       {...props}
     />
   );
+};
+
+/**
+ * Returns the first error message found in a react-hook-form error object,
+ * descending into nested child-field errors (e.g. a from-pool allocation's
+ * prefix-length field) so a field's message area can surface a sub-field's error
+ * full-width.
+ */
+export const findErrorMessage = (error: unknown): string | undefined => {
+  if (!error || typeof error !== "object") return;
+  const entry = error as { message?: unknown; [key: string]: unknown };
+  if (typeof entry.message === "string" && entry.message) return entry.message;
+  for (const key of Object.keys(entry)) {
+    if (key === "ref" || key === "type" || key === "message") continue;
+    const nested = findErrorMessage(entry[key]);
+    if (nested) return nested;
+  }
+  return;
 };
 
 export const FormMessage = ({
@@ -137,7 +160,7 @@ export const FormMessage = ({
   const formState = useFormState({ name });
   const { error } = getFieldState(name, formState);
 
-  const message = error?.message?.toString() ?? children;
+  const message = findErrorMessage(error) ?? children;
 
   if (!message) return null;
 

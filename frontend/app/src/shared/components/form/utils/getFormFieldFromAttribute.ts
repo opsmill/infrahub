@@ -91,6 +91,7 @@ export const getFormFieldFromAttribute = ({
       required: !isFilterForm && !isBulkUpdate && !attributeSchema.optional,
       validate: (formFieldValue: FormFieldValue) => {
         if (isFilterForm || isBulkUpdate) return true;
+
         if (formFieldValue.source?.type === "pool") return true;
 
         const attributeKind = attributeSchema.kind as AttributeKind;
