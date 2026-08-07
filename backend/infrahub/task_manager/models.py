@@ -201,10 +201,21 @@ class InfrahubEventFilter(EventFilter):
 
     def add_related_node_filter(self, related_node__ids: list[str] | None) -> None:
         if related_node__ids:
+            # Group members and ancestors are related nodes of the event, but they
+            # carry their own roles rather than the generic one. Matching all three
+            # roles keeps this filter correct for both the consolidated group event
+            # format and any older events still listing members as related nodes.
             self.add_related_filter(
                 EventRelatedFilter(
                     labels=ResourceSpecification(
-                        {"prefect.resource.role": "infrahub.related.node", "prefect.resource.id": related_node__ids}
+                        {
+                            "prefect.resource.role": [
+                                "infrahub.related.node",
+                                "infrahub.group.member",
+                                "infrahub.group.ancestor",
+                            ],
+                            "prefect.resource.id": related_node__ids,
+                        }
                     )
                 )
             )
