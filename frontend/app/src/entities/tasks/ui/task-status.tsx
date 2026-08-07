@@ -4,12 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 
-<<<<<<< HEAD
-import { constructPath } from "@/shared/api/rest/fetch";
-=======
 import { constructPath, type overrideQueryParams } from "@/shared/api/rest/fetch";
-import { Tooltip } from "@/shared/components/aria/tooltip";
->>>>>>> origin/stable
 import { Pulse } from "@/shared/components/ui/pulse";
 import { QSP } from "@/shared/config/qsp";
 
