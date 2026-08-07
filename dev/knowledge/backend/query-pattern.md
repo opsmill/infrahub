@@ -148,6 +148,14 @@ class MyQuery(Query):
         self.add_to_query("RETURN n.uuid AS uuid, n.name AS name LIMIT 100")  # Manual pagination
 ```
 
+Two failure modes on READ queries:
+
+- `insert_limit = False` without a `LIMIT` of your own is not "no pagination" — `execute()` still
+  takes the chunked `query_with_size_limit()` path, every chunk re-reads the full result set, and
+  the loop (which stops on a short page) never advances once results reach `query_size_limit`.
+- An auto-paginated query needs an `ORDER BY` over a total order (a unique key). Without one, Neo4j
+  does not guarantee pages are disjoint, so rows can be skipped or repeated across chunks.
+
 ### Branch-Aware Edge Resolution
 
 Every edge in the graph has branch/temporal properties (`branch`, `branch_level`, `from`, `to`, `status`). When traversing multiple edges in a single query, filter each edge independently to resolve the correct active version:
@@ -280,29 +288,8 @@ def get_data(self) -> Generator[NodeWithPeers, None, None]:
 ```
 
 
-### Query Method Patterns
-
-```python
-# Multiple results (standard pattern):
-# Query returns: RETURN n.uuid AS node_uuid, n.name AS node_name
-def get_data(self) -> Generator[MyQueryResult, None, None]:
-    for result in self.get_results():
-        yield MyQueryResult(
-            uuid=result.get_as_str("node_uuid"),
-            name=result.get_as_str("node_name"),
-        )
-
-# Single result:
-# Query returns: RETURN n.uuid AS node_uuid, n.name AS node_name
-def get_data(self) -> MyQueryResult | None:
-    result = self.get_result()
-    if result is None:
-        return None
-    return MyQueryResult(
-        uuid=result.get_as_str("node_uuid"),
-        name=result.get_as_str("node_name"),
-    )
-```
+For a query expected to yield at most one row, return `MyQueryResult | None` from a
+`self.get_result()` check instead of a generator.
 
 ### Guidelines
 
@@ -314,25 +301,9 @@ def get_data(self) -> MyQueryResult | None:
 - Use `get_as_str()`, `get_as_type()` for scalars, `get_as_optional_type()` for nullable values
 - Use `Generator` return type since `get_results()` returns a generator
 
-### Why Return Only Needed Properties
-
-Returning entire nodes (`RETURN n`) transfers all properties from the database, even those you don't use. This wastes:
-
-1. **Network bandwidth** between Neo4j and the application
-2. **Memory** for deserializing and storing unused data
-3. **CPU cycles** for parsing unnecessary properties
-
-```cypher
--- Bad: Returns all properties of n, r, and p
-MATCH (n:Node)-[r:REL]->(p:Peer)
-RETURN n, r, p
-
--- Good: Returns only the 3 properties actually needed
-MATCH (n:Node)-[r:REL]->(p:Peer)
-RETURN n.uuid AS node_uuid, n.name AS node_name, r.branch AS rel_branch
-```
-
-Use `elementId(n) AS db_id` when you need the database ID, rather than returning the full node just to access `node.element_id`.
+Use `elementId(n) AS db_id` when you need the database ID, rather than returning the full node just
+to access `node.element_id` (see [Return Labels](#return-labels) for why whole-node returns waste
+bandwidth and memory).
 
 ## Internals
 

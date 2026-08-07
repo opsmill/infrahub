@@ -95,6 +95,14 @@ async def validate_schema(db: InfrahubDatabase, branch: Branch) -> bool:
     # ... implementation
 ```
 
+### InfrahubBatch is concurrent, not ordered
+
+The SDK's `InfrahubBatch` runs everything added to it concurrently when executed — grouping tasks
+into one batch (or into a "phase" of batches) is not a serialization mechanism. When tasks must not
+overlap (e.g. writes touching overlapping vertices whose idempotency guards only protect
+*sequential* reruns), cap the batch's max concurrent execution to 1 or run the items in a plain
+loop.
+
 ## Naming Conventions
 
 ### Workflow and Task Names
