@@ -8,7 +8,7 @@ disable-model-invocation: false
 
 # Feature Flow
 
-End-to-end orchestrator for a single feature. Reuses existing repo-level slash commands and skills (`/speckit-*`, `/pre-ci`, `/git-commit`, `/git-pr`, `/capture-knowledge`) — does **not** reimplement them.
+End-to-end orchestrator for a single feature. Reuses existing repo-level slash commands and skills (`/speckit-*`, `/pre-ci`, `/git-commit`, `/pr`, `/capture-knowledge`) — does **not** reimplement them.
 
 ## Core principles
 
@@ -141,19 +141,19 @@ For **each** PR (one or many):
 
 #### 6c. Open
 
-For each approved PR branch, invoke `/git-pr` with the approved title and body:
+For each approved PR branch, delegate PR creation to `/pr` — it owns the PR description, `gh pr create`, and the CI-monitoring handoff. feature-flow's job here is to satisfy `/pr`'s preconditions and pass context, not to reimplement PR creation.
 
-```
-/git-pr --title "<approved title>" --body "<approved body>"
-```
+**Before invoking `/pr`, for the branch being opened:**
 
-`/git-pr` handles the push (setting upstream if needed) and `gh pr create` itself. It refuses to run if the working tree is dirty or if the branch has no commits ahead of base — surface either error to the user rather than working around it.
+1. **Require a clean working tree.** Run `git status --porcelain`; if it is non-empty, **STOP** and surface the uncommitted changes to the user. The work should already be committed from Phase 3 — do not open a PR that silently omits drift, and do not auto-commit to work around it. (`/pr` without `commit` only *warns* about a dirty tree and then continues; the orchestrator enforces the hard stop the old flow had.)
+2. **Publish the branch:** `git push -u origin "$(git branch --show-current)"` (a no-op if already up to date). `/pr` invoked without `commit` does not push, so the branch must exist on origin first — otherwise `gh pr create` stalls on an unpushed branch.
 
-For split PRs with dependencies, prepend a `Depends on #<sibling-PR>` line to dependent bodies and open in dependency order.
+**Then invoke `/pr` without the `commit` argument** (Phase 3 already committed):
 
-Report the PR URL(s) returned by `/git-pr`. For split PRs, note merge order.
+- Give it the 6b-approved title and summary as the intended description, plus the Phase 1 spec brief for context; `/pr` presents its own final draft for approval before creating.
+- **Base branch:** `/pr` selects the repository's default base itself. For a **dependent** split PR whose base must be a *parent feature branch*, `/pr` cannot pick that base — after it opens the PR, retarget with `gh pr edit <pr> --base <parent-branch>`, then verify the diff shows only that PR's own commits. Add a `Depends on #<parent-PR>` line and open in dependency order.
 
-Note: by this point, the work was already committed iteratively during Phase 3. If anything is uncommitted, `/git-pr` will refuse — do not auto-commit drift to satisfy it; surface the dirty state to the user.
+Report the PR URL(s) `/pr` returns; for split PRs, note merge order.
 
 ## Iteration notes
 
