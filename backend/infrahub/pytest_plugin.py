@@ -77,7 +77,7 @@ class InfrahubBackendPlugin:
             item_cost = 99
             for marker_name, priority in ORDER_ITEM_MAP.items():
                 if item.get_closest_marker(marker_name):
-                    type_cost = priority
+                    item_cost = priority
                     break
 
             return type_cost, item_cost
