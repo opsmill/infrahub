@@ -588,7 +588,6 @@ allow-dunder-method-names = [
     "N801",     # Class name should use CapWords convention
     "N806",     # Variable in function should be lowercase
     "PERF401",  # Use a list comprehension to create a transformed list
-    "PERF403",  # Use a dictionary comprehension instead of a for-loop
     "PGH003",   # Use specific rule codes when ignoring type issues
     "PGH004",   # Use specific rule codes when using `noqa`
     "PLC0415",  # `import` should be at the top-level of a file
