@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Iterator, Sequence
 
+from neo4j.exceptions import TransientError
 from pydantic import BaseModel, ConfigDict, Field
 from rich.console import Console
 from typing_extensions import Self
@@ -15,6 +16,7 @@ from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema, SchemaRoot, internal_schema
 from infrahub.core.timestamp import Timestamp
+from infrahub.database import retry_db_transaction
 
 from .query import MigrationBaseQuery  # noqa: TC001
 
@@ -154,12 +156,18 @@ class SchemaMigration(BaseModel):
                 )
                 await query.execute(db=migration_input.db)
                 result.nbr_migrations_executed += query.get_nbr_migrations_executed()
+            except TransientError:
+                # A transient error aborts the enclosing transaction server-side: recording it here
+                # would leave the commit to fail with a non-retryable TransactionError, so it must
+                # propagate to the transaction owner to be replayed on a fresh transaction.
+                raise
             except Exception as exc:
                 result.errors.append(str(exc))
                 return result
 
         return result
 
+    @retry_db_transaction(name="schema_migration")
     async def execute(
         self,
         migration_input: MigrationInput,
@@ -231,6 +239,7 @@ class GraphMigration(BaseMigration):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     queries: Sequence[type[Query]] = Field(..., description="List of queries to execute for this migration")
 
+    @retry_db_transaction(name="graph_migration")
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         async with migration_input.db.start_transaction() as ts:
             txn_migration_input = MigrationInput(db=ts, at=migration_input.at, console=migration_input.console)
@@ -242,6 +251,9 @@ class GraphMigration(BaseMigration):
             try:
                 query = await migration_query.init(db=migration_input.db, at=migration_input.at)
                 await query.execute(db=migration_input.db)
+            except TransientError:
+                # Must reach the transaction owner to be replayed on a fresh transaction.
+                raise
             except Exception as exc:
                 result.errors.append(str(exc))
                 return result
