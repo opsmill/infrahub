@@ -32,12 +32,15 @@ import datetime as dt
 import fnmatch
 import json
 import re
-import subprocess
+import subprocess  # noqa: S404
 import sys
 from collections import defaultdict
 from pathlib import Path
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+# Playwright's breadcrumb separator (U+203A) as it appears in job logs.
+PW_SEP = "\u203a"
 
 # Known systemic failure signatures. When one matches a job log, the job is
 # tagged with the bucket so per-test counts don't mistake an infra cascade for
@@ -50,6 +53,19 @@ BUCKETS: list[tuple[str, str]] = [
     ("compose-boot-failure", r"'docker', 'compose'.*'up', '--wait'.*non-zero exit status"),
     ("sqlite-locked", r"sqlite3\.OperationalError\) database is locked"),
 ]
+
+LEDGER_FIELDS = (
+    "run",
+    "attempt",
+    "final_conclusion",
+    "recovered_same_run",
+    "run_created",
+    "workflow",
+    "job_id",
+    "job",
+    "prs",
+    "buckets",
+)
 
 
 def gh(args: list[str], *, check: bool = True) -> str:
@@ -133,23 +149,132 @@ def extract_tests(job_name: str, text: str) -> list[str]:
     """Pull failing test identifiers out of a cleaned (ANSI-stripped) job log."""
     fails: set[str] = set()
     # pytest — backend suites and the pytest-playwright e2e suite
-    for m in re.finditer(r"(?:FAILED|ERROR) ((?:backend/)?tests/\S+::\S+)", text):
-        fails.add(m.group(1).split(" - ")[0].rstrip(","))
+    fails.update(
+        m.group(1).split(" - ")[0].rstrip(",")
+        for m in re.finditer(r"(?:FAILED|ERROR) ((?:backend/)?tests/\S+::\S+)", text)
+    )
     # legacy TS Playwright — numbered entries of the failure report
     if "E2E-testing-playwright" in job_name:
-        for m in re.finditer(r"\d+\)\s+\[\w+\]\s+›\s+(tests/e2e/[^\n›]+)›([^\n]+)", text):
+        for m in re.finditer(rf"\d+\)\s+\[\w+\]\s+{PW_SEP}\s+(tests/e2e/[^\n{PW_SEP}]+){PW_SEP}([^\n]+)", text):
             spec = m.group(1).strip().split(":")[0]
             title = re.sub(r"\s+", " ", m.group(2)).strip()[:120]
-            fails.add(f"PW {spec} › {title}")
+            fails.add(f"PW {spec} {PW_SEP} {title}")
     # vitest browser mode
     if job_name == "frontend-tests":
-        for m in re.finditer(r"FAIL\s+\|?\s*\w*\s*\|?\s+(src/\S+\.test\.\w+)", text):
-            fails.add(f"VITEST {m.group(1)}")
+        fails.update(
+            f"VITEST {m.group(1)}" for m in re.finditer(r"FAIL\s+\|?\s*\w*\s*\|?\s+(src/\S+\.test\.\w+)", text)
+        )
     return sorted(fails)
 
 
 def classify(text: str) -> list[str]:
     return [name for name, pat in BUCKETS if re.search(pat, text)]
+
+
+def match_runs_to_prs(runs: list[dict], pr_by_num: dict[int, dict], sha2pr: dict[str, set[int]]) -> list[dict]:
+    matched = []
+    for r in runs:
+        nums = {p["number"] for p in r["prs"] if p["number"] in pr_by_num}
+        nums |= {n for n in sha2pr.get(r["head_sha"], set()) if n in pr_by_num}
+        if nums:
+            r["pr_nums"] = sorted(nums)
+            matched.append(r)
+    return matched
+
+
+def collect_failed_jobs(
+    repo: str, targets: list[tuple[dict, int]], pr_by_num: dict[int, dict], win_dir: Path
+) -> list[dict]:
+    """Fetch failed jobs and their logs for each (run, attempt); build job entries."""
+    jobs_out = []
+    for r, attempt in targets:
+        try:
+            jobs = failed_jobs_for_attempt(repo, r["id"], attempt)
+        except RuntimeError as exc:
+            print(f"[collect] WARN jobs {r['id']}/{attempt}: {exc}", file=sys.stderr)
+            continue
+        for job in jobs:
+            log_path = win_dir / "joblogs" / f"{job['id']}.log"
+            if not log_path.exists() or log_path.stat().st_size == 0:
+                # empty file = log expired/unavailable on GitHub's side
+                log_path.write_text(gh(["api", f"repos/{repo}/actions/jobs/{job['id']}/logs"], check=False))
+            text = ANSI.sub("", log_path.read_text(errors="replace"))
+            jobs_out.append(
+                {
+                    "run": r["id"],
+                    "attempt": attempt,
+                    "final_attempt": r["run_attempt"],
+                    "final_conclusion": r["conclusion"],
+                    "recovered_same_run": attempt < r["run_attempt"] and r["conclusion"] == "success",
+                    "run_created": r["created_at"],
+                    "workflow": r["name"],
+                    "prs": [{"number": n, "base": pr_by_num[n]["baseRefName"]} for n in r["pr_nums"]],
+                    "job_id": job["id"],
+                    "job": job["name"],
+                    "tests": extract_tests(job["name"], text),
+                    "buckets": classify(text),
+                    "log_ok": bool(text.strip()),
+                }
+            )
+    return jobs_out
+
+
+def append_ledger(ledger_path: Path, jobs_out: list[dict], repo: str, today: dt.date) -> int:
+    seen: set[str] = set()
+    if ledger_path.exists():
+        seen = {json.loads(line)["dedup_key"] for line in ledger_path.open(encoding="utf-8")}
+    added = 0
+    with ledger_path.open("a", encoding="utf-8") as fh:
+        for entry in jobs_out:
+            week = dt.datetime.fromisoformat(entry["run_created"]).strftime("%G-W%V")
+            for test in entry["tests"] or [""]:
+                key = f"{entry['job_id']}:{test}"
+                if key in seen:
+                    continue
+                seen.add(key)
+                record = {
+                    "dedup_key": key,
+                    "fetched_at": today.isoformat(),
+                    "week": week,
+                    "repo": repo,
+                    "test": test,
+                    **{k: entry[k] for k in LEDGER_FIELDS},
+                }
+                fh.write(json.dumps(record) + "\n")
+                added += 1
+    return added
+
+
+def ranked_tests(jobs_out: list[dict]) -> list[dict]:
+    freq: dict[str, list[dict]] = defaultdict(list)
+    for e in jobs_out:
+        for t in e["tests"]:
+            freq[t].append(e)
+    table = [
+        {
+            "test": test,
+            "distinct_runs": len({e["run"] for e in entries}),
+            "distinct_prs": len({p["number"] for e in entries for p in e["prs"]}),
+            "attempts": len(entries),
+            "recovered_on_retry": sum(e["recovered_same_run"] for e in entries),
+            "buckets": sorted({b for e in entries for b in e["buckets"]}),
+            "prs": sorted({p["number"] for e in entries for p in e["prs"]}),
+        }
+        for test, entries in freq.items()
+    ]
+    table.sort(key=lambda x: (-x["distinct_prs"], -x["distinct_runs"], x["test"]))
+    return table
+
+
+def weekly_history(ledger_path: Path) -> dict[str, dict[str, int]]:
+    hist: dict[str, dict[str, int]] = {}
+    if ledger_path.exists():
+        for line in ledger_path.open(encoding="utf-8"):
+            rec = json.loads(line)
+            if rec["test"]:
+                weeks = hist.setdefault(rec["test"], {})
+                weeks[rec["week"]] = weeks.get(rec["week"], 0) + 1
+    return {t: dict(sorted(w.items())) for t, w in sorted(hist.items())}
 
 
 def main() -> int:
@@ -162,158 +287,47 @@ def main() -> int:
         help="base-branch glob(s) to keep, e.g. release-1.11 or 'release-*' (default: all)",
     )
     ap.add_argument("--days", type=int, default=7)
-    ap.add_argument("--since", type=lambda s: dt.date.fromisoformat(s))
+    ap.add_argument("--since", type=dt.date.fromisoformat)
     ap.add_argument("--cache", type=Path, default=Path.home() / "ci-cache")
     args = ap.parse_args()
 
-    today = dt.datetime.now(tz=dt.timezone.utc).date()
+    today = dt.datetime.now(tz=dt.UTC).date()
     since = args.since or today - dt.timedelta(days=args.days)
     repo_dir = args.cache / args.repo.replace("/", "-")
     win_dir = repo_dir / "windows" / f"{since.isoformat()}_{today.isoformat()}"
     (win_dir / "joblogs").mkdir(parents=True, exist_ok=True)
-    ledger_path = repo_dir / "ledger.jsonl"
 
-    prs = list_prs(args.repo, since, args.base)
-    pr_by_num = {p["number"]: p for p in prs}
-    print(f"[collect] {len(prs)} PRs in scope (bases: {args.base or 'all'})", file=sys.stderr)
+    pr_by_num = {p["number"]: p for p in list_prs(args.repo, since, args.base)}
+    print(f"[collect] {len(pr_by_num)} PRs in scope (bases: {args.base or 'all'})", file=sys.stderr)
 
     runs = list_runs(args.repo, since)
     (win_dir / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
     print(f"[collect] {len(runs)} pull_request runs since {since}", file=sys.stderr)
 
-    sha2pr = pr_head_shas(args.repo, list(pr_by_num))
-
-    matched = []
-    for r in runs:
-        nums = {p["number"] for p in r["prs"] if p["number"] in pr_by_num}
-        nums |= sha2pr.get(r["head_sha"], set())
-        nums = {n for n in nums if n in pr_by_num}
-        if nums:
-            r["pr_nums"] = sorted(nums)
-            matched.append(r)
+    matched = match_runs_to_prs(runs, pr_by_num, pr_head_shas(args.repo, list(pr_by_num)))
 
     # Attempts worth reading: every earlier attempt of a retried run (those
     # failures are what the retry "fixed"), plus the final attempt when it
     # failed outright. Runs cancelled on attempt 1 are concurrency noise.
-    targets: list[tuple[dict, int]] = [
-        (r, a) for r in matched for a in range(1, r["run_attempt"] + (r["conclusion"] == "failure"))
-    ]
-
+    targets = [(r, a) for r in matched for a in range(1, r["run_attempt"] + (r["conclusion"] == "failure"))]
     print(f"[collect] {len(matched)} runs matched to PRs, {len(targets)} run-attempts to inspect", file=sys.stderr)
 
-    seen_ledger: set[str] = set()
-    if ledger_path.exists():
-        for line in ledger_path.open():
-            rec = json.loads(line)
-            seen_ledger.add(rec["dedup_key"])
-
-    jobs_out, ledger_new = [], []
-    for r, attempt in targets:
-        try:
-            jobs = failed_jobs_for_attempt(args.repo, r["id"], attempt)
-        except RuntimeError as exc:
-            print(f"[collect] WARN jobs {r['id']}/{attempt}: {exc}", file=sys.stderr)
-            continue
-        for job in jobs:
-            log_path = win_dir / "joblogs" / f"{job['id']}.log"
-            if not log_path.exists() or log_path.stat().st_size == 0:
-                text = gh(["api", f"repos/{args.repo}/actions/jobs/{job['id']}/logs"], check=False)
-                log_path.write_text(text)  # empty file = log expired/unavailable
-            text = ANSI.sub("", log_path.read_text(errors="replace"))
-            tests = extract_tests(job["name"], text)
-            buckets = classify(text)
-            recovered = attempt < r["run_attempt"] and r["conclusion"] == "success"
-            entry = {
-                "run": r["id"],
-                "attempt": attempt,
-                "final_attempt": r["run_attempt"],
-                "final_conclusion": r["conclusion"],
-                "recovered_same_run": recovered,
-                "run_created": r["created_at"],
-                "workflow": r["name"],
-                "prs": [{"number": n, "base": pr_by_num[n]["baseRefName"]} for n in r["pr_nums"]],
-                "job_id": job["id"],
-                "job": job["name"],
-                "tests": tests,
-                "buckets": buckets,
-                "log_ok": bool(text.strip()),
-            }
-            jobs_out.append(entry)
-            week = dt.datetime.fromisoformat(r["created_at"]).strftime("%G-W%V")
-            for test in tests or [""]:
-                key = f"{job['id']}:{test}"
-                if key in seen_ledger:
-                    continue
-                seen_ledger.add(key)
-                ledger_new.append(
-                    {
-                        "dedup_key": key,
-                        "fetched_at": today.isoformat(),
-                        "week": week,
-                        "repo": args.repo,
-                        "test": test,
-                        **{
-                            k: entry[k]
-                            for k in (
-                                "run",
-                                "attempt",
-                                "final_conclusion",
-                                "recovered_same_run",
-                                "run_created",
-                                "workflow",
-                                "job_id",
-                                "job",
-                                "prs",
-                                "buckets",
-                            )
-                        },
-                    }
-                )
-
+    jobs_out = collect_failed_jobs(args.repo, targets, pr_by_num, win_dir)
     (win_dir / "failed_jobs_with_tests.json").write_text(json.dumps(jobs_out, indent=1))
-    with ledger_path.open("a") as fh:
-        for rec in ledger_new:
-            fh.write(json.dumps(rec) + "\n")
-
-    # Frequency table for this window + trend across ledger weeks
-    freq: dict[str, list[dict]] = defaultdict(list)
-    for e in jobs_out:
-        for t in e["tests"]:
-            freq[t].append(e)
-    table = []
-    for test, entries in freq.items():
-        table.append(
-            {
-                "test": test,
-                "distinct_runs": len({e["run"] for e in entries}),
-                "distinct_prs": len({p["number"] for e in entries for p in e["prs"]}),
-                "attempts": len(entries),
-                "recovered_on_retry": sum(e["recovered_same_run"] for e in entries),
-                "buckets": sorted({b for e in entries for b in e["buckets"]}),
-                "prs": sorted({p["number"] for e in entries for p in e["prs"]}),
-            }
-        )
-    table.sort(key=lambda x: (-x["distinct_prs"], -x["distinct_runs"], x["test"]))
-
-    weeks_hist: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-    if ledger_path.exists():
-        for line in ledger_path.open():
-            rec = json.loads(line)
-            if rec["test"]:
-                weeks_hist[rec["test"]][rec["week"]] += 1
+    new_records = append_ledger(repo_dir / "ledger.jsonl", jobs_out, args.repo, today)
 
     report = {
         "window": {"since": since.isoformat(), "until": today.isoformat()},
         "base_filter": args.base or "all",
-        "prs_in_scope": len(prs),
+        "prs_in_scope": len(pr_by_num),
         "runs_matched": len(matched),
         "runs_retried": sum(1 for r in matched if r["run_attempt"] > 1),
         "runs_recovered_on_retry": sum(1 for r in matched if r["run_attempt"] > 1 and r["conclusion"] == "success"),
         "runs_failed_final": sum(1 for r in matched if r["conclusion"] == "failure"),
         "failed_jobs": len(jobs_out),
-        "ranked_tests": table,
-        "weekly_history": {t: dict(sorted(w.items())) for t, w in sorted(weeks_hist.items())},
-        "new_ledger_records": len(ledger_new),
+        "ranked_tests": ranked_tests(jobs_out),
+        "weekly_history": weekly_history(repo_dir / "ledger.jsonl"),
+        "new_ledger_records": new_records,
     }
     (win_dir / "report-data.json").write_text(json.dumps(report, indent=1))
     print(json.dumps(report, indent=1))
