@@ -560,6 +560,71 @@ class NumberPoolGetFree(Query):
         return None
 
 
+class NumberPoolGetTaken(Query):
+    """Values currently held on the target kind for the pool's attribute, whatever their source.
+
+    Unlike the reservation-based queries, this looks at the real objects of the target kind, so it
+    also sees values created outside the pool. Those must be skipped during allocation; otherwise the
+    pool offers a value the target's uniqueness constraint rejects and never advances past it.
+    """
+
+    name = "number_pool_get_taken"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        pool: CoreNumberPool,
+        min_value: int | None = None,
+        max_value: int | None = None,
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.pool = pool
+        self.min_value = min_value
+        self.max_value = max_value
+
+        super().__init__(**kwargs)  # type: ignore[arg-type]
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        self.params["start_range"] = self.min_value if self.min_value is not None else self.pool.start_range.value
+        self.params["end_range"] = self.max_value if self.max_value is not None else self.pool.end_range.value
+
+        # is_isolated=False mirrors the uniqueness-constraint validator: a value created on the origin
+        # branch after this branch's point still collides here, so it must count as taken.
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic, is_isolated=False
+        )
+
+        self.params.update(branch_params)
+        self.params["attribute_name"] = self.pool.node_attribute.value
+
+        query = """
+        MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]->(attr:Attribute { name: $attribute_name })-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
+        WHERE toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
+        CALL (n, attr, av) {
+            MATCH (n)-[ha:HAS_ATTRIBUTE]->(attr)-[hv:HAS_VALUE]->(av)
+            WHERE all(r in [ha, hv] WHERE (%(branch_filter)s))
+            ORDER BY ha.branch_level DESC, hv.branch_level DESC,
+                ha.from DESC, hv.from DESC,
+                ha.status ASC, hv.status ASC
+            RETURN (ha.status = "active" AND hv.status = "active") AS is_active
+            LIMIT 1
+        }
+        WITH av, is_active
+        WHERE is_active = True
+        WITH DISTINCT toInteger(av.value) AS value
+        """ % {
+            "branch_filter": branch_filter,
+            "node": self.pool.node.value,
+        }
+
+        self.add_to_query(query)
+        self.return_labels = ["value"]
+        self.order_by = ["value"]
+
+    def get_taken_values(self) -> set[int]:
+        return {result.get_as_type("value", return_type=int) for result in self.get_results()}
+
+
 class NumberPoolSetReserved(Query):
     name = "numberpool_set_reserved"
     type = QueryType.WRITE

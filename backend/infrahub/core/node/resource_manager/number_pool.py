@@ -7,6 +7,7 @@ from infrahub.core import registry
 from infrahub.core.query.resource_manager import (
     NumberPoolGetFree,
     NumberPoolGetReserved,
+    NumberPoolGetTaken,
     NumberPoolGetUsed,
     NumberPoolSetReserved,
 )
@@ -70,6 +71,20 @@ class CoreNumberPool(Node):
         await query.execute(db=db)
 
         return query.get_result_value()
+
+    async def get_taken(
+        self, db: InfrahubDatabase, branch: Branch, min_value: int | None = None, max_value: int | None = None
+    ) -> set[int]:
+        """Returns values already present on the target kind for the pool's attribute within range.
+
+        These include values the pool never handed out (e.g. created directly on the target). The pool
+        must skip them; otherwise it offers a value the target's uniqueness constraint rejects and, since
+        the failed allocation reserves nothing, re-offers the same value on every subsequent attempt.
+        """
+        query = await NumberPoolGetTaken.init(db=db, branch=branch, pool=self, min_value=min_value, max_value=max_value)
+        await query.execute(db=db)
+
+        return query.get_taken_values()
 
     async def reserve(self, db: InfrahubDatabase, number: int, identifier: str, at: Timestamp | None = None) -> None:
         """Reserve a number in the pool for a specific identifier."""
@@ -146,6 +161,14 @@ class CoreNumberPool(Node):
         # Check if the effective range is valid
         if effective_start > effective_end:
             raise PoolExhaustedError("There are no more values available in this pool.")
+
+        # A value already present on the target kind only blocks allocation when a duplicate would be
+        # rejected, i.e. when the attribute is unique on its own. For a per-relationship uniqueness
+        # constraint or a non-unique attribute the value is reusable, so skip it only when unique.
+        if attribute.unique:
+            excluded_values |= await self.get_taken(
+                db=db, branch=branch, min_value=effective_start, max_value=effective_end
+            )
 
         def skip_excluded(value: int) -> int | None:
             """Skip past any excluded values/ranges starting from value.
