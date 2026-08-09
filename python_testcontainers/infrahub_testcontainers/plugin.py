@@ -97,9 +97,21 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     )
 
 
-def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:  # noqa: ARG001
-    """whole test run finishes."""
+@pytest.hookimpl(trylast=True)
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """whole test run finishes.
+
+    Runs last so that reporting stays behind the fixture teardown that stops the compose
+    stack. On an interrupted session that teardown happens from pytest's own
+    pytest_sessionfinish, and a CI runner allows only a few seconds between the cancel
+    signal and the kill: anything ahead of the teardown can cost the stack its shutdown.
+    """
     if not session.config.getoption("infrahub_performance_report"):
+        return
+
+    if exitstatus == pytest.ExitCode.INTERRUPTED:
+        # An interrupted run measured only part of the suite, and the seconds left before
+        # the runner kills the process are better spent shutting the stack down.
         return
 
     session.infrahub_performance_test.finalize(session=session)
