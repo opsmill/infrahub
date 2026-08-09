@@ -148,6 +148,7 @@ const sidebars: SidebarsConfig = {
           label: 'Objects',
           link: { type: 'doc', id: 'objects/overview' }, // hub
           items: [
+            { type: 'doc', id: 'objects/manage-from-cli', label: 'Manage objects from the command line' },
             { type: 'doc', id: 'objects/convert-object-kind', label: 'Convert object kind' },
             { type: 'doc', id: 'objects/metadata', label: 'Metadata & lineage' },
             { type: 'doc', id: 'objects/load-from-yaml', label: 'Load data in bulk using YAML file' },
