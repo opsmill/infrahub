@@ -407,7 +407,7 @@ class TestInfrahubClient:
         empty graph the objects have to be reconciled around the definitions for the action and
         the trigger rule that references it to resolve.
         """
-        await repo_trigger_rule.import_objects_from_files(infrahub_branch_name="main")
+        await repo_trigger_rule.import_objects_from_files(infrahub_branch_name="main")  # type: ignore[call-overload]
 
         generator_definition = await client.get(kind="CoreGeneratorDefinition", name__value="tags_generator")
         action = await client.get(kind="CoreGeneratorAction", name__value="run-tags-generator")
