@@ -43,6 +43,7 @@ REJECT_CASES = [
     RejectCase(name="injection_string", value="'; DROP TABLE--"),
     RejectCase(name="overlong_string", value="A" * 300),
     RejectCase(name="localtime_pseudo_zone", value="localtime"),
+    RejectCase(name="posixrules_pseudo_zone", value="posixrules"),
     RejectCase(name="posix_implementation_key", value="posix/UTC"),
     RejectCase(name="right_implementation_key", value="right/UTC"),
 ]

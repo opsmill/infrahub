@@ -4,9 +4,9 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from infrahub.exceptions import ValidationError
 
-# Implementation-defined entries browsers reject; rejected explicitly so the guarantee holds
-# regardless of which zone tree the runtime ships.
-_REJECTED_KEYS = frozenset({"localtime"})
+# Implementation-defined entries a full zone tree resolves but browsers reject; listed explicitly
+# so they are refused regardless of which zone tree the runtime ships.
+_REJECTED_KEYS = frozenset({"localtime", "posixrules"})
 _REJECTED_PREFIXES = ("posix/", "right/")
 
 
