@@ -5,14 +5,12 @@ import type { Dropdown } from "@/shared/api/graphql/generated/types";
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { classNames, getTextColor } from "@/shared/utils/common";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
-export type GitRepositoryData = {
-  id: string;
-  __typename: string;
-  display_label?: string | null;
+export interface GitRepositoryData extends NodeCore {
   sync_status?: Dropdown | null;
-};
+}
 
 export const GitRepositoryItem = ({ repository }: { repository: GitRepositoryData }) => {
   const { id, __typename, display_label, sync_status } = repository;

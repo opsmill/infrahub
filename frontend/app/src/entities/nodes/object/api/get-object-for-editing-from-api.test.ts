@@ -52,6 +52,7 @@ describe("getObjectForEditingFromApi", () => {
 
     // THEN
     expect(getRequestedQueryString()).toContain("profiles");
+    expect(getRequestedQueryString()).toContain("profile_priority");
   });
 
   it("does not request the profiles field for a generic without a profiles relationship", async () => {
@@ -90,5 +91,6 @@ describe("getObjectForEditingFromApi", () => {
 
     // THEN
     expect(getRequestedQueryString()).toContain("profiles");
+    expect(getRequestedQueryString()).toContain("profile_priority");
   });
 });
