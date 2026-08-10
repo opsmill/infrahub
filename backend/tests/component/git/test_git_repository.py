@@ -1264,6 +1264,7 @@ async def test_init_reinitialized_after_missing_directory(
         id=repo_id,
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
+        default_branch_name="main",
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
