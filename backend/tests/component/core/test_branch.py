@@ -5,10 +5,7 @@ from infrahub_sdk.exceptions import TimestampFormatError
 from pydantic import ValidationError as PydanticValidationError
 
 from infrahub.core.branch import Branch
-<<<<<<< HEAD
-=======
 from infrahub.core.branch.data_deleter import BranchDataDeleter
->>>>>>> stable
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.diff.coordinator import DiffCoordinator
