@@ -125,7 +125,11 @@ export function MenuItem({
 export interface MenuSeparatorProps extends AriaSeparatorProps {}
 
 export function MenuSeparator({ className, ...props }: MenuSeparatorProps) {
-  return <AriaSeparator className={cn("-mx-1 my-1 h-px bg-border-strong", className)} {...props} />;
+  // A border rather than a 1px background: `hr` already carries a preflight border-top, so a
+  // background stacked on top of it rendered as two lines.
+  return (
+    <AriaSeparator className={cn("-mx-1 my-1 border-border-strong border-t", className)} {...props} />
+  );
 }
 
 export interface MenuSectionProps<T> extends AriaMenuSectionProps<T> {
