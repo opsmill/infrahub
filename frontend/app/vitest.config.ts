@@ -31,6 +31,7 @@ export default mergeConfig(
         "react-error-boundary",
         "react-scan",
         "@headlessui/react",
+        "@radix-ui/react-dropdown-menu",
         "@dagrejs/dagre",
         "dagre",
         "@radix-ui/react-progress",
