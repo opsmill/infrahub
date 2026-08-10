@@ -31,7 +31,7 @@ export function ObjectDetailsBody({ objectSchema, objectId, permission }: Object
   return (
     <Col className="gap-0 overflow-auto p-1">
       <ObjectDetailsTabs objectSchema={objectSchema} objectData={objectData} />
-      <Card className="overflow-auto to-neutral-50">
+      <Card className="overflow-auto bg-neutral-50">
         <Outlet
           context={{ objectSchema, objectData, permission } satisfies ObjectDetailsOutletContext}
         />
