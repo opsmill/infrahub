@@ -445,19 +445,6 @@ except Exception as exc:
 
 A broad `except Exception` is justified only at a top-level boundary (a task worker loop, a request handler) whose job is to prevent one failure from taking down the process — and even there, log the exception and re-raise or record it, never discard it.
 
-The one other justified case is a **best-effort side-effect boundary**: notifying an observer or other sink whose failure must not affect the operation that triggered it. There the exception is logged and deliberately not re-raised, and the `try` must wrap the *individual* call so one bad sink cannot skip the ones behind it:
-
-```python
-# ✅ Good - a failing sink must not fail the operation that produced the event
-for observer in self._observers:
-    try:
-        observer.on_depth_changed(queued=queued, running=running)
-    except Exception:
-        log.warning("queue observer raised; continuing", exc_info=True)
-```
-
-This is narrow: it applies where the emitting code owns no part of the sink's contract and its own operation is correct regardless of the outcome. It is not a licence to wrap a block of real work.
-
 ## ASGI Middleware
 
 <!-- Extracted from specs/ifc-2886-priority-api-backpressure on 2026-07-26 -->
