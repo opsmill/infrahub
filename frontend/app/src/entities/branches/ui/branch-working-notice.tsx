@@ -48,9 +48,6 @@ interface BranchNoticeProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 function BranchNotice({ className, ...props }: BranchNoticeProps) {
   return (
-    <Row
-      className={classNames("min-h-10 gap-2.5 border-neutral-200 border-b px-5 text-sm", className)}
-      {...props}
-    />
+    <Row className={classNames("min-h-10 gap-2.5 border-b px-5 text-sm", className)} {...props} />
   );
 }

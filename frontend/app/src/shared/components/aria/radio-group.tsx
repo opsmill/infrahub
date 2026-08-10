@@ -40,7 +40,7 @@ export const Radio = ({ className, children, ...props }: AriaRadioProps) => {
         <>
           <span
             className={classNames(
-              "flex size-4 items-center justify-center rounded-full border border-gray-300",
+              "flex size-4 items-center justify-center rounded-full border border-border-strong",
               "transition-colors group-data-focus-visible/radio:border-custom-blue-600 group-data-focus-visible/radio:outline-hidden group-data-focus-visible/radio:ring-2 group-data-focus-visible/radio:ring-custom-blue-600/25",
               "group-data-invalid/radio:border-red-600"
             )}

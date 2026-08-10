@@ -17,7 +17,7 @@ export function Component() {
 
   return (
     <GraphiQL
-      className="rounded-lg border border-gray-200"
+      className="rounded-lg border"
       defaultEditorToolsVisibility
       initialQuery={query ?? undefined}
       plugins={plugins}

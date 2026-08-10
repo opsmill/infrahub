@@ -18,9 +18,9 @@ export function RelationshipFilterCombobox({
   onChange,
 }: RelationshipFilterComboboxProps) {
   return (
-    <div className="min-h-0 overflow-hidden rounded-md border border-gray-300 bg-white">
+    <div className="min-h-0 overflow-hidden rounded-md border border-border-strong bg-white">
       {!!value?.length && (
-        <Col className="max-h-24 items-start overflow-y-auto border-gray-300 border-b p-2">
+        <Col className="max-h-24 items-start overflow-y-auto border-border-strong border-b p-2">
           {value.map(({ id, display_label }) => (
             <Badge key={id} className="inline-flex items-center gap-1 pr-0.5">
               {display_label}

@@ -96,7 +96,7 @@ export function DynamicFilterInput({ fieldSchema, value, onChange }: DynamicFilt
             if (newValue === "false") return onChange(false);
             return onChange(newValue);
           }}
-          className="rounded-md border border-gray-300 p-2"
+          className="rounded-md border border-border-strong p-2"
         >
           <Radio value="true">True</Radio>
           <Radio value="false">False</Radio>

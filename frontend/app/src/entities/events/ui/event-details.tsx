@@ -105,7 +105,7 @@ export const EventDetails = (props: EventType) => {
     ("source_branch" in props ? props.source_branch : undefined);
 
   return (
-    <div className="divide-y divide-gray-200">
+    <div className="divide-y">
       <PropertyRow
         title="ID"
         value={

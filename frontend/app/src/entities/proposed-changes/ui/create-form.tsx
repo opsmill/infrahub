@@ -74,7 +74,7 @@ export const ProposedChangeCreateForm = () => {
         navigate(url);
       }}
     >
-      <Card className="w-full border-gray-300 shadow-xs">
+      <Card className="w-full border-border-strong shadow-xs">
         <CardContent className="flex flex-row flex-wrap items-start justify-center gap-4 md:flex-nowrap">
           <FormField
             name="source_branch"

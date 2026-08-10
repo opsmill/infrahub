@@ -68,7 +68,7 @@ export function PathResultsList({
   const { isCopied, copyToClipboard } = useCopyToClipboard();
 
   return (
-    <div className="border-gray-200 border-t p-4">
+    <div className="border-t p-4">
       <div className={classNames("mb-3 flex items-center justify-between", v.headerBanner)}>
         <h3 className={classNames("font-medium text-sm", v.headerText)}>{countLabel}</h3>
         {paths.length > 0 && copyAllText && (
@@ -111,7 +111,7 @@ export function PathResultsList({
                   value={String(index)}
                   onSelect={() => onSelect(index)}
                   className={classNames(
-                    "group block cursor-pointer rounded-md border border-transparent transition-colors hover:border-gray-200 hover:bg-gray-50",
+                    "group block cursor-pointer rounded-md border border-transparent transition-colors hover:border-border hover:bg-gray-50",
                     v.selected
                   )}
                 >

@@ -36,7 +36,7 @@ export function BranchStatusHeader() {
       </PopoverTrigger>
 
       <PopoverContent className="relative rounded-tl-none p-0" align="start">
-        <div className="absolute -top-[1.8rem] -left-px rounded-t-md border border-gray-200 border-b-0 bg-white px-2 py-1 font-semibold">
+        <div className="absolute -top-[1.8rem] -left-px rounded-t-md border border-b-0 bg-white px-2 py-1 font-semibold">
           Filter by {fieldSchema.label ?? fieldSchema.name}
         </div>
         <BranchStatusFilterForm onSuccess={closePopover} />

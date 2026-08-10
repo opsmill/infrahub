@@ -74,7 +74,7 @@ function DataViewerContent({
         <iframe
           src={`data:application/pdf;base64,${content}`}
           title="PDF Preview"
-          className="h-150 w-full rounded-lg border border-neutral-700"
+          className="h-150 w-full rounded-lg border"
         />
       );
     }
@@ -86,7 +86,7 @@ function DataViewerContent({
     case "image/bmp":
     case "image/x-icon": {
       return (
-        <div className="flex justify-center rounded-lg border border-neutral-700 bg-white p-4">
+        <div className="flex justify-center rounded-lg border bg-white p-4">
           <img
             src={`data:${contentType};base64,${content}`}
             alt="Preview"
@@ -118,7 +118,7 @@ function DataViewerContent({
       }
 
       return (
-        <div className="flex grow flex-col items-center justify-center gap-2 rounded-lg border border-neutral-700 p-8 text-neutral-400">
+        <div className="flex grow flex-col items-center justify-center gap-2 rounded-lg border p-8 text-neutral-400">
           <EyeOffIcon className="size-8" />
           <p>This file can&#39;t be previewed</p>
           <p className="text-sm">{contentType}</p>
@@ -132,7 +132,7 @@ function TextViewer({ content, language }: { content: string; language: string }
   return (
     <ScrollArea
       scrollX
-      className="grow rounded-lg border border-neutral-700 shadow-sm"
+      className="grow rounded-lg border shadow-sm"
       scrollBarClassName="bg-transparent"
     >
       <CodeViewer language={language} customStyle={{ margin: 0 }}>

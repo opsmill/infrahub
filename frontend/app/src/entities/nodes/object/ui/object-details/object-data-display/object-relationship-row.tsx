@@ -98,7 +98,7 @@ function RelationshipOneRow({
                 isProtected={relationshipProperties.is_protected}
                 header={
                   onClickMetadata && (
-                    <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
+                    <div className="flex items-center justify-between border-b p-1 pt-0 pl-2">
                       <div className="font-semibold">
                         {getRelationshipLabel(relationshipSchema, peerSchema)}
                       </div>

@@ -88,7 +88,7 @@ export const SchemaViewer = ({
     <section
       style={style}
       className={classNames(
-        "flex flex-col space-y-4 overflow-hidden rounded-md border border-gray-200 bg-white p-4 shadow-lg",
+        "flex flex-col space-y-4 overflow-hidden rounded-md border bg-white p-4 shadow-lg",
         className
       )}
       data-testid="schema-viewer"
@@ -221,7 +221,7 @@ const Properties = ({
   onKindClick?: (kind: string) => void;
 }) => {
   return (
-    <div className="divide-y divide-gray-200 p-2">
+    <div className="divide-y p-2">
       <div>
         <PropertyRow title="ID" value={schema.id} />
         <PropertyRow title="Namespace" value={schema.namespace} />

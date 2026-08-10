@@ -71,7 +71,7 @@ export function GlobalPreferencesForm() {
           }
         );
       }}
-      className="space-y-0 divide-y divide-gray-200"
+      className="space-y-0 divide-y"
     >
       <DateFormatField emptyValueLabel={GLOBAL_EMPTY_VALUE_LABEL} />
       <TimezoneField emptyValueLabel={GLOBAL_EMPTY_VALUE_LABEL} />

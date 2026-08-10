@@ -30,12 +30,7 @@ interface LinkToggleButtonGroupProps {
 }
 
 export const LinkToggleButtonGroup = ({ className, children }: LinkToggleButtonGroupProps) => (
-  <div
-    className={classNames(
-      "flex gap-1 rounded-md border border-gray-200 bg-gray-100 p-1 shadow-xs",
-      className
-    )}
-  >
+  <div className={classNames("flex gap-1 rounded-md border bg-gray-100 p-1 shadow-xs", className)}>
     {children}
   </div>
 );

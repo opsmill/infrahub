@@ -11,7 +11,7 @@ export const DataIntegrityConflicts = ({ conflicts }: Pick<CoreDataCheck, "confl
   const proposedChange = useProposedChange();
 
   return (
-    <div className="rounded-md border border-gray-100 bg-white p-2">
+    <div className="rounded-md border bg-white p-2">
       <div className="grid grid-cols-3">
         <Badge variant="green" className="col-start-2 col-end-3 bg-transparent">
           <Icon icon="mdi:layers-triple" className="mr-1" />{" "}

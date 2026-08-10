@@ -90,13 +90,13 @@ export function SchemaSelector({ className }: SchemaSelectorProps) {
 
   return (
     <Col className={classNames("bg-white", className)}>
-      <Row className="sticky top-0 z-1 border-gray-200 border-b bg-white p-4">
+      <Row className="sticky top-0 z-1 border-b bg-white p-4">
         <SearchInput placeholder="Search schema" value={search} onChange={handleSearchChange} />
         <Tooltip message={anyOpen ? "Collapse all" : "Expand all"}>
           <Button
             shape="square"
             variant="outline"
-            className="size-10 rounded-md border-gray-300"
+            className="size-10 rounded-md border-border-strong"
             onPress={toggleAll}
             aria-label={anyOpen ? "Collapse all" : "Expand all"}
           >
@@ -121,7 +121,7 @@ export function SchemaSelector({ className }: SchemaSelectorProps) {
               setOpenByNamespace((prev) => ({ ...prev, [namespace]: next }));
             }}
           >
-            <div className="divide-y divide-gray-200 px-4">
+            <div className="divide-y px-4">
               {schemas.map((schema) => {
                 const isSelected =
                   selectedKind && schema.kind && selectedKind.includes(schema.kind);

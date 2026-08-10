@@ -66,7 +66,7 @@ export function Autocomplete({
   return (
     <AriaAutocomplete filter={resolvedFilter} onInputChange={onInputChange} {...props}>
       <div className="max-h-[inherit] overflow-hidden">
-        <div className="sticky flex w-full items-center gap-0 overflow-hidden border-b border-neutral-300 pr-1">
+        <div className="sticky flex w-full items-center gap-0 overflow-hidden border-b border-border-strong pr-1">
           <AutocompleteSearchField placeholder="Search..." className="grow" />
           {suffix}
         </div>

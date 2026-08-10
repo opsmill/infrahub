@@ -13,7 +13,7 @@ export const PopoverTrigger = AriaDialogTrigger;
 
 const popoverStyles = tv({
   base: [
-    "z-50 rounded-xl border border-neutral-300 bg-stone-100/70 shadow-md outline-hidden backdrop-blur-lg duration-100",
+    "z-50 rounded-xl border border-border-strong bg-stone-100/70 shadow-md outline-hidden backdrop-blur-lg duration-100",
     "data-[placement=bottom]:slide-in-from-top-10 data-[placement=left]:slide-in-from-right-2 data-[placement=right]:slide-in-from-left-2 data-[placement=top]:slide-in-from-bottom-2",
   ],
   variants: {

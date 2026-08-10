@@ -65,7 +65,7 @@ export function ExportMenu({ onExport, label = "Export diagram" }: ExportMenuPro
       {open && (
         <div
           id={menuId}
-          className="absolute bottom-full left-1/2 mb-2 min-w-[120px] -translate-x-1/2 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+          className="absolute bottom-full left-1/2 mb-2 min-w-[120px] -translate-x-1/2 rounded-lg border bg-white py-1 shadow-lg"
         >
           <Button
             // oxlint-disable-next-line jsx-a11y/no-autofocus -- moving focus into the menu on open is the WAI-ARIA menu pattern, not a page-load autofocus

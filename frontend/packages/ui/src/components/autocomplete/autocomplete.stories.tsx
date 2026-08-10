@@ -21,7 +21,7 @@ const fruits = ["Apple", "Banana", "Cherry", "Date", "Elderberry", "Fig", "Grape
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="w-64 overflow-hidden rounded-lg border border-neutral-300">{children}</div>
+    <div className="w-64 overflow-hidden rounded-lg border border-border-strong">{children}</div>
   );
 }
 
