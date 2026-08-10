@@ -223,7 +223,6 @@ disable_error_code = [
     "attr-defined",
     "misc",
     "operator",
-    "return",
     "union-attr",
 ]
 
@@ -232,8 +231,6 @@ module = "infrahub.core.manager"
 disable_error_code = [
     "assignment",
     "attr-defined",
-    "index",
-    "no-untyped-def",
     "return-value",
     "union-attr",
 ]
@@ -244,18 +241,9 @@ disable_error_code = [
     "arg-type",
     "assignment",
     "attr-defined",
-    "list-item",
-    "no-redef",
     "override",
-    "return",
     "union-attr",
     "var-annotated",
-]
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.node.base"
-disable_error_code = [
-    "no-untyped-def",
 ]
 
 [[tool.mypy.overrides]]
