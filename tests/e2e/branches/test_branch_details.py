@@ -49,7 +49,7 @@ class TestBranchDetailsDefaultBranch:
         await expect(admin_page.get_by_text("Sync with Git")).to_be_visible()
 
         # Non-default specific attributes should NOT be visible
-        await expect(admin_page.get_by_text("Has schema changes")).not_to_be_visible()
+        await expect(admin_page.get_by_text("Schema differs from default branch")).not_to_be_visible()
         await expect(admin_page.get_by_text("Last rebase")).not_to_be_visible()
 
         # All action buttons should be not visible
@@ -75,7 +75,7 @@ class TestBranchDetailsNonDefaultBranch:
         # Branch attributes
         await expect(admin_page.get_by_text("Name")).to_be_visible()
         await expect(admin_page.get_by_text("Sync with Git")).to_be_visible()
-        await expect(admin_page.get_by_text("Has schema changes")).to_be_visible()
+        await expect(admin_page.get_by_text("Schema differs from default branch")).to_be_visible()
         await expect(admin_page.get_by_text("Last rebase")).to_be_visible()
 
         # Tabs navigation should be visible with all tabs

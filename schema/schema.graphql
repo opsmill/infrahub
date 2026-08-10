@@ -235,12 +235,13 @@ type Branch {
   created_at: String
   description: String
   graph_version: Int
-  has_schema_changes: Boolean
+  has_schema_changes: Boolean @deprecated(reason: "Use schema_differs_from_default_branch instead. has_schema_changes is scheduled for removal in Infrahub 1.14.0.")
   id: String!
   is_default: Boolean
   is_isolated: Boolean @deprecated(reason: "non isolated mode is not supported anymore")
   name: String!
   origin_branch: String
+  schema_differs_from_default_branch: Boolean
   status: BranchStatus!
   sync_with_git: Boolean
 }
@@ -8847,12 +8848,13 @@ type InfrahubBranch {
   created_at: String
   description: NonRequiredStringValueField
   graph_version: NonRequiredIntValueField
-  has_schema_changes: NonRequiredBooleanValueField
+  has_schema_changes: NonRequiredBooleanValueField @deprecated(reason: "Use schema_differs_from_default_branch instead. has_schema_changes is scheduled for removal in Infrahub 1.14.0.")
   id: String!
   is_default: NonRequiredBooleanValueField
   is_isolated: NonRequiredBooleanValueField @deprecated(reason: "non isolated mode is not supported anymore")
   name: RequiredStringValueField!
   origin_branch: NonRequiredStringValueField
+  schema_differs_from_default_branch: NonRequiredBooleanValueField
   status: StatusField!
   sync_with_git: NonRequiredBooleanValueField
 }

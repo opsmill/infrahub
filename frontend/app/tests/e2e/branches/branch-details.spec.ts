@@ -28,7 +28,7 @@ test.describe("Branch details view", () => {
       await expect(page.getByText("Sync with Git")).toBeVisible();
 
       // Non-default specific attributes should NOT be visible
-      await expect(page.getByText("Has schema changes")).not.toBeVisible();
+      await expect(page.getByText("Schema differs from default branch")).not.toBeVisible();
       await expect(page.getByText("Last rebase")).not.toBeVisible();
 
       // All action buttons should be not visible
@@ -56,7 +56,7 @@ test.describe("Branch details view", () => {
       // Branch attributes
       await expect(page.getByText("Name")).toBeVisible();
       await expect(page.getByText("Sync with Git")).toBeVisible();
-      await expect(page.getByText("Has schema changes")).toBeVisible();
+      await expect(page.getByText("Schema differs from default branch")).toBeVisible();
       await expect(page.getByText("Last rebase")).toBeVisible();
 
       // Tabs navigation should be visible
