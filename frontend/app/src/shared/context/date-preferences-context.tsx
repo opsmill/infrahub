@@ -38,32 +38,46 @@ export interface UseFormatDateResult {
   timezone: string | null;
 }
 
-/** Renders dates against the active preferences. `"date"` reuses the datetime pattern's date part. */
+/**
+ * Renders a date against a resolved preference pair. `"date"` reuses the datetime pattern's date
+ * part. Take this over the hook only when the pair is not the active one — previewing preferences
+ * still being edited, say; everything else must go through the hook so it follows the viewer.
+ */
+export function formatWithPreferences(
+  date: DateInput,
+  { pattern, timezone }: ResolvedDatePreferences,
+  variant: DateVariant = "datetime"
+): string {
+  if (variant === "relative") {
+    return formatRelativeTimeFromNow(date);
+  }
+
+  if (!pattern) {
+    return formatWithLocale(date, variant, timezone);
+  }
+
+  if (variant === "date") {
+    const datePattern = dateOnlyPattern(pattern);
+    return datePattern
+      ? formatWithPattern(date, { pattern: datePattern, timezone })
+      : formatWithLocale(date, "date", timezone);
+  }
+
+  return formatWithPattern(date, { pattern, timezone });
+}
+
+/** Renders dates against the active preferences. */
 export function useFormatDate(): UseFormatDateResult {
   const resolved = React.use(DatePreferencesContext);
-  const pattern = resolved?.pattern ?? null;
-  const timezone = resolved?.timezone ?? null;
-
-  const boundFormat = (date: DateInput, variant: DateVariant = "datetime"): string => {
-    if (variant === "relative") {
-      return formatRelativeTimeFromNow(date);
-    }
-
-    if (!pattern) {
-      return formatWithLocale(date, variant, timezone);
-    }
-
-    if (variant === "date") {
-      const datePattern = dateOnlyPattern(pattern);
-      return datePattern
-        ? formatWithPattern(date, { pattern: datePattern, timezone })
-        : formatWithLocale(date, "date", timezone);
-    }
-
-    return formatWithPattern(date, { pattern, timezone });
+  const preferences: ResolvedDatePreferences = {
+    pattern: resolved?.pattern ?? null,
+    timezone: resolved?.timezone ?? null,
   };
 
-  return { formatDate: boundFormat, timezone };
+  return {
+    formatDate: (date, variant) => formatWithPreferences(date, preferences, variant),
+    timezone: preferences.timezone,
+  };
 }
 
 // Drops everything from the first time token onward, e.g. "yyyy-MM-dd HH:mm" → "yyyy-MM-dd".

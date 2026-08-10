@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { GlobalPreferences } from "@/entities/preferences/domain/model/preference";
@@ -10,12 +11,16 @@ import { GlobalPreferencesEditor } from "./global-preferences-editor";
 vi.mock("@/entities/preferences/domain/use-cases/get-global-preferences");
 vi.mock("@/entities/preferences/domain/use-cases/update-global-preference");
 
-const baseGlobal: GlobalPreferences = { dateFormat: null, timezone: "Europe/Paris" };
+// A late-evening UTC instant: rendered in the global zone (UTC+9) it lands on the NEXT calendar day,
+// so an example that ignored the timezone being edited could not accidentally match.
+const FIXED_INSTANT = new Date("2026-06-11T23:30:00Z");
+
+const baseGlobal: GlobalPreferences = { dateFormat: null, timezone: "Asia/Tokyo" };
 
 describe("GlobalPreferencesEditor", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-06-30T14:30:00"));
+    vi.setSystemTime(FIXED_INSTANT);
     vi.clearAllMocks();
     vi.mocked(getGlobalPreferences).mockResolvedValue(baseGlobal);
     vi.mocked(updateGlobalPreference).mockResolvedValue();
@@ -50,11 +55,35 @@ describe("GlobalPreferencesEditor", () => {
     await component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }).click();
 
     const combobox = component.getByRole("button", { name: /date format/i }).element();
-    const example = component.getByText("Example: 2026-06-30 14:30").element();
+    const example = component.getByText("Example: 2026-06-12 08:30").element();
 
     const row = combobox.closest("div.flex.items-center") as HTMLElement;
     expect(row).not.toBeNull();
     expect(row.contains(example)).toBe(true);
+  });
+
+  test("renders the example in the global timezone being edited", async () => {
+    const component = await render(<GlobalPreferencesEditor />);
+
+    await component.getByRole("button", { name: /date format/i }).click();
+    await component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }).click();
+
+    await expect.element(component.getByText("Example: 2026-06-12 08:30")).toBeVisible();
+  });
+
+  test("renders the example in the browser zone when the global timezone is unset", async () => {
+    vi.mocked(getGlobalPreferences).mockResolvedValue({ dateFormat: null, timezone: null });
+
+    const component = await render(<GlobalPreferencesEditor />);
+
+    await component.getByRole("button", { name: /date format/i }).click();
+    await component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }).click();
+
+    // An unset global timezone means "the browser's" for every viewer, so the preview must not
+    // borrow a zone from anywhere else — least of all the editing admin's own preference.
+    await expect
+      .element(component.getByText(`Example: ${format(FIXED_INSTANT, "yyyy-MM-dd HH:mm")}`))
+      .toBeVisible();
   });
 
   test("edits the raw global values via the global mutation", async () => {
@@ -68,7 +97,7 @@ describe("GlobalPreferencesEditor", () => {
     await vi.waitFor(() => {
       expect(vi.mocked(updateGlobalPreference).mock.calls[0]?.[0]).toEqual({
         dateFormat: "EU_DATETIME",
-        timezone: "Europe/Paris",
+        timezone: "Asia/Tokyo",
       });
     });
   });

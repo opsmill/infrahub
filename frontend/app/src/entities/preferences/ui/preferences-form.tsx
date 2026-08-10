@@ -9,6 +9,7 @@ import { Form, FormSubmit } from "@/shared/components/ui/form";
 
 import type { DateFormatKey } from "@/entities/preferences/domain/model/date-format";
 import type { Preference, PreferenceValues } from "@/entities/preferences/domain/model/preference";
+import { resolveDatePreferences } from "@/entities/preferences/domain/rules/resolve-date-preferences";
 import {
   DateFormatField,
   TimezoneField,
@@ -75,7 +76,10 @@ export function PreferencesForm() {
       }}
       className="space-y-0 divide-y divide-gray-200"
     >
-      <DateFormatField preference={preferences.dateFormat} />
+      <DateFormatField
+        preference={preferences.dateFormat}
+        fallbackTimezone={resolveDatePreferences(preferences).timezone}
+      />
       <TimezoneField preference={preferences.timezone} />
 
       <Row className="justify-end p-2">

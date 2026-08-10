@@ -11,16 +11,22 @@ import { UserPreferencesCard } from "./user-preferences-card";
 vi.mock("@/entities/preferences/domain/use-cases/get-effective-preferences");
 vi.mock("@/entities/preferences/domain/use-cases/upsert-user-preferences");
 
+// A late-evening UTC instant: rendered in the effective zone (UTC+9) it lands on the NEXT calendar
+// day, so an example that ignored the timezone preference could not accidentally match. A zone-less
+// literal would be parsed as browser-local and make every assertion below zone-agnostic.
+const FIXED_INSTANT = new Date("2026-06-11T23:30:00Z");
+const EFFECTIVE_ZONE = "Asia/Tokyo";
+
 const baseEffective: EffectivePreferences = {
   dateFormat: { value: "EU_DATETIME", source: "GLOBAL" },
-  timezone: { value: "Europe/Paris", source: "GLOBAL" },
+  timezone: { value: EFFECTIVE_ZONE, source: "GLOBAL" },
 };
 
 describe("UserPreferencesCard", () => {
   beforeEach(() => {
     // Freeze the clock: preset labels embed a live date example.
     vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-06-30T14:30:00"));
+    vi.setSystemTime(FIXED_INSTANT);
     vi.clearAllMocks();
     vi.mocked(getEffectivePreferences).mockResolvedValue(baseEffective);
     vi.mocked(upsertUserPreferences).mockResolvedValue();
@@ -92,12 +98,32 @@ describe("UserPreferencesCard", () => {
     await component.getByRole("button", { name: /date format/i }).click();
 
     await component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }).click();
-    await expect.element(component.getByText("Example: 2026-06-30 14:30")).toBeVisible();
+    await expect.element(component.getByText("Example: 2026-06-12 08:30")).toBeVisible();
 
     await component.getByRole("button", { name: /date format/i }).click();
 
     await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
-    await expect.element(component.getByText("Example: 30/06/2026 14:30")).toBeVisible();
+    await expect.element(component.getByText("Example: 12/06/2026 08:30")).toBeVisible();
+  });
+
+  test("renders the example in the effective timezone, not the browser's", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await component.getByRole("button", { name: /date format/i }).click();
+    await component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }).click();
+
+    // 23:30Z is 08:30 the next day in Asia/Tokyo; the browser-zone rendering would still say the 11th.
+    await expect.element(component.getByText("Example: 2026-06-12 08:30")).toBeVisible();
+    expect(component.getByText(/^Example: 2026-06-11/).elements()).toHaveLength(0);
+  });
+
+  test("renders the example's offset from the effective timezone, not the browser's", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await component.getByRole("button", { name: /date format/i }).click();
+    await component.getByRole("option", { name: "yyyy-MM-dd'T'HH:mm:ssXXX", exact: true }).click();
+
+    await expect.element(component.getByText("Example: 2026-06-12T08:30:00+09:00")).toBeVisible();
   });
 
   test("renders the live example inline, on the same row as the date-format control", async () => {
@@ -108,7 +134,7 @@ describe("UserPreferencesCard", () => {
     await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
 
     const combobox = component.getByRole("button", { name: /date format/i }).element();
-    const example = component.getByText("Example: 30/06/2026 14:30").element();
+    const example = component.getByText("Example: 12/06/2026 08:30").element();
 
     const row = combobox.closest("div.flex.items-center") as HTMLElement;
     expect(row).not.toBeNull();
@@ -127,7 +153,7 @@ describe("UserPreferencesCard", () => {
     await component.getByRole("button", { name: /date format/i }).click();
 
     await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
-    await expect.element(component.getByText("Example: 30/06/2026 14:30")).toBeVisible();
+    await expect.element(component.getByText("Example: 12/06/2026 08:30")).toBeVisible();
 
     await component.getByRole("button", { name: /date format/i }).click();
 
@@ -185,7 +211,7 @@ describe("UserPreferencesCard", () => {
     await expect
       .element(
         component.getByRole("tooltip", {
-          name: /from the organisation default: 30\/06\/2026 14:30 \(dd\/MM\/yyyy HH:mm\)/i,
+          name: /from the organisation default: 12\/06\/2026 08:30 \(dd\/MM\/yyyy HH:mm\)/i,
         })
       )
       .toBeVisible();
@@ -211,6 +237,35 @@ describe("UserPreferencesCard", () => {
 
     await expect
       .element(component.getByRole("tooltip", { name: "Your preference." }))
+      .toBeVisible();
+
+    // Park the pointer away from the trigger so the tooltip closes before the next test renders.
+    await initPointerTracking(component.locator);
+  });
+
+  test("the (i) tooltip's browser-locale example honours the timezone preference", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: { value: null, source: "DEFAULT" },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+
+    // No date-format preference means the browser's locale renders it — still in the preferred zone.
+    const expected = FIXED_INSTANT.toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: EFFECTIVE_ZONE,
+    });
+
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.first().hover();
+
+    await expect
+      .element(component.getByRole("tooltip", { name: `From your browser: ${expected}.` }))
       .toBeVisible();
 
     // Park the pointer away from the trigger so the tooltip closes before the next test renders.
