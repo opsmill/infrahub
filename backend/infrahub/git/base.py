@@ -1103,11 +1103,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 error=error, name=self.name, location=self.location, branch_name=branch_name or self.default_branch
             )
         except RepositoryError as exc:
+            status_by_error: dict[type[RepositoryError], RepositoryOperationalStatus] = {
+                RepositoryConnectionError: RepositoryOperationalStatus.ERROR_CONNECTION,
+                RepositoryCredentialsError: RepositoryOperationalStatus.ERROR_CRED,
+            }
             await self._update_operational_status(
-                status={
-                    RepositoryConnectionError: RepositoryOperationalStatus.ERROR_CONNECTION,
-                    RepositoryCredentialsError: RepositoryOperationalStatus.ERROR_CRED,
-                }.get(type(exc), RepositoryOperationalStatus.ERROR)
+                status=status_by_error.get(type(exc), RepositoryOperationalStatus.ERROR)
             )
             raise
 
