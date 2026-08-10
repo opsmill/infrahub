@@ -56,13 +56,14 @@ async def scaled_zombie_automation(prefect_client: PrefectClient) -> AsyncGenera
     await prefect_client.delete_automation(automation_id=automation_id)
 
 
-async def emit_flow_run_event(event_name: str, flow_run_id: UUID) -> None:
+async def emit_flow_run_event(event_name: str, flow_run_id: UUID, follows: UUID | None = None) -> None:
     async with get_events_client() as events_client:
         await events_client.emit(
             Event(
                 event=event_name,
                 occurred=datetime.now(UTC),
                 resource={"prefect.resource.id": f"prefect.flow-run.{flow_run_id}"},
+                follows=follows,
             )
         )
 
@@ -119,3 +120,30 @@ async def test_wait_transition_restarts_the_countdown(
     run = await prefect_client.read_flow_run(flow_run_id)
     assert run.state is not None
     assert run.state.type == StateType.SCHEDULED
+
+
+async def test_wait_transition_restarts_the_countdown_when_its_predecessor_is_unrecorded(
+    prefect_client: PrefectClient, scaled_zombie_automation: None
+) -> None:
+    """A retry wait anchors the countdown even when its state event is causally ordered.
+
+    The server stamps every flow-run state-change event with the id of the state it follows,
+    and withholds such an event from evaluation for as long as that predecessor is unrecorded
+    — the standing condition for a run whose earlier states were written without emitting
+    events. The heartbeat that arms the countdown carries no such stamp and is never withheld.
+    A run waiting out its backoff must therefore survive: it may not be declared dead merely
+    because the transition that explains its silence is ordered behind an event the server
+    never recorded.
+    """
+    flow_run_id = await create_waiting_run(prefect_client)
+    await emit_flow_run_event("prefect.flow-run.heartbeat", flow_run_id)
+    await asyncio.sleep(SCALED_WINDOW.total_seconds() / 2)
+    await emit_flow_run_event("prefect.flow-run.AwaitingRetry", flow_run_id, follows=uuid4())
+
+    await asyncio.sleep(SCALED_WINDOW.total_seconds() * 0.7)
+    run = await prefect_client.read_flow_run(flow_run_id)
+    assert run.state is not None
+    assert run.state.type == StateType.SCHEDULED, (
+        "a run waiting out its backoff was crashed because its retry-wait transition was "
+        "ordered behind an unrecorded event while the heartbeat that armed the countdown was not"
+    )
