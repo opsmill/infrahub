@@ -116,7 +116,7 @@ export function IpamDetailsHeader({
   );
 }
 
-const Divider = () => <div className="h-5 w-px shrink-0 bg-gray-200" />;
+const Divider = () => <div className="h-5 w-px shrink-0 bg-border" />;
 
 const Group = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement>) => (
   <div className={classNames("not-last:max-w-50 text-xs", className)} {...props}>

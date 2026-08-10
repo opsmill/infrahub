@@ -30,7 +30,7 @@ function ToolbarDivider({ className, ...props }: ToolbarDividerProps) {
   return (
     <Separator
       orientation="vertical"
-      className={cn("h-6 w-px border-0 bg-gray-200", className)}
+      className={cn("h-6 w-px border-0 bg-border", className)}
       {...props}
     />
   );
