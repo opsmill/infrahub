@@ -20,6 +20,7 @@ NORMALIZE_CASES = [
     NormalizeCase(name="iana_region_city", value="Asia/Tokyo", expected="Asia/Tokyo"),
     NormalizeCase(name="iana_europe", value="Europe/Paris", expected="Europe/Paris"),
     NormalizeCase(name="utc", value="UTC", expected="UTC"),
+    NormalizeCase(name="etc_offset_zone", value="Etc/GMT+5", expected="Etc/GMT+5"),
     NormalizeCase(name="empty_string_is_unset", value="", expected=None),
     NormalizeCase(name="none_is_unset", value=None, expected=None),
 ]
