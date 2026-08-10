@@ -6,18 +6,23 @@ from fast_depends import Provider
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database
+from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION
+from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.schema import load_schema
 
 
 async def test_rebase_graph(
@@ -294,3 +299,67 @@ async def test_rebase_preserves_metadata(
     assert owner_peer._get_created_by() == "person-create-user"
     assert before_car2_create < owner_peer._get_updated_at() < after_car2_create
     assert owner_peer._get_updated_by() == "car2-create-user"
+
+
+async def test_rebase_hands_migrations_the_branch_creation_schema_as_baseline(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dependency_provider: Provider,
+    workflow_recorder: WorkflowRecorder,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A rebase must run its migrations against the schema as of branch creation.
+
+    Make sure that the common ancestor schema passed to the schema migrations workflow is correct.
+    """
+    widget_kind = "TestingWidget"
+    ownable = GenericSchema(
+        name="Ownable",
+        namespace="Testing",
+        attributes=[AttributeSchema(name="owner_name", kind="Text", optional=True)],
+    )
+    widget = NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        default_filter="name__value",
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    await load_schema(db=db, schema=SchemaRoot(generics=[ownable], nodes=[widget]), update_db=True)
+
+    branch = await create_branch(db=db, branch_name="widget-branch")
+    branch_creation_hash = branch.active_schema_hash.main
+
+    # The destination branch adopts the generic only after the branch forked
+    inheriting_widget = widget.duplicate()
+    inheriting_widget.inherit_from = ["TestingOwnable"]
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(nodes=[inheriting_widget]),
+        update_db=True,
+        limit=[widget_kind, "TestingOwnable"],
+    )
+
+    assert set(
+        registry.schema.get_schema_branch(name=default_branch.name).get_node(name=widget_kind).attribute_names
+    ) == {"name", "owner_name"}
+
+    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+        await rebase_branch(
+            branch=branch.name,
+            context=InfrahubContext.init(
+                branch=default_branch,
+                account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+            ),
+        )
+
+    migration_calls = workflow_recorder.get_execute_calls_for(SCHEMA_APPLY_MIGRATION)
+    assert len(migration_calls) == 1
+    baseline_schema = migration_calls[0]["parameters"]["message"].previous_schema
+    assert isinstance(baseline_schema, SchemaBranch)
+
+    # The whole baseline, not just the widget, must be the schema as it stood at branch creation
+    assert baseline_schema.get_hash() == branch_creation_hash
+    assert baseline_schema.get_hash() != registry.schema.get_schema_branch(name=default_branch.name).get_hash()
+
+    # The newly-inherited attribute must be absent from the baseline
+    assert set(baseline_schema.get_node(name=widget_kind).attribute_names) == {"name"}

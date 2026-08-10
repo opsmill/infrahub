@@ -186,7 +186,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
 
-        pre_rebase_schema = merger.destination_schema.duplicate()
+        # Use the branch-creation (common-ancestor) schema as the migration baseline: it still contains
+        # any element removed on either side, so remove migrations can resolve what to close.
+        pre_rebase_schema = (await merger.get_common_ancestor_schema()).duplicate()
         migrations = []
         async with lock.registry.global_graph_lock():
             async with db.start_transaction() as dbt:
