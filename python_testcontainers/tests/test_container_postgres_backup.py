@@ -39,7 +39,7 @@ def fixture_compose_factory(tmp_path: Path) -> Callable[[], InfrahubDockerCompos
 
         instance.get_container = _noop_service  # type: ignore[assignment]
         instance.start_container = _noop_service  # type: ignore[assignment]
-        instance.exec_calls: list[list[str]] = []
+        instance.exec_calls = []
 
         def _exec(command: list[str], service_name: str) -> tuple[str, str, int]:
             _ = service_name

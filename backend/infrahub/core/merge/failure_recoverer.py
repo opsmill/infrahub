@@ -347,5 +347,5 @@ class MergeFailureRecoverer:
         if proposed_change is None:
             return
         # The state attribute is enum-backed: reads coerce back to the enum, writes take the raw value.
-        proposed_change.state.value = ProposedChangeState.OPEN.value  # type: ignore[misc]
+        proposed_change.state.value = ProposedChangeState.OPEN.value  # type: ignore[misc]  # ty: ignore[invalid-assignment]
         await proposed_change.save(db=self.db)

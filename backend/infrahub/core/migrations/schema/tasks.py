@@ -104,7 +104,7 @@ async def schema_path_migrate(
         if not migration_class:
             raise ValueError(f"Unable to find the migration class for {migration_name}")
 
-        migration = migration_class(  # type: ignore[call-arg]
+        migration = migration_class(  # type: ignore[call-arg]  # ty: ignore[missing-argument]
             new_node_schema=new_node_schema,  # type: ignore[arg-type]
             previous_node_schema=previous_node_schema,  # type: ignore[arg-type]
             schema_path=schema_path,
