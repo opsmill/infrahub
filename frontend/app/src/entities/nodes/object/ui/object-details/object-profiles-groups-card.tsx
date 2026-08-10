@@ -307,7 +307,7 @@ export function ObjectProfilesGroupsCard({
   };
 
   return (
-    <Card className={classNames("divide-y divide-gray-200", className)}>
+    <Card className={classNames("divide-y", className)}>
       <CardHeader>{getCardTitle()}</CardHeader>
 
       {showProfilesSection && (

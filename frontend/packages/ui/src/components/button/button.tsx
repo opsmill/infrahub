@@ -52,7 +52,7 @@ const buttonVariants = tv({
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       outline: [
-        "border-neutral-200 bg-gradient-to-b from-stone-100 to-white text-stone-800 inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
+        "bg-gradient-to-b from-stone-100 to-white text-stone-800 inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
         "data-hovered:from-neutral-100",
       ],
       ghost: [
@@ -61,7 +61,7 @@ const buttonVariants = tv({
         "data-pressed:bg-neutral-200",
       ],
       input: [
-        "border-neutral-200 bg-white text-stone-800",
+        "bg-white text-stone-800",
         "shadow-[0_2px_4px_rgba(0,0,0,0.04)]",
         "data-pressed:scale-100",
       ],

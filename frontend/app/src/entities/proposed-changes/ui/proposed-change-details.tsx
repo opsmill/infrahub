@@ -226,7 +226,7 @@ export const ProposedChangeDetails = ({
 
           <PropertyList properties={proposedChangeProperties} />
 
-          <div className="flex grow gap-2 border-gray-200 border-t p-2">
+          <div className="flex grow gap-2 border-t p-2">
             <PcReviewButton />
             <PcActionButton />
           </div>

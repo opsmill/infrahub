@@ -1,9 +1,11 @@
 :root {
   --foreground: var(--color-stone-800);
 
+  --border: var(--color-neutral-200);
+  --border-strong: var(--color-neutral-300);
+
   --card: linear-gradient(to bottom, var(--color-stone-50) 0%, var(--color-white) 10%);
   --card-header: linear-gradient(to bottom, var(--color-white) 0%, var(--color-neutral-50) 100%);
-  --card-border: var(--color-neutral-200);
   --card-header-foreground: var(--color-neutral-700);
 
   --card-shadow:
@@ -15,11 +17,28 @@
 @theme inline {
   --color-foreground: var(--foreground);
 
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
   --background-image-card: var(--card);
   --background-image-card-header: var(--card-header);
-  --color-card-border: var(--card-border);
   --color-card-header-foreground: var(--card-header-foreground);
 
   --shadow-card: var(--card-shadow);
   --shadow-card-header: var(--card-header-shadow);
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border);
+  }
+
+  /* To prevent conflict with Separator component styling */
+  hr {
+    border-top-width: 0;
+  }
 }

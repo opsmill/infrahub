@@ -122,10 +122,10 @@ function NodeContextMenu({
         onClick={onClose}
       />
       <div
-        className="fixed z-50 min-w-[180px] rounded-md border border-gray-200 bg-white py-1 shadow-lg"
+        className="fixed z-50 min-w-[180px] rounded-md border bg-white py-1 shadow-lg"
         style={{ left: menu.x, top: menu.y }}
       >
-        <div className="border-gray-100 border-b px-3 py-1.5">
+        <div className="border-b px-3 py-1.5">
           <div className="truncate font-medium text-xs">{menu.nodeLabel}</div>
           <div className="truncate text-[10px] text-gray-400">{menu.nodeKind}</div>
         </div>
@@ -159,7 +159,7 @@ function NodeContextMenu({
         </button>
         {onExcludeKind && (
           <>
-            <div className="mx-2 my-0.5 border-gray-100 border-t" />
+            <div className="mx-2 my-0.5 border-t" />
             <button
               type="button"
               onClick={() => {

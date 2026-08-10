@@ -50,13 +50,13 @@ function ParallelModePlugin() {
             type="checkbox"
             checked={config.enabled}
             onChange={toggleEnabled}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="h-4 w-4 rounded border-border-strong text-blue-600 focus:ring-blue-500"
           />
           <span className="font-medium text-sm">Enable Parallel Mode</span>
         </label>
 
         {config.enabled && (
-          <div className="space-y-4 border-gray-200 border-l-2 pl-4">
+          <div className="space-y-4 border-l-2 pl-4">
             <div>
               <label className="mb-1 block font-medium text-gray-700 text-sm">
                 Page Size
@@ -75,7 +75,7 @@ function ParallelModePlugin() {
                       updateConfig({ pageSize });
                     }
                   }}
-                  className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded border border-border-strong px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   min={1}
                   max={10_000}
                 />
@@ -101,7 +101,7 @@ function ParallelModePlugin() {
                       updateConfig({ maxConcurrent });
                     }
                   }}
-                  className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded border border-border-strong px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   min={1}
                   max={50}
                 />
@@ -129,7 +129,7 @@ function ParallelModePlugin() {
                       updateConfig({ delayMs });
                     }
                   }}
-                  className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded border border-border-strong px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   min={0}
                   max={5000}
                 />
@@ -142,7 +142,7 @@ function ParallelModePlugin() {
         )}
       </div>
 
-      <div className="border-gray-200 border-t pt-4">
+      <div className="border-t pt-4">
         <div className="font-medium text-gray-700 text-sm">How it works:</div>
         <ol className="mt-2 list-inside list-decimal space-y-1 text-gray-600 text-xs">
           <li>Executes a count query to determine total items</li>

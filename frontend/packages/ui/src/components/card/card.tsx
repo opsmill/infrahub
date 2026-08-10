@@ -14,7 +14,7 @@ export function Card({ className, ref, ...props }: CardProps) {
         "flex flex-col",
         "rounded-2xl",
         "bg-card",
-        "border border-card-border",
+        "border",
         "shadow-card",
         className,
       )}
@@ -33,7 +33,7 @@ export function CardHeader({ className, ref, ...props }: CardHeaderProps) {
       ref={ref}
       className={cn(
         "rounded-t-[inherit]",
-        "border-b border-b-card-border",
+        "border-b",
         "bg-card-header",
         "px-3 py-2",
         "text-sm font-medium tracking-tight text-card-header-foreground",

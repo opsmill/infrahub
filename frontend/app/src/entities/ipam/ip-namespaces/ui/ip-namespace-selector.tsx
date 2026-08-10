@@ -55,7 +55,7 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
           }}
         />
 
-        <Col className="border-neutral-200 border-t p-2">
+        <Col className="border-t p-2">
           <LinkButton
             href={constructPath("/ipam/namespaces")}
             variant="ghost"

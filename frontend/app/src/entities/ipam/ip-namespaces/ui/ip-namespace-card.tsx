@@ -16,7 +16,7 @@ export interface IpNamespaceCardProps {
 
 const CARD_STYLES = {
   container: classNames(
-    "bg-white rounded-lg border border-gray-200 p-4 flex flex-col gap-2",
+    "bg-white rounded-lg border p-4 flex flex-col gap-2",
     "transition-all hover:border-custom-blue-600 hover:shadow-sm",
     focusVisibleStyle
   ),

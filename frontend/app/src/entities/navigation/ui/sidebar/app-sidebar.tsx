@@ -21,7 +21,7 @@ import { AccountMenu } from "@/entities/user-profile/ui/account-menu";
 export function AppSidebar() {
   return (
     <SidebarProvider>
-      <Sidebar data-testid="sidebar" className="divide-y divide-neutral-200">
+      <Sidebar data-testid="sidebar" className="divide-y">
         <SidebarHeader>
           <AppSidebarHeader />
           <SearchAnywhere />

@@ -16,7 +16,7 @@ export function GroupPanelHeader({
   return (
     <h3
       className={classNames(
-        "flex h-10 shrink-0 items-center border-gray-200 border-b p-2 font-medium text-neutral-600 text-xs",
+        "flex h-10 shrink-0 items-center border-b p-2 font-medium text-neutral-600 text-xs",
         className
       )}
       {...props}
@@ -29,10 +29,5 @@ export function GroupPanelBody({ className, ...props }: React.HTMLAttributes<HTM
 }
 
 export function GroupPanelFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={classNames("shrink-0 border-gray-200 border-t p-1 text-center", className)}
-      {...props}
-    />
-  );
+  return <div className={classNames("shrink-0 border-t p-1 text-center", className)} {...props} />;
 }

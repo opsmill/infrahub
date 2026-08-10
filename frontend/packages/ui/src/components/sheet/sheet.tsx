@@ -39,7 +39,7 @@ export function Sheet({
               <AriaModal
                 className={cn(
                   "fixed top-2 bottom-2 w-100 overflow-hidden rounded-2xl p-1 outline-hidden transition-all",
-                  "border border-neutral-100 bg-white/25 shadow-xl backdrop-blur",
+                  "border bg-white/25 shadow-xl backdrop-blur",
                   "data-entering:animate-in data-entering:duration-200 data-entering:ease-out data-entering:slide-in-from-right-1/2",
                   "data-exiting:animate-out data-exiting:duration-150 data-exiting:ease-in data-exiting:slide-out-to-right-1/2",
                 )}

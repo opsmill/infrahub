@@ -125,7 +125,7 @@ export function MenuItem({
 export interface MenuSeparatorProps extends AriaSeparatorProps {}
 
 export function MenuSeparator({ className, ...props }: MenuSeparatorProps) {
-  return <AriaSeparator className={cn("-mx-1 my-1 h-px bg-stone-300", className)} {...props} />;
+  return <AriaSeparator className={cn("-mx-1 my-1 h-px bg-border-strong", className)} {...props} />;
 }
 
 export interface MenuSectionProps<T> extends AriaMenuSectionProps<T> {

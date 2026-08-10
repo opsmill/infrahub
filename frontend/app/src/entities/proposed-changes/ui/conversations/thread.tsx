@@ -169,7 +169,7 @@ export const Thread = (props: tThread) => {
           author={comment?.metadata?.created_by?.display_label}
           createdAt={comment?.metadata?.created_at}
           content={comment?.text?.value ?? ""}
-          className={"border border-gray-200"}
+          className="border"
         />
       ))}
 

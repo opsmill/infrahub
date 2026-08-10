@@ -37,7 +37,7 @@ function HorizontalContent() {
       {horizontalIndices.map((index) => (
         <div
           key={index}
-          className="flex h-16 w-32 shrink-0 items-center justify-center rounded border border-stone-300 bg-stone-100 text-sm"
+          className="flex h-16 w-32 shrink-0 items-center justify-center rounded border border-border-strong bg-stone-100 text-sm"
         >
           Item {index}
         </div>
@@ -52,7 +52,7 @@ function BothContent() {
       {bothIndices.map((index) => (
         <div
           key={index}
-          className="flex h-16 w-20 items-center justify-center rounded border border-stone-300 bg-stone-100 text-sm"
+          className="flex h-16 w-20 items-center justify-center rounded border border-border-strong bg-stone-100 text-sm"
         >
           {index}
         </div>
@@ -64,19 +64,19 @@ function BothContent() {
 export const Default: Story = {
   render: () => (
     <div className="flex gap-4">
-      <div className="rounded border border-stone-300">
+      <div className="rounded border border-border-strong">
         <p className="px-3 py-2 text-xs font-medium text-stone-700">Both</p>
         <ScrollArea scrollX scrollY className="h-48 w-64">
           <BothContent />
         </ScrollArea>
       </div>
-      <div className="rounded border border-stone-300">
+      <div className="rounded border border-border-strong">
         <p className="px-3 py-2 text-xs font-medium text-stone-700">Vertical</p>
         <ScrollArea className="h-48 w-64">
           <VerticalContent />
         </ScrollArea>
       </div>
-      <div className="rounded border border-stone-300">
+      <div className="rounded border border-border-strong">
         <p className="px-3 py-2 text-xs font-medium text-stone-700">Horizontal</p>
         <ScrollArea scrollX scrollY={false} className="h-48 w-64">
           <HorizontalContent />
@@ -96,7 +96,7 @@ export const Playground: Story = {
     scrollY: { control: "boolean" },
   },
   render: (args) => (
-    <div className="rounded border border-stone-300">
+    <div className="rounded border border-border-strong">
       <ScrollArea {...args} className="h-64 w-64">
         <BothContent />
       </ScrollArea>

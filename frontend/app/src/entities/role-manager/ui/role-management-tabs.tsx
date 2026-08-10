@@ -57,12 +57,7 @@ const tabs = [
 
 export function RoleManagementTabs() {
   return (
-    <ScrollArea
-      scrollX
-      scrollY={false}
-      scrollBarClassName="hidden"
-      className="shrink-0 border-gray-200 border-b"
-    >
+    <ScrollArea scrollX scrollY={false} scrollBarClassName="hidden" className="shrink-0 border-b">
       <nav aria-label="Tabs">
         <Row className="items-end gap-4 px-4">
           {tabs.map((tab) => (

@@ -29,7 +29,7 @@ function ColumnLabel({ children }: { children: React.ReactNode }) {
 // The menu lives inside a Popover in real usage; this mimics that surface so the  items render against the expected background.
 function MenuSurface({ children }: { children: React.ReactNode }) {
   return (
-    <div className="w-56 rounded-xl border border-neutral-300 bg-stone-100/70 shadow-md">
+    <div className="w-56 rounded-xl border border-border-strong bg-stone-100/70 shadow-md">
       {children}
     </div>
   );

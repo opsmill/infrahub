@@ -73,7 +73,7 @@ export function PreferencesForm() {
           },
         });
       }}
-      className="space-y-0 divide-y divide-gray-200"
+      className="space-y-0 divide-y"
     >
       <DateFormatField preference={preferences.dateFormat} />
       <TimezoneField preference={preferences.timezone} />

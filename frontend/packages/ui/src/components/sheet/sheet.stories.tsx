@@ -74,7 +74,7 @@ function DismissGuardContent({ close }: { close: () => void }) {
       </p>
       <textarea
         aria-label="Description"
-        className="h-24 resize-none rounded-lg border border-neutral-300 p-2 text-sm outline-hidden focus:border-cyan-700"
+        className="h-24 resize-none rounded-lg border border-border-strong p-2 text-sm outline-hidden focus:border-cyan-700"
         placeholder="Unsaved changes block dismissal…"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
