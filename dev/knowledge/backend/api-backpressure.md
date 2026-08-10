@@ -62,6 +62,10 @@ signal — so a sink never reads back into the component it observes.
 one decision, so a sink implements them together. Separate interfaces belong to separate components,
 which is why the pool, the policy, and the tracker each have their own.
 
+The events are named methods rather than a callable protocol, so a sink can carry several of them
+and each one says which event fired. Each component fans out through a single private `_notify`,
+which is also where the per-observer failure containment lives.
+
 The concrete sinks in `observers.py` are named only where the object graph is wired: `server.py`
 passes them to `build_admission_controller`, which takes them as arguments rather than choosing them,
 and `load_signal_registry` wires the tracker's. Nothing under `api/admission/` outside that entry
@@ -74,6 +78,11 @@ query that fed an observation.
 
 The one metric still incremented outside a sink is `missing_priority_total`, in `middleware.py`
 where the header is parsed.
+
+This is the worked example of two general rules — collaborators arrive through the constructor
+rather than a later registration call, and a `Protocol` keeps an out-of-domain dependency out of the
+logic's import chain. Both, and when to apply them elsewhere, are in
+[Backend Component Design](../../../.agents/rules/backend-component-design.md).
 
 ## The request path
 
