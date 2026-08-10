@@ -2,7 +2,7 @@
   --foreground: var(--color-stone-800);
 
   --card: linear-gradient(to bottom, var(--color-stone-50) 0%, var(--color-white) 10%);
-  --card-header: linear-gradient(to bottom, var(--color-white) 0%, var(--color-neutral-50) 100%);
+  --card-header: linear-gradient(to bottom, var(--color-neutral-100), var(--color-neutral-50));
   --card-border: var(--color-neutral-200);
   --card-header-foreground: var(--color-neutral-700);
 
