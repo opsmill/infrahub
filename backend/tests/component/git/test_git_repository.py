@@ -517,6 +517,37 @@ async def test_merge_branch01_into_main(git_repo_01: InfrahubRepository, branch0
     assert response == str(commit_after)
 
 
+async def test_merge_writes_back_to_non_main_default_branch(
+    git_repo_01: InfrahubRepository,
+    git_upstream_repo_01: dict[str, str | Path],
+    branch01: BranchData,
+) -> None:
+    """Merging into Infrahub main writes the merge commit back to a non-main git default branch.
+
+    Reproduces a worker whose clone only ever checked out `main`, so it holds `develop` only as a
+    remote-tracking ref with no local branch of that name. The push that maps Infrahub `main` onto
+    the configured git default branch must still advance the remote `develop`.
+    """
+    upstream_path = str(git_upstream_repo_01["path"])
+    upstream = Repo(upstream_path)
+    upstream.git.branch("develop", "main")
+
+    repo = git_repo_01
+    await repo.fetch()
+    repo.default_branch_name = "develop"
+
+    local_branch_names = {branch.name for branch in repo.get_git_repo_main().branches}
+    assert local_branch_names == {"main"}
+
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
+
+    develop_before = Repo(upstream_path).commit("develop").hexsha
+    merge_commit = await repo.merge(source_branch=branch01.name, dest_branch="main")
+
+    assert merge_commit != develop_before
+    assert Repo(upstream_path).commit("develop").hexsha == merge_commit
+
+
 async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData) -> None:
     repo = git_repo_01
     await repo.fetch()
