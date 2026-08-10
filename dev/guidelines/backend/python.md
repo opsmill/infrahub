@@ -401,8 +401,6 @@ A broad `except Exception` is justified only at a top-level boundary (a task wor
 
 ### Best-effort side effects degrade to a safe fallback
 
-<!-- Extracted from specs/ifc-2704-incremental-merge-regen on 2026-07-31 -->
-
 A second broad-catch case is a best-effort side effect whose failure must not abort a primary
 operation that has already succeeded: a cache write for an optimization, an observability emit, a
 capture step feeding later work. Here the broad `except Exception` deliberately does not re-raise,

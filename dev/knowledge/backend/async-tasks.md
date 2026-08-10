@@ -328,8 +328,6 @@ A task run can expose recovery actions through the GraphQL `Task` type's `availa
 
 ## Task typing (polymorphic)
 
-<!-- Extracted from specs/ifc-2755-webhook-delivery-operability on 2026-07-31 -->
-
 A task result is polymorphic by the run's workflow name, mirroring the events type hierarchy. `TaskNodeInterface` carries every field common to all tasks, including `available_actions` and the classified `error`, and each concrete type declares `interfaces = (TaskNodeInterface,)`. `TaskNodeInterface.resolve_type` returns `TASK_TYPES.get(instance["workflow"], TaskNode)`, so the discriminant is the run's workflow name (already serialized as the `workflow` field). `TASK_TYPES` maps a catalogue workflow name to its concrete type (`{WEBHOOK_SEND.name: WebhookDeliveryTask}`); anything unmapped resolves to `TaskNode`. Concrete types are registered in the GraphQL manager, mirroring `_load_event_types`.
 
 Because the discriminant is intrinsic to every run, historical runs type correctly with no backfill and no stored `task_type` field. A concrete type adds only its own fields (`WebhookDeliveryTask` adds `http_request` / `http_response`; see [Webhooks](webhooks.md)); shared capabilities stay on the interface.

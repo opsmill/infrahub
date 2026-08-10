@@ -207,8 +207,6 @@ A `TLS` failure reaches this layer wrapped by httpx as a generic transport error
 
 `webhook_send` retries every failure uniformly (three retries, four attempts in total, with a fixed 120s delay), regardless of failure class. Transient-only gating (retrying only timeout, connection, and 5xx while failing 4xx and configuration errors immediately) was evaluated and rejected: it requires attempt-level retry-condition machinery whose complexity outweighs the cost of the bounded extra attempts. The classified reason and its per-class remediation hint, not a retry gate, are what tell the operator whether waiting on the cycle can help. The run is silent for the duration of each retry wait, so the zombie-detection window is sized above this backoff to avoid crashing a waiting delivery; see [Liveness and zombie detection](async-tasks.md#liveness-and-zombie-detection).
 
-<!-- Extracted from specs/ifc-2755-webhook-delivery-operability on 2026-07-31 -->
-
 ## Delivery operability
 
 A delivery run exposes recovery actions through the GraphQL `Task` type. `TaskActionGenerator` derives the actions from the run's workflow name and current state. Only `WEBHOOK_SEND` runs expose actions today; any other task type exposes none.

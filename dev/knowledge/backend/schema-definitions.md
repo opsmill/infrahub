@@ -89,8 +89,6 @@ All `AttributeSchema` entries must include a `description` field. This is enforc
 
 ## Read-only and Display Tier
 
-<!-- Extracted from specs/infp-556-auto-create-groups on 2026-07-31 -->
-
 Two `AttributeSchema` flags govern how a field is exposed, independent of what it stores.
 
 `read_only=True` marks a field system-managed. Read-only attributes and relationships are excluded from the generated GraphQL `Create` / `Update` input types, so a mutation that supplies one fails at GraphQL **parse time** (`Field '<name>' is not defined by type '<Kind>UpdateInput'`) rather than at runtime; read-only relationships are additionally rejected at the relationship-mutation layer. A read-only field is therefore writable only by server-side code that constructs the node directly, never through GraphQL, REST, or a schema load. Pair it with `allow_override=AllowOverrideType.NONE` to stop an inheriting node from dropping the flag. Input-generation enforcement lives in `backend/infrahub/graphql/manager.py`; the relationship-mutation guard in `backend/infrahub/graphql/mutations/relationship.py`.
