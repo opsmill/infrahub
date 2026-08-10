@@ -3,18 +3,10 @@ import { ListBoxItem } from "react-aria-components";
 
 import type { Dropdown } from "@/shared/api/graphql/generated/types";
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
-<<<<<<< HEAD
 import { classNames, getTextColor } from "@/shared/utils/common";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
-=======
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { classNames, getTextColor } from "@/shared/utils/common";
-
-import type { NodeCore } from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
->>>>>>> stable
 
 export interface GitRepositoryData extends NodeCore {
   sync_status?: Dropdown | null;
