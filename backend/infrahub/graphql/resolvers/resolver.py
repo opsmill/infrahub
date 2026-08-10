@@ -74,7 +74,7 @@ async def is_externally_managed_resolver(parent: dict, info: GraphQLResolveInfo)
 
 @trace.get_tracer(__name__).start_as_current_span("default_resolver")
 @retry_db_transaction(name="default_resolver")
-async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
+async def default_resolver(*args: Any, **kwargs: Any) -> dict | list[dict] | None:
     """Not sure why but the default resolver returns sometime 4 positional args and sometime 2.
 
     When it returns 4, they are organized as follow
@@ -334,13 +334,13 @@ async def many_relationship_resolver(
     return await resolver.resolve(parent=parent, info=info, include_descendants=include_descendants, **kwargs)
 
 
-async def ancestors_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
+async def ancestors_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs: Any) -> dict[str, Any]:
     return await hierarchy_resolver(
         direction=RelationshipHierarchyDirection.ANCESTORS, parent=parent, info=info, **kwargs
     )
 
 
-async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
+async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs: Any) -> dict[str, Any]:
     return await hierarchy_resolver(
         direction=RelationshipHierarchyDirection.DESCENDANTS, parent=parent, info=info, **kwargs
     )
@@ -349,7 +349,7 @@ async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs)
 @trace.get_tracer(__name__).start_as_current_span("hierarchy_resolver")
 @retry_db_transaction(name="hierarchy_resolver")
 async def hierarchy_resolver(
-    direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs
+    direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs: Any
 ) -> dict[str, Any]:
     """Resolver for ancestors and dependants for Hierarchical nodes.
 

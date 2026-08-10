@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GraphAttributeIPHostNode, GraphAttributeIPNetworkNode
@@ -111,7 +111,7 @@ class IPParentPrefixLookupQuery(Query):
     def __init__(
         self,
         ip_value: ipaddress.IPv4Address | ipaddress.IPv6Address | ipaddress.IPv4Network | ipaddress.IPv6Network,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.ip_value = ip_value
         super().__init__(**kwargs)
@@ -146,7 +146,7 @@ class IPParentPrefixLookupQuery(Query):
         self.params["possible_prefix_list"] = list(possible_prefix_map.keys())
         self.params["ip_version"] = ip_as_network.version
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self._build_possible_parent_prefixes()
 
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -243,14 +243,14 @@ class IPPrefixSubnetFetch(Query):
         self,
         obj: IPNetworkType,
         namespace: Node | str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.obj = obj
         self.namespace_id = _get_namespace_id(namespace)
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -335,7 +335,7 @@ class IPPrefixSubnetFetchFree(Query):
         target_prefixlen: int,
         namespace: Node | str | None = None,
         parent_uuid: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.obj = obj
         self.target_prefixlen = target_prefixlen
@@ -344,7 +344,7 @@ class IPPrefixSubnetFetchFree(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -469,7 +469,7 @@ class IPv6PrefixSubnetFetchFree(Query):
         target_prefixlen: int,
         namespace: Node | str | None = None,
         parent_uuid: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.obj = obj
         self.target_prefixlen = target_prefixlen
@@ -478,7 +478,7 @@ class IPv6PrefixSubnetFetchFree(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -641,14 +641,14 @@ class IPPrefixIPAddressFetch(Query):
         self,
         obj: IPNetworkType,
         namespace: Node | str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.obj = obj
         self.namespace_id = _get_namespace_id(namespace)
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -715,7 +715,7 @@ class IPPrefixIPAddressFetchFree(Query):
         obj: IPNetworkType,
         is_pool: bool,
         namespace: Node | str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.obj = obj
         self.namespace_id = _get_namespace_id(namespace)
@@ -723,7 +723,7 @@ class IPPrefixIPAddressFetchFree(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -832,7 +832,7 @@ class IPv6PrefixIPAddressFetchFree(Query):
         obj: IPNetworkType,
         is_pool: bool,
         namespace: Node | str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.obj = obj
         self.namespace_id = _get_namespace_id(namespace)
@@ -840,7 +840,7 @@ class IPv6PrefixIPAddressFetchFree(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -1013,7 +1013,7 @@ class IPPrefixUtilization(Query):
     name = "ipprefix_utilization_prefix"
     type = QueryType.READ
 
-    def __init__(self, ip_prefixes: list[Node], allocated_kinds: list[str], branch: Branch, **kwargs) -> None:
+    def __init__(self, ip_prefixes: list[Node], allocated_kinds: list[str], branch: Branch, **kwargs: Any) -> None:
         self.ip_prefixes = ip_prefixes
         self.allocated_kinds = sorted(allocated_kinds)
         self.allocated_kinds_rel = [
@@ -1022,7 +1022,7 @@ class IPPrefixUtilization(Query):
         ]
         super().__init__(branch=branch, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ids"] = [p.get_id() for p in self.ip_prefixes]
         self.params["allocated_kinds_rel"] = self.allocated_kinds_rel
 
@@ -1165,7 +1165,7 @@ class IPPrefixReconcileQuery(Query):
         ip_value: AllIPTypes,
         namespace: Node | str | None = None,
         node_uuid: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.ip_value = ip_value
         self.ip_uuid = node_uuid
@@ -1198,7 +1198,7 @@ class IPPrefixReconcileQuery(Query):
         ]
         self.params["possible_prefix_list"] = list(possible_prefix_map.keys())
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
         self.params["namespace_kind"] = InfrahubKind.IPNAMESPACE

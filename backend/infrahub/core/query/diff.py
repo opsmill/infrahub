@@ -25,7 +25,7 @@ class DiffQuery(Query):
         branch: Branch,
         diff_from: Timestamp | str = None,
         diff_to: Timestamp | str = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """A diff is always in the context of a branch.
 
@@ -62,14 +62,14 @@ class DiffCountChanges(Query):
         branch_names: list[str],
         diff_from: Timestamp,
         diff_to: Timestamp,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.branch_names = branch_names
         self.diff_from = diff_from
         self.diff_to = diff_to
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "from_time": self.diff_from.to_string(),
             "to_time": self.diff_to.to_string(),

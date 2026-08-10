@@ -271,13 +271,6 @@ module = "infrahub.core.query.diff"
 disable_error_code = [
     "assignment",
     "call-overload",
-    "no-untyped-def",
-]
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.query.ipam"
-disable_error_code = [
-    "no-untyped-def",
 ]
 
 [[tool.mypy.overrides]]
@@ -285,7 +278,6 @@ module = "infrahub.core.query.node"
 disable_error_code = [
     "arg-type",
     "assignment",
-    "no-untyped-def",
     "union-attr",
 ]
 
@@ -294,7 +286,6 @@ module = "infrahub.core.query.relationship"
 disable_error_code = [
     "arg-type",
     "assignment",
-    "no-untyped-def",
     "union-attr",
     "valid-type",
 ]
@@ -431,7 +422,6 @@ module = "infrahub.graphql.resolvers.resolver"
 disable_error_code = [
     "arg-type",
     "attr-defined",
-    "no-untyped-def",
     "union-attr",
     "var-annotated",
 ]
@@ -441,7 +431,6 @@ module = "infrahub.graphql.types.standard_node"
 disable_error_code = [
     "attr-defined",
     "call-arg",
-    "no-untyped-def",
 ]
 
 [[tool.mypy.overrides]]
@@ -577,7 +566,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "ANN003",   # Missing type annotation for `**kwargs`
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
     "ASYNC240", # Async functions should not use pathlib.Path methods
     "ERA001",   # Found commented-out code
