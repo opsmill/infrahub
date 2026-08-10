@@ -221,7 +221,9 @@ export const ObjectAttributeValue = ({
     case ATTRIBUTE_KIND.CHECKBOX:
       return attributeData.value ? <CheckIcon className="size-4" /> : <XIcon className="size-4" />;
     case ATTRIBUTE_KIND.DATETIME:
-      return <DateDisplay date={getTextValue(attributeData)} />;
+      // User-authored data, not metadata: always the full preferred datetime, never an
+      // age-dependent compact/relative form.
+      return <DateDisplay date={getTextValue(attributeData)} fullTimestamp />;
     case ATTRIBUTE_KIND.TEXTAREA:
       return <MarkdownRender markdownText={getTextValue(attributeData)} />;
     case ATTRIBUTE_KIND.PASSWORD:
