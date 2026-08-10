@@ -10,9 +10,8 @@ from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
 from fastapi import FastAPI, Request, Response
 from fastapi.logger import logger
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from infrahub_sdk.exceptions import TimestampFormatError
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.trace import Span
@@ -160,8 +159,7 @@ def server_request_hook(span: Span, scope: dict) -> None:  # noqa: ARG001
 FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics", server_request_hook=server_request_hook)
 
 FRONTEND_DIRECTORY = Path(os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", "frontend/app")).resolve()
-FRONTEND_ASSET_DIRECTORY = FRONTEND_DIRECTORY / "dist" / "assets"
-FRONTEND_FAVICONS_DIRECTORY = FRONTEND_DIRECTORY / "dist" / "favicons"
+FRONTEND_DIST_DIRECTORY = FRONTEND_DIRECTORY / "dist"
 
 DOCS_DIRECTORY = Path(os.environ.get("INFRAHUB_DOCS_DIRECTORY", Path("docs").resolve()))
 DOCS_BUILD_DIRECTORY = DOCS_DIRECTORY / "build"
@@ -171,8 +169,6 @@ gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
 
 app.include_router(api)
-
-templates = Jinja2Templates(directory=FRONTEND_DIRECTORY / "dist")
 
 
 @app.middleware("http")
@@ -248,13 +244,6 @@ app.include_router(graphql_router)
 
 app.mount("/api-static", StaticFiles(directory=CURRENT_DIRECTORY / "api" / "static"), name="static")
 
-if FRONTEND_ASSET_DIRECTORY.exists() and FRONTEND_ASSET_DIRECTORY.is_dir():
-    app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
-
-
-if FRONTEND_FAVICONS_DIRECTORY.exists() and FRONTEND_FAVICONS_DIRECTORY.is_dir():
-    app.mount("/favicons", StaticFiles(directory=FRONTEND_FAVICONS_DIRECTORY), "favicons")
-
 
 if DOCS_BUILD_DIRECTORY.exists() and DOCS_BUILD_DIRECTORY.is_dir():
     app.mount("/docs", StaticFiles(directory=DOCS_BUILD_DIRECTORY, html=True, check_dir=True), name="infrahub-docs")
@@ -265,9 +254,28 @@ async def documentation() -> RedirectResponse:
     return RedirectResponse("/docs/")
 
 
-@app.get("/{rest_of_path:path}", include_in_schema=False)
-async def react_app(req: Request, rest_of_path: str) -> Response:  # noqa: ARG001
-    return templates.TemplateResponse(request=req, name="index.html")
+# Serve the built single-page app. Registered as a low-priority route group, so it is only
+# consulted after every API/GraphQL/metrics/static route has been given a chance to match and can
+# never shadow them. With fallback="auto" an unmatched path serves index.html (200) only for
+# browser navigation requests (Accept: text/html); non-navigation requests, such as an unknown
+# /api/* path fetched as JSON, get a real 404 instead of the SPA shell. The directory may be
+# absent in development, where the Vite dev server serves the frontend separately, so guard the
+# registration to avoid failing at startup when no build is present.
+if FRONTEND_DIST_DIRECTORY.is_dir():
+    app.frontend("/", directory=FRONTEND_DIST_DIRECTORY, fallback="auto", check_dir=False)
+
+    # The GraphQL sandbox is a single-page-app view reached at /graphql and /graphql/{branch},
+    # paths that also expose the POST-only GraphQL API. A browser navigation (GET) to those paths
+    # is a method mismatch on the API route, which FastAPI resolves before the low-priority
+    # app.frontend() routes are consulted, so the SPA shell is never served for them. Serve
+    # index.html explicitly for these navigations to keep the sandbox reachable.
+    frontend_index = FRONTEND_DIST_DIRECTORY / "index.html"
+
+    async def graphql_sandbox_app(branch_name: str = "") -> FileResponse:  # noqa: ARG001
+        return FileResponse(frontend_index)
+
+    app.add_api_route("/graphql", graphql_sandbox_app, include_in_schema=False)
+    app.add_api_route("/graphql/{branch_name:path}", graphql_sandbox_app, include_in_schema=False)
 
 
 def _validate_feature_selection(configuration: config.Settings) -> None:
