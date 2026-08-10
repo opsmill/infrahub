@@ -42,6 +42,13 @@ describe("DateDisplay", () => {
     await expect.element(component.getByText("2 days ago")).toBeVisible();
   });
 
+  test("relative branch: near-future date shows 'in x'", async () => {
+    // Within a week ahead, a relative phrase still reads best — same window as past dates.
+    const inThreeDays = new Date("2026-06-14T14:30:00Z");
+    const component = await render(withPrefs(<DateDisplay date={inThreeDays} />));
+    await expect.element(component.getByText("in 3 days")).toBeVisible();
+  });
+
   test("compact branch: old date renders the preferred date (honouring format + timezone)", async () => {
     // > 7 days old, so the compact branch fires. It must use the preferred date pattern in the
     // preferred zone — 2026-01-15 14:30 UTC is still 2026-01-15 in Paris — not a fixed browser-zone
@@ -49,6 +56,14 @@ describe("DateDisplay", () => {
     const old = new Date("2026-01-15T14:30:00Z");
     const component = await render(withPrefs(<DateDisplay date={old} />));
     await expect.element(component.getByText("2026-01-15")).toBeVisible();
+  });
+
+  test("compact branch: far-future date renders the preferred date, not a relative phrase", async () => {
+    // > 7 days ahead — beyond the week window in either direction the reader needs the actual
+    // date in the preferred format, not something like "in 5 months".
+    const farFuture = new Date("2026-11-18T14:30:00Z");
+    const component = await render(withPrefs(<DateDisplay date={farFuture} />));
+    await expect.element(component.getByText("2026-11-18")).toBeVisible();
   });
 
   test("compact branch: falls back to the browser-locale date when no preference is set", async () => {
