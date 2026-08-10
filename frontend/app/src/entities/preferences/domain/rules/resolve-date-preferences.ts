@@ -7,10 +7,9 @@ import type {
 import { dateFormatPattern } from "@/entities/preferences/domain/rules/date-format";
 
 /**
- * The timezone that would apply if the caller held no override of their own.
- * A `USER` source yields null: the caller's own value is precisely what an unset field discards, and
- * the API resolves the inherited one away once an override wins, so null (browser zone) is the only
- * honest answer.
+ * The timezone that would apply if the caller held no override of their own. A `USER` source yields
+ * null — that value is exactly what clearing the field discards, and the API resolves the inherited
+ * one away once an override wins, leaving the browser zone as the only honest stand-in.
  */
 export function inheritedTimezone(timezone: Preference): string | null {
   return timezone.source === "USER" ? null : (timezone.value ?? null);
