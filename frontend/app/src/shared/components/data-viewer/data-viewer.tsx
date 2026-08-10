@@ -74,7 +74,7 @@ function DataViewerContent({
         <iframe
           src={`data:application/pdf;base64,${content}`}
           title="PDF Preview"
-          className="h-150 w-full rounded-lg border"
+          className="h-150 w-full rounded-lg border border-neutral-700"
         />
       );
     }
@@ -86,7 +86,7 @@ function DataViewerContent({
     case "image/bmp":
     case "image/x-icon": {
       return (
-        <div className="flex justify-center rounded-lg border bg-white p-4">
+        <div className="flex justify-center rounded-lg bg-white p-4">
           <img
             src={`data:${contentType};base64,${content}`}
             alt="Preview"
