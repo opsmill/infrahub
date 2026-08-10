@@ -87,13 +87,9 @@ When `branch=None`, the branch support is resolved from both peers' settings. If
 
 All `AttributeSchema` entries must include a `description` field. This is enforced by `backend/tests/component/core/schema/test_schema_documentation.py`. Omitting `description` will cause a test failure.
 
-## Read-only and Display Tier
+## Read-only Attributes
 
-Two `AttributeSchema` flags govern how a field is exposed, independent of what it stores.
-
-`read_only=True` marks a field system-managed. Read-only attributes and relationships are excluded from the generated GraphQL `Create` / `Update` input types, so a mutation that supplies one fails at GraphQL **parse time** (`Field '<name>' is not defined by type '<Kind>UpdateInput'`) rather than at runtime; read-only relationships are additionally rejected at the relationship-mutation layer. A read-only field is therefore writable only by server-side code that constructs the node directly, never through GraphQL, REST, or a schema load. Pair it with `allow_override=AllowOverrideType.NONE` to stop an inheriting node from dropping the flag. Input-generation enforcement lives in `backend/infrahub/graphql/manager.py`; the relationship-mutation guard in `backend/infrahub/graphql/mutations/relationship.py`.
-
-`display=SchemaAttributeDisplay.EXTRA` places a field in the UI's extra/advanced tier: the schema-driven UI hides it from the default detail view, but a user can reveal it via the extra-attributes toggle. It is independent of `read_only` and of API exposure; an `EXTRA` field is always queryable through GraphQL/REST. Use it for audit or provenance fields that should stay out of the default view yet remain machine-readable. `CoreAccountGroup.origin` combines all three: `read_only=True`, `allow_override=AllowOverrideType.NONE`, `display=SchemaAttributeDisplay.EXTRA`.
+`read_only=True` marks a field system-managed. Read-only attributes and relationships are excluded from the generated GraphQL `Create` / `Update` input types, so a mutation that supplies one fails at GraphQL **parse time** (`Field '<name>' is not defined by type '<Kind>UpdateInput'`) rather than at runtime; read-only relationships are additionally rejected at the relationship-mutation layer. A read-only field is therefore writable only by server-side code that constructs the node directly, never through GraphQL, REST, or a schema load. Pair it with `allow_override=AllowOverrideType.NONE` to stop an inheriting node from dropping the flag. Input-generation enforcement lives in `backend/infrahub/graphql/manager.py`; the relationship-mutation guard in `backend/infrahub/graphql/mutations/relationship.py`. `CoreAccountGroup.origin` is defined this way, combining `read_only=True` with `allow_override=AllowOverrideType.NONE`.
 
 ## Constraint Count Test
 

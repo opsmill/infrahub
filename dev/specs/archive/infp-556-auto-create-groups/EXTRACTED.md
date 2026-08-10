@@ -10,9 +10,9 @@
 
 ## Knowledge Updated
 
-- `dev/knowledge/backend/schema-definitions.md` (Read-only and Display Tier): documented the
-  `read_only` and `display=SchemaAttributeDisplay.EXTRA` attribute flags and how they gate GraphQL
-  input generation and UI exposure, the reusable schema facts this feature exercised via
+- `dev/knowledge/backend/schema-definitions.md` (Read-only Attributes): documented the `read_only`
+  attribute flag (with `allow_override=AllowOverrideType.NONE`) and how it gates GraphQL input
+  generation and mutation, the reusable schema fact this feature exercised via
   `CoreAccountGroup.origin`.
 
 The SSO group-resolution pipeline, auto-created-groups configuration, and the auto-create events are
