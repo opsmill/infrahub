@@ -36,4 +36,9 @@
   ::file-selector-button {
     border-color: var(--color-border);
   }
+
+  /* To prevent conflict with Separator component styling */
+  hr {
+    border-top-width: 0;
+  }
 }

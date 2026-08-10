@@ -12,10 +12,8 @@ export function Separator({ orientation = "horizontal", className, ...props }: S
     <AriaSeparator
       {...props}
       className={classNames(
-        // Painting the rule as a border rather than a 1px background avoids stacking on top of
-        // the border Tailwind's preflight already gives `hr`, which rendered as two lines.
-        "shrink-0 border-border-strong",
-        orientation === "horizontal" ? "w-full border-t" : "h-full border-t-0 border-l",
+        "shrink-0 bg-border-strong text-border-strong",
+        orientation === "horizontal" ? "h-px w-full" : "h-full w-px",
         className
       )}
     />
