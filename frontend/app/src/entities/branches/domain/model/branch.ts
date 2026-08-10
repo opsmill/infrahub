@@ -19,17 +19,17 @@ interface BranchBase {
   is_default?: boolean | null;
 }
 
-// List view - includes node_metadata fields and has_schema_changes
+// List view - includes node_metadata fields and schema_differs_from_default_branch
 export interface BranchListItem extends BranchBase {
-  has_schema_changes?: boolean | null;
+  schema_differs_from_default_branch?: boolean | null;
   created_at?: string | null;
   updated_at?: string | null;
   created_by?: NodeCore | null;
 }
 
-// Detail view - includes origin_branch, has_schema_changes, created_at (from node)
+// Detail view - includes origin_branch, schema_differs_from_default_branch, created_at (from node)
 export interface BranchDetail extends BranchBase {
   origin_branch?: string | null;
-  has_schema_changes?: boolean | null;
+  schema_differs_from_default_branch?: boolean | null;
   created_at?: string | null;
 }

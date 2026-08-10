@@ -48,7 +48,7 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
           <Row className="gap-1">
             {branch.is_default && <BranchDefaultBadge />}
 
-            {branch.has_schema_changes && <BranchSchemaChangesBadge />}
+            {branch.schema_differs_from_default_branch && <BranchSchemaChangesBadge />}
 
             {branch.sync_with_git && <BranchGitSyncBadge />}
           </Row>
