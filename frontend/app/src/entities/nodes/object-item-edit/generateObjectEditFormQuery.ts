@@ -48,7 +48,8 @@ export const generateObjectEditFormQuery = ({
             ...addRelationshipsToRequest([...formRelationships, ...extraRelationships], {
               withMetadata: true,
             }),
-            ...("generate_profile" in objectSchema && objectSchema.generate_profile
+            // `generate_profile` can be true while the GraphQL type exposes no `profiles` field.
+            ...((objectSchema.relationships ?? []).some((rel) => rel.name === "profiles")
               ? {
                   profiles: {
                     edges: {
