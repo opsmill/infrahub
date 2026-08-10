@@ -41,6 +41,9 @@ REJECT_CASES = [
     RejectCase(name="offset_is_not_a_zone", value="UTC+25"),
     RejectCase(name="injection_string", value="'; DROP TABLE--"),
     RejectCase(name="overlong_string", value="A" * 300),
+    RejectCase(name="localtime_pseudo_zone", value="localtime"),
+    RejectCase(name="posix_implementation_key", value="posix/UTC"),
+    RejectCase(name="right_implementation_key", value="right/UTC"),
 ]
 
 

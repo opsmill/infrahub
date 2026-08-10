@@ -4,22 +4,29 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from infrahub.exceptions import ValidationError
 
+# Implementation-defined entries browsers reject; rejected explicitly so the guarantee holds
+# regardless of which zone tree the runtime ships.
+_REJECTED_KEYS = frozenset({"localtime"})
+_REJECTED_PREFIXES = ("posix/", "right/")
+
 
 def normalize_timezone(value: str | None) -> str | None:
-    """Return a stored-ready timezone, rejecting anything the runtime cannot resolve.
+    """Return a stored-ready timezone, rejecting anything a client should not store.
 
     An empty value is normalized to None (nothing stored) so the write reply agrees with every
     later read, which treats a falsy timezone as unset. A non-empty value must resolve against the
-    runtime's zone database; validating by construction accepts every zone that has a data file
-    (backward-compatibility aliases included), rather than an enumerated allowlist that would reject
-    aliases a client legitimately offers.
+    runtime's zone database and not be an implementation-defined entry; validating by construction
+    (rather than an enumerated allowlist) keeps the check independent of an enumeration that varies
+    by runtime and avoids a filesystem walk.
 
     Raises:
-        ValidationError: the value is non-empty but names no timezone the runtime can resolve.
+        ValidationError: the value is non-empty but is not a storable IANA timezone.
 
     """
     if not value:
         return None
+    if value in _REJECTED_KEYS or value.startswith(_REJECTED_PREFIXES):
+        raise ValidationError(input_value=f"'{value}' is not a valid IANA timezone")
     try:
         # OSError covers keys the resolver rejects at the filesystem layer (e.g. an over-long name);
         # ValueError covers malformed keys; ZoneInfoNotFoundError covers well-formed-but-absent ones.
