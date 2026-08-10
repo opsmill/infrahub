@@ -140,6 +140,10 @@ Tests can also run as part of the Infrahub CI pipeline. This is a feature which 
 
 This means that the Infrahub Task worker will take care of running the `pytest` process on behalf of users after creating a proposed change or updating it with new changes. User defined tests, if found, will be run as part of the CI pipeline and be logged in checks. One check per test is created which allows to see the outcome of it and an optional message that gives more details in case of failure.
 
+Only the YAML test files described above take part in this pipeline. Python test files that a repository keeps under `tests/` for its own purposes are not collected, so they neither run nor interfere with the Infrahub tests.
+
+When the test session cannot run at all, for example because a test file or a `conftest.py` cannot be parsed, the repository validator reports a failure and the reason is recorded as a check. A validator concludes successfully only once the Infrahub tests have actually run.
+
 ## How testing work
 
 :::note
