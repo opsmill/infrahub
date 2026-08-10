@@ -76,8 +76,7 @@ interface PreferenceFieldProps {
 }
 
 interface DateFormatFieldProps extends PreferenceFieldProps {
-  /** Zone the examples fall back to while the form's timezone field is empty. Omit to fall back to
-   * the browser's — which is what an empty *global* timezone means for every viewer. */
+  /** Zone the examples use while the form's timezone field is empty; omit for the browser's. */
   fallbackTimezone?: string | null;
 }
 
@@ -93,8 +92,7 @@ export function DateFormatField({
   const fieldValue = useWatch({ name: "date_format" }) as FormAttributeValue | undefined;
   const selected = (fieldValue?.value as string | null | undefined) ?? null;
 
-  // The examples preview what the timestamps will look like once saved, so they render in the zone
-  // the form currently holds — including an unsaved edit to the timezone field.
+  // Previews what saving would produce, so it follows the form's own (possibly unsaved) zone.
   const timezoneValue = useWatch({ name: "timezone" }) as FormAttributeValue | undefined;
   const timezone = (timezoneValue?.value as string | null | undefined) ?? fallbackTimezone ?? null;
   const example = (key: string) =>

@@ -11,8 +11,8 @@ import { GlobalPreferencesEditor } from "./global-preferences-editor";
 vi.mock("@/entities/preferences/domain/use-cases/get-global-preferences");
 vi.mock("@/entities/preferences/domain/use-cases/update-global-preference");
 
-// A late-evening UTC instant: rendered in the global zone (UTC+9) it lands on the NEXT calendar day,
-// so an example that ignored the timezone being edited could not accidentally match.
+// Late-evening UTC: in the global zone (UTC+9) this lands on the NEXT calendar day, so an example
+// that ignored the timezone being edited cannot match by accident.
 const FIXED_INSTANT = new Date("2026-06-11T23:30:00Z");
 
 const baseGlobal: GlobalPreferences = { dateFormat: null, timezone: "Asia/Tokyo" };
@@ -79,8 +79,7 @@ describe("GlobalPreferencesEditor", () => {
     await component.getByRole("button", { name: /date format/i }).click();
     await component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }).click();
 
-    // An unset global timezone means "the browser's" for every viewer, so the preview must not
-    // borrow a zone from anywhere else — least of all the editing admin's own preference.
+    // An unset global timezone means "the browser's" for every viewer, not the editing admin's zone.
     await expect
       .element(component.getByText(`Example: ${format(FIXED_INSTANT, "yyyy-MM-dd HH:mm")}`))
       .toBeVisible();

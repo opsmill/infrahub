@@ -39,8 +39,7 @@ describe("ObjectAttributeValue", () => {
   });
 
   test("DateTime attribute renders the full preferred datetime, even months in the past", async () => {
-    // A DateTime attribute is user data: however old, it must keep the time component and the
-    // preferred zone — 09:30 UTC is 18:30 in Tokyo — not collapse to a bare date.
+    // 09:30 UTC is 18:30 in Tokyo.
     const component = await render(
       withPrefs(
         <ObjectAttributeValue
@@ -54,7 +53,6 @@ describe("ObjectAttributeValue", () => {
   });
 
   test("DateTime attribute renders the full preferred datetime for recent values too", async () => {
-    // Two days old — data attributes never degrade to a relative "x ago" phrase.
     const component = await render(
       withPrefs(
         <ObjectAttributeValue

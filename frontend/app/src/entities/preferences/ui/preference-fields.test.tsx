@@ -6,8 +6,8 @@ import { DateFormatField, toFieldValue } from "@/entities/preferences/ui/prefere
 
 import { render } from "../../../../tests/components/render";
 
-// A late-evening UTC instant: rendered east of UTC it lands on the NEXT calendar day, so an example
-// that ignored the timezone could not accidentally match.
+// Late-evening UTC: east of UTC this lands on the NEXT calendar day, so an example that ignored
+// the timezone cannot match by accident.
 const FIXED_INSTANT = new Date("2026-06-11T23:30:00Z");
 
 function renderField({

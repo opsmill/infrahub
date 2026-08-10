@@ -1,7 +1,10 @@
 import { describe, expect, test } from "vitest";
 
 import type { EffectivePreferences } from "@/entities/preferences/domain/model/preference";
-import { resolveDatePreferences } from "@/entities/preferences/domain/rules/resolve-date-preferences";
+import {
+  inheritedTimezone,
+  resolveDatePreferences,
+} from "@/entities/preferences/domain/rules/resolve-date-preferences";
 
 describe("resolveDatePreferences", () => {
   test("maps a USER date-format key to its date-fns pattern", () => {
@@ -81,5 +84,21 @@ describe("resolveDatePreferences", () => {
 
     // THEN both fields fall back to null
     expect(resolved).toEqual({ pattern: null, timezone: null });
+  });
+});
+
+describe("inheritedTimezone", () => {
+  test("returns the GLOBAL value, which is what an unset field inherits", () => {
+    expect(inheritedTimezone({ value: "Europe/Paris", source: "GLOBAL" })).toBe("Europe/Paris");
+  });
+
+  test("returns null for a DEFAULT source so the browser zone applies", () => {
+    expect(inheritedTimezone({ value: null, source: "DEFAULT" })).toBeNull();
+  });
+
+  test("discards a USER value: dropping the override is exactly what stops it applying", () => {
+    // The API resolves the inherited value away once an override wins, so it is unknowable here —
+    // null (browser zone) is honest, the caller's own zone would be a stale guess.
+    expect(inheritedTimezone({ value: "Asia/Tokyo", source: "USER" })).toBeNull();
   });
 });

@@ -39,9 +39,8 @@ export interface UseFormatDateResult {
 }
 
 /**
- * Renders a date against a resolved preference pair. `"date"` reuses the datetime pattern's date
- * part. Take this over the hook only when the pair is not the active one — previewing preferences
- * still being edited, say; everything else must go through the hook so it follows the viewer.
+ * Renders a date against a resolved preference pair; `"date"` reuses the datetime pattern's date part.
+ * Only for a pair that is not the active one (preferences still being edited) — otherwise use the hook.
  */
 export function formatWithPreferences(
   date: DateInput,

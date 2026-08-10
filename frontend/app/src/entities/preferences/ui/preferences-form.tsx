@@ -9,7 +9,7 @@ import { Form, FormSubmit } from "@/shared/components/ui/form";
 
 import type { DateFormatKey } from "@/entities/preferences/domain/model/date-format";
 import type { Preference, PreferenceValues } from "@/entities/preferences/domain/model/preference";
-import { resolveDatePreferences } from "@/entities/preferences/domain/rules/resolve-date-preferences";
+import { inheritedTimezone } from "@/entities/preferences/domain/rules/resolve-date-preferences";
 import {
   DateFormatField,
   TimezoneField,
@@ -78,7 +78,7 @@ export function PreferencesForm() {
     >
       <DateFormatField
         preference={preferences.dateFormat}
-        fallbackTimezone={resolveDatePreferences(preferences).timezone}
+        fallbackTimezone={inheritedTimezone(preferences.timezone)}
       />
       <TimezoneField preference={preferences.timezone} />
 

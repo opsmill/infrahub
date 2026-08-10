@@ -11,9 +11,8 @@ import { UserPreferencesCard } from "./user-preferences-card";
 vi.mock("@/entities/preferences/domain/use-cases/get-effective-preferences");
 vi.mock("@/entities/preferences/domain/use-cases/upsert-user-preferences");
 
-// A late-evening UTC instant: rendered in the effective zone (UTC+9) it lands on the NEXT calendar
-// day, so an example that ignored the timezone preference could not accidentally match. A zone-less
-// literal would be parsed as browser-local and make every assertion below zone-agnostic.
+// Late-evening UTC: in the effective zone (UTC+9) this lands on the NEXT calendar day, so an example
+// that ignored the timezone cannot match by accident. A zone-less literal would be browser-local.
 const FIXED_INSTANT = new Date("2026-06-11T23:30:00Z");
 const EFFECTIVE_ZONE = "Asia/Tokyo";
 
