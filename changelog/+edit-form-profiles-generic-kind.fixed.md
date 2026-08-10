@@ -1,0 +1,1 @@
+Fixed the object edit form failing with a GraphQL `profiles` error when an object is opened through a kind whose GraphQL type has no `profiles` field, such as `CoreGenericRepository`. The form now requests `profiles` only for kinds that expose it.

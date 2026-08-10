@@ -152,6 +152,7 @@ class BranchDelete(Mutation):
         wait_until_completion: bool = True,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
+<<<<<<< HEAD
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
 
         # A branch left in MERGE_FAILED by a died merge must not be deleted until an administrator has
@@ -168,6 +169,10 @@ class BranchDelete(Mutation):
             branch=obj
         )
 
+=======
+        # ignore_deleting=False so a delete that failed part way through can be retried: the first
+        obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name), ignore_deleting=False)
+>>>>>>> stable
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         parameters = {

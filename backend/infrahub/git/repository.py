@@ -9,6 +9,7 @@ from cachetools.keys import hashkey
 from cachetools_async import cached
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.protocols import CoreReadOnlyRepository, CoreRepository
 from prefect import task
 from prefect.cache_policies import NONE
 from pydantic import Field
@@ -82,6 +83,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         )
         log.info("Created new repository locally.", repository=self.name)
         return self
+
+    async def resolve_checkout_ref(self) -> str:
+        if not self.default_branch_name:
+            repository = await self.sdk.get(
+                kind=CoreRepository, name__value=self.name, exclude=["tags", "credential"], raise_when_missing=True
+            )
+            self.default_branch_name = repository.default_branch.value
+
+        return self.default_branch
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         branches = {}
@@ -357,6 +367,20 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         await self.create_locally(checkout_ref=self.ref, infrahub_branch_name=self.infrahub_branch_name)
         log.info("Created new repository locally.", repository=self.name)
         return self
+
+    async def resolve_checkout_ref(self) -> str:
+        ref = self.ref
+        if not ref:
+            repository = await self.sdk.get(
+                kind=CoreReadOnlyRepository,
+                name__value=self.name,
+                exclude=["tags", "credential"],
+                raise_when_missing=True,
+            )
+            ref = repository.ref.value
+            self.ref = ref
+
+        return ref
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:  # noqa: ARG002
         """Always get the latest commit for this repository's ref on the remote.
