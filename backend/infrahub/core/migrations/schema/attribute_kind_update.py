@@ -16,7 +16,7 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
     name = "migration_attribute_kind"
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_params)
         needs_index = not is_large_attribute_type(self.migration.new_attribute_schema.kind)

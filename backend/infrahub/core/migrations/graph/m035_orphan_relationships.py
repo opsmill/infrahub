@@ -15,7 +15,7 @@ class CleanupOrphanedRelationshipsQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (rel:Relationship)-[:IS_RELATED]-(peer:Node)
 WITH DISTINCT rel, peer.uuid AS p_uuid

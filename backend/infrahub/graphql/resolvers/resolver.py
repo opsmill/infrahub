@@ -223,7 +223,7 @@ async def default_paginated_list_resolver(
     limit: int | None = None,
     order: dict | None = None,
     partial_match: bool = False,
-    **kwargs: dict[str, Any],
+    **kwargs: Any,
 ) -> dict[str, Any]:
     validate_offset_and_limit(offset, limit)
     schema: MainSchemaTypes = (

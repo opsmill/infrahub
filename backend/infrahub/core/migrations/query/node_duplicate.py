@@ -123,7 +123,7 @@ class NodeDuplicateQuery(Query):
         sub_query_in = "\nUNION\n".join(sub_queries_in)
         return sub_query_in, sub_query_in_args
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 

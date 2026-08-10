@@ -91,8 +91,8 @@ class BaseMigration(BaseModel):
         return int(cls_name[len(prefix) :])
 
     @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
-        return cls(**kwargs)  # type: ignore[arg-type]
+    def init(cls, **kwargs: Any) -> Self:
+        return cls(**kwargs)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError()

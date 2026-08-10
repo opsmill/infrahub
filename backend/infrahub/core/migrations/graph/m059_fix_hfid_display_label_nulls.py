@@ -62,7 +62,7 @@ class FindNodesWithBadValues(Query):
         # For user branches, structural edges (HAS_ATTRIBUTE, IS_PART_OF) may be on the default/global branch.
         self.structural_branch_names = structural_branch_names or value_branch_names
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["value_branch_names"] = self.value_branch_names
         self.params["structural_branch_names"] = self.structural_branch_names
         self.return_labels = ["node_uuid", "node_kind", "bad_attrs"]

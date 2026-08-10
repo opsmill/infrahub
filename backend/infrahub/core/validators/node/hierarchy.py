@@ -29,7 +29,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         self.check_parent = check_parent
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         if self.check_children and self.check_parent:
             raise RuntimeError("Cannot check children and parent at same time")
         if self.check_children:

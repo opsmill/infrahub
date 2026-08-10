@@ -157,7 +157,7 @@ class InfrahubMutationMixin:
         info: GraphQLResolveInfo,
         data: InputObjectType,
         context: ContextInput | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
         await apply_external_context(graphql_context=graphql_context, context_input=context)

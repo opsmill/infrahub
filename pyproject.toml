@@ -1349,7 +1349,6 @@ include = [
     "backend/infrahub/core/*.py",
     "backend/infrahub/core/convert_object_type/**",
     "backend/infrahub/core/merge/**",
-    "backend/infrahub/core/migrations/**",
     "backend/infrahub/core/node/**",
     "backend/infrahub/core/query/__init__.py",
     "backend/infrahub/core/query/diff.py",

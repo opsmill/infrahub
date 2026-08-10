@@ -51,7 +51,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
     insert_return: bool = False
     raise_error_if_empty: bool = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -122,7 +122,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -177,7 +177,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         at = self.at or self.attr.at
 
         branch_filter, branch_params = self.branch.get_query_filter_path(at=at)
@@ -251,7 +251,7 @@ class AttributeClearNodePropertyQuery(AttributeQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         at = self.at or self.attr.at
 
         branch_filter, branch_params = self.branch.get_query_filter_path(at=at)
