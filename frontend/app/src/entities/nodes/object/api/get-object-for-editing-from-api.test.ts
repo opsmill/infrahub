@@ -3,19 +3,26 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { graphqlClient } from "@/shared/api/graphql/client";
 
 import { getObjectForEditingFromApi } from "@/entities/nodes/object/api/get-object-for-editing-from-api";
-import type { GenericSchema, NodeSchema } from "@/entities/schema/domain/model/schema";
+import type { NodeSchema } from "@/entities/schema/domain/model/schema";
 
-import { generateGenericSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
+import {
+  generateGenericSchema,
+  generateNodeSchema,
+  generateRelationshipSchema,
+} from "../../../../../tests/fake/schema";
 
-// The query is built as a string and handed to `graphql(...)` before being issued. Mocking
-// `graphql` as identity keeps that string intact so the assertions can inspect the requested
-// selection set directly.
 vi.mock("@/shared/api/graphql/client", () => ({
   graphql: vi.fn((queryString: string) => queryString),
   graphqlClient: {
     query: vi.fn().mockResolvedValue({ data: {} }),
   },
 }));
+
+const profilesRelationship = generateRelationshipSchema({
+  name: "profiles",
+  peer: "CoreProfile",
+  identifier: "node__profile",
+});
 
 const getRequestedQueryString = () => {
   const [callArgs] = vi.mocked(graphqlClient.query).mock.calls;
@@ -28,9 +35,12 @@ describe("getObjectForEditingFromApi", () => {
     vi.clearAllMocks();
   });
 
-  it("requests the profiles field for a node schema that exposes a profiles relationship", async () => {
-    // GIVEN a profile-enabled node whose schema carries a `profiles` relationship
-    const schema = generateNodeSchema() as NodeSchema;
+  it("requests the profiles field for a node exposing a profiles relationship", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      generate_profile: true,
+      relationships: [profilesRelationship],
+    });
 
     // WHEN
     await getObjectForEditingFromApi({
@@ -45,17 +55,15 @@ describe("getObjectForEditingFromApi", () => {
   });
 
   it("does not request the profiles field for a generic without a profiles relationship", async () => {
-    // GIVEN a Core-style generic (e.g. CoreGenericRepository): it lives in a restricted
-    // namespace, so the backend never adds a `profiles` relationship and GraphQL exposes no
-    // `profiles` field for it.
+    // GIVEN
     const schema = generateGenericSchema({
       generate_profile: true,
       relationships: [],
-    }) as unknown as GenericSchema;
+    }) as unknown as NodeSchema;
 
-    // WHEN the generic kind is reached via its route
+    // WHEN
     await getObjectForEditingFromApi({
-      schema: schema as unknown as NodeSchema,
+      schema,
       objectId: "object-id",
       branchName: "main",
       atDate: null,
@@ -65,17 +73,16 @@ describe("getObjectForEditingFromApi", () => {
     expect(getRequestedQueryString()).not.toContain("profiles");
   });
 
-  it("requests the profiles field for a generic that exposes a profiles relationship", async () => {
-    // GIVEN a Builtin-IP-style generic (e.g. BuiltinIPAddress): it is `used_by` concrete kinds
-    // AND, because its namespace is not restricted for profiles, the backend adds a `profiles`
-    // relationship so the GraphQL type does expose the `profiles` field.
-    const schema = generateGenericSchema() as unknown as GenericSchema;
-    expect(schema.relationships?.some((rel) => rel.name === "profiles")).toBe(true);
-    expect(schema.used_by?.length ?? 0).toBeGreaterThan(0);
+  it("requests the profiles field for a generic exposing a profiles relationship", async () => {
+    // GIVEN
+    const schema = generateGenericSchema({
+      generate_profile: true,
+      relationships: [profilesRelationship],
+    }) as unknown as NodeSchema;
 
     // WHEN
     await getObjectForEditingFromApi({
-      schema: schema as unknown as NodeSchema,
+      schema,
       objectId: "object-id",
       branchName: "main",
       atDate: null,

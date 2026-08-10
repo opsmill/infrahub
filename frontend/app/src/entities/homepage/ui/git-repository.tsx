@@ -6,7 +6,6 @@ import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { classNames, getTextColor } from "@/shared/utils/common";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 
 export type GitRepositoryData = {
   id: string;
@@ -20,10 +19,7 @@ export const GitRepositoryItem = ({ repository }: { repository: GitRepositoryDat
 
   return (
     <ListBoxItem
-      // Link to the object's concrete kind (e.g. CoreRepository / CoreReadOnlyRepository)
-      // rather than the generic kind, so the details/edit routes resolve the schema that
-      // actually exposes its fields. Falls back to the generic kind if __typename is absent.
-      href={getObjectDetailsUrl(__typename ?? GENERIC_REPOSITORY_KIND, id)}
+      href={getObjectDetailsUrl(__typename, id)}
       className={classNames(
         focusVisibleStyle,
         "flex items-center justify-between p-4 text-sm",

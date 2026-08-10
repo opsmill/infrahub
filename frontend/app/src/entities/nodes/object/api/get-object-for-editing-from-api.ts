@@ -54,13 +54,7 @@ export async function getObjectForEditingFromApi({
             ...addRelationshipsToRequest([...formRelationships, ...extraRelationships], {
               withMetadata: true,
             }),
-            // Only request `profiles` when the schema actually exposes it. The backend
-            // adds a `profiles` relationship (peer CoreProfile) to any node OR generic
-            // whose namespace is not restricted (Builtin excepted), which mirrors exactly
-            // when the GraphQL type exposes the `profiles` field. Relying on the
-            // relationship keeps us correct for both nodes and profile-having generics
-            // (e.g. BuiltinIPAddress) while still omitting it for generics that lack it
-            // (e.g. CoreGenericRepository in the restricted Core namespace).
+            // `generate_profile` can be true while the GraphQL type exposes no `profiles` field.
             ...((objectSchema.relationships ?? []).some((rel) => rel.name === "profiles")
               ? {
                   profiles: {
