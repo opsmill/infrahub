@@ -271,6 +271,35 @@ describe("UserPreferencesCard", () => {
     await initPointerTracking(component.locator);
   });
 
+  test("the (i) tooltip reports the browser fallback when the stored zone can't be rendered here", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      timezone: { value: "Not/AZone", source: "USER" },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /timezone/i })).toBeVisible();
+
+    const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // The timezone field is the second info trigger.
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.nth(1).hover();
+
+    await expect
+      .element(
+        component.getByRole("tooltip", {
+          name: `This browser can't display Not/AZone; times are shown in ${browserZone}.`,
+        })
+      )
+      .toBeVisible();
+
+    // Park the pointer away from the trigger so the tooltip closes before the next test renders.
+    await initPointerTracking(component.locator);
+  });
+
   test("the (i) tooltip falls back to the browser source when neither user nor global is set", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,

@@ -27,10 +27,18 @@ Fields:
 |-------|------|-------|
 | `owner_id` | `str` | plain string, not a graph relationship |
 | `date_format` | `DateFormat` enum, nullable | a semantic key (e.g. `ISO_DATETIME`), not a render pattern; each client maps the key to its own formatter |
-| `timezone` | `str` (IANA name), nullable | currently accepts any string; no backend validation |
+| `timezone` | `str` (IANA name), nullable | validated at write, not on the model (see below) |
 
 `date_format` is enum-typed, so an unknown key is rejected at construction, including when a row is
 loaded from the database. It round-trips as a plain string because the enum subclasses `str`.
+
+`timezone` is validated on the **write path only**, never on the model. A model-level validator
+would run on every read (rows are reconstructed from the database), and since user and global rows
+are fetched together, one bad stored value would break effective-preference reads for every user.
+The set mutation validates a provided timezone by resolving it against the runtime's zone database
+(construction, not an enumerated allowlist — so backward-compatibility aliases a client offers are
+accepted) and normalizes an empty value to unset so the write reply agrees with later reads. Reads
+stay lenient, so any value stored before this validation existed is still returned as-is.
 
 ## Reads never create a row
 
