@@ -189,6 +189,29 @@ async def test_user_rejects_unknown_date_format(
     assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
+async def test_user_rejects_non_iana_timezone(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    """Reject a timezone that is not a valid IANA name, and persist nothing.
+
+    A timezone must be an IANA zone the runtime can resolve; a string that names no zone is
+    rejected at the write path and no Preference row is created.
+    """
+    result = await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_first_account,
+        variables={"scope": "USER", "timezone": "Not/AZone"},
+    )
+    assert result.errors is not None
+    assert len(result.errors) == 1
+    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
+
+
 # --------------------------------------------------------------------------------------------
 # scope=GLOBAL — gated on manage_global_preferences; nothing written when denied.
 # --------------------------------------------------------------------------------------------
