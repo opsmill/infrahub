@@ -8,6 +8,29 @@ from infrahub.core.timestamp import Timestamp
 
 OUTCOME_TO_CONCLUSION_MAP = {"passed": "success", "failed": "failure", "skipped": "failure"}
 OUTCOME_TO_SEVERITY_MAP = {"passed": "success", "failed": "error", "skipped": "warning"}
+
+# Exit codes where the test loop ran to completion, so the collected checks describe the outcome.
+# Anything else means the session gave up early and no check reflects that.
+COMPLETED_SESSION_EXIT_CODES: set[int] = {
+    pytest.ExitCode.OK,
+    pytest.ExitCode.TESTS_FAILED,
+    pytest.ExitCode.NO_TESTS_COLLECTED,
+}
+SESSION_CHECK_ORIGIN = "infrahub-test-session"
+SESSION_ERROR_MESSAGES: dict[int, str] = {
+    pytest.ExitCode.INTERRUPTED: (
+        "The test session was interrupted before any test could run, usually because a file under "
+        "tests/ could not be collected. No Infrahub test was executed."
+    ),
+    pytest.ExitCode.USAGE_ERROR: (
+        "The test session could not start, usually because tests/conftest.py could not be imported. "
+        "No Infrahub test was executed."
+    ),
+    pytest.ExitCode.INTERNAL_ERROR: (
+        "The test session stopped on an internal pytest error. No Infrahub test was executed."
+    ),
+}
+DEFAULT_SESSION_ERROR_MESSAGE = "The test session did not complete, so no Infrahub test result is available."
 ORDER_TYPE_MAP = {"infrahub_smoke": 0, "infrahub_unit": 1, "infrahub_integration": 2}
 ORDER_ITEM_MAP = {
     "infrahub_check": 0,
@@ -26,6 +49,9 @@ class InfrahubBackendPlugin:
 
         self.proposed_change: InfrahubNodeSync
         self.validator: InfrahubNodeSync
+        self.validator_loaded = False
+        self.test_loop_reached = False
+        self.outcome_recorded = False
         self.checks: dict[str, InfrahubNodeSync] = {}
 
     def get_repository_validator(self) -> tuple[InfrahubNodeSync, bool]:
@@ -85,12 +111,16 @@ class InfrahubBackendPlugin:
         filtered_items.sort(key=sort_key)
         items[:] = filtered_items
 
-    def pytest_collection_finish(self, session: pytest.Session) -> None:  # noqa: ARG002
-        """This function is called when tests have been collected and modified, meaning they are ready to be run."""
+    def load_validator(self) -> None:
+        """Fetch or create the RepositoryValidator along with the checks recorded by a previous run."""
+        if self.validator_loaded:
+            return
+
         self.proposed_change = self.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=self.proposed_change_id)
         self.proposed_change.validations.fetch()
 
         self.validator, is_new_validator = self.get_repository_validator()
+        self.validator_loaded = True
         # Workaround for https://github.com/opsmill/infrahub/issues/2184
         if not is_new_validator:
             self.validator.checks.fetch()
@@ -98,8 +128,13 @@ class InfrahubBackendPlugin:
                 check = relationship.peer
                 self.checks[check.origin.value] = check
 
+    def pytest_collection_finish(self, session: pytest.Session) -> None:  # noqa: ARG002
+        """This function is called when tests have been collected and modified, meaning they are ready to be run."""
+        self.load_validator()
+
     def pytest_runtestloop(self, session: pytest.Session) -> object | None:  # noqa: ARG002
         """This function is called when the test loop is being run."""
+        self.test_loop_reached = True
         self.validator.conclusion.value = "unknown"
         self.validator.state.value = "in_progress"
         self.validator.started_at.value = Timestamp().to_string()
@@ -147,16 +182,70 @@ class InfrahubBackendPlugin:
         # Workaround for https://github.com/opsmill/infrahub/issues/2184
         check.update(do_full_update=True)
 
-    def pytest_sessionfinish(self, session: pytest.Session) -> None:  # noqa: ARG002
+    def pytest_sessionfinish(self, session: pytest.Session, exitstatus: int | pytest.ExitCode) -> None:  # noqa: ARG002
         """Set the final RepositoryValidator details after completing the test session."""
-        conclusion = "success"
+        self.record_outcome(exitstatus)
 
-        for check in self.checks.values():
-            if check.conclusion.value == "failure":
+    def record_outcome(self, exitstatus: int | pytest.ExitCode) -> None:
+        """Save the final RepositoryValidator details for the session.
+
+        Also called by the runner, because pytest can give up before the session starts and in that
+        case no hook of this plugin ever runs.
+        """
+        if self.outcome_recorded:
+            return
+
+        self.load_validator()
+        # pytest can also stop with a passing exit code before reaching the tests, for instance when
+        # the SDK plugin aborts on an unusable Infrahub address.
+        session_failed = not self.test_loop_reached or exitstatus not in COMPLETED_SESSION_EXIT_CODES
+
+        conclusion = "success"
+        for origin, check in self.checks.items():
+            if origin != SESSION_CHECK_ORIGIN and check.conclusion.value == "failure":
                 conclusion = check.conclusion.value
                 break
+
+        if session_failed:
+            conclusion = "failure"
+        self._record_session_check(exitstatus=exitstatus, failed=session_failed)
 
         self.validator.state.value = "completed"
         self.validator.completed_at.value = Timestamp().to_string()
         self.validator.conclusion.value = conclusion
         self.validator.save()
+        self.outcome_recorded = True
+
+    def _record_session_check(self, exitstatus: int | pytest.ExitCode, failed: bool) -> None:
+        """Report a session that produced no result, which would otherwise only reach the git agent logs."""
+        check = self.checks.get(SESSION_CHECK_ORIGIN)
+        if check is None and not failed:
+            return
+
+        message = SESSION_ERROR_MESSAGES.get(exitstatus, DEFAULT_SESSION_ERROR_MESSAGE) if failed else ""
+        created_at = Timestamp().to_string()
+
+        if check is None:
+            check = self.client.create(
+                kind=InfrahubKind.STANDARDCHECK,
+                data={
+                    "name": "test-session",
+                    "origin": SESSION_CHECK_ORIGIN,
+                    "kind": "TestReport",
+                    "validator": self.validator.id,
+                    "created_at": created_at,
+                    "message": message,
+                    "severity": "error",
+                    "conclusion": "failure",
+                },
+            )
+            self.checks[SESSION_CHECK_ORIGIN] = check
+            check.save()
+            return
+
+        # A check left over from an earlier run has to be cleared, or it outlives the problem it reported.
+        check.message.value = message
+        check.created_at.value = created_at
+        check.severity.value = "error" if failed else "success"
+        check.conclusion.value = "failure" if failed else "success"
+        check.save()

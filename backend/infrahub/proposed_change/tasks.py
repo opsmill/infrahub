@@ -641,6 +641,31 @@ async def repository_checks(model: RequestProposedChangeRepositoryChecks, contex
         )
 
 
+def _run_repository_tests(
+    test_directory: Path,
+    config_file: str,
+    address: str | None,
+    plugin: InfrahubBackendPlugin,
+) -> int | pytest.ExitCode:
+    exit_code = pytest.main(
+        [
+            str(test_directory),
+            f"--infrahub-repo-config={config_file}",
+            f"--infrahub-address={address}",
+            "-qqqq",
+            "-s",
+            # Infrahub tests are collected from YAML files, so importing the repository's own Python
+            # test files would only expose this session to failures that are not ours to run.
+            "-o",
+            "python_files=__infrahub_no_python_tests__.py",
+        ],
+        plugins=[plugin],
+    )
+    plugin.record_outcome(exit_code)
+
+    return exit_code
+
+
 @flow(name="proposed-changed-user-tests", flow_run_name="Run unit tests in repositories")
 async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
@@ -697,15 +722,11 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
             sys.stdout = devnull
             sys.stderr = devnull
 
-            exit_code = pytest.main(
-                [
-                    str(test_directory),
-                    f"--infrahub-repo-config={config_file}",
-                    f"--infrahub-address={config.SETTINGS.main.internal_address}",
-                    "-qqqq",
-                    "-s",
-                ],
-                plugins=[InfrahubBackendPlugin(client.config, repository.repository_id, proposed_change.id)],
+            exit_code = _run_repository_tests(
+                test_directory=test_directory,
+                config_file=config_file,
+                address=config.SETTINGS.main.internal_address,
+                plugin=InfrahubBackendPlugin(client.config, repository.repository_id, proposed_change.id),
             )
 
         # Restore stdout/stderr back to their orignal states
