@@ -49,11 +49,6 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.branch_action import (
-<<<<<<< HEAD
-    BranchDeletedEvent,
-=======
-    BranchMergedEvent,
->>>>>>> stable
     BranchMigratedEvent,
     BranchRebasedEvent,
 )
@@ -72,7 +67,6 @@ from infrahub.workers.dependencies import (
     get_workflow,
 )
 from infrahub.workflows.catalogue import (
-    BRANCH_CANCEL_PROPOSED_CHANGES,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
     IPAM_RECONCILIATION,
@@ -388,14 +382,8 @@ async def delete_branch(
 ) -> None:
     await add_tags(branches=[branch], nodes=[proposed_change_id] if proposed_change_id else None)
     database = await get_database()
-<<<<<<< HEAD
-
-    low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
-
-=======
     workflow = get_workflow()
     event_service = await get_event_service()
->>>>>>> stable
     async with database.start_session() as db:
         # ignore_deleting=False so that a delete which failed part way through can be run again:
         obj = await Branch.get_by_name(db=db, name=str(branch), ignore_deleting=False)
@@ -413,28 +401,12 @@ async def delete_branch(
             global_branch=registry.get_global_branch(),
             delete_git_branch_after_merge=config.SETTINGS.git.delete_git_branch_after_merge,
         )
-<<<<<<< HEAD
-
-        await get_workflow().submit_workflow(
-            workflow=BRANCH_CANCEL_PROPOSED_CHANGES, context=low_context, parameters={"branch_name": branch}
-        )
-
-        event_service = await get_event_service()
-        await event_service.send(event=event)
-
-    should_delete_git = (config.SETTINGS.git.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git
-    if should_delete_git:
-        await get_workflow().submit_workflow(
-            workflow=GIT_REPOSITORIES_DELETE_BRANCH,
-            context=low_context,
-            parameters={"branch": branch},
-=======
+        low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
         await orchestrator.delete(
             branch=obj,
-            context=context,
+            context=low_context,
             delete_from_git=delete_from_git,
             proposed_change_id=proposed_change_id,
->>>>>>> stable
         )
 
 
