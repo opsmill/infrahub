@@ -96,6 +96,10 @@ describe("inheritedTimezone", () => {
     expect(inheritedTimezone({ value: null, source: "DEFAULT" })).toBeNull();
   });
 
+  test("ignores a value carried on a DEFAULT source, as the pattern resolver does", () => {
+    expect(inheritedTimezone({ value: "Europe/Paris", source: "DEFAULT" })).toBeNull();
+  });
+
   test("discards a USER value: dropping the override is exactly what stops it applying", () => {
     // The API resolves the inherited value away once an override wins, so it is unknowable here —
     // null (browser zone) is honest, the caller's own zone would be a stale guess.
