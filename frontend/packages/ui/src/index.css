@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./styles/theme.css";
 
 @font-face {
   font-family: InterVariable;
@@ -13,7 +14,7 @@
 }
 
 body {
-  color: var(--color-stone-800);
+  color: var(--color-foreground);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
