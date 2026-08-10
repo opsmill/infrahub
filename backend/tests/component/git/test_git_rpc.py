@@ -254,7 +254,6 @@ class TestAddReadOnly:
             infrahub_branch_name="read-only-branch",
             infrahub_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
             internal_status="active",
-            client=ANY,
         )
 
         self.mock_repo.import_objects_from_files = AsyncMock()

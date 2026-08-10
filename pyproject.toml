@@ -117,7 +117,7 @@ dev = [
     "docker==7.1.0",
     "psutil==6.1.0",
     "jwcrypto==1.5.7",
-    "ty==0.0.32",
+    "ty==0.0.69",
     "prek>=0.3.0",
     "coverage==7.14.1",
     "pytest-playwright-asyncio>=0.8.0",
@@ -1398,6 +1398,7 @@ include = [
     "backend/infrahub/core/query/__init__.py",
     "backend/infrahub/core/query/ipam.py",
     "backend/infrahub/core/query/relationship.py",
+    "backend/infrahub/core/schema/basenode_schema.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -1511,6 +1512,7 @@ include = [
     "backend/infrahub/graphql/mutations/schema.py",
     "backend/infrahub/graphql/queries/path.py",
     "backend/infrahub/graphql/queries/reachable.py",
+    "backend/infrahub/graphql/resolvers/resolver.py",
     "backend/infrahub/graphql/subscription/graphql_query.py",
 ]
 
@@ -1584,6 +1586,7 @@ include = [
     "backend/infrahub/graphql/mutations/proposed_change.py",
     "backend/infrahub/graphql/mutations/repository.py",
     "backend/infrahub/graphql/queries/diff/tree.py",
+    "backend/infrahub/graphql/utils.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -1598,6 +1601,7 @@ include = [
     "backend/infrahub/graphql/mutations/node_getter/by_hfid.py",
     "backend/infrahub/graphql/mutations/node_getter/by_id.py",
     "backend/infrahub/graphql/mutations/profile.py",
+    "backend/infrahub/graphql/mutations/schema.py",
     "backend/infrahub/graphql/resolvers/ipam.py",
 ]
 
@@ -1630,6 +1634,7 @@ redundant-cast = "ignore"
 [[tool.ty.overrides]]
 include = [
     "backend/infrahub/graphql/manager.py",
+    "backend/infrahub/graphql/mutations/schema.py",
     "backend/infrahub/graphql/utils.py",
 ]
 
@@ -1867,6 +1872,17 @@ call-top-callable = "ignore"
 invalid-await = "ignore"
 no-matching-overload = "ignore"
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/message_bus/operations/__init__.py"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# COMMAND_MAP is a heterogeneous dispatch table: each handler takes a specific InfrahubMessage   #
+# subtype, but the dispatch site only has the base type. Scoped to this file so the rest of      #
+# message_bus/ stays enforced.                                                                    #
+##################################################################################################
+invalid-argument-type = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/artifacts/tasks.py"]

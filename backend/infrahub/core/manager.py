@@ -1388,7 +1388,7 @@ def _get_cardinality_one_identifiers_by_kind(
         if node_schema.kind in cardinality_one_fields_by_kind:
             continue
         cardinality_one_rel_identifiers_in_fields = {
-            rel_schema.identifier: rel_schema.direction
+            rel_schema.get_identifier(): rel_schema.direction
             for rel_schema in node_schema.relationships
             if rel_schema.cardinality is RelationshipCardinality.ONE and rel_schema.name in field_names_set
         }

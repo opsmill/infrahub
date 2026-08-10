@@ -229,7 +229,7 @@ class TestLogForwardingExceptionHandler:
         assert response.status_code == 403
 
     async def test_no_log_forwarding_does_not_raise(self, request_fixture: RequestFixture) -> None:
-        request_fixture.mock_log_forwarding = None  # type: ignore[assignment]
+        request_fixture.mock_log_forwarding = None  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
         request_fixture.request.app.state.service.log_forwarding = None
 
         response = await log_forwarding_exception_handler(request_fixture.request, PermissionDeniedError("denied"))
