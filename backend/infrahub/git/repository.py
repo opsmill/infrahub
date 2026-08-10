@@ -274,7 +274,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return []
 
     async def push(self, branch_name: str) -> bool:
-        """Push a given branch to the remote Origin repository."""
+        """Push a given branch to the remote Origin repository.
+
+        Raises:
+            RepositoryError: When the remote rejects the push.
+
+        """
         if not self.has_origin:
             return False
 
