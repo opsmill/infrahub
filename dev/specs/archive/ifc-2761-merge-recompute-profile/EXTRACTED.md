@@ -6,7 +6,7 @@
 ## ADRs Created
 
 - None. This was a measurement-only spec; its cost-model conclusion is the rationale
-  recorded in dev/adr/0012-coalesced-merge-rebase-recompute.md (extracted from the sibling
+  recorded in dev/adr/0017-coalesced-merge-rebase-recompute.md (extracted from the sibling
   coalesce spec).
 
 ## Knowledge Updated

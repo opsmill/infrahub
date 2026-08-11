@@ -202,6 +202,50 @@ Guidelines:
 - Chain for nested access: `config.get("db", {}).get("host", "localhost")`.
 - Use `setdefault()` when the default is a mutable object you intend to build up: `cache.setdefault("results", []).append(42)`.
 
+## Configuration Settings
+
+`backend/infrahub/config.py` is the boundary where an operator's environment enters the process. Any value that gets past a `Field` is trusted by everything downstream, so constrain it here rather than defending against it in the logic that consumes it.
+
+### Bound every numeric field
+
+Give each numeric field the tightest bounds its *meaning* allows, not just `gt=0`. A multiplier that may only scale a value **up** is `ge=1`; one that may only scale it **down** is `gt=0, le=1`. A count that must leave room for at least one item is `ge=1`, not `ge=0`.
+
+Every `float` field also needs `allow_inf_nan=False`. Pydantic accepts `inf` and `nan` for floats by default, and both slip past `gt`/`ge`: `inf` produces a threshold that can never be reached, and `nan` makes every comparison against it `False`, so the feature quietly stops working somewhere far from the config file.
+
+```python
+retry_backoff_multiplier: float = Field(
+    default=2.0,
+    ge=1,
+    allow_inf_nan=False,
+    description="Factor applied to the delay after each failed attempt.",
+)
+```
+
+### Enforce cross-field invariants with a model validator
+
+Per-field bounds cannot express a relationship *between* settings. When one setting is only meaningful relative to another — an ordering, a window that must contain another, a ceiling that must sit above its floor — assert it in a `@model_validator(mode="after")`. A contradictory configuration then fails at startup with an explanation, instead of silently inverting the feature's behavior at runtime.
+
+```python
+@model_validator(mode="after")
+def validate_retry_delay_bounds_ordered(self) -> Self:
+    """Require the initial retry delay to fall within the configured ceiling.
+
+    Raises:
+        ValueError: If the initial delay exceeds the maximum.
+
+    """
+    if self.retry_initial_delay_seconds > self.retry_max_delay_seconds:
+        raise ValueError(
+            "'retry_initial_delay_seconds' must not exceed 'retry_max_delay_seconds', "
+            "otherwise the backoff ceiling is reached before the first retry"
+        )
+    return self
+```
+
+Name the validator after the invariant it enforces. Name the offending fields in full in the message so they are greppable, and state both the rule and its consequence — the operator reading it in a crash log has no other context.
+
+Testing note: don't test that Pydantic enforces `ge`/`le` (see [Testing Standards](./testing.md#what-not-to-test)), but *do* test the model validator and the shipped defaults — the invariant and the defaults are ours.
+
 ## Docstrings (Google-style)
 
 All public functions and classes must have Google-style docstrings:
@@ -261,6 +305,8 @@ When a field or argument accepts only a fixed set of values, don't type it as a 
 
 - **`Literal["a", "b"]`** — the lighter option for a small closed set used in a **single file**. Still type-checked, no class to declare.
 - **An enum** — when the set is shared across modules, needs a name, round-trips through the database, or is exposed over GraphQL. Subclass `str` so the value round-trips as text — `StrEnum` on the backend (Python 3.11+); use `class X(str, Enum)` for code shared with `python_testcontainers` (which targets 3.10).
+
+A value that also leaves the process as an external label — a metric label, a response field, a log key — is shared by definition, so it gets the enum even if only one module reads it today. Note that second role in the enum's docstring, and pass the member itself at the emit site rather than a parallel string literal, so the exported set and the branched-on set cannot drift apart.
 
 ```python
 # ❌ Bad - any string is accepted; a typo silently bypasses downstream logic
@@ -398,6 +444,32 @@ except Exception as exc:
 ```
 
 A broad `except Exception` is justified only at a top-level boundary (a task worker loop, a request handler) whose job is to prevent one failure from taking down the process — and even there, log the exception and re-raise or record it, never discard it.
+
+### Best-effort side effects degrade to a safe fallback
+
+A second broad-catch case is a best-effort side effect whose failure must not abort a primary
+operation that has already succeeded: a cache write for an optimization, an observability emit, a
+capture step feeding later work. Here the broad `except Exception` deliberately does not re-raise,
+because propagating would undo committed, correct work. This is not silencing, and it is legitimate
+only when all of the following hold:
+
+- The failure is logged.
+- It is converted into an explicit, documented fallback that is at least as safe as the side effect
+  never having run, never a silently narrower result. When the side effect feeds a later selection
+  or dispatch, the fallback must over-execute, not under-execute.
+- It is positioned so the failure cannot corrupt the primary operation's committed result (do the
+  best-effort work either fully before the point of no return or fully after it, never straddling
+  it).
+
+```python
+# ✅ Good - a best-effort capture that must never fail the committed operation
+try:
+    summary = serialize_diff(branch_diff)
+    cache.set(key, summary)          # only after the operation has committed
+except Exception as exc:
+    log.warning("Merge diff capture failed; falling back to full regeneration", error=str(exc))
+    key = None                        # explicit, safe (over-executing) fallback signal
+```
 
 ## ASGI Middleware
 

@@ -84,10 +84,15 @@ Architecture Decision Records in [adr/](adr/):
 - [0008-client-declared-request-priority.md](adr/0008-client-declared-request-priority.md) - Client-declared request priority, cooperatively trusted
 - [0009-per-worker-coordination-free-admission.md](adr/0009-per-worker-coordination-free-admission.md) - Per-worker, coordination-free admission capacity
 - [0010-generated-user-facing-schema-contract.md](adr/0010-generated-user-facing-schema-contract.md) - Generated user-facing schema contract, hosted in the SDK
-- [0011-node-mutation-origin-label-suppression.md](adr/0011-node-mutation-origin-label-suppression.md) - Suppress coalesced-family triggers with a node-mutation origin label
-- [0012-coalesced-merge-rebase-recompute.md](adr/0012-coalesced-merge-rebase-recompute.md) - Coalesced deduplicated recompute pass on merge and rebase
-- [0013-static-transform-lifecycle-triggers.md](adr/0013-static-transform-lifecycle-triggers.md) - Static kind-scoped lifecycle triggers for Python-transform recompute
-- [0014-transform-lifecycle-owns-node-input-reconciliation.md](adr/0014-transform-lifecycle-owns-node-input-reconciliation.md) - Transform lifecycle flow owns node-input automation reconciliation
+- [0011-inline-local-computed-attributes.md](adr/0011-inline-local-computed-attributes.md) - Inline evaluation of local Jinja2 computed attributes during update mutations
+- [0012-selective-post-merge-regeneration.md](adr/0012-selective-post-merge-regeneration.md) - Selective post-merge regeneration driven by the captured merge diff
+- [0013-webhook-delivery-on-prefect-run-primitives.md](adr/0013-webhook-delivery-on-prefect-run-primitives.md) - Webhook deliveries as retention-bounded Prefect-run objects
+- [0014-generic-per-task-recovery-actions.md](adr/0014-generic-per-task-recovery-actions.md) - Generic per-task recovery actions with polymorphic task typing
+- [0015-uniform-bounded-webhook-retry.md](adr/0015-uniform-bounded-webhook-retry.md) - Uniform bounded fixed-delay auto-retry for webhook deliveries
+- [0016-node-mutation-origin-label-suppression.md](adr/0016-node-mutation-origin-label-suppression.md) - Suppress coalesced-family triggers with a node-mutation origin label
+- [0017-coalesced-merge-rebase-recompute.md](adr/0017-coalesced-merge-rebase-recompute.md) - Coalesced deduplicated recompute pass on merge and rebase
+- [0018-static-transform-lifecycle-triggers.md](adr/0018-static-transform-lifecycle-triggers.md) - Static kind-scoped lifecycle triggers for Python-transform recompute
+- [0019-transform-lifecycle-owns-node-input-reconciliation.md](adr/0019-transform-lifecycle-owns-node-input-reconciliation.md) - Transform lifecycle flow owns node-input automation reconciliation
 
 ## Current Guides
 

@@ -57,6 +57,8 @@ Skip tests that test the framework rather than our integration:
 
 A useful rule of thumb: if the test would still pass after we delete our implementation and reinstall the library, the test belongs to the library, not us.
 
+**The exception is a bound that encodes a domain invariant.** `Field(ge=1)` on a multiplier that must never shrink the value it scales is not arbitrary tuning — it is a rule about how the feature behaves, and deleting it changes behavior with nothing failing. Assert those, but write the test against the invariant rather than the mechanism: name it for the rule, not for the constraint (`test_<what must hold>`, not `test_field_rejects_zero`), cover the boundary value that must stay legal, and add a test that the **shipped defaults** satisfy the invariant. Cross-field `model_validator` logic is ours outright and always warrants a test.
+
 ## Async tests
 
 The project sets `asyncio_mode = "auto"` in `pyproject.toml`, so any `async def test_*` function is automatically driven by `pytest-asyncio`. **Do not** wrap async code in `asyncio.run(...)` inside synchronous tests — declare the test function `async` and `await` directly:
@@ -275,6 +277,8 @@ Instead of mocking, design code with explicit boundaries using adapters, interfa
 - Testing: [message_bus.py](../../../backend/tests/adapters/message_bus.py) - `BusRecorder` and `BusSimulator` test implementations
 
 Both implement the same `InfrahubMessageBus` protocol. Tests inject the test adapter—no mocking required, and refactoring the RabbitMQ implementation won't silently break tests.
+
+`BusRecorder` illustrates the two doubles worth writing for any injected collaborator. A **recording** double keeps what crossed the boundary, in order, so the test asserts the exact calls and values rather than "was called". A **failing** double raises on every call, to test the path a `Mock` never exercises: that a broken collaborator is handled the way the code claims — the operation still completes, state is intact, and anything queued behind it still runs. Keep both in the shared adapters package or a `helpers.py` beside the test package rather than redefining them per file.
 
 ### When mocking seems necessary
 

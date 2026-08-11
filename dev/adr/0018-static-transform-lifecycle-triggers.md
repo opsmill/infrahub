@@ -1,4 +1,4 @@
-# 13. Static kind-scoped lifecycle triggers for Python-transform recompute
+# 18. Static kind-scoped lifecycle triggers for Python-transform recompute
 
 **Status:** Accepted
 **Date:** 2026-07-31

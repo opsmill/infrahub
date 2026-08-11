@@ -1,4 +1,4 @@
-# 14. Transform lifecycle flow owns node-input automation reconciliation
+# 19. Transform lifecycle flow owns node-input automation reconciliation
 
 **Status:** Accepted
 **Date:** 2026-07-31
@@ -15,7 +15,7 @@ different axis from the transform-content (fingerprint) change. The schema-chang
 reconciles them, but it fires only on a real schema diff, so it does not cover a transform-only
 import.
 
-Removing the commit trigger to scope recompute (see ADR 0013) removes that reconciliation as a
+Removing the commit trigger to scope recompute (see ADR 0018) removes that reconciliation as a
 side effect. If nothing takes it over, a transform-only import leaves the node-input automations
 unbuilt. A later change to a node feeding the transform's query would then silently fail to
 recompute the attribute, leaving a permanently stale value. That is exactly the failure the
