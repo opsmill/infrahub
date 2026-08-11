@@ -105,6 +105,32 @@ INFRAHUB_LOG_LEVEL=CRITICAL uv run pytest -v backend/tests/unit
 
 The environment variable at the beginning of the command is useful to have a much more cleaner output when running tests.
 
+### Temporarily overriding a setting in a test
+
+When a test needs to change a value in `config.SETTINGS` (for example to exercise behavior gated
+behind `schema_strict_mode`), do not mutate the setting globally — that leaks the change into other
+tests in the module. Instead use a fixture with a `yield` so the original value is always restored,
+even if the test fails:
+
+```python
+from collections.abc import Generator
+
+import pytest
+
+from infrahub import config
+
+
+@pytest.fixture
+def disable_schema_strict_mode() -> Generator[None, None, None]:
+    original = config.SETTINGS.main.schema_strict_mode
+    config.SETTINGS.main.schema_strict_mode = False
+    yield
+    config.SETTINGS.main.schema_strict_mode = original
+```
+
+A test then requests the fixture by name (`def test_something(self, disable_schema_strict_mode): ...`)
+and the setting is scoped to that test only.
+
 ## Running Infrahub server
 
 We can run the Infrahub server with the built-in command:
