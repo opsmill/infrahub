@@ -192,7 +192,7 @@ class InfrahubGraphQLApp:
         except ValueError as exc:
             return JSONResponse({"errors": [exc.args[0]]}, status_code=400)
         except ClientDisconnect as exc:
-            self.logger.error("Exception ClientDisconnect in _handle_http_request")
+            self.logger.exception("Exception ClientDisconnect in _handle_http_request")
             return JSONResponse({"errors": [str(exc)]}, status_code=400)
 
         if isinstance(operations, list):
@@ -532,7 +532,9 @@ class InfrahubGraphQLApp:
                 await websocket.send_json({"type": GQL_DATA, "id": operation_id, "payload": payload})
         except Exception as error:
             if not isinstance(error, GraphQLError):
-                self.logger.error("An exception occurred in resolvers", exc_info=error)
+                # Inside the handler, so the active exception is attached implicitly; the helper
+                # below runs outside any except block and must pass it explicitly instead.
+                self.logger.exception("An exception occurred in resolvers")
                 error = GraphQLError(str(error), original_error=error)
             await websocket.send_json(
                 {

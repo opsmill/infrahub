@@ -191,7 +191,9 @@ class InfrahubWorkerAsync(BaseWorker):
                     )
                 )
             except InitializationError as err:
-                self._logger.error(
+                # A missing configuration value, reported before a clean exit: there is nothing
+                # in a traceback to diagnose.
+                self._logger.error(  # noqa: TRY400
                     "Infrahub client initialization failed due to missing configuration for internal_address."
                 )
                 raise typer.Exit(1) from err
@@ -199,7 +201,7 @@ class InfrahubWorkerAsync(BaseWorker):
         try:
             await client.branch.all()
         except SdkError as err:
-            self._logger.error(f"Error in communication with Infrahub: {err.message}")
+            self._logger.exception(f"Error in communication with Infrahub: {err.message}")
             raise typer.Exit(1) from err
 
         return client

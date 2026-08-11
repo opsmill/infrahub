@@ -616,7 +616,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                     target=target_branch,
                 )
                 return True
-            log.error(
+            log.exception(
                 f"Unexpected error running git merge-tree for {source_branch} into {target_branch}",
                 repository=self.name,
                 source=source_branch,
@@ -899,7 +899,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         try:
             has_conflicts = self.has_conflicting_changes(target_branch=self.default_branch, source_branch=branch_name)
         except GitCommandError as exc:
-            log.error(
+            log.exception(
                 "Unable to determine merge conflicts for branch",
                 branch=branch_name,
                 repository=self.name,

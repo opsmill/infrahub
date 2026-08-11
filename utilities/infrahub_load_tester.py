@@ -45,8 +45,8 @@ async def _create_one(idx: int, client: InfrahubClient, prefix: str, log: loggin
         await proposed_change.save()
         log.info(f"✅ Created proposed change for branch {branch_name}")
     # Load test: absorb any request failure and continue
-    except Exception as e:  # noqa: BLE001
-        log.error(f"❌ Error creating proposed change for branch {branch_name}: {e}")
+    except Exception as e:
+        log.exception(f"❌ Error creating proposed change for branch {branch_name}: {e}")
 
     log.info(f"✅ User {uname} created with branch {branch_name}")
     return uname, branch_name
@@ -68,8 +68,8 @@ async def _delete_branches(client: InfrahubClient, prefix: str, usernames: Itera
     try:
         all_branches = await client.branch.all()
     # Load test: absorb any request failure and continue
-    except Exception as e:  # noqa: BLE001
-        log.error(f"Error retrieving branches: {e}")
+    except Exception as e:
+        log.exception(f"Error retrieving branches: {e}")
 
     for uname in usernames:
         br = f"{prefix}/{uname}"
@@ -84,8 +84,8 @@ async def _delete_branches(client: InfrahubClient, prefix: str, usernames: Itera
             else:
                 log.warning(f"Branch {br} not found")
         # Load test: absorb any request failure and continue with remaining branches
-        except Exception as exc:  # noqa: BLE001
-            log.error(f"Error deleting branch {br}: {exc}")
+        except Exception as exc:
+            log.exception(f"Error deleting branch {br}: {exc}")
 
 
 async def _delete_users(client: InfrahubClient, usernames: Iterable[str], log: logging.Logger) -> None:
@@ -109,14 +109,14 @@ async def _delete_users(client: InfrahubClient, usernames: Iterable[str], log: l
                         log.info(f"🗑️ User {uname} Deleted")
                         break
                     # Load test: absorb any request failure and continue with remaining users
-                    except Exception as e:  # noqa: BLE001
-                        log.error(f"Error while deleting: {str(e)}")
+                    except Exception as e:
+                        log.exception(f"Error while deleting: {str(e)}")
             else:
                 log.warning(f"User {uname} not found in the list")
 
         # Load test: absorb any request failure and continue with remaining users
-        except Exception as exc:  # noqa: BLE001
-            log.error(f"❌ General: {exc}")
+        except Exception as exc:
+            log.exception(f"❌ General: {exc}")
 
 
 async def cleanup(client: InfrahubClient, log: logging.Logger, *, prefix: str, n_users: int) -> None:
@@ -141,8 +141,8 @@ async def create_admin_branches(client: InfrahubClient, log: logging.Logger, *, 
 
             log.info(f"✅ Branch created: {branch_name} with test tag")
         # Load test: absorb any request failure and continue with remaining branches
-        except Exception as exc:  # noqa: BLE001
-            log.error(f"❌ Error creating branch {branch_name}: {exc}")
+        except Exception as exc:
+            log.exception(f"❌ Error creating branch {branch_name}: {exc}")
 
 
 async def delete_admin_branches(client: InfrahubClient, log: logging.Logger, *, n_branches: int, prefix: str) -> None:
@@ -152,8 +152,8 @@ async def delete_admin_branches(client: InfrahubClient, log: logging.Logger, *, 
     try:
         all_branches = await client.branch.all()
     # Load test: abort branch cleanup gracefully on any request failure
-    except Exception as e:  # noqa: BLE001
-        log.error(f"Error retrieving branches: {e}")
+    except Exception as e:
+        log.exception(f"Error retrieving branches: {e}")
         return
 
     for i in range(1, n_branches + 1):
@@ -170,8 +170,8 @@ async def delete_admin_branches(client: InfrahubClient, log: logging.Logger, *, 
             else:
                 log.warning(f"Branch {branch_name} not found")
         # Load test: absorb any request failure and continue with remaining branches
-        except Exception as exc:  # noqa: BLE001
-            log.error(f"Error deleting branch {branch_name}: {exc}")
+        except Exception as exc:
+            log.exception(f"Error deleting branch {branch_name}: {exc}")
 
 
 async def run(

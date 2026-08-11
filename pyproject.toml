@@ -460,6 +460,12 @@ task-tags = ["FIXME", "TODO", "XXX"]
 
 select = ["ALL"]
 
+# Rules re-enabled individually out of a category that is still ignored below. A specific code
+# here wins over the broader prefix in `ignore`, so these stay enforced.
+extend-select = [
+    "TRY400",   # error-instead-of-exception - enabled ahead of the rest of TRY (INBOX-29)
+]
+
 ignore = [
     "CPY",      # flake8-copyright
     "T201",     # use of `print`
@@ -472,7 +478,7 @@ ignore = [
     # Rules below needs to be Investigated                                                           #
     ##################################################################################################
     "EM",       # flake8-errmsg
-    "TRY",      # tryceratops
+    "TRY",      # tryceratops (except TRY400, re-enabled in extend-select above)
     "FBT",      # flake8-boolean-trap
     "G",        # flake8-logging-format
     "RSE",      # flake8-raise
@@ -549,6 +555,13 @@ allow-dunder-method-names = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+
+"backend/infrahub/auth/auth.py" = [
+    # Both remaining TRY400 sites here are pure logging inside `except` blocks and would convert
+    # cleanly, but INBOX-29 was delivered by an automated pipeline that may not edit auth modules.
+    # Deferred to a human: drop this entry and switch the two calls to `log.exception`.
+    "TRY400",   # error-instead-of-exception
+]
 
 "backend/infrahub/**.py" = [
     ##################################################################################################

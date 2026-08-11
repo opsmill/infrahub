@@ -149,7 +149,7 @@ class BranchMergeOrchestrator:
                 target_branch_name=self.destination_branch.name,
             )
         except BaseException as exc:
-            self.log.error("Merge failed, beginning rollback", extra={"error": str(exc)})
+            self.log.exception("Merge failed, beginning rollback", extra={"error": str(exc)})
             await self.rollback_handler.rollback(
                 merge_started_at=merge_at,
                 pre_merge_state=pre_merge_state,

@@ -201,7 +201,11 @@ async def webhook_send(
     except WebhookDeliveryError as error:
         elapsed_ms = (time.monotonic() - started) * 1_000
         failure = error.failure
-        log.error(
+        # Deliberately not `exception`: WebhookDeliveryError is registered for traceback
+        # suppression, and the filter drops the *whole* record for a registered type - attaching
+        # the exception here would delete this classified failure report from the run logs. The
+        # traceback still reaches the caller via the re-raise below.
+        log.error(  # noqa: TRY400
             get_webhook_log_formatter().delivery_failed(
                 status_class=failure.status_class,
                 message=failure.message,

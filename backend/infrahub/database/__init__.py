@@ -443,7 +443,7 @@ class InfrahubDatabase:
         try:
             response = await execution_method.run(query=_query, parameters=params)
         except ServiceUnavailable as exc:
-            log.error("Database Service unavailable", error=str(exc))
+            log.exception("Database Service unavailable", error=str(exc))
             raise DatabaseError(message="Unable to connect to the database") from exc
 
         return response
