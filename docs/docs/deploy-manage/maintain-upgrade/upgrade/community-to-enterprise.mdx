@@ -21,7 +21,7 @@ After the swap, the following changes apply:
 | API server image | `registry.opsmill.io/opsmill/infrahub` | `registry.opsmill.io/opsmill/infrahub-enterprise` |
 | Task worker image | `registry.opsmill.io/opsmill/infrahub` | `registry.opsmill.io/opsmill/infrahub-enterprise` |
 | Prefect server image | `registry.opsmill.io/opsmill/infrahub` | `registry.opsmill.io/opsmill/infrahub-enterprise` |
-| Server gunicorn app | `infrahub.server:app` | `infrahub_enterprise.server:app` |
+| Server Gunicorn app | `infrahub.server:app` | `infrahub_enterprise.server:app` |
 | Task worker type | `infrahubasync` | `infrahubentasync` |
 | Worker pool name | `infrahub-worker` | `infrahub-worker` (unchanged) |
 | Neo4j edition (bundled chart only) | community | enterprise |
@@ -31,7 +31,7 @@ Because `infrahub-worker` keeps its pool name, any externally registered work po
 
 :::info Licensing
 
-No license file, license key, or image pull secret is required at this time — the Enterprise image registry (`registry.opsmill.io/opsmill/infrahub-enterprise`) is openly pullable. This may change in the future; if it does, you will receive a registry credential to mount as an `imagePullSecret`.
+No license file, license key, or image pull secret is required at this time — images can be pulled from the Enterprise registry (`registry.opsmill.io/opsmill/infrahub-enterprise`) without authentication. This may change in the future; if it does, you will receive a registry credential to mount as an `imagePullSecret`.
 
 :::
 
@@ -49,7 +49,7 @@ No separate Neo4j license key is required when using the chart-provided deployme
 Before starting, confirm the following:
 
 1. **Your target Enterprise version matches your current Community version.** Check the running version via `curl https://<your-infrahub-host>/api/config | jq .` or by inspecting the running image tag. Do not combine an edition swap with a version bump in a single step.
-2. **A database backup exists and has been verified restorable.** Take a recent `neo4j-admin database dump` or an equivalent volume snapshot with the database stopped or paused. The Enterprise edition rewrites license metadata in the store on first boot, and a rollback past that point requires the dump. See [Backup and restore](../database-backup/backup-and-restore.mdx).
+2. **A database backup exists and you have verified that it can be restored.** Take a recent `neo4j-admin database dump` or an equivalent volume snapshot with the database stopped or paused. The Enterprise edition rewrites license metadata in the store on first boot, and a rollback past that point requires the dump. See [Backup and restore](../database-backup/backup-and-restore.mdx).
 3. **The Helm release name is recorded.** Find it with `helm list -n <namespace>`. The release name **must not change** during the swap — that is what guarantees the PVC names, Service DNS entries, and credential Secrets are reused.
 4. **The existing values file is in source control.** You will be restructuring it; keep the original.
 5. **If your Neo4j runs outside the cluster**, plan the Neo4j edition switch as a separate operation. See [External Neo4j edition switch](#external-neo4j-edition-switch).
@@ -170,8 +170,8 @@ helm upgrade <release-name> oci://registry.opsmill.io/opsmill/chart/infrahub-ent
 
 Helm replaces the chart on the existing release. Expected behavior during the rollout:
 
-- The `infrahub-server` Deployment rolls. Old Community pods drain as new Enterprise pods become Ready. On a single-replica setup expect roughly 30–60 seconds of API 502s through the ingress.
-- The `infrahub-task-worker` Deployment rolls. The worker registers against the same `infrahub-worker` pool with the new `InfrahubEntWorkerAsync` type — any flows in flight at the moment of cutover may need to be re-triggered.
+- The `infrahub-server` Deployment rolls. Old Community pods drain as new Enterprise pods become Ready. On a single-replica setup expect roughly 30–60 seconds of HTTP 502 errors through the ingress.
+- The `infrahub-task-worker` Deployment rolls. The worker registers against the same `infrahub-worker` pool with the new `InfrahubEntWorkerAsync` type — any flows in flight at the moment of the swap may need to be triggered again.
 - The `prefect-server` Deployment rolls. Flow run history in PostgreSQL is preserved.
 - The first Enterprise server pod may crash once or twice with `ServiceUnavailable` against Neo4j if Neo4j is restarting. The `wait-for-prefect` init container plus the Kubernetes restart policy resolve any transient connection failure within about 60 seconds.
 
