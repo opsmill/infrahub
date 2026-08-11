@@ -147,7 +147,10 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         Uses a fresh clone against a real server so the bad credentials are always
         presented directly, bypassing any cached credential state.
         """
-        with pytest.raises(RepositoryCredentialsError):
+        with pytest.raises(
+            RepositoryCredentialsError,
+            match=r"^Authentication failed for auth-failure-repo, please validate the credentials\.$",
+        ):
             await InfrahubRepository.new(
                 id=auth_failure_dataset["node_id"],
                 name=auth_failure_dataset["repo_name"],
@@ -206,14 +209,9 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         client: InfrahubClient,
         gogs_server: GogsServer,
     ) -> None:
-        """push() returns True despite a non-fast-forward rejection — the failure is silent.
+        """push() raises RepositoryError when the remote rejects a non-fast-forward push.
 
-        InfrahubRepository.push() has no exception handling.  GitPython's Remote.push()
-        does not raise on rejection — it logs a warning and returns a PushInfoList with
-        error flags.  The result is that push() returns True while the local commit was
-        never actually delivered to the remote.
-
-        This test is expected to fail once proper push-rejection handling is added.
+        The remote is left unchanged: the rejected local commit is not delivered.
         """
         repo_name = push_rejection_dataset["repo_name"]
 
@@ -238,9 +236,11 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         git_repo.index.add(["local_diverge.txt"])
         local_commit = str(git_repo.index.commit("Local-only commit"))
 
-        # GitPython's Remote.push() does not raise on rejection; push() returns True.
-        result = await infrahub_repo.push("main")
-        assert result is True
+        with pytest.raises(
+            RepositoryError,
+            match=rf"^Unable to push the branch main to the remote for repository {repo_name}:",
+        ):
+            await infrahub_repo.push("main")
 
         git_repo.remotes.origin.fetch()
         remote_main_commit = str(git_repo.commit("origin/main"))
@@ -285,7 +285,10 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         branch_b_repo.index.add(["conflict.txt"])
         branch_b_repo.index.commit("conflict-branch-b: add conflict.txt")
 
-        with pytest.raises(RepositoryError):
+        with pytest.raises(
+            RepositoryError,
+            match=r"^An error occurred with GitRepository 'merge-conflict-repo'\.$",
+        ):
             await infrahub_repo.merge(
                 source_branch="conflict-branch-a",
                 dest_branch="conflict-branch-b",
