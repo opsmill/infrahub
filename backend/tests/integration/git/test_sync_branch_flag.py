@@ -27,6 +27,7 @@ class TestSyncBranchFlag(TestInfrahubApp):
         client: InfrahubClient,
         git_repo_car_dealership: FileRepo,
         git_repos_dir: Path,
+        import_every_remote_branch: None,
     ) -> None:
         """A branch discovered on the remote must be created with sync_with_git enabled.
 
