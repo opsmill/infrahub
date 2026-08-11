@@ -50,7 +50,7 @@ test.describe("Branch details view", () => {
 
       // Header
       await expect(page.getByRole("heading", { name: BRANCH_NAME })).toBeVisible();
-      await expect(page.getByText("default")).not.toBeVisible();
+      await expect(page.getByText("default", { exact: true })).not.toBeVisible();
       await expect(page.getByRole("button", { name: "View node metadata" })).toBeVisible();
 
       // Branch attributes
