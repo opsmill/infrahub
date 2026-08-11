@@ -57,11 +57,7 @@ async def test_allocate_from_number_pool(
 async def test_allocate_skips_value_already_present_on_target(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    """A value already present on the target kind but never handed out by the pool must be skipped.
-
-    Otherwise the pool offers the colliding value, the uniqueness constraint rejects the save, and
-    the pool re-offers the same value on every subsequent allocation instead of advancing.
-    """
+    """A value already present on the target kind but never handed out by the pool must be skipped."""
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
 
@@ -84,11 +80,7 @@ async def test_allocate_skips_value_already_present_on_target(
 async def test_allocate_reuses_value_when_attribute_not_globally_unique(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    """Values present on the target are skipped only when the attribute is globally unique.
-
-    When a duplicate cannot violate a uniqueness constraint, existing data must not restrict the pool,
-    otherwise a pool over a per-relationship-unique or non-unique attribute is needlessly constrained.
-    """
+    """Existing target values are skipped only when the attribute is globally unique."""
     schema = deepcopy(TICKET)
     next(attr for attr in schema.attributes if attr.name == "ticket_id").unique = False
     await load_schema(db=db, schema=SchemaRoot(nodes=[schema]))
@@ -113,11 +105,7 @@ async def test_allocate_reuses_value_when_attribute_not_globally_unique(
 async def test_allocate_reuses_value_after_conflicting_target_deleted(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    """A value freed by deleting the conflicting target object becomes allocatable again.
-
-    Deleting a node closes its attribute value edge, so the freshest-state check in the taken-value
-    lookup drops the value and the pool can hand it out again.
-    """
+    """A value freed by deleting the conflicting target object becomes allocatable again."""
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
 
@@ -140,11 +128,7 @@ async def test_allocate_reuses_value_after_conflicting_target_deleted(
 async def test_taken_values_see_origin_branch_after_branch_point(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    """Taken-value visibility must match the uniqueness check that rejects the save.
-
-    A value created on the origin branch after a branch point still collides on the branch (the
-    uniqueness constraint sees it), so it must be reported as taken there and skipped by allocation.
-    """
+    """A value added to the origin branch after the branch point still counts as taken on the branch."""
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
 

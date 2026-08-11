@@ -561,11 +561,10 @@ class NumberPoolGetFree(Query):
 
 
 class NumberPoolGetTaken(Query):
-    """Values currently held on the target kind for the pool's attribute, whatever their source.
+    """Values held on the target kind for the pool's attribute, whatever set them.
 
-    Unlike the reservation-based queries, this looks at the real objects of the target kind, so it
-    also sees values created outside the pool. Those must be skipped during allocation; otherwise the
-    pool offers a value the target's uniqueness constraint rejects and never advances past it.
+    Sees values created outside the pool, which allocation must skip or it stalls on a value the
+    uniqueness constraint rejects.
     """
 
     name = "number_pool_get_taken"
@@ -588,8 +587,8 @@ class NumberPoolGetTaken(Query):
         self.params["start_range"] = self.min_value if self.min_value is not None else self.pool.start_range.value
         self.params["end_range"] = self.max_value if self.max_value is not None else self.pool.end_range.value
 
-        # is_isolated=False mirrors the uniqueness-constraint validator: a value created on the origin
-        # branch after this branch's point still collides here, so it must count as taken.
+        # is_isolated=False mirrors the uniqueness validator: a value added to the origin branch after
+        # this branch point still collides here.
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at.to_string(), branch_agnostic=self.branch_agnostic, is_isolated=False
         )
@@ -599,7 +598,8 @@ class NumberPoolGetTaken(Query):
 
         query = """
         MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]->(attr:Attribute { name: $attribute_name })-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
-        WHERE toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
+        WHERE av.value >= $start_range and av.value <= $end_range
+        WITH DISTINCT n, attr, av
         CALL (n, attr, av) {
             MATCH (n)-[ha:HAS_ATTRIBUTE]->(attr)-[hv:HAS_VALUE]->(av)
             WHERE all(r in [ha, hv] WHERE (%(branch_filter)s))
@@ -611,7 +611,7 @@ class NumberPoolGetTaken(Query):
         }
         WITH av, is_active
         WHERE is_active = True
-        WITH DISTINCT toInteger(av.value) AS value
+        WITH DISTINCT av.value AS value
         """ % {
             "branch_filter": branch_filter,
             "node": self.pool.node.value,
