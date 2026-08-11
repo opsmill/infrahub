@@ -308,6 +308,23 @@ If the server defaults, filters, sorts, or hides something, the client must not 
 
 If the client genuinely needs to display a server-side default, surface it via the API response — do not mirror the constant.
 
+## Schema-driven rendering: the extra-field tier
+
+The object views tier a node's attributes and relationships by the schema `display` field
+(`default` | `extra`), a frontend-only concern the backend never acts on. Classification is pure
+`domain/rules`; the tiering is `ui/`:
+
+- `entities/nodes/object/domain/rules/` — `has-extra-fields.ts` reports whether any field is
+  `extra`; `get-attributes-visible-in-list-view.ts` and `get-relationships-visible-in-list-view.ts`
+  drop `extra` fields from list view.
+- `entities/nodes/object/ui/object-details/object-data-display/` — `object-data-display.tsx` hides
+  `extra` fields in the detail view until a `showExtra` toggle reveals them, and
+  `object-attribute-row.tsx` / `object-relationship-row.tsx` mark them with an `ExtraFieldIndicator`.
+
+`display` is read off the loaded schema like any other schema fact (see
+[Backend is authoritative](#backend-is-authoritative)); there is no client-side list of which fields
+are advanced.
+
 ## Reference Example: branches
 
 `branches` is the canonical migrated entity, with two caveats it does **not** model correctly: the

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `pmi-20260624-speckit-end-of-webhooks`
 **Created**: 2026-06-24
-**Status**: Draft
+**Status**: Extracted
 **Input**: IFC-2753 (manual cancel), IFC-2755 (task typing + HTTP capture/display), IFC-2119 (manual retry), IFC-2754 (enhanced logs + error classification); design: "Webhooks Delivery Operability" and "Webhook Delivery Operability: Prefect-native design"
 
 ## Overview

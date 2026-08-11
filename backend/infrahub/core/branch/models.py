@@ -117,7 +117,7 @@ class Branch(StandardNode):
         raise InitializationError("The schema_hash has not been loaded for this branch")
 
     @property
-    def has_schema_changes(self) -> bool:
+    def schema_differs_from_default_branch(self) -> bool:
         if not self.schema_hash:
             return False
 
@@ -129,6 +129,10 @@ class Branch(StandardNode):
             return True
 
         return False
+
+    @property
+    def has_schema_changes(self) -> bool:
+        return self.schema_differs_from_default_branch
 
     def update_schema_hash(self, at: Timestamp | str | None = None) -> bool:
         latest_schema = registry.schema.get_schema_branch(name=self.name)

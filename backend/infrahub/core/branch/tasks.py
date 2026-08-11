@@ -204,7 +204,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         #  - Run all the validations to ensure everything is correct before rebasing the branch
         #  - Run all the migrations after the rebase
         schema_diff_constraints: list[SchemaUpdateConstraintInfo] = []
-        if user_branch.has_schema_changes:
+        if user_branch.schema_differs_from_default_branch:
             schema_diff_constraints = await schema_analyzer.calculate_validations(target_schema=candidate_schema)
         merger = build_constraint_info_merger()
         constraints = merger.merge(candidate_schema, data_diff_constraints, schema_diff_constraints)
@@ -232,7 +232,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 await user_branch.rebase(db=dbt, user_id=context.account.account_id, at=rebase_at)
                 log.info("Branch graph rebased")
 
-            if user_branch.has_schema_changes:
+            if user_branch.schema_differs_from_default_branch:
                 # Update the registry and run migrations after the rebase, with rollback on failure.
                 # Schema nodes were already written by the rebase, so load that schema and apply only
                 # the migrations it implies.

@@ -43,7 +43,7 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
             <BranchStatusBadge status={branch.status} />
           )}
 
-          {branch.has_schema_changes && <BranchSchemaChangesBadge />}
+          {branch.schema_differs_from_default_branch && <BranchSchemaChangesBadge />}
         </Row>
 
         <p className="truncate text-gray-600 text-xs">{branch.description}</p>

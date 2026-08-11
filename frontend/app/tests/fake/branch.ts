@@ -9,7 +9,7 @@ export const generateBranch = (overrides?: Partial<BranchListItem>): BranchListI
     created_at: "2024-12-12T09:36:44.968848Z",
     sync_with_git: false,
     is_default: false,
-    has_schema_changes: false,
+    schema_differs_from_default_branch: false,
     status: "OPEN",
     __typename: "Branch",
     ...overrides,

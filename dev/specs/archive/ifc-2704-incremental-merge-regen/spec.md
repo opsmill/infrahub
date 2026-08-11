@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-10
 
-**Status**: Draft
+**Status**: Extracted
 
 **Input**: IFC-2704 — "Make generator and artifact execution incremental on merge"
 

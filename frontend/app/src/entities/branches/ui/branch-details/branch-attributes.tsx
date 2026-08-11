@@ -55,10 +55,10 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
         {!branch.is_default && (
           <>
             <BranchAttributeLabel>
-              <BoxIcon className="size-3.5" /> Has schema changes
+              <BoxIcon className="size-3.5" /> Schema differs from default branch
             </BranchAttributeLabel>
             <BranchAttributeValue>
-              {branch.has_schema_changes ? (
+              {branch.schema_differs_from_default_branch ? (
                 <CheckIcon className="size-4" />
               ) : (
                 <XIcon className="size-4" />
