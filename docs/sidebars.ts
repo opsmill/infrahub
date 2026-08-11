@@ -61,7 +61,7 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'category',
-          label: 'Labs',
+          label: 'Infrahub Labs',
           link: { type: 'doc', id: 'learn/labs/overview' }, // hub
           items: [
             { type: 'doc', id: 'learn/labs/fundamentals-to-expert', label: 'Infrahub: Fundamentals to Expert' },
