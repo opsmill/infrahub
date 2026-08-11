@@ -66,7 +66,7 @@ export function Combobox({
         <ChevronsUpDownIcon className="ml-2 size-3.5 shrink-0 text-gray-400" />
       </Button>
 
-      <Popover placement="bottom start" matchTriggerWidth>
+      <Popover placement="bottom start" width="trigger">
         <Autocomplete>
           <ListBox
             aria-label={label}

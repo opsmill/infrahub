@@ -101,7 +101,7 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object/ui/object-relationship-list.tsx:54284658": [
       [38, 54, 5, "tsc: Property \'items\' does not exist on type \'NodeObject[]\'.", "179721187"]
     ],
-    "src/entities/nodes/object/ui/object-template/object-template-form.tsx:236579240": [
+    "src/entities/nodes/object/ui/object-template/object-template-form.tsx:291373955": [
       [86, 44, 5, "tsc: Property \'edges\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'edges\' does not exist on type \'string\'.", "165200885"]
     ],
     "src/entities/nodes/relationships/ui/queries/get-default-parent.query.ts:1805247483": [
