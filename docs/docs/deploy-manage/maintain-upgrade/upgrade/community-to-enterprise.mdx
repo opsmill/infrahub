@@ -8,11 +8,11 @@ import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
 
 This guide describes how to convert an existing Infrahub Community Helm release into an Infrahub Enterprise release **in place**, preserving the existing graph database, Git repositories, and Prefect flow run history.
 
-The procedure applies to Helm deployments on Kubernetes. If you deployed Infrahub with Docker Compose, see the [Infrahub Enterprise installation guide](../../install-configure/install/enterprise.mdx) and reach out to the OpsMill team for assistance with the migration.
+The procedure applies to Helm deployments on Kubernetes. If you deployed Infrahub with Docker Compose, see the [Infrahub Enterprise installation guide](../../install-configure/install/enterprise.mdx) and contact the OpsMill team for assistance with the migration.
 
 ## What changes during the migration
 
-The Infrahub Enterprise Helm chart (`infrahub-enterprise`) is a thin wrapper that declares the Community chart (`infrahub`) as a dependency. Switching editions is a Helm chart swap on the existing release; the data layers (Neo4j, Redis, RabbitMQ or NATS, the Prefect PostgreSQL database, and the API server's Git working directory) are reused.
+The Infrahub Enterprise Helm chart (`infrahub-enterprise`) is a wrapper chart that declares the Community chart (`infrahub`) as a dependency. Switching editions is a Helm chart swap on the existing release; the data layers (Neo4j, Redis, RabbitMQ or NATS, the Prefect PostgreSQL database, and the API server's Git working directory) are reused.
 
 After the swap, the following changes apply:
 
@@ -39,7 +39,7 @@ No license file, license key, or image pull secret is required at this time — 
 
 OpsMill recommends running Neo4j using the Neo4j deployment provided with the Infrahub Enterprise Helm chart, rather than a managed Neo4j offering from a cloud provider:
 
-- OpsMill validates the performance of Infrahub Enterprise against the Neo4j deployment shipped with the Helm chart. The performance of managed Neo4j instances is not validated by OpsMill.
+- OpsMill validates the performance of Infrahub Enterprise against the Neo4j deployment shipped with the Helm chart. OpsMill does not validate the performance of managed Neo4j instances.
 - The Neo4j Enterprise license is already included in your Infrahub Enterprise agreement. With a managed offering, you would effectively pay for the Neo4j license twice.
 
 No separate Neo4j license key is required when using the chart-provided deployment. The Enterprise chart configures the bundled Neo4j with `edition: "enterprise"` and `acceptLicenseAgreement: "yes"` — accepting the license agreement this way is covered under your Infrahub Enterprise agreement.
@@ -48,7 +48,7 @@ No separate Neo4j license key is required when using the chart-provided deployme
 
 Before starting, confirm the following:
 
-1. **Your target Enterprise version matches your current Community version.** Check the running version via `curl https://<your-infrahub-host>/api/config | jq .` or by inspecting the running image tag. Do not combine an edition swap with a version bump in a single step.
+1. **Your target Enterprise version matches your current Community version.** Check the running version via `curl https://<your-infrahub-host>/api/config | jq .` or by inspecting the running image tag. Do not combine an edition swap with a version upgrade in a single step.
 2. **A database backup exists and you have verified that it can be restored.** Take a recent `neo4j-admin database dump` or an equivalent volume snapshot with the database stopped or paused. The Enterprise edition rewrites license metadata in the store on first boot, and a rollback past that point requires the dump. See [Backup and restore](../database-backup/backup-and-restore.mdx).
 3. **The Helm release name is recorded.** Find it with `helm list -n <namespace>`. The release name **must not change** during the swap — that is what guarantees the PVC names, Service DNS entries, and credential Secrets are reused.
 4. **The existing values file is in source control.** You will be restructuring it; keep the original.
@@ -171,7 +171,7 @@ helm upgrade <release-name> oci://registry.opsmill.io/opsmill/chart/infrahub-ent
 Helm replaces the chart on the existing release. Expected behavior during the rollout:
 
 - The `infrahub-server` Deployment rolls. Old Community pods drain as new Enterprise pods become Ready. On a single-replica setup expect roughly 30–60 seconds of HTTP 502 errors through the ingress.
-- The `infrahub-task-worker` Deployment rolls. The worker registers against the same `infrahub-worker` pool with the new `InfrahubEntWorkerAsync` type — any flows in flight at the moment of the swap may need to be triggered again.
+- The `infrahub-task-worker` Deployment rolls. The worker registers against the same `infrahub-worker` pool with the new `InfrahubEntWorkerAsync` type — any flows running at the moment of the swap may need to be triggered again.
 - The `prefect-server` Deployment rolls. Flow run history in PostgreSQL is preserved.
 - The first Enterprise server pod may crash once or twice with `ServiceUnavailable` against Neo4j if Neo4j is restarting. The `wait-for-prefect` init container plus the Kubernetes restart policy resolve any transient connection failure within about 60 seconds.
 
@@ -187,7 +187,7 @@ Wait until all `infrahub-server-*`, `infrahub-task-worker-*`, and `prefect-serve
 
 :::note
 
-This section only applies if your Neo4j runs outside the cluster. If you use the Neo4j deployment bundled with the Helm chart — the setup recommended by OpsMill — the chart switches Neo4j to Enterprise edition for you during the upgrade and no further action is needed.
+The steps below apply only when your Neo4j runs outside the cluster. If you use the Neo4j deployment bundled with the Helm chart — the setup recommended by OpsMill — the chart switches Neo4j to Enterprise edition for you during the upgrade and no further action is needed.
 
 :::
 
@@ -206,14 +206,14 @@ The procedure is:
 
 This can happen before, simultaneously with, or after the chart swap — Infrahub doesn't require Neo4j Enterprise to run as Enterprise edition. The performance and high-availability benefits of Infrahub Enterprise that depend on Neo4j Enterprise features (online backups, causal clustering, and advanced indexing) only apply once Neo4j is also upgraded.
 
-If you want to defer the Neo4j edition switch, you can run the Infrahub Enterprise pods against Neo4j Community for the time being. The application will function; you won't get the scale-out database properties. Consider using this opportunity to move your external Neo4j to the deployment provided with the Infrahub Enterprise Helm chart, as described in [Neo4j deployment and licensing](#neo4j-deployment-and-licensing).
+If you want to defer the Neo4j edition switch, you can temporarily run the Infrahub Enterprise pods against Neo4j Community. The application will function; you won't get the scale-out database properties. Consider using this opportunity to move your external Neo4j to the deployment provided with the Infrahub Enterprise Helm chart, as described in [Neo4j deployment and licensing](#neo4j-deployment-and-licensing).
 
 ## Verify the migration
 
 After all pods are Running, confirm the migration:
 
 ```bash
-# 1. installation_type flipped
+# 1. installation_type changed
 curl -s https://<your-host>/api/config | jq .installation_type
 # expect: "enterprise"
 
@@ -245,14 +245,14 @@ If all six checks pass, the migration is complete.
 
 ## Roll back
 
-A same-day rollback is straightforward as long as Neo4j has not been switched to Enterprise edition or written Enterprise-only data structures:
+You can roll back with `helm rollback` as long as Neo4j has not been switched to Enterprise edition or written Enterprise-only data structures:
 
 ```bash
 helm history <release-name> -n <namespace>
 helm rollback <release-name> <previous-revision> -n <namespace> --timeout 15m
 ```
 
-Helm reapplies the Community chart manifests; the pods roll back to the Community images; the PVCs remain bound. The `installation_type` field flips back to `community`.
+Helm reapplies the Community chart manifests; the pods roll back to the Community images; the PVCs remain bound. The `installation_type` field changes back to `community`.
 
 :::warning
 
