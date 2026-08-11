@@ -135,6 +135,7 @@ async def infrahub_branch_resolver(
             graphql_context=info.context,
             branch_filters=branch_filters,
             node_ordering=node_ordering,
+            exclude_global=True,
         )
 
     if "default_branch" in fields:

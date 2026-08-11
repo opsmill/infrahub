@@ -3,9 +3,9 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Link } from "@/shared/components/ui/link";
-import { formatFullDate } from "@/shared/utils/date";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import {
   type UseGetRelationshipPropertiesParams,
   useGetRelationshipProperties,
@@ -15,6 +15,7 @@ export interface RelationshipPropertiesProps extends UseGetRelationshipPropertie
 
 export function RelationshipProperties(props: RelationshipPropertiesProps) {
   const { data, isPending, error } = useGetRelationshipProperties(props);
+  const { formatDate } = useFormatDate();
 
   if (isPending) {
     return <LoadingIndicator message="Loading relationship properties..." />;
@@ -39,7 +40,7 @@ export function RelationshipProperties(props: RelationshipPropertiesProps) {
     },
     {
       name: "Updated at",
-      value: formatFullDate(updated_at),
+      value: formatDate(updated_at, "datetime"),
     },
     {
       name: "Owner",

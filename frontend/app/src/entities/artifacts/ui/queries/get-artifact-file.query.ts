@@ -5,7 +5,7 @@ import type { QueryConfig } from "@/shared/api/types";
 import {
   type GetArtifactFileParams,
   getArtifactFile,
-} from "@/entities/artifacts/domain/get-artifact-file";
+} from "@/entities/artifacts/domain/use-cases/get-artifact-file";
 import { artifactsQueryKeys } from "@/entities/artifacts/ui/queries/artifacts.query-keys";
 
 export function getArtifactFileQueryOptions({ storageId, contentType }: GetArtifactFileParams) {

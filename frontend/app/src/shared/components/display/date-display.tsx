@@ -1,56 +1,51 @@
-import { differenceInDays, format, formatDistanceToNow } from "date-fns";
+import { Tooltip } from "@infrahub/ui";
+import { differenceInDays } from "date-fns";
+import type React from "react";
 
-import { Tooltip } from "@/shared/components/ui/tooltip";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { classNames } from "@/shared/utils/common";
-import { formatFullDateWithTz, isInPreviousYear } from "@/shared/utils/date";
 
 type DateDisplayProps = {
   date?: number | string | Date | null;
   hideDefault?: boolean;
   className?: string;
   containerClassName?: string;
-  dateFormat?: string;
+  /** Forces the full preferred datetime inline; omitted keeps the compact "x ago" / date heuristic. */
+  fullTimestamp?: boolean;
 };
-
-export const getDateDisplay = (date?: number | string | Date | null) =>
-  formatFullDateWithTz(date ? new Date(date) : new Date());
 
 export const DateDisplay = ({
   date,
   hideDefault,
   className,
   containerClassName,
-  dateFormat,
+  fullTimestamp,
 }: DateDisplayProps) => {
+  const { formatDate } = useFormatDate();
+
   if (!date && hideDefault) {
     return null;
   }
 
   const dateData = date ? new Date(date) : new Date();
+  const tooltipMessage = formatDate(dateData, "datetime");
 
-  const distanceFromNow = differenceInDays(new Date(), dateData);
-
-  if (distanceFromNow > 7 || dateFormat) {
-    const newDateFormat = dateFormat ?? (isInPreviousYear(dateData) ? "d MMM yyyy" : "d MMM");
-
-    return (
-      <span className={classNames("flex flex-wrap items-center", containerClassName)}>
-        <Tooltip enabled content={getDateDisplay(dateData)}>
-          <span className={classNames("truncate font-normal text-xs", className)}>
-            {format(dateData, newDateFormat)}
-          </span>
-        </Tooltip>
-      </span>
-    );
-  }
-
-  return (
+  const wrap = (content: React.ReactNode) => (
     <span className={classNames("flex flex-wrap items-center", containerClassName)}>
-      <Tooltip enabled content={getDateDisplay(date)}>
-        <span className={classNames("truncate font-normal text-xs", className)}>
-          {formatDistanceToNow(dateData, { addSuffix: true })}
-        </span>
+      <Tooltip message={tooltipMessage} nonInteractiveTrigger>
+        <span className={classNames("truncate font-normal text-xs", className)}>{content}</span>
       </Tooltip>
     </span>
   );
+
+  if (fullTimestamp) {
+    return wrap(tooltipMessage);
+  }
+
+  // Beyond a week either side of now a relative phrase loses the precision the reader needs.
+  if (Math.abs(differenceInDays(new Date(), dateData)) > 7) {
+    return wrap(formatDate(dateData, "date"));
+  }
+
+  return wrap(formatDate(dateData, "relative"));
 };

@@ -1,6 +1,6 @@
 import { mutationOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { loginWithCredentials } from "@/entities/authentication/domain/login-with-credentials";
+import { loginWithCredentials } from "@/entities/authentication/domain/use-cases/login-with-credentials";
 
 export function loginWithCredentialsMutationOptions() {
   return mutationOptions({

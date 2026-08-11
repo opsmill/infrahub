@@ -1,23 +1,24 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Tooltip } from "@infrahub/ui";
 import { LockIcon } from "lucide-react";
 
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Row } from "@/shared/components/container";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import { Link } from "@/shared/components/ui/link";
 
-import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/object-data-display/extra-field-indicator";
-import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type {
   NodeRelationshipManyWithMetadata,
   NodeRelationshipOneWithMetadata,
   NodeRelationshipWithMetadata,
-} from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { Permission } from "@/entities/permission/types";
-import type { RelationshipSchema } from "@/entities/schema/types";
+} from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/object-data-display/extra-field-indicator";
+import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
+import { getRelationshipLabel } from "@/entities/schema/domain/rules/get-relationship-label";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface ObjectRelationshipRowProps {
   relationshipSchema: RelationshipSchema;
@@ -72,6 +73,7 @@ function RelationshipOneRow({
 }: RelationshipOneRowProps) {
   const relatedNode = relationshipData.node;
   const relationshipProperties = relationshipData.properties;
+  const { schema: peerSchema } = useSchema(relationshipSchema.peer);
 
   return (
     <ObjectDataRow
@@ -97,7 +99,9 @@ function RelationshipOneRow({
                 header={
                   onClickMetadata && (
                     <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
-                      <div className="font-semibold">{relationshipSchema.label}</div>
+                      <div className="font-semibold">
+                        {getRelationshipLabel(relationshipSchema, peerSchema)}
+                      </div>
 
                       <Tooltip message={permission.update.message ?? undefined}>
                         <Button

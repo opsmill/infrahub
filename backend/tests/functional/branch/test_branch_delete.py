@@ -10,6 +10,7 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import BRANCH_DELETE
+from infrahub.workflows.constants import WorkflowPriority
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -63,4 +64,5 @@ class TestBranchDelete(TestInfrahubApp):
                 workflow=BRANCH_DELETE,
                 context=ANY,
                 parameters={"branch": branch.name, "proposed_change_id": pc.id, "delete_from_git": False},
+                priority=WorkflowPriority.HIGH,
             )

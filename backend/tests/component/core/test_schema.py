@@ -659,9 +659,9 @@ def test_validate_python_keywords_multiple_keywords() -> None:
     assert keyword_found, f"Expected Python keyword error, got: {error_message}"
 
 
-def test_validate_namespaces_and_keyword_separation() -> None:
+def test_validate_reserved_names_and_keyword_separation() -> None:
     """Test that namespace and Python keyword validation work separately in their proper contexts."""
-    # Test that SchemaRoot.validate_namespaces() only catches namespace issues
+    # Test that SchemaRoot reserved-name validation only catches namespace issues
     SCHEMA_WITH_NAMESPACE_ISSUE: dict[str, Any] = {
         "nodes": [
             {
@@ -671,14 +671,14 @@ def test_validate_namespaces_and_keyword_separation() -> None:
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "from", "kind": "Text"},  # Python keyword (not caught by SchemaRoot.validate)
+                    {"name": "from", "kind": "Text"},  # Python keyword (not caught by reserved-name validation)
                 ],
             }
         ]
     }
 
     schema_root = SchemaRoot(**SCHEMA_WITH_NAMESPACE_ISSUE)
-    errors = schema_root.validate_namespaces()
+    errors = schema_root.validate_reserved_names()
     assert len(errors) == 1
     assert "Restricted namespace 'Internal' used on 'TestNode'" in errors[0]
 
@@ -700,7 +700,7 @@ def test_validate_namespaces_and_keyword_separation() -> None:
 
     schema_root = SchemaRoot(**SCHEMA_WITH_KEYWORD_ISSUE)
     # SchemaRoot validation should pass (no namespace issues)
-    errors = schema_root.validate_namespaces()
+    errors = schema_root.validate_reserved_names()
     assert len(errors) == 0
 
     # But SchemaBranch validation should catch the Python keyword
@@ -713,7 +713,7 @@ def test_validate_namespaces_and_keyword_separation() -> None:
     assert "Python keyword 'from' cannot be used as an attribute name" in str(exc.value)
 
 
-def test_validate_reserved_suffixes_attribute() -> None:
+def test_validate_reserved_names_suffix_attribute() -> None:
     attr_name = f"foo{RESOURCE_POOL_REL_SUFFIX}"
     schema_root = SchemaRoot(
         nodes=[
@@ -725,14 +725,14 @@ def test_validate_reserved_suffixes_attribute() -> None:
             }
         ]
     )
-    errors = schema_root.validate_reserved_suffixes()
+    errors = schema_root.validate_reserved_names()
     assert len(errors) == 1
     assert (
         f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on attribute '{attr_name}' in 'TestTestNode'" in errors[0]
     )
 
 
-def test_validate_reserved_suffixes_relationship() -> None:
+def test_validate_reserved_names_suffix_relationship() -> None:
     rel_name = f"bar{RESOURCE_POOL_REL_SUFFIX}"
     schema_root = SchemaRoot(
         nodes=[
@@ -751,14 +751,14 @@ def test_validate_reserved_suffixes_relationship() -> None:
             }
         ]
     )
-    errors = schema_root.validate_reserved_suffixes()
+    errors = schema_root.validate_reserved_names()
     assert len(errors) == 1
     assert (
         f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on relationship '{rel_name}' in 'TestTestNode'" in errors[0]
     )
 
 
-def test_validate_reserved_suffixes_valid_schema() -> None:
+def test_validate_reserved_names_valid_schema() -> None:
     schema_root = SchemaRoot(
         nodes=[
             {
@@ -769,25 +769,25 @@ def test_validate_reserved_suffixes_valid_schema() -> None:
             }
         ]
     )
-    errors = schema_root.validate_reserved_suffixes()
+    errors = schema_root.validate_reserved_names()
     assert errors == []
 
 
-def test_validate_reserved_suffixes_extension_attribute() -> None:
+def test_validate_reserved_names_suffix_extension_attribute() -> None:
     attr_name = f"foo{RESOURCE_POOL_REL_SUFFIX}"
     schema_root = SchemaRoot(
         extensions=SchemaExtension(
             nodes=[NodeExtensionSchema(kind="TestTestNode", attributes=[{"name": attr_name, "kind": "Text"}])]
         )
     )
-    errors = schema_root.validate_reserved_suffixes()
+    errors = schema_root.validate_reserved_names()
     assert len(errors) == 1
     assert (
         f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on attribute '{attr_name}' in 'TestTestNode'" in errors[0]
     )
 
 
-def test_validate_reserved_suffixes_extension_relationship() -> None:
+def test_validate_reserved_names_suffix_extension_relationship() -> None:
     rel_name = f"bar{RESOURCE_POOL_REL_SUFFIX}"
     schema_root = SchemaRoot(
         extensions=SchemaExtension(
@@ -799,7 +799,7 @@ def test_validate_reserved_suffixes_extension_relationship() -> None:
             ]
         )
     )
-    errors = schema_root.validate_reserved_suffixes()
+    errors = schema_root.validate_reserved_names()
     assert len(errors) == 1
     assert (
         f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on relationship '{rel_name}' in 'TestTestNode'" in errors[0]

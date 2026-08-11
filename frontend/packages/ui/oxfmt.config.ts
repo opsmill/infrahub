@@ -16,4 +16,8 @@ export default defineConfig({
   sortPackageJson: {
     sortScripts: true,
   },
+  sortTailwindcss: {
+    functions: ["tv", "cn"],
+    stylesheet: "./src/index.css",
+  },
 });

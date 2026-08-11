@@ -10,6 +10,10 @@ if TYPE_CHECKING:
 
 
 class ConstraintCheckerInterface(ABC):
+    # Whether a change to instance data (as opposed to schema) can cause this constraint to be
+    # violated. If the checker only compares schemas, it should set this False.
+    triggered_by_data_change: bool = True
+
     @property
     @abstractmethod
     def name(self) -> str: ...

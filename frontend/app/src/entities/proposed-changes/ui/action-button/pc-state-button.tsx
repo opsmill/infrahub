@@ -7,10 +7,10 @@ import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { pcStatesList } from "@/entities/proposed-changes/constants";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-button/pc-placeholder-button";
 import { StateComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-state-combobox-list";
+import { pcStatesList } from "@/entities/proposed-changes/ui/action-button/pc-states-list";
 
 interface PcStateButtonProps {
   state?: string;

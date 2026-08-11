@@ -7,14 +7,18 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
-import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import type {
+  ConvertFieldMapping,
+  ConvertFormFieldValue,
+} from "@/entities/nodes/convert/domain/model/convert";
+import { getFieldsMappingPayload } from "@/entities/nodes/convert/domain/rules/get-fields-mapping-payload";
 import { ConvertFormField } from "@/entities/nodes/convert/ui/convert-form-field";
 import { useConvertObjectMutation } from "@/entities/nodes/convert/ui/queries/convert-object.mutation";
 import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/convert/ui/queries/get-object-convert-fields-mapping.query";
-import { getFieldsMappingPayload } from "@/entities/nodes/convert/utils/get-fields-mapping-payload";
-import type { NodeObject } from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export default function ConvertFormWrapper({
   sourceObject,
@@ -53,10 +57,12 @@ export interface ConvertFormProps {
 
 function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: ConvertFormProps) {
   const navigate = useNavigate();
+  const { currentBranch } = useCurrentBranch();
   const { mutateAsync: convertObject } = useConvertObjectMutation();
 
   const fields = getFormFieldsFromSchema({
     schema: targetSchema,
+    isDefaultBranch: !!currentBranch.is_default,
     parentSchema: null,
     parentData: null,
   });

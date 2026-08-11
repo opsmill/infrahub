@@ -221,8 +221,7 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppBase):
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:
-        workflow_recorder.execute_calls.clear()
-        workflow_recorder.submit_calls.clear()
+        workflow_recorder.reset()
 
     @pytest.fixture(scope="class")
     async def generator_dataset(
@@ -369,11 +368,14 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppBase):
             destination_commit="dest-commit-sha",
         )
 
-        def build_definition(query_name: str, query_payload: str, group_id: str) -> ProposedChangeGeneratorDefinition:
+        def build_definition(
+            query_name: str, query_id: str, query_payload: str, group_id: str
+        ) -> ProposedChangeGeneratorDefinition:
             return ProposedChangeGeneratorDefinition(
                 definition_id=gendef_node.id if group_id == targets_group.id else gendef_new_node.id,
                 definition_name="device-generator",
                 query_name=query_name,
+                query_id=query_id,
                 query_models=["TestNetworkDevice"],
                 query_payload=query_payload,
                 repository_id=repo.id,
@@ -395,10 +397,16 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppBase):
             "dev4_id": dev4.id,
             "dev_new_id": dev_new.id,
             "repository": repository,
-            "gendef_unique": build_definition("GetNetworkDevice", QUERY_UNIQUE_TARGETS, targets_group.id),
-            "gendef_non_unique": build_definition("GetAllNetworkDevices", QUERY_NON_UNIQUE_TARGETS, targets_group.id),
-            "gendef_tags": build_definition("GetDeviceWithTags", QUERY_UNIQUE_WITH_TAGS, targets_group.id),
-            "gendef_new": build_definition("GetNetworkDevice", QUERY_UNIQUE_TARGETS, new_group.id),
+            "gendef_unique": build_definition(
+                "GetNetworkDevice", query_unique.id, QUERY_UNIQUE_TARGETS, targets_group.id
+            ),
+            "gendef_non_unique": build_definition(
+                "GetAllNetworkDevices", query_non_unique.id, QUERY_NON_UNIQUE_TARGETS, targets_group.id
+            ),
+            "gendef_tags": build_definition(
+                "GetDeviceWithTags", query_tags.id, QUERY_UNIQUE_WITH_TAGS, targets_group.id
+            ),
+            "gendef_new": build_definition("GetNetworkDevice", query_unique.id, QUERY_UNIQUE_TARGETS, new_group.id),
         }
 
     def _make_context(self, account: CoreAccount, default_branch: Branch) -> InfrahubContext:

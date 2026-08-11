@@ -33,6 +33,12 @@ core_transform = GenericSchema(
         Attr(name="description", kind="Text", optional=True),
         Attr(name="timeout", kind="Number", description="Maximum execution time in seconds", default_value=60),
         Attr(
+            name="fingerprint",
+            kind="Text",
+            description="Content hash of the definition's inputs, recomputed on each import",
+            optional=True,
+        ),
+        Attr(
             name="dependencies",
             kind="List",
             description="Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.",

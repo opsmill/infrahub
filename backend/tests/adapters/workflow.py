@@ -10,14 +10,27 @@ from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
     from infrahub.events.models import EventContext
+    from infrahub.workflows.constants import WorkflowPriority
 
 
 class WorkflowRecorder(InfrahubWorkflow):
     """Records workflow calls without executing them. Use for testing code that submits workflows."""
 
     def __init__(self) -> None:
-        self.execute_calls: list[dict[str, Any]] = []
-        self.submit_calls: list[dict[str, Any]] = []
+        self.calls: list[dict[str, Any]] = []
+
+    def reset(self) -> None:
+        # execute_calls/submit_calls are derived views, so clearing them leaves the backing store
+        # untouched; reset the store itself to isolate one test's recorded calls from the next.
+        self.calls.clear()
+
+    @property
+    def execute_calls(self) -> list[dict[str, Any]]:
+        return [call for call in self.calls if call["kind"] == "execute"]
+
+    @property
+    def submit_calls(self) -> list[dict[str, Any]]:
+        return [call for call in self.calls if call["kind"] == "submit"]
 
     async def execute_workflow(
         self,
@@ -26,8 +39,9 @@ class WorkflowRecorder(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
     ) -> Any:
-        self.execute_calls.append({"workflow": workflow, "parameters": parameters or {}})
+        self.calls.append({"kind": "execute", "workflow": workflow, "parameters": parameters or {}})
         if expected_return is ValidatorConclusion:
             return ValidatorConclusion.SUCCESS
         return None
@@ -38,12 +52,13 @@ class WorkflowRecorder(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
     ) -> WorkflowInfo:
-        self.submit_calls.append({"workflow": workflow, "parameters": parameters or {}})
+        self.calls.append({"kind": "submit", "workflow": workflow, "parameters": parameters or {}, "tags": tags or []})
         return WorkflowInfo(id=uuid.uuid4())
 
     def get_execute_calls_for(self, workflow: WorkflowDefinition) -> list[dict[str, Any]]:
-        return [c for c in self.execute_calls if c["workflow"] == workflow]
+        return [call for call in self.execute_calls if call["workflow"] == workflow]
 
     def get_submit_calls_for(self, workflow: WorkflowDefinition) -> list[dict[str, Any]]:
-        return [c for c in self.submit_calls if c["workflow"] == workflow]
+        return [call for call in self.submit_calls if call["workflow"] == workflow]

@@ -13,17 +13,17 @@ import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-
 import {
   type GetRelationshipsParams,
   getRelationships,
-} from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
+} from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 
 export type GetRelationshipsQueryParams = Omit<GetRelationshipsParams, keyof PaginationParams>;
 
 export function getRelationshipsInfiniteQueryOptions(
-  { peer, search, branchName, atDate, filterQuery }: GetRelationshipsQueryParams,
+  { peer, search, branchName, atDate, filterQuery, additionalFields }: GetRelationshipsQueryParams,
   config?: OptimizedPageSizeConfig
 ) {
   return infiniteQueryOptionsWithOptimizedPageSize(
     {
-      queryKey: [branchName, atDate, "relationships", peer, search, filterQuery],
+      queryKey: [branchName, atDate, "relationships", peer, search, filterQuery, additionalFields],
       queryFn: ({ pageParam }) => {
         return getRelationships({
           peer,
@@ -31,6 +31,7 @@ export function getRelationshipsInfiniteQueryOptions(
           limit: pageParam.limit,
           search,
           filterQuery,
+          additionalFields,
           branchName,
           atDate,
         });

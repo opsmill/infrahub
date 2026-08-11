@@ -2,7 +2,10 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import type { QueryConfig } from "@/shared/api/types";
 
-import { type GetDiffThreadParams, getDiffThread } from "@/entities/diff/domain/get-diff-thread";
+import {
+  type GetDiffThreadParams,
+  getDiffThread,
+} from "@/entities/diff/domain/use-cases/get-diff-thread";
 import { diffThreadKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 
 export function getDiffThreadQueryOptions(params: GetDiffThreadParams) {

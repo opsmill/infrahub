@@ -134,7 +134,7 @@ async def test_conflict_resolved_source(
     # Rollback: the added node is absent again. Base-side conflict values remain
     # on main — the base branch had them before the merge, and rollback only
     # undoes the merge itself.
-    await merger.rollback(at=merge_at)
+    await merger.rollback(merge_started_at=merge_at)
     if contexts.added_node:
         await validate_rolled_back_added_node(db=db, branch=default_branch, ctx=contexts.added_node)
     for uav_ctx in contexts.updated_attribute_values:

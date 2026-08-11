@@ -2,11 +2,14 @@ import type { ReactNode } from "react";
 
 import type { ArtifactEvent } from "@/shared/api/graphql/generated/types";
 import { Link } from "@/shared/components/ui/link";
-import { ARTIFACT_DEFINITION_OBJECT, ARTIFACT_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
+import {
+  ARTIFACT_DEFINITION_KIND,
+  ARTIFACT_OBJECT,
+} from "@/entities/artifacts/domain/model/artifact";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
 const ArtifactTitleContent = (props: ArtifactEvent) => {
   return (
@@ -21,12 +24,12 @@ const ArtifactTitleContent = (props: ArtifactEvent) => {
       </Link>
       <span className="whitespace-nowrap">from the definition</span>
       <Link
-        to={getObjectDetailsUrl(ARTIFACT_DEFINITION_OBJECT, props.artifact_definition_id, [
+        to={getObjectDetailsUrl(ARTIFACT_DEFINITION_KIND, props.artifact_definition_id, [
           { name: QSP.BRANCH, value: props.branch },
         ])}
         className="min-w-0 truncate text-black"
       >
-        <NodeLabel id={props.artifact_definition_id} kind={ARTIFACT_DEFINITION_OBJECT} />
+        <NodeLabel id={props.artifact_definition_id} kind={ARTIFACT_DEFINITION_KIND} />
       </Link>
     </>
   );

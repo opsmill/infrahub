@@ -1,13 +1,12 @@
 import type { LineageOwner } from "@/shared/api/graphql/generated/types";
-import { store } from "@/shared/stores";
 
-import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import type { PermissionDecisionData } from "@/entities/permission/types";
+import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
+import type { PermissionDecisionData } from "@/entities/permission/domain/model/permission";
 
 export type IsFieldDisabledParams = {
   owner?: Pick<LineageOwner, "id"> | null;
   auth?: Pick<AuthContextType, "user">;
+  isDefaultBranch?: boolean;
   isProtected?: boolean;
   isReadOnly?: boolean;
   permissions?: { update?: PermissionDecisionData | null };
@@ -16,19 +15,18 @@ export type IsFieldDisabledParams = {
 export const isFieldDisabled = ({
   owner,
   auth,
+  isDefaultBranch,
   isProtected,
   isReadOnly,
   permissions,
 }: IsFieldDisabledParams) => {
-  const currentBranch = store.get(currentBranchAtom);
-
   switch (permissions?.update) {
     case "ALLOW":
       return false;
     case "ALLOW_DEFAULT":
-      return !currentBranch?.is_default;
+      return !isDefaultBranch;
     case "ALLOW_OTHER":
-      return !!currentBranch?.is_default;
+      return !!isDefaultBranch;
     case "DENY":
       return true;
     default: {

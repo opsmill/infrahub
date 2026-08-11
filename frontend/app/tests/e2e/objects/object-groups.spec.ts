@@ -54,24 +54,30 @@ test.describe("Object groups update", () => {
       await expect(page.getByRole("button", { name: "auto-generated" })).not.toBeVisible();
     });
 
+    const groupManager = page.getByTestId("group-manager");
+
     await test.step("new groups are visible in groups manager", async () => {
-      await expect(page.getByRole("link", { name: "arista_devices" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "backbone_interfaces" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Standard Group" }).first()).toBeVisible();
+      await expect(groupManager.getByRole("link", { name: "arista_devices" })).toBeVisible();
+      await expect(groupManager.getByRole("link", { name: "backbone_interfaces" })).toBeVisible();
+      await expect(
+        groupManager.getByRole("link", { name: "Standard Group" }).first()
+      ).toBeVisible();
     });
 
     await test.step("filter groups", async () => {
-      await page.getByPlaceholder("filter groups...").fill("ari");
-      await expect(page.getByRole("link", { name: "arista_devices" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "backbone_interfaces" })).not.toBeVisible();
+      await groupManager.getByPlaceholder("filter groups...").fill("ari");
+      await expect(groupManager.getByRole("link", { name: "arista_devices" })).toBeVisible();
+      await expect(
+        groupManager.getByRole("link", { name: "backbone_interfaces" })
+      ).not.toBeVisible();
 
-      await page.getByPlaceholder("filter groups...").fill("");
-      await expect(page.getByRole("link", { name: "arista_devices" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "backbone_interfaces" })).toBeVisible();
+      await groupManager.getByPlaceholder("filter groups...").fill("");
+      await expect(groupManager.getByRole("link", { name: "arista_devices" })).toBeVisible();
+      await expect(groupManager.getByRole("link", { name: "backbone_interfaces" })).toBeVisible();
     });
 
     await test.step("leave arista_devices group", async () => {
-      await page.getByTestId("leave-group-button").first().click();
+      await groupManager.getByTestId("leave-group-button").first().click();
       await expect(page.getByRole("heading", { name: "Leave Group" })).toBeVisible();
       await expect(
         page.getByText("Are you sure you want to leave group arista_devices?")
@@ -80,12 +86,12 @@ test.describe("Object groups update", () => {
     });
 
     await test.step("arista_devices group is not visible in groups manager", async () => {
-      await expect(page.getByRole("link", { name: "backbone_interfaces" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "arista_devices" })).not.toBeVisible();
+      await expect(groupManager.getByRole("link", { name: "backbone_interfaces" })).toBeVisible();
+      await expect(groupManager.getByRole("link", { name: "arista_devices" })).not.toBeVisible();
     });
 
     await test.step("add group form default values is visible", async () => {
-      await page.getByTestId("open-group-form-button").click();
+      await groupManager.getByTestId("open-group-form-button").click();
       await expect(page.getByText("backbone_interfaces×")).toBeVisible();
       await expect(page.getByText("arista_devices×")).not.toBeVisible();
     });

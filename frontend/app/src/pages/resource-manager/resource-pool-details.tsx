@@ -1,4 +1,4 @@
-import { Card, CardHeader } from "@infrahub/ui/card";
+import { Card, CardHeader } from "@infrahub/ui";
 import { Outlet, useParams } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -12,22 +12,22 @@ import { type Property, PropertyList } from "@/shared/components/table/property-
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 
-import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
-import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { isRelationshipVisibleInSummary } from "@/entities/nodes/object/domain/rules/is-relationship-visible-in-summary";
+import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { Permission } from "@/entities/permission/types";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
-import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
 import { useGetPoolUtilization } from "@/entities/resource-manager/ui/queries/get-pool-utilization.query";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";
 import ResourceSelector from "@/entities/resource-manager/ui/resource-selector";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 const ResourcePoolDetailsPage = () => {
@@ -153,7 +153,7 @@ const ResourcePoolContent = ({ resourcePoolId, schema, permission }: ResourcePoo
       ),
     },
     ...(schema.relationships ?? [])
-      .filter(({ name }) => !IP_SUMMARY_RELATIONSHIPS_BLACKLIST.includes(name))
+      .filter(isRelationshipVisibleInSummary)
       .map((schemaRelationship) => {
         const relationshipData = resourcePool[schemaRelationship.name]?.node;
 

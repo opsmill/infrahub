@@ -64,7 +64,7 @@ jobs:
         with:
           submodules: true
       - name: Check for file changes
-        uses: dorny/paths-filter@v4.0.2
+        uses: dorny/paths-filter@v4.0.3
         id: changes
         with:
           token: ${{ github.token }}
@@ -111,16 +111,16 @@ jobs:
         uses: "actions/checkout@v7"
         with:
           submodules: true
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 24
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10
-          cache: true
-          cache_dependency_path: frontend/app/pnpm-lock.yaml
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Check formatting and linting (Biome)
@@ -144,16 +144,16 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 24
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10
-          cache: true
-          cache_dependency_path: frontend/app/pnpm-lock.yaml
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Generate OpenAPI types
@@ -190,13 +190,13 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: frontend/package.json
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Verify generated error bindings match schema/error-catalogue.json
@@ -228,16 +228,16 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 24
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10
-          cache: true
-          cache_dependency_path: frontend/app/pnpm-lock.yaml
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Generate GraphQL types
@@ -400,20 +400,17 @@ jobs:
       - name: Install dependencies
         run: "uv sync --all-groups"
 
-      - name: Compare package versions
+      - name: Compare package version configuration
         run: |
-          INFRAHUB_VERSION=$(uv version --short)
-          echo "Infrahub version: $INFRAHUB_VERSION"
-
-          cd python_testcontainers
-          TESTCONTAINERS_VERSION=$(uv version --short)
-          echo "Testcontainers version: $TESTCONTAINERS_VERSION"
-
-          if [ "$INFRAHUB_VERSION" != "$TESTCONTAINERS_VERSION" ]; then
-            echo "Error: Version mismatch!"
-            echo "infrahub version: $INFRAHUB_VERSION"
-            echo "infrahub-testcontainers version: $TESTCONTAINERS_VERSION"
-            echo "The version of infrahub-testcontainers must match the version of infrahub"
+          # Both packages derive their version from the same git tag via hatch-vcs, so their runtime
+          # versions are equal by construction. Verify both declare the same resolver match pattern so
+          # they can never drift apart.
+          ROOT_MATCH=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['tool']['hatch']['version']['raw-options']['git_describe_command'])")
+          TC_MATCH=$(uv run python -c "import tomllib; print(tomllib.load(open('python_testcontainers/pyproject.toml','rb'))['tool']['hatch']['version']['raw-options']['git_describe_command'])")
+          echo "infrahub-server git_describe_command: $ROOT_MATCH"
+          echo "infrahub-testcontainers git_describe_command: $TC_MATCH"
+          if [ "$ROOT_MATCH" != "$TC_MATCH" ]; then
+            echo "Error: hatch-vcs git_describe_command differs between the two packages; they could resolve different versions."
             exit 1
           fi
 
@@ -503,7 +500,7 @@ jobs:
       - name: "Unit Tests"
         run: "uv run invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
-        if: matrix.python-version == '3.13'
+        if: matrix.python-version == '3.14'
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
@@ -821,17 +818,17 @@ jobs:
         uses: "actions/checkout@v7"
         with:
           submodules: true
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
       - name: Install NodeJS
         uses: actions/setup-node@v7
         with:
           # https://github.com/microsoft/playwright/issues/41000
           node-version: 24.15.0
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10
-          cache: true
-          cache_dependency_path: frontend/app/pnpm-lock.yaml
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: "Install frontend"
         working-directory: ./frontend/app
         run: pnpm install --frozen-lockfile
@@ -841,6 +838,9 @@ jobs:
       - name: "Run unit tests"
         working-directory: ./frontend/app
         run: "pnpm test:coverage"
+      - name: "Run unit tests (@infrahub/graph)"
+        working-directory: ./frontend/packages/graph
+        run: "pnpm test"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -1112,6 +1112,10 @@ jobs:
             env:
               INFRAHUB_DB_TYPE: neo4j
               UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+              # Backpressure is on by default, but this legacy suite drives enough concurrent
+              # UI + polling load that interactive requests queue behind lock-holding writes and
+              # time out. The suite is slated for removal; disable admission control just here.
+              INFRAHUB_API_BACKPRESSURE_ENABLED: "false"
           # - name: E2E-testing-playwright-nats
           #   env:
           #     INFRAHUB_DB_TYPE: neo4j
@@ -1128,16 +1132,16 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: true
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
       - name: Install NodeJS
         uses: actions/setup-node@v7
         with:
           node-version: 24
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10
-          cache: true
-          cache_dependency_path: frontend/app/pnpm-lock.yaml
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Set up Python
         id: python
         uses: actions/setup-python@v7
@@ -1528,7 +1532,7 @@ jobs:
 
       - name: Run all benchmarks
         if: contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@v4
+        uses: CodSpeedHQ/action@v5
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation
@@ -1537,7 +1541,7 @@ jobs:
       - name: Run non-intensive benchmarks
         if: |
           !contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@v4
+        uses: CodSpeedHQ/action@v5
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation

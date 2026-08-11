@@ -1,8 +1,12 @@
+from dataclasses import dataclass
 from typing import Any
+
+import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_remove import (
     NodeRemoveMigration,
@@ -12,15 +16,63 @@ from infrahub.core.migrations.schema.node_remove import (
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.query.rollback import RollbackScope
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
+from tests.component.core.migrations.schema.metadata_helpers import (
+    VertexMetadata,
+    branch_edge_fingerprint,
+    branch_metadata_fingerprint,
+    get_node_vertex_metadata,
+)
 from tests.component.core.migrations.schema.test_node_kind_update import validate_node_relationships
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.db_validation import verify_graph
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 from tests.helpers.schema import load_schema
+
+
+@dataclass
+class _FieldRow:
+    """One torn-down Attribute/Relationship of a removed node: its closed edge plus its vertex metadata."""
+
+    name: str
+    uuid: str
+    from_user_id: str | None
+    from_time: str | None
+    metadata: VertexMetadata
+
+
+async def _get_car_field_metadata(db: InfrahubDatabase, node_uuid: str, branch_name: str) -> list[_FieldRow]:
+    """Return the deleted Attribute/Relationship fields of a removed TestCar and their vertex metadata."""
+    query = """
+        MATCH (n:TestCar {uuid: $node_uuid})
+        MATCH (n)-[r:HAS_ATTRIBUTE|IS_RELATED {branch: $branch, status: "deleted"}]-(field)
+        RETURN r.from_user_id AS from_user_id, r.from AS from_time,
+            field.updated_at AS updated_at, field.updated_by AS updated_by,
+            field.previous_updated_at AS previous_updated_at, field.previous_updated_by AS previous_updated_by,
+            field.name AS name, field.uuid AS uuid
+    """
+    results = await db.execute_query(query=query, params={"node_uuid": node_uuid, "branch": branch_name})
+    return [
+        _FieldRow(
+            name=row["name"],
+            uuid=row["uuid"],
+            from_user_id=row["from_user_id"],
+            from_time=row["from_time"],
+            metadata=VertexMetadata(
+                updated_at=row["updated_at"],
+                updated_by=row["updated_by"],
+                previous_updated_at=row["previous_updated_at"],
+                previous_updated_by=row["previous_updated_by"],
+            ),
+        )
+        for row in results
+    ]
 
 
 async def test_query_out_default_branch(
@@ -208,60 +260,189 @@ async def test_migration_agnostic_relationship(
     await verify_graph(db=db)
 
 
-async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, branch: Branch) -> None:
-    """Test that metadata is set correctly when removing a node."""
-    schema = registry.schema.get_schema_branch(name=branch.name)
-    candidate_schema = schema.duplicate()
-    candidate_schema.delete(name="TestCar")
+@dataclass
+class _NodeRemoval:
+    """State captured around a single TestCar node-removal migration on one branch."""
 
-    test_user_id = "test-metadata-user"
+    branch: Branch
+    node_id: str
+    migration_time: Timestamp
+    user_id: str
+    node_before: VertexMetadata
+    pre_migration_fingerprint: list[tuple]
+    pre_migration_metadata: list[tuple]
+
+
+async def _run_node_remove_migration(db: InfrahubDatabase, branch: Branch, node_uuid: str) -> _NodeRemoval:
+    """Run the TestCar node-removal migration on ``branch`` and capture the surrounding state.
+
+    Captures the pre-migration node vertex metadata and branch edge fingerprint so callers can assert
+    the snapshot (default/global branch) and a rollback's restore.
+    """
+    node_before = await get_node_vertex_metadata(db=db, node_uuid=node_uuid)
+    pre_migration_fingerprint = await branch_edge_fingerprint(db=db, branch_name=branch.name)
+    pre_migration_metadata = await branch_metadata_fingerprint(db=db, branch_name=branch.name)
+
+    user_id = "migration_user"
     migration_time = Timestamp()
 
+    schema = registry.schema.get_schema_branch(name=branch.name)
     migration = NodeRemoveMigration(
         previous_node_schema=schema.get(name="TestCar"),
         new_node_schema=None,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
     )
     execution_result = await migration.execute(
-        migration_input=MigrationInput(db=db, at=migration_time, user_id=test_user_id), branch=branch
+        migration_input=MigrationInput(db=db, at=migration_time, user_id=user_id), branch=branch
     )
     assert not execution_result.errors
 
-    await verify_graph(db=db)
-
-    # Query for the deleted Node and its edge metadata
-    query = """
-    MATCH (n:TestCar {uuid: $node_uuid})-[r:IS_PART_OF {branch: $branch, status: "deleted"}]->(:Root)
-    RETURN r.from_user_id as from_user_id, r.from as from_time, n.updated_at as updated_at, n.updated_by as updated_by
-    """
-    results = await db.execute_query(
-        query=query,
-        params={"node_uuid": car_accord_main.id, "branch": branch.name},
+    return _NodeRemoval(
+        branch=branch,
+        node_id=node_uuid,
+        migration_time=migration_time,
+        user_id=user_id,
+        node_before=node_before,
+        pre_migration_fingerprint=pre_migration_fingerprint,
+        pre_migration_metadata=pre_migration_metadata,
     )
-    assert len(results) == 1, "Expected exactly one deleted IS_PART_OF edge"
-    assert results[0]["from_user_id"] == test_user_id
-    assert results[0]["from_time"] == migration_time.to_string()
-    if branch.is_default:
-        assert results[0]["updated_at"] == migration_time.to_string()
-        assert results[0]["updated_by"] == test_user_id
 
-    # Query for the deleted Attributes/Relationships
-    query = """
-    MATCH (n:TestCar {uuid: $node_uuid})
-    MATCH (n)-[r:HAS_ATTRIBUTE|IS_RELATED {branch: $branch, status: "deleted"}]->(field)
-    RETURN r.from_user_id as from_user_id, r.from as from_time,
-        field.updated_at as updated_at, field.updated_by as updated_by,
-        field.name AS name, field.uuid AS uuid
+
+async def _assert_migration_metadata(db: InfrahubDatabase, removal: _NodeRemoval) -> None:
+    """Assert the removal's metadata effect, which differs by branch.
+
+    On every branch the change is reflected through the closed edges (the deleted IS_PART_OF edge to
+    Root and the closed HAS_ATTRIBUTE/IS_RELATED edges), which carry the migration user/timestamp.
+    Vertex-level metadata is maintained only on the default/global branch, so only there does the
+    removal bump ``updated_at``/``by`` on the node and its fields and snapshot the prior values into
+    ``previous_*``; on a user branch the shared vertices are left untouched.
     """
-    results = await db.execute_query(
-        query=query,
-        params={"node_uuid": car_accord_main.id, "branch": branch.name},
+    node_after = await get_node_vertex_metadata(db=db, node_uuid=removal.node_id)
+    if removal.branch.is_default or removal.branch.is_global:
+        # The bump snapshots the pre-migration values so a merge-failure rollback can restore them. The
+        # node vertex is pre-existing and survives a rollback, so it too needs a snapshot.
+        assert node_after.updated_at == removal.migration_time.to_string()
+        assert node_after.updated_by == removal.user_id
+        assert node_after.previous_updated_at == removal.node_before.updated_at
+        assert node_after.previous_updated_by == removal.node_before.updated_by
+    else:
+        # A user-branch migration leaves the shared node vertex untouched and records no snapshot.
+        assert node_after == removal.node_before
+        assert node_after.previous_updated_at is None
+
+    # The removal closes the IS_PART_OF edge to Root with the migration's user/timestamp.
+    edge_results = await db.execute_query(
+        query="""
+        MATCH (n:TestCar {uuid: $node_uuid})-[r:IS_PART_OF {branch: $branch, status: "deleted"}]->(:Root)
+        RETURN r.from_user_id AS from_user_id, r.from AS from_time
+        """,
+        params={"node_uuid": removal.node_id, "branch": removal.branch.name},
     )
-    for result in results:
-        name = result["name"]
-        uuid = result["uuid"]
-        assert result["from_user_id"] == test_user_id, f"Wrong from_user_id on edge to {name} ({uuid})"
-        assert result["from_time"] == migration_time.to_string(), f"Wrong from_time on edge to {name} ({uuid})"
-        if branch.is_default:
-            assert result["updated_at"] == migration_time.to_string(), f"Wrong updated_at on {name} ({uuid})"
-            assert result["updated_by"] == test_user_id, f"Wrong updated_by on {name} ({uuid})"
+    assert len(edge_results) == 1, "Expected exactly one deleted IS_PART_OF edge"
+    assert edge_results[0]["from_user_id"] == removal.user_id
+    assert edge_results[0]["from_time"] == removal.migration_time.to_string()
+
+    # The node's Attributes/Relationships are torn down; each closed edge carries the migration user/time.
+    fields = await _get_car_field_metadata(db=db, node_uuid=removal.node_id, branch_name=removal.branch.name)
+    assert fields, "Expected at least one deleted HAS_ATTRIBUTE/IS_RELATED edge"
+    for field in fields:
+        assert field.from_user_id == removal.user_id, f"Wrong from_user_id on edge to {field.name} ({field.uuid})"
+        assert field.from_time == removal.migration_time.to_string(), (
+            f"Wrong from_time on edge to {field.name} ({field.uuid})"
+        )
+        if removal.branch.is_default or removal.branch.is_global:
+            assert field.metadata.updated_at == removal.migration_time.to_string(), (
+                f"Wrong updated_at on {field.name} ({field.uuid})"
+            )
+            assert field.metadata.updated_by == removal.user_id, f"Wrong updated_by on {field.name} ({field.uuid})"
+            assert field.metadata.previous_updated_at is not None, (
+                f"Missing previous_updated_at on {field.name} ({field.uuid})"
+            )
+            assert field.metadata.previous_updated_at != removal.migration_time.to_string(), (
+                f"previous_updated_at was not snapshotted before the bump on {field.name} ({field.uuid})"
+            )
+            assert field.metadata.previous_updated_by is not None, (
+                f"Missing previous_updated_by on {field.name} ({field.uuid})"
+            )
+        else:
+            # A user-branch migration records no snapshot on the shared field vertices.
+            assert field.metadata.previous_updated_at is None, f"Unexpected snapshot on {field.name} ({field.uuid})"
+
+
+class TestNodeRemoveMetadata:
+    """On the default branch, removing a node snapshots vertex metadata and a rollback restores it.
+
+    A class-scoped fixture runs the migration once; the metadata and rollback tests share it and run in
+    order (the rollback test reverts the state the metadata test observed).
+    """
+
+    @pytest.fixture(scope="class")
+    async def removal(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+        car_person_schema_scope_class: SchemaBranch,
+    ) -> _NodeRemoval:
+        person = await Node.init(db=db, schema="TestPerson", branch=default_branch_scope_class)
+        await person.new(db=db, name="John", height=180)
+        await person.save(db=db)
+        car = await Node.init(db=db, schema="TestCar", branch=default_branch_scope_class)
+        await car.new(db=db, name="accord", color="#123456", owner=person.id)
+        await car.save(db=db)
+
+        return await _run_node_remove_migration(db=db, branch=default_branch_scope_class, node_uuid=car.id)
+
+    async def test_migration_metadata(self, db: InfrahubDatabase, removal: _NodeRemoval) -> None:
+        """The removal bumps updated_at/by on the node and its fields and snapshots the prior values."""
+        await _assert_migration_metadata(db=db, removal=removal)
+
+    async def test_migration_rollback(self, db: InfrahubDatabase, removal: _NodeRemoval) -> None:
+        """The rollback undoes the migration: the branch edges and vertex metadata are restored, idempotently."""
+
+        async def _run_rollback() -> None:
+            await GraphRollbacker(db=db).rollback(
+                target_branch=removal.branch,
+                at=removal.migration_time,
+                scope=RollbackScope.SINCE_TIMESTAMP,
+                restore_metadata=True,
+            )
+
+        await _run_rollback()
+        await verify_graph(db=db)
+
+        # The branch edges are restored exactly to their pre-migration state.
+        assert (
+            await branch_edge_fingerprint(db=db, branch_name=removal.branch.name) == removal.pre_migration_fingerprint
+        )
+        assert (
+            await branch_metadata_fingerprint(db=db, branch_name=removal.branch.name) == removal.pre_migration_metadata
+        )
+
+        # The node vertex metadata is restored to its pre-migration values and the snapshot is cleared.
+        node_after = await get_node_vertex_metadata(db=db, node_uuid=removal.node_id)
+        assert node_after.updated_at == removal.node_before.updated_at
+        assert node_after.updated_by == removal.node_before.updated_by
+        assert node_after.previous_updated_at is None
+        assert node_after.previous_updated_by is None
+
+        # Running the rollback again is a no-op: nothing remains in the window to revert.
+        await _run_rollback()
+        await verify_graph(db=db)
+        assert (
+            await branch_edge_fingerprint(db=db, branch_name=removal.branch.name) == removal.pre_migration_fingerprint
+        )
+        assert (
+            await branch_metadata_fingerprint(db=db, branch_name=removal.branch.name) == removal.pre_migration_metadata
+        )
+        node_again = await get_node_vertex_metadata(db=db, node_uuid=removal.node_id)
+        assert node_again == node_after
+
+
+async def test_migration_metadata_non_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node
+) -> None:
+    """On a user branch the removal is reflected through edges but records no vertex-metadata snapshot."""
+    branch = await create_branch(branch_name="branch-node-remove-meta", db=db)
+    removal = await _run_node_remove_migration(db=db, branch=branch, node_uuid=car_accord_main.id)
+    await _assert_migration_metadata(db=db, removal=removal)

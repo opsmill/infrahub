@@ -160,7 +160,12 @@ def parse_node_kind(kind: str) -> NodeKind:
 
 
 def convert_ip_to_binary_str(
-    obj: ipaddress.IPv6Network | ipaddress.IPv4Network | ipaddress.IPv4Interface | ipaddress.IPv6Interface,
+    obj: ipaddress.IPv6Network
+    | ipaddress.IPv4Network
+    | ipaddress.IPv4Interface
+    | ipaddress.IPv6Interface
+    | ipaddress.IPv4Address
+    | ipaddress.IPv6Address,
 ) -> str:
     if isinstance(obj, ipaddress.IPv6Network | ipaddress.IPv4Network):
         prefix_bin = f"{int(obj.network_address):b}"

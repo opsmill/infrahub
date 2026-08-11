@@ -3,14 +3,13 @@ import { useAtomValue } from "jotai";
 import type React from "react";
 
 import { Row } from "@/shared/components/container";
-import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
-import type { Filter } from "@/shared/hooks/useFilters";
-import { classNames } from "@/shared/utils/common";
 
 import { branchesState } from "@/entities/branches/stores";
-import { TASK_STATES } from "@/entities/tasks/constants";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { getObjectFromFilters } from "@/entities/nodes/filters/domain/rules/getObjectFromFilters";
+import { TASK_STATES } from "@/entities/tasks/domain/model/task";
 
 export interface FilterFormProps extends FormProps {
   ref?: React.Ref<FormRef>;
@@ -44,7 +43,7 @@ export const TasksFilterForm = ({
     <Form
       ref={ref}
       onSubmit={onSubmit}
-      className={classNames("flex flex-1 flex-col overflow-auto bg-white p-4", className)}
+      className={className}
       defaultValues={{
         branch: currentFilters?.branch,
         state: currentFilters?.state,

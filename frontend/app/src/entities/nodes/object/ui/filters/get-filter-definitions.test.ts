@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { ACCOUNT_ROLE_OBJECT, OBJECT_PERMISSION_OBJECT } from "@/shared/config/constants";
-
-import { getFilterDefinitionName } from "@/entities/nodes/object/domain/filter-definition";
+import { getFilterDefinitionName } from "@/entities/nodes/object/domain/rules/filter-definition";
+import { OBJECT_PERMISSION_OBJECT } from "@/entities/permission/domain/model/permission";
+import { ACCOUNT_ROLE_OBJECT } from "@/entities/role-manager/domain/model/account";
 
 import {
   generateAttributeSchema,

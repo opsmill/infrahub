@@ -122,7 +122,7 @@ async def test_relationship_set_to_null(
     await verify_graph(db=db)
 
     # Rollback the merge
-    await diff_merger.rollback(at=merge_at)
+    await diff_merger.rollback(merge_started_at=merge_at)
 
     # Verify dog metadata after rollback
     rolled_back_dog = await NodeManager.get_one(

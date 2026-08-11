@@ -60,7 +60,7 @@ async def test_diff_and_merge_schema_with_default_values(
     new_str_attr = car_schema_main.get_attribute(name="nickname")
     assert new_str_attr.default_value == "car"
 
-    await diff_merger.rollback(at=at)
+    await diff_merger.rollback(merge_started_at=at)
 
     rolled_back_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
     car_schema_main = rolled_back_schema.get(name="TestCar", duplicate=False)

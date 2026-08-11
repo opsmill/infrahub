@@ -8,7 +8,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   GetObjectConvertFieldsMapping,
   type GetObjectConvertFieldsMappingParams,
-} from "@/entities/nodes/convert/domain/get-object-convert-fields-mapping";
+} from "@/entities/nodes/convert/domain/use-cases/get-object-convert-fields-mapping";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 export function getConvertFieldsMappingOptions(params: GetObjectConvertFieldsMappingParams) {

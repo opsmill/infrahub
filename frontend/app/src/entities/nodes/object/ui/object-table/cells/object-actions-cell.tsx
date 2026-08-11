@@ -1,24 +1,17 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Menu, MenuItem, MenuTrigger, Popover, Sheet } from "@infrahub/ui";
+import { PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuItemWithTooltip,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
+import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { Permission } from "@/entities/permission/types";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface ActionsCellProps {
@@ -50,73 +43,63 @@ export function ObjectActionsCell({
   return (
     <>
       <StickyRightCell>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              shape="square"
-              variant="ghost"
-              data-testid={`actions-cell-${objectLabel}`}
-            >
-              <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
-            </Button>
-          </DropdownMenuTrigger>
+        <MenuTrigger>
+          <Button
+            size="sm"
+            shape="square"
+            variant="ghost"
+            data-testid={`actions-cell-${objectLabel}`}
+          >
+            <Icon icon="mdi:dots-vertical" className="text-gray-500" />
+          </Button>
 
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link to={getObjectDetailsUrl(objectKind, objectId)}>
-                <Icon icon="mdi:arrow-expand" className="text-base" />
-                View details
-              </Link>
-            </DropdownMenuItem>
+          <Popover placement="bottom end">
+            <Menu aria-label="Object actions">
+              <MenuItem href={getObjectDetailsUrl(objectKind, objectId)}>
+                <Icon icon="mdi:arrow-expand" />
+                <span>View details</span>
+              </MenuItem>
 
-            <DropdownMenuItemWithTooltip
-              disabled={!isEditAllowed}
-              tooltipEnabled={!isEditAllowed}
-              tooltipContent={editTooltipMessage}
-              onClick={() => isEditAllowed && setShowEditForm(true)}
-            >
-              <Icon icon="mdi:edit-outline" className="text-base" />
-              Edit
-            </DropdownMenuItemWithTooltip>
+              <MenuItem
+                isDisabled={!isEditAllowed}
+                tooltip={editTooltipMessage}
+                onAction={() => setShowEditForm(true)}
+              >
+                <PencilLineIcon />
+                <span>Edit</span>
+              </MenuItem>
 
-            <DropdownMenuItemWithTooltip
-              disabled={!isDeleteAllowed}
-              tooltipEnabled={!isDeleteAllowed}
-              tooltipContent={deleteTooltipMessage}
-              onClick={() => isDeleteAllowed && setShowDeleteModal(true)}
-            >
-              <Icon icon="mdi:delete-outline" className="text-base" />
-              Delete
-            </DropdownMenuItemWithTooltip>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <MenuItem
+                isDisabled={!isDeleteAllowed}
+                tooltip={deleteTooltipMessage}
+                className="text-red-500"
+                onAction={() => setShowDeleteModal(true)}
+              >
+                <Trash2Icon />
+                <span>Delete</span>
+              </MenuItem>
+            </Menu>
+          </Popover>
+        </MenuTrigger>
       </StickyRightCell>
 
-      {showEditForm && (
-        <SlideOver
-          title={
-            <SlideOverTitle
-              schema={schema}
-              currentObjectLabel={objectLabel}
-              title={`Edit ${objectLabel}`}
-            />
-          }
-          open={true}
-          setOpen={() => setShowEditForm(false)}
-        >
-          <ObjectItemEditComponent
-            closeDrawer={() => setShowEditForm(false)}
-            onUpdateComplete={async () => {
-              await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-              setShowEditForm(false);
-            }}
-            objectId={objectId}
-            objectname={objectKind}
-            extraRelationshipNames={extraRelationshipNames}
-          />
-        </SlideOver>
-      )}
+      <Sheet isOpen={showEditForm} onOpenChange={() => setShowEditForm(false)}>
+        <SlideOverTitle
+          schema={schema}
+          currentObjectLabel={objectLabel}
+          title={`Edit ${objectLabel}`}
+        />
+        <ObjectEdit
+          closeDrawer={() => setShowEditForm(false)}
+          onUpdateComplete={async () => {
+            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+            setShowEditForm(false);
+          }}
+          objectId={objectId}
+          objectKind={objectKind}
+          extraRelationshipNames={extraRelationshipNames}
+        />
+      </Sheet>
 
       <DeleteObjectModal
         objectKind={objectKind}

@@ -1,0 +1,8 @@
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
+
+export const isOfKind = (kind: string, schema: ModelSchema) => {
+  if (schema.kind === kind) return true;
+  if (!isGenericSchema(schema) && schema.inherit_from?.includes(kind)) return true;
+  return false;
+};

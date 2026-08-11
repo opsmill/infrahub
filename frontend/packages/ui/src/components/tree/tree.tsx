@@ -1,4 +1,5 @@
 import type React from "react";
+import type { TreeProps as AriaTreeProps } from "react-aria-components";
 
 import { ChevronRightIcon } from "lucide-react";
 import {
@@ -41,6 +42,7 @@ function DotIcon(props: React.HTMLAttributes<SVGSVGElement>) {
   );
 }
 
+export type TreeProps<T> = AriaTreeProps<T>;
 export const Tree = AriaTree;
 
 export interface TreeItemProps extends AriaTreeItemProps {}
@@ -104,7 +106,7 @@ export function TreeItemLoader(props: AriaTreeLoadMoreItemProps) {
     <AriaTreeLoadMoreItem {...props}>
       {({ level }) => (
         <div
-          className="flex h-8 items-center justify-start gap-2 text-neutral-500 text-sm"
+          className="flex h-8 items-center justify-start gap-2 text-sm text-neutral-500"
           style={{ paddingLeft: level * LOADER_INDENT_PX }}
         >
           <Spinner />

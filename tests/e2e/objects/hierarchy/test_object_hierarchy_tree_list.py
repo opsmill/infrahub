@@ -71,7 +71,7 @@ class TestObjectHierarchyTreeLite:
         # add a sibling node - lite tree should refresh
         await admin_page.get_by_test_id("create-object-button").click()
         await admin_page.get_by_role("textbox", name="Name *").fill("Country 1")
-        await admin_page.get_by_role("combobox", name="Parent *").click()
+        await admin_page.get_by_role("combobox", name="Continent *").click()
         await admin_page.get_by_role("option", name="North America").click()
         await admin_page.get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_text("Country created")).to_be_visible()
@@ -81,7 +81,7 @@ class TestObjectHierarchyTreeLite:
         # add another sibling node - lite tree should refresh
         await admin_page.get_by_test_id("create-object-button").click()
         await admin_page.get_by_role("textbox", name="Name *").fill("country 2")
-        await admin_page.get_by_role("combobox", name="Parent *").click()
+        await admin_page.get_by_role("combobox", name="Continent *").click()
         await admin_page.get_by_role("option", name="North America").click()
         await admin_page.get_by_role("button", name="Save").click()
         await expect(object_hierarchy_tree_lite.get_by_text("country 2")).to_be_visible()

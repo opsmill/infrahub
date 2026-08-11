@@ -69,15 +69,15 @@ test.describe("Verifies the object creation", () => {
     });
 
     await test.step("check inputs values", async () => {
-      await expect(page.getByLabel("Kind")).toContainText("Interface L3 Infra");
+      await expect(page.getByRole("combobox", { name: "Kind" })).toContainText(
+        "Interface L3 Infra"
+      );
       await expect(page.locator('button[name="connected_endpoint_parent"]')).toContainText(
         "atl1-edge2"
       );
-      await expect(
-        page.getByTestId("side-panel-container").getByLabel("Interface L3")
-      ).toContainText("Ethernet1");
+      await expect(page.getByLabel("sheet").getByLabel("Interface L3")).toContainText("Ethernet1");
 
-      await page.getByTestId("side-panel-container").getByLabel("Interface L3").click();
+      await page.getByLabel("sheet").getByLabel("Interface L3").click();
       await expect(page.getByRole("option", { name: "Ethernet10" })).toBeVisible();
       await expect(page.getByRole("option", { name: "Loopback0" })).toBeVisible();
       await expect(page.getByRole("option", { name: "Management0" })).toBeVisible();

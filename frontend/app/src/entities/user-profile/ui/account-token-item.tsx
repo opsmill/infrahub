@@ -2,7 +2,7 @@ import { ClockAlertIcon, ClockFadingIcon, KeySquareIcon } from "lucide-react";
 
 import type { AccountTokenNode } from "@/shared/api/graphql/generated/types";
 import { Row } from "@/shared/components/container";
-import { formatFullDate } from "@/shared/utils/date";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 
 import { AccountTokenDeleteAction } from "@/entities/user-profile/ui/account-token-delete-action";
 
@@ -26,6 +26,8 @@ export function AccountTokenItem({ token }: AccountTokenItemProps) {
 }
 
 export const ExpirationDate = ({ date }: { date?: string | null }) => {
+  const { formatDate } = useFormatDate();
+
   if (!date) {
     return (
       <Row className="text-amber-600">
@@ -39,14 +41,14 @@ export const ExpirationDate = ({ date }: { date?: string | null }) => {
   if (isExpired) {
     return (
       <Row className="text-red-600">
-        <ClockAlertIcon className="size-4" /> Expired on {formatFullDate(date)}
+        <ClockAlertIcon className="size-4" /> Expired on {formatDate(date, "datetime")}
       </Row>
     );
   }
 
   return (
     <Row className="text-gray-500">
-      <ClockFadingIcon className="size-4" /> Expires {formatFullDate(date)}
+      <ClockFadingIcon className="size-4" /> Expires {formatDate(date, "datetime")}
     </Row>
   );
 };

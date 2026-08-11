@@ -31,6 +31,10 @@ infrahub_uv_files: &infrahub_uv_files
 
 frontend_files: &frontend_files
   - "frontend/app/**"
+  - "frontend/packages/**"
+  - "frontend/package.json"
+  - "frontend/pnpm-workspace.yaml"
+  - "frontend/pnpm-lock.yaml"
 
 openapi_schema_files: &openapi_schema_files
   - "schema/openapi.json"

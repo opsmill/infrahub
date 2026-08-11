@@ -9,14 +9,18 @@ import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { shouldAllowEmptySubmission } from "@/shared/components/form/utils/shouldAllowEmptySubmission";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import type {
+  NodeCore,
+  NodeFieldsWithMetadata,
+  NodeObject,
+} from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
-import type { NodeCore, NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import { useGetNumberPools } from "@/entities/resource-manager/ui/queries/get-number-pools.query";
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
-import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/schema";
+import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
 
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;
@@ -52,6 +56,7 @@ export const NodeForm = ({
   ...props
 }: NodeFormProps) => {
   const auth = useAuth();
+  const { currentBranch } = useCurrentBranch();
   const { parentData, parentSchema } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
 
@@ -71,6 +76,7 @@ export const NodeForm = ({
     initialObject: currentObject,
     objectTemplate,
     auth,
+    isDefaultBranch: !!currentBranch.is_default,
     isFilterForm,
     pools: numberPools,
     isUpdate,
@@ -119,7 +125,7 @@ export const NodeForm = ({
       onSubmit={(formData: Record<string, FormFieldValue>) =>
         onSubmit ? onSubmit({ formData, fields, profiles }) : onSubmitCreate(formData)
       }
-      className={classNames("flex flex-1 flex-col overflow-auto bg-white p-4", className)}
+      className={className}
       {...props}
     />
   );
