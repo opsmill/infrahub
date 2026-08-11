@@ -33,6 +33,8 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fixed the Git repositories homepage widget linking to the generic `CoreGenericRepository` kind: repositories now open on their own kind, so the details page and edit form show all of their fields.
 - Fixed the object edit form failing with a GraphQL `profiles` error when an object is opened through a kind whose GraphQL type has no `profiles` field, such as `CoreGenericRepository`. The form now requests `profiles` only for kinds that expose it.
 - Fixed the task status button in the header sending you to the tasks page on the default branch instead of the branch you were working on.
+- Fixed schema migrations during a branch rebase using the destination branch's current schema as their baseline instead of the schema the branch was created from. Any schema element that was added on the destination branch after the branch forked already looked pre-existing to the migrations, so the work needed to bring branch data in line was skipped. Migrations now run against the branch-creation schema, which still reflects what changed on either side.
+- Fixed a branch rebase that fails while running its migrations restoring the wrong schema for the branch. The branch was left with the schema it was created from, silently dropping any schema change made on the branch itself, and the recorded schema hash was wrong as a result. The rollback now restores the schema the branch had immediately before the rebase started.
 
 ## [Infrahub - v1.10.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.6) - 2026-07-28
 
