@@ -1,1 +1,0 @@
-Fixed a branch rebase that fails while running its migrations restoring the wrong schema for the branch. The branch was left with the schema it was created from, silently dropping any schema change made on the branch itself, and the recorded schema hash was wrong as a result. The rollback now restores the schema the branch had immediately before the rebase started.
