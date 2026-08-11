@@ -53,7 +53,8 @@ export const getDefaultParentFromApi = ({
       ? defaultValue.value.id
       : undefined;
 
-  if (!parentRelationship?.peer || !parentRelationshipAttribute?.name) {
+  // Without a current value there is no child to resolve a parent from.
+  if (!parentRelationship?.peer || !parentRelationshipAttribute?.name || !id) {
     return { data: null, error: null };
   }
 
@@ -66,7 +67,7 @@ export const getDefaultParentFromApi = ({
 
   return graphqlClient.query({
     query,
-    variables: { ids: id ? [id] : undefined },
+    variables: { ids: [id] },
     context: {
       branch: branchName,
       date: atDate,

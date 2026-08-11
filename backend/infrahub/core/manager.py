@@ -1328,7 +1328,9 @@ class NodeManager:
                     direction=rel_schema.direction,
                     peer_id=peer_id,
                 )
-                peer_with_metadata = PeerWithRelationshipMetadata(peer=peer)
+                peer_with_metadata = PeerWithRelationshipMetadata(
+                    peer=peer, peer_kind=grouped_peer_nodes.get_peer_kind(peer_id=peer_id)
+                )
                 if not metadata_map:
                     rel_peers_with_metadata.append(peer_with_metadata)
                     continue

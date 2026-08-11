@@ -5,9 +5,13 @@ from pydantic import Field
 
 from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.external_protocols import ExternalAuthProtocol
+from infrahub.log import get_logger
 
 from .constants import EVENT_NAMESPACE
+from .limits import get_prefect_max_related_resources
 from .models import EventNode, InfrahubEvent
+
+log = get_logger()
 
 
 class GroupMutatedEvent(InfrahubEvent):
@@ -35,26 +39,18 @@ class GroupMutatedEvent(InfrahubEvent):
                 "infrahub.node.kind": self.kind,
             }
         )
-        related.append(
-            {
-                "prefect.resource.id": self.node_id,
-                "prefect.resource.role": "infrahub.group.update",
-                "infrahub.node.kind": self.kind,
-            }
-        )
 
+        # Members and ancestors grow with the size of the mutation, so they come
+        # last and the list is capped: the Prefect API rejects any event whose
+        # related resources exceed the configured maximum, and an oversized event
+        # would never be recorded at all. Each member and ancestor is a single
+        # entry (also matched as a related node through its own role), so a plain
+        # ordered truncation keeps the fixed and group-scoped entries intact.
         for member in self.members:
             related.append(
                 {
                     "prefect.resource.id": member.id,
                     "prefect.resource.role": "infrahub.group.member",
-                    "infrahub.node.kind": member.kind,
-                }
-            )
-            related.append(
-                {
-                    "prefect.resource.id": member.id,
-                    "prefect.resource.role": "infrahub.related.node",
                     "infrahub.node.kind": member.kind,
                 }
             )
@@ -67,20 +63,18 @@ class GroupMutatedEvent(InfrahubEvent):
                     "infrahub.node.kind": ancestor.kind,
                 }
             )
-            related.append(
-                {
-                    "prefect.resource.id": ancestor.id,
-                    "prefect.resource.role": "infrahub.related.node",
-                    "infrahub.node.kind": ancestor.kind,
-                }
+
+        max_related = get_prefect_max_related_resources()
+        if len(related) > max_related:
+            log.warning(
+                "Truncating the related resources of a group mutation event to the Prefect maximum",
+                event_name=self.event_name,
+                kind=self.kind,
+                node_id=self.node_id,
+                related_resources=len(related),
+                maximum=max_related,
             )
-            related.append(
-                {
-                    "prefect.resource.id": ancestor.id,
-                    "prefect.resource.role": "infrahub.group.update",
-                    "infrahub.node.kind": ancestor.kind,
-                }
-            )
+            related = related[:max_related]
 
         return related
 

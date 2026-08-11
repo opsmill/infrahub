@@ -148,6 +148,7 @@ const sidebars: SidebarsConfig = {
           label: 'Objects',
           link: { type: 'doc', id: 'objects/overview' }, // hub
           items: [
+            { type: 'doc', id: 'objects/manage-from-cli', label: 'Manage objects from the command line' },
             { type: 'doc', id: 'objects/convert-object-kind', label: 'Convert object kind' },
             { type: 'doc', id: 'objects/metadata', label: 'Metadata & lineage' },
             { type: 'doc', id: 'objects/load-from-yaml', label: 'Load data in bulk using YAML file' },
@@ -264,6 +265,9 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'git-integration/connect-repository', label: 'Connect a repository' },
             { type: 'doc', id: 'git-integration/infrahub-yml', label: 'infrahub.yml configuration' },
             { type: 'doc', id: 'git-integration/branch-synchronization', label: 'Branch synchronization' },
+            { type: 'doc', id: 'git-integration/develop-changes', label: 'Develop changes' },
+            { type: 'doc', id: 'git-integration/multi-environment', label: 'Multiple environments' },
+            { type: 'doc', id: 'git-integration/promote-between-environments', label: 'Promote between environments' },
           ],
         },
       ],
@@ -383,6 +387,7 @@ const sidebars: SidebarsConfig = {
             },
             // Configure Infrahub (PR 4)
             { type: 'doc', id: 'deploy-manage/install-configure/configure-infrahub', label: 'Configure Infrahub' },
+            { type: 'doc', id: 'deploy-manage/install-configure/performance-tuning', label: 'Tune performance' },
             // Configuration reference — stays in reference/, cross-linked here (PR 4)
             { type: 'ref', id: 'reference/configuration', label: 'Configuration reference' },
           ],

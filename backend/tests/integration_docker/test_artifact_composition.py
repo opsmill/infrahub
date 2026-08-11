@@ -5,18 +5,21 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.protocols import CoreArtifact
+from infrahub_sdk.protocols import CoreArtifact, CoreRepository
 from infrahub_sdk.schema import NodeSchema, SchemaRoot
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 from infrahub_sdk.testing.schemas.car_person import SchemaCarPerson
 
-from infrahub.core.constants import ArtifactStatus, InfrahubKind
+from infrahub.core.constants import ArtifactStatus, InfrahubKind, RepositoryOperationalStatus
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
+
+# Must stay off "main" to cover repositories whose default branch is not the platform one.
+SECTION_GIT_DEFAULT_BRANCH = "production"
 
 
 async def wait_for_artifacts(
@@ -73,15 +76,22 @@ class TestArtifactComposition(TestInfrahubDockerClient, SchemaCarPerson):
         await group.save()
 
     async def test_add_section_repo(
-        self, client: InfrahubClient, remote_repos_dir: Path, initial_dataset: None
+        self, client: InfrahubClient, remote_repos_dir: Path, default_branch: str, initial_dataset: None
     ) -> None:
         repo = GitRepo(
             name="section-config",
             src_directory=CURRENT_DIRECTORY / "test_files/repos/section-config",
             dst_directory=remote_repos_dir,
+            initial_branch=SECTION_GIT_DEFAULT_BRANCH,
         )
-        await repo.add_to_infrahub(client=client)
-        assert await repo.wait_for_sync_to_complete(client=client, retries=12)
+        repository = await client.create(
+            kind=CoreRepository,
+            name=repo.name,
+            location=f"/remote/{repo.name}",
+            default_branch=SECTION_GIT_DEFAULT_BRANCH,
+        )
+        await repository.save()
+        assert await repo.wait_for_sync_to_complete(client=client, branch=default_branch, retries=12)
 
     async def test_section_artifacts(self, client: InfrahubClient) -> None:
         """Section artifacts are generated with the expected content."""
@@ -94,6 +104,9 @@ class TestArtifactComposition(TestInfrahubDockerClient, SchemaCarPerson):
             content = await client.object_store.get(identifier=artifact.storage_id.value)
             contents.add(content)
         assert contents == {"! Section config for John Doe", "! Section config for Jane Doe"}
+
+        repository = await client.get(kind=CoreRepository, name__value="section-config")
+        assert repository.operational_status.value == RepositoryOperationalStatus.ONLINE.value
 
     async def test_add_composite_repo(self, client: InfrahubClient, remote_repos_dir: Path) -> None:
         repo = GitRepo(

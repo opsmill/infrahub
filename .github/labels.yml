@@ -147,6 +147,10 @@
   description: "This issue needs more information"
   color: "cccccc"
 
+- name: "state/need-decision"
+  description: "Behaviour is intentional but contested, needs a human judgement call"
+  color: "fbca04"
+
 - name: "state/need-testing"
   description: "This issue is ready and needs to be tested."
   color: "cccccc"
@@ -162,6 +166,10 @@
 - name: "state/backlog"
   description: "This issue is part of the backlog"
   color: "eeeeee"
+
+- name: "state/verified-2026-08"
+  description: "Checked against current code during the 2026-08 backlog triage, confirmed still valid"
+  color: "0e8a16"
 
 - name: "state/planned"
   description: "This issue is planned to be worked on in an upcoming release."
