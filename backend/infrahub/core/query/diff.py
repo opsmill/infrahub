@@ -23,8 +23,8 @@ class DiffQuery(Query):
     def __init__(
         self,
         branch: Branch,
-        diff_from: Timestamp | str = None,
-        diff_to: Timestamp | str = None,
+        diff_from: Timestamp | str | None = None,
+        diff_to: Timestamp | str | None = None,
         **kwargs: Any,
     ) -> None:
         """A diff is always in the context of a branch.

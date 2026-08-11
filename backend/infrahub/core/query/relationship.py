@@ -282,7 +282,7 @@ class RelationshipCreateQuery(RelationshipQuery):
 
     def __init__(
         self,
-        destination: Node = None,
+        destination: Node | None = None,
         destination_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:

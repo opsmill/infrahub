@@ -1413,16 +1413,6 @@ no-matching-overload = "ignore"
 
 [[tool.ty.overrides]]
 include = [
-    "backend/infrahub/core/query/diff.py",
-    "backend/infrahub/core/query/relationship.py",
-    "backend/infrahub/core/query/subquery.py",
-]
-
-[tool.ty.overrides.rules]
-invalid-parameter-default = "ignore"
-
-[[tool.ty.overrides]]
-include = [
     "backend/infrahub/core/branch/models.py",
     "backend/infrahub/core/node/__init__.py",
     "backend/infrahub/core/schema/basenode_schema.py",
