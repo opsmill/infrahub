@@ -442,7 +442,12 @@ async def load_schema(
         coordinator = SchemaUpdateCoordinator(
             db=db,
             schema_manager=registry.schema,
+<<<<<<< HEAD
             rollbacker=GraphRollbacker(db=db),
+=======
+            migration_baseline_schema=origin_schema,
+            rollback_schema=origin_schema,
+>>>>>>> stable
             workflow=service.workflow,
         )
 

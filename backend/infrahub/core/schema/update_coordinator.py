@@ -49,7 +49,12 @@ class SchemaUpdateCoordinator:
         self,
         db: InfrahubDatabase,
         schema_manager: SchemaManager,
+<<<<<<< HEAD
         rollbacker: GraphRollbacker,
+=======
+        migration_baseline_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
+>>>>>>> stable
         workflow: InfrahubWorkflow | None = None,
         logger: logging.Logger | logging.LoggerAdapter[logging.Logger] | None = None,
     ) -> None:
@@ -58,14 +63,29 @@ class SchemaUpdateCoordinator:
         Args:
             db: Database connection
             schema_manager: Schema manager for updating schema in DB and registry
+<<<<<<< HEAD
             rollbacker: Reverses database writes when a schema update fails
             workflow: Workflow service for executing migrations (required for the WORKFLOW executor)
+=======
+            migration_baseline_schema: Schema the migrations compare the candidate against.
+            rollback_schema: Schema restored into the registry when the update fails. This is the
+                schema the branch itself had before the update, which is not the migration baseline
+                whenever the branch carries changes of its own.
+            workflow: Workflow service for executing migrations (required for WORKFLOW executor)
+            context: Infrahub context (required for WORKFLOW executor)
+            migration_executor: How to execute migrations (DIRECT or WORKFLOW)
+>>>>>>> stable
             logger: Logger to use (defaults to module logger)
 
         """
         self.db = db
         self.schema_manager = schema_manager
+<<<<<<< HEAD
         self.rollbacker = rollbacker
+=======
+        self.migration_baseline_schema = migration_baseline_schema
+        self.rollback_schema = rollback_schema
+>>>>>>> stable
         self.workflow = workflow
         self.log = logger or _default_log
 
@@ -316,7 +336,11 @@ class SchemaUpdateCoordinator:
         apply_migration_data = SchemaApplyMigrationData(
             branch=branch,
             new_schema=candidate_schema,
+<<<<<<< HEAD
             previous_schema=origin_schema,
+=======
+            previous_schema=self.migration_baseline_schema,
+>>>>>>> stable
             migrations=migrations,
             at=at,
             user_id=user_id,
@@ -374,6 +398,7 @@ class SchemaUpdateCoordinator:
     async def _rollback(self, branch: Branch, at: Timestamp) -> None:
         """Rollback all changes made at the unified timestamp.
 
+<<<<<<< HEAD
         Scoped to the exact timestamp: the branch is not write-blocked during a schema update, so
         other writers may have stamped later writes that must survive the rollback.
         """
@@ -396,6 +421,13 @@ class SchemaUpdateCoordinator:
         branch.schema_hash = origin_schema_hash
         branch.schema_changed_at = origin_schema_changed_at
         await branch.save(db=self.db)
+=======
+    async def _restore_registry_state(self) -> None:
+        """Restore the branch's pre-update schema in the registry and reset its hash."""
+        self.schema_manager.set_schema_branch(name=self.branch.name, schema=self.rollback_schema)
+        self.branch.update_schema_hash()
+        await self.branch.save(db=self.db)
+>>>>>>> stable
 
     async def _handle_failure_and_rollback(
         self,
