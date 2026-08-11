@@ -837,7 +837,8 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
         db=db,
         branch=default_branch,
         schema_manager=registry.schema,
-        origin_schema=origin_schema,
+        migration_baseline_schema=origin_schema,
+        rollback_schema=origin_schema,
         migration_executor=MigrationExecutor.DIRECT,
     )
 

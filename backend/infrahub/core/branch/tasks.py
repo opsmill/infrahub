@@ -188,7 +188,8 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
         # Use the branch-creation (common-ancestor) schema as the migration baseline: it still contains
         # any element removed on either side, so remove migrations can resolve what to close.
-        pre_rebase_schema = (await merger.get_common_ancestor_schema()).duplicate()
+        migration_baseline_schema = (await merger.get_common_ancestor_schema()).duplicate()
+        pre_rebase_schema = registry.schema.get_schema_branch(name=obj.name).duplicate()
         migrations = []
         async with lock.registry.global_graph_lock():
             async with db.start_transaction() as dbt:
@@ -210,7 +211,8 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                     db=db,
                     branch=obj,
                     schema_manager=registry.schema,
-                    origin_schema=pre_rebase_schema,
+                    migration_baseline_schema=migration_baseline_schema,
+                    rollback_schema=pre_rebase_schema,
                     workflow=workflow,
                     context=context,
                     migration_executor=MigrationExecutor.WORKFLOW if send_events else MigrationExecutor.DIRECT,
@@ -447,7 +449,8 @@ async def _do_merge_branch(
                 db=db,
                 branch=merger.destination_branch,
                 schema_manager=registry.schema,
-                origin_schema=pre_merge_schema,
+                migration_baseline_schema=pre_merge_schema,
+                rollback_schema=pre_merge_schema,
                 workflow=workflow,
                 context=context,
                 migration_executor=MigrationExecutor.WORKFLOW,
