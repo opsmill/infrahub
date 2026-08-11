@@ -11,6 +11,31 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.10.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.7) - 2026-08-11
+
+### Changed
+
+- Improved the performance of GraphQL queries that only request the `id` of a cardinality-one relationship's peer. When no properties, metadata, or additional node fields are requested, the resolver now returns the peer ID already loaded on the parent instead of hydrating a full peer node, reducing database work on relationship-heavy queries.
+
+### Fixed
+
+- Fixed artifact generation storing the text None when a transform returned no data, it now fails with an error naming the transform instead. ([#5303](https://github.com/opsmill/infrahub/issues/5303))
+- Fixed node creation failing when a Jinja2 computed attribute formatted a value sourced from a number pool; the computed attribute now renders once the pool value has been allocated. ([#7836](https://github.com/opsmill/infrahub/issues/7836))
+- Fixed artifact generation failing for repositories whose default branch is not named main. ([#8749](https://github.com/opsmill/infrahub/issues/8749))
+- Merging an Infrahub branch now reliably writes the merge back to a repository's non-`main` default branch on the remote, regardless of which task worker executes the merge. ([#9568](https://github.com/opsmill/infrahub/issues/9568))
+- Fixed the object creation form auto-selecting the first available object in the parent filter of a relationship to a hierarchical node (e.g. the **Device** filter when adding an interface's lag). The parent filter now starts empty and is only pre-filled from an existing relationship value or parent context. ([#9634](https://github.com/opsmill/infrahub/issues/9634))
+- Fixed deleting a large branch failing with a database out-of-memory error and leaving the branch and its data behind. Branches left behind by an earlier failure are now cleaned up on upgrade. ([#9889](https://github.com/opsmill/infrahub/issues/9889))
+- Fixed git repository synchronization halting when a branch that had been merged still existed on the remote. ([#9931](https://github.com/opsmill/infrahub/issues/9931))
+- Fixed group mutation events (`member_added` / `member_removed`) being silently dropped when a single mutation changed a few hundred members or more. The event's related resources are now consolidated to one entry per member and per ancestor and capped at the Prefect maximum, so the event is always recorded and membership-driven automations keep firing regardless of how many members change at once. The full member list remains available in the event payload. ([#10127](https://github.com/opsmill/infrahub/issues/10127))
+- Fixed the ordering of repository tests in a proposed change. Smoke tests now run before unit tests, and unit tests before integration tests, instead of being ordered by resource kind only. ([#10170](https://github.com/opsmill/infrahub/issues/10170))
+- Fixed branches imported from a Git repository being created without the sync with Git flag, which caused merges to skip the Git side. ([#10208](https://github.com/opsmill/infrahub/issues/10208))
+- Fixed relationship selectors in object forms not honoring the `common_parent` schema property. The options are now filtered to peers that share the same parent as the value picked for the referenced relationship in the same form, instead of listing every peer. Changing that parent clears a now-invalid selection, and the inline "Add new" form pre-fills the parent when one is already selected so a created peer stays valid.
+- Fixed the Git repositories homepage widget linking to the generic `CoreGenericRepository` kind: repositories now open on their own kind, so the details page and edit form show all of their fields.
+- Fixed the object edit form failing with a GraphQL `profiles` error when an object is opened through a kind whose GraphQL type has no `profiles` field, such as `CoreGenericRepository`. The form now requests `profiles` only for kinds that expose it.
+- Fixed the task status button in the header sending you to the tasks page on the default branch instead of the branch you were working on.
+- Fixed schema migrations during a branch rebase using the destination branch's current schema as their baseline instead of the schema the branch was created from. Any schema element that was added on the destination branch after the branch forked already looked pre-existing to the migrations, so the work needed to bring branch data in line was skipped. Migrations now run against the branch-creation schema, which still reflects what changed on either side.
+- Fixed a branch rebase that fails while running its migrations restoring the wrong schema for the branch. The branch was left with the schema it was created from, silently dropping any schema change made on the branch itself, and the recorded schema hash was wrong as a result. The rollback now restores the schema the branch had immediately before the rebase started.
+
 ## [Infrahub - v1.10.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.6) - 2026-07-28
 
 ### Changed
