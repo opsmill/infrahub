@@ -602,6 +602,10 @@ allow-dunder-method-names = [
     "UP035",    # `typing.List` is deprecated, use `list` instead
 ]
 
+"**/graphql_queries/*.py" = [
+    "E501",  # ruff check --fix produces a long single-line union before ruff format wraps it
+]
+
 "backend/infrahub/cli/db.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
