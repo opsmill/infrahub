@@ -396,3 +396,7 @@ async def test_rebase_schemas_handed_to_the_update_coordinator(
     assert set(restored_schema.get_node(name=gadget_kind).attribute_names) == {"name", "serial"}
     assert set(restored_schema.get_node(name=widget_kind).attribute_names) == {"name"}
     assert restored_schema.get_hash() == rollback_pre_rebase_hash
+
+    # The restored hash has to reach storage, not just the in-memory registry the rollback wrote
+    reloaded_branch = await Branch.get_by_name(db=db, name=rollback_branch.name)
+    assert reloaded_branch.active_schema_hash.main == rollback_pre_rebase_hash
