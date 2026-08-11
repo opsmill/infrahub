@@ -20,8 +20,8 @@ from infrahub.events.group_action import (
 from infrahub.events.limits import get_prefect_max_related_resources
 from infrahub.events.models import EventMeta, EventNode
 from infrahub.external_protocols import ExternalAuthProtocol
-from infrahub.task_manager.event import PrefectEventData
-from infrahub.task_manager.models import InfrahubEventFilter
+from infrahub.task_manager.event.models import InfrahubEventFilter
+from infrahub.task_manager.event.query import PrefectEventData
 
 
 def _make_meta(account_id: str = "acct-123") -> EventMeta:
