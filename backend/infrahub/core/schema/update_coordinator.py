@@ -62,9 +62,7 @@ class SchemaUpdateCoordinator:
             db: Database connection
             branch: Branch being updated
             schema_manager: Schema manager for updating schema in DB and registry
-            migration_baseline_schema: Schema the migrations compare the candidate against. For a
-                rebase or a merge this is the common ancestor, so that changes made on either side
-                since the branch was created are still visible to the migrations.
+            migration_baseline_schema: Schema the migrations compare the candidate against.
             rollback_schema: Schema restored into the registry when the update fails. This is the
                 schema the branch itself had before the update, which is not the migration baseline
                 whenever the branch carries changes of its own.
