@@ -69,8 +69,6 @@ class TestBranchDetailsNonDefaultBranch:
 
         # Header
         await expect(admin_page.get_by_role("heading", name=NON_DEFAULT_BRANCH)).to_be_visible()
-        # exact — the badge's text is only "default"; a substring match also hits the
-        # "Schema differs from default branch" attribute label below.
         await expect(admin_page.get_by_text("default", exact=True)).not_to_be_visible()
         await expect(admin_page.get_by_role("button", name="View node metadata")).to_be_visible()
 

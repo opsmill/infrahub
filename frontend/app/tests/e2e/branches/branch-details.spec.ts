@@ -50,8 +50,6 @@ test.describe("Branch details view", () => {
 
       // Header
       await expect(page.getByRole("heading", { name: BRANCH_NAME })).toBeVisible();
-      // exact — the badge's text is only "default"; a substring match also hits the
-      // "Schema differs from default branch" attribute label below.
       await expect(page.getByText("default", { exact: true })).not.toBeVisible();
       await expect(page.getByRole("button", { name: "View node metadata" })).toBeVisible();
 
