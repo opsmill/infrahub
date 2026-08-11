@@ -837,19 +837,14 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
     coordinator = SchemaUpdateCoordinator(
         db=db,
         schema_manager=registry.schema,
-<<<<<<< HEAD
         rollbacker=GraphRollbacker(db=db),
-=======
-        migration_baseline_schema=origin_schema,
-        rollback_schema=origin_schema,
-        migration_executor=MigrationExecutor.DIRECT,
->>>>>>> stable
     )
 
     try:
         await coordinator.execute(
             branch=default_branch,
             origin_schema=origin_schema,
+            rollback_schema=origin_schema,
             candidate_schema=candidate_schema,
             at=Timestamp(),
             migration_executor=MigrationExecutor.DIRECT,

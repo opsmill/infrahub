@@ -17,8 +17,8 @@ class WorkflowRecorder(InfrahubWorkflow):
     """Records workflow calls without executing them. Use for testing code that submits workflows."""
 
     def __init__(self) -> None:
-<<<<<<< HEAD
         self.calls: list[dict[str, Any]] = []
+        self.execute_results: dict[str, Any] = {}
 
     def reset(self) -> None:
         # execute_calls/submit_calls are derived views, so clearing them leaves the backing store
@@ -32,11 +32,6 @@ class WorkflowRecorder(InfrahubWorkflow):
     @property
     def submit_calls(self) -> list[dict[str, Any]]:
         return [call for call in self.calls if call["kind"] == "submit"]
-=======
-        self.execute_calls: list[dict[str, Any]] = []
-        self.submit_calls: list[dict[str, Any]] = []
-        self.execute_results: dict[str, Any] = {}
->>>>>>> stable
 
     async def execute_workflow(
         self,
@@ -47,13 +42,9 @@ class WorkflowRecorder(InfrahubWorkflow):
         tags: list[str] | None = None,
         priority: WorkflowPriority | None = None,
     ) -> Any:
-<<<<<<< HEAD
         self.calls.append({"kind": "execute", "workflow": workflow, "parameters": parameters or {}})
-=======
-        self.execute_calls.append({"workflow": workflow, "parameters": parameters or {}})
         if workflow.name in self.execute_results:
             return self.execute_results[workflow.name]
->>>>>>> stable
         if expected_return is ValidatorConclusion:
             return ValidatorConclusion.SUCCESS
         return None
