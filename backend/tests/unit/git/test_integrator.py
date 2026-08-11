@@ -2,8 +2,6 @@ from dataclasses import dataclass
 from typing import Any
 
 import pytest
-import ujson
-import yaml
 
 from infrahub.core.constants import ContentType
 from infrahub.exceptions import TransformError
@@ -23,13 +21,13 @@ SERIALIZATION_CASES = [
         name="dict_as_json",
         content={"key1": "value1"},
         content_type=ContentType.APPLICATION_JSON.value,
-        expected=ujson.dumps({"key1": "value1"}, indent=2),
+        expected='{\n  "key1": "value1"\n}',
     ),
     SerializationCase(
         name="dict_as_yaml",
         content={"key1": "value1"},
         content_type=ContentType.APPLICATION_YAML.value,
-        expected=yaml.dump({"key1": "value1"}, indent=2),
+        expected="key1: value1\n",
     ),
     SerializationCase(
         name="string_as_text",
