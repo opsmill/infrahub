@@ -238,7 +238,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
 
         with pytest.raises(
             RepositoryError,
-            match=rf"^Unable to push the branch main to the remote for repository {repo_name}:",
+            match=rf"^Unable to push the branch main to the remote for repository {repo_name}: \[rejected\] \(fetch first\)$",
         ):
             await infrahub_repo.push("main")
 
