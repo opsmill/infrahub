@@ -292,10 +292,8 @@ disable_error_code = [
     "arg-type",
     "assignment",
     "attr-defined",
-    "no-redef",
     "return-value",
     "union-attr",
-    "valid-type",
     "var-annotated",
 ]
 
@@ -1370,7 +1368,6 @@ invalid-assignment = "ignore"
 include = [
     "backend/infrahub/core/graph/constraints.py",
     "backend/infrahub/core/query/relationship.py",
-    "backend/infrahub/core/schema/basenode_schema.py",
     "backend/infrahub/core/schema/manager.py",
     "backend/infrahub/core/schema/schema_branch.py",
 ]
