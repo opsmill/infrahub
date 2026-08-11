@@ -5,8 +5,8 @@
 
 ## ADRs Created
 
-- dev/adr/0013-static-transform-lifecycle-triggers.md (from R1, R2)
-- dev/adr/0014-transform-lifecycle-owns-node-input-reconciliation.md (from R5)
+- dev/adr/0018-static-transform-lifecycle-triggers.md (from R1, R2)
+- dev/adr/0019-transform-lifecycle-owns-node-input-reconciliation.md (from R5)
 
 ## Knowledge Updated
 

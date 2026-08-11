@@ -5,8 +5,8 @@
 
 ## ADRs Created
 
-- dev/adr/0011-node-mutation-origin-label-suppression.md (from R3)
-- dev/adr/0012-coalesced-merge-rebase-recompute.md (from R1, R2, R4, R5)
+- dev/adr/0016-node-mutation-origin-label-suppression.md (from R3)
+- dev/adr/0017-coalesced-merge-rebase-recompute.md (from R1, R2, R4, R5)
 
 ## Knowledge Updated
 
