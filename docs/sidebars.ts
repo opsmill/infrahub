@@ -443,6 +443,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/community', label: 'Community' },
                 { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/enterprise', label: 'Enterprise' },
+                { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/community-to-enterprise', label: 'Community to Enterprise' },
                 { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/observability-stack', label: 'Observability stack' },
               ],
             },
