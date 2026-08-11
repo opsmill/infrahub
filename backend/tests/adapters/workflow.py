@@ -18,6 +18,7 @@ class WorkflowRecorder(InfrahubWorkflow):
     def __init__(self) -> None:
         self.execute_calls: list[dict[str, Any]] = []
         self.submit_calls: list[dict[str, Any]] = []
+        self.execute_results: dict[str, Any] = {}
 
     async def execute_workflow(
         self,
@@ -28,6 +29,8 @@ class WorkflowRecorder(InfrahubWorkflow):
         tags: list[str] | None = None,
     ) -> Any:
         self.execute_calls.append({"workflow": workflow, "parameters": parameters or {}})
+        if workflow.name in self.execute_results:
+            return self.execute_results[workflow.name]
         if expected_return is ValidatorConclusion:
             return ValidatorConclusion.SUCCESS
         return None

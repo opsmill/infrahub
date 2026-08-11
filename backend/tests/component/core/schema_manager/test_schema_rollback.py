@@ -125,7 +125,8 @@ class TestSchemaUpdateAndRollback:
             db=db,
             branch=default_branch,
             schema_manager=registry.schema,
-            origin_schema=original_schema_copy,
+            migration_baseline_schema=original_schema_copy,
+            rollback_schema=original_schema_copy,
             migration_executor=MigrationExecutor.DIRECT,
         )
         await coordinator.execute(
@@ -264,7 +265,8 @@ class TestSchemaUpdateAndRollback:
             db=db,
             branch=default_branch,
             schema_manager=registry.schema,
-            origin_schema=origin_schema_copy,
+            migration_baseline_schema=origin_schema_copy,
+            rollback_schema=origin_schema_copy,
             migration_executor=MigrationExecutor.DIRECT,
         )
         with pytest.raises(ValueError, match="Unable to find the generic"):
