@@ -1695,7 +1695,6 @@ unresolved-attribute = "ignore"
 
 [[tool.ty.overrides]]
 include = [
-    "backend/infrahub/git/base.py",
     "backend/infrahub/git/integrator.py",
     "backend/infrahub/git/repository.py",
     "backend/infrahub/git/tasks.py",
