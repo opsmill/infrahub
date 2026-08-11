@@ -1,4 +1,4 @@
-# 11. Suppress coalesced-family triggers with a node-mutation origin label
+# 16. Suppress coalesced-family triggers with a node-mutation origin label
 
 **Status:** Accepted
 **Date:** 2026-07-31

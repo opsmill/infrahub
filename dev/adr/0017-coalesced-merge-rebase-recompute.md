@@ -1,4 +1,4 @@
-# 12. Coalesced deduplicated recompute pass on merge and rebase
+# 17. Coalesced deduplicated recompute pass on merge and rebase
 
 **Status:** Accepted
 **Date:** 2026-07-31

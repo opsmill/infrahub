@@ -1,4 +1,4 @@
-# 14. Transform lifecycle flow owns node-input automation reconciliation
+# 19. Transform lifecycle flow owns node-input automation reconciliation
 
 **Status:** Accepted
 **Date:** 2026-07-31
