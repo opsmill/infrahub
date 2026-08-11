@@ -40,7 +40,7 @@ class GetProfileDataQuery(Query):
         self.attr_names = attr_names
         self.relationship_filters = relationship_filters or []
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_params)
         self.params["profile_ids"] = self.profile_ids

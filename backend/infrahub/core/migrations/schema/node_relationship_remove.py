@@ -57,7 +57,7 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
         self.query_params = query_params
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         params = self.query_params
 
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())

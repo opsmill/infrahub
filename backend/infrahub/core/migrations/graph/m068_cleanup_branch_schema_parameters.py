@@ -37,7 +37,7 @@ class FixBranchParametersQuery(Query):
     name = "fix_branch_parameters"
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["default_branch"] = registry.default_branch
         self.params["branch_name"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level

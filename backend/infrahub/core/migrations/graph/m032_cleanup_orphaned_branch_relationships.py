@@ -22,7 +22,7 @@ class DeletedBranchCleanupQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (b:Branch)
 WITH collect(DISTINCT b.name) AS branch_names
@@ -42,7 +42,7 @@ class DeleteOrphanRelationshipsQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (r:Relationship)-[:IS_RELATED]-(n:Node)
 WITH DISTINCT r, n

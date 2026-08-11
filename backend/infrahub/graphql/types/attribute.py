@@ -84,7 +84,7 @@ class BaseAttribute(InfrahubAttributeMetaObject):
     permissions = Field(PermissionType, required=False)
 
     @classmethod
-    def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         registry.default_graphql_type[cls.__name__] = cls
 

@@ -28,7 +28,7 @@ class GetUpdatedProfilesForBranchQuery(Query):
     name = "get_profiles_by_branch"
     type = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["branch"] = self.branch.name
         query = """
 MATCH (profile:CoreProfile)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[e:HAS_VALUE]->(:AttributeValue)
@@ -49,7 +49,7 @@ class GetNodesWithProfileUpdatesForBranchQuery(Query):
     name = "get_nodes_with_profile_updates_by_branch"
     type = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["branch"] = self.branch.name
         query = """
 MATCH (node:Node)-[e:IS_RELATED]->(:Relationship {name: "node__profile"})

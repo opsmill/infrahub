@@ -21,7 +21,7 @@ class Migration005(InternalSchemaMigration):
     minimum_version: int = 4
 
     @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
+    def init(cls, **kwargs: Any) -> Self:
         internal_schema = cls.get_internal_schema()
         schema_rel = internal_schema.get_node(name="SchemaRelationship")
 
@@ -34,7 +34,7 @@ class Migration005(InternalSchemaMigration):
                 ),
             ),
         ]
-        return cls(migrations=migrations, **kwargs)  # type: ignore[arg-type]
+        return cls(migrations=migrations, **kwargs)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()

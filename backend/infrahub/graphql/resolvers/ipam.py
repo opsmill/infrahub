@@ -331,7 +331,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
     limit: int | None = None,
     order: dict[str, Any] | None = None,
     partial_match: bool = False,
-    **kwargs: dict[str, Any],
+    **kwargs: Any,
 ) -> dict[str, Any]:
     schema: NodeSchema | GenericSchema = (
         info.return_type.of_type.graphene_type._meta.schema

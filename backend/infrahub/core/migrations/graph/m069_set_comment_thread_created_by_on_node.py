@@ -16,7 +16,7 @@ class SetCommentCreatedByOnNodeQuery(Query):
     type: QueryType = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH (comment:CoreComment)
         CALL (comment) {
@@ -35,7 +35,7 @@ class SetThreadCreatedByOnNodeQuery(Query):
     type: QueryType = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH (thread:CoreThread)
         CALL (thread) {

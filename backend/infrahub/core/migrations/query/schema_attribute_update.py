@@ -65,7 +65,7 @@ class SchemaAttributeUpdateQuery(Query):
 
         return query
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["attr_name"] = self.attr_name
         self.params["attr_new_value"] = (
             ujson.dumps(self.attr_new_value) if isinstance(self.attr_new_value, list) else self.attr_new_value
