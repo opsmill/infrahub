@@ -2,7 +2,7 @@
 
 **Feature Branch**: `infp-460-local-computed-attributes`
 **Created**: 2026-02-18
-**Status**: Draft
+**Status**: Extracted
 **Jira Issue**: INFP-460
 **Input**: "Refactor Jinja2 based computed attributes to handle local updates immediately within the original mutation rather than as background tasks, while continuing to use Prefect for remote updates."
 

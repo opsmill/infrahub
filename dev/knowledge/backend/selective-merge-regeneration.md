@@ -65,7 +65,7 @@ A composite artifact that inlines another artifact's content is **not** refreshe
 
 The selection reads the merge diff and the generators' tracked output; neither carries the fact that one artifact's rendered content is embedded in another, so the composite is never selected. Blanket regeneration did refresh it, which makes this a behaviour change for content composition users now that `selective_execution_after_merge` defaults to on. Setting the flag to `false` restores the refresh along with the rest of the blanket path.
 
-Confirmed live on the demo stack. See [performance-scenarios.md](../../specs/ifc-2704-incremental-merge-regen/performance-scenarios.md) for the full scenario matrix, and [content composition](../../../docs/docs/artifacts/content-composition.mdx) for the user-facing feature.
+Confirmed live on the demo stack. See [performance-scenarios.md](../../specs/archive/ifc-2704-incremental-merge-regen/performance-scenarios.md) for the full scenario matrix, and [content composition](../../../docs/docs/artifacts/content-composition.mdx) for the user-facing feature.
 
 ## Fallback reasons
 
@@ -101,4 +101,4 @@ A per-merge line records the path taken (selective, with generator/artifact coun
 - [Coalesced Recompute on Merge and Rebase](merge-recompute.md) - the sibling merge-followup path for computed attributes, display labels, and human-friendly ids
 - [Code Generation](code-generation.md) - fingerprints and dependency closures computed at repository import
 - [Events System](events.md) - node mutation events consumed by the non-coalesced regeneration paths
-- Feature spec: `dev/specs/ifc-2704-incremental-merge-regen/`
+- Feature spec: `dev/specs/archive/ifc-2704-incremental-merge-regen/`

@@ -99,6 +99,6 @@ The regex(es) are compiled once at config-load time and recompiled when settings
 ## See Also
 
 - [ADR-0005: `origin` attribute for `CoreAccountGroup` provenance](../../adr/0005-account-group-origin-attribute.md)
-- [Spec: infp-556 auto-create groups](../../specs/infp-556-auto-create-groups/spec.md)
+- [Spec: infp-556 auto-create groups](../../specs/archive/infp-556-auto-create-groups/spec.md)
 - [User guide: Auto-create groups from identity provider claims](../../../docs/docs/deploy-manage/user-management/sso/advanced-sso.mdx)
 - [Events System](events.md)

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `ifc-2273-local-computation-jinja2`
 **Created**: 2026-03-19
-**Status**: Draft
+**Status**: Extracted
 **Input**: IFC-2273 — Optimize Jinja2 computed attribute updates by handling "local" changes immediately within the original mutation rather than as background tasks, while continuing to use Prefect for "remote" changes.
 
 ## User Scenarios & Testing *(mandatory)*

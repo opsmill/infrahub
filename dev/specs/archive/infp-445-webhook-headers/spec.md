@@ -2,7 +2,7 @@
 
 **Feature Branch**: `infp-445-webhook-headers`
 **Created**: 2026-02-17
-**Status**: Draft
+**Status**: Extracted
 **Input**: INFP-445 - Add custom headers for webhooks and custom webhooks
 **Related**: INFP-470 - Customer feature request for custom HTTP headers on webhooks
 
