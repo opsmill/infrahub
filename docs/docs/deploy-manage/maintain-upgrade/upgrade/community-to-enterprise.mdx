@@ -2,47 +2,59 @@
 title: Migrate from Community to Enterprise
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
 
 # Migrate from Community to Enterprise <EnterpriseBadge />
 
-This guide describes how to convert an existing Infrahub Community Helm release into an Infrahub Enterprise release **in place**, preserving the existing graph database, Git repositories, and Prefect flow run history.
+This guide describes how to convert an existing Infrahub Community deployment into an Infrahub Enterprise deployment **in place**, preserving the existing graph database, Git repositories, and Prefect flow run history.
 
-The procedure applies to Helm deployments on Kubernetes. If you deployed Infrahub with Docker Compose, see the [Infrahub Enterprise installation guide](../../install-configure/install/enterprise.mdx) and contact the OpsMill team for assistance with the migration.
+The procedure covers the two container-based deployment methods — Docker Compose and Helm on Kubernetes. Both follow the same shape: swap the Community images for the Enterprise images while keeping every data volume attached, then run `infrahub upgrade` against the existing databases.
+
+:::note Bare metal deployments
+
+Infrahub Enterprise also supports [bare metal installations](../../install-configure/install/enterprise.mdx), but migrating a bare metal Community deployment is not covered here. Reach out to the OpsMill team on [Discord](https://discord.gg/opsmill) or at [contact@opsmill.com](mailto:contact@opsmill.com).
+
+:::
 
 ## What changes during the migration
 
-The Infrahub Enterprise Helm chart (`infrahub-enterprise`) is a wrapper chart that declares the Community chart (`infrahub`) as a dependency. Switching editions is a Helm chart swap on the existing release; the data layers (Neo4j, Redis, RabbitMQ or NATS, the Prefect PostgreSQL database, and the API server's Git working directory) are reused.
-
-After the swap, the following changes apply:
+The data layers — Neo4j, Redis, RabbitMQ or NATS, the Prefect PostgreSQL database, and the API server's Git working directory — are reused. What changes is the container images and the process each one runs:
 
 | Component | Before | After |
 |---|---|---|
 | API server image | `registry.opsmill.io/opsmill/infrahub` | `registry.opsmill.io/opsmill/infrahub-enterprise` |
 | Task worker image | `registry.opsmill.io/opsmill/infrahub` | `registry.opsmill.io/opsmill/infrahub-enterprise` |
-| Prefect server image | `registry.opsmill.io/opsmill/infrahub` | `registry.opsmill.io/opsmill/infrahub-enterprise` |
+| Task manager (Prefect) image | `registry.opsmill.io/opsmill/infrahub` | `registry.opsmill.io/opsmill/infrahub-enterprise` |
 | Server Gunicorn app | `infrahub.server:app` | `infrahub_enterprise.server:app` |
 | Task worker type | `infrahubasync` | `infrahubentasync` |
-| Worker pool name | `infrahub-worker` | `infrahub-worker` (unchanged) |
-| Neo4j edition (bundled chart only) | community | enterprise |
+| Work pool name | `infrahub-worker` | `infrahub-worker` (unchanged) |
+| Neo4j edition (bundled deployment only) | community | enterprise |
 | `/api/config` `installation_type` | `community` | `enterprise` |
 
-Because `infrahub-worker` keeps its pool name, any externally registered work pools or flows continue to route correctly.
+### How the work pool is switched
+
+The task worker changes type, but the Prefect work pool keeps the name `infrahub-worker`, so any externally registered flows continue to route to it.
+
+The pool itself has to be recreated, because a Prefect work pool is typed and an `infrahubentasync` worker cannot poll an `infrahubasync` pool. Infrahub Enterprise sets `INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE` to `infrahubentasync`, and both `infrahub upgrade` and the primary server's startup recreate the pool with that type. Running `infrahub upgrade` after the swap — a required step in both procedures below — is what guarantees the pool is retyped before the new workers start polling.
+
+`infrahub upgrade` runs its full six-step pipeline, not only the task manager step. Because the prerequisites keep the version unchanged, Step 1/6 reports no pending database migrations; Step 5/6 is the step that retypes the work pool. See [what the upgrade does](./overview.mdx#what-the-upgrade-does) for the whole pipeline and the output to expect.
 
 :::info Licensing
 
-No license file, license key, or image pull secret is required at this time — images can be pulled from the Enterprise registry (`registry.opsmill.io/opsmill/infrahub-enterprise`) without authentication. This may change in the future; if it does, you will receive a registry credential to mount as an `imagePullSecret`.
+No license file, license key, or image pull secret is required. Images can be pulled from the Enterprise registry (`registry.opsmill.io/opsmill/infrahub-enterprise`) without authentication.
 
 :::
 
 ## Neo4j deployment and licensing
 
-OpsMill recommends running Neo4j using the Neo4j deployment provided with the Infrahub Enterprise Helm chart, rather than a managed Neo4j offering from a cloud provider:
+OpsMill recommends running Neo4j using the Neo4j deployment bundled with Infrahub Enterprise — the `database` service in the Enterprise Docker Compose file, or the Neo4j sub-chart in the Enterprise Helm chart — rather than a managed Neo4j offering from a cloud provider:
 
-- OpsMill validates the performance of Infrahub Enterprise against the Neo4j deployment shipped with the Helm chart. OpsMill does not validate the performance of managed Neo4j instances.
-- The Neo4j Enterprise license is already included in your Infrahub Enterprise agreement. With a managed offering, you would effectively pay for the Neo4j license twice.
+- OpsMill validates the performance of Infrahub Enterprise against the bundled Neo4j deployment. OpsMill does not validate the performance of managed Neo4j instances.
+- The Neo4j Enterprise license is already included in your Infrahub Enterprise agreement. With a managed offering, you would pay for the Neo4j license twice.
 
-No separate Neo4j license key is required when using the chart-provided deployment. The Enterprise chart configures the bundled Neo4j with `edition: "enterprise"` and `acceptLicenseAgreement: "yes"` — accepting the license agreement this way is covered under your Infrahub Enterprise agreement.
+No separate Neo4j license key is required when using the bundled deployment. Infrahub Enterprise accepts the Neo4j license agreement on your behalf, under the terms of your Infrahub Enterprise agreement.
 
 ## Prerequisites
 
@@ -50,13 +62,50 @@ Before starting, confirm the following:
 
 1. **Your target Enterprise version matches your current Community version.** Check the running version via `curl https://<your-infrahub-host>/api/config | jq .` or by inspecting the running image tag. Do not combine an edition swap with a version upgrade in a single step.
 2. **A database backup exists and you have verified that it can be restored.** Take a recent `neo4j-admin database dump` or an equivalent volume snapshot with the database stopped or paused. The Enterprise edition rewrites license metadata in the store on first boot, and a rollback past that point requires the dump. See [Backup and restore](../database-backup/backup-and-restore.mdx).
-3. **The Helm release name is recorded.** Find it with `helm list -n <namespace>`. The release name **must not change** during the swap — that is what guarantees the PVC names, Service DNS entries, and credential Secrets are reused.
-4. **The existing values file is in source control.** You will be restructuring it; keep the original.
-5. **If your Neo4j runs outside the cluster**, plan the Neo4j edition switch as a separate operation. See [External Neo4j edition switch](#external-neo4j-edition-switch).
+3. **The name that binds your deployment to its data is recorded and does not change.** For Helm this is the release name; for Docker Compose it is the project name. Reusing it is what guarantees the existing volumes, service DNS entries, and credentials are picked up by the Enterprise deployment. The tabs below cover each case.
+4. **The existing configuration is in source control.** You will be replacing the Compose file or restructuring the values file; keep the original so you can revert to it.
+5. **If your Neo4j runs outside the deployment**, plan the Neo4j edition switch as a separate operation. See [External Neo4j edition switch](#external-neo4j-edition-switch).
 
-## Restructure your values file
+## Prepare the new configuration
 
-The Enterprise chart depends on the Community chart and exposes the entire Community values tree under a top-level `infrahub:` key. Every override you currently set at the root of your values file must move under `infrahub:`.
+<Tabs groupId="deployment" queryString>
+<TabItem value="docker" label="Docker Compose" default>
+
+Keep the Community Compose file, then fetch the Enterprise Compose file for the version you are currently running:
+
+```bash
+# Keep the current file so you can revert to it
+cp docker-compose.yml docker-compose.community.yml
+
+# Retrieve the Enterprise Compose file, pinned to your current version
+curl https://infrahub.opsmill.io/enterprise/1.10.6 > docker-compose.yml
+```
+
+Replace `1.10.6` with the version reported by `/api/config`. Fetching `https://infrahub.opsmill.io/enterprise` without a version returns the latest release, which would combine the edition swap with a version upgrade.
+
+You can append a sizing preset — `?size=small`, `?size=medium`, `?size=large` — to configure replica counts and Neo4j memory settings for your hardware. See [Install Infrahub Enterprise](../../install-configure/install/enterprise.mdx) for the sizing table.
+
+### Configuration that carries over
+
+Environment variable names are identical between editions, so an existing `.env` file or Compose override file applies unchanged. The Enterprise Compose file adds two variables specific to Enterprise features, both empty by default:
+
+- `INFRAHUB_POLICY_REQUIRED_PROPOSED_CHANGE_APPROVALS`
+- `INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS`
+
+It also adds a `task-manager-background-svc` service, which starts fresh and holds no persistent state of its own.
+
+:::warning The project name must not change
+
+Docker Compose prefixes volume names with the project name, so `-p infrahub` gives volumes named `infrahub_database_data`, `infrahub_storage_data`, and so on. Starting the Enterprise stack under a different project name creates a new, empty set of volumes and the migrated instance will come up with no data.
+
+Use the same `-p <project-name>` value you used for the Community deployment on every command below. Confirm it with `docker compose ls`.
+
+:::
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+The Enterprise Helm chart (`infrahub-enterprise`) is a wrapper chart that declares the Community chart (`infrahub`) as a dependency, and exposes the entire Community values tree under a top-level `infrahub:` key. Every override you currently set at the root of your values file must move under `infrahub:`.
 
 **Before** (`values-community.yaml`):
 
@@ -110,9 +159,11 @@ infrahub:
           prefectTag: "1.9.3"  # set to your current Infrahub version
 ```
 
-### Required version pinning
+### Pin the Infrahub version
 
-Set both image tags explicitly. The Enterprise chart's `appVersion` is independent of the Infrahub image version, and without these two pins the upgrade will silently pull whatever version `appVersion` points at:
+`global.infrahubTag` is an override, not a required value. Left unset, the image tag defaults to the chart's `appVersion` — chart `4.18.0` declares `appVersion: "1.10.6"`, so it deploys Infrahub 1.10.6.
+
+The chart version and the `appVersion` move independently, so choosing a chart version also chooses an Infrahub version, whether or not you meant to. Prerequisite 1 requires the version to stay unchanged across the edition swap, so set both tags explicitly — that pins the outcome to your current version and keeps it pinned when the chart version moves:
 
 ```yaml
 infrahub:
@@ -125,7 +176,75 @@ infrahub:
           prefectTag: "1.9.3"     # pins the Prefect server container
 ```
 
+### Choose a chart version
+
+The chart version is separate from the image tags above, and is set with `--version` on the `helm upgrade` command rather than in the values file. Pin it explicitly — without `--version`, Helm resolves the latest published chart, which changes more than the edition.
+
+For production, use a flavored chart. Available from chart version 4.0.0, these come pre-configured with replica counts and resource allocations for a sizing plan, so the values you would otherwise hand-write are already set. Appending the flavor to any chart version selects it:
+
+| Flavor      | Chart version example | Required memory |
+|-------------|-----------------------|-----------------|
+| small       | 4.18.0-small          | 16 GB           |
+| medium      | 4.18.0-medium         | 32 GB           |
+| medium-data | 4.18.0-medium-data    | 32 GB           |
+| large       | 4.18.0-large          | 64 GB           |
+| large-data  | 4.18.0-large-data     | 64 GB           |
+
+Pick the flavor matching the sizing your Community deployment already runs at. The base chart (for example, `4.18.0`) is the alternative when you provide your own sizing configuration. See [Install Infrahub Enterprise](../../install-configure/install/enterprise.mdx) for the values behind each preset.
+
+:::info Redis host configuration for flavored charts
+
+When using a flavored chart, you must also configure the Redis host for the Prefect background services. Add the following to your values file:
+
+```yaml
+infrahub:
+  prefect-server:
+    backgroundServices:
+      messaging:
+        redis:
+          host: "infrahub-cache-master"
+```
+
+The `host` value should match your Redis service name. If you deployed Redis using the bundled dependency, this defaults to `infrahub-cache-master`. This configuration is only required when using sizing presets — the base chart does not require it.
+
+:::
+
+:::warning The release name must not change
+
+The release name is what guarantees the PVC names, service DNS entries, and credential secrets are reused. Find it with `helm list -n <namespace>` and use that same name for every command below.
+
+:::
+
+</TabItem>
+</Tabs>
+
 ## Pre-flight checks
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="docker" label="Docker Compose" default>
+
+```bash
+# Confirm the project name
+docker compose ls
+
+# Confirm the running services and their images
+docker compose -p infrahub ps
+
+# Confirm the volumes that must survive the swap
+docker volume ls --filter name=infrahub
+
+# Render the merged Enterprise configuration without starting anything
+docker compose -p infrahub config
+```
+
+Review the rendered configuration for:
+
+- Identical volume names — `database_data`, `database_logs`, `storage_data`, `workflow_db`, `workflow_data`.
+- Image references showing `infrahub-enterprise:<version>` at the version you pinned.
+- A `database` service on `neo4j:<version>-enterprise`.
+
+</TabItem>
+<TabItem value="helm" label="Helm">
 
 Run the following from a workstation with `kubectl` and `helm` configured against the production cluster:
 
@@ -144,28 +263,70 @@ helm history <release-name> -n <namespace>
 
 # Dry-run the upgrade to inspect the rendered manifests
 helm upgrade <release-name> oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise \
-  -n <namespace> -f values-enterprise.yaml --dry-run
+  -n <namespace> -f values-enterprise.yaml --version 4.18.0-small --dry-run
 ```
+
+Use the same `--version` you intend to run for real — a dry-run against a different chart version renders manifests you are not going to apply.
 
 Review the dry-run output for:
 
 - Identical PVC names (the StatefulSet `volumeClaimTemplates` and any standalone PVCs should match what `kubectl get pvc` showed).
-- Identical Service names.
+- Identical service names.
 - Image references showing `infrahub-enterprise:<version>`.
+
+</TabItem>
+</Tabs>
 
 ## Perform the migration
 
 ### Announce a maintenance window
 
-Expect 5–10 minutes of API unavailability while the Infrahub server pods are recreated. If you run the bundled Neo4j, it also restarts to switch editions during this window.
+Expect 5–10 minutes of API unavailability while the Infrahub server containers are recreated. If you run the bundled Neo4j, it also restarts to switch editions during this window.
 
-### Run the upgrade
+### Run the swap
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="docker" label="Docker Compose" default>
 
 ```bash
+# Stop the Community stack, keeping the volumes
+docker compose -p infrahub down
+
+# Run the upgrade pipeline against the existing databases
+docker compose -p infrahub run --rm infrahub-server infrahub upgrade
+
+# Start the Enterprise stack on the same volumes
+docker compose -p infrahub up -d
+```
+
+:::danger Never pass `-v` to `docker compose down`
+
+`docker compose down -v` deletes the named volumes, which destroys the graph database, the Git working directory, and the Prefect flow run history. The migration requires `docker compose down` with no flags.
+
+:::
+
+Expected behavior:
+
+- The `database` service restarts on the Neo4j Enterprise image, attached to the same `database_data` volume. Neo4j rewrites license metadata in the store on this first boot.
+- `infrahub upgrade` runs its six-step pipeline. Step 5/6 recreates the `infrahub-worker` pool with the `infrahubentasync` type. See [what the upgrade does](./overview.mdx#what-the-upgrade-does) for the output to expect.
+- The `task-manager-background-svc` service starts for the first time.
+- Task workers register against the `infrahub-worker` pool as `InfrahubEntWorkerAsync`.
+
+Old Community images stay on the host and consume disk space. Remove them with `docker image prune -a` once the migration is verified.
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+```bash
+# Swap the chart on the existing release
 helm upgrade <release-name> oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise \
   -n <namespace> \
   -f values-enterprise.yaml \
+  --version 4.18.0-small \
   --timeout 15m
+
+# Run the upgrade pipeline from inside the new server pod
+kubectl -n <namespace> exec deploy/<release-name>-infrahub-server -- infrahub upgrade
 ```
 
 Helm replaces the chart on the existing release. Expected behavior during the rollout:
@@ -175,6 +336,8 @@ Helm replaces the chart on the existing release. Expected behavior during the ro
 - The `prefect-server` Deployment rolls. Flow run history in PostgreSQL is preserved.
 - The first Enterprise server pod may crash once or twice with `ServiceUnavailable` against Neo4j if Neo4j is restarting. The `wait-for-prefect` init container plus the Kubernetes restart policy resolve any transient connection failure within about 60 seconds.
 
+Run `infrahub upgrade` once the server Deployment reports Ready. Step 5/6 recreates the `infrahub-worker` pool with the `infrahubentasync` type. See [what the upgrade does](./overview.mdx#what-the-upgrade-does) for the output to expect.
+
 ### Watch the rollout
 
 ```bash
@@ -183,15 +346,18 @@ watch -n 2 kubectl -n <namespace> get pods
 
 Wait until all `infrahub-server-*`, `infrahub-task-worker-*`, and `prefect-server-*` pods are `1/1 Running` on the new image.
 
+</TabItem>
+</Tabs>
+
 ## External Neo4j edition switch
 
 :::note
 
-The steps below apply only when your Neo4j runs outside the cluster. If you use the Neo4j deployment bundled with the Helm chart — the setup recommended by OpsMill — the chart switches Neo4j to Enterprise edition for you during the upgrade and no further action is needed.
+The steps below apply only when your Neo4j runs outside the Infrahub deployment. If you use the bundled Neo4j — the setup recommended by OpsMill — Infrahub Enterprise switches Neo4j to Enterprise edition for you during the swap and no further action is needed.
 
 :::
 
-The Helm chart change only affects the pods managed by the chart. If your Neo4j runs outside the cluster, switching Neo4j from Community to Enterprise edition is a separate operation:
+Swapping the Infrahub images only affects the containers Infrahub manages. If your Neo4j runs elsewhere, switching Neo4j from Community to Enterprise edition is a separate operation:
 
 - The Neo4j Community storage format is forward-compatible with Neo4j Enterprise of the same minor version. The same data volume can be mounted by an Enterprise binary.
 - Switching edition requires a new Neo4j installation, because Community and Enterprise are different distributions and Docker images.
@@ -204,59 +370,106 @@ The procedure is:
 4. Restore the dumps into the Enterprise instance with `neo4j-admin database load`.
 5. Point Infrahub at the new endpoint via `INFRAHUB_DB_ADDRESS`.
 
-This can happen before, simultaneously with, or after the chart swap — Infrahub doesn't require Neo4j Enterprise to run as Enterprise edition. The performance and high-availability benefits of Infrahub Enterprise that depend on Neo4j Enterprise features (online backups, causal clustering, and advanced indexing) only apply once Neo4j is also upgraded.
+This can happen before, simultaneously with, or after the edition swap — Infrahub Enterprise runs against Neo4j Community. The performance and high-availability benefits of Infrahub Enterprise that depend on Neo4j Enterprise features (online backups, causal clustering, and advanced indexing) only apply once Neo4j is also on the Enterprise edition.
 
-If you want to defer the Neo4j edition switch, you can temporarily run the Infrahub Enterprise pods against Neo4j Community. The application will function; you won't get the scale-out database properties. Consider using this opportunity to move your external Neo4j to the deployment provided with the Infrahub Enterprise Helm chart, as described in [Neo4j deployment and licensing](#neo4j-deployment-and-licensing).
+If you want to defer the Neo4j edition switch, you can temporarily run the Infrahub Enterprise containers against Neo4j Community. The application will function; you will not get the scale-out database properties. Consider using this opportunity to move your external Neo4j to the bundled deployment, as described in [Neo4j deployment and licensing](#neo4j-deployment-and-licensing).
 
 ## Verify the migration
 
-After all pods are Running, confirm the migration:
+Once every service is running, confirm the migration. These two checks are the same for both deployment methods:
 
 ```bash
 # 1. installation_type changed
 curl -s https://<your-host>/api/config | jq .installation_type
 # expect: "enterprise"
 
-# 2. Worker registered as the Enterprise worker
-kubectl -n <namespace> logs -l infrahub/service=task-worker --tail=200 | grep "Worker '"
-# expect a line like: Worker 'InfrahubEntWorkerAsync <uuid>' started!
-
-# 3. Images on the Enterprise repository
-kubectl -n <namespace> get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' \
-  | grep infrahub
-# expect: registry.opsmill.io/opsmill/infrahub-enterprise:<version>
-
-# 4. PVCs unchanged
-kubectl -n <namespace> get pvc
-# expect: same names and Bound to the same PersistentVolumes as before
-
-# 5. Application-level data sanity check
+# 2. Application-level data sanity check
 curl -s -X POST https://<your-host>/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"query { Branch { name description } }"}' | jq .
 # expect: main branch plus any other branches that existed pre-upgrade
+```
+
+The remaining checks depend on how you deployed:
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="docker" label="Docker Compose" default>
+
+```bash
+# 3. Worker registered as the Enterprise worker
+docker compose -p infrahub logs task-worker --tail=200 | grep "Worker '"
+# expect a line like: Worker 'InfrahubEntWorkerAsync <uuid>' started!
+
+# 4. Images on the Enterprise repository
+docker compose -p infrahub ps
+# expect: registry.opsmill.io/opsmill/infrahub-enterprise:<version>
+
+# 5. Volumes unchanged
+docker volume ls --filter name=infrahub
+# expect: the same volume names as before the swap
+
+# 6. Every migration applied
+docker compose -p infrahub exec infrahub-server infrahub db showmigrations
+# expect: every migration marked [X], database version matching the target version
+```
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+```bash
+# 3. Worker registered as the Enterprise worker
+kubectl -n <namespace> logs -l infrahub/service=task-worker --tail=200 | grep "Worker '"
+# expect a line like: Worker 'InfrahubEntWorkerAsync <uuid>' started!
+
+# 4. Images on the Enterprise repository
+kubectl -n <namespace> get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' \
+  | grep infrahub
+# expect: registry.opsmill.io/opsmill/infrahub-enterprise:<version>
+
+# 5. PVCs unchanged
+kubectl -n <namespace> get pvc
+# expect: same names and Bound to the same PersistentVolumes as before
 
 # 6. Helm release on the new chart
 helm history <release-name> -n <namespace>
 # expect: latest revision shows CHART = infrahub-enterprise-<x.y.z>
 ```
 
-If all six checks pass, the migration is complete.
+</TabItem>
+</Tabs>
 
 ## Roll back
 
-You can roll back with `helm rollback` as long as Neo4j has not been switched to Enterprise edition or written Enterprise-only data structures:
+Reverting the images and configuration returns the application layer to Community. Whether that is enough depends on the database:
+
+- **Neo4j still on the Community edition** (external Neo4j you have not switched yet): reverting the configuration is sufficient. The `installation_type` field changes back to `community`.
+- **Neo4j switched to the Enterprise edition** (the bundled deployment always does this): reverting the configuration is not sufficient, because the Neo4j Enterprise store cannot be read by a Neo4j Community binary. Restore the dump taken during the [prerequisites](#prerequisites).
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="docker" label="Docker Compose" default>
+
+```bash
+docker compose -p infrahub down
+cp docker-compose.community.yml docker-compose.yml
+docker compose -p infrahub up -d
+```
+
+</TabItem>
+<TabItem value="helm" label="Helm">
 
 ```bash
 helm history <release-name> -n <namespace>
 helm rollback <release-name> <previous-revision> -n <namespace> --timeout 15m
 ```
 
-Helm reapplies the Community chart manifests; the pods roll back to the Community images; the PVCs remain bound. The `installation_type` field changes back to `community`.
+Helm reapplies the Community chart manifests; the pods roll back to the Community images; the PVCs remain bound.
+
+</TabItem>
+</Tabs>
 
 :::warning
 
-Do not rely on `helm rollback` for recovery from a Neo4j edition change or for recovery after an extended period of Enterprise-only feature use. Restore the Neo4j dump taken during the [prerequisites](#prerequisites) instead.
+Do not rely on a configuration rollback for recovery after an extended period of Enterprise-only feature use. Restore the Neo4j dump taken during the [prerequisites](#prerequisites) instead.
 
 :::
 
@@ -264,4 +477,5 @@ Do not rely on `helm rollback` for recovery from a Neo4j edition change or for r
 
 - [Install Infrahub Enterprise](../../install-configure/install/enterprise.mdx) — Enterprise installation methods and Helm chart reference
 - [Upgrade Enterprise](./enterprise.mdx) — Upgrading an existing Enterprise deployment to a newer version
+- [Upgrade overview](./overview.mdx) — What `infrahub upgrade` does and the output to expect
 - [Backup and restore](../database-backup/backup-and-restore.mdx) — Database backup procedures
