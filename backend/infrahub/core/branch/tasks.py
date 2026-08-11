@@ -186,10 +186,6 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
 
-        # Use the branch-creation (common-ancestor) schema as the migration baseline: it still contains
-        # any element removed on either side, so remove migrations can resolve what to close.
-        migration_baseline_schema = (await merger.get_common_ancestor_schema()).duplicate()
-        pre_rebase_schema = registry.schema.get_schema_branch(name=obj.name).duplicate()
         migrations = []
         async with lock.registry.global_graph_lock():
             async with db.start_transaction() as dbt:
@@ -197,6 +193,10 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 log.info("Branch graph rebased")
 
             if obj.has_schema_changes:
+                # Use the branch-creation (common-ancestor) schema as the migration baseline
+                migration_baseline_schema = (await merger.get_common_ancestor_schema()).duplicate()
+                pre_rebase_schema = registry.schema.get_schema_branch(name=obj.name).duplicate()
+
                 # Load the updated schema from DB after rebase
                 log.info("Loading rebased schema")
                 updated_schema = await registry.schema.load_schema_from_db(db=db, branch=obj)
