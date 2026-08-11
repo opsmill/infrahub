@@ -65,9 +65,15 @@ class PrefectEventData(PrefectEventModel):
         return None
 
     def get_related_nodes(self) -> list[dict[str, str]]:
+        # Group members and ancestors are related nodes carrying their own roles.
+        # Deduplicating by id keeps the output identical whether a member appears
+        # once (consolidated group event) or twice (older events that also listed
+        # it under the generic related-node role).
+        related_roles = {"infrahub.related.node", "infrahub.group.member", "infrahub.group.ancestor"}
         related_nodes = []
+        seen: set[str] = set()
         for resource in self.related:
-            if resource.get("prefect.resource.role") != "infrahub.related.node":
+            if resource.get("prefect.resource.role") not in related_roles:
                 continue
 
             node_id = resource.get("prefect.resource.id")
@@ -75,7 +81,8 @@ class PrefectEventData(PrefectEventModel):
             if node_id == self.resource.get("infrahub.node.id"):
                 # Don't include the primary node as a related node.
                 continue
-            if node_id and node_kind:
+            if node_id and node_kind and node_id not in seen:
+                seen.add(node_id)
                 related_nodes.append({"id": node_id, "kind": node_kind})
 
         return related_nodes

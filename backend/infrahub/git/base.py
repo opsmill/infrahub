@@ -191,6 +191,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     def default_branch(self) -> str:
         return self.default_branch_name or registry.default_branch
 
+    @abstractmethod
+    async def resolve_checkout_ref(self) -> str:
+        """Return the git ref the primary clone has to be checked out on, reading it from the graph if needed."""
+        raise NotImplementedError()
+
     @property
     def legacy_directory_root(self) -> Path:
         """Return the legacy path to the root directory for this repository."""

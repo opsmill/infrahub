@@ -89,6 +89,17 @@ schemas:
   </TabItem>
 </Tabs>
 
+## Inspect the loaded schema
+
+Once a schema is loaded, list the kinds available in your instance and inspect any one of them from the command line:
+
+```shell
+infrahubctl schema list [--filter <name>] [--branch <branch_name>]
+infrahubctl schema show <kind> [--branch <branch_name>]
+```
+
+`schema show` prints the attributes and relationships of a kind, which is useful when querying or creating objects with [`infrahubctl`](../objects/manage-from-cli).
+
 ## Troubleshooting
 
 ### Input should be a valid string (string_type)

@@ -82,6 +82,12 @@ ignore = [
     "TRY003",   # Avoid specifying long messages outside the exception class
 ]
 
+"tests/**.py" = [
+    # Test doubles override base methods, so the signature is dictated by the superclass
+    "ARG002",   # Unused method argument
+    "PLR6301",  # Method could be a function, class method, or static method
+]
+
 
 [tool.hatch.build.targets.sdist]
 include = [
