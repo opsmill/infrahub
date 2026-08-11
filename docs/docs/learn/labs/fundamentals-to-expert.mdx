@@ -1,0 +1,52 @@
+---
+title: 'Infrahub: Fundamentals to Expert'
+description: A 5-track sequence taking you from a fresh Infrahub instance to a fully automated site deployment.
+hide_table_of_contents: true
+---
+
+import ReferenceLink from "@site/src/components/StandoutLink";
+
+# Infrahub: fundamentals to expert
+
+|   |   |
+|------|---------|
+| **Prerequisites:** | No prior experience with Infrahub required |
+| **Time to Completion:** | Approximately 5 hours across all 5 tracks |
+
+:::info Hands-on Learning
+This sequence is supported by 5 chained Instruqt tracks. Instruqt is an online lab platform providing a pre-configured environment so you can focus on learning with hands-on experience.
+:::
+
+## Overview
+
+This sequence walks through Infrahub end to end, using one shared demo dataset — a network operator called OtterNet — across all 5 tracks. Each track picks up the data left behind by the one before it, so we recommend doing them in order — but you can also complete one track and come back for the rest later.
+
+## 1. Orientation
+
+Load a base schema, seed a two-site OtterNet topology (London and Amsterdam), and explore the data using the built-in GraphQL explorer in the Infrahub UI. You'll also access Infrahub programmatically via `infrahubctl` and the `InfrahubClientSync` Python SDK. By the end, you'll have a fully populated Infrahub instance ready for the tracks that follow.
+
+<ReferenceLink title="Track 1: Orientation" url="https://TODO-FILL-IN-track-1-orientation.example.com" openInNewTab />
+
+## 2. Schema modeling
+
+OtterNet standardizes its sites around reusable blueprints called Site Designs. Define an `OtnSiteDesign` generic hierarchy, extend the existing `LocationSite` node with new fields (ASN, design, management subnet), and build the resource pools and device templates a Generator will later draw from. You'll finish by bringing a new site — Munich — online and assigning it a design.
+
+<ReferenceLink title="Track 2: Schema Modeling" url="https://TODO-FILL-IN-track-2-schema-modeling.example.com" openInNewTab />
+
+## 3. Enforcement & Validation
+
+Learn how Infrahub enforces data quality at every layer: schema constraints that fire instantly, branch isolation that keeps every mutation off `main` until it's reviewed, Python checks that run on proposed changes, and Profiles that keep shared values consistent by construction.
+
+<ReferenceLink title="Track 3: Enforcement & Validation" url="https://TODO-FILL-IN-track-3-enforcement.example.com" openInNewTab />
+
+## 4. Design-driven Generator
+
+Write and run a Generator that reads OtterNet's campus site design and provisions every device at the new Munich site automatically — right device names, right resources, nothing typed by hand.
+
+<ReferenceLink title="Track 4: Design-Driven Generator" url="https://TODO-FILL-IN-track-4-generator.example.com" openInNewTab />
+
+## 5. Transforms & configuration rendering
+
+Close the loop: explore a Jinja2 Transform and render a complete, deployable router configuration for a Munich device, pulling every value — hostname, FQDN, management IP, BGP ASN — straight from the source of truth.
+
+<ReferenceLink title="Track 5: Transforms & Config Rendering" url="https://TODO-FILL-IN-track-5-transforms.example.com" openInNewTab />

@@ -59,28 +59,29 @@ const sidebars: SidebarsConfig = {
       collapsible: false,
       collapsed: false,
       items: [
-        { type: 'doc', id: 'academy/academy', label: 'About Academy' },
         {
           type: 'category',
-          label: 'Getting Started',
-          link: { type: 'generated-index' },
+          label: 'Labs',
+          link: { type: 'doc', id: 'learn/labs/overview' }, // hub
           items: [
-            'academy/getting-started/infrahub-introduction',
-            'academy/getting-started/deploy-first-configuration',
+            { type: 'doc', id: 'learn/labs/fundamentals-to-expert', label: 'Infrahub: Fundamentals to Expert' },
+            { type: 'doc', id: 'learn/labs/infrahub-introduction', label: 'First Tour of Infrahub' },
+            { type: 'doc', id: 'learn/labs/schema-deep-dive', label: 'Schema Deep Dive' },
+            'learn/labs/deploy-first-configuration',
           ],
         },
         {
           type: 'category',
           label: 'Tutorials',
-          link: { type: 'generated-index' },
+          link: { type: 'doc', id: 'learn/tutorials/overview' }, // hub
           items: [
-            'academy/tutorials/build-your-first-schema',
-            'academy/tutorials/groups',
-            'academy/tutorials/build-a-check',
-            'academy/tutorials/transformations/build-a-jinja2-transformation',
-            'academy/tutorials/transformations/build-a-python-transformation',
-            'academy/tutorials/generators/build-your-first-generator',
-            'academy/tutorials/generators/build-chained-generators',
+            'learn/tutorials/build-your-first-schema',
+            'learn/tutorials/groups',
+            'learn/tutorials/build-a-check',
+            'learn/tutorials/transformations/build-a-jinja2-transformation',
+            'learn/tutorials/transformations/build-a-python-transformation',
+            'learn/tutorials/generators/build-your-first-generator',
+            'learn/tutorials/generators/build-chained-generators',
           ],
         },
       ],
