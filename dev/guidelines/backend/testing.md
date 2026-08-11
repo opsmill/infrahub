@@ -278,7 +278,7 @@ Instead of mocking, design code with explicit boundaries using adapters, interfa
 
 Both implement the same `InfrahubMessageBus` protocol. Tests inject the test adapter—no mocking required, and refactoring the RabbitMQ implementation won't silently break tests.
 
-`BusRecorder` illustrates the two doubles worth writing for any injected collaborator. A **recording** double keeps what crossed the boundary, in order, so the test asserts the exact calls and values rather than "was called". A **failing** double raises on every call, to test the path a `Mock` never exercises: that a broken collaborator is handled the way the code claims — the operation still completes, state is intact, and anything queued behind it still runs. Keep both in the shared adapters package or a `helpers.py` beside the test package rather than redefining them per file.
+Two doubles are worth writing for any injected collaborator. A **recording** double — like `BusRecorder` — keeps what crossed the boundary, in order, so the test asserts the exact calls and values rather than "was called". A **failing** double raises on every call, to test the path a `Mock` never exercises: that a broken collaborator is handled the way the code claims — the operation still completes, state is intact, and anything queued behind it still runs. Keep both in the shared adapters package or a `helpers.py` beside the test package rather than redefining them per file.
 
 ### When mocking seems necessary
 
