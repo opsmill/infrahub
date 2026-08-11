@@ -20,6 +20,7 @@ export default mergeConfig(
         "lucide-react",
         "tailwind-variants",
         "tailwind-merge",
+        "@radix-ui/react-dropdown-menu",
         "@radix-ui/react-scroll-area",
         "react-resizable-panels",
         "@graphiql/plugin-explorer",
