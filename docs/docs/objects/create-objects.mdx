@@ -5,7 +5,11 @@ title: Create objects
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-How you create an object depends on what starts the work. Create objects directly through an Infrahub interface, declare them in a YAML file stored in Git alongside your schema, or configure a workflow that creates them from data you already have.
+How you create an object depends on what starts the work. There are three ways:
+
+- **[Directly](#create-objects-directly)** — create each object through the web interface, `infrahubctl`, the Python SDK, or GraphQL. Use this when you are deciding what to create as you go.
+- **[From a file](#create-objects-from-a-file)** — declare objects in YAML kept in Git, then load the file. Use this when the data should be reviewed and versioned like code.
+- **[From a workflow](#create-objects-from-a-workflow)** — configure a Generator or Infrahub Sync once, and it creates objects from data you already have. Use this when a rule or another system determines what should exist.
 
 ## Create objects directly
 
@@ -122,7 +126,7 @@ There are two ways to load a file, and they differ in what happens afterwards. `
 
 ## Create objects from a workflow
 
-Generators and Infrahub Sync both run from a configuration you set up, rather than from a command you type each time.
+Both run from a configuration you set up, rather than from a command you type each time. A Generator works from data already in Infrahub. Infrahub Sync works from data in another system.
 
 ### Generators
 
