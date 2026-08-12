@@ -1,18 +1,61 @@
 import uuid
+from collections.abc import Iterator
 from datetime import timedelta
 
+import pytest
 from prefect.events.schemas.automations import Automation, EventTrigger, Posture
 
+from infrahub import config
 from infrahub.computed_attribute.constants import (
     PROCESS_AUTOMATION_NAME,
     PROCESS_AUTOMATION_NAME_PREFIX,
     QUERY_AUTOMATION_NAME,
     QUERY_AUTOMATION_NAME_PREFIX,
 )
-from infrahub.computed_attribute.models import ComputedAttributeAutomations, ComputedAttrJinja2GraphQL
+from infrahub.computed_attribute.models import (
+    ComputedAttributeAutomations,
+    ComputedAttrJinja2GraphQL,
+    _restrict_to_live_origin,
+)
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
+from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
+
+
+@pytest.fixture
+def coalescing_disabled() -> Iterator[None]:
+    original = config.SETTINGS.main.coalesce_python_recompute_after_merge
+    config.SETTINGS.main.coalesce_python_recompute_after_merge = False
+    yield
+    config.SETTINGS.main.coalesce_python_recompute_after_merge = original
+
+
+def test_python_automations_ignore_a_merge_when_the_pass_covers_it() -> None:
+    """A merge writes with its own origin, and the coalesced pass is what refreshes those nodes.
+
+    Leaving the automation open to them is the per-node fan-out this feature removes.
+    """
+    event_trigger = EventTrigger()
+    # Assigned as a plain dict, the way every trigger builder in this module builds it.
+    event_trigger.match = {"infrahub.node.kind": "TestingTShirt"}
+
+    _restrict_to_live_origin(event_trigger)
+
+    assert event_trigger.match[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE.value
+
+
+@pytest.mark.usefixtures("coalescing_disabled")
+def test_python_automations_stay_open_to_every_origin_when_the_switch_is_off() -> None:
+    """Turning the switch off has to give back today's behaviour, automations included."""
+    event_trigger = EventTrigger()
+    # Assigned as a plain dict, the way every trigger builder in this module builds it.
+    event_trigger.match = {"infrahub.node.kind": "TestingTShirt"}
+
+    _restrict_to_live_origin(event_trigger)
+
+    assert NODE_ORIGIN_LABEL not in event_trigger.match
+    assert event_trigger.match == {"infrahub.node.kind": "TestingTShirt"}
 
 
 def _build_schema(

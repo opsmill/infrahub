@@ -103,13 +103,13 @@
 
 ### Convergence and suppression
 
-- [ ] T036 [US1] Wait for the schema to converge before concluding a branch has no Python computed attribute to refresh, in `backend/infrahub/computed_attribute/tasks.py`
-- [ ] T037 [US1] Add the origin filter to both Python trigger builders in `backend/infrahub/computed_attribute/models.py`, gated on the feature switch
-- [ ] T038 [US1] Switch the coalesced merge and rebase path to coalesced-mode writes so chains leave through the chain submitter, keeping the live path unchanged
+- [x] T036 [US1] Wait for the schema to converge before concluding a branch has no Python computed attribute to refresh, in `backend/infrahub/computed_attribute/tasks.py`
+- [x] T037 [US1] Add the origin filter to both Python trigger builders in `backend/infrahub/computed_attribute/models.py`, gated on the feature switch
+- [x] T038 [US1] Switch the coalesced merge and rebase path to coalesced-mode writes so chains leave through the chain submitter, keeping the live path unchanged. Done: the submitter already stamps `coalesced` on a Python submission (T014) and T033 made the flow honour it, so the write takes the recompute origin and the dispatcher hands the next level to the chain submitter
 
 ### Tests
 
-- [ ] T039 [P] [US1] Unit-test the trigger shape including the origin filter in `backend/tests/unit/computed_attribute/test_models.py`
+- [x] T039 [P] [US1] Unit-test the trigger shape including the origin filter in `backend/tests/unit/computed_attribute/test_models.py`
 - [ ] T040 [US1] Component-test the end-to-end submission shape in `backend/tests/component/merge_recompute_coalescing/test_merge_submits_coalesced.py`
 - [ ] T041 [US1] Add a flow-run count assertion to `backend/tests/integration_docker/test_merge_recompute.py`, parametrised over **merge and rebase**: across an operation touching about twenty nodes, no Python run carries a single object id, and the count per pair follows the chunk limit. The rebase arm covers FR-003 and US1 AS3, which the wiring in T031 would otherwise leave untested
 - [ ] T042 [US1] Add `backend/tests/integration_docker/test_merge_recompute_chain.py` covering the cross-family chain in both directions, template-based to Python and Python to template-based

@@ -9,6 +9,7 @@ from prefect.events.schemas.automations import Automation  # noqa: TC002
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing_extensions import Self
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, NodeSchema  # noqa: TC001
@@ -244,6 +245,8 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
         if update_fields:
             event_trigger.match_related["infrahub.field.name"] = update_fields
 
+        _restrict_to_live_origin(event_trigger)
+
         return cls(
             name=computed_attribute.computed_attribute.key_name,
             branch=branch,
@@ -269,6 +272,18 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
                 ),
             ],
         )
+
+
+def _restrict_to_live_origin(event_trigger: EventTrigger) -> None:
+    """Keep a Python transform automation off the writes the coalesced pass already covers.
+
+    Without it a merge fires one automation per changed node, which is the fan-out this pass
+    replaces. The switch is read here rather than passed in because the automations are rebuilt
+    from the schema by several callers, none of which owns the decision.
+    """
+    if not config.SETTINGS.main.coalesce_python_recompute_after_merge:
+        return
+    event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
 
 
 class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
@@ -301,6 +316,8 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
             event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
         elif not branches_out_of_scope and branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
+
+        _restrict_to_live_origin(event_trigger)
 
         return cls(
             name=f"{computed_attribute.computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",

@@ -11,9 +11,11 @@ from infrahub.computed_attribute.tasks import (
 )
 from infrahub.core.constants import ComputedAttributeKind
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
-from infrahub.core.schema import AttributeSchema, NodeSchema
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.core.schema.schema_branch import SchemaBranch
 
+OWNER_KIND = "TestingTShirt"
 PYTHON_ATTRIBUTE_NAME = "pitch"
 JINJA2_ATTRIBUTE_NAME = "summary"
 
@@ -22,10 +24,11 @@ def _write(node_id: str, value: Any) -> AttributeValueWrite:
     return AttributeValueWrite(node_id=node_id, field="desc", value=value)
 
 
-def _node_schema() -> NodeSchema:
-    return NodeSchema(
+def _schema_branch() -> SchemaBranch:
+    node = NodeSchema(
         name="TShirt",
         namespace="Testing",
+        label="T Shirt",
         attributes=[
             AttributeSchema(name="name", kind="Text"),
             AttributeSchema(
@@ -48,6 +51,10 @@ def _node_schema() -> NodeSchema:
             ),
         ],
     )
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(nodes=[node]))
+    schema_branch.process()
+    return schema_branch
 
 
 def test_partition_transform_results_persists_only_string_values() -> None:
@@ -87,7 +94,7 @@ def test_only_the_named_python_attribute_is_selected() -> None:
 
     A kind with several of them would otherwise do the work once per attribute per submission.
     """
-    selected = _python_transform_attribute(node_schema=_node_schema(), name=PYTHON_ATTRIBUTE_NAME)
+    selected = _python_transform_attribute(schema_branch=_schema_branch(), kind=OWNER_KIND, name=PYTHON_ATTRIBUTE_NAME)
 
     assert selected is not None
     assert selected.transform == "TestingPitch"
@@ -96,7 +103,16 @@ def test_only_the_named_python_attribute_is_selected() -> None:
 @pytest.mark.parametrize("name", [JINJA2_ATTRIBUTE_NAME, "name", "absent"])
 def test_a_non_python_or_missing_attribute_is_a_no_op(name: str) -> None:
     """A stale submission finds nothing to do rather than raising: the schema can change under it."""
-    assert _python_transform_attribute(node_schema=_node_schema(), name=name) is None
+    assert _python_transform_attribute(schema_branch=_schema_branch(), kind=OWNER_KIND, name=name) is None
+
+
+def test_a_kind_absent_from_the_schema_is_a_no_op() -> None:
+    """A kind this worker has not loaded yet must not raise, or the whole batch fails."""
+    absent = _python_transform_attribute(
+        schema_branch=_schema_branch(), kind="TestingAbsent", name=PYTHON_ATTRIBUTE_NAME
+    )
+
+    assert absent is None
 
 
 @pytest.mark.parametrize("flow", [process_transform, trigger_update_python_computed_attributes])

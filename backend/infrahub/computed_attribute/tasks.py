@@ -51,8 +51,10 @@ from .scoping import (
 from .transform_recompute import TransformRecomputeSubmitter
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import NodeSchema
+    import logging
+
     from infrahub.core.schema.computed_attribute import ComputedAttribute
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
     from infrahub.graphql.analyzer import GraphQLQueryReport
@@ -164,13 +166,15 @@ def _partition_transform_results(
     return writes, skipped
 
 
-def _python_transform_attribute(*, node_schema: NodeSchema, name: str) -> ComputedAttribute | None:
-    """The named Python computed attribute of a kind, or ``None`` when the kind has no such attribute.
+def _python_transform_attribute(*, schema_branch: SchemaBranch, kind: str, name: str) -> ComputedAttribute | None:
+    """The named Python computed attribute of a kind, or ``None`` when this schema has no such thing.
 
-    A missing attribute is a stale submission rather than an error: the schema can change between
-    the moment the work is scheduled and the moment it runs.
+    A missing kind or attribute is a stale submission rather than an error: the schema can change
+    between the moment the work is scheduled and the moment it runs.
     """
-    for attribute in node_schema.attributes:
+    if not schema_branch.has(name=kind):
+        return None
+    for attribute in schema_branch.get_node(name=kind, duplicate=False).attributes:
         if (
             attribute.name == name
             and attribute.computed_attribute
@@ -178,6 +182,14 @@ def _python_transform_attribute(*, node_schema: NodeSchema, name: str) -> Comput
         ):
             return attribute.computed_attribute
     return None
+
+
+async def _converged_schema_branch(*, branch_name: str, log: logging.Logger | logging.LoggerAdapter) -> SchemaBranch:
+    """Re-read the branch schema once every active worker agrees on it."""
+    database = await get_database()
+    async with database.start_session() as db:
+        await wait_for_schema_to_converge(branch_name=branch_name, component=await get_component(), db=db, log=log)
+    return registry.schema.get_schema_branch(name=branch_name)
 
 
 @flow(
@@ -219,8 +231,17 @@ async def process_transform(
     client.request_context = context.to_request_context()
 
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
-    node_schema = schema_branch.get_node(name=computed_attribute_kind, duplicate=False)
-    transform_attribute = _python_transform_attribute(node_schema=node_schema, name=computed_attribute_name)
+    transform_attribute = _python_transform_attribute(
+        schema_branch=schema_branch, kind=computed_attribute_kind, name=computed_attribute_name
+    )
+    if transform_attribute is None:
+        # A merge that also carries the schema can schedule this before every worker has caught up
+        # on it. Concluding "nothing to refresh" from a schema this worker has not loaded yet loses
+        # the value for good, so pay the wait only on the path that would otherwise give up.
+        schema_branch = await _converged_schema_branch(branch_name=branch_name, log=log)
+        transform_attribute = _python_transform_attribute(
+            schema_branch=schema_branch, kind=computed_attribute_kind, name=computed_attribute_name
+        )
     if transform_attribute is None:
         return
 
