@@ -12,8 +12,10 @@ COMMAND_MAP = {
     "git.file.get": git.file.get,
     "git.repository.connectivity": git.repository.connectivity,
     "refresh.git.fetch": git.repository.fetch,
+    "refresh.git.branch_deleted": git.repository.branch_deleted,
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
+    "refresh.settings.response_delay": refresh.settings.response_delay,
     "send.echo.request": send.echo.request,
 }
 
@@ -29,7 +31,8 @@ async def execute_message(
         if skip_flow and isinstance(func, Flow):
             func = func.fn
         await func(message=message)
-    except Exception as exc:
+    # Message-bus boundary: any handler failure must be routed to the reply/retry/dead-letter protocol, never crash the consumer
+    except Exception as exc:  # noqa: BLE001
         if message.reply_requested:
             response = RPCErrorResponse(errors=[str(exc)], initial_message=message.model_dump())
             await message_bus.reply_if_initiator_meta(message=response, initiator=message)

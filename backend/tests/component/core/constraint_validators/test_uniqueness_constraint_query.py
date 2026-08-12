@@ -14,11 +14,11 @@ from infrahub.database import InfrahubDatabase
 
 async def test_query_uniqueness_no_violations(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_yaris_main,
-    car_prius_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    car_prius_main: Node,
     branch: Branch,
 ) -> None:
     query = await NodeUniqueAttributeConstraintQuery.init(
@@ -37,7 +37,11 @@ async def test_query_uniqueness_no_violations(
 
 
 async def test_query_uniqueness_one_violation(
-    db: InfrahubDatabase, car_accord_main, car_prius_main, branch: Branch, default_branch: Branch
+    db: InfrahubDatabase,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    branch: Branch,
+    default_branch: Branch,
 ) -> None:
     query = await NodeUniqueAttributeConstraintQuery.init(
         db=db,
@@ -63,8 +67,8 @@ async def test_query_uniqueness_one_violation(
 
 async def test_query_uniqueness_deleted_node_ignored(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
+    car_accord_main: Node,
+    car_prius_main: Node,
     branch: Branch,
 ) -> None:
     node_to_delete = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
@@ -88,8 +92,8 @@ async def test_query_uniqueness_deleted_node_ignored(
 
 async def test_query_uniqueness_get_latest_update(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
+    car_accord_main: Node,
+    car_prius_main: Node,
     branch: Branch,
 ) -> None:
     car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
@@ -114,9 +118,9 @@ async def test_query_uniqueness_get_latest_update(
 
 async def test_query_uniqueness_cross_branch_conflict(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
-    person_john_main,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    person_john_main: Node,
     default_branch: Branch,
 ) -> None:
     branch_2 = await create_branch(branch_name="branch2", db=db)
@@ -165,10 +169,10 @@ async def test_query_uniqueness_cross_branch_conflict(
 
 async def test_query_uniqueness_multiple_attribute_violations(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
-    car_volt_main,
-    car_camry_main,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    car_volt_main: Node,
+    car_camry_main: Node,
     branch: Branch,
     default_branch: Branch,
 ) -> None:
@@ -233,10 +237,10 @@ async def test_query_uniqueness_multiple_attribute_violations(
 
 async def test_query_relationship_uniqueness_no_violations(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
-    person_jane_main,
-    person_john_main,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    person_jane_main: Node,
+    person_john_main: Node,
     branch: Branch,
 ) -> None:
     car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
@@ -267,10 +271,10 @@ async def test_query_relationship_uniqueness_no_violations(
 
 async def test_query_relationship_uniqueness_one_violation(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
-    person_jane_main,
-    person_john_main,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    person_jane_main: Node,
+    person_john_main: Node,
     branch: Branch,
     default_branch: Branch,
 ) -> None:
@@ -322,10 +326,10 @@ async def test_query_relationship_uniqueness_one_violation(
 
 async def test_query_relationship_and_attribute_uniqueness_violations(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
-    person_jane_main,
-    person_john_main,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    person_jane_main: Node,
+    person_john_main: Node,
     branch: Branch,
     default_branch: Branch,
 ) -> None:
@@ -394,10 +398,10 @@ async def test_query_relationship_and_attribute_uniqueness_violations(
 
 async def test_query_relationship_violation_no_attribute(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
-    car_camry_main,
-    person_john_main,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    car_camry_main: Node,
+    person_john_main: Node,
     branch: Branch,
     default_branch: Branch,
 ) -> None:
@@ -529,7 +533,7 @@ async def test_query_relationship_no_violation_same_peer_different_rels(
 
 
 async def test_query_response_min_count_0_attribute_paths(
-    db: InfrahubDatabase, car_accord_main, car_prius_main, branch: Branch, default_branch: Branch
+    db: InfrahubDatabase, car_accord_main: Node, car_prius_main: Node, branch: Branch, default_branch: Branch
 ) -> None:
     expected_result_dicts = [
         {
@@ -587,7 +591,7 @@ async def test_query_response_min_count_0_attribute_paths(
 
 
 async def test_query_response_min_count_0_relationship_paths(
-    db: InfrahubDatabase, car_camry_main, car_prius_main, branch: Branch, default_branch: Branch
+    db: InfrahubDatabase, car_camry_main: Node, car_prius_main: Node, branch: Branch, default_branch: Branch
 ) -> None:
     expected_result_dicts = [
         {
@@ -645,7 +649,7 @@ async def test_query_response_min_count_0_relationship_paths(
 
 
 async def test_query_response_min_count_0_attribute_paths_with_value(
-    db: InfrahubDatabase, car_accord_main, car_prius_main, branch: Branch, default_branch: Branch
+    db: InfrahubDatabase, car_accord_main: Node, car_prius_main: Node, branch: Branch, default_branch: Branch
 ) -> None:
     expected_result_dicts = [
         {
@@ -695,7 +699,7 @@ async def test_query_response_min_count_0_attribute_paths_with_value(
 
 
 async def test_query_response_min_count_0_relationship_paths_with_value(
-    db: InfrahubDatabase, car_camry_main, car_prius_main, branch: Branch, default_branch: Branch
+    db: InfrahubDatabase, car_camry_main: Node, car_prius_main: Node, branch: Branch, default_branch: Branch
 ) -> None:
     expected_result_dicts = [
         {

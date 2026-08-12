@@ -22,7 +22,7 @@ class FixBranchLevelZeroQuery(Query):
     insert_return = False
     raise_error_if_empty = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
 
         query = """
@@ -41,8 +41,7 @@ class FixBranchLevelZeroQuery(Query):
 
 
 class Migration053(GraphMigration):
-    """
-    Fix edges with branch_level=0 to have the correct branch_level.
+    """Fix edges with branch_level=0 to have the correct branch_level.
 
     Edges with branch_level=0 indicate a bug where the branch level was not
     properly set during creation. This migration fixes them:
@@ -51,6 +50,7 @@ class Migration053(GraphMigration):
     """
 
     name: str = "053_fix_branch_level_zero"
+    description: str = "N/A"
     minimum_version: int = 52
     queries: Sequence[type[Query]] = [FixBranchLevelZeroQuery]
 

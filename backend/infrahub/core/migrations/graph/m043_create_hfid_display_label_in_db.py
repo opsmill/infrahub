@@ -13,7 +13,6 @@ from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
     MigrationResult,
-    get_migration_console,
 )
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
@@ -29,7 +28,7 @@ class GetAddedNodesByKindForBranchQuery(Query):
     type = QueryType.READ
     insert_return = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["branch"] = self.branch.name
         query = """
 MATCH (n:Node)-[e:IS_PART_OF {branch: $branch, status: "active"}]->(:Root)
@@ -51,6 +50,7 @@ WITH n.kind AS kind, collect(n.uuid) AS node_ids
 
 class Migration043(MigrationRequiringRebase):
     name: str = "043_create_hfid_display_label_in_db"
+    description: str = "N/A"
     minimum_version: int = 42
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
@@ -105,7 +105,7 @@ class Migration043(MigrationRequiringRebase):
                 ]
             )
 
-        with Progress(console=get_migration_console()) as progress:
+        with Progress(console=migration_input.console) as progress:
             update_task = progress.add_task("Adding HFID and display label to nodes", total=len(migrations))
 
             for migration in migrations:
@@ -113,7 +113,8 @@ class Migration043(MigrationRequiringRebase):
                     execution_result = await migration.execute(migration_input=migration_input, branch=default_branch)
                     result.errors.extend(execution_result.errors)
                     progress.update(update_task, advance=1)
-                except Exception as exc:
+                # First failing sub-migration is recorded as a result error and aborts the remaining steps
+                except Exception as exc:  # noqa: BLE001
                     result.errors.append(str(exc))
                     return result
 
@@ -155,7 +156,7 @@ class Migration043(MigrationRequiringRebase):
                 ]
             )
 
-        with Progress(console=get_migration_console()) as progress:
+        with Progress(console=migration_input.console) as progress:
             update_task = progress.add_task(
                 f"Adding HFID and display label to nodes on branch {branch.name}", total=len(migrations)
             )
@@ -165,7 +166,8 @@ class Migration043(MigrationRequiringRebase):
                     execution_result = await migration.execute(migration_input=migration_input, branch=branch)
                     result.errors.extend(execution_result.errors)
                     progress.update(update_task, advance=1)
-                except Exception as exc:
+                # First failing sub-migration is recorded as a result error and aborts the remaining steps
+                except Exception as exc:  # noqa: BLE001
                     result.errors.append(str(exc))
                     return result
 

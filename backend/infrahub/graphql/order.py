@@ -10,5 +10,4 @@ def deserialize_order_input(input_data: dict[str, Any] | None) -> OrderModel | N
     if not input_data:
         return None
 
-    order_model = OrderModel(**input_data)
-    return order_model
+    return OrderModel(**input_data)

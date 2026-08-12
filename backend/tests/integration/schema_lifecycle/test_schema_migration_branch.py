@@ -145,7 +145,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         await blue.new(db=db, name="blue", cars=[accord, civic], persons=[jane])
         await blue.save(db=db, user_id="blue-creator")
 
-        objs = {
+        return {
             "john": john.id,
             "jane": jane.id,
             "richard": richard.id,
@@ -161,8 +161,6 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
             "red": red.id,
             "green": green.id,
         }
-
-        return objs
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, branch=self.branch1)

@@ -3,15 +3,15 @@ from graphene.types.field import Field
 
 from infrahub.core import attribute
 from infrahub.graphql import types
-from infrahub.types import ATTRIBUTE_TYPES
+from infrahub.types import ATTRIBUTE_PYTHON_TYPES, ATTRIBUTE_TYPES
 
 
 @pytest.mark.parametrize(
     "test_case",
-    [pytest.param(attribute_name, id=attribute_name) for attribute_name in ATTRIBUTE_TYPES.keys()],
+    [pytest.param(attribute_name, id=attribute_name) for attribute_name in ATTRIBUTE_TYPES],
 )
 def test_attribute_types_allowed_property_path(test_case: str) -> None:
-    """Validates that the get_allowed_property_in_path() method returns the correct fields for all types
+    """Validates that the get_allowed_property_in_path() method returns the correct fields for all types.
 
     This ensures that we can use the entries properly when evaluating the schema path for instance with the
     computed attributes
@@ -19,7 +19,7 @@ def test_attribute_types_allowed_property_path(test_case: str) -> None:
     attribute_type = ATTRIBUTE_TYPES[test_case]
 
     graphql_query_type = getattr(types, attribute_type.graphql_query)
-    include_binary_address = test_case in ["IPHost", "IPNetwork"]
+    include_binary_address = test_case in {"IPAddress", "IPHost", "IPNetwork"}
     path_list = _get_path_field_list(
         include_binary_address=include_binary_address, fields=graphql_query_type._meta.fields
     )
@@ -27,13 +27,17 @@ def test_attribute_types_allowed_property_path(test_case: str) -> None:
     assert path_list == infrahub_type.get_allowed_property_in_path()
 
 
+def test_attribute_python_types_cover_every_kind() -> None:
+    """Every attribute kind needs a python type, the REST schema endpoint looks it up unguarded."""
+    assert set(ATTRIBUTE_PYTHON_TYPES) == set(ATTRIBUTE_TYPES)
+
+
 def _get_path_field_list(include_binary_address: bool, fields: dict[str, Field]) -> list[str]:
-    """Return list of valid property paths for the specified type"""
+    """Return list of valid property paths for the specified type."""
     excluded_fields = [
         "id",
         "is_default",
         "is_from_profile",
-        "is_inherited",
         "is_protected",
         "owner",
         "source",
@@ -42,8 +46,6 @@ def _get_path_field_list(include_binary_address: bool, fields: dict[str, Field])
         "updated_by",
     ]
     included = ["binary_address"] if include_binary_address else []
-    for name in fields.keys():
-        if name not in excluded_fields:
-            included.append(name)
+    included.extend(name for name in fields if name not in excluded_fields)
 
     return sorted(included)

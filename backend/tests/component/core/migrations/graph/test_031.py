@@ -2,8 +2,10 @@ import pytest
 from infrahub_sdk.client import InfrahubClient
 
 from infrahub import config
+from infrahub.core.branch.models import Branch
 from infrahub.core.migrations.graph.m031_check_number_attributes import Migration031
 from infrahub.core.migrations.shared import MigrationInput
+from infrahub.database import InfrahubDatabase
 from tests.helpers.test_app import TestInfrahubApp
 
 schema_number_parameters = {
@@ -32,7 +34,9 @@ class TestMigration031(TestInfrahubApp):
         response = await client.schema.load(schemas=[schema_number_parameters])
         assert len(response.errors) == 0, response.errors
 
-    async def test_migration_031(self, db, client: InfrahubClient, load_schema, branch) -> None:
+    async def test_migration_031(
+        self, db: InfrahubDatabase, client: InfrahubClient, load_schema: None, branch: Branch
+    ) -> None:
         strict_mode_original_value = config.SETTINGS.main.schema_strict_mode
 
         # Set strict mode to allow creating invalid attribute
@@ -42,7 +46,7 @@ class TestMigration031(TestInfrahubApp):
         await node.save()
 
         # Run the migration without strict mode, nothing should happen
-        migration = Migration031(db=db)
+        migration = Migration031()
         execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not execution_result.errors
         validation_result = await migration.validate_migration(db=db)
@@ -69,7 +73,7 @@ class TestMigration031(TestInfrahubApp):
 
         # Run the migration with strict mode to make sure it doesn't raise an error now that the node has been fixed
         config.SETTINGS.main.schema_strict_mode = True
-        migration = Migration031(db=db)
+        migration = Migration031()
         execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not execution_result.errors
 

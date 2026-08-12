@@ -1,4 +1,5 @@
 import type { components } from "@/shared/api/rest/types.generated";
+import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import type { ProfileData } from "@/shared/components/form/object-form";
 import type {
   DynamicAttributeFieldProps,
@@ -12,24 +13,30 @@ import { getFieldDefaultValue } from "@/shared/components/form/utils/getFieldDef
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isRequired } from "@/shared/components/form/utils/validation";
 
-import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeObject } from "@/entities/nodes/types";
-import type { NumberPool } from "@/entities/resource-manager/domain/type";
-import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import type {
+  NodeAttributeWithMetadata,
+  NodeObject,
+} from "@/entities/nodes/object/domain/model/node";
+import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
+import { NUMBER_POOL_KIND } from "@/entities/resource-manager/domain/model/pool";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type {
   AttributeKind,
   AttributeSchema,
   ModelSchema,
   NumberAttributeParameters,
   TextAttributeParameters,
-} from "@/entities/schema/types";
-import { validateNumberAttribute } from "@/entities/schema/utils/validation/validate-number-attribute";
-import { validateTextAttribute } from "@/entities/schema/utils/validation/validate-text-attribute";
+} from "@/entities/schema/domain/model/schema";
+import { validateIpAddressAttribute } from "@/entities/schema/domain/rules/validation/validate-ip-address-attribute";
+import { validateNumberAttribute } from "@/entities/schema/domain/rules/validation/validate-number-attribute";
+import { validateTextAttribute } from "@/entities/schema/domain/rules/validation/validate-text-attribute";
 
 export const getFormFieldFromAttribute = ({
   auth,
+  isDefaultBranch,
   attributeSchema,
   currentObject,
   objectTemplate,
@@ -41,6 +48,7 @@ export const getFormFieldFromAttribute = ({
   profiles,
 }: {
   auth: AuthContextType | undefined;
+  isDefaultBranch: boolean | undefined;
   attributeSchema: AttributeSchema;
   currentObject: Record<string, AttributeType> | undefined;
   objectTemplate: NodeObject | null | undefined;
@@ -58,7 +66,7 @@ export const getFormFieldFromAttribute = ({
     label: attributeSchema.label ?? undefined,
     defaultValue: getFieldDefaultValue({
       fieldSchema: attributeSchema,
-      initialObject: currentObject,
+      initialObject: currentObject as Record<string, NodeAttributeWithMetadata> | undefined,
       objectTemplate,
       profiles,
       isFilterForm,
@@ -68,6 +76,7 @@ export const getFormFieldFromAttribute = ({
     attribute: attributeSchema,
     disabled: isFieldDisabled({
       auth,
+      isDefaultBranch,
       owner: attributeData?.owner,
       isProtected: !!attributeData?.is_protected,
       permissions: { update: attributeData?.permissions?.update_value },
@@ -82,6 +91,7 @@ export const getFormFieldFromAttribute = ({
       required: !isFilterForm && !isBulkUpdate && !attributeSchema.optional,
       validate: (formFieldValue: FormFieldValue) => {
         if (isFilterForm || isBulkUpdate) return true;
+
         if (formFieldValue.source?.type === "pool") return true;
 
         const attributeKind = attributeSchema.kind as AttributeKind;
@@ -114,6 +124,15 @@ export const getFormFieldFromAttribute = ({
           }
         }
 
+        // IPAddress has no parameters, so this check sits outside the block above
+        if (attributeKind === ATTRIBUTE_KIND.IP_ADDRESS) {
+          const validation = validateIpAddressAttribute(
+            { isRequired: !attributeSchema.optional },
+            formFieldValue.value as string | null
+          );
+          return validation.success || validation.error;
+        }
+
         if (attributeSchema.optional) return true;
         return isRequired(formFieldValue);
       },
@@ -126,7 +145,7 @@ export const getFormFieldFromAttribute = ({
       type: ATTRIBUTE_KIND.DROPDOWN,
       schema,
       items: (attributeSchema.choices ?? []).map(
-        (choice: components["schemas"]["DropdownChoice"]) => ({
+        (choice: components["schemas"]["DropdownChoiceRead"]) => ({
           value: choice.name,
           label: choice.label ?? choice.name,
           color: choice.color ?? undefined,
@@ -152,10 +171,20 @@ export const getFormFieldFromAttribute = ({
   if (attributeSchema.kind === ATTRIBUTE_KIND.NUMBER) {
     const numberPools = pools?.filter((pool) => pool.attributeName === attributeSchema.name);
 
+    const fromPoolName = `${attributeSchema.name}${FROM_RESOURCE_POOL_SUFFIX}`;
+    const hasFromPoolRelationship = schema.relationships?.some((r) => r.name === fromPoolName);
+
     const dropdownField: DynamicNumberFieldProps = {
       ...basicFormFieldProps,
       type: "Number",
       pools: numberPools,
+      pool: hasFromPoolRelationship
+        ? {
+            kind: NUMBER_POOL_KIND,
+            defaultAllocatedObjectKind: schema.kind!,
+            fromPoolRelationshipName: fromPoolName,
+          }
+        : undefined,
     };
 
     return dropdownField;

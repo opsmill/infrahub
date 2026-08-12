@@ -65,8 +65,7 @@ class TestNumberPoolSingleInstanceAcrossBranches(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
     ) -> Branch:
-        branch = await create_branch(db=db, branch_name="numberpool-single-instance-branch")
-        return branch
+        return await create_branch(db=db, branch_name="numberpool-single-instance-branch")
 
     @pytest.fixture(scope="class")
     async def load_schema_on_default(

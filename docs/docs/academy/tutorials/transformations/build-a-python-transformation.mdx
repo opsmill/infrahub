@@ -1,0 +1,538 @@
+---
+title: Build a Python Transformation
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Build a Python Transformation
+
+By the end of this tutorial you will have built a working Python Transformation end-to-end: loaded a small network-device schema, created a few sample devices, written a GraphQL query that filters by device name, implemented a `DeviceConfigTransform` Python class that returns a JSON object derived from the response, registered it in `.infrahub.yml`, tested it locally with `infrahubctl transform`, and called the Transformation via the REST API. You'll leave with both the raw-dictionary and SDK-converted patterns side by side so you can pick the one that fits the next Transformation you write.
+
+For conceptual background, see [Transformations](../../../transformations/overview). For a recipe-form how-to without the running example, see [Write a Python transformation](../../../transformations/python).
+
+Within Infrahub a [Transformation](../../../transformations/overview) is defined in an [external repository](../../../git-integration/connect-repository). However, during development and troubleshooting it is easiest to start from your local computer and run the Transformation using [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform).
+
+The tutorial follows these steps:
+
+1. Identify the relevant data you want to extract from the database using a [GraphQL query](../../../development-resources/graphql/overview), that can take an input parameter to filter the data
+2. Write a Python script that uses the GraphQL query to read information from the system and transform the data into a new format
+3. Create an entry for the Transformation within an `.infrahub.yml` file
+4. Create a Git repository
+5. Test the Transformation with `infrahubctl`
+6. Add the repository to Infrahub as an external repository
+7. Validate that the Transformation works using the Transformation API endpoint
+
+## 1. Loading a schema
+
+This tutorial uses a very simplistic network device model. The Transformation won't be very useful on its own — the goal is to show how Transformations are created. Once you've mastered the basics you'll be ready to create more advanced Transformations.
+
+```yaml
+---
+version: "1.0"
+nodes:
+  - name: Device
+    namespace: Network
+    display_label: "{{ name__value }}"
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        unique: true
+      - name: description
+        kind: Text
+        label: Description
+        optional: true
+```
+
+Store the schema as a YAML file on your local disk, and load the schema into Infrahub using the following command
+
+```bash
+infrahubctl schema load /path/to/schema.yml
+```
+
+## 2. Creating a query to collect the desired data
+
+As the first step we need some data in the database to actually query.
+
+Create three devices, called "switch1", "switch2", "switch3", either using the frontend or by submitting three GraphQL mutations as per below (swapping out the name each time).
+
+```graphql
+mutation CreateDevice {
+  NetworkDeviceCreate(
+    data: {name: {value: "switch1"}, description: {value: "This is device switch1"}}
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+The next step is to create a query that returns the data we created above. The rest of this tutorial assumes that the following query will return a response similar to the response below the query.
+
+:::warning Single-target query requirement
+For proper artifact detection, your query must target a **unique node** using a unique attribute or ID. This ensures Infrahub only regenerates the necessary artifacts instead of regenerating all artifacts unnecessarily.
+
+**Requirements for a valid single-target query:**
+
+- Must filter on a unique identifier (ID or unique attribute like `name`)
+- Must use a required variable, for example, `$name: String!`
+- Must use exact match filters, for example, `name__value: $name`, not list filters, for example, `name__values: $name`
+
+**Valid example:**
+
+```graphql
+query BuiltinTag($name: String!) {
+  BuiltinTag(name__value: $name) {
+    edges { node { id } }
+  }
+}
+```
+
+**Invalid examples (will cause excessive artifact generation):**
+
+No filter at all:
+
+```graphql
+query BuiltinTag {
+  BuiltinTag {
+    edges { node { id } }
+  }
+}
+```
+
+Filtering on a non-unique attribute:
+
+```graphql
+query BuiltinTag($description: String!) {
+  BuiltinTag(description__value: $description) {
+    edges { node { id } }
+  }
+}
+```
+
+To learn more about single-target queries and why they are important, see the [GraphQL topic](../../../development-resources/graphql/single-target-queries).
+:::
+
+:::info Convert query to Infrahub SDK objects
+We provide `convert_query_response` option to be toggled to be able to access objects from the GraphQL query as Infrahub SDK objects rather than the raw dictionary response.
+
+This allows you to manage the returned data with helper methods on the SDK objects such as `save`, `fetch`, etc. on the returned data rather than having to build a payload to send back to Infrahub to manage the objects.
+
+Read more on the [Infrahub Python SDK]($(base_url)python-sdk/introduction).
+:::
+
+<Tabs groupId="convertResponse" queryString>
+  <TabItem value="Non-converted query response">
+```graphql
+query DeviceQuery {
+  NetworkDevice {
+    edges {
+      node {
+        name {
+          value
+        }
+        description {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+Response to the query:
+
+```json
+{
+  "data": {
+    "NetworkDevice": {
+      "edges": [
+        {
+          "node": {
+            "name": {
+              "value": "switch1"
+            },
+            "description": {
+              "value": "This is device switch1"
+            }
+          }
+        },
+        {
+          "node": {
+            "name": {
+              "value": "switch2"
+            },
+            "description": {
+              "value": "This is device switch2"
+            }
+          }
+        },
+        {
+          "node": {
+            "name": {
+              "value": "switch3"
+            },
+            "description": {
+              "value": "This is device switch3"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="Converted query response">
+    Here we must provide `__typename` and `id` within the query so the SDK can convert the query to the correct type and properly store within the SDK.
+
+```graphql
+query DeviceQuery {
+  NetworkDevice {
+    edges {
+      node {
+        __typename
+        id
+        name {
+          value
+        }
+        description {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+Response to the query:
+
+```json
+{
+  "data": {
+    "NetworkDevice": {
+      "edges": [
+        {
+          "node": {
+            "__typename": "NetworkDevice",
+            "id": "18429816-0726-6abc-2d6e-c51223f5f000",
+            "name": {
+              "value": "switch3"
+            },
+            "description": {
+              "value": "This is device switch1"
+            }
+          }
+        },
+        {
+          "node": {
+            "__typename": "NetworkDevice",
+            "id": "18429817-4aa2-920a-2d6b-c51b4e66e20b",
+            "name": {
+              "value": "switch1"
+            },
+            "description": {
+              "value": "This is device switch1"
+            }
+          }
+        },
+        {
+          "node": {
+            "__typename": "NetworkDevice",
+            "id": "18429818-2756-a07a-2d63-c51b5d41c28f",
+            "name": {
+              "value": "switch2"
+            },
+            "description": {
+              "value": "This is device switch1"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+While it's possible to create a Transformation that targets all of these devices — for example to create a report — the goal here is to focus on one device at a time. Modify the query above to take an input parameter so that we can filter the result.
+
+Create a local directory on your computer.
+
+```shell
+mkdir device_config_render
+```
+
+Then save the above query as a text file named `device_config_render/device_config.gql`.
+
+The query requires an input parameter called `$name` that will refer to the name of each device. When we want to query for device switch1, the input variables to the query would look like this:
+
+```json
+{
+  "name": "switch1"
+}
+```
+
+## 3. Create the Python Transformation file
+
+The next step is to create the actual Python Transformation. The Transformation is a Python class that inherits from `InfrahubTransform` from the [Python SDK]($(base_url)python-sdk/introduction). Create a file called `device_config_render/device_config.py`:
+
+<Tabs groupId="convertResponse" queryString>
+  <TabItem value="Non-converted query response">
+  <!-- vale Infrahub.spelling = NO -->
+```python
+from infrahub_sdk.transforms import InfrahubTransform
+class DeviceConfigTransform(InfrahubTransform):
+    query = "device_config_query"
+    async def transform(self, data):
+        device = data["NetworkDevice"]["edges"][0]["node"]
+        device_name = device["name"]["value"]
+        device_description = device["description"]["value"]
+        return {
+            "device_hostname": device_name,
+            "device_description": f"*{device_description}*"
+        }
+```
+  </TabItem>
+  <TabItem value="Converted query response">
+```python
+from infrahub_sdk.transforms import InfrahubTransform
+class DeviceConfigTransform(InfrahubTransform):
+    query = "device_config_query"
+    async def transform(self, data):
+        device = self.nodes[0]
+        device_name = device.name.value
+        device_description = device.description.value
+        return {
+            "device_hostname": device_name,
+            "device_description": f"*{device_description}*",
+        }
+```
+  </TabItem>
+</Tabs>
+
+The example is simplistic in terms of what we do with the data, but all of the important parts of a Transformation exist here.
+
+1. We import the `InfrahubTransform` class.
+
+```python
+from infrahub_sdk.transforms import InfrahubTransform
+```
+
+2. We define our own class based on `InfrahubTransform`.
+
+```python
+class DeviceConfigTransform(InfrahubTransform):
+```
+
+Note the name of the class — we need it later. Optionally we could call it `Transform`, which is the default name.
+
+3. We define where data comes from and what API endpoint to use.
+
+```python
+    query = "device_config_query"
+```
+
+The query part refers to the the query that we will define in the `.infrahub.yml` repository configuration file later in the tutorial.
+
+With this configuration, the endpoint of our Transformation will be [http://localhost:8000/api/transform/python/device_config_transform](http://localhost:8000/api/transform/python/device_config_transform).
+
+4. The Transformation method
+
+<Tabs groupId="convertResponse" queryString>
+  <TabItem value="Non-converted query response">
+    <!-- vale Infrahub.spelling = NO -->
+```python
+async def transform(self, data):
+    device = data["BuiltinTag"]["edges"][0]["node"]
+    device_name = device["name"]["value"]
+    device_description = device["description"]["value"]
+    return {
+        "device_hostname": device_name,
+        "device_description": f"*{device_description}*"
+    }
+```
+  </TabItem>
+  <TabItem value="Converted query response">
+    <!-- vale Infrahub.spelling = NO -->
+```python
+async def transform(self, data):
+    device = self.nodes[0]
+    device_name = device.name.value
+    device_description = device.description.value
+    return {
+        "device_hostname": device_name,
+        "device_description": f"*{device_description}*",
+    }
+```
+
+  </TabItem>
+</Tabs>
+
+When running the Transformation, the `data` input variable will consist of the response to the query we created or the webhook payload if using the Transformation with a [Custom Webhook](../../../webhooks/overview.mdx).
+
+In this case, the Transformation returns a JSON object consisting of two keys `device_hostname` and `device_description` where we have modified the data in some way. Here you would return data in the format you need.
+
+:::info
+
+If you are unsure of the format of the data you can set a debug marker when testing the Transformation with `infrahubctl`:
+
+```python
+    async def transform(self, data):
+        breakpoint()
+        device = data["BuiltinTag"]["edges"][0]["node"]
+        device_name = device["name"]["value"]
+        device_description = device["description"]["value"]
+```
+
+:::
+
+## 4. Create an .infrahub.yml file
+
+The [.infrahub.yml](../../../git-integration/infrahub-yml) file allows you to define both the Transformation and query.
+
+:::info Convert query to Infrahub SDK objects
+We provide `convert_query_response` option to be toggled to be able to access objects from the GraphQL query as Infrahub SDK objects rather than the raw dictionary response.
+
+This allows you to manage the returned data with helper methods on the SDK objects such as `save`, `fetch`, etc. on the returned data rather than having to build a payload to send back to Infrahub to manage the objects.
+
+Read more on the [Infrahub Python SDK]($(base_url)python-sdk/introduction).
+:::
+
+See [the infrahub.yml configuration page](../../../git-integration/infrahub-yml) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
+
+<Tabs groupId="convertResponse" queryString>
+  <TabItem value="Non-converted query response">
+    <!-- markdownlint-disable MD046 -->
+    <!-- vale Infrahub.swap = NO -->
+    <!-- vale Infrahub.spelling = NO -->
+```yaml title=".infrahub.yml"
+# yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
+---
+python_transforms:
+  - name: device_config_transform
+    class_name: DeviceConfigTransform
+    file_path: "device_config_render/device_config.py"
+queries:
+  - name: device_config_query
+      file_path: "device_config_render/device_config.gql"
+```
+  </TabItem>
+  <TabItem value="Converted query response">
+    <!-- markdownlint-disable MD046 -->
+    <!-- vale Infrahub.swap = NO -->
+```yaml title=".infrahub.yml"
+# yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
+---
+python_transforms:
+  - name: device_config_transform
+    class_name: DeviceConfigTransform
+    convert_query_response: true
+    file_path: "device_config_render/device_config.py"
+queries:
+  - name: device_config_query
+      file_path: "device_config_render/device_config.gql"
+```
+  </TabItem>
+</Tabs>
+
+<Tabs groupId="transform-type" queryString>
+  <TabItem value="Python Transformation" default>
+    Two parts here are required: first the `name` of the Transformation which should be unique across Infrahub, and also the `file_path` that should point to the Python file within the repository. In this example we have also defined `class_name` because we gave our class the name `DeviceConfigTransform` instead of the default `Transform`.
+  </TabItem>
+  <TabItem value="Queries">
+    Here the `name` refers to the query's name and `file_path` should point to the GraphQL file within the repository.
+  </TabItem>
+</Tabs>
+
+## 5. Test the Transformation using infrahubctl
+
+Using `infrahubctl` you can first verify that the `.infrahub.yml` file is formatted correctly by listing available Transformations.
+
+```shell title="❯ infrahubctl transform --list"
+Python Transformations defined in repository: 1
+device_config_transform (device_config.py::DeviceConfigTransform)
+```
+
+:::info
+Trying to run the Transformation with only the Transformation name will produce an error.
+
+```shell title="❯ infrahubctl transform device_config_transform"
+{'message': "Variable '$name' of required type 'String!' was not provided.", 'locations': [{'line': 1, 'column': 19}]}
+```
+
+Here we can see that our query is missing the required input for `$name` which is needed to filter the data.
+
+:::
+
+Run the Transformation and specify the variable name along with the device we want to target.
+
+```json title="❯ infrahubctl transform device_config_transform name=switch2"
+{
+  "device_description": "*This is device switch2*",
+  "device_hostname": "switch2"
+}
+```
+
+You've now successfully created a Transformation. Most Transformations you build will be more complex than this, but the main building blocks remain the same. The output could be in OpenConfig format, as Terraform input variables, or any other format you need.
+
+## 6. Create a Git repository
+
+Within the `device_config_render` folder you should now have 3 files:
+
+- `device_config_render/device_config.gql`: Contains the GraphQL query
+- `device_config_render/device_config.py`: Contains the Python code for the Transformation
+- `.infrahub.yml`: Contains the definition for the Transformation
+
+Before we can test our Transformation we must add the files to a local Git repository.
+
+```shell
+git init --initial-branch=main
+git add .
+git commit -m "First commit"
+```
+
+## 7. Adding the repository to Infrahub
+
+To avoid repeating the same instructions, see [Connect a repository](../../../git-integration/connect-repository) for syncing the repository you created and making it available within Infrahub.
+
+## 8. Accessing the Transformation from the API
+
+Once the repository is synced to Infrahub you can access the Transformation from the API:
+
+```json title="❯ curl http://localhost:8000/api/transform/python/device_config_transform?name=switch2"
+{
+  "device_hostname":"switch2",
+  "device_description":"*This is device switch2*"
+}
+```
+
+```json title="❯ curl http://localhost:8000/api/transform/python/device_config_transform?name=switch3"
+{
+  "device_hostname":"switch3",
+  "device_description":"*This is device switch3*"
+}
+```
+
+## What you learned
+
+You now have a working Python Transformation:
+
+- A `NetworkDevice` schema loaded into Infrahub
+- Three sample devices (`switch1`, `switch2`, `switch3`) created via GraphQL mutations
+- A GraphQL query that selects a single device by name and reads its `description`
+- A `DeviceConfigTransform` class that returns a JSON object derived from the response, in both the raw-dictionary and SDK-converted forms
+- A `.infrahub.yml` definition that wires the query and the Transformation together
+- The Transformation responding both via `infrahubctl transform` locally and via the REST API endpoint
+
+## Next steps
+
+- [Write a Jinja2 transformation](../../../transformations/jinja2) — for template-based plain-text output
+- [Use artifacts](../../../artifacts/use) — cache Transformation output and tie it to a specific target object
+- [GraphQL fragments](../../../development-resources/graphql-fragments) — share query fragments across Transformations

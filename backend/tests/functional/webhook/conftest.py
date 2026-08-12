@@ -1,0 +1,287 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, AsyncGenerator
+
+import pytest
+from prefect.client.orchestration import PrefectClient, get_client
+from prefect.client.schemas.filters import FlowFilter, FlowFilterName
+from prefect.client.schemas.objects import State, StateType
+from prefect.client.schemas.sorting import FlowRunSort
+
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.node import Node
+from infrahub.events.models import EventBranchContext, EventContext
+from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
+from infrahub.webhook.tasks import process
+from infrahub.workflows.catalogue import (
+    WEBHOOK_CONFIGURE,
+    WEBHOOK_INVALIDATE_HEADERS,
+    WEBHOOK_PROCESS,
+    WEBHOOK_SEND,
+    WORKER_POOLS,
+)
+from infrahub.workflows.initialization import setup_worker_pools
+from tests.constants import TestKind
+from tests.helpers.file_repo import FileRepo
+from tests.helpers.schema import CAR_SCHEMA, load_schema
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from infrahub_sdk import InfrahubClient
+    from prefect.client.schemas.objects import FlowRun
+
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.database import InfrahubDatabase
+    from infrahub.task_manager.flow_run.prefect_client import FlowRunQuerying
+
+
+BRANCH_CREATED_PAYLOAD: dict[str, Any] = {
+    "context": EventContext(
+        branch=EventBranchContext(name=GLOBAL_BRANCH_NAME, id="182853ef-58a3-b3cc-3e80-c5161f4171c1"),
+        account_id="182853f2-3a43-c7f9-3e84-c5152eff4b17",
+    ).to_event()
+}
+
+
+@pytest.fixture
+def immediate_webhook_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Run the webhook send retries without their production back-off.
+
+    A failing delivery exhausts its retries promptly instead of sleeping through the real
+    schedule, keeping retry-path tests within the suite timeout.
+    """
+    monkeypatch.setattr(process, "webhook_send", process.webhook_send.with_options(retry_delay_seconds=0))
+
+
+@pytest.fixture(scope="class")
+async def initial_dataset(
+    db: InfrahubDatabase,
+    register_core_schema: SchemaBranch,
+    client: InfrahubClient,
+    git_repos_source_dir_module_scope: Path,
+    prefect_test_fixture: None,
+) -> None:
+    await load_schema(db, schema=CAR_SCHEMA)
+
+    john = await Node.init(schema=TestKind.PERSON, db=db)
+    await john.new(db=db, name="John", height=175, age=25, description="The famous Joe Doe")
+    await john.save(db=db)
+
+    koenigsegg = await Node.init(schema=TestKind.MANUFACTURER, db=db)
+    await koenigsegg.new(db=db, name="Koenigsegg")
+    await koenigsegg.save(db=db)
+
+    people = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
+    await people.new(db=db, name="people", members=[john])
+    await people.save(db=db)
+
+    jesko = await Node.init(schema=TestKind.CAR, db=db)
+    await jesko.new(
+        db=db,
+        name="Jesko",
+        color="Red",
+        description="A limited production mid-engine sports car",
+        owner=john,
+        manufacturer=koenigsegg,
+    )
+    await jesko.save(db=db)
+
+    FileRepo(name="car-dealership", sources_directory=git_repos_source_dir_module_scope)
+    client_repository = await client.create(
+        kind=InfrahubKind.REPOSITORY,
+        data={"name": "car-dealership", "location": f"{git_repos_source_dir_module_scope}/car-dealership"},
+    )
+    await client_repository.save()
+
+
+@pytest.fixture(scope="class")
+async def prefect_client(prefect_test_fixture: None) -> AsyncGenerator[PrefectClient, None]:
+    async with get_client(sync_client=False) as client:
+        yield client
+
+
+@pytest.fixture(scope="class")
+def flow_run_querier(prefect_client: PrefectClient) -> FlowRunQuerying:
+    """A read-only view of the Prefect client, exposing only flow-run querying to tests."""
+    return PrefectClientAdapter(prefect_client)
+
+
+async def read_send_runs(querier: FlowRunQuerying) -> list[FlowRun]:
+    # The session-scoped Prefect server accumulates webhook-send runs across the suite, and an
+    # unfiltered read is capped at the server's default page size. Sorting newest-first keeps a run
+    # a test just created within the returned page.
+    return await querier.read_flow_runs(
+        flow_filter=FlowFilter(name=FlowFilterName(any_=["webhook-send"])),
+        sort=FlowRunSort.EXPECTED_START_TIME_DESC,
+    )
+
+
+def only_new_run(runs: list[FlowRun], seen: set[str]) -> FlowRun:
+    # Other tests in the session leave their own webhook-send runs in the shared Prefect server, so a
+    # test must identify the delivery it just created rather than assume a clean slate.
+    new = [run for run in runs if str(run.id) not in seen]
+    assert len(new) == 1, f"expected exactly one new delivery, found {len(new)}"
+    return new[0]
+
+
+@pytest.fixture(scope="class")
+async def webhook_deployment(db: InfrahubDatabase, prefect_client: PrefectClient) -> None:
+    await setup_worker_pools(client=prefect_client)
+    await WEBHOOK_PROCESS.save(client=prefect_client, work_pool=WORKER_POOLS[0])
+    await WEBHOOK_SEND.save(client=prefect_client, work_pool=WORKER_POOLS[0])
+    await WEBHOOK_CONFIGURE.save(client=prefect_client, work_pool=WORKER_POOLS[0])
+    await WEBHOOK_INVALIDATE_HEADERS.save(client=prefect_client, work_pool=WORKER_POOLS[0])
+
+
+@pytest.fixture(scope="class")
+async def webhook1(db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> Node:
+    webhook = await Node.init(schema=InfrahubKind.STANDARDWEBHOOK, db=db)
+    await webhook.new(
+        db=db,
+        name="Webhook1",
+        url="https://url.mock",
+        shared_key="1234567890",
+        validate_certificates=False,
+        event_type="infrahub.branch.created",
+        branch_scope="all_branches",
+    )
+    await webhook.save(db=db)
+    return webhook
+
+
+async def _create_send_run(
+    prefect_client: PrefectClient, webhook: Node, state: State, branch_name: str = "main"
+) -> FlowRun:
+    return await prefect_client.create_flow_run(
+        flow=process.webhook_send,
+        parameters={
+            "webhook_id": webhook.id,
+            "webhook_kind": InfrahubKind.STANDARDWEBHOOK,
+            "webhook_name": "Webhook1",
+            "payload": BRANCH_CREATED_PAYLOAD,
+            "branch_name": branch_name,
+        },
+        state=state,
+    )
+
+
+@pytest.fixture
+async def scheduled_send_run(prefect_client: PrefectClient, webhook1: Node) -> FlowRun:
+    """A webhook-send delivery parked in a non-terminal state with no infrastructure.
+
+    Stands in for a delivery still in progress or awaiting a retry, so action gating and
+    cancellation can be exercised without a worker driving the delivery to a terminal state.
+    """
+    return await _create_send_run(prefect_client, webhook1, State(type=StateType.SCHEDULED))
+
+
+@pytest.fixture
+async def settled_send_run(prefect_client: PrefectClient, webhook1: Node) -> FlowRun:
+    """A webhook-send delivery in a terminal state, eligible for retry."""
+    return await _create_send_run(prefect_client, webhook1, State(type=StateType.COMPLETED))
+
+
+OPERATOR_BRANCH = "webhook-operator-branch"
+
+
+@pytest.fixture
+async def settled_branch_send_run(prefect_client: PrefectClient, webhook1: Node) -> FlowRun:
+    """A settled webhook-send delivery initiated from a non-default branch."""
+    return await _create_send_run(
+        prefect_client, webhook1, State(type=StateType.COMPLETED), branch_name=OPERATOR_BRANCH
+    )
+
+
+@pytest.fixture(scope="class")
+async def webhook2(db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> Node:
+    transform = await client.get(
+        kind=InfrahubKind.TRANSFORMPYTHON, name__value="WebhookTransformer", raise_when_missing=True
+    )
+
+    webhook = await Node.init(schema=InfrahubKind.CUSTOMWEBHOOK, db=db)
+    await webhook.new(
+        db=db,
+        name="Webhook2",
+        url="https://url.mock",
+        validate_certificates=False,
+        event_type="infrahub.node.updated",
+        branch_scope="all_branches",
+        transformation=transform.id,
+    )
+    await webhook.save(db=db)
+    return webhook
+
+
+@pytest.fixture(scope="class")
+async def webhook3(db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> Node:
+    webhook = await Node.init(schema=InfrahubKind.CUSTOMWEBHOOK, db=db)
+    await webhook.new(
+        db=db,
+        name="Webhook3",
+        url="https://url.mock",
+        validate_certificates=False,
+        event_type="infrahub.node.created",
+        branch_scope="other_branches",
+    )
+    await webhook.save(db=db)
+    return webhook
+
+
+@pytest.fixture(scope="class")
+async def webhook4(db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> Node:
+    webhook = await Node.init(schema=InfrahubKind.STANDARDWEBHOOK, db=db)
+    await webhook.new(
+        db=db,
+        name="Webhook4",
+        url="https://url.mock",
+        shared_key="1234567890",
+        validate_certificates=False,
+        node_kind="BuiltinTag",
+        event_type="infrahub.node.created",
+        branch_scope="all_branches",
+    )
+    await webhook.save(db=db)
+    return webhook
+
+
+@pytest.fixture(scope="class")
+async def webhook_with_headers(db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> Node:
+    static_header = await Node.init(schema=InfrahubKind.STATICKEYVALUE, db=db)
+    await static_header.new(db=db, name="x-custom-token", key="X-Custom-Token", value="secret123")
+    await static_header.save(db=db)
+
+    env_header = await Node.init(schema=InfrahubKind.ENVKEYVALUE, db=db)
+    await env_header.new(db=db, name="x-env-key", key="X-Env-Key", value="MY_ENV_VAR")
+    await env_header.save(db=db)
+
+    webhook = await Node.init(schema=InfrahubKind.STANDARDWEBHOOK, db=db)
+    await webhook.new(
+        db=db,
+        name="WebhookWithHeaders",
+        url="https://url.mock",
+        shared_key="1234567890",
+        validate_certificates=False,
+        event_type="infrahub.branch.created",
+        branch_scope="all_branches",
+        headers=[static_header, env_header],
+    )
+    await webhook.save(db=db)
+    return webhook
+
+
+@pytest.fixture(scope="class")
+async def inactive_webhook(db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> Node:
+    webhook = await Node.init(schema=InfrahubKind.STANDARDWEBHOOK, db=db)
+    await webhook.new(
+        db=db,
+        name="InactiveWebhook",
+        url="https://url.mock",
+        shared_key="1234567890",
+        validate_certificates=False,
+        event_type="infrahub.node.created",
+        branch_scope="all_branches",
+        active=False,
+    )
+    await webhook.save(db=db)
+    return webhook

@@ -1,0 +1,109 @@
+---
+title: Query group membership
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Query group membership
+
+Read what's in a group, or find what groups an object belongs to. Use these patterns for auditing, verification, or feeding automation.
+
+## List members of a group
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+1. Open the group from the Groups list.
+2. Go to the **Members** tab.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+```graphql
+query {
+  CoreStandardGroup(name__value: "<group-name>") {
+    edges {
+      node {
+        name { value }
+        members {
+          edges {
+            node { id display_label }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+group = client.get(kind="CoreStandardGroup", name__value="<group-name>")
+for member in group.members.fetch():
+    print(member.display_label)
+```
+
+</TabItem>
+</Tabs>
+
+## Filter members by type
+
+Groups can hold objects of multiple kinds. To get just one kind, use an inline fragment:
+
+```graphql
+query {
+  CoreStandardGroup(name__value: "<group-name>") {
+    edges {
+      node {
+        members {
+          edges {
+            node {
+              ... on InfraDevice {
+                id
+                name { value }
+                site { node { name { value } } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Replace `InfraDevice` with your target kind.
+
+## Find what groups an object belongs to
+
+Every object gains an automatic `member_of_groups` relationship. Use it to traverse from an object back to its groups:
+
+```graphql
+query {
+  InfraDevice(id: "<device-id>") {
+    edges {
+      node {
+        name { value }
+        member_of_groups {
+          edges {
+            node { name { value } description { value } }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+The same pattern works with `subscriber_of_groups` when you need to know what's observing a group.
+
+## Next
+
+- [Add members to a group](./add-members.mdx)
+- [Remove members from a group](./remove-members.mdx)
+- [Use groups in automation](./use-in-automation.mdx)

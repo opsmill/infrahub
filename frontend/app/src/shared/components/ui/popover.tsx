@@ -1,6 +1,6 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import * as React from "react";
+import React from "react";
 
 import { classNames } from "@/shared/utils/common";
 
@@ -10,20 +10,29 @@ export const PopoverTrigger = PopoverPrimitive.Trigger;
 
 export const PopoverAnchor = PopoverPrimitive.Anchor;
 
-export const PopoverContent = React.forwardRef<
-  React.ElementRef<typeof PopoverPrimitive.Content>,
-  PopoverPrimitive.PopoverContentProps & { portal?: boolean }
->(({ className, align = "center", sideOffset = 4, portal = true, ...props }, ref) => {
+interface PopoverContentProps extends React.ComponentProps<typeof PopoverPrimitive.Content> {
+  portal?: boolean;
+}
+
+export const PopoverContent = ({
+  className,
+  align = "center",
+  sideOffset = 4,
+  portal = true,
+  ref,
+  ...props
+}: PopoverContentProps) => {
   const Wrapper = portal ? PopoverPrimitive.Portal : React.Fragment;
 
   return (
     <Wrapper>
       <PopoverPrimitive.Content
+        data-react-aria-top-layer=""
         ref={ref}
         align={align}
         sideOffset={sideOffset}
         className={classNames(
-          "z-10 max-w-[100vw] rounded-md border border-gray-200 bg-white p-2 text-sm shadow-xl outline-hidden",
+          "z-10 max-w-[100vw] rounded-md border bg-white p-2 text-sm shadow-xl outline-hidden",
           "data-[state=open]:fade-in-0 data-[state=open]:animate-in",
           "data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
@@ -33,49 +42,46 @@ export const PopoverContent = React.forwardRef<
       />
     </Wrapper>
   );
-});
+};
 
 export const PopoverTabs = TabsPrimitive.Root;
 
-export const PopoverTabsList = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
+interface PopoverTabsListProps extends React.ComponentProps<typeof TabsPrimitive.List> {}
+
+export const PopoverTabsList = ({ className, ref, ...props }: PopoverTabsListProps) => (
   <TabsPrimitive.List
     ref={ref}
     className={classNames(
-      "inline-flex w-full items-center justify-center border-gray-200 border-b px-2",
+      "inline-flex w-full items-center justify-center border-b px-2",
       className
     )}
     {...props}
   />
-));
+);
 
-export const PopoverTabsTrigger = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => (
+interface PopoverTabsTriggerProps extends React.ComponentProps<typeof TabsPrimitive.Trigger> {}
+
+export const PopoverTabsTrigger = ({ className, ref, ...props }: PopoverTabsTriggerProps) => (
   <TabsPrimitive.Trigger
     ref={ref}
     className={classNames(
       "inline-flex items-center justify-center whitespace-nowrap rounded-t-md bg-white px-3 py-1.5 font-medium text-sm transition-all",
       "outline-hidden",
       "disabled:pointer-events-none disabled:opacity-50",
-      "border-gray-200 data-[state=active]:-mb-px data-[state=active]:border-x data-[state=active]:border-t",
+      "data-[state=active]:-mb-px data-[state=active]:border-x data-[state=active]:border-t",
       className
     )}
     {...props}
   />
-));
+);
 
-export const PopoverTabsContent = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
+interface PopoverTabsContentProps extends React.ComponentProps<typeof TabsPrimitive.Content> {}
+
+export const PopoverTabsContent = ({ className, ref, ...props }: PopoverTabsContentProps) => (
   <TabsPrimitive.Content
     ref={ref}
     tabIndex={-1}
     className={classNames("outline-hidden", className)}
     {...props}
   />
-));
+);

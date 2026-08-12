@@ -1,0 +1,1 @@
+Improved the performance of GraphQL queries that only request the `id` of a cardinality-one relationship's peer. When no properties, metadata, or additional node fields are requested, the resolver now returns the peer ID already loaded on the parent instead of hydrating a full peer node, reducing database work on relationship-heavy queries.

@@ -24,7 +24,9 @@ Fast unittests that require no external services to run. I.e. no database or net
 - Fast feedback loop
 - Sanity checks
 
-**When to use:** Testing smaller functions that doesn't require network services.
+**When to use:** Pure logic — parsing, validation, transformation, data structures. No database, no network, no infrastructure. If the function under test doesn't need a DB connection or external service to do its job, it's a unit test.
+
+**When NOT to use:** If reproducing the bug requires database state, concurrent writes, constraint enforcement, or infrastructure behavior (locks, caches, message buses). Use component or functional tests instead — do not mock infrastructure to force a unit test.
 
 ### Component Tests (`backend/tests/component/`)
 
@@ -37,7 +39,9 @@ Many tests leverage the database and use TestContainers for external dependencie
 - Tests individual components with database interaction
 - Fast feedback loop
 
-**When to use:** Testing business logic that requires database state but doesn't need the full application context.
+**When to use:** Testing individual components that require external services — database state, cache behavior, lock coordination, message bus interactions, or any business logic that depends on infrastructure. See the [Key Root Fixtures](#key-root-fixtures) and [Test Adapters](#test-adapters) sections below for available test infrastructure.
+
+**Testing invariant — duplicate-UUID nodes.** Any query or component test that filters or resolves Node vertices by UUID must include a case with a stale same-UUID duplicate left by a kind/inheritance migration alongside the current active one — see [Database Schema — Schema Migration](database-schema.md#schema-migration-namenamespaceinheritance). Skipping this case has caused real bugs; testing only the single-vertex case isn't sufficient coverage for UUID-based queries.
 
 ### Functional Tests (`backend/tests/functional/`)
 
@@ -50,7 +54,7 @@ Multi-component tests running in a single thread/process. Async tasks execute in
 - Full debuggability with breakpoints
 - Uses `prefect_test_harness` for Prefect integration
 
-**When to use:** Testing features that span multiple components, including async workflows, while maintaining the ability to debug.
+**When to use:** Features that span multiple components, including async workflows, event-driven behavior, or end-to-end flows that cross service boundaries.
 
 ### Integration Tests (`backend/tests/integration/`)
 
@@ -67,7 +71,7 @@ True distributed tests with multiple Docker containers running the full Infrahub
 - Slowest but most realistic testing
 - Tests real distributed behavior
 
-**When to use:** Testing behavior that requires actual distributed execution, like computed attributes, triggered actions, or schema migrations in production-like environments.
+**When to use:** Testing behavior that requires actual distributed execution, like [computed attributes](computed-attributes.md), triggered actions, or schema migrations in production-like environments.
 
 ```python
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
@@ -157,6 +161,28 @@ def neo4j(request, load_settings_before_session) -> dict[int, int] | None:
     }
 ```
 
+### Parallel execution and database isolation
+
+Component, core, functional and integration tests run under pytest-xdist (`-n <workers>`, see
+`tasks/backend.py`); unit tests do not. Each xdist worker is a separate process running its own
+pytest session, so the session-scoped container fixtures above execute **once per worker** — four
+workers means four Neo4j containers, each with its own graph.
+
+That per-worker isolation is what makes the destructive fixtures safe. `empty_database` runs
+`delete_all_nodes`, which is a bare `MATCH (n) DETACH DELETE n` over the entire graph, and several
+tests assert on global counts rather than on nodes they can identify as their own. Both are only
+correct while a worker owns its database outright.
+
+Two consequences worth remembering:
+
+- Do not introduce cross-worker container sharing (for example testcontainers' `reuse` support, or
+  keying a container off `PYTEST_XDIST_WORKER`) without first removing the whole-graph wipes.
+  Sharing one database between workers makes every `empty_database` test hostile to whatever else
+  is running.
+- Test ordering under `--dist loadscope` (set in `addopts`) is not stable across pytest-xdist
+  releases — scopes are sorted largest-first, so which modules run concurrently can change on an
+  upgrade. Tests must not depend on what else is or is not running.
+
 ### Base Test Classes
 
 Located in `backend/tests/helpers/test_app.py`:
@@ -211,6 +237,28 @@ async def test_message_sent(bus_simulator: BusSimulator, ...):
 
 - `MemoryCache` - In-memory cache for fast tests
 - `FakeLogger` - Captures log output for assertions
+- `RecordingLockRegistry` / `LockTimeline` - Records lock acquire/release order so tests can assert what runs inside versus outside a critical section
+
+**Event and Workflow Adapters:**
+
+To observe what a flow emits and submits without running a worker, inject recorder adapters through the dependency provider:
+
+- `MemoryInfrahubEvent` (`backend/tests/adapters/event.py`) - an `InfrahubEventService` that records every emitted event in `.events` instead of publishing it.
+- `WorkflowRecorder` (`backend/tests/adapters/workflow.py`) - an `InfrahubWorkflow` that records `submit_workflow` / `execute_workflow` calls (`.submit_calls`, `.execute_calls`, `get_submit_calls_for(...)`) without executing them.
+
+Inject them for the duration of the call with `dependency_provider.scope`, the same mechanism the `memory_cache` fixture uses:
+
+```python
+with (
+    dependency_provider.scope(build_event_service, lambda: event_recorder),
+    dependency_provider.scope(build_workflow, lambda: workflow_recorder),
+):
+    await merge_branch(branch=branch_name, context=context)
+
+assert workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_JINJA2)
+```
+
+This drives a real merge or rebase in a component test and asserts exactly which recompute workflows it submits, deterministically and with no task worker. Node mutation events go through the event service, not the message bus (`NodeMutatedEvent.get_messages()` returns `[]`), so a `BusRecorder` records nothing for them; use `MemoryInfrahubEvent` to assert on emitted node events.
 
 ## Supporting Directories
 
@@ -335,6 +383,63 @@ For JSON-based schemas, use the helper methods:
 # Load schema from fixtures directory
 schema_dict = helper.schema_file("infra_simple_01.json")
 await client.schema.load(schemas=[schema_dict])
+```
+
+## Prefect Testing Patterns
+
+### Calling Flows in Unit Tests (`.fn`)
+
+`@flow`-decorated functions are wrapped in a Prefect `Flow` object. Calling them directly would create an actual Prefect flow run. Use `.fn` to access the original unwrapped coroutine:
+
+```python
+from infrahub.webhook.tasks.invalidate import invalidate_webhook_headers
+
+# .fn bypasses Prefect orchestration — calls the plain async function
+await invalidate_webhook_headers.fn(event_type="infrahub.node.updated", event_data={"node_id": "kv-123"})
+```
+
+Note: `.fn` is a dynamic attribute set at runtime by Prefect's decorator — IDEs and type checkers cannot resolve it.
+
+### Logging: Use `caplog` Instead of Mocking `get_run_logger`
+
+Prefect's `get_run_logger()` returns a Prefect-specific logger. In unit tests (via `.fn`), patch it to return a standard `logging.getLogger()` and use pytest's `caplog` for assertions:
+
+```python
+import logging
+from unittest.mock import patch
+
+import pytest
+
+LOGGER_NAME = "infrahub.my_module.tasks"
+
+@pytest.fixture(autouse=True)
+def _patch_prefect_logger():
+    with patch(
+        "infrahub.my_module.tasks.get_run_logger",
+        return_value=logging.getLogger(LOGGER_NAME),
+    ):
+        yield
+
+async def test_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.WARNING, logger=LOGGER_NAME):
+        await my_flow.fn(...)
+    assert "expected message" in caplog.text
+```
+
+This matches the pattern used in `test_webhook_header.py` and `test_models.py`.
+
+### Functional Tests with `TestInfrahubApp`
+
+`TestInfrahubApp` provides a `memory_cache` fixture (class-scoped) that injects a `MemoryCache` via `dependency_provider.scope(build_cache, ...)`. Use it in functional tests to pre-fill and assert on cache state:
+
+```python
+from tests.helpers.test_app import TestInfrahubApp
+
+class TestMyFeature(TestInfrahubApp):
+    async def test_cache_cleared(self, memory_cache: MemoryCache, ...) -> None:
+        await memory_cache.set(key="webhook:abc", value='{"cached": true}')
+        # ... trigger invalidation ...
+        assert await memory_cache.get(key="webhook:abc") is None
 ```
 
 ## Running Tests

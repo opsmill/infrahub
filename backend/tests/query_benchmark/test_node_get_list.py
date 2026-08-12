@@ -23,7 +23,7 @@ log = get_logger()
 
 @pytest.mark.timeout(36000)  # 10 hours
 @pytest.mark.parametrize(
-    "benchmark_config, ordering",
+    ("benchmark_config", "ordering"),
     [
         (
             BenchmarkConfig(
@@ -54,7 +54,7 @@ async def test_node_get_list_ordering(
     registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
 
     # Build function to profile
-    async def init_and_execute():
+    async def init_and_execute() -> None:
         car_node_schema = registry.get_node_schema(name="TestCar", branch=default_branch.name)
         query = await NodeGetListQuery.init(
             db=db_profiling_queries,
@@ -62,8 +62,7 @@ async def test_node_get_list_ordering(
             branch=default_branch,
             ordering=ordering,
         )
-        res = await query.execute(db=db_profiling_queries)
-        return res
+        await query.execute(db=db_profiling_queries)
 
     nb_cars = 10_000
     cars_generator = CarGenerator(db=db_profiling_queries)

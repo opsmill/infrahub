@@ -56,7 +56,7 @@ async def ip_dataset_01(
     await net145.new(db=db, prefix="10.10.3.0/27", parent=net140, ip_namespace=ns1)
     await net145.save(db=db)
 
-    data = {
+    return {
         "ns1": ns1,
         # "ns2": ns2,
         # "net161": net161,
@@ -73,7 +73,6 @@ async def ip_dataset_01(
         # "net241": net241,
         # "net242": net242,
     }
-    return data
 
 
 @pytest.fixture
@@ -102,11 +101,10 @@ async def ip_dataset_02(
     await net1_ip1.new(db=db, address="10.200.30.1/27", ip_namespace=ns, ip_prefix=net1)
     await net1_ip1.save(db=db)
 
-    data = {
+    return {
         "ns": ns,
         "net1": net1,
     }
-    return data
 
 
 @pytest.mark.parametrize(
@@ -204,7 +202,7 @@ def alternative_ipam_schema() -> SchemaRoot:
                 "namespace": "Test",
                 "default_filter": "prefix__value",
                 "order_by": ["prefix__value"],
-                "display_labels": ["prefix__value"],
+                "display_label": "prefix__value",
                 "branch": BranchSupportType.AWARE.value,
                 "inherit_from": [InfrahubKind.IPPREFIX, InfrahubKind.WEIGHTED_POOL_RESOURCE],
             },
@@ -213,7 +211,7 @@ def alternative_ipam_schema() -> SchemaRoot:
                 "namespace": "Test",
                 "default_filter": "address__value",
                 "order_by": ["address__value"],
-                "display_labels": ["address__value"],
+                "display_label": "address__value",
                 "branch": BranchSupportType.AWARE.value,
                 "inherit_from": [InfrahubKind.IPADDRESS],
             },

@@ -1,8 +1,11 @@
+import asyncio
+import time
 from pathlib import Path
 
 import pytest
 import yaml
 from infrahub_sdk import InfrahubClient
+from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.schema.main import AttributeKind, AttributeSchema, NodeSchema, SchemaRoot
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.schemas.car_person import (
@@ -76,22 +79,18 @@ class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
 
         device_branch = await client.branch.create(branch_name="device_branch")
 
-        device_interface = await client.schema.load(
-            schemas=[device_and_interface_schema], branch=device_branch.name, wait_until_converged=True
-        )
+        device_interface = await client.schema.load(schemas=[device_and_interface_schema], branch=device_branch.name)
         assert device_interface.schema_updated
         # Validate that the schema is in sync after loading the device and interface schema
         assert await self.schema_in_sync(client=client, branch=device_branch.name)
 
-        delete_interface = await client.schema.load(
-            schemas=[delete_interface_schema], branch=device_branch.name, wait_until_converged=True
-        )
+        delete_interface = await client.schema.load(schemas=[delete_interface_schema], branch=device_branch.name)
         assert delete_interface.schema_updated
         # Validate that the schema is in sync after removing the interface
         assert await self.schema_in_sync(client=client, branch=device_branch.name)
 
     @staticmethod
-    async def schema_in_sync(client: InfrahubClient, branch: str | None) -> bool:
+    async def schema_in_sync(client: InfrahubClient, branch: str | None, wait_for_seconds: int = 30) -> bool:
         SCHEMA_HASH_SYNC_STATUS = """
         query {
         InfrahubStatus {
@@ -101,5 +100,19 @@ class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
         }
         }
         """
-        response = await client.execute_graphql(query=SCHEMA_HASH_SYNC_STATUS, branch_name=branch)
-        return response["InfrahubStatus"]["summary"]["schema_hash_synced"]
+        deadline = time.monotonic() + wait_for_seconds
+        last_error: GraphQLError | None = None
+        while True:
+            try:
+                response = await client.execute_graphql(query=SCHEMA_HASH_SYNC_STATUS, branch_name=branch)
+                if response["InfrahubStatus"]["summary"]["schema_hash_synced"]:
+                    return True
+            except GraphQLError as exc:
+                last_error = exc
+
+            if time.monotonic() >= deadline:
+                if last_error is not None:
+                    client.log.warning(f"schema_in_sync timed out; last suppressed GraphQLError: {last_error.errors}")
+                return False
+
+            await asyncio.sleep(1)

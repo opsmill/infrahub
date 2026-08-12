@@ -15,6 +15,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import BuiltinIPNamespace, BuiltinIPPrefix
 from infrahub.core.schema.generic_schema import GenericSchema
+from infrahub.database import retry_db_transaction
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.parser import extract_selection
 from infrahub.graphql.permissions import get_permissions
@@ -34,7 +35,7 @@ if TYPE_CHECKING:
 
 
 def _ip_range_display_label(node: Node) -> str:
-    """Return a human friendly summary of an IP range"""
+    """Return a human friendly summary of an IP range."""
     size = int(node.last_address.obj) - int(node.address.obj) + 1
 
     if size == 1:
@@ -90,7 +91,7 @@ async def _resolve_available_address_nodes(
 ) -> list[Node]:
     """Annotate a list of IP addresses node with available ranges within a prefix."""
     ip_prefix: IPvAnyNetwork = prefix.prefix.obj
-    ip_namespace = await prefix.ip_namespace.get_peer(db=db, peer_type=BuiltinIPNamespace, raise_on_error=True)
+    ip_namespace = await prefix.ip_namespace.get_peer(db=db, raise_on_error=True)
     ip_range_schema = registry.get_node_schema(name=InfrahubKind.IPRANGEAVAILABLE, branch=branch)
 
     # Make sure nodes are ordered by addresses
@@ -304,7 +305,25 @@ async def _annotate_result(
     return _filter_kinds(nodes=nodes, kinds=kinds_to_filter, limit=limit) if kinds_to_filter else nodes
 
 
+def _find_permission_set(permissions: dict[str, Any] | None, schema_kind: str) -> dict[str, Any] | None:
+    if not permissions:
+        return None
+    for edge in permissions["edges"]:
+        if edge["node"]["kind"] == schema_kind:
+            return edge["node"]
+    return None
+
+
+def _resolve_parent_prefix_id(schema: GenericSchema, filters: dict[str, Any]) -> str:
+    if schema.is_ip_address and "ip_prefix__ids" in filters:
+        return next(iter(filters["ip_prefix__ids"]))
+    if schema.is_ip_prefix and "parent__ids" in filters:
+        return next(iter(filters["parent__ids"]))
+    return ""
+
+
 @trace.get_tracer(__name__).start_as_current_span("ipam_paginated_list_resolver")
+@retry_db_transaction(name="ipam_paginated_list_resolver")
 async def ipam_paginated_list_resolver(  # noqa: PLR0915
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
@@ -312,7 +331,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
     limit: int | None = None,
     order: dict[str, Any] | None = None,
     partial_match: bool = False,
-    **kwargs: dict[str, Any],
+    **kwargs: Any,
 ) -> dict[str, Any]:
     schema: NodeSchema | GenericSchema = (
         info.return_type.of_type.graphene_type._meta.schema
@@ -353,16 +372,9 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
         if fields.get("permissions"):
             response["permissions"] = permissions
 
-        if permissions:
-            for edge in permissions["edges"]:
-                if edge["node"]["kind"] == schema.kind:
-                    permission_set = edge["node"]
+        permission_set = _find_permission_set(permissions, schema.kind)
 
-        parent_prefix_id = ""
-        if schema.is_ip_address and "ip_prefix__ids" in filters:
-            parent_prefix_id = next(iter(filters["ip_prefix__ids"]))
-        if schema.is_ip_prefix and "parent__ids" in filters:
-            parent_prefix_id = next(iter(filters["parent__ids"]))
+        parent_prefix_id = _resolve_parent_prefix_id(schema=schema, filters=filters)
 
         parent_prefix: BuiltinIPPrefix | None = None
         if parent_prefix_id:

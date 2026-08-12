@@ -1,14 +1,13 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
-import SlideOver from "@/shared/components/display/slide-over";
-import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
 import type { FormFieldValue } from "@/shared/components/form/type";
-import { Button, ButtonWithTooltip } from "@/shared/components/ui/button";
-import { SEARCH_FILTERS } from "@/shared/config/constants";
-import useFilters from "@/shared/hooks/useFilters";
 import usePagination from "@/shared/hooks/usePagination";
 
+import { SEARCH_FILTERS } from "@/entities/nodes/filters/domain/model/filter";
+import { getFiltersFromFormData } from "@/entities/nodes/filters/domain/rules/getFiltersFromFormData";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { TasksFilterForm } from "@/entities/tasks/ui/tasks-filter-form";
 
 export const TaskFilters = () => {
@@ -45,33 +44,41 @@ export const TaskFilters = () => {
   return (
     <>
       <div className="flex items-center gap-1">
-        <ButtonWithTooltip
-          tooltipEnabled
-          tooltipContent="Apply filters"
-          variant="ghost"
-          size="icon"
-          data-testid="apply-filters"
-          onClick={() => setShowFilters(true)}
-        >
-          <Icon icon={"mdi:filter-outline"} className="text-custom-blue-100" />
-        </ButtonWithTooltip>
+        <Tooltip message="Apply filters">
+          <Button
+            variant="ghost"
+            size="xs"
+            shape="circle"
+            data-testid="apply-filters"
+            onPress={() => setShowFilters(true)}
+          >
+            <Icon icon={"mdi:filter-outline"} className="text-custom-blue-100" />
+          </Button>
+        </Tooltip>
 
         <span className="text-xs">Filters: {currentFilters.length}</span>
 
         {!!currentFilters.length && (
-          <Button onClick={removeFilters} variant="ghost" size="icon" data-testid="remove-filters">
+          <Button
+            onPress={removeFilters}
+            variant="ghost"
+            size="xs"
+            shape="circle"
+            data-testid="remove-filters"
+          >
             <Icon icon="mdi:close" className="text-gray-400" />
           </Button>
         )}
       </div>
 
-      <SlideOver title={"Apply filters"} open={showFilters} setOpen={setShowFilters}>
+      <Sheet isOpen={showFilters} onOpenChange={setShowFilters} aria-label="Apply filters">
+        <h3 className="mb-4 font-semibold text-lg">Apply filters</h3>
         <TasksFilterForm
           filters={filters}
           onSubmit={handleSubmit}
           onCancel={() => setShowFilters(false)}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 };

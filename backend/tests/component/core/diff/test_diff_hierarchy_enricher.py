@@ -1,15 +1,18 @@
+from infrahub.core.branch import Branch
 from infrahub.core.diff.enricher.hierarchy import DiffHierarchyEnricher
 from infrahub.core.diff.model.path import DiffAction, NodeIdentifier
 from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from tests.helpers.diff_factories import EnrichedNodeFactory, EnrichedRelationshipGroupFactory, EnrichedRootFactory
 
-from .factories import EnrichedNodeFactory, EnrichedRelationshipGroupFactory, EnrichedRootFactory
 from .get_one_node import get_one_diff_node
 
 
-async def test_node_no_parent_no_rel(db: InfrahubDatabase, default_branch, person_jane_main, car_yaris_main) -> None:
+async def test_node_no_parent_no_rel(
+    db: InfrahubDatabase, default_branch: Branch, person_jane_main: Node, car_yaris_main: Node
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     diff_node = EnrichedNodeFactory.build(
         identifier=NodeIdentifier(
@@ -40,7 +43,9 @@ async def test_node_no_parent_no_rel(db: InfrahubDatabase, default_branch, perso
     assert len(jane_node.relationships) == 0
 
 
-async def test_node_no_parent_rel(db: InfrahubDatabase, default_branch, person_jane_main, car_yaris_main) -> None:
+async def test_node_no_parent_rel(
+    db: InfrahubDatabase, default_branch: Branch, person_jane_main: Node, car_yaris_main: Node
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     diff_rel = EnrichedRelationshipGroupFactory.build(name="owner", action=DiffAction.UPDATED, nodes=set())
     diff_node = EnrichedNodeFactory.build(
@@ -72,7 +77,7 @@ async def test_node_no_parent_rel(db: InfrahubDatabase, default_branch, person_j
     assert len(jane_node.relationships) == 0
 
 
-async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical_location_schema) -> None:
+async def test_node_hierarchy(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema: None) -> None:
     branch = await create_branch(db=db, branch_name="branch")
 
     # we need hierarchies where the

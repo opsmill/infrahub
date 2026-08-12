@@ -31,7 +31,7 @@ from infrahub.log import get_logger
 from infrahub.workflows.catalogue import GRAPHQL_QUERY_GROUP_UPDATE
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.graphql.auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
     from infrahub.services import InfrahubServices
 

@@ -10,7 +10,7 @@ from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import initialization
 from infrahub.core.ipam.reconciler import IpamReconciler
-from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
@@ -37,7 +37,7 @@ class FindNodesToReconcileQuery(Query):
     type = QueryType.READ
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(
             {
                 "prefix_kind": InfrahubKind.IPPREFIX,
@@ -201,7 +201,7 @@ class DeleteSelfParentRelationshipsQuery(Query):
         super().__init__(**kwargs)
         self.uuids_to_check = uuids_to_check
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["uuids_to_check"] = self.uuids_to_check
         query = """
 MATCH (n:Node)-[e1:IS_RELATED]->(:Relationship {name: "parent__child"})-[e2:IS_RELATED {branch: e1.branch, status: e1.status, from: e1.from}]->(n)
@@ -212,12 +212,14 @@ DELETE e1, e2
 
 
 class Migration039(ArbitraryMigration):
-    """
-    Identify all IP prefixes/addresses that have been updated on a branch and reconcile them on that branch
+    """Identify all IP prefixes/addresses that have been updated on a branch and reconcile them on that branch.
+
     If any of the identified IP prefixes/addresses are their own parent/child, delete those illegal edges before reconciling.
+
     """
 
     name: str = "039_ipam_reconcile_updated"
+    description: str = "N/A"
     minimum_version: int = 38
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -235,7 +237,7 @@ class Migration039(ArbitraryMigration):
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db
-        console = get_migration_console()
+        console = migration_input.console
         result = MigrationResult()
         # load schemas from database into registry
         initialize_lock()
@@ -260,7 +262,7 @@ class Migration039(ArbitraryMigration):
         console.print("done")
 
         console.log("Reconciling IP prefixes and addresses across branches...")
-        with Progress(console=console) as progress:
+        with Progress(console=migration_input.console) as progress:
             reconcile_task = progress.add_task("Reconciling IP prefixes/addresses...", total=len(ip_node_details_list))
 
             for ip_node_details in ip_node_details_list:

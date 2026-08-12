@@ -35,10 +35,7 @@ async def benchmark_uniqueness_query(
     test_params_label: str,
     test_name: str,
 ) -> None:
-    """
-    Profile NodeUniqueAttributeConstraintQuery with a given query_request / configuration, using a Car generator.
-    """
-
+    """Profile NodeUniqueAttributeConstraintQuery with a given query_request / configuration, using a Car generator."""
     # Initialization
     queries_names_to_config = {
         NodeUniqueAttributeConstraintQuery.name: QueryConfig(neo4j_runtime=benchmark_config.neo4j_runtime)
@@ -51,7 +48,7 @@ async def benchmark_uniqueness_query(
     registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
 
     # Build function to profile
-    async def init_and_execute():
+    async def init_and_execute() -> None:
         # Need this function to avoid loading data between `init` and `execute` methods.
         query = await NodeUniqueAttributeConstraintQuery.init(
             db=db_profiling_queries,

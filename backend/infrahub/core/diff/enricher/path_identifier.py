@@ -10,7 +10,7 @@ log = get_logger()
 
 
 class DiffPathIdentifierEnricher(DiffEnricherInterface):
-    """Add path identifiers to every element in the diff"""
+    """Add path identifiers to every element in the diff."""
 
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db

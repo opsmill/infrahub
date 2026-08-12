@@ -1,18 +1,17 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, Popover, PopoverTrigger } from "@infrahub/ui";
 import { FileBoxIcon } from "lucide-react";
 import type React from "react";
 
-import type { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
+import type { AnyAttribute } from "@/shared/api/graphql/generated/types";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import { Link } from "@/shared/components/ui/link";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeCore } from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface MetaDetailsTooltipProps {
@@ -31,6 +30,7 @@ export default function MetaDetailsTooltip({
   isProtected,
 }: MetaDetailsTooltipProps) {
   const { isProfile, isTemplate } = useSchema(source?.__typename);
+  const { formatDate } = useFormatDate();
 
   const items = [
     {
@@ -55,11 +55,11 @@ export default function MetaDetailsTooltip({
     },
     {
       name: "Updated at",
-      value: updatedAt ? formatFullDate(updatedAt) : "-",
+      value: updatedAt ? formatDate(updatedAt, "datetime") : "-",
     },
     {
       name: "Update time",
-      value: updatedAt ? formatRelativeTimeFromNow(updatedAt) : "-",
+      value: updatedAt ? formatDate(updatedAt, "relative") : "-",
     },
     {
       name: "Owner",
@@ -76,24 +76,16 @@ export default function MetaDetailsTooltip({
   ];
 
   return (
-    <Popover>
-      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="text-gray-500 focus-visible:ring-0"
-          data-cy="metadata-button"
-          data-testid="view-metadata-button"
-        >
-          <Icon icon="mdi:information-slab-circle-outline" />
-        </Button>
-      </PopoverTrigger>
+    <PopoverTrigger>
+      <Button size="xs" shape="circle" variant="ghost" data-testid="view-metadata-button">
+        <Icon icon="mdi:information-slab-circle-outline" />
+      </Button>
 
-      <PopoverContent data-testid="metadata-tooltip" data-cy="metadata-tooltip">
+      <Popover data-testid="metadata-tooltip">
         {!!header && header}
 
         <PropertyList properties={items} valueClassName="text-right" />
-      </PopoverContent>
-    </Popover>
+      </Popover>
+    </PopoverTrigger>
   );
 }

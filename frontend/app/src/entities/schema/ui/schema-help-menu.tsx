@@ -1,13 +1,11 @@
 import { Icon } from "@iconify-icon/react";
-import { Pressable } from "react-aria-components";
+import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
 
-import { Menu, MenuItem, MenuPopover, MenuTrigger } from "@/shared/components/aria/menu";
-import { Button } from "@/shared/components/ui/button";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
-import { MENU_EXCLUDELIST } from "@/shared/config/constants";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { ModelSchema } from "@/entities/schema/types";
+import { MENU_EXCLUDELIST } from "@/entities/navigation/domain/model/menu";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 type SchemaHelpMenuProps = {
   schema: ModelSchema;
@@ -22,13 +20,11 @@ export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
 
   return (
     <MenuTrigger>
-      <Pressable>
-        <Button size="icon" variant="outline" data-testid="schema-help-menu-trigger">
-          ?
-        </Button>
-      </Pressable>
+      <Button size="xs" shape="circle" variant="outline" data-testid="schema-help-menu-trigger">
+        ?
+      </Button>
 
-      <MenuPopover placement="bottom end">
+      <Popover placement="bottom end">
         <Menu data-testid="schema-help-menu-content">
           <MenuItem isDisabled={!schema.documentation} href={documentationUrl} target="_blank">
             <Icon icon="mdi:book-open-variant-outline" className="text-custom-blue-700 text-lg" />
@@ -44,7 +40,7 @@ export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
             Open list view
           </MenuItem>
         </Menu>
-      </MenuPopover>
+      </Popover>
     </MenuTrigger>
   );
 };

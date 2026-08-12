@@ -12,7 +12,7 @@ from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
 
 
-async def test_query_success(db: InfrahubDatabase, default_branch: Branch, person_john_main) -> None:
+async def test_query_success(db: InfrahubDatabase, default_branch: Branch, person_john_main: Node) -> None:
     car_schema = registry.schema.get(name="TestCar")
     car = await Node.init(db=db, schema="TestCar", branch=default_branch)
     await car.new(db=db, name="http://www.accord.com", nbr_seats=5, is_electric=False, owner=person_john_main.id)
@@ -34,7 +34,9 @@ async def test_query_success(db: InfrahubDatabase, default_branch: Branch, perso
     assert len(all_data_paths) == 0
 
 
-async def test_query_failure(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main) -> None:
+async def test_query_failure(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
     car_schema = registry.schema.get(name="TestCar")
     name_attr = car_schema.get_attribute(name="name")
     name_attr.kind = "IPNetwork"
@@ -78,9 +80,9 @@ async def test_query_failure(db: InfrahubDatabase, default_branch: Branch, car_a
 async def test_query_update_on_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
     branch: Branch,
 ) -> None:
     car_accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
@@ -172,12 +174,150 @@ async def test_query_update_on_branch_with_too_large_value(
     )
 
 
+async def _get_kind_change_data_paths(
+    db: InfrahubDatabase, branch: Branch, node_schema: NodeSchema, field_name: str, new_kind: str
+) -> set[DataPath]:
+    attr = node_schema.get_attribute(name=field_name)
+    attr.kind = new_kind
+    registry.schema.set(name=node_schema.kind, schema=node_schema, branch=branch.name)
+
+    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=node_schema.kind, field_name=field_name)
+    query = await AttributeKindUpdateValidatorQuery.init(
+        db=db, branch=branch, node_schema=node_schema, schema_path=schema_path
+    )
+    await query.execute(db=db)
+
+    return set((await query.get_paths()).get_all_data_paths())
+
+
+async def test_query_iphost_to_ipaddress_is_blocked(
+    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
+) -> None:
+    """An IPHost value carries a prefix, which is not a valid IPAddress, so the change is refused."""
+    node = await Node.init(db=db, schema=all_attribute_types_schema.kind, branch=default_branch)
+    await node.new(db=db, name="host", ipaddress="10.0.0.1/32")
+    await node.save(db=db)
+
+    all_data_paths = await _get_kind_change_data_paths(
+        db=db,
+        branch=default_branch,
+        node_schema=all_attribute_types_schema,
+        field_name="ipaddress",
+        new_kind="IPAddress",
+    )
+
+    assert all_data_paths == {
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=node.id,
+            kind=all_attribute_types_schema.kind,
+            field_name="ipaddress",
+            value="10.0.0.1/32",
+        )
+    }
+
+
+async def test_query_ipaddress_to_iphost_is_blocked(
+    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
+) -> None:
+    """A bare address parses as an IPHost but is not canonical for it, and no migration rewrites it."""
+    node = await Node.init(db=db, schema=all_attribute_types_schema.kind, branch=default_branch)
+    await node.new(db=db, name="host", bare_address="10.0.0.1")
+    await node.save(db=db)
+
+    all_data_paths = await _get_kind_change_data_paths(
+        db=db,
+        branch=default_branch,
+        node_schema=all_attribute_types_schema,
+        field_name="bare_address",
+        new_kind="IPHost",
+    )
+
+    assert all_data_paths == {
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=node.id,
+            kind=all_attribute_types_schema.kind,
+            field_name="bare_address",
+            value="10.0.0.1",
+        )
+    }
+
+
+async def test_query_iphost_to_ipnetwork_with_canonical_values_is_allowed(
+    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
+) -> None:
+    """A value already canonical for the new IP kind is left alone, the check is not block-everything."""
+    node = await Node.init(db=db, schema=all_attribute_types_schema.kind, branch=default_branch)
+    await node.new(db=db, name="net", ipaddress="10.0.0.0/24")
+    await node.save(db=db)
+
+    all_data_paths = await _get_kind_change_data_paths(
+        db=db,
+        branch=default_branch,
+        node_schema=all_attribute_types_schema,
+        field_name="ipaddress",
+        new_kind="IPNetwork",
+    )
+
+    assert all_data_paths == set()
+
+
+async def test_query_text_to_macaddress_with_non_canonical_value_is_blocked(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node
+) -> None:
+    """MacAddress normalizes too, so a dash-delimited value is refused rather than left un-rewritten."""
+    car = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    car.get_attribute("name").value = "aa-bb-cc-dd-ee-ff"
+    await car.save(db=db)
+
+    all_data_paths = await _get_kind_change_data_paths(
+        db=db,
+        branch=default_branch,
+        node_schema=registry.schema.get_node_schema(name="TestCar", branch=default_branch),
+        field_name="name",
+        new_kind="MacAddress",
+    )
+
+    assert all_data_paths == {
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=car_accord_main.id,
+            kind="TestCar",
+            field_name="name",
+            value="aa-bb-cc-dd-ee-ff",
+        )
+    }
+
+
+async def test_query_text_to_macaddress_with_canonical_value_is_allowed(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node
+) -> None:
+    """An already-canonical MacAddress passes, so the check does not block every conversion."""
+    car = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    car.get_attribute("name").value = "AA:BB:CC:DD:EE:FF"
+    await car.save(db=db)
+
+    all_data_paths = await _get_kind_change_data_paths(
+        db=db,
+        branch=default_branch,
+        node_schema=registry.schema.get_node_schema(name="TestCar", branch=default_branch),
+        field_name="name",
+        new_kind="MacAddress",
+    )
+
+    assert all_data_paths == set()
+
+
 async def test_query_update_on_branch_with_parameters_violation(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
     branch: Branch,
 ) -> None:
     car_accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
@@ -229,9 +369,9 @@ async def test_query_update_on_branch_with_parameters_violation(
 async def test_query_delete_on_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
     branch: Branch,
 ) -> None:
     car_accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
@@ -282,9 +422,9 @@ async def test_query_delete_on_branch(
 async def test_validator(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_accord_main,
-    car_camry_main,
-    car_prius_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_prius_main: Node,
     branch: Branch,
 ) -> None:
     car = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
@@ -304,7 +444,7 @@ async def test_validator(
         constraint_name="attribute.kind.update",
         node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="name"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = AttributeKindChecker(db=db, branch=branch)

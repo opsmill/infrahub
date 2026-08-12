@@ -8,7 +8,7 @@ This document provides detailed documentation for all events used in the Infrahu
 
 :::info
 
-For more detailed explanations on how these events are used within Infrahub, see the [bus event handling](../topics/bus-event-handling.mdx) topic.
+For more detailed explanations on how these events are used within Infrahub, see the [event system](../events/overview.mdx) documentation.
 
 :::
 
@@ -45,7 +45,7 @@ For more detailed explanations on how these events are used within Infrahub, see
 #### Event git.repository.connectivity
 <!-- vale on -->
 
-**Description**: Validate connectivity and credentials to remote repository
+**Description**: Validate connectivity and credentials to remote repository.
 
 **Priority**: 3
 
@@ -79,6 +79,24 @@ For more detailed explanations on how these events are used within Infrahub, see
 | **repository_kind** | The type of repository | string | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
 | **infrahub_branch_id** | Id of the Infrahub branch on which to sync the remote repository | string | None |
+| **commit** | Commit SHA to check out, pinned by the sync orchestrator instead of pulling the latest upstream HEAD | N/A | None |
+<!-- vale on -->
+<!-- vale off -->
+#### Event refresh.git.branch_deleted
+<!-- vale on -->
+
+**Description**: Notify workers that a branch was deleted from the remote repository.
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_id** | The unique ID of the repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The type of repository | string | None |
+| **branch_name** | The name of the branch that was deleted | string | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -111,6 +129,25 @@ For more detailed explanations on how these events are used within Infrahub, see
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
 | **branch** | The branch that was rebased | string | None |
+<!-- vale on -->
+
+<!-- vale off -->
+### Refresh Settings
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event refresh.settings.response_delay
+<!-- vale on -->
+
+**Description**: Broadcast to update the API response delay on every running API worker process.
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **response_delay** | Delay in seconds to add to each API request | integer | None |
 <!-- vale on -->
 
 <!-- vale off -->

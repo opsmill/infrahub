@@ -1,0 +1,10 @@
+query QueryTwoFiles {
+  InfraDevice {
+    edges {
+      node {
+        ...interfaceFragment
+        ...deviceFragment
+      }
+    }
+  }
+}

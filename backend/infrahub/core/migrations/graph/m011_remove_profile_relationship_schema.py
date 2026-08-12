@@ -16,7 +16,7 @@ class Migration011Query01(Query):
     type: QueryType = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         // get all the SchemaRelationship nodes for 'profiles' relationships
         MATCH (sr_to_delete:SchemaRelationship)-[HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[HAS_VALUE]->(av:AttributeValue {value: "profiles"})
@@ -39,10 +39,9 @@ class Migration011Query01(Query):
 
 class Migration011(GraphMigration):
     name: str = "011_remove_profiles_relationship_schemas"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [Migration011Query01]
     minimum_version: int = 10
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-
-        return result
+        return MigrationResult()

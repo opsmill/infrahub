@@ -34,6 +34,7 @@ from infrahub.workers.dependencies import (
     get_component,
     get_database,
     get_http,
+    get_log_forwarding_service,
     get_message_bus,
     get_workflow,
     set_component_type,
@@ -78,7 +79,7 @@ class InfrahubWorkerAsync(BaseWorker):
         self,
         client: InfrahubClient | None = None,
         metric_port: int | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         logging.getLogger("websockets").setLevel(logging.ERROR)
         logging.getLogger("httpx").setLevel(logging.ERROR)
@@ -117,7 +118,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
         self._exit_stack.enter_context(
             prefect_settings.temporary_settings(
-                updates={  # type: ignore[arg-type]
+                updates={
                     prefect_settings.PREFECT_WORKER_QUERY_SECONDS: config.SETTINGS.workflow.worker_polling_interval,
                     prefect_settings.PREFECT_RESULTS_PERSIST_BY_DEFAULT: True,
                     prefect_settings.PREFECT_DEFAULT_RESULT_STORAGE_BLOCK: WORKER_DEFAULT_RESULT_STORAGE_BLOCK,
@@ -207,6 +208,7 @@ class InfrahubWorkerAsync(BaseWorker):
     async def _init_services(self, client: InfrahubClient | None) -> None:
         client = await self._init_infrahub_client(client=client)
 
+        log_forwarding = get_log_forwarding_service()
         service = await InfrahubServices.new(
             cache=await get_cache(),
             client=client,
@@ -215,7 +217,10 @@ class InfrahubWorkerAsync(BaseWorker):
             workflow=get_workflow(),
             component=await get_component(),
             component_type=self.component_type,
+            http=get_http(),
+            log_forwarding=log_forwarding,
         )
+        await log_forwarding.start()
 
         self.service = service
 

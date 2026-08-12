@@ -41,7 +41,7 @@ INFRAHUB_USE_NATS: bool = str_to_bool(os.getenv("INFRAHUB_USE_NATS", "false"))
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
-NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:2025.10.1-enterprise")
+NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:2026.05.0-enterprise")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
     "MESSAGE_QUEUE_DOCKER_IMAGE",
     "rabbitmq:4.2.1-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
@@ -145,6 +145,7 @@ PYTHON_PRIMITIVE_MAP = {
     "dropdown": "str",
     "enum": "str",
     "hashedpassword": "str",
+    "ipaddress": "str",
     "iphost": "str",
     "ipnetwork": "str",
     "json": "dict",
@@ -204,7 +205,7 @@ def get_compose_cmd(namespace: Namespace) -> str:
             os.environ["INFRAHUB_TRACE_ENABLE"] = "True"
             os.environ["INFRAHUB_TRACE_INSECURE"] = "True"
             os.environ["INFRAHUB_TRACE_EXPORTER_TYPE"] = "otlp"
-            os.environ["INFRAHUB_TRACE_EXPORTER_ENDPOINT"] = "http://tempo:4317"
+            os.environ["INFRAHUB_TRACE_EXPORTER_ENDPOINT"] = "http://infrahub-tempo:4317"
 
     if dumb_terminal():
         options.append("--ansi never")
@@ -303,6 +304,7 @@ def init_yaml_obj(line_length: int | None = None) -> YAML:
 
     Returns:
         YAML: Instantiated ruamel.yaml.YAML object.
+
     """
     from ruamel.yaml import YAML
 

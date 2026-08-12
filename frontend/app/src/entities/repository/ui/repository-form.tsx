@@ -1,15 +1,17 @@
+import { Button, Card, CardContent, type CardProps } from "@infrahub/ui";
+
+import { Row } from "@/shared/components/container";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
 import RelationshipField from "@/shared/components/form/fields/relationships/relationship.field";
 import type { NodeFormProps } from "@/shared/components/form/node-form";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
-import { Button } from "@/shared/components/ui/button";
-import { Card, type CardProps } from "@/shared/components/ui/card";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 
 const RepositoryForm = ({
@@ -21,11 +23,13 @@ const RepositoryForm = ({
   ...props
 }: NodeFormProps) => {
   const auth = useAuth();
+  const { currentBranch } = useCurrentBranch();
   const { parentSchema, parentData } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
 
   const fields = getFormFieldsFromSchema({
     auth,
+    isDefaultBranch: !!currentBranch.is_default,
     initialObject: currentObject,
     schema,
     parentSchema,
@@ -99,21 +103,25 @@ const RepositoryForm = ({
         </FormGroup>
       )}
 
-      <div className="text-right">
+      <Row className="justify-end">
         {onCancel && (
-          <Button variant="outline" className="mr-2" onClick={onCancel}>
+          <Button variant="outline" onPress={onCancel}>
             Cancel
           </Button>
         )}
 
         <FormSubmit>Save</FormSubmit>
-      </div>
+      </Row>
     </Form>
   );
 };
 
 const FormGroup = ({ className, ...props }: CardProps) => {
-  return <Card className={classNames("space-y-4 shadow-xs", className)} {...props} />;
+  return (
+    <Card className={classNames("shadow-xs", className)}>
+      <CardContent className="space-y-4">{props.children}</CardContent>
+    </Card>
+  );
 };
 
 export default RepositoryForm;

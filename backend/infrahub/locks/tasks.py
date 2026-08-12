@@ -4,7 +4,6 @@ from prefect import flow
 from prefect.logging import get_run_logger
 
 from infrahub import config
-from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.lock import LOCK_PREFIX
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
@@ -15,15 +14,14 @@ from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefec
     flow_run_name="Clean up deadlocks",
 )
 async def clean_up_deadlocks(service: InfrahubServices) -> None:
-    """Remove stale distributed locks left behind by inactive workers"""
+    """Remove stale distributed locks left behind by inactive workers."""
     keys = await service.cache.list_keys(filter_pattern=f"{LOCK_PREFIX}*")
     if not keys:
         return
 
     log = get_run_logger()
     values = await service.cache.get_values(keys=keys)
-    workers = await service.component.list_workers(branch=registry.default_branch, schema_hash=False)
-    workers_active = {worker.id for worker in workers if worker.active}
+    workers_active = await service.component.list_active_worker_ids()
 
     for key, value in zip(keys, values, strict=False):
         if not key or not value:

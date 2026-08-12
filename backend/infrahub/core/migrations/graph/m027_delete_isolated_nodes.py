@@ -18,7 +18,7 @@ class DeleteIsolatedNodesQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH p = (s: Node)-[r]-(d)
         WHERE NOT exists((s)-[:IS_PART_OF]-(:Root))
@@ -34,17 +34,18 @@ class DeleteIsolatedNodesQuery(Query):
 
 
 class Migration027(GraphMigration):
-    """
-    While deleting a branch containing some allocated nodes from a resource pool, relationship
+    """While deleting a branch containing some allocated nodes from a resource pool, relationship.
+
     between pool node and resource node might be agnostic (eg: for IPPrefixPool) and incorrectly deleted,
     resulting in a node still linked to the resource pool but not linked to Root anymore.
+
     This query deletes nodes not linked to Root and their relationships (supposed to be agnostic).
     """
 
     name: str = "027_deleted_isolated_nodes"
+    description: str = "N/A"
     minimum_version: int = 26
     queries: Sequence[type[Query]] = [DeleteIsolatedNodesQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

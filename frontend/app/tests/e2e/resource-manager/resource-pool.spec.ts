@@ -35,7 +35,7 @@ test.describe("/resource-manager - Resource Manager", () => {
     await page.goto("/resource-manager");
     await page.getByRole("link", { name: "test prefix pool" }).click();
 
-    await expect(page.getByText("Core IP Prefix Pool")).toBeVisible();
+    await expect(page.getByText("CoreIP Prefix Pool")).toBeVisible();
     await expect(page.getByText("Nametest prefix pool")).toBeVisible();
     await expect(page.getByText("Description-")).toBeVisible();
     expect(page.url()).toContain("/resource-manager/");
@@ -45,6 +45,8 @@ test.describe("/resource-manager - Resource Manager", () => {
     await expect(page.getByText("Created by")).toBeVisible();
     await expect(page.getByText("Updated at")).toBeVisible();
     await expect(page.getByText("Updated by")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByText("Created at")).toBeHidden();
 
     await page.getByTestId("edit-button").click();
     await expect(page.getByLabel("Default Prefix Type")).toContainText("IP PrefixIpam");

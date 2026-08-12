@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 with patch("sys.stdin"):
     from infrahub.git_credential.helper import app, parse_helper_get_input
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 def test_parse_helper_get_input() -> None:

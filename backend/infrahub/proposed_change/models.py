@@ -21,7 +21,7 @@ class BaseProposedChangeWithDiffMessage(InfrahubMessage):
 
 
 class RequestProposedChangeDataIntegrity(BaseProposedChangeWithDiffMessage):
-    """Sent trigger data integrity checks for a proposed change"""
+    """Sent trigger data integrity checks for a proposed change."""
 
 
 class RequestProposedChangeRunGenerators(BaseProposedChangeWithDiffMessage):
@@ -34,11 +34,11 @@ class RequestProposedChangeRunGenerators(BaseProposedChangeWithDiffMessage):
 
 
 class RequestProposedChangeRepositoryChecks(BaseProposedChangeWithDiffMessage):
-    """Sent when a proposed change is created to trigger additional checks"""
+    """Sent when a proposed change is created to trigger additional checks."""
 
 
 class RequestProposedChangeSchemaIntegrity(BaseProposedChangeWithDiffMessage):
-    """Sent trigger schema integrity checks for a proposed change"""
+    """Sent trigger schema integrity checks for a proposed change."""
 
 
 class RequestProposedChangeUserTests(BaseProposedChangeWithDiffMessage):

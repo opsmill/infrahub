@@ -34,14 +34,21 @@ async def get_repositories_commit_per_branch(
 
     NOTE: At some point, we should refactor this function to use a single Database query instead of one per branch
     """
-
     repositories: dict[str, RepositoryData] = {}
 
     for branch in list(registry.branch.values()):
         repos: list[CoreRepository | CoreReadOnlyRepository] = await NodeManager.query(
             db=db,
             branch=branch,
-            fields={"id": None, "name": None, "commit": None, "internal_status": None, "location": None, "ref": None},
+            fields={
+                "id": None,
+                "name": None,
+                "commit": None,
+                "internal_status": None,
+                "location": None,
+                "ref": None,
+                "default_branch": None,
+            },
             schema=kind,
             order=OrderModel(disable=True),
         )

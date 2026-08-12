@@ -1,7 +1,9 @@
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Row } from "@/shared/components/container";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
 import { FileField } from "@/shared/components/form/fields/file.field";
 import type { ProfileData } from "@/shared/components/form/object-form";
@@ -13,17 +15,20 @@ import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import type {
+  NodeCore,
+  NodeFieldsWithMetadata,
+  NodeObject,
+} from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import type { NodeCore, NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import { useGetNumberPools } from "@/entities/resource-manager/ui/queries/get-number-pools.query";
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/schema";
 
 export type CoreFileFormData = Record<string, FormFieldValue>;
 
@@ -67,6 +72,7 @@ export function CoreFileForm({
   isUpdate = false,
 }: CoreFileFormProps) {
   const auth = useAuth();
+  const { currentBranch } = useCurrentBranch();
   const { parentData, parentSchema } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
   const updateObject = useUpdateObjectMutation();
@@ -86,6 +92,7 @@ export function CoreFileForm({
     initialObject: currentObject,
     objectTemplate,
     auth,
+    isDefaultBranch: !!currentBranch.is_default,
     isFilterForm,
     pools: numberPools,
     isUpdate,
@@ -132,7 +139,9 @@ export function CoreFileForm({
               await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
 
               toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
-                toastId: `alert-success-${schema?.name}-updated`,
+                // Per-node id: a constant per-kind id makes react-toastify dedupe rapid
+                // successive operations on different objects of the same kind.
+                toastId: `alert-success-${schema?.name}-updated-${updatedNode.id}`,
               });
               if (onSuccess) await onSuccess(updatedNode);
             },
@@ -146,7 +155,7 @@ export function CoreFileForm({
           {
             onSuccess: async (newNode) => {
               toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
-                toastId: `alert-success-${schema?.name}-created`,
+                toastId: `alert-success-${schema?.name}-created-${newNode.id}`,
               });
               if (onSuccess) await onSuccess(newNode);
             },
@@ -166,30 +175,28 @@ export function CoreFileForm({
   }
 
   return (
-    <div className={classNames("flex flex-1 flex-col overflow-auto bg-white p-4", className)}>
-      <Form onSubmit={onSubmit} defaultValues={formDefaultValues} className="space-y-4">
-        <FileField
-          name="file"
-          label="File"
-          rules={!isUpdate ? { required: true, validate: { required: isRequired } } : undefined}
-          selectedFile={selectedFile}
-          existingFile={existingFile}
-          onFileSelect={setSelectedFile}
-        />
+    <Form onSubmit={onSubmit} defaultValues={formDefaultValues} className={className}>
+      <FileField
+        name="file"
+        label="File"
+        rules={!isUpdate ? { required: true, validate: { required: isRequired } } : undefined}
+        selectedFile={selectedFile}
+        existingFile={existingFile}
+        onFileSelect={setSelectedFile}
+      />
 
-        {fields.map((field) => (
-          <DynamicField key={`${field.type}_${field.name}`} {...field} />
-        ))}
+      {fields.map((field) => (
+        <DynamicField key={`${field.type}_${field.name}`} {...field} />
+      ))}
 
-        <div className="text-right">
-          {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
-              Cancel
-            </Button>
-          )}
-          <FormSubmit>Save</FormSubmit>
-        </div>
-      </Form>
-    </div>
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
+        )}
+        <FormSubmit>Save</FormSubmit>
+      </Row>
+    </Form>
   );
 }

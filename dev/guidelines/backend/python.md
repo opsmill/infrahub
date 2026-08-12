@@ -42,13 +42,34 @@ class NodeManager:
             raise ValidationError("Node name is required")
 ```
 
-Use `TYPE_CHECKING` blocks for imports only needed for type hints to avoid circular imports:
+All backend modules use `from __future__ import annotations`, which turns annotations into strings at runtime. This means imports used **only** in type hints have no runtime effect and can be placed under `TYPE_CHECKING` to prevent circular imports:
 
 ```python
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
+```
+
+If an import is only referenced in parameter types, return types, or variable annotations, move it under `TYPE_CHECKING` — especially when it causes or risks a circular import chain:
+
+```python
+# ❌ Bad - top-level import only used in annotations; causes circular import
+from infrahub.core.schema.schema_branch import SchemaBranch
+
+def collect_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
+    ...
+
+# ✅ Good - deferred under TYPE_CHECKING
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from infrahub.core.schema.schema_branch import SchemaBranch
+
+def collect_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
+    ...
 ```
 
 ## Data Structures
@@ -152,6 +173,79 @@ branch_data = {"name": "feature-x", "description": None}
 branch_data = BranchCreateInput(name="feature-x")
 ```
 
+### Use dict.get() for Default Values
+
+Prefer `dict.get(key, default)` over an existence check or `try/except` when reading a key that may be missing. It is more concise and avoids the cost of raising and catching `KeyError`:
+
+```python
+config: dict[str, int] = {"timeout": 30}
+
+# ❌ Bad - verbose existence check
+if "retries" in config:
+    retries = config["retries"]
+else:
+    retries = 3
+
+# ❌ Bad - exception handling for an expected-missing key
+try:
+    retries = config["retries"]
+except KeyError:
+    retries = 3
+
+# ✅ Good - get() with an explicit default
+retries = config.get("retries", 3)
+```
+
+Guidelines:
+
+- `get()` without a second argument returns `None` for missing keys.
+- Chain for nested access: `config.get("db", {}).get("host", "localhost")`.
+- Use `setdefault()` when the default is a mutable object you intend to build up: `cache.setdefault("results", []).append(42)`.
+
+## Configuration Settings
+
+`backend/infrahub/config.py` is the boundary where an operator's environment enters the process. Any value that gets past a `Field` is trusted by everything downstream, so constrain it here rather than defending against it in the logic that consumes it.
+
+### Bound every numeric field
+
+Give each numeric field the tightest bounds its *meaning* allows, not just `gt=0`. A multiplier that may only scale a value **up** is `ge=1`; one that may only scale it **down** is `gt=0, le=1`. A count that must leave room for at least one item is `ge=1`, not `ge=0`.
+
+Every `float` field also needs `allow_inf_nan=False`. Pydantic accepts `inf` and `nan` for floats by default, and both slip past `gt`/`ge`: `inf` produces a threshold that can never be reached, and `nan` makes every comparison against it `False`, so the feature quietly stops working somewhere far from the config file.
+
+```python
+retry_backoff_multiplier: float = Field(
+    default=2.0,
+    ge=1,
+    allow_inf_nan=False,
+    description="Factor applied to the delay after each failed attempt.",
+)
+```
+
+### Enforce cross-field invariants with a model validator
+
+Per-field bounds cannot express a relationship *between* settings. When one setting is only meaningful relative to another — an ordering, a window that must contain another, a ceiling that must sit above its floor — assert it in a `@model_validator(mode="after")`. A contradictory configuration then fails at startup with an explanation, instead of silently inverting the feature's behavior at runtime.
+
+```python
+@model_validator(mode="after")
+def validate_retry_delay_bounds_ordered(self) -> Self:
+    """Require the initial retry delay to fall within the configured ceiling.
+
+    Raises:
+        ValueError: If the initial delay exceeds the maximum.
+
+    """
+    if self.retry_initial_delay_seconds > self.retry_max_delay_seconds:
+        raise ValueError(
+            "'retry_initial_delay_seconds' must not exceed 'retry_max_delay_seconds', "
+            "otherwise the backoff ceiling is reached before the first retry"
+        )
+    return self
+```
+
+Name the validator after the invariant it enforces. Name the offending fields in full in the message so they are greppable, and state both the rule and its consequence — the operator reading it in a crash log has no other context.
+
+Testing note: don't test that Pydantic enforces `ge`/`le` (see [Testing Standards](./testing.md#what-not-to-test)), but *do* test the model validator and the shipped defaults — the invariant and the defaults are ours.
+
 ## Docstrings (Google-style)
 
 All public functions and classes must have Google-style docstrings:
@@ -205,6 +299,63 @@ class MyQuery(Query):
 - Use `str | None` for optional strings (Python 3.10+)
 - Use `list[Type]` instead of `List[Type]` (Python 3.9+)
 
+### Type a closed value set as an enum, not `str`
+
+When a field or argument accepts only a fixed set of values, don't type it as a bare `str` — a bare `str` lets a typo through silently and hides the valid set from readers and from the schema. Use one of:
+
+- **`Literal["a", "b"]`** — the lighter option for a small closed set used in a **single file**. Still type-checked, no class to declare.
+- **An enum** — when the set is shared across modules, needs a name, round-trips through the database, or is exposed over GraphQL. Subclass `str` so the value round-trips as text — `StrEnum` on the backend (Python 3.11+); use `class X(str, Enum)` for code shared with `python_testcontainers` (which targets 3.10).
+
+A value that also leaves the process as an external label — a metric label, a response field, a log key — is shared by definition, so it gets the enum even if only one module reads it today. Note that second role in the enum's docstring, and pass the member itself at the emit site rather than a parallel string literal, so the exported set and the branched-on set cannot drift apart.
+
+```python
+# ❌ Bad - any string is accepted; a typo silently bypasses downstream logic
+origin: str | None = None
+
+# ✅ Good - the valid set is discoverable and reusable; the owning model validates input
+class NodeMutationOrigin(StrEnum):
+    LIVE = "live"
+    MERGE = "merge"
+    REBASE = "rebase"
+
+origin: NodeMutationOrigin | None = None
+```
+
+The annotation alone does not reject a bad value at runtime — a validation layer enforces it (a Pydantic model, or an explicit `NodeMutationOrigin(value)` conversion at the boundary for plain dataclasses/adapters). For a value exposed over GraphQL, reuse the existing Python-enum → GraphQL-enum conversion rather than re-declaring the values as strings in the GraphQL layer.
+
+### Do not narrow a type in an override (Liskov / `ty`)
+
+An override may not make a parameter type *narrower* (or a return type *wider*) than the base declaration — `ty` rejects it as a Liskov violation. When an abstract method and its implementations must accept a union, declare the full shared type on the abstract **and** on every implementation; do not tighten one adapter.
+
+```python
+# ❌ Bad - RedisCache narrows the abstract's `int` to `KVTTL`; ty errors
+class InfrahubCache(ABC):
+    async def set(self, key: str, value: str, expires: int | None = None) -> None: ...
+class RedisCache(InfrahubCache):
+    async def set(self, key: str, value: str, expires: KVTTL | None = None) -> None: ...
+
+# ✅ Good - the shared union on the base and all adapters
+async def set(self, key: str, value: str, expires: KVTTL | int | None = None) -> None: ...
+```
+
+### Prefer `isinstance` over `getattr` for narrowing
+
+To branch on or read from a typed object, use `isinstance` so the type checker can narrow it; reaching for `getattr(obj, "attr", default)` defeats type analysis. When guarding a schema object, cover the whole family that carries the attribute — `isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema))` — since profiles and templates inherit node behavior and a `NodeSchema`-only check silently drops them.
+
+### Deterministic serialization for hashes and cache keys
+
+When a JSON string feeds a hash, fingerprint, or cache key, its output must be deterministic. Do **not** pass `default=str` to `json.dumps` there: it silently serializes unexpected types via `str()`, which can embed run-specific data (memory addresses) and break determinism. Serialize an explicit, canonical shape (sorted keys, known field types) and let unknown types raise instead of being coerced.
+
+### When a wrong-type bug slips through
+
+`mypy` and `ty` both gate CI, but modules opt out of checks — mypy via per-module `disable_error_code` in `pyproject.toml`, ty via directory `[[tool.ty.overrides]]` (`invalid-argument-type` is currently ignored tree-wide). These suppressions hide real bugs.
+
+So when a bug is caused by a **wrong type being passed** (e.g. a class where a `str` was expected), the checker should have caught it — treat it as a gap to close, not just a runtime fix:
+
+1. Find why it was missed — usually `arg-type` / `invalid-argument-type` is suppressed for that module.
+2. Re-enable the rule for that module and fix the whole typing chain it surfaces. Grandfather unrelated pre-existing violations with a scoped `# type: ignore[code]  # reason`, not by leaving the rule off.
+3. Fix the source. Never widen a parameter's type to silence the checker when the real contract is narrower — that entrenches the defect. mypy enforces argument types by default (modules opt out), so fix there; re-enabling ty's `invalid-argument-type` is a deliberate directory-wide effort, not a per-file exception.
+
 ## Python Version Compatibility
 
 The `python_testcontainers` package supports Python 3.10+, while the main backend requires Python 3.12+. When writing code that may be shared or used in `python_testcontainers`, be mindful of version-specific features.
@@ -256,6 +407,108 @@ Exceptions where positional arguments are acceptable:
 - Single-argument functions: `len(items)`, `str(value)`
 - Well-known stdlib patterns: `range(10)`, `print("message")`
 - First argument when it's unambiguous: `log.info("message")`
+
+## Exception Handling
+
+Catch only the exceptions you expect and know how to handle. Do not use bare `except:` or a broad `except Exception` to wrap code you haven't verified can raise something you can recover from — it swallows `KeyboardInterrupt`/`SystemExit` intent, hides bugs (typos, `AttributeError`, misconfiguration) behind the same handler as the error you meant to catch, and makes failures silent.
+
+```python
+# ❌ Bad - swallows everything, including programming errors
+try:
+    node = await get_node(db=db, node_id=node_id)
+except Exception:
+    node = None
+
+# ✅ Good - catch only what get_node is documented to raise
+try:
+    node = await get_node(db=db, node_id=node_id)
+except NodeNotFoundError:
+    node = None
+```
+
+Guidelines:
+
+- **Name the exceptions.** Catch the narrowest type(s) that the called code actually raises. If several are handled the same way, group them: `except (NodeNotFoundError, BranchNotFoundError):`.
+- **Check the hierarchy before narrowing.** Infrahub's exception types are mostly direct `Error` subclasses, not a tree — `QueryTimeoutError` is a *sibling* of `DatabaseError`, so catching `DatabaseError` does not cover query timeouts. Verify in `backend/infrahub/exceptions.py` which types the call path actually raises before writing the tuple.
+- **Keep the `try` body small.** Wrap only the statement that can raise, not a whole block, so an unexpected error elsewhere isn't caught by accident.
+- **Never silence.** A bare `except Exception: pass` hides real failures. If there is genuinely nothing to do, comment why, and at minimum `log.debug(...)`.
+- **Re-raise what you can't handle.** If you must catch broadly to add context or clean up, re-raise afterwards (`raise` to preserve the traceback, or `raise NewError(...) from exc` to chain).
+
+```python
+# ✅ Good - broad catch is acceptable only to add context, then re-raise
+try:
+    await run_migration(db=db)
+except Exception as exc:
+    log.error("Migration failed", error=str(exc))
+    raise
+```
+
+A broad `except Exception` is justified only at a top-level boundary (a task worker loop, a request handler) whose job is to prevent one failure from taking down the process — and even there, log the exception and re-raise or record it, never discard it.
+
+### Best-effort side effects degrade to a safe fallback
+
+A second broad-catch case is a best-effort side effect whose failure must not abort a primary
+operation that has already succeeded: a cache write for an optimization, an observability emit, a
+capture step feeding later work. Here the broad `except Exception` deliberately does not re-raise,
+because propagating would undo committed, correct work. This is not silencing, and it is legitimate
+only when all of the following hold:
+
+- The failure is logged.
+- It is converted into an explicit, documented fallback that is at least as safe as the side effect
+  never having run, never a silently narrower result. When the side effect feeds a later selection
+  or dispatch, the fallback must over-execute, not under-execute.
+- It is positioned so the failure cannot corrupt the primary operation's committed result (do the
+  best-effort work either fully before the point of no return or fully after it, never straddling
+  it).
+
+```python
+# ✅ Good - a best-effort capture that must never fail the committed operation
+try:
+    summary = serialize_diff(branch_diff)
+    cache.set(key, summary)          # only after the operation has committed
+except Exception as exc:
+    log.warning("Merge diff capture failed; falling back to full regeneration", error=str(exc))
+    key = None                        # explicit, safe (over-executing) fallback signal
+```
+
+## ASGI Middleware
+
+<!-- Extracted from specs/ifc-2886-priority-api-backpressure on 2026-07-26 -->
+
+Write middleware as **pure ASGI** — `async def __call__(self, scope, receive, send)`, subclassing
+nothing — when it runs on every request, may short-circuit a request, or sits anywhere near
+streaming or background tasks:
+
+```python
+class SomeMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        ...
+```
+
+The `@app.middleware("http")` decorator wraps `BaseHTTPMiddleware`, which buffers the entire
+response and interferes with streaming responses and background tasks. Reserve it for
+non-hot-path work where that cost is irrelevant.
+
+Rules that follow from the ASGI contract:
+
+- Always pass non-`http` scopes (`websocket`, `lifespan`) straight through untouched.
+- Short-circuit by constructing and sending the response yourself. Middleware runs outside the
+  exception-handler scope, so raising will not reach FastAPI's registered handlers, and those
+  handlers cannot attach custom response headers.
+- Registration order is inverted: Starlette inserts each `add_middleware(...)` at the front, so
+  the **last** registered runs **first** (outermost). Put a gate that must run before auth,
+  routing, and telemetry last in `server.py`.
+- Anything resolved by `Depends(...)` — including the authenticated user — is not available;
+  dependencies resolve per route, after all middleware.
+
+Worked example: `backend/infrahub/api/admission/middleware.py`, with the reasoning in
+[API Backpressure](../../knowledge/backend/api-backpressure.md#why-its-built-this-way).
 
 ## Testing
 

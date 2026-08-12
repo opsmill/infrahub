@@ -7,14 +7,14 @@ datasources:
     uid: localprometheus
     access: proxy
     orgId: 1
-    url: http://prometheus:9090
+    url: http://infrahub-prometheus:9090
     basicAuth: false
     editable: true
 
   - name: Loki (Local)
     type: loki
     uid: localloki
-    url: http://loki:3100
+    url: http://infrahub-loki:3100
     editable: true
     jsonData:
       derivedFields:
@@ -32,7 +32,7 @@ datasources:
   - name: Tempo (Local)
     type: tempo
     uid: localtempo
-    url: http://tempo:3200
+    url: http://infrahub-tempo:3200
     access: proxy
     basicAuth: false
     jsonData:

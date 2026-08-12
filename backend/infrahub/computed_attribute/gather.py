@@ -8,7 +8,6 @@ from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
 from infrahub.core.manager import NodeManager
-from infrahub.core.protocols import CoreGenericRepository, CoreGraphQLQuery
 from infrahub.core.protocols import CoreTransformPython as CoreTransformPythonNode
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase  # noqa: TC001  needed for prefect flow
@@ -16,6 +15,7 @@ from infrahub.git.utils import get_repositories_commit_per_branch
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.trigger.constants import TRIGGER_PLACEHOLDER_FIELD
 
 from .models import (
     ComputedAttrJinja2TriggerDefinition,
@@ -68,8 +68,8 @@ async def gather_python_transform_attributes(
 
     computed_attributes: list[PythonTransformComputedAttribute] = []
     for transform in transforms:
-        repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
-        query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
+        repository = await transform.repository.get_peer(db=db, raise_on_error=True)
+        query = await transform.query.get_peer(db=db, raise_on_error=True)
         query_analyzer = InfrahubGraphQLQueryAnalyzer(
             query=query.query.value,
             branch=branch,
@@ -121,10 +121,18 @@ async def gather_trigger_computed_attribute_jinja2(
 
         for computed_attribute, trigger_nodes in mapping.items():
             for trigger_node in trigger_nodes:
+                effective_trigger = trigger_node
+                if trigger_node.targets_self:
+                    # Self-targeting triggers use placeholder fields so they never match real
+                    # NodeUpdatedEvents. The trigger definition still exists for schema-change
+                    # detection in the setup flow. This matches the HFID and display label pattern.
+                    effective_trigger = trigger_node.model_copy(
+                        update={"attributes": [TRIGGER_PLACEHOLDER_FIELD], "relationships": []}
+                    )
                 trigger = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
                     branch=branch_scope,
                     computed_attribute=computed_attribute,
-                    trigger_node=trigger_node,
+                    trigger_node=effective_trigger,
                     branches_out_of_scope=branches_out_of_scope,
                 )
                 triggers.append(trigger)
@@ -178,7 +186,13 @@ async def gather_trigger_computed_attribute_python(
             )
             triggers_python.append(trigger_python)
 
-            for kind in branches[branch_scope].query_analyzer.query_report.requested_read.keys():
+            for kind, access in branches[branch_scope].query_analyzer.query_report.requested_read.items():
+                if not access.fields:
+                    # A kind reached through a generic relationship is reported for every member,
+                    # even the ones the query reads no field from. Such a trigger would get no
+                    # field filter and fire on every update to that kind.
+                    continue
+
                 trigger_python_query = ComputedAttrPythonQueryTriggerDefinition.from_object(
                     kind=kind,
                     computed_attribute=branches[branch_scope],

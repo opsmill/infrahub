@@ -9,6 +9,9 @@ on:
     paths:
       - 'docs/docs/**'
       - 'docs/sidebars.ts'
+      - 'docs/sidebar-releases.ts'
+      - 'docs/plugins/**'
+      - 'docs/src/components/ReleaseFeed/**'
   workflow_dispatch:
 
 jobs:
@@ -16,12 +19,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: source-repo
 
       - name: Checkout target repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: opsmill/infrahub-docs
           token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
@@ -32,10 +35,19 @@ jobs:
           # Remove existing files in target repo
           rm -rf target-repo/docs/docs/*
           rm -f target-repo/docs/sidebars.ts
+          rm -f target-repo/docs/sidebar-releases.ts
+          rm -rf target-repo/docs/plugins
+          rm -rf target-repo/docs/src/components/ReleaseFeed
 
           # Copy files from source repo to target repo
           cp -r source-repo/docs/docs/* target-repo/docs/docs/
           cp source-repo/docs/sidebars.ts target-repo/docs/sidebars.ts
+          # sidebars.ts imports ./sidebar-releases; the ReleaseFeed component and
+          # release-notes-data plugin power the /release-notes/infrahub feed.
+          cp source-repo/docs/sidebar-releases.ts target-repo/docs/sidebar-releases.ts
+          cp -r source-repo/docs/plugins target-repo/docs/plugins
+          mkdir -p target-repo/docs/src/components
+          cp -r source-repo/docs/src/components/ReleaseFeed target-repo/docs/src/components/ReleaseFeed
 
           # Commit and push changes to target repository
           cd target-repo

@@ -2,15 +2,15 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { store } from "@/shared/stores";
 
-import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
+import { getRelationships } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../../../../../tests/components/render";
 import { generateNodeSchema } from "../../../../../../../../../tests/fake/schema";
 import { BulkMutateGroups } from "./bulk-mutate-groups";
 
-vi.mock("@/entities/nodes/relationships/domain/get-relationships/get-relationships");
+vi.mock("@/entities/nodes/relationships/domain/use-cases/get-relationships");
 
 describe("BulkMutateGroups Component", () => {
   const mockGroups: RelationshipNode[] = [
@@ -20,6 +20,7 @@ describe("BulkMutateGroups Component", () => {
 
   const mockMutationFn = vi.fn().mockResolvedValue(undefined);
   const mockOnSuccess = vi.fn();
+  const mockOnClose = vi.fn();
   const groupSchema = generateNodeSchema({ kind: "CoreGroup" });
 
   beforeEach(() => {
@@ -31,7 +32,11 @@ describe("BulkMutateGroups Component", () => {
   test("renders the group selector", async () => {
     // GIVEN
     const component = await render(
-      <BulkMutateGroups mutationFn={mockMutationFn} onSuccess={mockOnSuccess} />
+      <BulkMutateGroups
+        mutationFn={mockMutationFn}
+        onSuccess={mockOnSuccess}
+        onClose={mockOnClose}
+      />
     );
 
     // THEN
@@ -41,7 +46,11 @@ describe("BulkMutateGroups Component", () => {
   test("adds a group to the selected groups panel when a group is selected", async () => {
     // GIVEN
     const component = await render(
-      <BulkMutateGroups mutationFn={mockMutationFn} onSuccess={mockOnSuccess} />
+      <BulkMutateGroups
+        mutationFn={mockMutationFn}
+        onSuccess={mockOnSuccess}
+        onClose={mockOnClose}
+      />
     );
 
     // WHEN
@@ -61,7 +70,11 @@ describe("BulkMutateGroups Component", () => {
   test("removes a group when clicking the remove button", async () => {
     // GIVEN
     const component = await render(
-      <BulkMutateGroups mutationFn={mockMutationFn} onSuccess={mockOnSuccess} />
+      <BulkMutateGroups
+        mutationFn={mockMutationFn}
+        onSuccess={mockOnSuccess}
+        onClose={mockOnClose}
+      />
     );
 
     // WHEN
@@ -75,7 +88,11 @@ describe("BulkMutateGroups Component", () => {
   test("filters out already selected groups", async () => {
     // GIVEN
     const component = await render(
-      <BulkMutateGroups mutationFn={mockMutationFn} onSuccess={mockOnSuccess} />
+      <BulkMutateGroups
+        mutationFn={mockMutationFn}
+        onSuccess={mockOnSuccess}
+        onClose={mockOnClose}
+      />
     );
 
     // WHEN
@@ -100,7 +117,11 @@ describe("BulkMutateGroups Component", () => {
   test("transitions to processing state when validate button is clicked", async () => {
     // GIVEN
     const component = await render(
-      <BulkMutateGroups mutationFn={mockMutationFn} onSuccess={mockOnSuccess} />
+      <BulkMutateGroups
+        mutationFn={mockMutationFn}
+        onSuccess={mockOnSuccess}
+        onClose={mockOnClose}
+      />
     );
 
     // WHEN
@@ -115,7 +136,11 @@ describe("BulkMutateGroups Component", () => {
   test("calls mutation function when processing", async () => {
     // GIVEN
     const component = await render(
-      <BulkMutateGroups mutationFn={(group) => mockMutationFn(group)} onSuccess={mockOnSuccess} />
+      <BulkMutateGroups
+        mutationFn={(group) => mockMutationFn(group)}
+        onSuccess={mockOnSuccess}
+        onClose={mockOnClose}
+      />
     );
 
     // WHEN
@@ -126,10 +151,52 @@ describe("BulkMutateGroups Component", () => {
     expect(mockMutationFn).toHaveBeenCalledExactlyOnceWith(mockGroups[0]);
   });
 
+  test("calls onSuccess when all mutations complete", async () => {
+    // GIVEN
+    const component = await render(
+      <BulkMutateGroups
+        mutationFn={mockMutationFn}
+        onSuccess={mockOnSuccess}
+        onClose={mockOnClose}
+      />
+    );
+
+    // WHEN
+    await component.getByRole("option", { name: "Test Group 1" }).click();
+    await component.getByRole("button", { name: "Validate" }).click();
+
+    // THEN
+    await expect.poll(() => mockOnSuccess).toHaveBeenCalled();
+  });
+
+  test("calls onClose when close button is clicked", async () => {
+    // GIVEN
+    const component = await render(
+      <BulkMutateGroups
+        mutationFn={mockMutationFn}
+        onSuccess={mockOnSuccess}
+        onClose={mockOnClose}
+      />
+    );
+
+    // WHEN
+    await component.getByRole("option", { name: "Test Group 1" }).click();
+    await component.getByRole("button", { name: "Validate" }).click();
+    await expect.element(component.getByTestId("processing-groups-panel")).toBeVisible();
+    await component.getByRole("button", { name: "Close" }).click();
+
+    // THEN
+    expect(mockOnClose).toHaveBeenCalledOnce();
+  });
+
   test("handles multiple group selections", async () => {
     // GIVEN
     const component = await render(
-      <BulkMutateGroups mutationFn={mockMutationFn} onSuccess={mockOnSuccess} />
+      <BulkMutateGroups
+        mutationFn={mockMutationFn}
+        onSuccess={mockOnSuccess}
+        onClose={mockOnClose}
+      />
     );
 
     // WHEN

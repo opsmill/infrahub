@@ -1,0 +1,31 @@
+import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
+
+const GET_TASK_DETAILS_TITLE = graphql(`
+  query GET_TASK_DETAILS_TITLE_QUERY($ids: [String!]) {
+    InfrahubTask(ids: $ids) {
+      count
+      edges {
+        node {
+          id
+          title
+          state
+          available_actions {
+            action
+            available
+            unavailability_reason
+          }
+        }
+      }
+    }
+  }
+`);
+
+export interface GetTaskDetailsTitleFromApiParams
+  extends VariablesOf<typeof GET_TASK_DETAILS_TITLE> {}
+
+export function getTaskDetailsTitleFromApi(variables: GetTaskDetailsTitleFromApiParams) {
+  return graphqlClient.query({
+    query: GET_TASK_DETAILS_TITLE,
+    variables,
+  });
+}

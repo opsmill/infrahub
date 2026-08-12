@@ -16,8 +16,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database, build_message_bus, build_workflow
-from infrahub.workflows.initialization import setup_task_manager
 from tests.conftest import TestHelper
+from tests.helpers.task_manager import setup_task_manager_once
 
 
 @pytest.fixture
@@ -58,7 +58,7 @@ def rpc_bus(helper: TestHelper, dependency_provider: Provider) -> Generator[Any,
 async def workflow_local(dependency_provider: Provider) -> AsyncGenerator[WorkflowLocalExecution, None]:
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
-    await setup_task_manager()
+    await setup_task_manager_once()
     config.OVERRIDE.workflow = workflow
     with dependency_provider.scope(build_workflow, lambda: workflow):
         yield workflow
@@ -222,7 +222,7 @@ async def car_person_data_generic_diff(
     # Time After the changes
     time30 = Timestamp()
 
-    params = {
+    return {
         "branch": branch2,
         "time0": time0,
         "time10": time10,
@@ -241,8 +241,6 @@ async def car_person_data_generic_diff(
         "p3": p3.id,
         "r1": repo01.id,
     }
-
-    return params
 
 
 @pytest.fixture
@@ -428,7 +426,7 @@ async def data_diff_attribute(
     # Time After the changes
     time30 = Timestamp()
 
-    params = {
+    return {
         "branch": branch2,
         "time0": time0,
         "time12": time12,
@@ -444,5 +442,3 @@ async def data_diff_attribute(
         "p2": persons["Jane"].id,
         "r1": repo01.id,
     }
-
-    return params

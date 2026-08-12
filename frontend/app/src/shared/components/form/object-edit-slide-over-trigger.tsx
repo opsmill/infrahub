@@ -1,13 +1,13 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, type ButtonProps, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import { type ButtonProps, ButtonWithTooltip } from "@/shared/components/ui/button";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface ObjectEditSlideOverTriggerProps extends ButtonProps {
   data: any;
@@ -25,44 +25,55 @@ const ObjectEditSlideOverTrigger = ({
 }: ObjectEditSlideOverTriggerProps) => {
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
 
-  return (
-    <>
-      <ButtonWithTooltip
+  const editButton = !permission.create.isAllowed ? (
+    <Tooltip message={permission.create.message ?? undefined}>
+      <Button
         className="ml-auto"
         variant="outline"
-        size="icon"
-        onClick={() => setIsEditDrawerOpen(true)}
-        disabled={!permission.create.isAllowed}
-        tooltipEnabled={!permission.create.isAllowed}
-        tooltipContent={permission.create.message ?? undefined}
+        size="xs"
+        shape="circle"
+        isDisabledAndFocusable
         data-testid="edit-button"
         {...props}
       >
         <Icon icon="mdi:pencil" />
-      </ButtonWithTooltip>
+      </Button>
+    </Tooltip>
+  ) : (
+    <Button
+      className="ml-auto"
+      variant="outline"
+      size="xs"
+      shape="circle"
+      onPress={() => setIsEditDrawerOpen(true)}
+      data-testid="edit-button"
+      {...props}
+    >
+      <Icon icon="mdi:pencil" />
+    </Button>
+  );
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel={getNodeLabel(data)}
-            title={`Edit ${getNodeLabel(data)}`}
-            subtitle={data?.description?.value}
-          />
-        }
-        open={isEditDrawerOpen}
-        setOpen={setIsEditDrawerOpen}
-      >
-        <ObjectItemEditComponent
+  return (
+    <>
+      {editButton}
+
+      <Sheet isOpen={isEditDrawerOpen} onOpenChange={setIsEditDrawerOpen}>
+        <SlideOverTitle
+          schema={schema}
+          currentObjectLabel={getNodeLabel(data)}
+          title={`Edit ${getNodeLabel(data)}`}
+          subtitle={data?.description?.value}
+        />
+        <ObjectEdit
           closeDrawer={() => setIsEditDrawerOpen(false)}
           onUpdateComplete={() => {
             onUpdateComplete?.();
             setIsEditDrawerOpen(false);
           }}
           objectId={data.id}
-          objectname={schema.kind!}
+          objectKind={schema.kind!}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 };

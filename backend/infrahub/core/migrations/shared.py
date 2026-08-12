@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Iterator, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 from rich.console import Console
@@ -16,6 +18,11 @@ from infrahub.core.timestamp import Timestamp
 
 from .query import MigrationBaseQuery  # noqa: TC001
 
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.database import InfrahubDatabase
+
 MIGRATION_LOG_TIME_FORMAT = "[%Y-%m-%d %H:%M:%S]"
 _migration_console: Console | None = None
 
@@ -24,15 +31,30 @@ def get_migration_console() -> Console:
     global _migration_console
 
     if _migration_console is None:
-        _migration_console = Console(log_time_format=MIGRATION_LOG_TIME_FORMAT)
+        _migration_console = Console(
+            log_time_format=MIGRATION_LOG_TIME_FORMAT,
+            log_path=False,
+        )
 
     return _migration_console
 
 
-if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
-    from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.database import InfrahubDatabase
+@contextmanager
+def suppress_internal_logs() -> Iterator[None]:
+    """Temporarily suppress noisy internal logs during migrations and rebase.
+
+    Some operations (schema loading, validator determiner) emit error/warning messages that are harmless during upgrade but confuse operators. This
+    context manager raises the logger thresholds to CRITICAL for the duration.
+    """
+    loggers = [logging.getLogger(name) for name in ("infrahub", "prefect")]
+    previous_levels = [logger.level for logger in loggers]
+    for logger in loggers:
+        logger.setLevel(logging.CRITICAL)
+    try:
+        yield
+    finally:
+        for logger, level in zip(loggers, previous_levels, strict=True):
+            logger.setLevel(level)
 
 
 class MigrationResult(BaseModel):
@@ -47,11 +69,44 @@ class MigrationResult(BaseModel):
         return False
 
 
+class BaseMigration(BaseModel):
+    """Common base for all graph migration types."""
+
+    name: str = Field(..., description="Name of the migration")
+    description: str = Field(..., description="Human-readable description of what this migration does")
+    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
+
+    @property
+    def number(self) -> int:
+        """The migration number, derived from the class name (e.g. 67 from Migration067).
+
+        Raises:
+            ValueError: If the class name does not start with the ``Migration`` prefix.
+
+        """
+        cls_name = type(self).__name__
+        prefix = "Migration"
+        if not cls_name.startswith(prefix):
+            raise ValueError(f"Class {cls_name!r} does not follow the Migration{{NNN}} naming convention")
+        return int(cls_name[len(prefix) :])
+
+    @classmethod
+    def init(cls, **kwargs: Any) -> Self:
+        return cls(**kwargs)
+
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+        raise NotImplementedError()
+
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        raise NotImplementedError()
+
+
 @dataclass
 class MigrationInput:
     db: InfrahubDatabase
     at: Timestamp = field(default_factory=Timestamp)
     user_id: str = SYSTEM_USER_ID
+    console: Console = field(default_factory=get_migration_console)
 
 
 class SchemaMigration(BaseModel):
@@ -99,7 +154,8 @@ class SchemaMigration(BaseModel):
                 )
                 await query.execute(db=migration_input.db)
                 result.nbr_migrations_executed += query.get_nbr_migrations_executed()
-            except Exception as exc:
+            # Per-query failures become result errors so the runner reports them instead of crashing
+            except Exception as exc:  # noqa: BLE001
                 result.errors.append(str(exc))
                 return result
 
@@ -113,7 +169,12 @@ class SchemaMigration(BaseModel):
     ) -> MigrationResult:
         async with migration_input.db.start_transaction() as ts:
             result = MigrationResult()
-            txn_migration_input = MigrationInput(db=ts, at=migration_input.at, user_id=migration_input.user_id)
+            txn_migration_input = MigrationInput(
+                db=ts,
+                at=migration_input.at,
+                user_id=migration_input.user_id,
+                console=migration_input.console,
+            )
 
             await self.execute_pre_queries(migration_input=txn_migration_input, result=result, branch=branch)
             queries_to_execute = queries or self.queries
@@ -167,22 +228,13 @@ class RelationshipSchemaMigration(SchemaMigration):
         return self.previous_schema.get_relationship(name=self.schema_path.field_name)
 
 
-class GraphMigration(BaseModel):
+class GraphMigration(BaseMigration):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    name: str = Field(..., description="Name of the migration")
     queries: Sequence[type[Query]] = Field(..., description="List of queries to execute for this migration")
-    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
-
-    @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
-        return cls(**kwargs)  # type: ignore[arg-type]
-
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
-        raise NotImplementedError
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         async with migration_input.db.start_transaction() as ts:
-            txn_migration_input = MigrationInput(db=ts, at=migration_input.at)
+            txn_migration_input = MigrationInput(db=ts, at=migration_input.at, console=migration_input.console)
             return await self.do_execute(migration_input=txn_migration_input)
 
     async def do_execute(self, migration_input: MigrationInput) -> MigrationResult:
@@ -191,18 +243,17 @@ class GraphMigration(BaseModel):
             try:
                 query = await migration_query.init(db=migration_input.db, at=migration_input.at)
                 await query.execute(db=migration_input.db)
-            except Exception as exc:
+            # Per-query failures become result errors so the runner reports them instead of crashing
+            except Exception as exc:  # noqa: BLE001
                 result.errors.append(str(exc))
                 return result
 
         return result
 
 
-class InternalSchemaMigration(BaseModel):
+class InternalSchemaMigration(BaseMigration):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    name: str = Field(..., description="Name of the migration")
     migrations: Sequence[SchemaMigration] = Field(..., description="")
-    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
     @staticmethod
     def get_internal_schema() -> SchemaBranch:
@@ -216,13 +267,6 @@ class InternalSchemaMigration(BaseModel):
 
         return schema_branch
 
-    @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
-        return cls(**kwargs)  # type: ignore[arg-type]
-
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
-        raise NotImplementedError
-
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         result = MigrationResult()
 
@@ -232,39 +276,21 @@ class InternalSchemaMigration(BaseModel):
             try:
                 execution_result = await migration.execute(migration_input=migration_input, branch=default_branch)
                 result.errors.extend(execution_result.errors)
-            except Exception as exc:
+            # First failing sub-migration is recorded as a result error and aborts the remaining steps
+            except Exception as exc:  # noqa: BLE001
                 result.errors.append(str(exc))
                 return result
 
         return result
 
 
-class ArbitraryMigration(BaseModel):
-    name: str = Field(..., description="Name of the migration")
-    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
-
-    @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
-        return cls(**kwargs)  # type: ignore[arg-type]
-
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
-        raise NotImplementedError()
-
+class ArbitraryMigration(BaseMigration):
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         raise NotImplementedError()
 
 
-class MigrationRequiringRebase(BaseModel):
+class MigrationRequiringRebase(BaseMigration):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    name: str = Field(..., description="Name of the migration")
-    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
-
-    @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
-        return cls(**kwargs)  # type: ignore[arg-type]
-
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
-        raise NotImplementedError()
 
     async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
         """Method that will be run against non-default branches, it assumes that the branches have been rebased."""
@@ -273,6 +299,3 @@ class MigrationRequiringRebase(BaseModel):
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         """Method that will be run against the default branch."""
         raise NotImplementedError()
-
-
-type MigrationTypes = GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase

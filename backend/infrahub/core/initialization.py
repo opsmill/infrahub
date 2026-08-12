@@ -1,7 +1,9 @@
 import importlib
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
-from uuid import uuid4
+from uuid import UUID, uuid4
+
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config, lock
 from infrahub.constants.database import DatabaseType
@@ -29,8 +31,9 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreAccountRole
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
+from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
-from infrahub.core.timestamp import Timestamp
+from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
@@ -227,6 +230,36 @@ async def create_root_node(db: InfrahubDatabase) -> Root:
     return root
 
 
+async def reset_deployment_id(db: InfrahubDatabase, new_uuid: str | None = None) -> tuple[str, str]:
+    """Rewrite the uuid of the singleton Root node.
+
+    The normal StandardNode update path matches on uuid and cannot change it, so
+    this helper issues a direct write keyed on the :Root label.
+
+    Raises:
+        ValueError: When the new deployment_id is identical to the current one.
+
+    """
+    root = await get_root_node(db=db)
+    old_uuid = str(root.get_uuid())
+
+    if new_uuid is None:
+        new_uuid = str(UUIDT())
+    else:
+        UUID(new_uuid)
+
+    if new_uuid == old_uuid:
+        raise ValueError("The new deployment_id must be different from the current one.")
+
+    await db.execute_query(
+        query=("MATCH (n:Root {uuid: $old_uuid}) SET n.uuid = $new_uuid, n.updated_at = $updated_at RETURN n"),
+        params={"old_uuid": old_uuid, "new_uuid": new_uuid, "updated_at": current_timestamp()},
+        name="root_reset_deployment_id",
+    )
+
+    return old_uuid, new_uuid
+
+
 async def create_default_branch(db: InfrahubDatabase) -> Branch:
     branch = Branch(
         name=registry.default_branch,
@@ -264,9 +297,10 @@ async def create_global_branch(db: InfrahubDatabase) -> Branch:
 async def create_branch(
     branch_name: str, db: InfrahubDatabase, description: str = "", isolated: bool = True, at: str | None = None
 ) -> Branch:
-    """Create a new Branch, currently all the branches are based on Main
+    """Create a new Branch, currently all the branches are based on Main.
 
-    Because all branches are based on main, the hierarchy_level of hardcoded to 2."""
+    Because all branches are based on main, the hierarchy_level of hardcoded to 2.
+    """
     description = description or f"Branch {branch_name}"
     branch = Branch(
         name=branch_name,
@@ -378,8 +412,10 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
     for permission_action in (
         GlobalPermissions.EDIT_DEFAULT_BRANCH,
         GlobalPermissions.MANAGE_ACCOUNTS,
+        GlobalPermissions.MANAGE_GLOBAL_PREFERENCES,
         GlobalPermissions.MANAGE_PERMISSIONS,
         GlobalPermissions.MERGE_BRANCH,
+        GlobalPermissions.REBASE_BRANCH,
     ):
         await get_or_create_global_permission(db=db, permission=permission_action)
 
@@ -527,6 +563,7 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     schema = SchemaRoot(**internal_schema)
     schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    schema_branch.load_schema(schema=SchemaRoot(**deprecated_models))
     schema_branch.process()
     await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, db=db, at=Timestamp())
     registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)

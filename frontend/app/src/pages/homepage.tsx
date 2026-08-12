@@ -9,7 +9,7 @@ import { TasksWidget } from "@/entities/homepage/ui/tasks-widget";
 
 const Homepage = () => {
   return (
-    <Content className="grid auto-rows-[10rem] gap-3 p-3 lg:grid-cols-3">
+    <Content className="grid auto-rows-[10rem] gap-2 p-1 lg:grid-cols-3">
       <ProposedChangesWidget className="col-span-1 row-span-2 lg:col-span-2" />
       <GitRepositoriesWidget className="col-span-1 row-span-1" />
       <BranchesWidget className="col-span-1 row-span-2 lg:col-span-2" />

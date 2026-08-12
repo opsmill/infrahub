@@ -1,0 +1,36 @@
+---
+title: Lifecycle and state transitions
+---
+
+Proposed changes follow a workflow with specific states that track progression from initial creation to final resolution.
+
+## State transitions
+
+1. **Draft**: When a proposed change is initially created, the author can set it as a draft. This indicates that work is still in progress and the change is not yet ready for review.
+   - Draft status allows authors to incrementally build their changes while receiving early feedback from selected team members.
+   - The system runs validation checks to identify potential issues.
+
+2. **Open**: Once the author marks the proposed change as ready for review, it transitions to the open state. In this state:
+   - Reviewers can examine the changes and provide comments and feedback.
+   - Stakeholders can discuss implications and suggest modifications.
+   - The system runs validation checks to identify potential issues.
+   - It's also possible to create a proposed change directly in the open state for simpler changes.
+
+3. **Approved**: When designated reviewers endorse the proposed change, it enters the approved state. Approval indicates that:
+   - The change has been thoroughly reviewed.
+   - All required modifications have been addressed.
+   - The proposed modifications meet quality and policy requirements.
+
+4. **Merged**: After receiving approval (if required) and passing all automated checks, the change is merged into the target branch. At this point:
+   - The changes become part of the target branch.
+   - The source branch transitions to a **frozen state**: all further mutations (create, upsert, update, delete) are blocked on it, the UI disables editing controls, and creating a new Proposed Change against that branch is prevented.
+   - The source branch is retained by default and can be deleted manually. When `delete_branch_after_merge` is enabled in the [configuration](../reference/configuration.mdx), the branch is deleted automatically after the merge completes.
+
+5. **Closed**: A proposed change can be closed without merging if it's determined to be unnecessary, superseded by another change, or otherwise no longer needed. This provides a clean resolution for abandoned changes.
+
+## Related
+
+- [Proposed Changes](./overview.mdx) — overview and concepts
+- [Review and stamp](./review-and-stamp.mdx) — how reviewers engage during the open state
+- [Resolve a proposed-change conflict](./resolve-conflict.mdx) — when conflicts surface before approval
+- [Merge a branch](../branches/merge.mdx) — what happens when the merge step completes

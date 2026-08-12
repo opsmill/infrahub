@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
+import { useFormContext } from "react-hook-form";
 
+import { Col } from "@/shared/components/container";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import type { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
 import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
@@ -20,6 +23,8 @@ import { Input } from "@/shared/components/ui/input";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useDefaultParent } from "@/entities/nodes/relationships/ui/queries/get-default-parent.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
+import { useCommonParentFilter } from "./useCommonParentFilter";
 
 interface GenericOption extends Node {
   id: string;
@@ -54,6 +59,10 @@ export const GenericRelationshipField = ({
   );
 
   const parentRelationship = selectedGeneric?.id && getParentRelationship(selectedGeneric.id);
+  const commonParent = useCommonParentFilter(relationship, name);
+  // When common_parent drives the filter from a sibling field, the manual "Parent" picker
+  // is redundant — hide it and source the peer filter from the sibling value instead.
+  const showManualParent = !commonParent.isActive && !!parentRelationship;
 
   const { data: defaultParent } = useDefaultParent({
     defaultValue,
@@ -67,6 +76,7 @@ export const GenericRelationshipField = ({
   });
 
   const [selectedParent, setSelectedParent] = useState<Node | null>(defaultParent || null);
+  const hasDerivedKindFromDefault = useRef(false);
 
   const genericOptions = (isGeneric ? (peerSchema?.used_by ?? []) : [])
     .map((name: string) => {
@@ -99,9 +109,43 @@ export const GenericRelationshipField = ({
     }
   }
 
+  // A default value (e.g. a parent pre-filled from the object being viewed) carries
+  // its concrete node kind. Derive the selected kind from it once, so the value is shown
+  // even when the generic is implemented by more than one node and cannot auto-select —
+  // without re-selecting after the user has explicitly cleared the kind.
+  const defaultValueKind =
+    defaultValue?.value && !Array.isArray(defaultValue.value)
+      ? (defaultValue.value as Node).__typename
+      : undefined;
+  if (
+    defaultValueKind &&
+    !selectedGeneric &&
+    !hasDerivedKindFromDefault.current &&
+    genericOptions?.length
+  ) {
+    const foundOption = genericOptions.find((option) => option.id === defaultValueKind);
+    if (foundOption) {
+      hasDerivedKindFromDefault.current = true;
+      setSelectedGeneric(foundOption);
+    }
+  }
+
   if (!selectedParent && defaultParent) {
     setSelectedParent(defaultParent);
   }
+
+  const form = useFormContext();
+
+  // A user switching the kind invalidates any node picked under the previous kind, along with
+  // the parent used to filter it, so clear both. Only wired to the picker, not the automatic
+  // derivation above, so a pre-filled value is preserved on mount. Validation is not forced
+  // here — flagging the field required before the user can pick a node under the new kind
+  // would be premature.
+  const handleKindChange = (value: GenericOption | null) => {
+    setSelectedGeneric(value);
+    setSelectedParent(null);
+    form.setValue(name, DEFAULT_FORM_FIELD_VALUE, { shouldDirty: true });
+  };
 
   return (
     <div className="space-y-2">
@@ -112,102 +156,34 @@ export const GenericRelationshipField = ({
         description={description}
       />
 
-      <FormField
-        key={`${name}_generic`}
-        name={`${name}_generic`}
-        defaultValue={defaultValue}
-        shouldUnregister={shouldUnregister}
-        render={() => {
-          const [open, setOpen] = useState(false);
-
-          return (
-            <div className="relative flex flex-col space-y-2">
-              <LabelFormField
-                label={"Kind"}
-                description="Kind of node to use as relationship"
-                unique={unique}
-                variant="small"
-              />
-
-              <Combobox open={open} onOpenChange={setOpen}>
-                <FormInput>
-                  <ComboboxTrigger>
-                    {selectedGeneric && (
-                      <div className="flex w-full justify-between" data-testid="select-value">
-                        {selectedGeneric.display_label} <Badge>{selectedGeneric.badge}</Badge>
-                      </div>
-                    )}
-                  </ComboboxTrigger>
-                </FormInput>
-
-                <ComboboxContent>
-                  <ComboboxList>
-                    <ComboboxEmpty>No schema found.</ComboboxEmpty>
-                    {genericOptions.map((item: GenericOption) => {
-                      return (
-                        <ComboboxItem
-                          key={item.id}
-                          value={item.id}
-                          selectedValue={selectedGeneric?.id}
-                          onSelect={() => {
-                            setSelectedGeneric(item.id === selectedGeneric?.id ? null : item);
-                            setOpen(false);
-                          }}
-                        >
-                          {item.display_label}
-                          <Badge className="ml-auto">{item.badge}</Badge>
-                        </ComboboxItem>
-                      );
-                    })}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-
-              <FormMessage />
-            </div>
-          );
-        }}
+      <GenericSchemaPicker
+        genericOptions={genericOptions}
+        selectedGeneric={selectedGeneric}
+        setSelectedGeneric={handleKindChange}
       />
 
-      {parentRelationship && (
-        <FormField
-          key={`${name}_parent`}
-          name={`${name}_parent`}
-          defaultValue={defaultValue}
-          shouldUnregister={shouldUnregister}
-          render={({ field }) => {
-            return (
-              <div className="relative flex flex-col space-y-2">
-                <LabelFormField
-                  label={parentRelationship?.label ?? "Parent"}
-                  description={parentRelationship?.description}
-                  unique={unique}
-                  variant="small"
-                />
-                <div>
-                  <FormInput>
-                    <RelationshipInput
-                      {...field}
-                      value={selectedParent ?? null}
-                      peer={parentRelationship.peer}
-                      disabled={props.disabled || !selectedGeneric?.id}
-                      onChange={(value) => setSelectedParent(value as Node | null)}
-                      className="mt-2"
-                    />
-                  </FormInput>
-                  <FormMessage />
-                </div>
-              </div>
-            );
-          }}
-        />
+      {showManualParent && parentRelationship && (
+        <Col>
+          <LabelFormField
+            label={parentRelationship?.label ?? "Parent"}
+            description={parentRelationship?.description}
+            unique={unique}
+            variant="small"
+          />
+          <RelationshipInput
+            name={name + "_parent"}
+            value={selectedParent ?? null}
+            peer={parentRelationship.peer}
+            disabled={props.disabled || !selectedGeneric?.id}
+            onChange={(value) => setSelectedParent(value as Node | null)}
+          />
+        </Col>
       )}
 
       <FormField
         key={name}
         name={name}
         rules={rules}
-        disabled={!selectedGeneric?.id}
         shouldUnregister={shouldUnregister}
         render={({ field }) => {
           const fieldData = field.value;
@@ -250,7 +226,12 @@ export const GenericRelationshipField = ({
                       field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
                     }}
                     peer={selectedGeneric?.id ?? ""}
-                    parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
+                    parent={
+                      commonParent.isActive
+                        ? commonParent.parent
+                        : { name: parentRelationship?.name, value: selectedParent?.id }
+                    }
+                    addNewInitialObject={commonParent.addNewInitialObject}
                     disabled={props.disabled || !selectedGeneric?.id}
                   />
                 </FormInput>
@@ -261,5 +242,61 @@ export const GenericRelationshipField = ({
         }}
       />
     </div>
+  );
+};
+
+const GenericSchemaPicker = ({
+  genericOptions,
+  selectedGeneric,
+  setSelectedGeneric,
+}: {
+  genericOptions: GenericOption[];
+  selectedGeneric: GenericOption | null;
+  setSelectedGeneric: (value: GenericOption | null) => void;
+}) => {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Col>
+      <LabelFormField
+        label="Kind"
+        description="Kind of node to use as relationship"
+        variant="small"
+        htmlFor={id}
+      />
+
+      <Combobox open={open} onOpenChange={setOpen}>
+        <ComboboxTrigger id={id}>
+          {selectedGeneric && (
+            <div className="flex w-full justify-between" data-testid="select-value">
+              {selectedGeneric.display_label} <Badge>{selectedGeneric.badge}</Badge>
+            </div>
+          )}
+        </ComboboxTrigger>
+
+        <ComboboxContent>
+          <ComboboxList>
+            <ComboboxEmpty>No schema found.</ComboboxEmpty>
+            {genericOptions.map((item: GenericOption) => {
+              return (
+                <ComboboxItem
+                  key={item.id}
+                  value={item.id}
+                  selectedValue={selectedGeneric?.id}
+                  onSelect={() => {
+                    setSelectedGeneric(item.id === selectedGeneric?.id ? null : item);
+                    setOpen(false);
+                  }}
+                >
+                  {item.display_label}
+                  <Badge className="ml-auto">{item.badge}</Badge>
+                </ComboboxItem>
+              );
+            })}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+    </Col>
   );
 };

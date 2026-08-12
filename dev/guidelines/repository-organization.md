@@ -107,7 +107,6 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 - `git-workflow.md` - Git commit conventions
 - `markdown.md` - Markdown formatting standards
 - `documentation.md` - Documentation writing guidelines
-- `changelog.md` - Changelog entry format
 
 **Subdirectories**: Use domain-based organization when needed:
 
@@ -251,15 +250,16 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 
 - `_shared.md` - Shared instructions for all flows
 - `new-component.md` - React component creation flow
-- `fix-bug.md` - Bug fixing flow
+- `bug-analyze.md` - Bug root cause analysis
 - `add-docs.md` - Documentation creation flow
 
 **Subdirectories**: None. Keep flat for easy discovery by agents.
 
-**Tool Compatibility**: This is the canonical source. Tool-specific directories symlink here:
+**Location**: Agent commands live in `.agents/commands/` (the vendor-neutral
+canonical source), not under `dev/`. Tool-specific directories symlink here:
 
-- `.claude/commands` → `dev/commands`
-- `.cursor/commands` → `dev/commands`
+- `.claude/commands` → `../.agents/commands`
+- `.cursor/commands` → `../.agents/commands`
 
 **Naming**: Use descriptive, kebab-case names. Prefix shared files with underscore (e.g., `_shared.md`).
 
@@ -297,6 +297,10 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 **Content Lifecycle**: Stable. Specialized knowledge for specific tools, languages, or domains.
 
 **Primary Target**: AI
+
+**Location**: Skills live in `.agents/skills/` (the vendor-neutral canonical
+source), not under `dev/`. Tool adapters symlink here (e.g. `.claude/skills` →
+`../.agents/skills`).
 
 **File Size Guidelines**: 200-500 lines for SKILL.md, 100-300 lines for reference files
 
@@ -509,9 +513,10 @@ Maintain a single source of truth with symlinks for tool compatibility, since mo
 ### Symlink Strategy
 
 ```bash
-# Command directories
-.claude/commands → ../dev/commands
-.claude/skills → ../dev/skills
+# Agent asset directories (canonical source: .agents/)
+.claude/commands → ../.agents/commands
+.claude/skills → ../.agents/skills
+.claude/rules → ../.agents/rules
 ```
 
 ### Why Symlinks
@@ -527,10 +532,10 @@ Maintain a single source of truth with symlinks for tool compatibility, since mo
 rm -rf .claude/commands .claude/skills
 
 # Create tool directories
-mkdir -p .claude 
+mkdir -p .claude
 
 # Create symlinks to canonical source
-ln -s ../dev/commands .claude/commands
+ln -s ../.agents/commands .claude/commands
 
 ```
 

@@ -32,7 +32,7 @@ class TestNodeWithTypeNameAttr(TestInfrahubApp):
                 {
                     "name": "Node",
                     "namespace": "Infra",
-                    "display_labels": ["type__value"],
+                    "display_label": "type__value",
                     "attributes": [{"name": "type", "kind": "Text", "optional": False}],
                 }
             ],

@@ -107,6 +107,7 @@ async def _validate_node_metadata(
         branch: Branch to query
         windows: Expected time windows for the node, its attributes, and its relationships
         branch_agnostic: Whether to query branch-agnostically
+
     """
     node = await NodeManager.get_one(
         db=db,

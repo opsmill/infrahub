@@ -4,7 +4,7 @@ import type React from "react";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames } from "@/shared/utils/common";
 
-import type { GenericSchema } from "@/entities/schema/types";
+import type { GenericSchema } from "@/entities/schema/domain/model/schema";
 
 export interface KindHeaderCellProps extends React.HTMLAttributes<HTMLDivElement> {
   schema: GenericSchema;

@@ -19,7 +19,6 @@ async def test_convert_object_type_with_profile_error(
     db: InfrahubDatabase, schemas_conversion: dict[str, Any], default_branch: Branch
 ) -> None:
     """Test that converting an object type with a profile returns the appropriate error message."""
-
     schema = SchemaRoot(**schemas_conversion)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
 

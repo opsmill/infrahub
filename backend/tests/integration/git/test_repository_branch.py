@@ -50,7 +50,6 @@ class TestCreateRepository(TestInfrahubApp):
         client: InfrahubClient,
     ) -> None:
         """Validate that we can create a repository, that it gets updated with the commit id and that objects are created."""
-
         branch = await client.branch.create(branch_name=BRANCH_NAME)
 
         client_repository = await client.create(

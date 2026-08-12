@@ -5,7 +5,9 @@ from uuid import uuid4
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
+from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.dependencies.registry import build_component_registry
 
@@ -55,8 +57,8 @@ def permissions_helper() -> PermissionsHelper:
 
 @pytest.fixture
 def query_01() -> str:
-    """Simple query with one document"""
-    query = """
+    """Simple query with one document."""
+    return """
     query {
         TestPerson {
             edges {
@@ -78,12 +80,11 @@ def query_01() -> str:
         }
     }
     """
-    return query
 
 
 @pytest.fixture
 def query_02() -> str:
-    query = """
+    return """
     query {
         TestPerson {
             edges {
@@ -124,13 +125,12 @@ def query_02() -> str:
         }
     }
     """
-    return query
 
 
 @pytest.fixture
 def query_03() -> str:
-    """Advanced Query with 2 documents"""
-    query = """
+    """Advanced Query with 2 documents."""
+    return """
     query FirstQuery {
         TestPerson {
             edges {
@@ -164,13 +164,12 @@ def query_03() -> str:
         }
     }
     """
-    return query
 
 
 @pytest.fixture
 def query_04() -> str:
-    """Simple query with variables"""
-    query = """
+    """Simple query with variables."""
+    return """
     query ($person: String!){
         TestPerson(name__value: $person) {
             edges {
@@ -183,12 +182,11 @@ def query_04() -> str:
         }
     }
     """
-    return query
 
 
 @pytest.fixture
 def query_05() -> str:
-    query = """
+    return """
     query MyQuery {
         CoreRepository {
             edges {
@@ -217,13 +215,11 @@ def query_05() -> str:
     }
     """
 
-    return query
-
 
 @pytest.fixture
 def query_06() -> str:
-    """Simple query with variables"""
-    query = """
+    """Simple query with variables."""
+    return """
     query (
         $str1: String,
         $str2: String = "default2",
@@ -246,12 +242,11 @@ def query_06() -> str:
         }
     }
     """
-    return query
 
 
 @pytest.fixture
 def bad_query_01() -> str:
-    query = """
+    return """
     query {
         TestPerson {
             edges {
@@ -271,12 +266,11 @@ def bad_query_01() -> str:
                 }
             }
     """
-    return query
 
 
 @pytest.fixture
 def query_introspection() -> str:
-    query = """
+    return """
         query IntrospectionQuery {
             __schema {
                 queryType {
@@ -377,7 +371,31 @@ def query_introspection() -> str:
             }
         }
     """
-    return query
+
+
+@pytest.fixture
+async def session_global_prefs_manager(db: InfrahubDatabase, first_account: Node) -> AccountSession:
+    """A session for an account granted the manage_global_preferences global permission via a role + group."""
+    permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    await permission.new(
+        db=db,
+        action=GlobalPermissions.MANAGE_GLOBAL_PREFERENCES.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+    )
+    await permission.save(db=db)
+
+    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role.new(db=db, name="prefs-manager", permissions=[permission])
+    await role.save(db=db)
+
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="prefs-managers", roles=[role])
+    await group.save(db=db)
+
+    await group.members.add(db=db, data={"id": first_account.id})  # type: ignore[attr-defined]
+    await group.members.save(db=db)  # type: ignore[attr-defined]
+
+    return AccountSession(authenticated=True, auth_type=AuthType.JWT, account_id=first_account.id)
 
 
 @pytest.fixture

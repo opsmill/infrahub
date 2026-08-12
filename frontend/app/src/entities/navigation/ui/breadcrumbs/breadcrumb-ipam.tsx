@@ -1,30 +1,30 @@
-import { keepPreviousData } from "@tanstack/react-query";
-import { useQueryState } from "nuqs";
-import type React from "react";
-import { useParams } from "react-router";
-
 import {
   BreadcrumbItem,
   BreadcrumbItemError,
   BreadcrumbItemLoading,
   Breadcrumbs,
-} from "@/shared/components/aria/breadcrumbs";
+} from "@infrahub/ui";
+import { keepPreviousData } from "@tanstack/react-query";
+import { useQueryState } from "nuqs";
+import type React from "react";
+import { useParams } from "react-router";
 
+import { QSP } from "@/shared/config/qsp";
+
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import { constructPathForIpam } from "@/entities/ipam/ip-namespaces/ui/routing/ipam-urls";
 import {
-  IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,
   IP_PREFIX_RELATIONSHIP_NAME,
-  IPAM_QSP,
-} from "@/entities/ipam/constants";
-import { constructPathForIpam } from "@/entities/ipam/utils";
+} from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { BreadcrumbObjectDetailsHierarchy } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details-hierarchy";
 import { BreadcrumbItemObject } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-object";
+import type { NodeRelationshipOne } from "@/entities/nodes/object/domain/model/node";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import type { NodeRelationshipOne } from "@/entities/nodes/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export function BreadcrumbIpam() {
   const { objectKind, objectId } = useParams();
@@ -54,7 +54,7 @@ interface BreadcrumbIpamContentProps {
 }
 
 function BreadcrumbIpamContent({ objectSchema, objectId }: BreadcrumbIpamContentProps) {
-  const [namespaceQSP] = useQueryState(IPAM_QSP.NAMESPACE);
+  const [namespaceQSP] = useQueryState(QSP.IPAM_NAMESPACE);
   const filterQuery = namespaceQSP ? { ip_namespace__ids: [namespaceQSP] } : undefined;
 
   if (isOfKind(IP_PREFIX_GENERIC, objectSchema)) {

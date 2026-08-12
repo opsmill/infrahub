@@ -1,4 +1,4 @@
-import type { Dropdown } from "@/shared/api/graphql/generated/graphql";
+import type { Dropdown } from "@/shared/api/graphql/generated/types";
 
 export function DropdownCell({ dropdown }: { dropdown: Dropdown }) {
   return (

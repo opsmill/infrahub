@@ -37,11 +37,13 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 
 | Layer | Responsibility | Key Directories |
 |-------|----------------|-----------------|
-| API | HTTP handling, serialization, auth | `api/`, `graphql/` |
+| API | HTTP handling, serialization | `api/`, `graphql/` |
+| Auth | Password/SSO/LDAP login, SSO group resolution, auto-create groups | `auth/`, `ldap_auth/` |
 | Core | Business logic, domain models | `core/` |
 | Database | Query execution, connection mgmt | `database/` |
 | Workers | Async task processing | `workers/`, `task_manager/` |
-| Events | Pub/sub, triggers, webhooks | `events/`, `message_bus/` |
+| Events | Pub/sub, triggers | `events/`, `message_bus/` |
+| Webhooks | HTTP notification delivery | `webhook/` |
 
 ## Entry Points
 
@@ -55,9 +57,14 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 ### Related Knowledge
 
 - [Testing](testing.md) - Testing infrastructure and patterns
+- [Authentication](authentication.md) - Login flow, SSO group resolution, auto-create groups
+- [API Backpressure](api-backpressure.md) - Priority-aware load shedding (admission layer) and the database-stress signal
 - [Events System](events.md) - Event-driven architecture
 - [Async Tasks](async-tasks.md) - Background task processing
 - [Message Bus](message-bus.md) - Inter-service communication
+- [Computed Attributes](computed-attributes.md) - Jinja2 evaluation paths and schema registry
+- [Selective Post-Merge Regeneration](selective-merge-regeneration.md) - narrowing generator/artifact regeneration to the merge's affected set
+- [Object Templates](templates.md) - Template generation, application, and resource pool integration
 
 ### Guidelines
 

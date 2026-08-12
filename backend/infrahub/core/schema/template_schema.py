@@ -37,7 +37,6 @@ class TemplateSchema(BaseNodeSchema):
 
     def get_labels(self) -> list[str]:
         """Return the labels for this object, composed of the kind and the list of Generic this object is inheriting from."""
-
         labels: list[str] = [self.kind] + self.inherit_from
         if self.namespace not in ["Schema", "Internal"] and InfrahubKind.GENERICGROUP not in self.inherit_from:
             labels.append(InfrahubKind.OBJECTTEMPLATE)

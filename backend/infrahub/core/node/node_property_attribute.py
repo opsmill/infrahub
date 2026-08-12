@@ -8,7 +8,7 @@ from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.query.node import AttributeFromDB
 from infrahub.core.schema import NodeSchema, ProfileSchema, TemplateSchema
 
-from ..attribute import BaseAttribute, ListAttributeOptional, StringOptional
+from ..attribute import BaseAttribute, IndexedListAttribute, StringOptional
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
@@ -46,7 +46,7 @@ class NodePropertyAttribute[T]:
 
         self.analyze_variables()
 
-    def needs_update(self, fields: list[str] | None) -> bool:
+    def needs_update(self, fields: set[str] | None) -> bool:
         """Tell if this node property attribute must be recomputed given a list of updated fields of a node."""
         if self._manually_assigned or not fields:
             return True
@@ -139,7 +139,12 @@ class DisplayLabel(NodePropertyAttribute[str]):
             self._analyze_jinja2_value()
 
     async def compute(self, db: InfrahubDatabase, node: Node) -> None:
-        """Update the display label value by recomputing it from the template."""
+        """Update the display label value by recomputing it from the template.
+
+        Raises:
+            ValueError: When the node's schema does not match the schema bound to this property.
+
+        """
         if self.template is None or self._manually_assigned:
             return
 
@@ -150,8 +155,9 @@ class DisplayLabel(NodePropertyAttribute[str]):
 
         if not self.is_jinja2_template:
             path_value = await node.get_path_value(db=db, path=self.template)
-            # Use .value for enum to keep compat with old style display label
-            self.set_value(value=str(path_value if not isinstance(path_value, Enum) else path_value.value))
+            if path_value is not None:
+                # Use .value for enum to keep compat with old style display label
+                self.set_value(value=str(path_value if not isinstance(path_value, Enum) else path_value.value))
             return
 
         jinja2_template = InfrahubJinja2Template(template=self.template)
@@ -200,7 +206,12 @@ class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
             self._analyze_single_variable(value=item)
 
     async def compute(self, db: InfrahubDatabase, node: Node) -> None:
-        """Update the HFID value by recomputing it from the template."""
+        """Update the HFID value by recomputing it from the template.
+
+        Raises:
+            ValueError: When the node's schema does not match the schema bound to this property.
+
+        """
         if self.template is None or self._manually_assigned:
             return
 
@@ -213,13 +224,14 @@ class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
         for path in self.template:
             path_value = await node.get_path_value(db=db, path=path)
             # Use .value for enum to be consistent with display label
-            value.append(path_value if not isinstance(path_value, Enum) else path_value.value)
+            raw_value = path_value.value if isinstance(path_value, Enum) else path_value
+            value.append(str(raw_value))
 
         self.set_value(value=value)
 
-    def get_node_attribute(self, node: Node, at: Timestamp) -> ListAttributeOptional:
+    def get_node_attribute(self, node: Node, at: Timestamp) -> IndexedListAttribute:
         """Return a node attribute that can be stored in the database for this HFID and node."""
-        return ListAttributeOptional(
+        return IndexedListAttribute(
             name="human_friendly_id",
             schema=self.schema,
             branch=node.get_branch(),

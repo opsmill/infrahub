@@ -16,7 +16,7 @@ class SchemaRelationshipCleanupQuery(Query):
     type: QueryType = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         // ---------------------------------------------------------------
         // Find all "profiles" and "object_template" SchemaRelationship nodes,
@@ -61,6 +61,7 @@ class SchemaRelationshipCleanupQuery(Query):
 
 class Migration058(GraphMigration):
     name: str = "058_remove_virtual_schema_relationships"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [SchemaRelationshipCleanupQuery]
     minimum_version: int = 57
 

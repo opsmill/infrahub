@@ -1,13 +1,14 @@
 import { Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import { format, isPast } from "date-fns";
+import { Button } from "@infrahub/ui";
+import { isPast } from "date-fns";
 import { useAtom } from "jotai";
 import { parseAsIsoDateTime, useQueryState } from "nuqs";
 import React from "react";
 import DateTimePicker from "react-datepicker";
 
-import { Button } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 
@@ -16,6 +17,7 @@ import "react-datepicker/dist/react-datepicker.css";
 export const TimeFrameSelector = () => {
   const [qspDate, setQspDate] = useQueryState(QSP.DATETIME, parseAsIsoDateTime);
   const [date, setDate] = useAtom(datetimeAtom);
+  const { formatDate } = useFormatDate();
 
   React.useEffect(() => {
     if (date === qspDate) return;
@@ -35,18 +37,13 @@ export const TimeFrameSelector = () => {
   return (
     <div
       className={classNames(
-        "inline-flex h-8 items-center overflow-hidden rounded-lg border border-neutral-200",
+        "inline-flex h-8 shrink-0 items-center overflow-hidden rounded-lg border",
         date && "bg-neutral-800"
       )}
     >
       <DateTimePicker
         customInput={
-          <Button
-            size="square"
-            variant="ghost"
-            className="h-8 w-8 bg-neutral-50"
-            data-testid="timeframe-selector"
-          >
+          <Button size="sm" shape="square" variant="ghost" data-testid="timeframe-selector">
             <Icon icon="mdi:calendar-clock" className="text-xl" />
           </Button>
         }
@@ -77,15 +74,14 @@ export const TimeFrameSelector = () => {
 
         <div className="flex flex-col items-center truncate">
           <span className="font-medium">Current view time</span>
-          {date && <span>{format(date, "PP | H:mm")}</span>}
+          {date && <span>{formatDate(date, "datetime")}</span>}
         </div>
 
         <Button
-          size="square"
+          shape="square"
           variant="ghost"
-          type="button"
-          onClick={reset}
-          className="h-8 w-8 hover:bg-neutral-700"
+          onPress={reset}
+          className="h-8 w-8 data-hovered:bg-neutral-700"
           data-testid="reset-timeframe-selector"
         >
           <Icon icon="mdi:close" />

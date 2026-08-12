@@ -24,6 +24,7 @@ class Migration001(GraphMigration):
     """Dummy migration for testing purposes with name matching migration number 1."""
 
     name: str = "001_dummy_migration"
+    description: str = "Dummy migration for testing."
     minimum_version: int = 0
     queries: list = []
 
@@ -35,6 +36,7 @@ class Migration042(GraphMigration):
     """Dummy migration for testing purposes with name matching migration number 42."""
 
     name: str = "042_dummy_migration"
+    description: str = "Dummy migration for testing."
     minimum_version: int = 41
     queries: list = []
 

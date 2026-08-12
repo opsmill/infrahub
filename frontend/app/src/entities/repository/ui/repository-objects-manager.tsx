@@ -1,9 +1,10 @@
+import { Spinner } from "@infrahub/ui";
+
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import { Spinner } from "@/shared/components/ui/spinner";
 
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
-import { REPOSITORY_GROUP } from "@/entities/repository/constants";
+import { REPOSITORY_GROUP } from "@/entities/repository/domain/model/repository";
 import { useGetRepositoryGroup } from "@/entities/repository/ui/queries/get-repository-group.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

@@ -58,11 +58,12 @@ class TestDeleteAgnosticRel(TestInfrahubApp):
         owner_2: InfrahubNode,
         car: InfrahubNode,
     ) -> None:
-        """
-        Loads a car-person agnostic schema, then :
+        """Loads a car-person agnostic schema, then :
+
         - create a Car
         - link it to a Person
         - changes owner and retrieve the car.
+
         This test makes sure changing owner, involving deleting relationship with first owner, works correctly.
         See https://github.com/opsmill/infrahub/issues/5559.
         """

@@ -3,7 +3,7 @@ from pathlib import Path
 from invoke import Context, task
 
 from .shared import execute_command
-from .utils import ESCAPED_REPO_PATH, REPO_BASE
+from .utils import ESCAPED_REPO_PATH
 
 MAIN_DIRECTORY = Path("tasks")
 NAMESPACE = "MAIN"
@@ -18,18 +18,16 @@ DIRECTORIES = [str(MAIN_DIRECTORY), "models", "utilities", "python_testcontainer
 
 def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
-
     print(f" - [{NAMESPACE}] Format code with ruff")
-    exec_cmd = f"uv run ruff format {' '.join(DIRECTORIES)} --config {REPO_BASE / 'pyproject.toml'} && "
-    exec_cmd += f"uv run ruff check --fix {' '.join(DIRECTORIES)} --config {REPO_BASE / 'pyproject.toml'}"
+    exec_cmd = f"uv run ruff format {' '.join(DIRECTORIES)} && "
+    exec_cmd += f"uv run ruff check --fix {' '.join(DIRECTORIES)}"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
 @task(name="format", default=True)
 def format_all(context: Context) -> None:
-    """This will run all formatters."""
-
+    """Format tasks, models, utilities, and test container Python files with ruff."""
     _format_ruff(context)
 
     print(f" - [{NAMESPACE}] All formatters have been executed!")
@@ -37,9 +35,8 @@ def format_all(context: Context) -> None:
 
 def _lint_ruff(context: Context) -> None:
     """Run ruff to check that Python files adherence to standards."""
-
     print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = f"uv run ruff check --diff {' '.join(DIRECTORIES)} --config {REPO_BASE}/pyproject.toml"
+    exec_cmd = f"uv run ruff check --diff {' '.join(DIRECTORIES)}"
 
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -47,8 +44,7 @@ def _lint_ruff(context: Context) -> None:
 
 @task
 def lint(context: Context) -> None:
-    """This will run all linters."""
-
+    """Run ruff linter against tasks, models, utilities, and test container files."""
     _lint_ruff(context)
 
     print(f" - [{NAMESPACE}] All linters have been executed!")
@@ -56,10 +52,7 @@ def lint(context: Context) -> None:
 
 @task(name="scan")
 def scan(context: Context) -> None:
-    """
-    Scan the repository for prohibited keywords.
-    """
-
+    """Scan the repository for prohibited keywords."""
     with context.cd(ESCAPED_REPO_PATH):
         base_cmd = "python utilities/scan.py"
         execute_command(context=context, command=base_cmd)

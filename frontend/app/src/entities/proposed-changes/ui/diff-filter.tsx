@@ -3,7 +3,7 @@ import { parseAsString, useQueryState } from "nuqs";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { QSP } from "@/shared/config/qsp";
 
-import type { GetDiffSummaryParams } from "@/entities/diff/domain/get-diff-summary";
+import type { GetDiffSummaryParams } from "@/entities/diff/domain/use-cases/get-diff-summary";
 import { DIFF_STATUS, type DiffStatus } from "@/entities/diff/ui/node-diff/types";
 import { useGetDiffSummary } from "@/entities/diff/ui/queries/get-diff-summary.query";
 import { DiffSummarySkeleton } from "@/entities/proposed-changes/ui/diff-summary/diff-summary-skeleton";
@@ -14,13 +14,13 @@ import {
 
 type DiffFilterProps = GetDiffSummaryParams;
 
-export function DiffFilter({ branch, filters }: DiffFilterProps) {
+export function DiffFilter({ branch, filters, proposedChangeId }: DiffFilterProps) {
   const [statusFilterQSP, setQsp] = useQueryState(
     QSP.STATUS,
     parseAsString.withOptions({ shallow: false })
   );
 
-  const { error, data, isPending } = useGetDiffSummary({ branch, filters });
+  const { error, data, isPending } = useGetDiffSummary({ branch, filters, proposedChangeId });
 
   const handleFilter = (value: DiffStatus) => {
     setQsp(value === statusFilterQSP ? null : value);

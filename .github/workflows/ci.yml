@@ -49,18 +49,22 @@ jobs:
       yaml: ${{ steps.changes.outputs.yaml_all }}
       infrahub_uv_files: ${{ steps.changes.outputs.infrahub_uv_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
+      version_upgrade_workflow: ${{ steps.changes.outputs.version_upgrade_workflow }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
+      e2e_pytest_tests: ${{ steps.changes.outputs.e2e_pytest_test_files }}
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
       openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
       graphql_schema: ${{ steps.changes.outputs.graphql_schema_all }}
+      error_catalogue: ${{ steps.changes.outputs.error_catalogue_all }}
       dev_guidelines: ${{ steps.changes.outputs.dev_guidelines }}
+      observability_standalone: ${{ steps.changes.outputs.observability_standalone_all }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Check for file changes
-        uses: opsmill/paths-filter@v3.0.2
+        uses: dorny/paths-filter@v4.0.2
         id: changes
         with:
           token: ${{ github.token }}
@@ -78,12 +82,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -104,21 +108,27 @@ jobs:
       contents: read
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: "actions/checkout@v7"
         with:
-          node-version: 22
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          submodules: true
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Check formatting and linting (Biome)
-        run: npx biome ci .
+        run: pnpm exec biome ci .
       - name: Check unused exports (Knip)
-        run: npm run knip
+        run: pnpm knip
       - name: Check TypeScript regressions (Betterer)
-        run: npx betterer ci
+        run: pnpm exec betterer ci
 
   frontend-validate-openapi-types:
     if: |
@@ -133,17 +143,21 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: "actions/checkout@v7"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          node-version: 22
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          package_json_file: frontend/package.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Generate OpenAPI types
-        run: npm run codegen:openapi
+        run: pnpm codegen:openapi
       - name: Check for uncommitted changes
         run: |
           if ! git diff --exit-code src/shared/api/rest/types.generated.ts; then
@@ -153,11 +167,52 @@ jobs:
             echo ""
             echo "To fix this, run the following commands from the repository root:"
             echo "  cd frontend/app"
-            echo "  npm run codegen:openapi"
+            echo "  pnpm codegen:openapi"
             echo "  git add src/shared/api/rest/types.generated.ts"
             echo "  git commit -m 'chore: regenerate OpenAPI types'"
             exit 1
           fi
+
+  frontend-validate-error-catalogue:
+    if: |
+      needs.files-changed.outputs.error_catalogue == 'true'
+    needs: ["files-changed"]
+    defaults:
+      run:
+        working-directory: ./frontend/app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v7"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify generated error bindings match schema/error-catalogue.json
+        run: pnpm check:error-bindings
+      - name: Surface a remediation hint on failure
+        if: failure()
+        run: |
+          echo "❌ Error: Generated error bindings are out of sync with schema/error-catalogue.json"
+          echo ""
+          echo "The backend catalogue has been updated, but the frontend's typed mirror hasn't been regenerated."
+          echo ""
+          echo "To fix this, run the following commands from the repository root:"
+          echo "  cd frontend/app"
+          echo "  pnpm generate:error-bindings"
+          echo "  git add src/shared/api/errors/catalogue.generated.ts"
+          echo "  git commit -m 'chore: regenerate error bindings'"
 
   frontend-validate-graphql-types:
     if: |
@@ -172,29 +227,72 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: "actions/checkout@v7"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          node-version: 22
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          package_json_file: frontend/package.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Generate GraphQL types
-        run: npm run codegen:graphql
+        run: pnpm codegen:graphql
       - name: Check for uncommitted changes
         run: |
-          if ! git diff --exit-code src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts; then
+          if ! git diff --exit-code src/shared/api/graphql/generated/graphql-env.d.ts src/shared/api/graphql/generated/graphql-cache.d.ts; then
             echo "❌ Error: Generated GraphQL types are out of sync"
             echo ""
             echo "The gql.tada generated files need to be regenerated."
             echo ""
             echo "To fix this, run the following commands from the repository root:"
             echo "  cd frontend/app"
-            echo "  npm run codegen:graphql"
-            echo "  git add src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts"
+            echo "  pnpm codegen:graphql"
+            echo "  git add src/shared/api/graphql/generated/graphql-env.d.ts src/shared/api/graphql/generated/graphql-cache.d.ts"
             echo "  git commit -m 'chore: regenerate GraphQL types'"
+            exit 1
+          fi
+
+  validate-observability-standalone:
+    if: |
+      needs.files-changed.outputs.observability_standalone == 'true'
+    needs: ["files-changed", "prepare-environment"]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v7"
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Regenerate standalone compose file
+        working-directory: development
+        run: uv run python convert_compose_standalone.py
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --exit-code development/docker-compose-observability-standalone.yml; then
+            echo "❌ Error: development/docker-compose-observability-standalone.yml is out of sync"
+            echo ""
+            echo "The observability source files have been updated, but the standalone compose file hasn't been regenerated."
+            echo ""
+            echo "To fix this, run the following commands from the repository root:"
+            echo "  cd development"
+            echo "  uv run python convert_compose_standalone.py"
+            echo "  git add docker-compose-observability-standalone.yml"
+            echo "  git commit -m 'chore: regenerate standalone observability compose'"
             exit 1
           fi
 
@@ -209,12 +307,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
 
@@ -241,11 +339,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@v22
+        uses: DavidAnson/markdownlint-cli2-action@v24
         with:
           globs: "docs/docs/**/*.md docs/docs/**/*.mdx"
 
@@ -256,7 +354,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Check workflow files
@@ -285,13 +383,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
 
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
 
@@ -302,20 +400,17 @@ jobs:
       - name: Install dependencies
         run: "uv sync --all-groups"
 
-      - name: Compare package versions
+      - name: Compare package version configuration
         run: |
-          INFRAHUB_VERSION=$(uv version --short)
-          echo "Infrahub version: $INFRAHUB_VERSION"
-
-          cd python_testcontainers
-          TESTCONTAINERS_VERSION=$(uv version --short)
-          echo "Testcontainers version: $TESTCONTAINERS_VERSION"
-
-          if [ "$INFRAHUB_VERSION" != "$TESTCONTAINERS_VERSION" ]; then
-            echo "Error: Version mismatch!"
-            echo "infrahub version: $INFRAHUB_VERSION"
-            echo "infrahub-testcontainers version: $TESTCONTAINERS_VERSION"
-            echo "The version of infrahub-testcontainers must match the version of infrahub"
+          # Both packages derive their version from the same git tag via hatch-vcs, so their runtime
+          # versions are equal by construction. Verify both declare the same resolver match pattern so
+          # they can never drift apart.
+          ROOT_MATCH=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['tool']['hatch']['version']['raw-options']['git_describe_command'])")
+          TC_MATCH=$(uv run python -c "import tomllib; print(tomllib.load(open('python_testcontainers/pyproject.toml','rb'))['tool']['hatch']['version']['raw-options']['git_describe_command'])")
+          echo "infrahub-server git_describe_command: $ROOT_MATCH"
+          echo "infrahub-testcontainers git_describe_command: $TC_MATCH"
+          if [ "$ROOT_MATCH" != "$TC_MATCH" ]; then
+            echo "Error: hatch-vcs git_describe_command differs between the two packages; they could resolve different versions."
             exit 1
           fi
 
@@ -345,9 +440,9 @@ jobs:
         working-directory: ./python_testcontainers
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
@@ -388,12 +483,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
@@ -405,7 +500,7 @@ jobs:
       - name: "Unit Tests"
         run: "uv run invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
-        if: matrix.python-version == '3.13'
+        if: matrix.python-version == '3.14'
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
@@ -421,19 +516,28 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - "graphql"
+          - "core-diff"
+          - "core-schema"
+          - "other"
     runs-on:
       group: huge-runners
     timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
+      PYTEST_XDIST_WORKER_COUNT: 2
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
@@ -448,15 +552,18 @@ jobs:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
-      - name: "Unit Tests"
-        run: "uv run invoke backend.test-component"
-      - name: "Coveralls : Unit Tests"
+      - name: "Validate component test shards"
+        if: matrix.shard == 'other'
+        run: "uv run invoke backend.validate-component-shards"
+      - name: "Component Tests (${{ matrix.shard }})"
+        run: "uv run invoke backend.test-component --shard ${{ matrix.shard }}"
+      - name: "Coveralls : Component Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          flag-name: backend-component
+          flag-name: backend-component-${{ matrix.shard }}
           parallel: true
       # - name: Generate tracing spans
       #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
@@ -482,12 +589,12 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
@@ -529,12 +636,12 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
@@ -579,12 +686,12 @@ jobs:
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install tini
@@ -647,11 +754,11 @@ jobs:
   #   env: ${{ matrix.env }}
   #   steps:
   #     - name: "Check out repository code"
-  #       uses: "actions/checkout@v6"
+  #       uses: "actions/checkout@v7"
   #       with:
   #         submodules: true
   #     - name: Set up Python
-  #       uses: actions/setup-python@v6
+  #       uses: actions/setup-python@v7
   #       with:
   #         python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
   #     - name: "Setup git credentials"
@@ -680,12 +787,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -708,24 +815,32 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
-      - name: Install NodeJS
-        uses: actions/setup-node@v6
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          node-version: 22
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          package_json_file: frontend/package.json
+      - name: Install NodeJS
+        uses: actions/setup-node@v7
+        with:
+          # https://github.com/microsoft/playwright/issues/41000
+          node-version: 24.15.0
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: "Install frontend"
         working-directory: ./frontend/app
-        run: npm install
+        run: pnpm install --frozen-lockfile
       - name: Install Playwright Browsers
         working-directory: ./frontend/app
-        run: npx playwright install chromium
+        run: pnpm exec playwright install chromium
       - name: "Run unit tests"
         working-directory: ./frontend/app
-        run: "npm run test:coverage"
+        run: "pnpm test:coverage"
+      - name: "Run unit tests (@infrahub/graph)"
+        working-directory: ./frontend/packages/graph
+        run: "pnpm test"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -746,12 +861,12 @@ jobs:
     runs-on: "ubuntu-22.04"
     steps:
       - name: Check out repository code
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -772,12 +887,12 @@ jobs:
     runs-on: "ubuntu-22.04"
     steps:
       - name: Check out repository code
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -788,6 +903,33 @@ jobs:
         run: "uv sync --all-groups"
       - name: Run validation
         run: uv run invoke schema.validate-jsonschema
+
+  validate-docker-compose-env-vars:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-22.04"
+    steps:
+      - name: Check out repository code
+        uses: "actions/checkout@v7"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Run validation
+        run: uv run invoke release.validate-dockercomposeenv
 
   documentation:
     defaults:
@@ -803,18 +945,18 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Install NodeJS
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
           cache-dependency-path: docs/package-lock.json
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -834,24 +976,25 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      (needs.files-changed.outputs.python == 'true') || (needs.files-changed.outputs.documentation == 'true')
+      (needs.files-changed.outputs.python == 'true' ||
+      needs.files-changed.outputs.documentation == 'true')
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Install NodeJS
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
           cache-dependency-path: docs/package-lock.json
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -870,13 +1013,14 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.python == 'true') ||
       (needs.files-changed.outputs.dev_guidelines == 'true') ||
-      (needs.files-changed.outputs.javascript == 'true')
+      (needs.files-changed.outputs.javascript == 'true') ||
+      (needs.files-changed.outputs.github_workflows == 'true')
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
-    runs-on: "ubuntu-22.04"
+    runs-on: "ubuntu-24.04"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Check links
@@ -893,13 +1037,14 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      (needs.files-changed.outputs.release == 'true') || (needs.files-changed.outputs.documentation == 'true')
+      (needs.files-changed.outputs.release == 'true' ||
+      needs.files-changed.outputs.documentation == 'true')
     needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
 
@@ -925,7 +1070,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       # The official GitHub Action for Vale doesn't work, installing manually instead:
@@ -967,6 +1112,10 @@ jobs:
             env:
               INFRAHUB_DB_TYPE: neo4j
               UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+              # Backpressure is on by default, but this legacy suite drives enough concurrent
+              # UI + polling load that interactive requests queue behind lock-holding writes and
+              # time out. The suite is slated for removal; disable admission control just here.
+              INFRAHUB_API_BACKPRESSURE_ENABLED: "false"
           # - name: E2E-testing-playwright-nats
           #   env:
           #     INFRAHUB_DB_TYPE: neo4j
@@ -980,18 +1129,22 @@ jobs:
     env: ${{ matrix.env }}
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
-      - name: Install NodeJS
-        uses: actions/setup-node@v6
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          node-version: 22
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          package_json_file: frontend/package.json
+      - name: Install NodeJS
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -1051,22 +1204,25 @@ jobs:
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
       - name: Install frontend dependencies
-        run: npm install
+        run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Browsers
-        run: npx playwright install chromium --no-shell
+        run: pnpm exec playwright install chromium --no-shell
 
-      # Make chromium ignore netlink messages by returning ReadMessages early
-      - name: Chrome path
-        run: echo CHROME_BIN_PATH="$(npx playwright install chromium --dry-run --no-shell | grep Install | grep chromium- | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
-      - name: Chrome func offset
-        run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::ReadMessages(bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
-      - name: Patch chromium
-        run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
+      # Make chromium ignore netlink messages so AddressTrackerLinux takes its "assume always
+      # online" path. The LD_PRELOAD shim fails NETLINK_ROUTE sockets at the libc level, which
+      # is robust across Playwright/Chromium versions (unlike patching the chrome binary). The
+      # shim is injected into the browser process via playwright.config.ts (NO_NETLINK_SO).
+      - name: Build no-netlink shim
+        run: |
+          gcc -shared -fPIC -Wall -Wextra \
+            -o "$RUNNER_TEMP/no_netlink.so" \
+            tests/e2e/fixtures/no_netlink.c -ldl
+          echo "NO_NETLINK_SO=$RUNNER_TEMP/no_netlink.so" >> "$GITHUB_ENV"
 
       - name: Wait for artifacts to be generated before restarting infrahub
         if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: npx playwright test artifact
+        run: pnpm exec playwright test artifact
 
       - name: Add response delay if required
         if: needs.files-changed.outputs.e2e_tests == 'true'
@@ -1081,7 +1237,7 @@ jobs:
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
       - name: Run Playwright tests
-        run: npm run ci:test:e2e
+        run: pnpm ci:test:e2e
 
       # - name: Generate tracing spans
       #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
@@ -1095,7 +1251,7 @@ jobs:
 
       - name: playwright-report
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}
           path: frontend/app/playwright-report/
@@ -1143,6 +1299,98 @@ jobs:
         if: always()
         run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$JOB_NAME&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
 
+  # ----------------------------- E2E pytest-playwright (infrahub-testcontainers) -----------------------------
+  # New Python e2e suite. Runs ALONGSIDE E2E-testing-playwright (the TS suite)
+  # until parity is confirmed, then the TS job can be removed. Instead of
+  # `invoke dev.start dev.load-infra-*`, infrahub-testcontainers spins up the
+  # stack and pytest fixtures load the dataset (see tests/e2e/).
+  E2E-testing-pytest-playwright:
+    needs:
+      - prepare-environment
+      - files-changed
+      - yaml-lint
+      - python-lint
+      - infrahub-testcontainers-check
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.e2e == 'true'
+    runs-on:
+      group: huge-runners
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [foundation, sites_a, sites_b, branches_repo, tutorial]
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+      UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      PYTEST_XDIST_WORKER_COUNT: 1
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps chromium
+      - name: Install tini
+        run: apt-get update && apt-get install -y tini
+      - name: Set job name
+        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: |
+          RUNNER_NAME=$(echo "${{ runner.name }}" | grep -o 'ghrunner[0-9]\+' | sed 's/ghrunner\([0-9]\+\)/ghrunner_\1/')
+          echo "PYTEST_DEBUG_TEMPROOT=/var/lib/github/${RUNNER_NAME}/_temp" >> $GITHUB_ENV
+          echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_DOCKER_IMAGE=opsmill/infrahub >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_DOCKER_PULL=false >> $GITHUB_ENV
+          echo NEO4J_DOCKER_IMAGE=neo4j:2025.10.1-enterprise >> $GITHUB_ENV
+      - name: Build no-netlink shim
+        run: |
+          gcc -shared -fPIC -Wall -Wextra \
+            -o "$RUNNER_TEMP/no_netlink.so" \
+            tests/e2e/fixtures/no_netlink.c -ldl
+          echo "NO_NETLINK_SO=$RUNNER_TEMP/no_netlink.so" >> "$GITHUB_ENV"
+      - name: Build Demo
+        run: |
+          echo "::group::Build infrahub container"
+          uv run invoke dev.build
+          echo "::endgroup::"
+      - name: Run Playwright tests
+        if: matrix.shard != 'tutorial'
+        env:
+          INFRAHUB_TESTING_RESPONSE_DELAY: ${{ needs.files-changed.outputs.e2e_pytest_tests == 'true' && '1' || '0' }}
+        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e --ignore=tests/e2e/tutorial -m shard_${{ matrix.shard }}
+      - name: Run tutorial Playwright tests
+        if: matrix.shard == 'tutorial'
+        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/tutorial
+      - name: playwright-report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: E2E-testing-pytest-playwright-${{ matrix.shard }}
+          path: |
+            test-results/
+            playwright-junit.xml
+      - name: Containers after tests
+        if: always()
+        run: docker ps -a
+
   # ------------------------------------------ E2E invoke demo ------------------------------------------------
   E2E-testing-invoke-demo-start:
     needs:
@@ -1162,13 +1410,13 @@ jobs:
       group: huge-runners
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -1235,7 +1483,8 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.e2e == 'true'
+      (needs.files-changed.outputs.e2e == 'true' ||
+      needs.files-changed.outputs.version_upgrade_workflow == 'true')
     uses: ./.github/workflows/version-upgrade.yml
 
   # ------------------------------------------ Benchmarks ------------------------------------------------
@@ -1258,12 +1507,12 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
@@ -1337,5 +1586,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component"
+          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component-graphql,backend-component-core-diff,backend-component-core-schema,backend-component-other"
           parallel-finished: true

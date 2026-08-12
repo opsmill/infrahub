@@ -1,0 +1,83 @@
+---
+title: Use groups in automation
+---
+
+# Use groups in automation
+
+Target a group from an artifact definition, Transformation, or Check so that the automation applies to every member without hard-coding a list.
+
+This is the main reason to use groups: they decouple "what to operate on" from "what to do." Instead of listing 50 devices in an artifact definition, you target one group, and the group's contents can change independently.
+
+## Target a group from an artifact definition
+
+An artifact definition has a `targets` field that points to a group. Infrahub generates one artifact per member.
+
+```yaml
+# .infrahub.yml excerpt
+artifact_definitions:
+  - name: "switch-base-config"
+    artifact_name: "base-config"
+    parameters:
+      device: "name__value"
+    content_type: "text/plain"
+    targets: "<group-name>"
+    transformation: "switch-config-template"
+```
+
+When the group's membership changes, the next artifact generation run picks up the new members automatically. See [artifacts](../artifacts/overview) for the full specification.
+
+## Target a group from a Transformation
+
+Transformations that produce per-object output are wired up through an artifact definition pointing at a group (same pattern as above). The Transformation runs once per group member with that member passed as an input parameter.
+
+See [Transformations](../transformations/overview) for Jinja2 and Python Transformation details.
+
+## Scope a Check to a group
+
+A Check Definition can be scoped to a group so the check runs across every member. This lets you write one check and apply it consistently.
+
+```yaml
+# .infrahub.yml excerpt
+check_definitions:
+  - name: "naming-convention"
+    class_name: "NamingConventionCheck"
+    file_path: "checks/naming.py"
+    targets: "<group-name>"
+    parameters:
+      device: "name__value"
+```
+
+See [Checks](../checks/overview) for check authoring.
+
+## Use with Generators
+
+A Generator's `targets` field points to a `CoreStandardGroup`. The members of that group are the Generator's *inputs* — Infrahub creates one Generator run per member.
+
+As the Generator runs, Infrahub automatically tracks the objects it produces in a `CoreGeneratorGroup` via the SDK tracking feature. You don't define this group; it's managed for you.
+
+| Group | Role | Who manages it |
+|---|---|---|
+| `CoreStandardGroup` | **Input** — drives Generator runs (one run per member) | You — set in `targets:` and populate the group |
+| `CoreGeneratorGroup` | **Output** — tracks objects the Generator produced | Infrahub, automatically via SDK tracking |
+
+Downstream automation (artifact definitions, Checks) can target either group, depending on whether you want to operate on the inputs or the produced objects.
+
+See [Generator overview](../generators/overview) for full details, including the difference between Standard and Generator groups.
+
+## Pattern: chain groups through the pipeline
+
+A typical production setup:
+
+1. A **`CoreStandardGroup`** lists the devices that need a service. You manage its membership directly, or have a workflow keep it in sync with a query.
+2. A **Generator** targets that group, producing per-device service objects. Infrahub automatically tracks the produced objects in a `CoreGeneratorGroup`.
+3. An **artifact definition** targets either:
+    - the input `CoreStandardGroup` (to render configuration per device), or
+    - the auto-managed `CoreGeneratorGroup` (to render per produced service object).
+4. A **Check Definition** targets the input group to validate the fleet.
+
+Groups are the glue between each stage — replace any stage without rewiring the rest.
+
+## Next
+
+- [Query group membership](./query-members.mdx) to inspect what each group contains at each stage.
+- [Artifacts](../artifacts/overview), [Transformations](../transformations/overview), [Checks](../checks/overview), [Generators](../generators/overview) for feature-specific details.

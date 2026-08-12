@@ -3,7 +3,11 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../../constants";
 import { generateRandomBranchName } from "../../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
-import { fillCircuitContractFields, uploadFile } from "./file-upload-helpers";
+import {
+  createMinimalPdfBuffer,
+  fillCircuitContractFields,
+  uploadFile,
+} from "./file-upload-helpers";
 
 test.describe("File Upload - InfraCircuitContract", () => {
   test.describe.configure({ mode: "serial" });
@@ -57,7 +61,7 @@ test.describe("File Upload - InfraCircuitContract", () => {
         await uploadFile(page, {
           name: TEST_FILE_NAME,
           mimeType: "application/pdf",
-          content: TEST_FILE_CONTENT,
+          buffer: createMinimalPdfBuffer(TEST_FILE_CONTENT),
         });
 
         // Verify file info card is displayed
@@ -99,7 +103,7 @@ test.describe("File Upload - InfraCircuitContract", () => {
         await uploadFile(page, {
           name: "valid-contract.pdf",
           mimeType: "application/pdf",
-          content: "Valid contract content",
+          buffer: createMinimalPdfBuffer("Valid contract content"),
         });
 
         // Error should be cleared or file should be visible
@@ -118,7 +122,7 @@ test.describe("File Upload - InfraCircuitContract", () => {
         await uploadFile(page, {
           name: initialFileName,
           mimeType: "application/pdf",
-          content: "Initial contract content",
+          buffer: createMinimalPdfBuffer("Initial contract content"),
         });
 
         await fillCircuitContractFields(page, {
@@ -147,7 +151,7 @@ test.describe("File Upload - InfraCircuitContract", () => {
         await uploadFile(page, {
           name: updatedFileName,
           mimeType: "application/pdf",
-          content: "Updated contract content",
+          buffer: createMinimalPdfBuffer("Updated contract content"),
         });
 
         await expect(page.getByText(updatedFileName)).toBeVisible();

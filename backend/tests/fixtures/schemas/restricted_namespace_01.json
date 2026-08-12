@@ -7,7 +7,7 @@
           "name": "Timestamp",
           "namespace": "Internal",
           "label": "Timestamp",
-          "display_labels": ["name__value"],
+          "display_label": "name__value",
           "attributes": [
              {
                "name": "name",

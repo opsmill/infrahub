@@ -1,5 +1,6 @@
+import { ScrollArea } from "@infrahub/ui";
+
 import { Row } from "@/shared/components/container";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
 import { ArtifactsTab } from "./artifacts-tab";
 import { ChecksTab } from "./checks-tab";
@@ -16,21 +17,18 @@ export interface ProposedChangeTabsProps {
 
 export function ProposedChangeTabs({ sourceBranch, proposedChangeId }: ProposedChangeTabsProps) {
   return (
-    <ScrollArea
-      scrollX
-      scrollY={false}
-      scrollBarClassName="hidden"
-      className="shrink-0 border-gray-200 border-b"
-    >
-      <Row className="items-end gap-4 px-4" aria-label="Tabs">
-        <OverviewTab />
-        <DataTab sourceBranch={sourceBranch} />
-        <FilesTab sourceBranch={sourceBranch} />
-        <ArtifactsTab sourceBranch={sourceBranch} />
-        <SchemaTab sourceBranch={sourceBranch} />
-        <ChecksTab proposedChangeId={proposedChangeId} />
-        <TasksTab proposedChangeId={proposedChangeId} />
-      </Row>
+    <ScrollArea scrollX scrollY={false} scrollBarClassName="hidden" className="shrink-0 border-b">
+      <nav aria-label="Tabs">
+        <Row className="items-end gap-4 px-4">
+          <OverviewTab proposedChangeId={proposedChangeId} />
+          <DataTab sourceBranch={sourceBranch} proposedChangeId={proposedChangeId} />
+          <FilesTab sourceBranch={sourceBranch} proposedChangeId={proposedChangeId} />
+          <ArtifactsTab sourceBranch={sourceBranch} proposedChangeId={proposedChangeId} />
+          <SchemaTab sourceBranch={sourceBranch} proposedChangeId={proposedChangeId} />
+          <ChecksTab proposedChangeId={proposedChangeId} />
+          <TasksTab proposedChangeId={proposedChangeId} />
+        </Row>
+      </nav>
     </ScrollArea>
   );
 }

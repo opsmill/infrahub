@@ -1,0 +1,50 @@
+---
+feature: Deployment & Management — Production Deployment
+pr: TBD
+description: |
+  Migrates guides/production-deployment.mdx into a hub + HA spoke under
+  deploy-manage/install-configure/production-deployment/:
+    - index.mdx   — hub: production checklist (verbatim from source), updated links
+    - high-availability.mdx — HA spoke: new "How HA works" intro (~130 words)
+      + HA deployment examples (Terraform + Helm) + load balancer config,
+      extracted from guides/installation.mdx lines 684–917.
+  The original guides/production-deployment.mdx and guides/installation.mdx
+  remain on disk during iteration.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/guides/production-deployment
+    to: /docs/deploy-manage/install-configure/production-deployment/
+
+# Note: /docs/guides/installation#high-availability-deployment-examples redirects
+# to the HA spoke below. The anchor-level redirect is tracked here as a note;
+# the base path redirect for /docs/guides/installation is in deploy-manage-installation.yml.
+redirects_notes:
+  - "The HA anchor in guides/installation (lines 684-917) is now at /docs/deploy-manage/install-configure/production-deployment/high-availability"
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/deploy-manage/install-configure/production-deployment/
+    title: Production deployment (hub)
+  - path: /docs/deploy-manage/install-configure/production-deployment/high-availability
+    title: High availability
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via redirect at runtime; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/faq/faq.mdx
+    line: 84
+    current: ../guides/production-deployment.mdx
+    should_be: ../deploy-manage/install-configure/production-deployment/index.mdx
+  - file: docs/docs/guides/configuration-changes.mdx
+    line: 269
+    current: ./production-deployment.mdx
+    should_be: ../deploy-manage/install-configure/production-deployment/index.mdx
+  - file: docs/docs/topics/object-storage.mdx
+    line: 112
+    current: ../guides/production-deployment
+    should_be: ../deploy-manage/install-configure/production-deployment/
+  - file: docs/docs/topics/architecture.mdx
+    line: 333
+    current: ../guides/installation#high-availability-deployment-examples
+    should_be: ../deploy-manage/install-configure/production-deployment/high-availability

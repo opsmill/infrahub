@@ -8,7 +8,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetObjectsCountParams,
   getObjectsCount,
-} from "@/entities/nodes/object/domain/get-objects-count";
+} from "@/entities/nodes/object/domain/use-cases/get-objects-count";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 export function getObjectsCountQueryOptions(params: GetObjectsCountParams) {
@@ -20,15 +20,19 @@ export function getObjectsCountQueryOptions(params: GetObjectsCountParams) {
   });
 }
 
-export function useObjectsCount(params: Omit<GetObjectsCountParams, keyof ContextParams>) {
+export function useObjectsCount(
+  params: Omit<GetObjectsCountParams, keyof ContextParams>,
+  config?: { enabled?: boolean }
+) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
-  return useQuery(
-    getObjectsCountQueryOptions({
+  return useQuery({
+    ...getObjectsCountQueryOptions({
       ...params,
       branchName: currentBranch.name,
       atDate: timeMachineDate,
-    })
-  );
+    }),
+    ...config,
+  });
 }

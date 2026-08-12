@@ -4,16 +4,18 @@ import { ListBox } from "react-aria-components";
 
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { QSP } from "@/shared/config/qsp";
-import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
+import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
+import { computeProposedChangeFilters } from "@/entities/proposed-changes/domain/rules/compute-proposed-change-filters";
+import { computeProposedChangeSort } from "@/entities/proposed-changes/domain/rules/compute-proposed-change-sort";
 import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";
 import { ProposedChangesTableFilters } from "@/entities/proposed-changes/ui/proposed-changes-table-filters";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
 import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
-import { computeProposedChangeFilters } from "@/entities/proposed-changes/utils/compute-proposed-change-filters";
-import type { NodeSchema } from "@/entities/schema/types";
+import type { NodeSchema } from "@/entities/schema/domain/model/schema";
 
 type ProposedChangesTableProps = {
   schema: NodeSchema;
@@ -24,11 +26,13 @@ export function ProposedChangesTable({ schema, className }: ProposedChangesTable
   const [proposedChangeState] = useQueryState(QSP.PROPOSED_CHANGES_STATE);
 
   const [filters] = useFilters();
+  const { appliedSort } = useSort(schema);
 
   const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useGetProposedChanges(
     {
       schema,
       filters: computeProposedChangeFilters({ filters, qsp: proposedChangeState as string }),
+      sort: computeProposedChangeSort(appliedSort),
     }
   );
 
@@ -43,10 +47,7 @@ export function ProposedChangesTable({ schema, className }: ProposedChangesTable
       <ListBox
         aria-label="Branches list"
         items={flatData}
-        className={classNames(
-          "m-2 flex flex-col divide-y divide-gray-200 rounded-lg border border-gray-200",
-          className
-        )}
+        className={classNames("m-2 flex flex-col divide-y rounded-lg border", className)}
       >
         {(proposedChange) => (
           <ProposedChangesItem key={proposedChange.id} proposedChange={proposedChange} />

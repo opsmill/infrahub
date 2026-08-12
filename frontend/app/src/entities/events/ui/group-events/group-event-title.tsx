@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import type { GroupEvent } from "@/shared/api/graphql/generated/graphql";
+import type { GroupEvent } from "@/shared/api/graphql/generated/types";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
 

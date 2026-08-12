@@ -1,0 +1,48 @@
+---
+feature: Deployment & Management — SSO (hub + 2 spokes)
+pr: TBD
+description: |
+  Splits guides/sso.mdx into a hub + 2 spokes under
+  deploy-manage/user-management/sso/:
+    - index.mdx            Hub (SSO overview; net-new content)
+    - configure-sso.mdx    Steps 1-4 + Troubleshooting (main configuration guide)
+    - advanced-sso.mdx     Multiple providers + Group mapping
+  No legacy topic file existed for SSO. Original guides/sso.mdx remains on disk.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/guides/sso
+    to: /docs/deploy-manage/user-management/sso/
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/deploy-manage/user-management/sso/
+    title: Single sign-on (SSO) (hub)
+  - path: /docs/deploy-manage/user-management/sso/configure-sso
+    title: Configure SSO
+  - path: /docs/deploy-manage/user-management/sso/advanced-sso
+    title: Advanced SSO configuration
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via redirect at runtime; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/home.mdx
+    line: 96
+    current: "guides/sso"
+    should_be: "deploy-manage/user-management/sso/"
+  - file: docs/docs/faq/faq.mdx
+    line: 137
+    current: ../guides/sso.mdx
+    should_be: ../deploy-manage/user-management/sso/configure-sso.mdx
+  - file: docs/docs/deploy-manage/user-management/authentication.mdx
+    line: 38
+    current: url="../../guides/sso"
+    should_be: url="./sso/"
+  - file: docs/docs/deploy-manage/user-management/authentication.mdx
+    line: 70
+    current: url="../../guides/sso"
+    should_be: url="./sso/"
+  - file: docs/docs/deploy-manage/install-configure/production-deployment/index.mdx
+    line: 78
+    current: url="../../../guides/sso"
+    should_be: url="../user-management/sso/configure-sso"

@@ -32,6 +32,7 @@ async def _validate_schema_state(
         db: Database connection
         branch: Branch to check
         expect_old_values: If True, expect old values (pre-migration), if False expect new values (post-migration)
+
     """
     schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
     schema_node = schema_branch.get_node(name="SchemaNode", duplicate=False)

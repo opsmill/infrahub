@@ -1,0 +1,42 @@
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
+import type { ContextParams } from "@/shared/api/types";
+
+const getNodeLabelQuery = ({ objectId, kind }: { objectId?: string | null; kind: string }) => {
+  const request = {
+    query: {
+      __name: "GET_DISPLAY_LABEL",
+      [kind]: {
+        __args: {
+          ...(objectId ? { ids: [objectId] } : {}),
+        },
+        edges: {
+          node: {
+            display_label: true,
+          },
+        },
+      },
+    },
+  };
+
+  return jsonToGraphQLQuery(request);
+};
+
+export function getNodeLabelFromApi({
+  objectId,
+  kind,
+  branchName,
+  atDate,
+}: {
+  objectId?: string | null;
+  kind: string;
+} & ContextParams) {
+  return graphqlClient.query({
+    query: graphql(getNodeLabelQuery({ objectId, kind })),
+    context: {
+      branch: branchName,
+      date: atDate,
+    },
+  });
+}

@@ -1,0 +1,24 @@
+fragment deviceFragment on InfraDevice {
+  id
+  name {
+    value
+  }
+  interfaces {
+    edges {
+      node {
+        ...interfaceFragment
+      }
+    }
+  }
+}
+
+fragment chassisFragment on InfraDevice {
+  id
+  platform {
+    node {
+      name {
+        value
+      }
+    }
+  }
+}

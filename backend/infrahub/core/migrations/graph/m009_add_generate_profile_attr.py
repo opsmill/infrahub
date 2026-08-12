@@ -17,10 +17,11 @@ if TYPE_CHECKING:
 
 class Migration009(InternalSchemaMigration):
     name: str = "009_add_generate_profile_attr"
+    description: str = "N/A"
     minimum_version: int = 8
 
     @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
+    def init(cls, **kwargs: Any) -> Self:
         internal_schema = cls.get_internal_schema()
         schema_node = internal_schema.get_node(name="SchemaNode")
 
@@ -33,8 +34,7 @@ class Migration009(InternalSchemaMigration):
                 ),
             ),
         ]
-        return cls(migrations=migrations, **kwargs)  # type: ignore[arg-type]
+        return cls(migrations=migrations, **kwargs)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

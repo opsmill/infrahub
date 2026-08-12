@@ -186,12 +186,27 @@ Infrahub follows semantic versioning (MAJOR.MINOR.PATCH) with these release type
 1. **Development happens on `develop`**
 2. **Release preparation**:
    - Create release branch from `develop`
-   - Update version numbers and changelog
+   - Update the changelog (the version is derived from the release tag, not edited in `pyproject.toml`)
    - Final testing and bug fixes
 3. **Release**:
    - Merge release branch to `stable`
-   - Create Git tag with version number
+   - Create the annotated `infrahub-v<version>` Git tag — this tag is the sole source of the release version
    - Merge `stable` back to `develop`
+
+### Versioning
+
+`infrahub-server` and `infrahub-testcontainers` derive their version from the `infrahub-v*` git tags
+at build time (via hatch-vcs). There is no `version` field in either `pyproject.toml`, so releases
+never require a version-bump commit. Keep these in mind when developing locally:
+
+- **Fetch tags on a fresh clone**: run `git fetch --tags` (or clone with full history). Without a
+  reachable `infrahub-v*` tag a build still succeeds, but it reports a development fallback version
+  rather than the real one.
+- **Editable installs cache the version**: the version reported by `infrahub` is fixed when you run
+  `uv sync`. After checking out a different commit or fetching new tags, re-run `uv sync` to refresh it.
+- **Maintenance-branch hygiene**: never merge a newer main-line `infrahub-v*` tag into an older
+  `release-x.y` branch — the resolver would then resolve the wrong version line. Cherry-pick fixes
+  onto the release branch instead of merging `stable`/`develop` into it.
 
 ## Best practices for pull requests
 
@@ -288,7 +303,7 @@ Follow these practices to ensure smooth code review and integration.
 
 ## Documentation branching workflow
 
-Use the branch that matches when the change must appear on https://docs.infrahub.app:
+Use the branch that matches when the change must appear on [docs.infrahub.app](https://docs.infrahub.app):
 
 ### Minor fixes to published docs
 
@@ -470,7 +485,7 @@ git commit -m "temp: use local submodule changes"
 
 ## Further reading
 
-- [Understanding Git repositories in Infrahub](../topics/repository.mdx) - Repository integration concepts
+- [Understanding Git repositories in Infrahub](../git-integration/overview) - Repository integration concepts
 - [Backend development guide](../development/backend.mdx) - Setting up the development environment
-- [How to connect external Git repositories](../guides/repository.mdx) - External repository setup
-- [Proposed changes](../topics/proposed-change.mdx) - Understanding Infrahub's change management
+- [How to connect external Git repositories](../git-integration/connect-repository) - External repository setup
+- [Proposed changes](../proposed-changes/overview) - Understanding Infrahub's change management

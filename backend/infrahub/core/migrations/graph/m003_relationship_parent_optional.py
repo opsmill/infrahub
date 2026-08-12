@@ -16,7 +16,7 @@ class Migration003Query01(Query):
     name = "migration_003_01"
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         at = Timestamp()
         filters, params = at.get_query_filter_path()
 
@@ -45,10 +45,9 @@ class Migration003Query01(Query):
 
 class Migration003(GraphMigration):
     name: str = "003_relationship_parent_mandatory"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [Migration003Query01]
     minimum_version: int = 2
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-
-        return result
+        return MigrationResult()

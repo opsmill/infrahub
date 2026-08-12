@@ -1,9 +1,19 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, ConfigDict, Field
 
-from infrahub.context import InfrahubContext
-from infrahub.core.node import Node
-from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
-from infrahub.message_bus.types import ProposedChangeBranchDiff
+from infrahub.context import InfrahubContext  # noqa: TC001
+from infrahub.core.node import Node  # noqa: TC001
+from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository  # noqa: TC001
+from infrahub.message_bus.types import ProposedChangeBranchDiff  # noqa: TC001
+
+
+class GitRepoNode(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    name: str
+    location: str
 
 
 class RequestArtifactDefinitionGenerate(BaseModel):
@@ -16,10 +26,39 @@ class RequestArtifactDefinitionGenerate(BaseModel):
         default_factory=list,
         description="List of targets to limit the scope of the generation, if populated only the included artifacts will be regenerated",
     )
+    members: list[str] = Field(
+        default_factory=list,
+        description="Member node ids to generate artifacts for; when populated, only these members are processed.",
+    )
+
+    @property
+    def evaluates_every_member(self) -> bool:
+        """Whether this request examines the definition's whole target group.
+
+        A conclusion drawn from the absence of a member -- such as an existing artifact now being
+        orphaned -- only holds for a pass that looked at all of them. Either filter narrows the
+        pass, and a request narrowed by ``members`` leaves ``limit`` empty, so ``limit`` alone does
+        not tell the two apart.
+        """
+        return not self.members and not self.limit
+
+    def selects_member(self, *, member_id: str, artifact_id: str | None) -> bool:
+        """Whether the member should have its artifact (re)generated under this request's filters.
+
+        ``members`` filters on the member node id, so a member with no artifact yet is still
+        selected when its id is listed. ``limit`` filters on the existing artifact id, so it can
+        only ever narrow to members that already have an artifact -- a member whose ``artifact_id``
+        is ``None`` is skipped by a non-empty ``limit``. An empty filter imposes no restriction.
+        """
+        if self.members and member_id not in self.members:
+            return False
+        if self.limit and artifact_id not in self.limit:
+            return False
+        return True
 
 
 class RequestArtifactGenerate(BaseModel):
-    """Runs to generate an artifact"""
+    """Runs to generate an artifact."""
 
     artifact_name: str = Field(..., description="Name of the artifact")
     artifact_definition: str = Field(..., description="The ID of the artifact definition")
@@ -74,7 +113,7 @@ class GitRepositoryAddReadOnly(BaseModel):
 
 
 class GitRepositoryPullReadOnly(BaseModel):
-    """Update a read-only repository to the latest commit for its ref"""
+    """Update a read-only repository to the latest commit for its ref."""
 
     location: str = Field(..., description="The external URL of the repository")
     repository_id: str = Field(..., description="The unique ID of the Repository")

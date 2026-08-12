@@ -25,6 +25,7 @@ from infrahub.core.constants import (
     SchemaPathType,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.core.models import HashableModelDiff
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     AttributeSchema,
@@ -41,6 +42,7 @@ from infrahub.core.schema.definitions.core.template import core_object_component
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
@@ -94,7 +96,7 @@ async def test_schema_branch_get(default_branch: Branch) -> None:
     assert schema11 == schema
 
 
-async def test_schema_branch_load_schema_initial(schema_all_in_one) -> None:
+async def test_schema_branch_load_schema_initial(schema_all_in_one: dict[str, Any]) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -102,7 +104,7 @@ async def test_schema_branch_load_schema_initial(schema_all_in_one) -> None:
     assert isinstance(schema.get(name="InfraGenericInterface"), GenericSchema)
 
 
-async def test_schema_branch_process_inheritance(schema_all_in_one) -> None:
+async def test_schema_branch_process_inheritance(schema_all_in_one: dict[str, Any]) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -134,7 +136,9 @@ async def test_schema_branch_process_inheritance(schema_all_in_one) -> None:
     }
 
 
-async def test_schema_process_inheritance_different_generic_attribute_types(schema_diff_attr_inheritance_types) -> None:
+async def test_schema_process_inheritance_different_generic_attribute_types(
+    schema_diff_attr_inheritance_types: dict[str, Any],
+) -> None:
     """Test that we raise an exception if a node is inheriting from two generics with different attribute types for a specific attribute."""
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_diff_attr_inheritance_types))
@@ -146,7 +150,7 @@ async def test_schema_process_inheritance_different_generic_attribute_types(sche
 
 
 async def test_schema_process_inheritance_different_generic_attribute_types_on_node(
-    schema_diff_attr_inheritance_types,
+    schema_diff_attr_inheritance_types: dict[str, Any],
 ) -> None:
     """Test that we raise an exception if a node is inheriting an attribute with different attribute type that already exists on node."""
     schema = SchemaBranch(cache={}, name="test")
@@ -162,7 +166,7 @@ async def test_schema_process_inheritance_different_generic_attribute_types_on_n
     assert exc.value.args[0] == 'TestWidget.choice inherited from TestAdapter must be the same kind ["Text", "List"]'
 
 
-async def test_schema_branch_process_inheritance_node_level(animal_person_schema_dict) -> None:
+async def test_schema_branch_process_inheritance_node_level(animal_person_schema_dict: dict[str, Any]) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
 
@@ -176,8 +180,8 @@ async def test_schema_branch_process_inheritance_node_level(animal_person_schema
     assert dog.human_friendly_id == animal.human_friendly_id
     assert cat.human_friendly_id != animal.human_friendly_id
 
-    assert dog.display_labels == animal.display_labels
-    assert cat.display_labels != animal.display_labels
+    assert dog.display_label == animal.display_label
+    assert cat.display_label != animal.display_label
 
     assert dog.order_by == animal.order_by
     assert cat.order_by != animal.order_by
@@ -185,7 +189,9 @@ async def test_schema_branch_process_inheritance_node_level(animal_person_schema
     assert dog.icon == animal.icon
 
 
-async def test_schema_branch_process_inheritance_update_inherited_elements(animal_person_schema_dict) -> None:
+async def test_schema_branch_process_inheritance_update_inherited_elements(
+    animal_person_schema_dict: dict[str, Any],
+) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
 
@@ -222,7 +228,7 @@ async def test_validate_human_friendly_id_assign_uniquess_constraints(
     uniqueness_constraints: list[list[str]] | None,
     unique_attributes: list[str],
     human_friendly_id: list[str] | None,
-    animal_person_schema_dict,
+    animal_person_schema_dict: dict[str, Any],
 ) -> None:
     schema = SchemaBranch(cache={}, name="test")
     animal_schema = animal_person_schema_dict["generics"][0]
@@ -269,7 +275,7 @@ async def test_validate_human_friendly_id_uniqueness_success(
     uniqueness_constraints: list[list[str]] | None,
     unique_attributes: list[str],
     human_friendly_id: list[str] | None,
-    animal_person_schema_dict,
+    animal_person_schema_dict: dict[str, Any],
 ) -> None:
     schema = SchemaBranch(cache={}, name="test")
     for node_schema in animal_person_schema_dict["generics"]:
@@ -298,7 +304,7 @@ async def test_validate_human_friendly_id_uniqueness_success(
         schema.validate_human_friendly_id()
 
 
-async def test_schema_branch_process_human_friendly_id(animal_person_schema_dict) -> None:
+async def test_schema_branch_process_human_friendly_id(animal_person_schema_dict: dict[str, Any]) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
 
@@ -316,7 +322,9 @@ async def test_schema_branch_process_human_friendly_id(animal_person_schema_dict
     assert dog.uniqueness_constraints == [["owner", "name__value"]]
 
 
-async def test_schema_branch_infer_human_friendly_id_from_uniqueness_constraints(animal_person_schema_dict) -> None:
+async def test_schema_branch_infer_human_friendly_id_from_uniqueness_constraints(
+    animal_person_schema_dict: dict[str, Any],
+) -> None:
     for node_schema_dict in animal_person_schema_dict["nodes"]:
         if node_schema_dict["name"] == "Dog" and node_schema_dict["namespace"] == "Test":
             node_schema_dict["uniqueness_constraints"] = [["name__value"]]
@@ -354,7 +362,7 @@ async def test_schema_branch_infer_human_friendly_id_from_uniqueness_constraints
     assert person.uniqueness_constraints == [["name__value"], ["name__value", "other_name__value"]]
 
 
-async def test_schema_branch_process_branch_support(schema_all_in_one) -> None:
+async def test_schema_branch_process_branch_support(schema_all_in_one: dict[str, Any]) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -374,7 +382,7 @@ async def test_schema_branch_process_branch_support(schema_all_in_one) -> None:
     assert criticality.get_attribute(name="description").branch == BranchSupportType.AGNOSTIC
 
 
-async def test_schema_branch_process_default_values(schema_all_in_one) -> None:
+async def test_schema_branch_process_default_values(schema_all_in_one: dict[str, Any]) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -478,7 +486,7 @@ async def test_schema_branch_reconcile_legacy_attribute_parameters() -> None:
     assert protocols_attr.parameters.regex == protocols_attr.regex == list_regex
 
 
-async def test_schema_branch_add_groups(schema_all_in_one) -> None:
+async def test_schema_branch_add_groups(schema_all_in_one: dict[str, Any]) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -494,7 +502,7 @@ async def test_schema_branch_add_groups(schema_all_in_one) -> None:
     assert std_group.get_relationship_or_none(name="subscriber_of_groups") is None
 
 
-async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one) -> None:
+async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one: dict[str, Any]) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -648,7 +656,7 @@ async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one) -> No
         ),
     ],
 )
-async def test_schema_protected_generics(schema_dict, expected_error) -> None:
+async def test_schema_protected_generics(schema_dict: dict[str, Any], expected_error: str) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_dict))
 
@@ -658,7 +666,7 @@ async def test_schema_protected_generics(schema_dict, expected_error) -> None:
     assert str(exc.value) == expected_error
 
 
-async def test_schema_branch_generate_weight(schema_all_in_one) -> None:
+async def test_schema_branch_generate_weight(schema_all_in_one: dict[str, Any]) -> None:
     def extract_weights(schema: SchemaBranch):
         weights = []
         for node in schema.get_all().values():
@@ -705,7 +713,7 @@ async def test_schema_branch_generate_weight(schema_all_in_one) -> None:
     assert in_second[0].startswith(new_attr2_partial_id)
 
 
-def test_schema_branch_processes_node_template_schema_weight(register_core_models_schema) -> None:
+def test_schema_branch_processes_node_template_schema_weight(register_core_models_schema: SchemaBranch) -> None:
     schema = {
         "generics": [core_object_template, core_object_component_template],
         "nodes": [
@@ -717,7 +725,7 @@ def test_schema_branch_processes_node_template_schema_weight(register_core_model
                 "icon": "mdi:server",
                 "human_friendly_id": ["name__value"],
                 "order_by": ["name__value"],
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "generate_template": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True, "order_weight": 7000},
@@ -780,14 +788,16 @@ def test_schema_branch_processes_node_template_schema_weight(register_core_model
     template = schema_branch.get(name="TemplateDcimDevice", duplicate=False)
     dcim_device = schema_branch.get(name="DcimDevice", duplicate=False)
 
-    for attr_name in ("name", "description", "os_version"):
+    # `name` is excluded from the template because human_friendly_id=["name__value"]
+    # so it becomes unique=True during schema processing
+    for attr_name in ("description", "os_version"):
         assert (
             template.get_attribute(name=attr_name).order_weight
             == dcim_device.get_attribute(name=attr_name).order_weight + 10000
         )
 
 
-def test_schema_branch_processes_generic_template_schema_weight(register_core_models_schema) -> None:
+def test_schema_branch_processes_generic_template_schema_weight(register_core_models_schema: SchemaBranch) -> None:
     schema = {
         "generics": [
             core_object_template,
@@ -859,7 +869,7 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
     assert generic_template.get_relationship(name="device").order_weight == 2000
 
 
-async def test_schema_branch_add_profile_schema(schema_all_in_one) -> None:
+async def test_schema_branch_add_profile_schema(schema_all_in_one: dict[str, Any]) -> None:
     core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
 
@@ -918,7 +928,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one) -> None:
     }
 
 
-async def test_schema_branch_diff_core_profile(schema_all_in_one) -> None:
+async def test_schema_branch_diff_core_profile(schema_all_in_one: dict[str, Any]) -> None:
     core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
 
@@ -936,7 +946,7 @@ async def test_schema_branch_diff_core_profile(schema_all_in_one) -> None:
     assert diff.all == ["CoreProfile"]
 
 
-async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one) -> None:
+async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one: dict[str, Any]) -> None:
     core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
     builtin_tag_schema = _get_schema_by_kind(schema_all_in_one, kind="TestingTag")
@@ -963,7 +973,7 @@ async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one)
 
 
 async def test_schema_branch_add_profile_schema_exclude_relationships_in_uniqueness_constraint(
-    schema_all_in_one,
+    schema_all_in_one: dict[str, Any],
 ) -> None:
     """Test that relationships included in uniqueness constraints are not added to profile schemas."""
     core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
@@ -1000,7 +1010,7 @@ async def test_schema_branch_add_profile_schema_exclude_relationships_in_uniquen
     assert "primary_tag" in profile_schema.relationship_names
 
 
-async def test_schema_branch_generate_identifiers(schema_all_in_one) -> None:
+async def test_schema_branch_generate_identifiers(schema_all_in_one: dict[str, Any]) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
@@ -1075,7 +1085,9 @@ SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
                 }
             ]
         },
-        expected_error="TestCriticality: save isn't allowed as a relationship name.",
+        expected_error=(
+            "TestCriticality: 'save' is a reserved name (relationship: 'save'). Rename this attribute or relationship."
+        ),
     ),
     SchemaBranchValidateNamesTestCaseData(
         name="attribute-reserved-names-test",
@@ -1095,7 +1107,53 @@ SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
                 }
             ]
         },
-        expected_error="TestCriticality: save isn't allowed as an attribute name.",
+        expected_error=(
+            "TestCriticality: 'save' is a reserved name (attribute: 'save'). Rename this attribute or relationship."
+        ),
+    ),
+    SchemaBranchValidateNamesTestCaseData(
+        name="attribute-node-metadata-reserved",
+        schema={
+            "nodes": [
+                {
+                    "name": "Criticality",
+                    "namespace": "Test",
+                    "default_filter": "name__value",
+                    "branch": BranchSupportType.AWARE.value,
+                    "attributes": [
+                        {"name": "name", "kind": "Text"},
+                        {"name": "node_metadata", "kind": "Text"},
+                    ],
+                }
+            ]
+        },
+        expected_error=(
+            "TestCriticality: 'node_metadata' is a reserved name (attribute: 'node_metadata'). "
+            "Rename this attribute or relationship."
+        ),
+    ),
+    SchemaBranchValidateNamesTestCaseData(
+        name="relationship-node-metadata-reserved",
+        schema={
+            "nodes": [
+                {
+                    "name": "Criticality",
+                    "namespace": "Test",
+                    "default_filter": "name__value",
+                    "branch": BranchSupportType.AWARE.value,
+                    "attributes": [
+                        {"name": "name", "kind": "Text"},
+                    ],
+                    "relationships": [
+                        {"name": "node_metadata", "peer": "Criticality", "cardinality": "one"},
+                    ],
+                }
+            ]
+        },
+        expected_error=(
+            "TestCriticality: 'node_metadata' is a reserved name (relationship: 'node_metadata'). "
+            "Rename this attribute or relationship."
+        ),
     ),
 ]
 
@@ -1705,7 +1763,9 @@ async def test_schema_branch_validate_kinds_core(register_core_models_schema: Sc
         [["my_generic_name__value", "primary_tag"]],
     ],
 )
-async def test_validate_uniqueness_constraints_success(schema_all_in_one, uniqueness_constraints) -> None:
+async def test_validate_uniqueness_constraints_success(
+    schema_all_in_one: dict[str, Any], uniqueness_constraints: list[list[str]]
+) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["uniqueness_constraints"] = uniqueness_constraints
 
@@ -1735,7 +1795,7 @@ async def test_synchronize_uniqueness_constraints_and_attributes(
     unique_attributes: list[str],
     expected_constraints: list[list[str]] | None,
     expected_unique_attributes: list[str],
-    animal_person_schema_dict,
+    animal_person_schema_dict: dict[str, Any],
 ) -> None:
     schema = SchemaBranch(cache={}, name="test")
     for node_schema in animal_person_schema_dict["generics"]:
@@ -1759,7 +1819,7 @@ async def test_synchronize_uniqueness_constraints_and_attributes(
 
 
 async def test_validate_exception_ipam_ip_namespace(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     SCHEMA: dict = {
         "nodes": [
@@ -1768,7 +1828,7 @@ async def test_validate_exception_ipam_ip_namespace(
                 "namespace": "Ipam",
                 "default_filter": "prefix__value",
                 "order_by": ["prefix__value"],
-                "display_labels": ["prefix__value"],
+                "display_label": "prefix__value",
                 "human_friendly_id": ["ip_namespace__name__value", "prefix__value"],
                 "branch": BranchSupportType.AWARE.value,
                 "inherit_from": [InfrahubKind.IPPREFIX],
@@ -1778,7 +1838,7 @@ async def test_validate_exception_ipam_ip_namespace(
                 "namespace": "Ipam",
                 "default_filter": "address__value",
                 "order_by": ["address__value"],
-                "display_labels": ["address__value"],
+                "display_label": "address__value",
                 "uniqueness_constraints": [["ip_namespace", "address__value"]],
                 "branch": BranchSupportType.AWARE.value,
                 "inherit_from": [InfrahubKind.IPADDRESS],
@@ -1839,7 +1899,9 @@ async def test_validate_exception_ipam_ip_namespace(
         ),
     ],
 )
-async def test_validate_uniqueness_constraints_error(schema_all_in_one, uniqueness_constraints, expected_error) -> None:
+async def test_validate_uniqueness_constraints_error(
+    schema_all_in_one: dict[str, Any], uniqueness_constraints: list[list[str]], expected_error: str
+) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["uniqueness_constraints"] = uniqueness_constraints
 
@@ -1851,27 +1913,41 @@ async def test_validate_uniqueness_constraints_error(schema_all_in_one, uniquene
 
 
 @pytest.mark.parametrize("display_labels", [["my_generic_name__value", "mybool__value"], ["my_generic_name__value"]])
-async def test_validate_display_labels_success(schema_all_in_one, display_labels) -> None:
+async def test_validate_display_labels_success(schema_all_in_one: dict[str, Any], display_labels: list[str]) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["display_labels"] = display_labels
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
-    schema.validate_display_labels()
+    DisplayLabelValidator().check(schema)
 
 
 @pytest.mark.parametrize(
     "display_label", ["{{ my_generic_name__value }} {{ mybool__value }}", "my_generic_name__value"]
 )
-async def test_validate_display_label_success(schema_all_in_one, display_label: str) -> None:
+async def test_validate_display_label_success(schema_all_in_one: dict[str, Any], display_label: str) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["display_label"] = display_label
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
-    schema.validate_display_label()
+    DisplayLabelValidator().check(schema)
+
+
+async def test_validate_display_label_inherited_from_generic(schema_all_in_one: dict[str, Any]) -> None:
+    """Node schemas with no display_label should inherit display_label from a parent generic."""
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["display_label"] = "my_generic_name__value"
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    DisplayLabelValidator().check(schema)
+
+    node = schema.get(name="TestingCriticality", duplicate=False)
+    assert node.display_label == "my_generic_name__value"
 
 
 @pytest.mark.parametrize(
@@ -1898,7 +1974,9 @@ async def test_validate_display_label_success(schema_all_in_one, display_label: 
         ),
     ],
 )
-async def test_validate_display_labels_error(schema_all_in_one, display_labels, expected_error) -> None:
+async def test_validate_display_labels_error(
+    schema_all_in_one: dict[str, Any], display_labels: list[str], expected_error: str
+) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["display_labels"] = display_labels
 
@@ -1906,7 +1984,7 @@ async def test_validate_display_labels_error(schema_all_in_one, display_labels, 
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     with pytest.raises(ValueError, match=expected_error):
-        schema.validate_display_labels()
+        DisplayLabelValidator().check(schema)
 
 
 @pytest.mark.parametrize(
@@ -1940,7 +2018,9 @@ async def test_validate_display_labels_error(schema_all_in_one, display_labels, 
         ),
     ],
 )
-async def test_validate_display_label_error(schema_all_in_one, display_label: str, expected_error: str) -> None:
+async def test_validate_display_label_error(
+    schema_all_in_one: dict[str, Any], display_label: str, expected_error: str
+) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["display_label"] = display_label
 
@@ -1948,7 +2028,7 @@ async def test_validate_display_label_error(schema_all_in_one, display_label: st
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     with pytest.raises(ValueError, match=expected_error):
-        schema.validate_display_label()
+        DisplayLabelValidator().check(schema)
 
 
 @pytest.mark.parametrize(
@@ -1958,9 +2038,20 @@ async def test_validate_display_label_error(schema_all_in_one, display_label: st
         ["my_generic_name__value"],
         ["primary_tag__name__value"],
         ["status__name__value", "mybool__value"],
+        ["my_generic_name__value__asc"],
+        ["my_generic_name__value__desc"],
+        ["primary_tag__name__value__asc"],
+        ["primary_tag__name__value__desc"],
+        ["node_metadata__created_at"],
+        ["node_metadata__created_at__asc"],
+        ["node_metadata__created_at__desc"],
+        ["node_metadata__updated_at"],
+        ["node_metadata__updated_at__desc"],
+        ["my_generic_name__value__desc", "mybool__value"],
+        ["node_metadata__created_at__desc", "mybool__value"],
     ],
 )
-async def test_validate_order_by_success(schema_all_in_one, order_by) -> None:
+async def test_validate_order_by_success(schema_all_in_one: dict[str, Any], order_by: list[str]) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["order_by"] = order_by
 
@@ -1975,27 +2066,100 @@ async def test_validate_order_by_success(schema_all_in_one, order_by) -> None:
     [
         (
             ["mybool__value", "notanattribute__value"],
-            "InfraGenericInterface.order_by: notanattribute__value is invalid on schema InfraGenericInterface",
+            "InfraGenericInterface.order_by: attribute 'notanattribute' not defined on this schema "
+            "(entry: 'notanattribute__value').",
         ),
         (
             ["my_generic_name__something"],
             "InfraGenericInterface.order_by: something is not a valid property of my_generic_name",
         ),
-        (["status__value"], "InfraGenericInterface.order_by: value is not a valid attribute of TestingStatus"),
-        (["badges__name__value"], "InfraGenericInterface.order_by: cannot use badges relationship"),
         (
-            ["badges"],
-            "InfraGenericInterface.order_by: cannot use badges relationship, relationship must be of cardinality one",
+            ["status__value"],
+            "InfraGenericInterface.order_by: invalid relationship path (entry: 'status__value'). "
+            "Expected '<relationship>__<attribute>__<property>' with an optional direction suffix.",
         ),
+        (["badges__name__value"], "InfraGenericInterface.order_by: cannot use badges relationship"),
         (["status__name__nothing"], "InfraGenericInterface.order_by: nothing is not a valid property of name"),
         (
             ["my_generic_name"],
-            "InfraGenericInterface.order_by: invalid attribute, it must end "
-            "with one of the following properties: value. (`my_generic_name`)",
+            "InfraGenericInterface.order_by: invalid attribute path (entry: 'my_generic_name'). "
+            "Expected '<attribute>__<property>' with an optional direction suffix.",
+        ),
+        (
+            ["badges"],
+            "InfraGenericInterface.order_by: invalid relationship path (entry: 'badges'). "
+            "Expected '<relationship>__<attribute>__<property>' with an optional direction suffix.",
+        ),
+        (
+            ["node_metadata__created_by"],
+            "InfraGenericInterface.order_by: unknown metadata field (entry: 'node_metadata__created_by'). "
+            "Supported metadata fields: created_at, updated_at.",
+        ),
+        (
+            ["node_metadata__deleted_at"],
+            "InfraGenericInterface.order_by: unknown metadata field (entry: 'node_metadata__deleted_at'). "
+            "Supported metadata fields: created_at, updated_at.",
+        ),
+        (
+            ["my_generic_name__value__descending"],
+            "InfraGenericInterface.order_by: invalid direction (entry: 'my_generic_name__value__descending'). "
+            "Direction must be 'asc' or 'desc'.",
+        ),
+        (
+            ["my_generic_name__value__ASC"],
+            "InfraGenericInterface.order_by: invalid direction (entry: 'my_generic_name__value__ASC'). "
+            "Direction must be 'asc' or 'desc'.",
+        ),
+        (
+            ["my_generic_name__value__"],
+            "InfraGenericInterface.order_by: invalid entry (entry: 'my_generic_name__value__'). "
+            "Entry segments must be non-empty.",
+        ),
+        (
+            [""],
+            "InfraGenericInterface.order_by: order_by entries must be non-empty strings (entry: '').",
         ),
     ],
 )
-async def test_validate_order_by_error(schema_all_in_one, order_by, expected_error) -> None:
+async def test_validate_order_by_error(
+    schema_all_in_one: dict[str, Any], order_by: list[str], expected_error: str
+) -> None:
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["order_by"] = order_by
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        schema.validate_order_by()
+
+
+@pytest.mark.parametrize(
+    "order_by,expected_error",
+    [
+        (
+            ["my_generic_name__value", "my_generic_name__value__asc"],
+            "InfraGenericInterface.order_by: target 'my_generic_name.value' appears in order_by more than once "
+            "(entries: 'my_generic_name__value', 'my_generic_name__value__asc'). "
+            "Each target may appear at most once.",
+        ),
+        (
+            ["my_generic_name__value__asc", "my_generic_name__value__desc"],
+            "InfraGenericInterface.order_by: target 'my_generic_name.value' appears in order_by more than once "
+            "(entries: 'my_generic_name__value__asc', 'my_generic_name__value__desc'). "
+            "Each target may appear at most once.",
+        ),
+        (
+            ["node_metadata__created_at", "node_metadata__created_at__desc"],
+            "InfraGenericInterface.order_by: target 'created_at' appears in order_by more than once "
+            "(entries: 'node_metadata__created_at', 'node_metadata__created_at__desc'). "
+            "Each target may appear at most once.",
+        ),
+    ],
+)
+async def test_validate_order_by_duplicate_target(
+    schema_all_in_one: dict[str, Any], order_by: list[str], expected_error: str
+) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["order_by"] = order_by
 
@@ -2010,7 +2174,7 @@ async def test_validate_order_by_error(schema_all_in_one, order_by, expected_err
     "default_filter",
     ["my_generic_name__value"],
 )
-async def test_validate_default_filter_success(schema_all_in_one, default_filter) -> None:
+async def test_validate_default_filter_success(schema_all_in_one: dict[str, Any], default_filter: str) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["default_filter"] = default_filter
 
@@ -2047,7 +2211,9 @@ async def test_validate_default_filter_success(schema_all_in_one, default_filter
         ),
     ],
 )
-async def test_validate_default_filter_error(schema_all_in_one, default_filter, expected_error) -> None:
+async def test_validate_default_filter_error(
+    schema_all_in_one: dict[str, Any], default_filter: str, expected_error: str
+) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["default_filter"] = default_filter
 
@@ -2065,7 +2231,9 @@ async def test_validate_default_filter_error(schema_all_in_one, default_filter, 
         {"name": "something", "kind": "Text", "optional": True, "default_value": "abcdef"},
     ],
 )
-async def test_validate_default_value_success(schema_all_in_one, default_value_attr) -> None:
+async def test_validate_default_value_success(
+    schema_all_in_one: dict[str, Any], default_value_attr: dict[str, Any]
+) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraTinySchema")
     schema_dict["attributes"].append(default_value_attr)
 
@@ -2092,7 +2260,9 @@ async def test_validate_default_value_success(schema_all_in_one, default_value_a
         ),
     ],
 )
-async def test_validate_default_value_error(schema_all_in_one, default_value_attr, expected_error) -> None:
+async def test_validate_default_value_error(
+    schema_all_in_one: dict[str, Any], default_value_attr: dict[str, Any], expected_error: str
+) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraTinySchema")
     schema_dict["attributes"].append(default_value_attr)
 
@@ -2104,7 +2274,7 @@ async def test_validate_default_value_error(schema_all_in_one, default_value_att
 
 
 async def test_schema_branch_load_schema_extension(
-    db: InfrahubDatabase, default_branch, builtin_schema, helper: TestHelper
+    db: InfrahubDatabase, default_branch: Branch, builtin_schema: SchemaRoot, helper: TestHelper
 ) -> None:
     schema = SchemaRoot(**core_models)
 
@@ -2131,7 +2301,7 @@ async def test_schema_branch_load_schema_extension(
     assert schema_branch.get(name="InfraDevice")
 
 
-async def test_schema_branch_validate_count_against_cardinality_valid(organization_schema) -> None:
+async def test_schema_branch_validate_count_against_cardinality_valid(organization_schema: SchemaRoot) -> None:
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
@@ -2181,7 +2351,9 @@ async def test_schema_branch_validate_count_against_cardinality_valid(organizati
         {"name": "third", "peer": "CoreOrganization", "cardinality": "many", "min_count": 0, "max_count": 1},
     ),
 )
-async def test_schema_branch_validate_count_against_cardinality_invalid(relationship, organization_schema) -> None:
+async def test_schema_branch_validate_count_against_cardinality_invalid(
+    relationship: dict[str, Any], organization_schema: SchemaRoot
+) -> None:
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
@@ -2228,7 +2400,7 @@ async def test_schema_branch_from_dict_schema_object() -> None:
     )
 
 
-async def test_process_relationships_on_delete_defaults_set(schema_all_in_one) -> None:
+async def test_process_relationships_on_delete_defaults_set(schema_all_in_one: dict[str, Any]) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "TestingCriticality")
     schema_dict["relationships"][0]["kind"] = "Component"
     schema = SchemaBranch(cache={}, name="test")
@@ -2245,7 +2417,7 @@ async def test_process_relationships_on_delete_defaults_set(schema_all_in_one) -
                 assert relationship.on_delete == RelationshipDeleteBehavior.NO_ACTION
 
 
-async def test_process_relationships_component_can_be_overridden(schema_all_in_one) -> None:
+async def test_process_relationships_component_can_be_overridden(schema_all_in_one: dict[str, Any]) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "TestingCriticality")
     schema_dict["relationships"][0]["kind"] = "Component"
     schema_dict["relationships"][0]["on_delete"] = "no-action"
@@ -2315,7 +2487,7 @@ async def test_hierarchy_update(hierarchical_location_schema_simple: SchemaRoot)
 
 
 async def test_schema_branch_copy(
-    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     FULL_SCHEMA = {
         "nodes": [
@@ -2373,7 +2545,7 @@ async def test_schema_branch_copy(
 
 
 async def test_schema_branch_diff_attribute(
-    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     FULL_SCHEMA = {
         "nodes": [
@@ -2452,7 +2624,7 @@ async def test_schema_branch_diff_attribute(
 
 
 async def test_schema_branch_diff_rename_element(
-    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     FULL_SCHEMA = {
         "nodes": [
@@ -2573,7 +2745,7 @@ async def test_schema_branch_diff_rename_element(
 
 
 async def test_schema_branch_diff_add_node_relationship(
-    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     SCHEMA1 = {
         "nodes": [
@@ -2662,7 +2834,7 @@ async def test_schema_branch_diff_add_node_relationship(
 
 
 async def test_schema_branch_validate_check_missing(
-    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     FULL_SCHEMA = {
         "nodes": [
@@ -2730,72 +2902,28 @@ async def test_schema_branch_validate_check_missing(
                     "schema_id": None,
                     "schema_kind": "TestingCriticality",
                 },
+                "node_uuids": None,
             },
         ],
         "enforce_update_support": True,
         "errors": [],
-        "migrations": [],
-    }
-
-
-async def test_schema_branch_validate_node_deletion(
-    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
-) -> None:
-    FULL_SCHEMA = {
-        "nodes": [
+        "migrations": [
             {
-                "name": "Criticality",
-                "namespace": "Testing",
-                "default_filter": "name__value",
-                "label": "Criticality",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                    {"name": "level", "kind": "Number", "label": "Level"},
-                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
-                ],
-                "relationships": [
-                    {
-                        "name": "tags",
-                        "peer": "TestingTag",
-                        "label": "Tags",
-                        "optional": True,
-                        "cardinality": "many",
-                    }
-                ],
+                "migration_name": "attribute.unique.update",
+                "path": {
+                    "field_name": "name",
+                    "path_type": SchemaPathType.ATTRIBUTE,
+                    "property_name": "unique",
+                    "schema_id": None,
+                    "schema_kind": "TestingCriticality",
+                },
             },
-            {
-                "name": "Tag",
-                "namespace": "Testing",
-                "label": "Tag",
-                "default_filter": "name__value",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
-                ],
-            },
-        ]
+        ],
     }
-    schema = SchemaRoot(**FULL_SCHEMA)
-    schema.generate_uuid()
-    schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=schema)
-
-    FULL_SCHEMA["nodes"].pop(1)
-
-    broken_schema = SchemaRoot(**FULL_SCHEMA)
-    broken_schema_branch = SchemaBranch(cache={}, name="test-broken")
-    broken_schema_branch.load_schema(schema=broken_schema)
-
-    diff = schema_branch.diff(other=broken_schema_branch)
-    assert "TestingTag" in diff.removed
-
-    with pytest.raises(ValueError, match="'TestingTag' has been removed but is still referenced"):
-        schema_branch.validate_node_deletions(diff=diff)
 
 
 async def test_schema_branch_validate_add_node_relationships(
-    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     SCHEMA1 = {
         "nodes": [
@@ -2876,6 +3004,7 @@ async def test_schema_branch_validate_add_node_relationships(
                     "schema_id": None,
                     "schema_kind": "TestingCriticality",
                 },
+                "node_uuids": None,
             },
             {
                 "constraint_name": "node.relationship.add",
@@ -2886,6 +3015,7 @@ async def test_schema_branch_validate_add_node_relationships(
                     "schema_id": None,
                     "schema_kind": "TestingCriticality",
                 },
+                "node_uuids": None,
             },
         ],
         "enforce_update_support": True,
@@ -2998,7 +3128,7 @@ async def test_schema_manager_purge(default_branch: Branch, reset_registry: None
 # -----------------------------------------------------------------
 
 
-async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def test_create_node_in_db_node_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -3019,7 +3149,7 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
         ],
         relationships=[RelationshipSchema(name="others", peer="TestingCriticality", optional=True, cardinality="many")],
     )
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
+    await registry.schema.create_node_in_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
 
     node2 = registry.schema.get(name=node.kind, branch=default_branch)
     assert node2.id
@@ -3030,7 +3160,7 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
     assert node_from_db
 
 
-async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_branch) -> None:
+async def test_create_node_in_db_generic_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -3042,7 +3172,7 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
         ],
     }
     node = GenericSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
+    await registry.schema.create_node_in_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
 
     results = await SchemaManager.query(
         schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, db=db
@@ -3094,8 +3224,12 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
 
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
-    await registry.schema.load_node_to_db(
-        node=NodeSchema(**SCHEMA), db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    await registry.schema.create_node_in_db(
+        node=NodeSchema(**SCHEMA),
+        db=db,
+        branch=default_branch,
+        at=Timestamp(),
+        user_id="user-id",
     )
 
     node = registry.schema.get(name="TestingCriticality", branch=default_branch)
@@ -3105,8 +3239,14 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
     new_node.default_filter = "kind__value"
     new_node.attributes[0].unique = False
 
-    await registry.schema.update_node_in_db(
-        node=new_node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    diff = HashableModelDiff(
+        changed={
+            "default_filter": None,
+            "attributes": HashableModelDiff(changed={new_node.attributes[0].name: None}),
+        }
+    )
+    await registry.schema.update_node_in_db_based_on_diff(
+        node=new_node, diff=diff, db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
     )
 
     results = await SchemaManager.get_many(ids=[node.id, new_node.attributes[0].id], db=db)
@@ -3128,7 +3268,7 @@ async def test_load_schema_to_db_internal_models(db: InfrahubDatabase, default_b
 
 
 async def test_load_schema_to_db_core_models(
-    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     schema = SchemaRoot(**core_models)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
@@ -3142,7 +3282,7 @@ async def test_load_schema_to_db_core_models(
 
 
 async def test_clean_diff_after_reload_from_db(
-    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     schema = SchemaRoot(**core_models)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
@@ -3162,7 +3302,7 @@ async def test_load_schema_to_db_simple_01(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_builtin_models_schema: SchemaBranch,
-    helper,
+    helper: TestHelper,
 ) -> None:
     schema = SchemaRoot(**helper.schema_file("infra_simple_01.json"))
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
@@ -3385,7 +3525,7 @@ async def test_load_schema_to_db_w_generics_01(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_builtin_models_schema: SchemaBranch,
-    helper,
+    helper: TestHelper,
 ) -> None:
     schema = SchemaRoot(**helper.schema_file("infra_w_generics_01.json"))
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
@@ -3399,7 +3539,7 @@ async def test_load_schema_to_db_w_generics_01(
 
 
 async def test_load_schema_from_db(
-    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     FULL_SCHEMA = {
         "nodes": [
@@ -3498,7 +3638,7 @@ async def test_load_schema_from_db(
 
 
 async def test_load_schema(
-    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     FULL_SCHEMA = {
         "nodes": [
@@ -3592,7 +3732,11 @@ async def test_load_schema(
     ],
 )
 async def test_load_schema_with_parameters(
-    db: InfrahubDatabase, reset_registry, register_internal_models_schema, default_branch: Branch, attr_details
+    db: InfrahubDatabase,
+    reset_registry: None,
+    register_internal_models_schema: SchemaBranch,
+    default_branch: Branch,
+    attr_details: dict[str, Any],
 ) -> None:
     color_attr_dict = {
         "name": "color",
@@ -3637,7 +3781,7 @@ async def test_load_schema_with_parameters(
 
 
 async def test_load_schemas(
-    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     part1 = SchemaRoot(
         extensions={
@@ -3715,7 +3859,7 @@ async def test_load_schemas(
         pytest.fail(reason="Relationship 'models' must be present in 'RandomOrganization'")
 
 
-def test_schema_branch_load_schema_append_to_list(schema_all_in_one) -> None:
+def test_schema_branch_load_schema_append_to_list(schema_all_in_one: dict[str, Any]) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
     core_group_schema = _get_schema_by_kind(schema_all_in_one, "CoreGroup")
@@ -3727,7 +3871,7 @@ def test_schema_branch_load_schema_append_to_list(schema_all_in_one) -> None:
     assert updated_core_group_schema.display_labels == ["label__value", "name__value"]
 
 
-def test_schema_branch_load_schema_remove_from_list(schema_all_in_one) -> None:
+def test_schema_branch_load_schema_remove_from_list(schema_all_in_one: dict[str, Any]) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
     core_group_schema = _get_schema_by_kind(schema_all_in_one, "CoreGroup")
@@ -3739,7 +3883,7 @@ def test_schema_branch_load_schema_remove_from_list(schema_all_in_one) -> None:
     assert updated_core_group_schema.display_labels == ["name__value"]
 
 
-def test_schema_branch_load_schema_empty_list(schema_all_in_one) -> None:
+def test_schema_branch_load_schema_empty_list(schema_all_in_one: dict[str, Any]) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
     core_group_schema = _get_schema_by_kind(schema_all_in_one, "CoreGroup")
@@ -3751,7 +3895,7 @@ def test_schema_branch_load_schema_empty_list(schema_all_in_one) -> None:
     assert updated_core_group_schema.display_labels == []
 
 
-def test_schema_branch_load_schema_set_nested_list(schema_all_in_one) -> None:
+def test_schema_branch_load_schema_set_nested_list(schema_all_in_one: dict[str, Any]) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
     generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
@@ -3766,7 +3910,7 @@ def test_schema_branch_load_schema_set_nested_list(schema_all_in_one) -> None:
     ]
 
 
-def test_schema_branch_load_schema_append_to_nested_list(schema_all_in_one) -> None:
+def test_schema_branch_load_schema_append_to_nested_list(schema_all_in_one: dict[str, Any]) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     generic_interface_schema["uniqueness_constraints"] = [["primary_tag", "status"]]
@@ -3782,7 +3926,7 @@ def test_schema_branch_load_schema_append_to_nested_list(schema_all_in_one) -> N
     ]
 
 
-def test_schema_branch_load_schema_remove_from_nested_list(schema_all_in_one) -> None:
+def test_schema_branch_load_schema_remove_from_nested_list(schema_all_in_one: dict[str, Any]) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     generic_interface_schema["uniqueness_constraints"] = [["primary_tag", "status"], ["my_generic_name", "mybool"]]
@@ -3795,7 +3939,7 @@ def test_schema_branch_load_schema_remove_from_nested_list(schema_all_in_one) ->
     assert updated_core_group_schema.uniqueness_constraints == [["primary_tag", "status"]]
 
 
-def test_schema_branch_load_schema_update_nested_list(schema_all_in_one) -> None:
+def test_schema_branch_load_schema_update_nested_list(schema_all_in_one: dict[str, Any]) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     generic_interface_schema["uniqueness_constraints"] = [
@@ -3817,7 +3961,7 @@ def test_schema_branch_load_schema_update_nested_list(schema_all_in_one) -> None
     ]
 
 
-def test_schema_branch_conflicting_required_relationships(schema_all_in_one) -> None:
+def test_schema_branch_conflicting_required_relationships(schema_all_in_one: dict[str, Any]) -> None:
     tag_schema = _get_schema_by_kind(full_schema=schema_all_in_one, kind="TestingTag")
     tag_schema["relationships"] = [
         {
@@ -3869,7 +4013,7 @@ INHERITED_RELATIONSHIPS_TEST_CASES = [
                         "description": "Generic Network Interface",
                         "label": "Interface",
                         "include_in_menu": False,
-                        "display_labels": ["name__value"],
+                        "display_label": "name__value",
                         "order_by": ["device__name__value", "name__value"],
                         "uniqueness_constraints": [["device", "name__value"]],
                         "human_friendly_id": ["device__name__value", "name__value"],
@@ -4021,7 +4165,7 @@ INHERITED_RELATIONSHIPS_TEST_CASES = [
                     "description": "Generic Network Interface",
                     "label": "Interface",
                     "include_in_menu": False,
-                    "display_labels": ["name__value"],
+                    "display_label": "name__value",
                     "order_by": ["device__name__value", "name__value"],
                     "uniqueness_constraints": [["device", "name__value"]],
                     "human_friendly_id": ["device__name__value", "name__value"],
@@ -4161,7 +4305,7 @@ def test_schema_branch_validates_inherited_relationships_fields(test_case: Inher
 
 
 async def test_schema_branch_processes_relationships_state(
-    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     schema = {
         "nodes": [
@@ -4199,7 +4343,7 @@ async def test_schema_branch_processes_relationships_state(
 
 
 async def test_schema_branch_processes_nodes_state(
-    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     schema = {
         "generics": [
@@ -4220,7 +4364,7 @@ async def test_schema_branch_processes_nodes_state(
                 "namespace": "Test",
                 "label": "Widget",
                 "state": "absent",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text"},
@@ -4242,7 +4386,7 @@ async def test_schema_branch_processes_nodes_state(
 
 
 async def test_schema_branch_processes_attributes_state(
-    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
     schema = {
         "generics": [
@@ -4261,7 +4405,7 @@ async def test_schema_branch_processes_attributes_state(
                 "name": "Widget",
                 "namespace": "Test",
                 "label": "Widget",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "state": "absent"},
@@ -4293,7 +4437,7 @@ async def test_schema_branch_processes_attributes_state(
                 "name": "Widget",
                 "namespace": "Test",
                 "label": "Widget",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text"},
@@ -4309,7 +4453,7 @@ async def test_schema_branch_processes_attributes_state(
     assert "my_generic_name" in returned_schema.get(name="TestGenericInterface").attribute_names
 
 
-async def test_process_deprecations(organization_schema) -> None:
+async def test_process_deprecations(organization_schema: SchemaRoot) -> None:
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
@@ -4662,3 +4806,51 @@ async def test_manage_object_templates_component_relationship_to_excluded_kind()
     template = schema_branch.get(name=f"Template{TestKind.CAR}", duplicate=False)
     pool_rel = template.get_relationship(name="number_pools")
     assert pool_rel.peer == InfrahubKind.NUMBERPOOL
+
+
+async def test_profile_does_not_contain_optional_unique_attributes() -> None:
+    schema = {
+        "namespace": "Network",
+        "name": "Router",
+        "uniqueness_constraints": [["name__value", "age__value"], ["year__value"]],
+        "human_friendly_id": ["name__value"],
+        "display_label": "name__value",
+        "attributes": [
+            {"name": "name", "kind": "Text", "optional": True},
+            {"name": "age", "kind": "Number", "optional": True},
+            {"name": "year", "kind": "Number", "optional": True},
+        ],
+    }
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(nodes=[schema]))
+    schema_branch.process()
+
+    network_router_profile = schema_branch.get(name="ProfileNetworkRouter", duplicate=False)
+    with pytest.raises(ValueError, match="Unable to find the attribute name"):
+        network_router_profile.get_attribute("name")
+
+    with pytest.raises(ValueError, match="Unable to find the attribute age"):
+        network_router_profile.get_attribute("age")
+
+    with pytest.raises(ValueError, match="Unable to find the attribute year"):
+        network_router_profile.get_attribute("year")
+
+    schema_2 = copy.deepcopy(schema)
+    schema_2["attributes"][0]["unique"] = True
+    schema_2["attributes"][1]["unique"] = True
+    schema_2["attributes"][2]["unique"] = True
+    schema_2["uniqueness_constraints"] = []
+
+    schema_branch_2 = SchemaBranch(cache={}, name="test2")
+    schema_branch_2.load_schema(schema=SchemaRoot(nodes=[schema_2]))
+    schema_branch_2.process()
+
+    network_router_profile_2 = schema_branch_2.get(name="ProfileNetworkRouter", duplicate=False)
+    with pytest.raises(ValueError, match="Unable to find the attribute name"):
+        network_router_profile_2.get_attribute("name")
+
+    with pytest.raises(ValueError, match="Unable to find the attribute age"):
+        network_router_profile_2.get_attribute("age")
+
+    with pytest.raises(ValueError, match="Unable to find the attribute year"):
+        network_router_profile_2.get_attribute("year")

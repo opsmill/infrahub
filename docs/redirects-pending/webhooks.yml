@@ -1,0 +1,52 @@
+---
+feature: Webhooks
+pr: TBD
+description: |
+  Webhooks feature migration to hub + 2 spokes per the V3 outline
+  (Automation & Outputs Recommendations doc, May 6 Wim docs review confirmed).
+
+  - topics/webhooks.mdx → webhooks/index.mdx (hub) — moved via git mv with
+    only minimal cross-link adjustments (./events.mdx and ./activity-log.mdx
+    rewritten since file moved one level deeper) and inline pointers added
+    to the two new spokes
+  - First section of guides/webhooks.mdx ("Managing webhooks", basic
+    Standard Webhook creation) → webhooks/create.mdx (spoke 1). H1
+    renamed from "Managing webhooks" to "Create a webhook" since the
+    section is creation-focused; numbered list bug (3, 6 → 3, 4) fixed
+  - Sections 1-6 of guides/webhooks.mdx ("Creating a custom webhook with
+    a Transformation" walkthrough) → webhooks/custom-transformation.mdx
+    (spoke 2). Reframed: "## 1.", "## 2." etc. prefixes dropped; section
+    headers are action-named already (Create the Python Transformation,
+    Configure .infrahub.yml, etc.)
+
+  guides/webhooks.mdx is left on disk unchanged during iteration. Its
+  "Adding custom headers" section (lines 212-278) is not extracted in this
+  PR — the V3 outline doesn't address it. Cleanup PR can decide whether to
+  promote it to a third spoke or merge into the hub.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/webhooks
+    to: /docs/webhooks/
+  - from: /docs/guides/webhooks
+    to: /docs/webhooks/create
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/webhooks/
+    title: Webhooks (hub)
+  - path: /docs/webhooks/create
+    title: Create a webhook
+  - path: /docs/webhooks/custom-transformation
+    title: Webhook with custom transformation
+
+# Internal cross-link references in OTHER files updated in this PR:
+# - docs/docs/guides/python-transform.mdx (was ../topics/webhooks.mdx)
+# - docs/docs/overview/overview.mdx (was ../topics/webhooks.mdx)
+#
+# Excluded from rewrite (legacy files / historical content):
+cross_links_to_update:
+  excluded:
+    - docs/docs/guides/webhooks.mdx (legacy, will be deleted at cleanup)
+    - docs/docs/topics/webhooks.mdx (already deleted by git mv)
+    - docs/docs/release-notes/infrahub/release-1_2_0.mdx (release notes, historical)

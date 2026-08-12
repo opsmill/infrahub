@@ -1,0 +1,13 @@
+---
+feature: Resource Manager
+pr: TBD
+description: |
+  Migrated Resource Manager from a topic + guide pair to hub + spokes.
+  The hub (resource-manager/index) contains the conceptual content from the topic,
+  including branch-agnostic allocation. The spokes cover each pool type and weighted
+  allocation as separate how-to pages.
+redirects:
+  - from: /docs/topics/resource-manager
+    to: /docs/resource-manager/
+  - from: /docs/guides/resource-manager
+    to: /docs/resource-manager/

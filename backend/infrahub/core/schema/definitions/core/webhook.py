@@ -22,10 +22,11 @@ core_webhook = GenericSchema(
     label="Webhook",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     include_in_menu=False,
     icon="mdi:webhook",
     branch=BranchSupportType.AGNOSTIC,
+    restricted_namespaces=["Core"],
     uniqueness_constraints=[["name__value"]],
     attributes=[
         Attr(name="name", kind="Text", unique=True, order_weight=1000),
@@ -91,6 +92,18 @@ core_webhook = GenericSchema(
             order_weight=5000,
         ),
     ],
+    relationships=[
+        Rel(
+            name="headers",
+            peer=InfrahubKind.KEYVALUE,
+            kind=RelKind.ATTRIBUTE,
+            identifier="webhook__headers",
+            description="Custom HTTP headers sent with webhook requests",
+            cardinality=Cardinality.MANY,
+            optional=True,
+            order_weight=6000,
+        ),
+    ],
 )
 
 core_standard_webhook = NodeSchema(
@@ -100,7 +113,7 @@ core_standard_webhook = NodeSchema(
     label="Standard Webhook",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     include_in_menu=False,
     icon="mdi:webhook",
     branch=BranchSupportType.AGNOSTIC,
@@ -124,7 +137,7 @@ core_custom_webhook = NodeSchema(
     label="Custom Webhook",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     include_in_menu=False,
     icon="mdi:cog-outline",
     branch=BranchSupportType.AGNOSTIC,

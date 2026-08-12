@@ -18,7 +18,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
@@ -36,10 +36,7 @@ async def graphql(
     execution_context_class: type[ExecutionContext] | None = None,
     is_awaitable: Callable[[Any], bool] | None = None,
 ) -> ExecutionResult:
-    """
-    Call `graphql` from graphql core package, and log potential errors to have full stack trace.
-    """
-
+    """Call `graphql` from graphql core package, and log potential errors to have full stack trace."""
     result = await graphql_core(
         schema=schema,
         source=source,

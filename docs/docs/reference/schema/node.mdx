@@ -32,7 +32,7 @@ Below is the list of all available options to define a Node in the schema
 | [**menu_placement**](#menu_placement) | Attribute | Defines where in the menu this object should be placed. | False |
 | [**name**](#name) | Attribute | Node name, must be unique within a namespace and must start with an uppercase letter. | True |
 | [**namespace**](#namespace) | Attribute | Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. | True |
-| [**order_by**](#order_by) | Attribute | List of attributes to use to order the results by default | False |
+| [**order_by**](#order_by) | Attribute | List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc. | False |
 | [**parent**](#parent) | Attribute | Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined. | False |
 | [**state**](#state) | Attribute | Expected state of the node/generic after loading the schema | False |
 | [**uniqueness_constraints**](#uniqueness_constraints) | Attribute | List of multi-element uniqueness constraints that can combine relationships and attributes | False |
@@ -246,7 +246,7 @@ Below is the list of all available options to define a Node in the schema
 | ---- | --------------- |
 | **Name** | order_by |
 | **Kind** | `List` |
-| **Description** | List of attributes to use to order the results by default |
+| **Description** | List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc. |
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |

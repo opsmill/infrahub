@@ -18,12 +18,11 @@ log = get_logger()
 
 class Migration015(ArbitraryMigration):
     name: str = "015_diff_format_update"
+    description: str = "N/A"
     minimum_version: int = 14
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-
-        return result
+        return MigrationResult()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db

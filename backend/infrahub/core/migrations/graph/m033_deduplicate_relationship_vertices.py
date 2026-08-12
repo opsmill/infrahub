@@ -14,17 +14,18 @@ log = get_logger()
 
 
 class DeduplicateRelationshipVerticesQuery(Query):
-    """
-    For each group of duplicate Relationships with the same UUID, delete any Relationship that meets the following criteria:
+    """For each group of duplicate Relationships with the same UUID, delete any Relationship that meets the following criteria:
+
     - is linked to a deleted node (only if the delete time is before the Relationship's from time)
-    - is linked to a node on an incorrect branch (ie Relationship added on main, but Node is on a branch)
+    - is linked to a node on an incorrect branch (ie Relationship added on main, but Node is on a branch).
+
     """
 
     name = "deduplicate_relationship_vertices"
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (root:Root)
 WITH root.default_branch AS default_branch_name
@@ -83,15 +84,17 @@ DETACH DELETE rel
 
 
 class Migration033(GraphMigration):
-    """
-    Identifies duplicate Relationship vertices that have the same UUID property. Deletes any duplicates that
+    """Identifies duplicate Relationship vertices that have the same UUID property.
+
+    Deletes any duplicates that
     are linked to deleted nodes or nodes on in incorrect branch.
+
     """
 
     name: str = "033_deduplicate_relationship_vertices"
+    description: str = "N/A"
     minimum_version: int = 32
     queries: Sequence[type[Query]] = [DeduplicateRelationshipVerticesQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

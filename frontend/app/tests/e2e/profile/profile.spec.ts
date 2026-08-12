@@ -36,6 +36,21 @@ test.describe("/profile", () => {
         await expect(page.getByText("LabelAdmin")).toBeVisible();
       });
     });
+
+    test("should access the global preferences page from the account menu", async ({ page }) => {
+      await test.step("open global preferences from the account menu", async () => {
+        await page.goto("/");
+        await page.getByTestId("authenticated-menu-trigger").click();
+        await page.getByRole("menuitem", { name: "Global preferences" }).click();
+      });
+
+      await test.step("display the global preferences page", async () => {
+        await expect(page).toHaveURL(/\/global-preferences/);
+        await expect(page.getByRole("heading", { name: "Global preferences" })).toBeVisible();
+        await expect(page.getByText("Global date and time")).toBeVisible();
+        await expect(page.getByRole("link", { name: "Tokens" })).toBeHidden();
+      });
+    });
   });
 
   test.describe("when logged in as read-write account", () => {
@@ -70,6 +85,26 @@ test.describe("/profile", () => {
       await test.step("display account details", async () => {
         await expect(page.getByRole("heading", { name: "Jack Bauer", exact: true })).toBeVisible();
         await expect(page.getByText("LabelJack Bauer")).toBeVisible();
+      });
+    });
+
+    test("should not access global preferences", async ({ page }) => {
+      await test.step("hide the menu item", async () => {
+        await page.goto("/");
+        await page.getByTestId("authenticated-menu-trigger").click();
+
+        await expect(page.getByRole("menuitem", { name: "Account settings" })).toBeVisible();
+        await expect(page.getByRole("menuitem", { name: "Global preferences" })).toBeHidden();
+      });
+
+      await test.step("show the unauthorized screen on direct navigation", async () => {
+        await page.goto("/global-preferences");
+
+        // The custom message sits inside the unauthorized screen's collapsed accordion.
+        await page.getByText("You can't access this view").click();
+        await expect(
+          page.getByText("You don't have permission to edit global preferences")
+        ).toBeVisible();
       });
     });
   });

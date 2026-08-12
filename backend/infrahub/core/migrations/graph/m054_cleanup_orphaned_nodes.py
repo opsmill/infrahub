@@ -11,9 +11,10 @@ if TYPE_CHECKING:
 
 
 class CleanupOrphanedNodesQuery(Query):
-    """
-    Clean up orphaned Node vertices (no IS_PART_OF edge to Root) and their linked
+    """Clean up orphaned Node vertices (no IS_PART_OF edge to Root) and their linked.
+
     Attributes and Relationships.
+
     """
 
     name = "cleanup_orphaned_nodes"
@@ -21,7 +22,7 @@ class CleanupOrphanedNodesQuery(Query):
     insert_return = False
     raise_error_if_empty = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // Delete attributes of orphaned nodes
 MATCH (n:Node)
@@ -63,8 +64,7 @@ CALL (n) {
 
 
 class Migration054(GraphMigration):
-    """
-    Clean up orphaned Node vertices that have no IS_PART_OF edge to Root.
+    """Clean up orphaned Node vertices that have no IS_PART_OF edge to Root.
 
     This can happen when a branch-aware node is deleted during branch deletion,
     but its branch-agnostic attributes or relationships are not properly cleaned up.
@@ -76,6 +76,7 @@ class Migration054(GraphMigration):
     """
 
     name: str = "054_cleanup_orphaned_nodes"
+    description: str = "N/A"
     minimum_version: int = 53
     queries: Sequence[type[Query]] = [CleanupOrphanedNodesQuery]
 

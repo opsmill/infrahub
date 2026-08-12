@@ -1,0 +1,53 @@
+---
+title: Events
+---
+
+# Events
+
+Infrahub emits events on every significant mutation in the system — node creates, branch operations, group membership changes, and more. The event system lets you react to those events automatically: when a device is updated, when a circuit joins a provisioning group, when a branch merges. Common uses include keeping groups in sync as data changes, triggering Generators on attribute updates, and notifying external systems through webhooks.
+
+Build automations using events, rules, and actions:
+
+- **[Events](./event-system.mdx)** — the underlying framework. Infrahub generates a structured event for every key operation (`infrahub.node.created`, `infrahub.group.member_added`, etc.). Events feed multiple consumers: the [activity log](../deploy-manage/run-observe/activity-log), the rule/action automation below, [webhooks](../webhooks/overview), and [log forwarding](../deploy-manage/run-observe/log-forwarding/overview).
+- **[Event rules](./event-rules.mdx)** — the conditions you match against events. You create a rule that names which events it cares about (a node kind, a group, a particular attribute change) and ties one or more actions to fire when the conditions match.
+- **[Event actions](./event-actions.mdx)** — the outcomes that fire when a rule matches. You create an action of one of two kinds today: a group action (add or remove members from a group) or a Generator action (run a Generator definition against the impacted object).
+
+The flow always has the same shape: Infrahub emits an event, evaluates it against your rules, and fires the actions of any rule that matches.
+
+```text
+mutation happens
+    ↓
+Infrahub emits an event       (Event system)
+    ↓
+Infrahub evaluates your rules (Event rules)
+    ↓
+Matching rules fire actions   (Event actions)
+```
+
+[Webhooks](../webhooks/overview) consume events too, but live outside this rule/action loop because their setup is more involved. Use webhooks when you need to send a payload to an external HTTP endpoint; use event rules + actions when the outcome stays inside Infrahub.
+
+## Example workflows
+
+The cleanest way to think about an automation is to start from the outcome and work backward to the event.
+
+### Add Arista devices to a group automatically
+
+**Goal**: every time a device with platform Arista EOS is created, it should land in the `arista_devices` group.
+
+- **Action** — Create a group action that adds nodes to `arista_devices`.
+- **Rule** — Create a node trigger rule on `InfraDevice` that fires on the `created` mutation when the platform relationship points at Arista EOS. Tie it to the action above.
+- **Event** — `infrahub.node.created`. Infrahub emits this automatically; no setup.
+
+When a new Arista device is created, the event fires, the rule matches the platform condition, and the action adds the device to the group. For the click-by-click setup, see [Event actions](./event-actions.mdx) and [Event rules](./event-rules.mdx).
+
+### Auto-create circuit endpoints when a circuit enters provisioning
+
+**Goal**: when a circuit joins the `provisioning_circuits` group, run a [Generator](../generators/overview) that creates its endpoints.
+
+- **Action** — Create a Generator action that runs the `create_circuit_endpoints` Generator.
+- **Rule** — Create a group trigger rule on `provisioning_circuits` that fires on member-added events. Tie it to the Generator action above.
+- **Event** — `infrahub.group.member_added`. Infrahub emits this automatically.
+
+When a circuit is added to the group, the event fires, the rule matches, and the Generator runs against the new member.
+
+For the click-by-click setup, see [Event rules](./event-rules.mdx) and [Event actions](./event-actions.mdx).

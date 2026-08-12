@@ -1,0 +1,141 @@
+---
+feature: Generators
+pr: TBD
+description: |
+  Generators feature migration to hub + spokes pattern (matching Groups
+  precedent), with the two tutorial-shaped guides extracted to Academy.
+
+  - topics/generator.mdx → generators/index.mdx (hub)
+  - guides/generator.mdx (tutorial-shaped, single Widget→Resource example)
+    → academy/tutorials/generators/build-your-first-generator.mdx, with a
+    new recipe-form how-to at generators/build.mdx
+  - guides/chaining-generators.mdx (tutorial-shaped, Fabric→Pod→Rack
+    running example) → academy/tutorials/generators/build-chained-generators.mdx
+  - topics/modular-generators.mdx → generators/modular.mdx
+  - guides/modular-generator-best-practices.mdx → generators/modular-best-practices.mdx
+    (best-practice categories — kept in main docs, not extracted)
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/generator
+    to: /docs/generators/
+  - from: /docs/guides/generator
+    to: /docs/academy/tutorials/generators/build-your-first-generator
+  - from: /docs/guides/chaining-generators
+    to: /docs/academy/tutorials/generators/build-chained-generators
+  - from: /docs/topics/modular-generators
+    to: /docs/generators/modular
+  - from: /docs/guides/modular-generator-best-practices
+    to: /docs/generators/modular-best-practices
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/generators/
+    title: Generators (hub)
+  - path: /docs/generators/build
+    title: Build a generator (recipe-form how-to)
+  - path: /docs/generators/modular
+    title: Modular Generators
+  - path: /docs/generators/modular-best-practices
+    title: Best practices for modular Generators
+  - path: /docs/academy/tutorials/generators/build-your-first-generator
+    title: Build your first generator (Academy tutorial)
+  - path: /docs/academy/tutorials/generators/build-chained-generators
+    title: Build chained generators (Academy tutorial)
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (will resolve via redirect at runtime but should be updated to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/home.mdx
+    line: 74
+    current: topics/generator
+    should_be: generators/
+  - file: docs/docs/overview/concepts.mdx
+    line: 41
+    current: ../topics/generator
+    should_be: ../generators/
+  - file: docs/docs/overview/next-steps.mdx
+    line: 55
+    current: ../guides/generator.mdx
+    should_be: ../academy/tutorials/generators/build-your-first-generator
+  - file: docs/docs/proposed-changes/index.mdx
+    line: 77
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/proposed-changes/index.mdx
+    line: 130
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/resource-manager/index.mdx
+    line: 217
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/resource-manager/index.mdx
+    line: 262
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/resource-manager/index.mdx
+    line: 311
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/resource-manager/allocate-ip-address.mdx
+    line: 193
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/resource-manager/allocate-ip-prefix.mdx
+    line: 244
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/groups/use-in-automation.mdx
+    line: 65
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/groups/use-in-automation.mdx
+    line: 83
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/git-integration/infrahub-yml.mdx
+    line: 160
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/topics/infrahub-yml.mdx
+    line: 160
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/guides/graphql-fragment.mdx
+    line: 9
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/guides/resource-manager.mdx
+    line: 276
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/guides/resource-manager.mdx
+    line: 454
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/guides/resource-manager.mdx
+    line: 796
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/guides/resource-manager.mdx
+    line: 805
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/guides/resource-manager.mdx
+    line: 1148
+    current: ../topics/generator.mdx
+    should_be: ../generators/
+  - file: docs/docs/tutorials/getting-started/resource-manager.mdx
+    line: 145
+    current: ../../topics/generator.mdx
+    should_be: ../../generators/
+
+  # Excluded from rewrite (historical content; rely on the runtime redirect):
+  excluded:
+    - docs/docs/release-notes/infrahub/release-0_13.mdx (release notes)
+    - docs/docs/topics/generator.mdx (legacy, will be deleted at cleanup)
+    - docs/docs/topics/modular-generators.mdx (legacy)
+    - docs/docs/guides/generator.mdx (legacy)
+    - docs/docs/guides/chaining-generators.mdx (legacy)
+    - docs/docs/guides/modular-generator-best-practices.mdx (legacy)

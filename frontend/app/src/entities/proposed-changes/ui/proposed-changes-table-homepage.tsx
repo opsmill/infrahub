@@ -6,12 +6,15 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { classNames } from "@/shared/utils/common";
 
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
-import { PROPOSED_CHANGE_STATES, STATE_VALUES_FILTER } from "@/entities/proposed-changes/constants";
+import {
+  PROPOSED_CHANGE_STATES,
+  STATE_VALUES_FILTER,
+} from "@/entities/proposed-changes/domain/model/proposed-change-state";
 import { ProposedChangesItemLight } from "@/entities/proposed-changes/ui/proposed-change-item-light";
 import { ProposedChangesTableHeader } from "@/entities/proposed-changes/ui/proposed-changes-table-header";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
 import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 type ProposedChangesTableHomepageProps = {
   schema: ModelSchema;
@@ -54,7 +57,7 @@ export function ProposedChangesTableHomepage({
       <ListBox
         aria-label="Proposed changes list"
         items={flatData}
-        className={classNames("flex flex-col divide-y divide-gray-200", className)}
+        className={classNames("flex flex-col divide-y", className)}
       >
         {(proposedChange) => (
           <ProposedChangesItemLight key={proposedChange.id} proposedChange={proposedChange} />

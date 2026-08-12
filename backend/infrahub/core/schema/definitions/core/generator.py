@@ -2,6 +2,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     GeneratorInstanceStatus,
     InfrahubKind,
+    RelationshipDeleteBehavior,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
@@ -21,7 +22,7 @@ core_generator_definition = NodeSchema(
     label="Generator Definition",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     branch=BranchSupportType.AWARE,
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
@@ -54,6 +55,24 @@ core_generator_definition = NodeSchema(
             optional=True,
             default_value=True,
         ),
+        Attr(
+            name="fingerprint",
+            kind="Text",
+            description="Content hash of the definition's inputs, recomputed on each import",
+            optional=True,
+        ),
+        Attr(
+            name="dependencies",
+            kind="List",
+            description="Canonical repo-relative paths feeding this generator's output. Null falls back to legacy file gate.",
+            optional=True,
+        ),
+        Attr(
+            name="dependencies_complete",
+            kind="Boolean",
+            description="True when the dependency closure can be trusted. False when auto-detection found unresolved references.",
+            optional=True,
+        ),
     ],
     relationships=[
         Rel(
@@ -80,6 +99,23 @@ core_generator_definition = NodeSchema(
             cardinality=Cardinality.ONE,
             optional=False,
         ),
+        Rel(
+            name="instances",
+            peer=InfrahubKind.GENERATORINSTANCE,
+            identifier="generator__generator_definition",
+            kind=RelKind.GENERIC,
+            cardinality=Cardinality.MANY,
+            optional=True,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
+        ),
+        Rel(
+            name="validators",
+            peer=InfrahubKind.GENERATORVALIDATOR,
+            kind=RelKind.GENERIC,
+            cardinality=Cardinality.MANY,
+            optional=True,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
+        ),
     ],
 )
 
@@ -92,7 +128,7 @@ core_generator_instance = NodeSchema(
     icon="mdi:file-document-outline",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     branch=BranchSupportType.LOCAL,
     generate_profile=False,
     inherit_from=[InfrahubKind.TASKTARGET],

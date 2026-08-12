@@ -61,7 +61,7 @@ class TestSelectedExportAndLoad:
     async def test_export_and_load(
         self, db: InfrahubDatabase, hierarchical_location_data_thing: dict[str, Node]
     ) -> None:
-        """Validate that database structure is preserved across selected export and import"""
+        """Validate that database structure is preserved across selected export and import."""
         before_details = await self._get_before_vertex_and_edge_count_data(db=db)
 
         with TemporaryDirectory() as temp_dir:

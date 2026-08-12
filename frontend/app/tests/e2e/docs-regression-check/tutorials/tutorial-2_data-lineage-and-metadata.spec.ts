@@ -25,16 +25,18 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
       await page.getByRole("option", { name: "Account" }).first().click();
       await page.getByLabel("Account").click();
       await page.getByRole("option", { name: "Admin" }).click();
-      await page.getByLabel("is protected *").check();
+      await page
+        .getByRole("group", { name: "is protected" })
+        .locator("label")
+        .filter({ hasText: "True" })
+        .click();
       await saveScreenshotForDocs(page, "tutorial_4_metadata_edit");
       await page.getByRole("button", { name: "Save" }).click();
 
       await expect(page.getByText("Metadata updated")).toBeVisible();
 
       // Wait for the metadata edit slide-over to close before checking updated data
-      await expect(page.getByTestId("side-panel-container")).toBeHidden();
-
-      await page.getByText("Description-").getByTestId("view-metadata-button").click();
+      await expect(page.getByLabel("sheet")).toBeHidden();
 
       await expect(page.getByText("Is protectedTrue")).toBeVisible();
     });

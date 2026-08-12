@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, Generator, Iterable
+from typing import TYPE_CHECKING, AsyncGenerator, Generator, Iterable
 
 from neo4j.exceptions import TransientError
 
@@ -12,7 +12,7 @@ from infrahub.core.diff.query.summary_counts_enricher import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
-from infrahub.exceptions import ResourceNotFoundError
+from infrahub.exceptions import ResourceMultipleFoundError, ResourceNotFoundError
 from infrahub.log import get_logger
 
 from ..model.field_specifiers_map import NodeFieldSpecifierMap
@@ -30,12 +30,15 @@ from ..model.path import (
     TimeRange,
     TrackingId,
 )
+from ..query.affected_diff_nodes import AffectedDiffNodeUUIDsQuery
 from ..query.all_conflicts import EnrichedDiffAllConflictsQuery
+from ..query.conflicted_diff_nodes import ConflictedDiffNodesQuery
 from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
 from ..query.field_specifiers import EnrichedDiffFieldSpecifiersQuery
 from ..query.filters import EnrichedDiffQueryFilters
+from ..query.freeze_by_branch import EnrichedDiffFreezeByBranchQuery
 from ..query.freeze_by_proposed_change import EnrichedDiffFreezeByProposedChangeQuery
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
 from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
@@ -46,6 +49,9 @@ from ..query.save import EnrichedDiffRootsUpsertQuery, EnrichedNodeBatchCreateQu
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
 from .deserializer import EnrichedDiffDeserializer
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
 
 log = get_logger()
 
@@ -240,7 +246,7 @@ class DiffRepository:
         if len(enriched_diffs) == 0:
             raise ResourceNotFoundError(f"Cannot find diff for {error_str}")
         if len(enriched_diffs) > 1:
-            raise ResourceNotFoundError(f"Multiple diffs for {error_str}")
+            raise ResourceMultipleFoundError(f"Multiple diffs for {error_str}")
         return enriched_diffs[0]
 
     def _get_node_create_request_batch(
@@ -418,6 +424,14 @@ class DiffRepository:
         )
         await query.execute(db=self.db)
 
+    async def freeze_diffs_for_branch(self, branch_name: str) -> None:
+        """Freeze branch-tracking diffs (and their partners) by setting is_frozen and updating tracking_id."""
+        query = await EnrichedDiffFreezeByBranchQuery.init(
+            db=self.db,
+            branch_name=branch_name,
+        )
+        await query.execute(db=self.db)
+
     async def get_time_ranges(
         self,
         base_branch_name: str,
@@ -539,14 +553,67 @@ class DiffRepository:
         for conflict_path, conflict_node in query.get_conflict_paths_and_nodes():
             yield (conflict_path, self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node))
 
+    async def get_conflicted_node_uuids(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId,
+    ) -> set[str]:
+        """Get UUIDs of DiffNodes that contain conflicts at any level."""
+        query = await ConflictedDiffNodesQuery.init(
+            db=self.db,
+            diff_branch_name=diff_branch_name,
+            tracking_id=tracking_id.serialize(),
+        )
+        await query.execute(db=self.db)
+        return query.get_conflict_uuids()
+
+    async def get_affected_node_uuids(
+        self,
+        source_branch: "Branch",
+        target_branch: "Branch",
+        at: Timestamp,
+        tracking_id: TrackingId,
+    ) -> list[str]:
+        """Get all node UUIDs from the diff graph for metadata updates."""
+        query = await AffectedDiffNodeUUIDsQuery.init(
+            db=self.db,
+            branch=source_branch,
+            at=at,
+            target_branch=target_branch,
+            tracking_id=tracking_id.serialize(),
+        )
+        await query.execute(db=self.db)
+        return query.get_node_uuids()
+
     async def get_node_field_summaries(
         self, diff_branch_name: str, tracking_id: TrackingId | None = None, diff_id: str | None = None
     ) -> list[NodeDiffFieldSummary]:
-        query = await EnrichedDiffNodeFieldSummaryQuery.init(
-            db=self.db, diff_branch_name=diff_branch_name, tracking_id=tracking_id, diff_id=diff_id
-        )
-        await query.execute(db=self.db)
-        return await query.get_field_summaries()
+        node_limit = config.SETTINGS.database.query_size_limit
+        node_offset = 0
+        summaries_by_kind: dict[str, NodeDiffFieldSummary] = {}
+        while True:
+            query = await EnrichedDiffNodeFieldSummaryQuery.init(
+                db=self.db,
+                diff_branch_name=diff_branch_name,
+                tracking_id=tracking_id,
+                diff_id=diff_id,
+                offset=node_offset,
+                limit=node_limit,
+            )
+            await query.execute(db=self.db)
+            num_nodes = 0
+            for node_summary in query.get_node_field_rows():
+                num_nodes += 1
+                if not node_summary.attribute_node_uuids and not node_summary.relationship_node_uuids:
+                    continue
+                kind_summary = summaries_by_kind.setdefault(
+                    node_summary.kind, NodeDiffFieldSummary(kind=node_summary.kind)
+                )
+                kind_summary.merge(node_summary)
+            if num_nodes < node_limit:
+                break
+            node_offset += node_limit
+        return list(summaries_by_kind.values())
 
     async def mark_tracking_ids_merged(self, tracking_ids: list[TrackingId]) -> None:
         query = await EnrichedDiffMergedTrackingIdQuery.init(db=self.db, tracking_ids=tracking_ids)

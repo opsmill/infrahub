@@ -1,27 +1,26 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
+import { Checkbox, Spinner } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
-import type { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import type { ConflictSelection } from "@/shared/api/graphql/generated/types";
 import { queryClient } from "@/shared/api/rest/client";
-import { Checkbox } from "@/shared/components/inputs/checkbox";
+import { Row } from "@/shared/components/container";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
-import { Spinner } from "@/shared/components/ui/spinner";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { treeQueryKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 import { useResolveConflictMutation } from "@/entities/diff/ui/queries/resolve-conflict.mutation";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
+import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 interface ConflictData {
   id: string;
-  selectedBranch?: ConflictSelection;
+  selectedBranch?: ConflictSelection | null;
 }
 
 export const Conflict = ({ id, selectedBranch }: ConflictData) => {
-  const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const proposedChange = useProposedChange();
   const { mutate, isPending } = useResolveConflictMutation();
 
   const { isAuthenticated } = useAuth();
@@ -37,9 +36,7 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
       {
         onSuccess: async () => {
           await queryClient.invalidateQueries({ queryKey: treeQueryKeys.all });
-          await graphqlClient.refetchQueries({
-            include: ["TASK_DETAILS_CHECK"],
-          });
+          await queryClient.invalidateQueries({ queryKey: [...tasksQueryKeys.all, "check"] });
 
           const message = newValue
             ? "Conflict marked as resolved"
@@ -55,48 +52,32 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
   };
 
   return (
-    <div className="flex items-center justify-end gap-2 p-2">
+    <Row data-testid="conflict-resolution" className="justify-end p-2">
       {isPending && <Spinner />}
 
       <span className="text-xs">Choose the branch to resolve the conflict:</span>
 
-      <div className="flex gap-2">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id={"base"}
-            disabled={isPending || !isAuthenticated}
-            checked={selectedBranch === "BASE_BRANCH"}
-            onChange={() => handleAccept("BASE_BRANCH")}
-          />
-          <label
-            htmlFor={"base"}
-            className={selectedBranch === "BASE_BRANCH" ? "cursor-default" : "cursor-pointer"}
-          >
-            <Badge variant="green">
-              <Icon icon="mdi:layers-triple" className="mr-1" />
-              {proposedChangesDetails.destination_branch?.value ?? "Base Branch"}
-            </Badge>
-          </label>
-        </div>
+      <Checkbox
+        isDisabled={isPending || !isAuthenticated}
+        isSelected={selectedBranch === "BASE_BRANCH"}
+        onChange={() => handleAccept("BASE_BRANCH")}
+      >
+        <Badge variant="green">
+          <Icon icon="mdi:layers-triple" className="mr-1" />
+          {proposedChange.destination_branch?.value ?? "Base Branch"}
+        </Badge>
+      </Checkbox>
 
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id={"diff"}
-            disabled={isPending || !isAuthenticated}
-            checked={selectedBranch === "DIFF_BRANCH"}
-            onChange={() => handleAccept("DIFF_BRANCH")}
-          />
-          <label
-            htmlFor={"diff"}
-            className={selectedBranch === "DIFF_BRANCH" ? "cursor-default" : "cursor-pointer"}
-          >
-            <Badge variant="blue">
-              <Icon icon="mdi:layers-triple" className="mr-1" />
-              {proposedChangesDetails.source_branch?.value ?? "Diff Branch"}
-            </Badge>
-          </label>
-        </div>
-      </div>
-    </div>
+      <Checkbox
+        isDisabled={isPending || !isAuthenticated}
+        isSelected={selectedBranch === "DIFF_BRANCH"}
+        onChange={() => handleAccept("DIFF_BRANCH")}
+      >
+        <Badge variant="blue">
+          <Icon icon="mdi:layers-triple" className="mr-1" />
+          {proposedChange.source_branch?.value ?? "Diff Branch"}
+        </Badge>
+      </Checkbox>
+    </Row>
   );
 };

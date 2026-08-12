@@ -30,11 +30,10 @@ class DeleteElementInSchemaQuery(Query):
         super().__init__(**kwargs)
 
     def render_match(self) -> str:
-        query = """
+        return """
         MATCH path = (attr_node:Node)-[:HAS_ATTRIBUTE]->(attr:Attribute)
         MATCH (attr_node)-[:HAS_ATTRIBUTE]->(attr_name:Attribute)-[:HAS_VALUE]->(attr_value:AttributeValue)
         """
-        return query
 
     def render_where(self) -> str:
         at = self.at or Timestamp()
@@ -42,15 +41,13 @@ class DeleteElementInSchemaQuery(Query):
         self.params.update(params)
 
         # ruff: noqa: E501
-        query = """
+        return """
         WHERE ( "SchemaAttribute" in LABELS(attr_node) OR "SchemaRelationship" IN LABELS(attr_node))
             AND exists( (attr_node)-[:IS_RELATED]->(:Relationship)<-[:IS_RELATED]-(:Node)-[:HAS_ATTRIBUTE]->(:Attribute { name: "name"})-[:HAS_VALUE]->(:AttributeValue { value: $node_name }) )
             AND exists( (attr_node)-[:IS_RELATED]->(:Relationship)<-[:IS_RELATED]-(:Node)-[:HAS_ATTRIBUTE]->(:Attribute { name: "namespace"})-[:HAS_VALUE]->(:AttributeValue  { value: $node_namespace }) )
             AND ( attr_name.name = "name" AND attr_value.value IN $element_names)
             AND all(r IN relationships(path) WHERE ( %(filters)s ))
         """ % {"filters": filters}
-
-        return query
 
     @staticmethod
     def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, direction: GraphRelDirection) -> str:
@@ -93,7 +90,7 @@ class DeleteElementInSchemaQuery(Query):
         sub_query_in = "\nUNION\n".join(sub_queries_in)
         return sub_query_in, sub_query_in_args
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 

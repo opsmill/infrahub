@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from infrahub_sdk.exceptions import URLNotFoundError
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
+from infrahub.core.recompute.bulk_write import HFID_FIELD, AttributeValueWrite
+from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
 from infrahub.events import BranchDeletedEvent
+from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers_specific
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
@@ -14,66 +15,8 @@ from infrahub.workflows.catalogue import HFID_PROCESS, TRIGGER_UPDATE_HFID
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_hfid
-from .models import HFIDGraphQL, HFIDGraphQLResponse, HFIDTriggerDefinition
-
-UPDATE_HFID = """
-mutation UpdateHFID(
-    $id: String!,
-    $kind: String!,
-    $value: [String!]!,
-    $context_account_id: String!
-  ) {
-  InfrahubUpdateHFID(
-    context: {account: {id: $context_account_id}},
-    data: {id: $id, value: $value, kind: $kind}
-  ) {
-    ok
-  }
-}
-"""
-
-
-@flow(
-    name="hfid-update-value",
-    flow_run_name="Update value for hfid on {node_kind}",
-)
-async def hfid_update_value(
-    branch_name: str,
-    obj: HFIDGraphQLResponse,
-    node_kind: str,
-    hfid_definition: list[str],
-    context: InfrahubContext,
-) -> None:
-    log = get_run_logger()
-    client = get_client()
-
-    await add_tags(branches=[branch_name], nodes=[obj.node_id], db_change=True)
-
-    rendered_hfid: list[str] = []
-    for hfid_component in hfid_definition:
-        if hfid_component in obj.variables:
-            rendered_hfid.append(obj.variables[hfid_component])
-    # value = await template.render(variables=obj.variables)
-    if rendered_hfid == obj.hfid_value:
-        log.debug(f"Ignoring to update {obj} with existing value on human_friendly_id={obj.hfid_value}")
-        return
-
-    try:
-        await client.execute_graphql(
-            query=UPDATE_HFID,
-            variables={
-                "id": obj.node_id,
-                "kind": node_kind,
-                "value": rendered_hfid,
-                "context_account_id": context.account.account_id,
-            },
-            branch_name=branch_name,
-        )
-        log.info(f"Updating {node_kind}.human_friendly_id='{rendered_hfid}' ({obj.node_id})")
-    except URLNotFoundError:
-        log.warning(
-            f"Updating {node_kind}.human_friendly_id='{rendered_hfid}' ({obj.node_id}) failed for branch {branch_name} (branch not found)"
-        )
+from .graphql_queries import HFIDNodeIDQuery
+from .models import HFIDGraphQL, HFIDTriggerDefinition
 
 
 @flow(
@@ -83,12 +26,20 @@ async def hfid_update_value(
 async def process_hfid(
     branch_name: str,
     node_kind: str,
-    object_id: str,
     target_kind: str,
-    context: InfrahubContext,
+    context: EventContext,
+    object_id: str | None = None,
+    object_ids: list[str] | None = None,
+    recompute_depth: int = 0,
 ) -> None:
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
+
+    filter_id: str | list[str] | None = object_ids if object_ids is not None else object_id
+    if not filter_id:
+        log.debug("No object id provided for human-friendly id recompute")
+        return
 
     await add_tags(branches=[branch_name])
 
@@ -105,7 +56,7 @@ async def process_hfid(
         node_schema=node_schema, variables=hfid_definition.hfid, filter_key=hfid_definition.filter_key
     )
 
-    query = hfid_graphql.render_graphql_query(filter_id=object_id)
+    query = hfid_graphql.render_graphql_query(filter_id=filter_id)
     response = await client.execute_graphql(query=query, branch_name=branch_name)
     update_candidates = hfid_graphql.parse_response(response=response)
 
@@ -113,22 +64,24 @@ async def process_hfid(
         log.debug("No nodes found that requires updates")
         return
 
-    batch = await client.create_batch()
+    writes: list[AttributeValueWrite] = []
     for node in update_candidates:
-        batch.add(
-            task=hfid_update_value,
-            branch_name=branch_name,
-            obj=node,
-            node_kind=node_schema.kind,
-            hfid_definition=hfid_definition.hfid,
-            context=context,
-        )
+        rendered_hfid = [node.variables[component] for component in hfid_definition.hfid if component in node.variables]
+        if rendered_hfid != node.hfid_value:
+            writes.append(AttributeValueWrite(node_id=node.node_id, field=HFID_FIELD, value=rendered_hfid))
 
-    _ = [response async for _, response in batch.execute()]
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
+    await dispatcher.dispatch(
+        writes=writes,
+        branch_name=branch_name,
+        context=context,
+        coalesced=object_ids is not None,
+        recompute_depth=recompute_depth,
+    )
 
 
 @flow(name="hfid-setup", flow_run_name="Setup human friendly ids in task-manager")
-async def hfid_setup(context: InfrahubContext, branch_name: str | None = None, event_name: str | None = None) -> None:
+async def hfid_setup(context: EventContext, branch_name: str | None = None, event_name: str | None = None) -> None:
     database = await get_database()
     async with database.start_session() as db:
         log = get_run_logger()
@@ -140,7 +93,7 @@ async def hfid_setup(context: InfrahubContext, branch_name: str | None = None, e
 
         report: TriggerSetupReport = await setup_triggers_specific(
             gatherer=gather_trigger_hfid, trigger_type=TriggerType.HUMAN_FRIENDLY_ID
-        )  # type: ignore[misc]
+        )
 
         # Configure all DisplayLabelTriggerDefinitions in Prefect
         all_triggers = report.triggers_with_type(trigger_type=HFIDTriggerDefinition)
@@ -188,30 +141,25 @@ async def hfid_setup(context: InfrahubContext, branch_name: str | None = None, e
 async def trigger_update_hfid(
     branch_name: str,
     kind: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name])
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
-    # NOTE we only need the id of the nodes, this query will still query for the HFID
-    node_schema = registry.schema.get_node_schema(name=kind, branch=branch_name)
-    nodes = await client.all(
-        kind=kind,
-        branch=branch_name,
-        exclude=node_schema.attribute_names + node_schema.relationship_names,
-        populate_store=False,
-    )
-
-    for node in nodes:
-        await get_workflow().submit_workflow(
-            workflow=HFID_PROCESS,
-            context=context,
-            parameters={
-                "branch_name": branch_name,
-                "node_kind": kind,
-                "target_kind": kind,
-                "object_id": node.id,
-                "context": context,
-            },
-        )
+    node_query = HFIDNodeIDQuery(kind=kind)
+    workflow = get_workflow()
+    async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
+        for node_id in node_batch:
+            await workflow.submit_workflow(
+                workflow=HFID_PROCESS,
+                context=context,
+                parameters={
+                    "branch_name": branch_name,
+                    "node_kind": kind,
+                    "target_kind": kind,
+                    "object_id": node_id,
+                    "context": context,
+                },
+            )

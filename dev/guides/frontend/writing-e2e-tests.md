@@ -16,6 +16,18 @@ Write E2E tests when you need to:
 
 **Note**: For testing isolated components, see [Writing Component Tests](writing-component-tests.md). E2E tests should cover integration flows, not individual component behavior.
 
+## Minimum bar for new pages
+
+Every new page added under `frontend/app/src/pages/` ships with **at least one happy-path E2E test** that exercises the full flow:
+
+1. Navigate to the page.
+2. Perform the primary user action (select inputs, submit, etc.).
+3. Assert the resulting rendered output (rows, nodes, charts, count, etc.).
+
+A test that only checks static text visibility ("page heading is visible") does not satisfy this bar. Without an end-to-end assertion on rendered data, regressions in fetch logic, query key invalidation, or visualization wiring can ship undetected.
+
+For features with multiple modes (e.g. a `mode=path` vs `mode=impact` toggle), the happy path for each mode counts as one test.
+
 ## Prerequisites
 
 - Understanding of [Playwright](https://playwright.dev/) test framework
@@ -182,7 +194,6 @@ Use selectors in this priority order:
 
 ```typescript
 page.getByTestId("create-object-button")
-page.getByTestId("side-panel-container")
 page.getByTestId("object-items")
 ```
 
@@ -222,7 +233,6 @@ page.locator("#alert-success-Tenant-created")
 Scope selectors to containers to avoid ambiguity:
 
 ```typescript
-page.getByTestId("side-panel-container").getByLabel("Status")
 page.getByTestId("object-items").getByRole("link", { name: "my-tenant" })
 ```
 
@@ -348,7 +358,7 @@ await page.getByTestId("modal-delete-confirm").click();
 ### Dropdown/Select
 
 ```typescript
-await page.getByTestId("side-panel-container").getByLabel("Status").click();
+await page.getByLabel("Status").click();
 await page.getByRole("option", { name: "Maintenance" }).click();
 ```
 

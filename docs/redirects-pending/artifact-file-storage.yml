@@ -1,0 +1,44 @@
+---
+feature: Artifact & File Storage
+pr: TBD
+description: |
+  Storage feature migration to the new sub-cat path per the V3 outline
+  (Automation & Outputs Recommendations doc). Hub + 1 spoke. No content
+  changes — straight file moves with cross-link updates.
+
+  - topics/object-storage.mdx → artifact-file-storage/index.mdx (hub)
+    via git mv. Internal cross-links updated for the new file location:
+    `./file-object.mdx` → `../schema/file-object` (Schema PR migrated
+    file-object); `./artifact.mdx` → `../topics/artifact.mdx` (Artifacts
+    PR not yet merged into base); `./permissions-roles.mdx` →
+    `../topics/permissions-roles.mdx`; the self-referenced guide link
+    rewritten to `./configure`.
+  - guides/object-storage.mdx → artifact-file-storage/configure.mdx
+    via git mv. Single internal cross-link to the topic rewritten to
+    `./` (the new sibling hub).
+
+  Sub-cat label "Artifact & File Storage" was already in sidebars.ts
+  before this PR. The hub page title is still "Object storage" — the
+  V3 outline proposed renaming to "About Storage" or "About artifact
+  and file storage" but this PR holds off on the rename pending team
+  approval.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/object-storage
+    to: /docs/artifact-file-storage/
+  - from: /docs/guides/object-storage
+    to: /docs/artifact-file-storage/configure
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/artifact-file-storage/
+    title: Artifact & File Storage (hub)
+  - path: /docs/artifact-file-storage/configure
+    title: Configure storage
+
+# Internal cross-link references in OTHER files updated in this PR:
+# - docs/docs/guides/database-backup.mdx
+# - docs/docs/guides/artifact-content-composition.mdx
+# - docs/docs/schema/file-object.mdx (4 references via replace_all)
+cross_links_to_update: []

@@ -10,6 +10,7 @@ from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.tasks.dummy import DUMMY_FLOW, DUMMY_FLOW_BROKEN, DummyInput, DummyOutput
+from infrahub.tls.registry import TlsContextRegistry
 from infrahub.workers.infrahub_async import (
     InfrahubWorkerAsync,
 )
@@ -27,7 +28,7 @@ class TestWorkflowExecution(TestWorkerInfrahubAsync):
         work_pool: WorkPool,
         client: InfrahubClient,
     ) -> None:
-        service = WorkflowWorkerExecution()
+        service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
 
         task = asyncio.create_task(
             service.execute_workflow(
@@ -56,7 +57,7 @@ class TestWorkflowExecution(TestWorkerInfrahubAsync):
         work_pool: WorkPool,
         client: InfrahubClient,
     ) -> None:
-        service = WorkflowWorkerExecution()
+        service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
 
         task = asyncio.create_task(
             service.execute_workflow(

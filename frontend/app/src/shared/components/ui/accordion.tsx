@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
-import * as React from "react";
+import type React from "react";
 
 import { classNames } from "@/shared/utils/common";
 
@@ -8,10 +8,17 @@ export const Accordion = AccordionPrimitive.Root;
 
 export const AccordionItem = AccordionPrimitive.Item;
 
-export const AccordionTrigger = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger> & { iconClassName?: string }
->(({ className, children, iconClassName, ...props }, ref) => (
+interface AccordionTriggerProps extends React.ComponentProps<typeof AccordionPrimitive.Trigger> {
+  iconClassName?: string;
+}
+
+export const AccordionTrigger = ({
+  className,
+  children,
+  iconClassName,
+  ref,
+  ...props
+}: AccordionTriggerProps) => (
   <AccordionPrimitive.Header className="flex">
     <AccordionPrimitive.Trigger
       ref={ref}
@@ -31,12 +38,17 @@ export const AccordionTrigger = React.forwardRef<
       </div>
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
-));
+);
 
-export const AccordionContent = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
->(({ className, children, style, ...props }, ref) => (
+interface AccordionContentProps extends React.ComponentProps<typeof AccordionPrimitive.Content> {}
+
+export const AccordionContent = ({
+  className,
+  children,
+  style,
+  ref,
+  ...props
+}: AccordionContentProps) => (
   <AccordionPrimitive.Content
     ref={ref}
     className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
@@ -46,4 +58,4 @@ export const AccordionContent = React.forwardRef<
       {children}
     </div>
   </AccordionPrimitive.Content>
-));
+);

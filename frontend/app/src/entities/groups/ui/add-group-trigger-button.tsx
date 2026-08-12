@@ -1,17 +1,17 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import { ButtonWithTooltip } from "@/shared/components/ui/button";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
-import type { GroupData } from "@/entities/groups/domain/types";
+import type { GroupData } from "@/entities/groups/domain/model/group";
 import { AddGroupForm } from "@/entities/groups/ui/add-group-form";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface AddGroupTriggerButtonProps {
   schema: ModelSchema;
@@ -32,30 +32,24 @@ export function AddGroupTriggerButton({
 
   return (
     <>
-      <ButtonWithTooltip
-        onClick={() => setIsAddGroupFormOpen(true)}
-        className="p-2"
-        disabled={!permission.update.isAllowed}
-        tooltipContent={permission.update.message ?? "Add groups"}
-        tooltipEnabled
-        data-testid="open-group-form-button"
-      >
-        <Icon icon="mdi:plus" className="text-lg" />
-      </ButtonWithTooltip>
+      <Tooltip message={permission.update.message ?? "Add groups"}>
+        <Button
+          onPress={() => setIsAddGroupFormOpen(true)}
+          shape="square"
+          isDisabledAndFocusable={!permission.update.isAllowed}
+          data-testid="open-group-form-button"
+        >
+          <Icon icon="mdi:plus" className="text-lg" />
+        </Button>
+      </Tooltip>
 
-      <SlideOver
-        offset={1}
-        title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel={objectDetailsData ? getNodeLabel(objectDetailsData) : ""}
-            title="Select group(s)"
-            subtitle="Select one or more groups to assign"
-          />
-        }
-        open={isAddGroupFormOpen}
-        setOpen={setIsAddGroupFormOpen}
-      >
+      <Sheet isOpen={isAddGroupFormOpen} onOpenChange={setIsAddGroupFormOpen}>
+        <SlideOverTitle
+          schema={schema}
+          currentObjectLabel={objectDetailsData ? getNodeLabel(objectDetailsData) : ""}
+          title="Select group(s)"
+          subtitle="Select one or more groups to assign"
+        />
         <AddGroupForm
           objectId={objectId}
           defaultGroupIds={
@@ -71,14 +65,13 @@ export function AddGroupTriggerButton({
               : undefined
           }
           schema={schema}
-          className="p-4"
           onCancel={() => setIsAddGroupFormOpen(false)}
           onUpdateCompleted={async () => {
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsAddGroupFormOpen(false);
           }}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 }

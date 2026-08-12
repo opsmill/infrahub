@@ -1,8 +1,8 @@
+import { Card, type CardProps } from "@infrahub/ui";
 import type { HTMLAttributes, ReactNode } from "react";
 
 import { Retry } from "@/shared/components/buttons/retry";
 import { Badge } from "@/shared/components/ui/badge";
-import { Card, type CardProps } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 
 const ContentRoot = ({ className, ...props }: HTMLAttributes<HTMLElement>) => {
@@ -29,10 +29,7 @@ export const ContentTitle = ({
 }: ContentTitleProps) => {
   return (
     <header
-      className={classNames(
-        "flex min-h-[4rem] items-center border-gray-200 border-b bg-white px-4",
-        className
-      )}
+      className={classNames("flex min-h-[4rem] items-center border-b bg-white px-4", className)}
       {...props}
     >
       <div className="flex flex-col gap-0.5 overflow-hidden pr-2">
@@ -50,7 +47,7 @@ export const ContentTitle = ({
 };
 
 export const ContentCard = ({ className, ...props }: CardProps) => {
-  return <Card className={classNames("overflow-auto p-0", className)} {...props} />;
+  return <Card className={classNames("overflow-auto", className)} {...props} />;
 };
 
 export type ContentCardTitleProps = {
@@ -74,8 +71,8 @@ export const ContentCardTitle = ({
   ...props
 }: ContentCardTitleProps) => {
   return (
-    <header className={classNames("flex border-gray-200 border-b p-5", className)} {...props}>
-      <div className="flex flex-col gap-0.5 overflow-hidden">
+    <header className={classNames("flex items-center border-b p-5", className)} {...props}>
+      <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
         {title && (
           <div className="flex items-center gap-2 font-bold text-xl">
             <h1 className="truncate">{title}</h1>

@@ -5,7 +5,7 @@ import Content from "@/shared/components/layout/content";
 
 import { ObjectItemsHeader } from "@/entities/nodes/object/ui/object-items-header";
 import { ObjectsManager } from "@/entities/nodes/object/ui/objects-manager";
-import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 const ResourceManagerPage = () => {
@@ -17,7 +17,7 @@ const ResourceManagerPage = () => {
   }
 
   return (
-    <Content.Card className="flex flex-col">
+    <Content.Card>
       <ObjectItemsHeader schema={resourcePoolSchema} />
 
       <ObjectsManager schema={resourcePoolSchema} />

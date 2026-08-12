@@ -7,8 +7,8 @@ from infrahub_sdk.graphql import Mutation, Query
 from infrahub_sdk.types import Order
 from prefect import flow
 
-from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.constants import InfrahubKind
+from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.generators.models import (
     GeneratorDefinitionModel,
     RequestGeneratorRun,
@@ -118,8 +118,7 @@ async def add_node_to_group(
     branch_name: str,
     node_id: str,
     group_id: str,
-    context: InfrahubContext,  # noqa: ARG001
-    service: InfrahubServices,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name], nodes=[node_id, group_id])
 
@@ -129,7 +128,9 @@ async def add_node_to_group(
         query={"ok": None},
     )
 
-    await service.client.execute_graphql(query=mutation.render(), branch_name=branch_name)
+    client = get_client()
+    client.request_context = context.to_request_context()
+    await client.execute_graphql(query=mutation.render(), branch_name=branch_name)
 
 
 @flow(
@@ -140,8 +141,7 @@ async def remove_node_from_group(
     branch_name: str,
     node_id: str,
     group_id: str,
-    context: InfrahubContext,  # noqa: ARG001
-    service: InfrahubServices,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name], nodes=[node_id, group_id])
 
@@ -151,7 +151,9 @@ async def remove_node_from_group(
         query={"ok": None},
     )
 
-    await service.client.execute_graphql(query=mutation.render(), branch_name=branch_name)
+    client = get_client()
+    client.request_context = context.to_request_context()
+    await client.execute_graphql(query=mutation.render(), branch_name=branch_name)
 
 
 @flow(
@@ -162,12 +164,12 @@ async def run_generator(
     branch_name: str,
     node_ids: list[str],
     generator_definition_id: str,
-    context: InfrahubContext,
-    service: InfrahubServices,  # noqa: ARG001
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name], nodes=node_ids + [generator_definition_id])
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     await _run_generators(
         branch_name=branch_name,
@@ -186,13 +188,13 @@ async def run_generator_group_event(
     branch_name: str,
     members: list[EventGroupMember],
     generator_definition_id: str,
-    context: InfrahubContext,
-    service: InfrahubServices,  # noqa: ARG001
+    context: EventContext,
 ) -> None:
     node_ids = [node.id for node in members]
     await add_tags(branches=[branch_name], nodes=node_ids + [generator_definition_id])
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     await _run_generators(
         branch_name=branch_name,
@@ -210,11 +212,12 @@ async def run_generator_group_event(
 async def configure_action_rules(
     service: InfrahubServices,
 ) -> None:
-    await setup_triggers_specific(
-        gatherer=gather_trigger_action_rules,  # type: ignore[arg-type]
-        trigger_type=TriggerType.ACTION_TRIGGER_RULE,
-        db=service.database,
-    )
+    async with service.database.start_session(read_only=True) as db:
+        await setup_triggers_specific(
+            gatherer=gather_trigger_action_rules,  # type: ignore[arg-type]
+            trigger_type=TriggerType.ACTION_TRIGGER_RULE,
+            db=db,
+        )
 
 
 async def _get_targets(
@@ -223,7 +226,6 @@ async def _get_targets(
     client: InfrahubClient,
 ) -> dict[str, dict[str, InfrahubNode]]:
     """Get the targets per kind in order to extract the variables."""
-
     targets_per_kind: dict[str, dict[str, InfrahubNode]] = defaultdict(dict)
 
     for target in targets:
@@ -244,7 +246,7 @@ async def _run_generators(
     node_ids: list[str],
     generator_definition_id: str,
     client: InfrahubClient,
-    context: InfrahubContext | None = None,
+    context: EventContext | None = None,
 ) -> None:
     """Fetch generator metadata and submit per-target runs.
 
@@ -261,6 +263,7 @@ async def _run_generators(
     Raises:
         ValueError: If the generator definition is not found or none of the requested
             targets are members of the target group.
+
     """
     response = await client.execute_graphql(
         query=get_generator_run_query(definition_id=generator_definition_id, target_ids=node_ids).render(),

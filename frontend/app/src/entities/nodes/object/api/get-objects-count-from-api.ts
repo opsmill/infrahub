@@ -1,10 +1,10 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import { addFiltersToRequest } from "@/shared/api/graphql/utils";
 import type { ContextParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
+
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 
 export interface getObjectsCountQueryParams {
   objectKind: string;
@@ -24,7 +24,7 @@ const getObjectsCountQuery = ({ objectKind, filters }: getObjectsCountQueryParam
     },
   };
 
-  return gql(jsonToGraphQLQuery(query));
+  return graphql(jsonToGraphQLQuery(query));
 };
 
 export interface GetObjectsCountFromApiParams extends ContextParams {
@@ -43,7 +43,6 @@ export const getObjectsCountFromApi = async ({
     context: {
       branch: branchName,
       date: atDate,
-      queryDeduplication: false,
       processErrorMessage: () => {},
     },
   });

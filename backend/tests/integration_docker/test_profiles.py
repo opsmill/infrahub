@@ -9,6 +9,8 @@ import yaml
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 
+from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
+
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.node import InfrahubNode, RelatedNode, RelationshipManager
@@ -28,7 +30,7 @@ class TestProfiles(TestInfrahubDockerClient):
         node_id: str,
         attribute: str,
         expected_value: str | int | None,
-        max_retries: int = 20,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
     ) -> None:
         for _ in range(max_retries):
             node = await client.get(kind=kind, id=node_id, property=True)
@@ -41,6 +43,61 @@ class TestProfiles(TestInfrahubDockerClient):
         current_value = getattr(node, attribute).value
         pytest.fail(f"Expected {attribute}={expected_value} but got {current_value} after {max_retries} seconds")
 
+    async def wait_for_attribute_source(
+        self,
+        client: InfrahubClient,
+        kind: str,
+        node_id: str,
+        attribute: str,
+        expected_source_id: str | None,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
+    ) -> None:
+        """Poll until the attribute's source.id matches the expected value."""
+
+        def _source_id(node: InfrahubNode) -> str | None:
+            attr_value = getattr(node, attribute)
+            source = getattr(attr_value, "source", None)
+            return source.id if source is not None else None
+
+        for _ in range(max_retries):
+            node = await client.get(kind=kind, id=node_id, property=True)
+            if _source_id(node) == expected_source_id:
+                return
+            await sleep(1)
+
+        node = await client.get(kind=kind, id=node_id, property=True)
+        pytest.fail(
+            f"Expected {attribute}.source.id={expected_source_id} but got {_source_id(node)} after {max_retries} seconds"
+        )
+
+    async def wait_for_attribute(
+        self,
+        client: InfrahubClient,
+        kind: str,
+        node_id: str,
+        attribute: str,
+        expected_value: str | int | None,
+        expected_source_id: str | None,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
+    ) -> None:
+        """Poll for both the attribute value and its profile source to match."""
+        await self.wait_for_attribute_value(
+            client=client,
+            kind=kind,
+            node_id=node_id,
+            attribute=attribute,
+            expected_value=expected_value,
+            max_retries=max_retries,
+        )
+        await self.wait_for_attribute_source(
+            client=client,
+            kind=kind,
+            node_id=node_id,
+            attribute=attribute,
+            expected_source_id=expected_source_id,
+            max_retries=max_retries,
+        )
+
     async def wait_for_relationship_peer(
         self,
         client: InfrahubClient,
@@ -48,7 +105,7 @@ class TestProfiles(TestInfrahubDockerClient):
         node_id: str,
         relationship: str,
         expected_peer_id: str | None,
-        max_retries: int = 20,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
     ) -> None:
         for _ in range(max_retries):
             node = await client.get(kind=kind, id=node_id, property=True, include=[relationship])
@@ -63,6 +120,58 @@ class TestProfiles(TestInfrahubDockerClient):
         rel = getattr(node, relationship)
         pytest.fail(f"Expected {relationship} peer_id={expected_peer_id} but got {rel.id} after {max_retries} seconds")
 
+    async def wait_for_relationship_from_profile(
+        self,
+        client: InfrahubClient,
+        kind: str,
+        node_id: str,
+        relationship: str,
+        expected_is_from_profile: bool,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
+    ) -> None:
+        """Poll until the relationship's `is_from_profile` flag matches."""
+        for _ in range(max_retries):
+            node = await client.get(kind=kind, id=node_id, property=True, include=[relationship])
+            rel: RelatedNode = getattr(node, relationship)
+            if rel.is_from_profile == expected_is_from_profile:
+                return
+            await sleep(1)
+
+        node = await client.get(kind=kind, id=node_id, property=True, include=[relationship])
+        rel = getattr(node, relationship)
+        pytest.fail(
+            f"Expected {relationship}.is_from_profile={expected_is_from_profile} "
+            f"but got {rel.is_from_profile} after {max_retries} seconds"
+        )
+
+    async def wait_for_relationship(
+        self,
+        client: InfrahubClient,
+        kind: str,
+        node_id: str,
+        relationship: str,
+        expected_peer_id: str | None,
+        expected_is_from_profile: bool,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
+    ) -> None:
+        """Poll for both the relationship peer and its profile provenance."""
+        await self.wait_for_relationship_peer(
+            client=client,
+            kind=kind,
+            node_id=node_id,
+            relationship=relationship,
+            expected_peer_id=expected_peer_id,
+            max_retries=max_retries,
+        )
+        await self.wait_for_relationship_from_profile(
+            client=client,
+            kind=kind,
+            node_id=node_id,
+            relationship=relationship,
+            expected_is_from_profile=expected_is_from_profile,
+            max_retries=max_retries,
+        )
+
     async def wait_for_relationship_peers(
         self,
         client: InfrahubClient,
@@ -70,7 +179,7 @@ class TestProfiles(TestInfrahubDockerClient):
         node_id: str,
         relationship: str,
         expected_peer_ids: set[str],
-        max_retries: int = 20,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
     ) -> None:
         for _ in range(max_retries):
             node = await client.get(kind=kind, id=node_id, property=True, include=[relationship])
@@ -118,8 +227,13 @@ class TestProfiles(TestInfrahubDockerClient):
         )
         await profile.save()
 
-        await self.wait_for_attribute_value(
-            client=client, kind="TestingDevice", node_id=device.id, attribute="height", expected_value=42
+        await self.wait_for_attribute(
+            client=client,
+            kind="TestingDevice",
+            node_id=device.id,
+            attribute="height",
+            expected_value=42,
+            expected_source_id=profile.id,
         )
 
         device_with_profile = await client.get(kind="TestingDevice", id=device.id, property=True)
@@ -165,8 +279,13 @@ class TestProfiles(TestInfrahubDockerClient):
         )
         await profile_high.save()
 
-        await self.wait_for_attribute_value(
-            client=client, kind="TestingDevice", node_id=device.id, attribute="weight", expected_value=100
+        await self.wait_for_attribute(
+            client=client,
+            kind="TestingDevice",
+            node_id=device.id,
+            attribute="weight",
+            expected_value=100,
+            expected_source_id=profile_high.id,
         )
 
         device_with_profiles = await client.get(kind="TestingDevice", id=device.id, property=True)
@@ -177,8 +296,13 @@ class TestProfiles(TestInfrahubDockerClient):
         profile_low_update.profile_priority.value = 500
         await profile_low_update.save()
 
-        await self.wait_for_attribute_value(
-            client=client, kind="TestingDevice", node_id=device.id, attribute="weight", expected_value=50
+        await self.wait_for_attribute(
+            client=client,
+            kind="TestingDevice",
+            node_id=device.id,
+            attribute="weight",
+            expected_value=50,
+            expected_source_id=profile_low.id,
         )
 
         device_updated = await client.get(kind="TestingDevice", id=device.id, property=True)
@@ -201,8 +325,13 @@ class TestProfiles(TestInfrahubDockerClient):
         )
         await profile.save()
 
-        await self.wait_for_attribute_value(
-            client=client, kind="TestingDevice", node_id=device.id, attribute="height", expected_value=200
+        await self.wait_for_attribute(
+            client=client,
+            kind="TestingDevice",
+            node_id=device.id,
+            attribute="height",
+            expected_value=200,
+            expected_source_id=profile.id,
         )
 
         device_with_profile = await client.get(kind="TestingDevice", id=device.id, property=True)
@@ -212,8 +341,13 @@ class TestProfiles(TestInfrahubDockerClient):
         profile_to_delete = await client.get(kind="ProfileTestingDevice", id=profile.id)
         await profile_to_delete.delete()
 
-        await self.wait_for_attribute_value(
-            client=client, kind="TestingDevice", node_id=device.id, attribute="height", expected_value=None
+        await self.wait_for_attribute(
+            client=client,
+            kind="TestingDevice",
+            node_id=device.id,
+            attribute="height",
+            expected_value=None,
+            expected_source_id=None,
         )
         device_after_delete = await client.get(kind="TestingDevice", id=device.id, property=True)
         assert device_after_delete.height.value is None
@@ -235,8 +369,13 @@ class TestProfiles(TestInfrahubDockerClient):
         )
         await profile.save()
 
-        await self.wait_for_attribute_value(
-            client=client, kind="TestingDevice", node_id=device.id, attribute="height", expected_value=300
+        await self.wait_for_attribute(
+            client=client,
+            kind="TestingDevice",
+            node_id=device.id,
+            attribute="height",
+            expected_value=300,
+            expected_source_id=profile.id,
         )
 
         device_with_profile = await client.get(kind="TestingDevice", id=device.id, property=True)
@@ -248,8 +387,13 @@ class TestProfiles(TestInfrahubDockerClient):
         profile_to_update.related_nodes.remove(device.id)
         await profile_to_update.save()
 
-        await self.wait_for_attribute_value(
-            client=client, kind="TestingDevice", node_id=device.id, attribute="height", expected_value=None
+        await self.wait_for_attribute(
+            client=client,
+            kind="TestingDevice",
+            node_id=device.id,
+            attribute="height",
+            expected_value=None,
+            expected_source_id=None,
         )
 
         device_after_removal = await client.get(kind="TestingDevice", id=device.id, property=True)
@@ -447,12 +591,13 @@ class TestProfiles(TestInfrahubDockerClient):
         )
         await device.save()
 
-        await self.wait_for_attribute_value(
+        await self.wait_for_attribute(
             client=client,
             kind="TestingDevice",
             node_id=device.id,
             attribute="part_number",
             expected_value="PROFILE-PN-001",
+            expected_source_id=profile.id,
         )
 
         device_with_profile = await client.get(kind="TestingDevice", id=device.id, property=True)
@@ -483,12 +628,13 @@ class TestProfiles(TestInfrahubDockerClient):
         )
         await device.save()
 
-        await self.wait_for_relationship_peer(
+        await self.wait_for_relationship(
             client=client,
             kind="TestingDevice",
             node_id=device.id,
             relationship="manufacturer",
             expected_peer_id=manufacturer.id,
+            expected_is_from_profile=True,
         )
 
         device_with_profile = await client.get(
@@ -579,12 +725,13 @@ class TestProfiles(TestInfrahubDockerClient):
         device_to_update.manufacturer = manufacturer_from_user
         await device_to_update.save()
 
-        await self.wait_for_relationship_peer(
+        await self.wait_for_relationship(
             client=client,
             kind="TestingDevice",
             node_id=device.id,
             relationship="manufacturer",
             expected_peer_id=manufacturer_from_user.id,
+            expected_is_from_profile=False,
         )
 
         device_after_update = await client.get(

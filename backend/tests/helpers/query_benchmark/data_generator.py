@@ -12,17 +12,13 @@ from tests.helpers.query_benchmark.db_query_profiler import (
 
 
 class DataGenerator:
-    """
-    Abstract class responsible for loading data into a given database.
-    """
+    """Abstract class responsible for loading data into a given database."""
 
     def __init__(self, db: InfrahubDatabaseProfiler) -> None:
         self.db = db
 
     async def init(self) -> None:
-        """
-        Any previous step before loading and profiling data should be implemented here.
-        """
+        """Any previous step before loading and profiling data should be implemented here."""
 
     @abstractmethod
     async def load_data(self, nb_elements: int) -> None:
@@ -39,8 +35,8 @@ async def load_data_and_profile(
     graph_generator: GraphProfileGenerator,
     memory_profiling_rate: int | None = None,
 ) -> None:
-    """
-    Loads data using the provided data generator, profiles the execution at specified loading intervals,
+    """Loads data using the provided data generator, profiles the execution at specified loading intervals,.
+
     and generate profiling graphs.
 
     Args:
@@ -53,8 +49,8 @@ async def load_data_and_profile(
         memory_profiling_rate (int): Indicates at which rate memory should be profiled. Frequency is related to number of function execution times,
                                      not to the number of elements as for 'profile_frequency'. For instance, memory_profiling_rate=25
                                      means memory is profiled every 25 times a function is executed/profiled.
-    """
 
+    """
     await data_generator.init()
 
     q, r = divmod(nb_elements, profile_frequency)

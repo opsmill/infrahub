@@ -15,6 +15,7 @@ from infrahub.trigger.models import (
     ExecuteWorkflow,
     TriggerDefinition,
     TriggerType,
+    jinja_parameter,
 )
 from infrahub.workflows.catalogue import (
     ACTION_ADD_NODE_TO_GROUP,
@@ -32,7 +33,7 @@ class EventGroupMember(BaseModel):
 
 
 class CoreAction(BaseModel):
-    """CoreAction generic"""
+    """CoreAction generic."""
 
 
 class CoreGeneratorAction(CoreAction):
@@ -58,7 +59,7 @@ class CoreGroupTriggerRule(CoreTriggerRule):
 
 
 class CoreNodeTriggerMatch(BaseModel):
-    """Node Trigger Match Generic"""
+    """Node Trigger Match Generic."""
 
 
 class CoreNodeTriggerAttributeMatch(CoreNodeTriggerMatch):
@@ -153,9 +154,9 @@ class ActionTriggerRuleTriggerDefinition(TriggerDefinition):
             workflow = ExecuteWorkflow(
                 workflow=ACTION_RUN_GENERATOR,
                 parameters={
-                    "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                    "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
                     "generator_definition_id": trigger_rule.action.generator_id,
-                    "node_ids": ["{{ event.resource['infrahub.node.id'] }}"],
+                    "node_ids": [jinja_parameter("{{ event.resource['infrahub.node.id'] }}")],
                     "context": {
                         "__prefect_kind": "json",
                         "value": {
@@ -174,9 +175,9 @@ class ActionTriggerRuleTriggerDefinition(TriggerDefinition):
             workflow = ExecuteWorkflow(
                 workflow=flow,
                 parameters={
-                    "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                    "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
                     "group_id": trigger_rule.action.group_id,
-                    "node_id": "{{ event.resource['infrahub.node.id'] }}",
+                    "node_id": jinja_parameter("{{ event.resource['infrahub.node.id'] }}"),
                     "context": {
                         "__prefect_kind": "json",
                         "value": {
@@ -217,7 +218,7 @@ class ActionTriggerRuleTriggerDefinition(TriggerDefinition):
             workflow = ExecuteWorkflow(
                 workflow=ACTION_RUN_GENERATOR_GROUP_EVENT,
                 parameters={
-                    "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                    "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
                     "generator_definition_id": trigger_rule.action.generator_id,
                     "members": {
                         "__prefect_kind": "json",

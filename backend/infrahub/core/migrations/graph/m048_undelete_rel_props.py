@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.migrations.graph.m041_deleted_dup_edges import DeleteDuplicatedRelationshipEdges
-from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
@@ -11,8 +11,7 @@ if TYPE_CHECKING:
 
 
 class UndeleteRelationshipProperties(Query):
-    """
-    Find Relationship vertices that are missing IS_VISIBLE and/or IS_PROTECTED edges linking them to Boolean vertices
+    """Find Relationship vertices that are missing IS_VISIBLE and/or IS_PROTECTED edges linking them to Boolean vertices.
 
     Use the existing IS_RELATED edges to determine when the IS_VISIBLE/IS_PROTECTED edges should exist on each branch
     and add the missing edges
@@ -131,13 +130,13 @@ CALL (rel, latest_deleted_edge, has_protected) {
 
 
 class Migration048(ArbitraryMigration):
-    """
-    Fix Relationship vertices that are missing IS_VISIBLE and/or IS_PROTECTED edges.
+    """Fix Relationship vertices that are missing IS_VISIBLE and/or IS_PROTECTED edges.
 
     This can happen due to a bug in Migration041 that deleted these edges incorrectly.
     """
 
     name: str = "048_undelete_rel_props"
+    description: str = "N/A"
     minimum_version: int = 47
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
@@ -146,7 +145,7 @@ class Migration048(ArbitraryMigration):
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db
         at = migration_input.at
-        console = get_migration_console()
+        console = migration_input.console
 
         console.log("Deleting duplicate edges for all Relationships", end="...")
         delete_duplicate_edges_query = await DeleteDuplicatedRelationshipEdges.init(

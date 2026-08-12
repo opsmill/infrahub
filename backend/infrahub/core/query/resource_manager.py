@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any, Generator, Unpack
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RelationshipStatus
-from infrahub.core.query import Query, QueryResult, QueryType
+from infrahub.core.query import Query, QueryInitKwargs, QueryResult, QueryType
 
 if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPool
@@ -18,14 +18,6 @@ class NumberPoolIdentifierData:
 
     value: int
     identifier: str
-
-    @classmethod
-    def from_db(cls, result: QueryResult) -> NumberPoolIdentifierData:
-        """Convert raw QueryResult to typed dataclass."""
-        return cls(
-            value=result.get_as_type("value", return_type=int),
-            identifier=result.get_as_type("identifier", return_type=str),
-        )
 
 
 @dataclass(frozen=True)
@@ -60,14 +52,8 @@ class NumberPoolAllocatedResult:
     value: int
     """The allocated number value."""
 
-    @classmethod
-    def from_db(cls, result: QueryResult) -> NumberPoolAllocatedResult:
-        """Convert raw QueryResult to typed dataclass."""
-        return cls(
-            id=result.get_as_type("id", str),
-            branch=result.get_as_type("branch", str),
-            value=result.get_as_type("value", int),
-        )
+    identifier: str
+    """Identifier used for the reservation."""
 
 
 @dataclass(frozen=True)
@@ -93,14 +79,14 @@ class IPAddressPoolGetIdentifiers(Query):
         self,
         pool_id: str,
         allocated: list[str],
-        **kwargs: dict[str, Any],
+        **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
         self.addresses = allocated
 
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["addresses"] = self.addresses
 
@@ -116,6 +102,7 @@ class IPAddressPoolGetIdentifiers(Query):
 
         Returns:
             List of PoolIdentifierResult containing allocation and identifier data.
+
         """
         return [PoolIdentifierResult.from_db(result) for result in self.get_results()]
 
@@ -128,14 +115,14 @@ class IPAddressPoolGetReserved(Query):
         self,
         pool_id: str,
         identifier: str,
-        **kwargs: dict[str, Any],
+        **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
         self.identifier = identifier
 
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["identifier"] = self.identifier
 
@@ -156,15 +143,15 @@ class IPAddressPoolSetReserved(Query):
         pool_id: str,
         address_id: str,
         identifier: str,
-        **kwargs: dict[str, Any],
+        **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
         self.address_id = address_id
         self.identifier = identifier
 
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["address_id"] = self.address_id
         self.params["identifier"] = self.identifier
@@ -195,13 +182,13 @@ class NumberPoolGetAllocated(Query):
     def __init__(
         self,
         pool: CoreNumberPool,
-        **kwargs: dict[str, Any],
+        **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
 
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["node_attribute"] = self.pool.node_attribute.value
         self.params["start_range"] = self.pool.start_range.value
         self.params["end_range"] = self.pool.end_range.value
@@ -214,14 +201,26 @@ class NumberPoolGetAllocated(Query):
 
         query = """
         MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]-(a:Attribute {name: $node_attribute})-[hv:HAS_VALUE]-(av:AttributeValueIndexed)
-        MATCH (a)-[hs:HAS_SOURCE]-(pool:%(number_pool_kind)s)
+        MATCH (a)-[hs:HAS_SOURCE]-(pool:%(number_pool_kind)s)-[ir:IS_RESERVED]->(av)
+        CALL (a, pool) {
+            MATCH (a)-[hs_int:HAS_SOURCE]->(pool)
+            WHERE hs_int.status = "active"
+                AND hs_int.to IS NULL
+                AND NOT EXISTS {
+                    MATCH (a)-[hs_deleted:HAS_SOURCE {branch: hs_int.branch, status: "deleted"}]->(pool)
+                    WHERE hs_deleted.from > hs_int.from
+                }
+            RETURN true AS hs_active
+            LIMIT 1
+        }
+        WITH n, ha, a, hv, av, hs, pool, ir, hs_active
         WHERE
-            pool.uuid = $pool_id
+            hs_active = TRUE
+            AND pool.uuid = $pool_id
             AND av.value >= $start_range and av.value <= $end_range
             AND all(r in [ha, hv, hs] WHERE (%(branch_filter)s))
             AND ha.status = "active"
             AND hv.status = "active"
-            AND hs.status = "active"
         """ % {
             "node": self.pool.node.value,
             "number_pool_kind": InfrahubKind.NUMBERPOOL,
@@ -229,7 +228,12 @@ class NumberPoolGetAllocated(Query):
         }
         self.add_to_query(query)
 
-        self.return_labels = ["n.uuid as id", "hv.branch as branch", "av.value as value"]
+        self.return_labels = [
+            "DISTINCT n.uuid as id",
+            "hv.branch as branch",
+            "av.value as value",
+            "ir.identifier as identifier",
+        ]
         self.order_by = ["av.value"]
 
     def get_data(self) -> list[NumberPoolAllocatedResult]:
@@ -237,8 +241,17 @@ class NumberPoolGetAllocated(Query):
 
         Returns:
             List of NumberPoolAllocatedResult containing allocated number info.
+
         """
-        return [NumberPoolAllocatedResult.from_db(result) for result in self.get_results()]
+        return [
+            NumberPoolAllocatedResult(
+                id=result.get_as_type("id", str),
+                branch=result.get_as_type("branch", str),
+                value=result.get_as_type("value", int),
+                identifier=result.get_as_type("identifier", str),
+            )
+            for result in self.get_results()
+        ]
 
 
 class NumberPoolGetReserved(Query):
@@ -249,14 +262,14 @@ class NumberPoolGetReserved(Query):
         self,
         pool_id: str,
         identifier: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
         self.identifier = identifier
 
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["identifier"] = self.identifier
 
@@ -290,6 +303,7 @@ class NumberPoolGetReserved(Query):
 
         Returns:
             The reserved integer value, or None if no reservation exists.
+
         """
         result = self.get_result()
         if result:
@@ -301,21 +315,30 @@ class NumberPoolGetReserved(Query):
 
         Returns:
             List of NumberPoolIdentifierData containing value and identifier.
+
         """
-        return [NumberPoolIdentifierData.from_db(result) for result in self.get_results()]
+        return [
+            NumberPoolIdentifierData(
+                value=result.get_as_type("value", return_type=int),
+                identifier=result.get_as_type("identifier", return_type=str),
+            )
+            for result in self.get_results()
+        ]
 
     def get_reservations(self) -> Generator[NumberPoolIdentifierData]:
         """Yield reservations as typed dataclass instances.
 
         Yields:
             NumberPoolIdentifierData for each reservation.
+
         """
         yield from self.get_data()
 
 
 class PoolChangeReserved(Query):
     """Change the identifier on all pools.
-    This is useful when a node is being converted to a different type and its ID has changed
+
+    This is useful when a node is being converted to a different type and its ID has changed.
     """
 
     name = "pool_change_reserved"
@@ -325,14 +348,14 @@ class PoolChangeReserved(Query):
         self,
         existing_identifier: str,
         new_identifier: str,
-        **kwargs: dict[str, Any],
+        **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.existing_identifier = existing_identifier
         self.new_identifier = new_identifier
 
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["new_identifier"] = self.new_identifier
         self.params["existing_identifier"] = self.existing_identifier
         self.params["at"] = self.at.to_string()
@@ -381,13 +404,13 @@ class NumberPoolGetUsed(Query):
     def __init__(
         self,
         pool: CoreNumberPool,
-        **kwargs: dict[str, Any],
+        **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
 
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool.get_id()
         self.params["start_range"] = self.pool.start_range.value
         self.params["end_range"] = self.pool.end_range.value
@@ -431,9 +454,13 @@ class NumberPoolGetUsed(Query):
 
         Yields:
             NumberPoolIdentifierData for each used value in the pool.
+
         """
         for result in self.get_results():
-            yield NumberPoolIdentifierData.from_db(result)
+            yield NumberPoolIdentifierData(
+                value=result.get_as_type("value", return_type=int),
+                identifier=result.get_as_type("identifier", return_type=str),
+            )
 
 
 class NumberPoolGetFree(Query):
@@ -445,15 +472,15 @@ class NumberPoolGetFree(Query):
         pool: CoreNumberPool,
         min_value: int | None = None,
         max_value: int | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
         self.min_value = min_value
         self.max_value = max_value
 
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool.get_id()
         # Use min_value/max_value if provided, otherwise use pool's start_range/end_range
         self.params["start_range"] = self.min_value if self.min_value is not None else self.pool.start_range.value
@@ -516,6 +543,7 @@ class NumberPoolGetFree(Query):
 
         Returns:
             The free number if found, None if pool is exhausted in queried range.
+
         """
         result_data = self.get_free_data()
         if result_data is None:
@@ -541,15 +569,15 @@ class NumberPoolSetReserved(Query):
         pool_id: str,
         reserved: int,
         identifier: str,
-        **kwargs: dict[str, Any],
+        **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
         self.reserved = reserved
         self.identifier = identifier
 
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["reserved"] = self.reserved
         self.params["identifier"] = self.identifier
@@ -583,14 +611,14 @@ class PrefixPoolGetIdentifiers(Query):
         self,
         pool_id: str,
         allocated: list[str],
-        **kwargs: dict[str, Any],
+        **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
         self.prefixes = allocated
 
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["prefixes"] = self.prefixes
 
@@ -606,6 +634,7 @@ class PrefixPoolGetIdentifiers(Query):
 
         Returns:
             List of PoolIdentifierResult containing allocation and identifier data.
+
         """
         return [PoolIdentifierResult.from_db(result) for result in self.get_results()]
 
@@ -618,14 +647,14 @@ class PrefixPoolGetReserved(Query):
         self,
         pool_id: str,
         identifier: str,
-        **kwargs: dict[str, Any],
+        **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
         self.identifier = identifier
 
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["identifier"] = self.identifier
 
@@ -646,15 +675,15 @@ class PrefixPoolSetReserved(Query):
         pool_id: str,
         prefix_id: str,
         identifier: str,
-        **kwargs: dict[str, Any],
+        **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
         self.prefix_id = prefix_id
         self.identifier = identifier
 
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["prefix_id"] = self.prefix_id
         self.params["identifier"] = self.identifier

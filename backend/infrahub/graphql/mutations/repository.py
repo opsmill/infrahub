@@ -12,6 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
+from infrahub.exceptions import ValidationError
 from infrahub.git.models import (
     GitReadOnlyRepositoryImportCommit,
     GitRepositoryImportObjects,
@@ -169,7 +170,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
 
 
 def cleanup_payload(data: InputObjectType | dict[str, Any]) -> None:
-    """If the input payload contains an http URL that doesn't end in .git it will be added to the payload"""
+    """If the input payload contains an http URL that doesn't end in .git it will be added to the payload."""
     http_without_dotgit = r"^(https?://)(?!.*\.git$).*"
     if (
         data.get("location")
@@ -213,7 +214,9 @@ class ProcessRepository(Mutation):
             infrahub_branch_name=branch.name,
         )
         workflow = await graphql_context.active_service.workflow.submit_workflow(
-            workflow=GIT_REPOSITORIES_IMPORT_OBJECTS, context=graphql_context.get_context(), parameters={"model": model}
+            workflow=GIT_REPOSITORIES_IMPORT_OBJECTS,
+            context=graphql_context.get_context(),
+            parameters={"model": model},
         )
         task = {"id": workflow.id}
         return cls(ok=True, task=task)
@@ -249,6 +252,12 @@ class ReadOnlyRepositoryImportLastCommit(Mutation):
             id=str(data.id),
             branch=branch,
         )
+
+        if repo.get_kind() != InfrahubKind.READONLYREPOSITORY:
+            raise ValidationError(
+                f"Node {data.id} is a {repo.get_kind()}, not a {InfrahubKind.READONLYREPOSITORY}. "
+                "Import latest commit is only supported for read-only repositories."
+            )
 
         model = GitReadOnlyRepositoryImportCommit(
             repository_id=repository_id,
@@ -298,5 +307,11 @@ class ValidateRepositoryConnectivity(Mutation):
             response = await graphql_context.service.message_bus.rpc(
                 message=message, response_class=GitRepositoryConnectivityResponse
             )
+            # Persist the outcome so the repository's operational status reflects the connectivity
+            # check rather than remaining stuck on its last-known value.
+            repo.operational_status.value = response.data.operational_status
+            # Scope the write to operational_status: the node was loaded before the connectivity
+            # RPC, so persisting every field could clobber concurrent edits with stale values.
+            await cast("Node", repo).save(db=graphql_context.db, fields=["operational_status"])
 
         return {"ok": response.data.success, "message": response.data.message}

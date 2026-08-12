@@ -133,15 +133,13 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         await megane.new(db=db, name="Megane", description="Renault Megane", color="#c93420", owner=starbuck)
         await megane.save(db=db)
 
-        objs = {
+        return {
             "starbuck": starbuck.id,
             "gaius": gaius.id,
             "boomer": boomer.id,
             "caprica": caprica.id,
             "megane": megane.id,
         }
-
-        return objs
 
     @pytest.fixture(scope="class")
     def schema_01_cylon_robot(self, schema_cylon_base: dict[str, Any]) -> dict[str, Any]:

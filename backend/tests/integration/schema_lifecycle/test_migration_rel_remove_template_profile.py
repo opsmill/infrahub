@@ -43,7 +43,8 @@ state = BranchState()
 
 
 class TestSchemaLifecycleRelRemoveDefaultBranchTemplateProfile(TestSchemaLifecycleBase):
-    """Remove relationships from a schema with generate_template=True and generate_profile=True
+    """Remove relationships from a schema with generate_template=True and generate_profile=True.
+
     on the default branch, then rebase a user branch, and confirm Template/Profile schemas
     and instances are correctly updated.
 

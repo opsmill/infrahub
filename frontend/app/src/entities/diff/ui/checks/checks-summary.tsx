@@ -1,3 +1,4 @@
+import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
@@ -7,15 +8,11 @@ import { Retry } from "@/shared/components/buttons/retry";
 import { PieChart } from "@/shared/components/display/pie-chart";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
-import {
-  CHECKS_LABEL,
-  PROPOSED_CHANGES_VALIDATOR_OBJECT,
-  VALIDATIONS_ENUM_MAP,
-} from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { VALIDATIONS_ENUM_MAP, VALIDATOR_OBJECT } from "@/entities/diff/domain/model/check";
+import { CHECKS_LABEL } from "@/entities/diff/ui/checks/checks-labels";
 import { proposedChangeValidatorsKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 import { useRunCheckMutation } from "@/entities/diff/ui/queries/run-check.mutation";
 import { getValidatorsStats } from "@/entities/proposed-changes/ui/checks";
@@ -36,7 +33,7 @@ export const ChecksSummary = (props: ChecksSummaryProps) => {
   const { isAuthenticated } = useAuth();
   const { mutate, isPending } = useRunCheckMutation();
 
-  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_VALIDATOR_OBJECT);
+  const schemaData = schemaList.find((s) => s.kind === VALIDATOR_OBJECT);
 
   const validatorKinds = schemaData?.used_by ?? [];
 
@@ -81,10 +78,10 @@ export const ChecksSummary = (props: ChecksSummaryProps) => {
       <div className="relative flex flex-col-reverse items-center">
         <div className="flex items-center justify-between p-2 lg:absolute lg:top-1/2 lg:-left-28 lg:-translate-y-1/2 lg:transform">
           <Button
-            onClick={() => handleRetry("all")}
-            disabled={!isAuthenticated}
+            onPress={() => handleRetry("all")}
+            isDisabled={!isAuthenticated}
             variant="ghost"
-            className="gap-1 hover:bg-neutral-200"
+            className="gap-1 data-hovered:bg-neutral-200"
           >
             Retry all
             <Retry isLoading={isPending || isLoading} isDisabled={isPending || isLoading} />

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
     name = "relationship_constraints_peer_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         peer_schema = db.schema.get(name=self.relationship_schema.peer, branch=self.branch, duplicate=False)
         allowed_peer_kinds = [peer_schema.kind]
         if isinstance(peer_schema, GenericSchema):
@@ -143,14 +143,14 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
         self.parent_relationship = parent_relationship
         self.peer_parent_relationship = peer_parent_relationship
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
         self.params["peer_relationship_id"] = self.relationship.identifier
         self.params["parent_relationship_id"] = self.parent_relationship.identifier
         self.params["peer_parent_relationship_id"] = self.peer_parent_relationship.identifier
 
-        parent_arrows = self.parent_relationship.get_query_arrows()
+        parent_arrows = self.get_query_arrows(direction=self.parent_relationship.direction)
         parent_match = (
             "MATCH (active_node)%(lstart)s[r1:IS_RELATED]%(lend)s"
             "(rel:Relationship { name: $parent_relationship_id })%(rstart)s[r2:IS_RELATED]%(rend)s(parent:Node)"
@@ -161,7 +161,7 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
             "rend": parent_arrows.right.end,
         }
 
-        peer_parent_arrows = self.relationship.get_query_arrows()
+        peer_parent_arrows = self.get_query_arrows(direction=self.relationship.direction)
         peer_match = (
             "MATCH (active_node)%(lstart)s[r1:IS_RELATED]%(lend)s"
             "(r:Relationship {name: $peer_relationship_id })%(rstart)s[r2:IS_RELATED]%(rend)s(peer:Node)"
@@ -172,7 +172,7 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
             "rend": peer_parent_arrows.right.end,
         }
 
-        peer_parent_arrows = self.peer_parent_relationship.get_query_arrows()
+        peer_parent_arrows = self.get_query_arrows(direction=self.peer_parent_relationship.direction)
         peer_parent_match = (
             "MATCH (peer:Node)%(lstart)s[r1:IS_RELATED]%(lend)s"
             "(r:Relationship {name: $peer_parent_relationship_id})%(rstart)s[r2:IS_RELATED]%(rend)s(peer_parent:Node)"

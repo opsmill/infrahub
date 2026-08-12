@@ -1,36 +1,41 @@
+import { Button, Popover, PopoverDialog, Tooltip } from "@infrahub/ui";
 import { DialogTrigger } from "react-aria-components";
 
-import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
+import { queryClient } from "@/shared/api/rest/client";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { BulkMutateGroups } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/bulk-mutate-groups";
-import { ToolbarButtonWithTooltip } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
-import { removeRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships";
-import type { NodeCore } from "@/entities/nodes/types";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+import { removeRelationships } from "@/entities/nodes/relationships/domain/use-cases/remove-relationships";
 
-export interface ToolBarRemoveFromGroupActionProps {
+export interface ToolbarRemoveFromGroupActionProps {
   selectedRows: Array<NodeCore>;
 }
 
-export function ToolBarRemoveFromGroupsAction({ selectedRows }: ToolBarRemoveFromGroupActionProps) {
+export function ToolbarRemoveFromGroupsAction({ selectedRows }: ToolbarRemoveFromGroupActionProps) {
   const { currentBranch } = useCurrentBranch();
   const { permission } = useObjectTableContext();
   const { isAllowed, message } = permission.update;
 
   if (!isAllowed) {
     return (
-      <ToolbarButtonWithTooltip variant="danger" isDisabled tooltipEnabled tooltipContent={message}>
-        Remove from groups
-      </ToolbarButtonWithTooltip>
+      <Tooltip message={message}>
+        <Button variant="danger-outline" size="xs" isDisabledAndFocusable>
+          Remove from groups
+        </Button>
+      </Tooltip>
     );
   }
 
   return (
     <DialogTrigger>
-      <ToolbarButtonWithTooltip variant="danger">Remove from groups</ToolbarButtonWithTooltip>
+      <Button variant="danger-outline" size="xs">
+        Remove from groups
+      </Button>
 
-      <Popover placement="top start">
+      <Popover placement="top start" className="bg-white">
         <PopoverDialog>
           {({ close }) => (
             <BulkMutateGroups
@@ -42,7 +47,10 @@ export function ToolBarRemoveFromGroupsAction({ selectedRows }: ToolBarRemoveFro
                   branchName: currentBranch.name,
                 });
               }}
-              onSuccess={close}
+              onSuccess={async () => {
+                await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+              }}
+              onClose={close}
               groupsQueryFilter={{ members__ids: selectedRows.map((row) => row.id) }}
             />
           )}

@@ -1,6 +1,9 @@
 import * as R from "remeda";
 
-import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import {
+  DEFAULT_FORM_FIELD_VALUE,
+  FROM_RESOURCE_POOL_SUFFIX,
+} from "@/shared/components/form/constants";
 import type { ProfileData } from "@/shared/components/form/object-form";
 import type {
   AttributeValueFromPool,
@@ -9,17 +12,24 @@ import type {
   AttributeValueFromUser,
   FormAttributeValue,
 } from "@/shared/components/form/type";
+import { makePoolSource } from "@/shared/components/form/utils/make-pool-source";
 
-import type { AttributeType, FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeAttributeWithMetadata, NodeCore, NodeObject } from "@/entities/nodes/types";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
-import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
+import type { FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
+import type {
+  NodeAttributeWithMetadata,
+  NodeCore,
+  NodeObject,
+  NodeRelationshipOneWithMetadata,
+} from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { isPoolSchema } from "@/entities/schema/domain/rules/is-pool-schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
+import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export type GetFieldDefaultValue = {
   fieldSchema: FieldSchema;
-  initialObject?: Record<string, AttributeType>;
+  initialObject?: Record<string, NodeAttributeWithMetadata>;
   objectTemplate?: NodeObject | null;
   profiles?: Array<ProfileData>;
   isFilterForm?: boolean;
@@ -41,6 +51,7 @@ export const getFieldDefaultValue = ({
     getCurrentFieldValue(fieldSchema.name, initialObject) ??
     getDefaultValueFromTemplate(fieldSchema.name, objectTemplate) ??
     getDefaultValueFromProfiles(fieldSchema.name, profiles) ??
+    getDefaultValueFromPoolRelationship(fieldSchema.name, initialObject) ??
     getDefaultValueFromPool(fieldSchema.name, initialObject) ??
     getDefaultValueFromSchema(fieldSchema) ??
     DEFAULT_FORM_FIELD_VALUE
@@ -49,8 +60,8 @@ export const getFieldDefaultValue = ({
 
 export const getCurrentFieldValue = (
   fieldName: string,
-  objectData?: Record<string, AttributeType>
-): AttributeValueFromUser | AttributeValueFromTemplate | null => {
+  objectData?: Record<string, NodeAttributeWithMetadata>
+): AttributeValueFromUser | AttributeValueFromPool | AttributeValueFromTemplate | null => {
   if (!objectData) return null;
 
   const currentField = objectData[fieldName];
@@ -93,10 +104,12 @@ export const getCurrentFieldValue = (
     }
   }
 
-  return {
-    source: { type: "user" },
-    value: currentField.value,
-  };
+  return (
+    getDefaultValueFromPoolRelationship(fieldName, objectData) ?? {
+      source: { type: "user" },
+      value: currentField.value,
+    }
+  );
 };
 
 const getDefaultValueFromProfiles = (
@@ -112,7 +125,7 @@ const getDefaultValueFromProfiles = (
 
   const profileWithDefaultValueForField = R.find(orderedProfiles, (profile) => {
     const profileFieldData = profile[fieldName] as
-      | Pick<AttributeType, "value" | "__typename">
+      | Pick<NodeAttributeWithMetadata, "value">
       | undefined;
 
     if (!profileFieldData) return false;
@@ -128,38 +141,57 @@ const getDefaultValueFromProfiles = (
       label: getNodeLabel(profileWithDefaultValueForField),
       kind: profileWithDefaultValueForField.__typename,
     },
-    value: (
-      profileWithDefaultValueForField[fieldName] as Pick<AttributeType, "value" | "__typename">
-    ).value,
+    value: (profileWithDefaultValueForField[fieldName] as Pick<NodeAttributeWithMetadata, "value">)
+      .value as AttributeValueFromProfile["value"],
+  };
+};
+
+const getDefaultValueFromPoolRelationship = (
+  fieldName: string,
+  objectData?: Record<string, NodeAttributeWithMetadata>
+): AttributeValueFromPool | null => {
+  if (!objectData) return null;
+
+  const companionRelName = `${fieldName}${FROM_RESOURCE_POOL_SUFFIX}`;
+  const companionData = objectData[companionRelName] as NodeRelationshipOneWithMetadata | undefined;
+
+  if (!companionData?.node) return null;
+
+  const poolNode = companionData.node;
+
+  return {
+    source: makePoolSource({
+      id: poolNode.id,
+      label: getNodeLabel(poolNode),
+      kind: poolNode.__typename,
+    }),
+    value: { from_pool: { id: poolNode.id } },
   };
 };
 
 const getDefaultValueFromPool = (
   fieldName: string,
-  objectData?: Record<string, AttributeType>
+  objectData?: Record<string, NodeAttributeWithMetadata>
 ): AttributeValueFromPool | null => {
   if (!objectData) return null;
 
   const currentField = objectData[fieldName];
   if (!currentField) return null;
 
-  if (!currentField.source?.__typename?.match(/Pool$/g)) {
+  const source = currentField.source;
+  if (!source || !("__typename" in source) || !source.__typename?.match(/Pool$/g)) {
     return null;
   }
 
-  const pool = currentField.source;
-
-  if (!pool) return null;
-  if (!pool.id) return null;
+  if (!source.id) return null;
 
   return {
-    source: {
-      type: "pool",
-      id: pool.id,
-      label: pool.display_label || null,
-      kind: pool.__typename,
-    },
-    value: currentField.value,
+    source: makePoolSource({
+      id: source.id,
+      label: source.display_label || null,
+      kind: source.__typename,
+    }),
+    value: currentField.value as unknown as AttributeValueFromPool["value"],
   };
 };
 
@@ -178,17 +210,28 @@ export const getDefaultValueFromTemplate = (
       const { schema: sourceSchema } = getSchema(currentField.source.__typename);
       if (sourceSchema && isPoolSchema(sourceSchema)) {
         return {
-          source: {
-            type: "pool",
+          source: makePoolSource({
             fromTemplate: true,
             id: currentField.source.id,
             label: getNodeLabel(currentField.source),
             kind: currentField.source.__typename,
-          },
+          }),
           value: { from_pool: { id: currentField.source.id } },
         };
       }
     }
+
+    const poolFromRelationship = getDefaultValueFromPoolRelationship(
+      fieldName,
+      objectTemplate as unknown as Record<string, NodeAttributeWithMetadata>
+    );
+    if (poolFromRelationship) {
+      return {
+        ...poolFromRelationship,
+        source: { ...poolFromRelationship.source, fromTemplate: true },
+      };
+    }
+
     return null;
   }
 
@@ -208,17 +251,12 @@ export const getDefaultValueFromTemplate = (
 export const getDefaultValueFromSchema = (
   fieldSchema: FieldSchema
 ): AttributeValueFromUser | null => {
-  if (fieldSchema.kind === "Boolean" || fieldSchema.kind === "Checkbox") {
-    return {
-      source: typeof fieldSchema.default_value === "boolean" ? { type: "schema" } : null,
-      value: !!fieldSchema.default_value,
-    };
+  if (isRelationshipSchema(fieldSchema)) {
+    return null;
   }
 
-  return "default_value" in fieldSchema
-    ? {
-        source: { type: "schema" },
-        value: fieldSchema.default_value as AttributeValueFromUser["value"],
-      }
-    : null;
+  return {
+    source: { type: "schema" },
+    value: fieldSchema.default_value as AttributeValueFromUser["value"],
+  };
 };

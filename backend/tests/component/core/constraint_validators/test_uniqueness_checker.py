@@ -6,35 +6,34 @@ from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import MainSchemaTypes, SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
-from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.database import InfrahubDatabase
 
 
 class TestUniquenessChecker:
-    async def __call_system_under_test(self, db, branch, schema):
-        checker = UniquenessChecker(db, branch)
+    async def __call_system_under_test(self, db: InfrahubDatabase, branch: Branch, schema: MainSchemaTypes):
+        checker = UniquenessChecker(db)
         schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind=schema.kind)
         request = SchemaConstraintValidatorRequest(
             branch=branch,
             constraint_name="node.uniqueness_constraints.update",
             node_schema=schema,
             schema_path=schema_path,
-            schema_branch=SchemaBranch(cache={}),
+            schema_branch=db.schema.get_schema_branch(name=branch.name),
         )
         return await checker.check(request)
 
     async def test_no_violations(
         self,
         db: InfrahubDatabase,
-        car_accord_main,
-        car_camry_main,
-        car_volt_main,
-        car_yaris_main,
-        car_prius_main,
+        car_accord_main: Node,
+        car_camry_main: Node,
+        car_volt_main: Node,
+        car_yaris_main: Node,
+        car_prius_main: Node,
         branch: Branch,
     ) -> None:
         schema = registry.schema.get("TestCar", branch=branch)
@@ -47,8 +46,8 @@ class TestUniquenessChecker:
     async def test_one_violation(
         self,
         db: InfrahubDatabase,
-        car_accord_main,
-        car_prius_main,
+        car_accord_main: Node,
+        car_prius_main: Node,
         branch: Branch,
         default_branch: Branch,
     ) -> None:
@@ -91,8 +90,8 @@ class TestUniquenessChecker:
     async def test_deleted_node_ignored(
         self,
         db: InfrahubDatabase,
-        car_accord_main,
-        car_prius_main,
+        car_accord_main: Node,
+        car_prius_main: Node,
         branch: Branch,
     ) -> None:
         node_to_delete = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
@@ -108,8 +107,8 @@ class TestUniquenessChecker:
     async def test_get_latest_update(
         self,
         db: InfrahubDatabase,
-        car_accord_main,
-        car_prius_main,
+        car_accord_main: Node,
+        car_prius_main: Node,
         branch: Branch,
     ) -> None:
         car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
@@ -125,10 +124,10 @@ class TestUniquenessChecker:
     async def test_combined_uniqueness_constraint_no_violations(
         self,
         db: InfrahubDatabase,
-        car_accord_main,
-        car_prius_main,
-        car_volt_main,
-        car_yaris_main,
+        car_accord_main: Node,
+        car_prius_main: Node,
+        car_volt_main: Node,
+        car_yaris_main: Node,
         branch: Branch,
     ) -> None:
         cars_to_update = await NodeManager.get_many(
@@ -149,11 +148,11 @@ class TestUniquenessChecker:
     async def test_combined_uniqueness_constraint_attribute_violations(
         self,
         db: InfrahubDatabase,
-        car_accord_main,
-        car_prius_main,
-        car_volt_main,
-        car_yaris_main,
-        person_john_main,
+        car_accord_main: Node,
+        car_prius_main: Node,
+        car_volt_main: Node,
+        car_yaris_main: Node,
+        person_john_main: Node,
         default_branch: Branch,
         branch: Branch,
     ) -> None:
@@ -229,11 +228,11 @@ class TestUniquenessChecker:
     async def test_combined_uniqueness_constraints_with_violations(
         self,
         db: InfrahubDatabase,
-        car_accord_main,
-        car_prius_main,
-        car_volt_main,
-        car_yaris_main,
-        person_jane_main,
+        car_accord_main: Node,
+        car_prius_main: Node,
+        car_volt_main: Node,
+        car_yaris_main: Node,
+        person_jane_main: Node,
         branch: Branch,
         default_branch: Branch,
     ) -> None:
@@ -314,7 +313,7 @@ class TestUniquenessChecker:
     async def test_generic_unique_attribute_violations(
         self,
         db: InfrahubDatabase,
-        car_person_generics_data_simple,
+        car_person_generics_data_simple: dict[str, Node],
         branch: Branch,
         default_branch: Branch,
     ) -> None:
@@ -361,7 +360,7 @@ class TestUniquenessChecker:
     async def test_generic_unique_attribute_multiple_relationship_violations_to_same_node(
         self,
         db: InfrahubDatabase,
-        car_person_generics_data_simple,
+        car_person_generics_data_simple: dict[str, Node],
         branch: Branch,
         default_branch: Branch,
     ) -> None:
@@ -444,7 +443,7 @@ class TestUniquenessChecker:
     async def test_generic_unique_constraint_relationship_with_and_without_attr(
         self,
         db: InfrahubDatabase,
-        car_person_generics_data_simple,
+        car_person_generics_data_simple: dict[str, Node],
         branch: Branch,
         default_branch: Branch,
     ) -> None:
@@ -521,10 +520,10 @@ class TestUniquenessChecker:
     async def test_relationship_violation_wo_attribute(
         self,
         db: InfrahubDatabase,
-        car_accord_main,
-        car_prius_main,
-        car_camry_main,
-        person_john_main,
+        car_accord_main: Node,
+        car_prius_main: Node,
+        car_camry_main: Node,
+        person_john_main: Node,
         branch: Branch,
         default_branch: Branch,
     ) -> None:
@@ -581,10 +580,10 @@ class TestUniquenessChecker:
     async def test_relationship_violation_wo_attribute_schema_update_on_branch(
         self,
         db: InfrahubDatabase,
-        car_accord_main,
-        car_prius_main,
-        car_camry_main,
-        person_john_main,
+        car_accord_main: Node,
+        car_prius_main: Node,
+        car_camry_main: Node,
+        person_john_main: Node,
         branch: Branch,
         default_branch: Branch,
     ) -> None:
@@ -658,9 +657,9 @@ class TestUniquenessChecker:
     async def test_relationship_no_violation_with_overlaps(
         self,
         db: InfrahubDatabase,
-        car_accord_main,
-        car_prius_main,
-        car_camry_main,
+        car_accord_main: Node,
+        car_prius_main: Node,
+        car_camry_main: Node,
         default_branch: Branch,
     ) -> None:
         car_accord_main.color.value = "#111111"
@@ -681,11 +680,11 @@ class TestUniquenessChecker:
     async def test_relationship_violations_with_overlaps(
         self,
         db: InfrahubDatabase,
-        car_accord_main,
-        car_prius_main,
-        car_camry_main,
-        person_john_main,
-        person_jane_main,
+        car_accord_main: Node,
+        car_prius_main: Node,
+        car_camry_main: Node,
+        person_john_main: Node,
+        person_jane_main: Node,
         branch: Branch,
         default_branch: Branch,
     ) -> None:

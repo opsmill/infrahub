@@ -238,8 +238,7 @@ async def diff_branch(db: InfrahubDatabase, default_branch: Branch) -> Branch:
 @pytest.fixture
 async def diff_repository(db: InfrahubDatabase, diff_branch: Branch) -> DiffRepository:
     component_registry = get_component_registry()
-    repository = await component_registry.get_component(DiffRepository, db=db, branch=diff_branch)
-    return repository
+    return await component_registry.get_component(DiffRepository, db=db, branch=diff_branch)
 
 
 @pytest.fixture

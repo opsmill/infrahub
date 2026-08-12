@@ -27,7 +27,7 @@ async def test_set_generate_profile_success(
         constraint_name="node.generate_profile.update",
         node_schema=updated_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     checker = NodeGenerateProfileChecker(db=db, branch=branch)
@@ -48,7 +48,7 @@ async def test_set_generate_profile_success_generics(
         constraint_name="node.generate_profile.update",
         node_schema=updated_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestAnimal"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     checker = NodeGenerateProfileChecker(db=db, branch=branch)
@@ -72,7 +72,7 @@ async def test_set_generate_profile_false_fail(
         constraint_name="node.generate_profile.update",
         node_schema=updated_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     checker = NodeGenerateProfileChecker(db=db, branch=branch)
@@ -100,7 +100,7 @@ async def test_set_generate_profile_false_fail_generic(
         constraint_name="node.generate_profile.update",
         node_schema=updated_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestAnimal"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     checker = NodeGenerateProfileChecker(db=db, branch=branch)
@@ -130,7 +130,7 @@ async def test_set_generate_profile_false_branch_delete_profile_success(
         constraint_name="node.generate_profile.update",
         node_schema=updated_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     checker = NodeGenerateProfileChecker(db=db, branch=branch)

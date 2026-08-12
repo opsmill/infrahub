@@ -1,0 +1,123 @@
+---
+title: Build a generator
+---
+
+# Build a generator
+
+A Generator queries data and creates new nodes and relationships from the result. The steps below cover how to create one.
+
+For conceptual background, see [About Generators](./overview).
+For a step-by-step walkthrough with a running example, see [Build your first generator](../academy/tutorials/generators/build-your-first-generator) in the Academy tutorials.
+
+> Assumes a working Infrahub instance, a connected Git repository, and `infrahubctl` configured locally. See [Installation](../deploy-manage/install-configure/install/overview) and [Connect a repository](../git-integration/connect-repository) if you're starting fresh.
+
+## Define the target schema node
+
+Create a schema node for the object kind the Generator operates on. Each instance of this kind becomes a potential Generator target. See [Understanding Schemas](../schema/overview) for syntax.
+
+## Create the target group
+
+Add a `CoreStandardGroup` and add target objects to it as members. The Generator runs once per group member, and members can be any kind you want the Generator to act on. See [Groups](../groups/overview) for managing membership.
+
+## Write the GraphQL query
+
+Create a `.gql` file with a query that fetches the data each Generator run needs. Variables in the query map to per-target attributes via the Generator's `parameters` field.
+
+```graphql
+# queries/<your_query>.gql
+query MyQuery($name: String!) {
+  YourKind(name__value: $name) {
+    edges {
+      node {
+        # ... the fields your Generator needs
+      }
+    }
+  }
+}
+```
+
+For reusable query fragments shared across Generators or Transformations, see [GraphQL fragments](../development-resources/graphql-fragments).
+
+## Implement the Generator class
+
+Create a Python file under `generators/`:
+
+```python title="generators/your_generator.py"
+from infrahub_sdk.generator import InfrahubGenerator
+
+class YourGenerator(InfrahubGenerator):
+    async def generate(self, data: dict) -> None:
+        # Read per-target data from the response
+        # Create or update objects via self.client
+        ...
+```
+
+The class must inherit from `InfrahubGenerator` and implement an async `generate()` method. Whether you read from `data` dictionary or `self.nodes` depends on `convert_query_response` in the Generator definition — see [Query response modes](./overview#query-response-modes).
+
+## Register in `.infrahub.yml`
+
+Add the Generator definition to your repository's `.infrahub.yml`:
+
+```yaml
+generator_definitions:
+  - name: <your_generator>
+    file_path: "generators/<your_generator>.py"
+    targets: <your_target_group>
+    convert_query_response: <false|true>
+    query: <your_query>
+    class_name: YourGenerator
+    parameters:
+      <query_var>: "<attribute_path>"
+
+queries:
+  - name: <your_query>
+    file_path: "queries/<your_query>.gql"
+```
+
+The `parameters` mapping defines how Infrahub extracts variables from each target object in the target group. Use `name__value` for a direct attribute or `relationship__name__value` for a related object's attribute. Only cardinality-one relationships are supported in parameter paths.
+
+For full `.infrahub.yml` syntax, see [infrahub.yml configuration](../git-integration/infrahub-yml).
+
+## Verify the configuration
+
+```shell
+infrahubctl generator --list
+```
+
+Expected output:
+
+```text
+Generators defined in repository: 1
+<your_generator> (generators/<your_generator>.py::YourGenerator) Target: <your_target_group>
+```
+
+## Test locally
+
+Run the Generator against a single target:
+
+```shell
+infrahubctl generator <your_generator> --branch=<your_branch> <query_var>=<value>
+```
+
+This executes the Generator locally on your machine. Verify the Generator produces the expected objects in Infrahub.
+
+## Deploy to Infrahub
+
+Commit your changes to the repository and push them up to your remote. The Generator definition registers with Infrahub when the repository syncs.
+
+## Run the Generator
+
+Generators can run in several ways:
+
+- **Manual trigger** — UI: Actions → Generator Definitions → Run
+- **Proposed Changes pipeline** — runs automatically when a proposed change affects target group members
+- **Events and Actions** — configurable rules that trigger on data changes (see [Rules & Actions](../events/overview))
+
+For per-target tracking, status, and selective re-runs, see [About Generators → Generator instances](./overview#generator-instances).
+
+## Related
+
+- [About Generators](./overview) — concept, architecture, parallelism, and instance tracking
+- [Modular generators](./modular) — chaining Generators across layers
+- [Modular Generator best practices](./modular-best-practices) — patterns for production
+- [infrahub.yml configuration](../git-integration/infrahub-yml)

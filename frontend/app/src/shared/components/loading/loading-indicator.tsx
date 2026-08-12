@@ -1,4 +1,5 @@
-import { Spinner } from "@/shared/components/ui/spinner";
+import { Spinner } from "@infrahub/ui";
+
 import { classNames } from "@/shared/utils/common";
 
 export interface LoadingIndicatorProps

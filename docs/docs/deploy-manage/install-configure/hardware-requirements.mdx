@@ -1,0 +1,116 @@
+---
+title: Hardware requirements
+---
+
+import EnterpriseBadge from '@site/src/components/EnterpriseBadge';
+
+This page outlines the hardware requirements for running Infrahub, including minimum and recommended specifications, enterprise sizing, cloud provider machine types, task manager database storage, and a utility for benchmarking your system's performance.
+
+If you only want to try Infrahub, follow the [Quick Start](../../overview/quickstart.mdx).
+
+## General hardware requirements
+
+The system on which you want to run Infrahub should meet the following requirements:
+
+| Level       | CPU Cores | RAM  | Storage / database (Neo4j) |
+|-------------|-----------|------|----------------------------|
+| Minimum     | 6         | 12GB | SSD and/or >= 5000 IOPS    |
+| Recommended | 8         | 16GB | SSD and/or >= 5000 IOPS    |
+
+For cloud deployments, use at least the following machine types:
+
+| Cloud provider              | Machine type       |
+|-----------------------------|--------------------|
+| Google Cloud Platform       | c4d-standard-4     |
+| Amazon Web Services         | m8a.xlarge         |
+| Microsoft Azure             | Standard_D4as_v7   |
+| Oracle Cloud Infrastructure | VM.Standard.E6     |
+| Alibaba Cloud               | ecs.g9a.xlarge     |
+
+## Local development and evaluation
+
+To evaluate Infrahub or build a proof-of-value on a single machine, use the community docker-compose deployment. The requirements below apply to that setup, not to production.
+
+:::warning
+
+These are starting points, not a measured specification. Real resource use depends on your dataset size and pipeline concurrency. Validate against your own data with a load test — schema load, data import, and a proposed-change merge — before you treat any figure as a hard requirement.
+
+:::
+
+| Resource      | Minimum (light evaluation) | Recommended | Notes                                                                                                     |
+|---------------|----------------------------|-------------|----------------------------------------------------------------------------------------------------------|
+| RAM           | 8 GB                       | 16 GB       | Recommended matches the general requirements above.                                                       |
+| CPU           | 6 cores                    | 8 cores     | A proposed-change or merge pipeline uses several cores concurrently, so provision headroom.               |
+| Disk          | 20 GB                      | 40 GB       | SSD. Container images require 1.3 GB; data volumes grow with your data and graph history.                 |
+| Storage class | SSD                        | SSD         | Neo4j and PostgreSQL are latency-sensitive, so the storage class matters more than a specific IOPS target. |
+
+As your dataset grows, large merges and imports slow down on Community Edition — the signal that a single machine is no longer enough. For production scale and performance, see [Community vs enterprise](../../overview/community-vs-enterprise.mdx).
+
+## Task manager database (PostgreSQL) storage
+
+The storage figures in the tables above size the Neo4j graph database. The task manager (Prefect) keeps its own [PostgreSQL database](../../overview/architecture.mdx#task-manager), which you size separately.
+
+PostgreSQL storage grows with **activity, not with the amount of data stored in Infrahub**. It is driven by how busy the instance is — the number of open proposed changes, the volume of changes per day, task execution history, and events — not by how many objects (IP addresses, devices, services) you manage. An instance with a small dataset but heavy automation can use more PostgreSQL storage than a large but mostly static one.
+
+Use the following as starting points:
+
+| Instance type               | PostgreSQL storage |
+|-----------------------------|--------------------|
+| Local or one-off            | 8 GB               |
+| Long-running or development | 20 GB              |
+| Production                  | 100 GB             |
+
+Infrahub periodically prunes old activity logs, so storage usage tends to plateau rather than grow without bound. Monitor disk utilization over time and resize the volume as activity increases.
+
+For what the task manager database contains and how to back it up, see the [database backup overview](../maintain-upgrade/database-backup/overview.mdx). For the signals to watch in production, see the [FAQ](../../faq/faq.mdx).
+
+## Enterprise sizing <EnterpriseBadge />
+
+For enterprise deployments, use these guidelines:
+
+| Enterprise Product | CPU Cores | RAM  | Storage / database (Neo4j) |
+|--------------------|-----------|------|----------------------------|
+| Small              | 8         | 16GB | SSD and/or >= 5000 IOPS    |
+| Medium Data        | 16        | 32GB | SSD and/or >= 5000 IOPS    |
+| Medium Action      | 16        | 32GB | SSD and/or >= 5000 IOPS    |
+| Large Data         | 32        | 64GB | SSD and/or >= 5000 IOPS    |
+| Large Action       | 32        | 64GB | SSD and/or >= 5000 IOPS    |
+
+For detailed information about enterprise products and their features, see the [OpsMill pricing page](https://opsmill.com/pricing/).
+
+## Performance benchmark utility
+
+To evaluate your system's performance, use our benchmarking utility. It tests CPU, memory, and disk IOPS.
+
+:::note
+
+Even with the right amount of CPU cores and memory, other factors such as CPU speed can impact Infrahub performance.
+
+:::
+
+Run the tool using Docker:
+
+```shell title="❯ docker run --pull always --rm registry.opsmill.io/opsmill/bench"
+docker run --pull always --rm registry.opsmill.io/opsmill/bench
+```
+
+Sample output:
+
+```shell
+latest: Pulling from opsmill/bench
+09f376ebb190: Already exists
+6008598ecd4d: Already exists
+b70c7f4d3f19: Pull complete
+84e80b988953: Pull complete
+Digest: sha256:6f0031a0f61823cca7d319033087f80524eadffa87b1981b2e82d841ada12895
+Status: Downloaded newer image for registry.opsmill.io/opsmill/bench:latest
+Running Disk IOPS benchmark... hold on
+Running CPU/Memory benchmark... hold on
+
+Benchmark results:
+
+Memory: 15611 MB - Required: 8000 MB : OK
+CPU Perf: 2337 - Required: 1500 : OK
+Disk Read IOPS: 47742 - Required: 5000 : OK
+Disk Write IOPS: 15885 - Required: 5000 : OK
+```

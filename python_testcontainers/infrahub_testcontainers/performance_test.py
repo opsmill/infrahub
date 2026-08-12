@@ -3,16 +3,20 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
-from types import TracebackType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
-import pytest
 from typing_extensions import Self
 
 from .constants import PERFORMANCE_TEST_KIND, PERFORMANCE_TEST_VERSION
-from .helpers import InfrahubDockerCompose
 from .host import get_system_stats
+
+if TYPE_CHECKING:
+    from types import TracebackType
+
+    import pytest
+
+    from .helpers import InfrahubDockerCompose
 from .models import (
     ContextUnit,
     InfrahubActiveMeasurementItem,
@@ -20,6 +24,10 @@ from .models import (
     InfrahubResultContext,
     MeasurementDefinition,
 )
+
+# Bounded so that a stalled endpoint cannot hold the session open indefinitely, while still
+# allowing for a payload that grows with the length of the run.
+RESULTS_UPLOAD_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
 
 
 class InfrahubPerformanceTest:
@@ -58,10 +66,18 @@ class InfrahubPerformanceTest:
         self.initialized = True
 
     def finalize(self, session: pytest.Session) -> None:
-        if self.initialized:
+        if not self.initialized:
+            return
+
+        try:
             self.end_time = datetime.now(timezone.utc)
             self.extract_test_session_information(session)
             self.send_results()
+        except BaseException as exc:
+            # Anything escaping here aborts the pytest session, skipping the remaining
+            # teardown that stops the compose stack. That includes KeyboardInterrupt:
+            # a cancelled CI job signals the process again while this is still running.
+            print(f"Failed to report performance results: {exc!r}")
 
     def extract_compose_information(self, compose: InfrahubDockerCompose) -> None:
         self.env_vars = compose.env_vars
@@ -153,19 +169,32 @@ class InfrahubPerformanceTest:
             "test_info": self.test_info,
         }
 
+    def _serialize_request(self) -> bytes:
+        """Encode the request body, hashing the encoded payload instead of re-encoding it.
+
+        The payload embeds every metric series scraped over the run, which makes it the most
+        expensive thing on the session-finish path. Encoding it once and wrapping the envelope
+        around those bytes halves that cost, and leaves the checksum covering exactly the bytes
+        that go on the wire.
+        """
+        data = json.dumps(self._get_payload(), separators=(",", ":")).encode()
+        envelope = json.dumps(
+            {
+                "kind": PERFORMANCE_TEST_KIND,
+                "payload_format": PERFORMANCE_TEST_VERSION,
+                "checksum": hashlib.sha256(data).hexdigest(),
+            },
+            separators=(",", ":"),
+        ).encode()
+
+        return envelope.removesuffix(b"}") + b',"data":' + data + b"}"
+
     def send_results(self) -> None:
-        data = self._get_payload()
+        body = self._serialize_request()
 
-        payload = {
-            "kind": PERFORMANCE_TEST_KIND,
-            "payload_format": PERFORMANCE_TEST_VERSION,
-            "data": data,
-            "checksum": hashlib.sha256(json.dumps(data, separators=(",", ":")).encode()).hexdigest(),
-        }
-
-        with httpx.Client() as client:
+        with httpx.Client(timeout=RESULTS_UPLOAD_TIMEOUT) as client:
             try:
-                response = client.post(self.results_url, json=payload)
+                response = client.post(self.results_url, content=body, headers={"Content-Type": "application/json"})
                 response.raise_for_status()
             except Exception as exc:
                 print(exc)

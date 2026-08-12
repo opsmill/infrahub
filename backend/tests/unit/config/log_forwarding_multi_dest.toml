@@ -1,0 +1,22 @@
+[[log_forwarding.destinations]]
+name = "siem-primary"
+type = "syslog"
+host = "syslog.example.com"
+port = 514
+protocol = "tcp"
+format = "rfc5424"
+tls_enabled = true
+tls_ca_bundle = "/etc/ssl/certs/ca-certificates.crt"
+queue_size = 50000
+forward_application_logs = true
+min_log_severity = "INFO"
+
+[[log_forwarding.destinations]]
+name = "backup-collector"
+type = "syslog"
+host = "syslog-backup.example.com"
+port = 1514
+protocol = "udp"
+format = "rfc3164"
+queue_size = 5000
+shutdown_drain_timeout = 5

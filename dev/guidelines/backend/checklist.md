@@ -17,6 +17,12 @@ Consider whether the feature will:
 
 Plan to create a migration in `backend/infrahub/core/migrations/graph/` if any of these apply.
 
+When adding a new migration:
+
+- Bump `GRAPH_VERSION` in `backend/infrahub/core/graph/__init__.py` to match the new migration number
+- Set the migration's `minimum_version` to the previous `GRAPH_VERSION`
+- Run `uv run pytest backend/tests/unit/core/graph/test_graph_version.py` to verify consistency between `GRAPH_VERSION` and the migrations
+
 ### How will this feature maintain graph integrity?
 
 Design the feature to ensure:
@@ -33,7 +39,7 @@ Design the feature to ensure:
 Plan for query efficiency and data volume by considering:
 
 - **Database round-trips** - design to use batch queries when operating on multiple nodes
-- **N+1 query patterns** - plan to load related data in bulk rather than iteratively
+- **N+1 query patterns** - operate set-based in both directions: load related data in bulk, and update/delete by condition in one query instead of mutating each fetched node individually
 - **Data volume per query** - avoid overquerying by fetching only necessary fields and relationships
 - **Memory footprint** - consider how much data will be held in memory during processing
 - **Pagination and streaming** - plan to process large result sets incrementally when appropriate

@@ -7,16 +7,18 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { QSP } from "@/shared/config/qsp";
 
-import { IP_ADDRESS_GENERIC, IPAM_QSP } from "@/entities/ipam/constants";
-import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
-import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/ui/queries/get-ip-namespace-list.query";
-import { constructPathForIpam } from "@/entities/ipam/utils";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/use-cases/get-ip-namespace-list";
+import { useGetIpNamespace } from "@/entities/ipam/ip-namespaces/ui/queries/get-ip-namespace.query";
+import { constructPathForIpam } from "@/entities/ipam/ip-namespaces/ui/routing/ipam-urls";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 type IpNamespaceContext = {
-  currentIpNamespace: IpNamespace;
+  currentIpNamespace: NodeObject;
   setCurrentIpNamespace: (newIpNamespace: IpNamespace) => void;
 };
 
@@ -25,30 +27,24 @@ export const IpNamespaceContext = React.createContext<IpNamespaceContext | null>
 export function IpNamespaceProvider({ children }: { children: React.ReactNode }) {
   const { objectKind } = useParams();
   const navigate = useNavigate();
-  const [namespaceQSP] = useQueryState(IPAM_QSP.NAMESPACE);
-  const { data, error, isPending } = useGetIpNamespaceList();
+  const [namespaceQSP] = useQueryState(QSP.IPAM_NAMESPACE);
+
+  const {
+    data: currentIpNamespace,
+    isPending,
+    error,
+  } = useGetIpNamespace({ ipNamespaceId: namespaceQSP });
 
   if (isPending) {
     return <LoadingIndicator className="h-full" message="Loading IP namespaces..." />;
   }
 
-  if (error) {
-    return <ErrorScreen message={error.message} />;
-  }
-
-  const namespaceList = data.pages.flat() ?? [];
-
-  const selectedNamespace = namespaceList.find((namespace) => {
-    if (namespaceQSP) return namespace.id === namespaceQSP;
-    return !!namespace.default?.value;
-  });
-
-  if (!selectedNamespace) {
+  if (error || !currentIpNamespace) {
     return (
       <ErrorScreen
         message={
           <Col className="items-center">
-            <span>{`IP Namespace ${namespaceQSP ?? "default"} not found.`}</span>
+            <span>{error?.message ?? `IP Namespace ${namespaceQSP ?? "default"} not found.`}</span>
             <Link
               to={constructPath("/ipam")}
               className="inline-flex items-center gap-2 text-indigo-700 hover:underline"
@@ -64,7 +60,7 @@ export function IpNamespaceProvider({ children }: { children: React.ReactNode })
   return (
     <IpNamespaceContext.Provider
       value={{
-        currentIpNamespace: selectedNamespace,
+        currentIpNamespace,
         setCurrentIpNamespace: (newIpNamespace) => {
           const newIpNamespaceId = newIpNamespace.default?.value ? null : newIpNamespace.id;
 
@@ -80,8 +76,8 @@ export function IpNamespaceProvider({ children }: { children: React.ReactNode })
           navigate(
             constructPathForIpam(basePath, [
               newIpNamespaceId
-                ? { name: IPAM_QSP.NAMESPACE, value: newIpNamespaceId }
-                : { name: IPAM_QSP.NAMESPACE, exclude: true },
+                ? { name: QSP.IPAM_NAMESPACE, value: newIpNamespaceId }
+                : { name: QSP.IPAM_NAMESPACE, exclude: true },
             ])
           );
         },

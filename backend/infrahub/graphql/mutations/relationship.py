@@ -64,6 +64,100 @@ class RelationshipNodesInput(InputObjectType):
     )
 
 
+async def _emit_relationship_add_events(
+    *,
+    graphql_context: GraphqlContext,
+    group_event_type: GroupUpdateType,
+    source: Node,
+    peers: list[EventNode],
+    node_changelog: NodeChangelog,
+    relationship_name: str,
+) -> None:
+    """Schedule background events for an add-relationship mutation.
+
+    Dispatches a single event shape based on ``group_event_type``:
+    - ``MEMBERS``: one ``GroupMemberAddedEvent`` for the source group.
+    - ``MEMBER_OF_GROUPS``: one ``GroupMemberAddedEvent`` per peer group.
+    - otherwise: a ``NodeUpdatedEvent`` for the source plus one per
+      downstream relationship changelog.
+
+    No-op when the GraphQL context lacks background/service/account_session
+    or when ``node_changelog`` has no changes.
+    """
+    if not (
+        graphql_context.background
+        and graphql_context.account_session
+        and graphql_context.service
+        and node_changelog.has_changes
+    ):
+        return
+
+    event_context = graphql_context.to_event_context()
+
+    if group_event_type == GroupUpdateType.MEMBERS:
+        ancestors = await collect_ancestors(
+            db=graphql_context.db,
+            branch=graphql_context.branch,
+            node_kind=source.get_schema().kind,
+            node_id=source.id,
+        )
+        group_add_event = GroupMemberAddedEvent(
+            node_id=source.id,
+            kind=source.get_schema().kind,
+            members=peers,
+            ancestors=ancestors,
+            meta=EventMeta(branch=graphql_context.branch, context=event_context),
+        )
+        graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
+        return
+
+    if group_event_type == GroupUpdateType.MEMBER_OF_GROUPS:
+        group_ids = [node.id for node in peers]
+        async with graphql_context.db.start_session() as db:
+            node_kind_query = await NodeGetKindQuery.init(db=db, branch=graphql_context.branch, ids=group_ids)
+            await node_kind_query.execute(db=db)
+            node_kind_map = await node_kind_query.get_node_kind_map()
+
+            for node_id, node_kind in node_kind_map.items():
+                ancestors = await collect_ancestors(
+                    db=graphql_context.db, branch=graphql_context.branch, node_kind=node_kind, node_id=node_id
+                )
+                group_add_event = GroupMemberAddedEvent(
+                    node_id=node_id,
+                    kind=node_kind,
+                    ancestors=ancestors,
+                    members=[EventNode(id=source.get_id(), kind=source.get_kind())],
+                    meta=EventMeta(branch=graphql_context.branch, context=event_context),
+                )
+                graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
+        return
+
+    main_event = NodeUpdatedEvent(
+        kind=source.get_schema().kind,
+        node_id=source.id,
+        changelog=node_changelog,
+        fields=[relationship_name],
+        meta=EventMeta(branch=graphql_context.branch, context=event_context),
+    )
+    relationship_changelogs = RelationshipChangelogGetter(db=graphql_context.db, branch=graphql_context.branch)
+    node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node_changelog)
+
+    events: list[NodeUpdatedEvent] = [main_event]
+    for downstream_changelog in node_changelogs:
+        events.append(
+            NodeUpdatedEvent(
+                kind=downstream_changelog.node_kind,
+                node_id=downstream_changelog.node_id,
+                changelog=downstream_changelog,
+                fields=downstream_changelog.updated_fields,
+                meta=EventMeta.from_parent(parent=main_event),
+            )
+        )
+
+    for event in events:
+        graphql_context.background.add_task(graphql_context.active_service.event.send, event)
+
+
 class RelationshipAdd(Mutation):
     class Arguments:
         data = RelationshipNodesInput(required=True)
@@ -99,6 +193,7 @@ class RelationshipAdd(Mutation):
         )
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
+        _validate_cardinality_add(data=data, rel_schema=rel_schema, existing_peers=existing_peers)
 
         group_event_type = _get_group_event_type(
             node=source, relationship_schema=rel_schema, relationship_name=relationship_name
@@ -106,6 +201,7 @@ class RelationshipAdd(Mutation):
 
         async with graphql_context.db.start_transaction() as db:
             peers: list[EventNode] = []
+            relationship_modified = False
             for node_data in data.get("nodes"):
                 # Instantiate and resolve a relationship
                 # This will take care of allocating a node from a pool if needed
@@ -120,84 +216,30 @@ class RelationshipAdd(Mutation):
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.create_relationship(relationship=rel)
                     await rel.save(db=db, user_id=graphql_context.assigned_user_id)
+                    relationship_modified = True
 
-            if relationship_name == "profiles":
-                await _apply_profiles(node=source, db=db, branch=graphql_context.branch)
+            # peers that need to have their profile source cleared
+            profile_sourced_peers = [peer for peer in existing_peers.values() if peer.is_from_profile]
+            await _apply_profiles_after_relationship_change(
+                db=db,
+                branch=graphql_context.branch,
+                source=source,
+                related_peers=nodes,
+                relationship_name=relationship_name,
+                rel_schema=rel_schema,
+                relationship_modified=relationship_modified,
+                profile_sourced_peers=profile_sourced_peers,
+                user_id=graphql_context.assigned_user_id,
+            )
 
-            if source.get_schema().is_profile_schema and relationship_name == "related_nodes":
-                for node in nodes.values():
-                    await _apply_profiles(node=node, db=db, branch=graphql_context.branch)
-
-        if (
-            graphql_context.background
-            and graphql_context.account_session
-            and graphql_context.service
-            and node_changelog.has_changes
-        ):
-            if group_event_type == GroupUpdateType.MEMBERS:
-                ancestors = await collect_ancestors(
-                    db=graphql_context.db,
-                    branch=graphql_context.branch,
-                    node_kind=source.get_schema().kind,
-                    node_id=source.id,
-                )
-                group_add_event = GroupMemberAddedEvent(
-                    node_id=source.id,
-                    kind=source.get_schema().kind,
-                    members=peers,
-                    ancestors=ancestors,
-                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
-                )
-                graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
-
-            elif group_event_type == GroupUpdateType.MEMBER_OF_GROUPS:
-                group_ids = [node.id for node in peers]
-                async with graphql_context.db.start_session() as db:
-                    node_kind_query = await NodeGetKindQuery.init(db=db, branch=graphql_context.branch, ids=group_ids)
-                    await node_kind_query.execute(db=db)
-                    node_kind_map = await node_kind_query.get_node_kind_map()
-
-                    for node_id, node_kind in node_kind_map.items():
-                        ancestors = await collect_ancestors(
-                            db=graphql_context.db, branch=graphql_context.branch, node_kind=node_kind, node_id=node_id
-                        )
-                        group_add_event = GroupMemberAddedEvent(
-                            node_id=node_id,
-                            kind=node_kind,
-                            ancestors=ancestors,
-                            members=[EventNode(id=source.get_id(), kind=source.get_kind())],
-                            meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
-                        )
-                        graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
-
-            else:
-                main_event = NodeUpdatedEvent(
-                    kind=source.get_schema().kind,
-                    node_id=source.id,
-                    changelog=node_changelog,
-                    fields=[relationship_name],
-                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
-                )
-                relationship_changelogs = RelationshipChangelogGetter(
-                    db=graphql_context.db, branch=graphql_context.branch
-                )
-                node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node_changelog)
-
-                events = [main_event]
-
-                for node_changelog in node_changelogs:
-                    meta = EventMeta.from_parent(parent=main_event)
-                    event = NodeUpdatedEvent(
-                        kind=node_changelog.node_kind,
-                        node_id=node_changelog.node_id,
-                        changelog=node_changelog,
-                        fields=node_changelog.updated_fields,
-                        meta=meta,
-                    )
-                    events.append(event)
-
-                for event in events:
-                    graphql_context.background.add_task(graphql_context.active_service.event.send, event)
+        await _emit_relationship_add_events(
+            graphql_context=graphql_context,
+            group_event_type=group_event_type,
+            source=source,
+            peers=peers,
+            node_changelog=node_changelog,
+            relationship_name=relationship_name,
+        )
 
         return cls(ok=True)
 
@@ -236,12 +278,15 @@ class RelationshipRemove(Mutation):
         )
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
+        _validate_optional_remove(data=data, rel_schema=rel_schema, existing_peers=existing_peers)
         group_event_type = _get_group_event_type(
             node=source, relationship_schema=rel_schema, relationship_name=relationship_name
         )
 
         async with graphql_context.db.start_transaction() as db:
             peers: list[EventNode] = []
+            relationship_modified = False
+            removed_peer_ids: set[str] = set()
 
             for node_data in data.get("nodes"):
                 if node_data.get("id") in existing_peers.keys():
@@ -256,13 +301,26 @@ class RelationshipRemove(Mutation):
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.delete_relationship(relationship=rel)
                     await rel.delete(db=db, user_id=graphql_context.assigned_user_id)
+                    removed_peer_ids.add(str(node_data.get("id")))
+                    relationship_modified = True
 
-            if relationship_name == "profiles":
-                await _apply_profiles(node=source, db=db, branch=graphql_context.branch)
-
-            if source.get_schema().is_profile_schema and relationship_name == "related_nodes":
-                for node in nodes.values():
-                    await _apply_profiles(node=node, db=db, branch=graphql_context.branch)
+            # remaining peers that need to have their profile source cleared
+            profile_sourced_peers = [
+                peer
+                for peer_id, peer in existing_peers.items()
+                if peer.is_from_profile and peer_id not in removed_peer_ids
+            ]
+            await _apply_profiles_after_relationship_change(
+                db=db,
+                branch=graphql_context.branch,
+                source=source,
+                related_peers=nodes,
+                relationship_name=relationship_name,
+                rel_schema=rel_schema,
+                relationship_modified=relationship_modified,
+                profile_sourced_peers=profile_sourced_peers,
+                user_id=graphql_context.assigned_user_id,
+            )
 
         if (
             graphql_context.background
@@ -270,6 +328,7 @@ class RelationshipRemove(Mutation):
             and graphql_context.service
             and node_changelog.has_changes
         ):
+            event_context = graphql_context.to_event_context()
             if group_event_type == GroupUpdateType.MEMBERS:
                 ancestors = await collect_ancestors(
                     db=graphql_context.db,
@@ -282,7 +341,7 @@ class RelationshipRemove(Mutation):
                     kind=source.get_schema().kind,
                     members=peers,
                     ancestors=ancestors,
-                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                    meta=EventMeta(branch=graphql_context.branch, context=event_context),
                 )
                 graphql_context.background.add_task(graphql_context.active_service.event.send, group_remove_event)
             elif group_event_type == GroupUpdateType.MEMBER_OF_GROUPS:
@@ -300,7 +359,7 @@ class RelationshipRemove(Mutation):
                             node_id=node_id,
                             kind=node_kind,
                             members=[EventNode(id=source.get_id(), kind=source.get_kind())],
-                            meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                            meta=EventMeta(branch=graphql_context.branch, context=event_context),
                         )
                         graphql_context.background.add_task(
                             graphql_context.active_service.event.send, group_remove_event
@@ -311,7 +370,7 @@ class RelationshipRemove(Mutation):
                     node_id=source.id,
                     changelog=node_changelog,
                     fields=[relationship_name],
-                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                    meta=EventMeta(branch=graphql_context.branch, context=event_context),
                 )
 
                 relationship_changelogs = RelationshipChangelogGetter(
@@ -353,14 +412,10 @@ async def _validate_node(info: GraphQLResolveInfo, data: RelationshipNodesInput)
     ):
         raise NodeNotFoundError(node_type="node", identifier=input_id, branch_name=graphql_context.branch.name)
 
-    # Check if the name of the relationship provided exist for this node and is of cardinality Many
     if relationship_name not in source.get_schema().relationship_names:
         raise ValidationError({"name": f"'{relationship_name}' is not a valid relationship for '{source.get_kind()}'"})
 
     rel_schema = source.get_schema().get_relationship(name=relationship_name)
-    if rel_schema.cardinality != RelationshipCardinality.MANY:
-        raise ValidationError({"name": f"'{relationship_name}' must be a relationship of cardinality Many"})
-
     if rel_schema.read_only:
         # These mutations should never be allowed to update read-only relationships, as those typically
         # have custom code tied to them such as the approved_by relationship of a CoreProposedChange.
@@ -481,15 +536,43 @@ async def _collect_current_peers(
     rel_schema = source_node.get_schema().get_relationship(name=relationship_name)
 
     # The nodes that are already present in the db
+    # include SOURCE metadata for handling profile-sourcing updates if necessary
     query = await RelationshipGetPeerQuery.init(
         db=graphql_context.db,
         source=source_node,
         rel=Relationship(
             schema=rel_schema, branch=graphql_context.branch, source_kind=source_node.get_kind(), node=source_node
         ),
+        include_metadata=MetadataOptions.SOURCE,
     )
     await query.execute(db=graphql_context.db)
     return {str(peer.peer_id): peer for peer in query.get_peers()}
+
+
+def _validate_cardinality_add(
+    data: RelationshipNodesInput, rel_schema: RelationshipSchema, existing_peers: dict[str, RelationshipPeerData]
+) -> None:
+    if rel_schema.cardinality != RelationshipCardinality.ONE:
+        return
+    if existing_peers:
+        raise ValidationError(f"'{rel_schema.name}' is a cardinality-one relationship and already has a peer")
+    if len(data.get("nodes")) > 1:
+        raise ValidationError(
+            f"'{rel_schema.name}' is a cardinality-one relationship and cannot be assigned more than one peer"
+        )
+
+
+def _validate_optional_remove(
+    data: RelationshipNodesInput,
+    rel_schema: RelationshipSchema,
+    existing_peers: dict[str, RelationshipPeerData],
+) -> None:
+    if rel_schema.optional is True:
+        return
+    peers_to_remove = {node_data.get("id") for node_data in data.get("nodes") if node_data.get("id")}
+    remaining = set(existing_peers.keys()) - peers_to_remove
+    if not remaining:
+        raise ValidationError({"name": f"'{rel_schema.name}' is a mandatory relationship and cannot be fully removed"})
 
 
 def _get_group_event_type(
@@ -513,3 +596,54 @@ async def _apply_profiles(node: Node, db: InfrahubDatabase, branch: Branch) -> N
     updated_fields = await node_profiles_applier.apply_profiles(node=refreshed_node)
     if updated_fields:
         await refreshed_node.save(db=db, fields=updated_fields)
+
+
+async def _detach_relationship_from_profiles(
+    db: InfrahubDatabase,
+    branch: Branch,
+    source: Node,
+    rel_schema: RelationshipSchema,
+    profile_sourced_peers: list[RelationshipPeerData],
+    user_id: str,
+) -> None:
+    """Detach a relationship from its profile by clearing the source from its profile-sourced peers.
+
+    A relationship is either entirely profile-sourced or entirely user-defined. A user modification to a
+    profile-sourced relationship turns it into a user-defined one: the peers are kept and only their
+    profile source is cleared (the relationships are not deleted).
+
+    The peers are passed in already loaded (with source metadata) by the caller so the relationships are
+    not re-read.
+    """
+    for peer_data in profile_sourced_peers:
+        rel = Relationship(schema=rel_schema, branch=branch, source_kind=source.get_kind(), node=source)
+        rel.load(db=db, data=peer_data)
+        rel.clear_source()
+        await rel.update(db=db, properties_to_update=["source"], data=peer_data, user_id=user_id)
+
+
+async def _apply_profiles_after_relationship_change(
+    db: InfrahubDatabase,
+    branch: Branch,
+    source: Node,
+    related_peers: dict[str, Node],
+    relationship_name: str,
+    rel_schema: RelationshipSchema,
+    relationship_modified: bool,
+    profile_sourced_peers: list[RelationshipPeerData],
+    user_id: str,
+) -> None:
+    if relationship_name == "profiles":
+        await _apply_profiles(node=source, db=db, branch=branch)
+    elif source.get_schema().is_profile_schema and relationship_name == "related_nodes":
+        for node in related_peers.values():
+            await _apply_profiles(node=node, db=db, branch=branch)
+    elif relationship_modified and rel_schema.support_profiles:
+        await _detach_relationship_from_profiles(
+            db=db,
+            branch=branch,
+            source=source,
+            rel_schema=rel_schema,
+            profile_sourced_peers=profile_sourced_peers,
+            user_id=user_id,
+        )

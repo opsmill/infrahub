@@ -1,0 +1,51 @@
+---
+feature: Deployment & Management — Hardware Requirements
+pr: TBD
+description: |
+  Moves hardware-requirements from the flat topics/ directory into the new
+  deploy-manage/install-configure/ sub-category introduced by the D&M restructure.
+  Also scaffolds the full Deployment & Management sidebar structure (four sub-cats:
+  Install & configure, Run & observe, Maintain & upgrade, User Management & Security)
+  — subsequent PRs will migrate the remaining pages into those sub-cats.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/hardware-requirements
+    to: /docs/deploy-manage/install-configure/hardware-requirements
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/deploy-manage/install-configure/hardware-requirements
+    title: Hardware requirements
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via redirect at runtime; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/guides/production-deployment.mdx
+    line: 21
+    current: ../topics/hardware-requirements.mdx
+    should_be: ../deploy-manage/install-configure/hardware-requirements.mdx
+  - file: docs/docs/guides/installation.mdx
+    line: 28
+    current: ../topics/hardware-requirements.mdx
+    should_be: ../deploy-manage/install-configure/hardware-requirements.mdx
+  - file: docs/docs/guides/installation.mdx
+    line: 924
+    current: ../topics/hardware-requirements.mdx
+    should_be: ../deploy-manage/install-configure/hardware-requirements.mdx
+  - file: docs/docs/tutorials/getting-started/readme.mdx
+    line: 42
+    current: ../../topics/hardware-requirements.mdx
+    should_be: ../../deploy-manage/install-configure/hardware-requirements.mdx
+  - file: docs/docs/overview/quickstart.mdx
+    line: 19
+    current: ../topics/hardware-requirements.mdx
+    should_be: ../deploy-manage/install-configure/hardware-requirements.mdx
+  - file: docs/docs/topics/architecture.mdx
+    line: 338
+    current: ./hardware-requirements.mdx
+    should_be: ../deploy-manage/install-configure/hardware-requirements.mdx
+  - file: docs/docs/topics/local-demo-environment.mdx
+    line: 44
+    current: ../topics/hardware-requirements.mdx
+    should_be: ../deploy-manage/install-configure/hardware-requirements.mdx

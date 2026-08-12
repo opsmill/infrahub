@@ -1,0 +1,856 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from infrahub.core import registry
+from infrahub.core.constants import (
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipDirection,
+    SchemaPathType,
+)
+from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
+from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.timestamp import Timestamp
+from infrahub.graph_traversal.planning.models import Plan, TerminalById, UserFilters
+from infrahub.graph_traversal.planning.planner import SchemaPlanner
+from tests.helpers.graph_traversal.builders import (
+    CountingQueryRunner,
+    TimeoutOnNthQuery,
+    build_path_traversal_executor,
+    build_permission_resolver,
+    identifier_of,
+)
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
+    from infrahub.graph_traversal.results import PathData
+    from tests.helpers.graph_traversal.builders import BowtieGraph, ShortcutGraph
+
+
+def _build_plan(
+    *,
+    db: InfrahubDatabase,
+    branch: Branch,
+    source: Node,
+    destination: Node,
+    max_depth: int = 1,
+    user_filters: UserFilters | None = None,
+) -> Plan:
+    # Default to empty excluded_namespaces — the canonical default set would
+    # prune the fixture's terminal, leaving no plan to render.
+    planner = SchemaPlanner(
+        schema_branch=db.schema.get_schema_branch(name=branch.name),
+        branch=branch,
+        permission_resolver=build_permission_resolver(default_branch_name=branch.name),
+    )
+    return planner.plan(
+        source_kind=source.get_kind(),
+        terminal_predicate=TerminalById(node_id=destination.id, kind=destination.get_kind()),
+        max_depth=max_depth,
+        user_filters=user_filters if user_filters is not None else UserFilters(excluded_namespaces=frozenset()),
+    )
+
+
+async def _run_paths(
+    *,
+    db: InfrahubDatabase,
+    branch: Branch,
+    default_branch_name: str,
+    plan: Plan,
+    source_id: str,
+    max_paths: int = 10,
+    shortest_paths_only: bool = True,
+) -> list[PathData]:
+    executor = build_path_traversal_executor(db=db, branch=branch, default_branch_name=default_branch_name)
+    result = await executor.run(
+        plan=plan, source_id=source_id, max_paths=max_paths, shortest_paths_only=shortest_paths_only
+    )
+    return result.paths
+
+
+def _path_signature(path: PathData) -> tuple[int, tuple[str, ...]]:
+    """A stable identity for a path: its depth plus the ordered hop-uuid sequence."""
+    return (path.depth, tuple(hop.node.uuid for hop in path.hops))
+
+
+def _path_node_uuids(path: PathData) -> list[str]:
+    """The full ordered node sequence of a path: start node followed by each hop's node."""
+    return [path.start_node.uuid] + [hop.node.uuid for hop in path.hops]
+
+
+def _full_path(path: PathData) -> tuple[str, int, tuple[tuple[str, str], ...]]:
+    """Exact path identity: start node uuid, depth, and each hop as (relationship_identifier, node uuid)."""
+    return (
+        path.start_node.uuid,
+        path.depth,
+        tuple((hop.relationship_identifier, hop.node.uuid) for hop in path.hops),
+    )
+
+
+async def test_run_reports_no_truncation_when_search_completes(
+    db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
+) -> None:
+    """A completed search returns a result object whose ``truncated_at_depth`` is ``None``."""
+    person1, blue = person_with_paths_at_two_depths
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=blue, max_depth=3)
+    executor = build_path_traversal_executor(db=db, branch=default_branch, default_branch_name=default_branch.name)
+
+    result = await executor.run(plan=plan, source_id=person1.id, max_paths=10)
+
+    assert result.truncated_at_depth is None
+    assert len(result.paths) >= 1
+    assert result.paths[0].depth == 1
+
+
+async def test_excludes_non_simple_paths_through_shared_intermediate(
+    db: InfrahubDatabase, default_branch: Branch, three_people_shared_tag: tuple[Node, Node, Node, Node]
+) -> None:
+    """Every returned path must be loopless — no node may appear twice.
+
+    Three people share one tag. p1 -> p2 has a real depth-2 path (p1 -tag- p2). The only
+    deeper route, p1 -tag- p3 -tag- p2, revisits the shared tag: a non-simple walk the
+    bidirectional join must not emit.
+    """
+    p1, p2, _p3, blue = three_people_shared_tag
+
+    plan = _build_plan(db=db, branch=default_branch, source=p1, destination=p2, max_depth=4)
+    assert not plan.is_empty
+
+    paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=p1.id
+    )
+
+    # The genuine simple path p1 -> blue -> p2 must be present.
+    assert (2, (blue.id, p2.id)) in {_path_signature(path) for path in paths}
+
+    # No returned path may revisit a node (in particular, the p1 -> blue -> p3 -> blue -> p2 walk).
+    for path in paths:
+        uuids = _path_node_uuids(path)
+        assert len(uuids) == len(set(uuids)), f"non-simple path returned: {uuids}"
+
+
+async def test_exhaustive_mode_returns_non_shortest_route_default_omits_it(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    linked_vertices_with_shortcut: ShortcutGraph,
+) -> None:
+    """Exhaustive mode returns a non-shortest route the default omits; both stay loopless.
+
+    ``shortest_paths_only=False`` returns a longer simple path whose midpoint is reached by a
+    non-shortest sub-path; the default (``True``) omits it.
+    """
+    graph = linked_vertices_with_shortcut
+
+    plan = _build_plan(db=db, branch=default_branch, source=graph.source, destination=graph.destination, max_depth=4)
+    assert not plan.is_empty
+
+    fast = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=graph.source.id
+    )
+    exhaustive = await _run_paths(
+        db=db,
+        branch=default_branch,
+        default_branch_name=default_branch.name,
+        plan=plan,
+        source_id=graph.source.id,
+        shortest_paths_only=False,
+    )
+
+    # source -> detour -> middle -> bridge -> destination; the midpoint (middle) is not at its
+    # shortest distance from the source, so only the exhaustive search reconstructs it.
+    longer = (4, (graph.detour.id, graph.middle.id, graph.bridge.id, graph.destination.id))
+    assert longer not in {_path_signature(path) for path in fast}, "fast mode must omit the non-shortest route"
+    assert longer in {_path_signature(path) for path in exhaustive}, "exhaustive mode must return it"
+
+    for path in fast + exhaustive:
+        uuids = _path_node_uuids(path)
+        assert len(uuids) == len(set(uuids)), f"non-simple path returned: {uuids}"
+
+
+async def test_exhaustive_truncates_when_half_paths_exceed_cap(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    linked_vertices_with_shortcut: ShortcutGraph,
+) -> None:
+    """A tier whose half-path set exceeds the cap stops the search: shallower paths plus the depth.
+
+    With ``exhaustive_half_cap=2`` the depth-3 shortest route is found, but the depth-4 tier's left
+    half enumerates 3 paths (over the cap), so the search truncates and reports depth 4.
+    """
+    graph = linked_vertices_with_shortcut
+    plan = _build_plan(db=db, branch=default_branch, source=graph.source, destination=graph.destination, max_depth=4)
+    executor = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, exhaustive_half_cap=2
+    )
+
+    result = await executor.run(plan=plan, source_id=graph.source.id, max_paths=10, shortest_paths_only=False)
+
+    # The only surviving path is the depth-3 shortest route: source -> middle -> bridge -> destination.
+    links = identifier_of(db=db, branch=default_branch, kind="TestVertex", relationship="links")
+    assert [_full_path(path) for path in result.paths] == [
+        (graph.source.id, 3, ((links, graph.middle.id), (links, graph.bridge.id), (links, graph.destination.id)))
+    ]
+    assert result.truncated_at_depth == 4
+
+
+async def test_exhaustive_handles_same_uuid_vertices_after_kind_migration(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """A kind/inheritance migration leaves two Node vertices sharing the middle's UUID.
+
+    ``source -[hub__endpoint]- middle -[hub__endpoint]- target``, where ``middle`` is its own kind
+    so migrating that kind duplicates only its vertex. Read back at the migration instant, the old
+    vertex's just-closed edges are still visible (``to >= at`` is inclusive) and the default branch
+    has no deletion-shadow, so both same-UUID vertices are momentarily traversable. The right half
+    resolves each candidate middle UUID to its active vertex and identical joined paths are
+    de-duplicated, so the single real ``source -> middle -> target`` path is returned exactly once.
+    """
+    schema = SchemaRoot(
+        generics=[GenericSchema(name="Grouping", namespace="Test")],
+        nodes=[
+            NodeSchema(
+                name="Endpoint",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(
+                        name="hubs",
+                        peer="TestHub",
+                        identifier="hub__endpoint",
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                        direction=RelationshipDirection.BIDIR,
+                    )
+                ],
+            ),
+            NodeSchema(
+                name="Hub",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(
+                        name="endpoints",
+                        peer="TestEndpoint",
+                        identifier="hub__endpoint",
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                        direction=RelationshipDirection.BIDIR,
+                    )
+                ],
+            ),
+        ],
+    )
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    source = await Node.init(db=db, schema="TestEndpoint", branch=default_branch)
+    await source.new(db=db, name="S")
+    await source.save(db=db)
+    target = await Node.init(db=db, schema="TestEndpoint", branch=default_branch)
+    await target.new(db=db, name="D")
+    await target.save(db=db)
+    middle = await Node.init(db=db, schema="TestHub", branch=default_branch)
+    await middle.new(db=db, name="M", endpoints=[source, target])
+    await middle.save(db=db)
+
+    # Migrating TestHub's inheritance duplicates the middle's Node vertex (same UUID, new labels).
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate_schema = schema_branch.duplicate()
+    hub_schema = candidate_schema.get_node(name="TestHub")
+    candidate_schema.delete(name="TestHub")
+    hub_schema.inherit_from = ["TestGrouping"]
+    candidate_schema.set(name="TestHub", schema=hub_schema)
+    # Reprocess to remove generated schemas based on the deleted kind
+    candidate_schema.process()
+
+    migration_at = Timestamp()
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema_branch.get(name="TestHub"),
+        new_node_schema=hub_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestHub", field_name="inherit_from"),
+    )
+    migration_result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=migration_at), branch=default_branch
+    )
+    assert not migration_result.errors
+    registry.schema.set_schema_branch(name=default_branch.name, schema=candidate_schema)
+
+    plan = _build_plan(db=db, branch=default_branch, source=source, destination=target, max_depth=3)
+    executor = build_path_traversal_executor(db=db, branch=default_branch, default_branch_name=default_branch.name)
+    result = await executor.run(
+        plan=plan, source_id=source.id, max_paths=10, shortest_paths_only=False, at=migration_at
+    )
+
+    assert [_path_signature(path) for path in result.paths] == [(2, (middle.id, target.id))]
+
+
+async def test_exhaustive_truncates_when_joined_tier_exceeds_cap(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    bowtie_graph: BowtieGraph,
+) -> None:
+    """The joined tier is capped independently of the per-half sets.
+
+    Every depth-4 route funnels through the single hub, so the tier joins 3 left halves with 3
+    right halves into 3x3 = 9 candidates. With ``exhaustive_half_cap=5`` each half set (3) is under
+    the cap, yet the 9-way join is over it, so the search truncates at depth 4 with no shallower
+    route to return. A high cap returns all 9 loopless paths without truncation.
+    """
+    graph = bowtie_graph
+    plan = _build_plan(db=db, branch=default_branch, source=graph.source, destination=graph.destination, max_depth=4)
+    assert not plan.is_empty
+
+    capped = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, exhaustive_half_cap=5
+    )
+    result = await capped.run(plan=plan, source_id=graph.source.id, max_paths=20, shortest_paths_only=False)
+    assert result.paths == []
+    assert result.truncated_at_depth == 4
+
+    uncapped = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, exhaustive_half_cap=100
+    )
+    full = await uncapped.run(plan=plan, source_id=graph.source.id, max_paths=20, shortest_paths_only=False)
+    assert full.truncated_at_depth is None
+    assert len(full.paths) == 9
+    for path in full.paths:
+        assert path.depth == 4
+        uuids = _path_node_uuids(path)
+        assert len(uuids) == len(set(uuids)), f"non-simple path returned: {uuids}"
+
+
+async def test_exhaustive_truncates_and_reports_depth_on_query_timeout(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    linked_vertices_with_shortcut: ShortcutGraph,
+) -> None:
+    """A per-query timeout returns the shallower paths plus the depth where the search gave up."""
+    graph = linked_vertices_with_shortcut
+    plan = _build_plan(db=db, branch=default_branch, source=graph.source, destination=graph.destination, max_depth=4)
+    # Depths 2, 3 and 4 each enumerate a left half, so the depth-4 left half is the 3rd such query.
+    # Timing it out lets depths 1-3 complete (finding the shortest route) and truncates at depth 4.
+    runner = TimeoutOnNthQuery(name="path_traversal_half_left", nth=3)
+    executor = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, query_runner=runner
+    )
+
+    result = await executor.run(plan=plan, source_id=graph.source.id, max_paths=10, shortest_paths_only=False)
+
+    # The only surviving path is the depth-3 shortest route: source -> middle -> bridge -> destination.
+    links = identifier_of(db=db, branch=default_branch, kind="TestVertex", relationship="links")
+    assert [_full_path(path) for path in result.paths] == [
+        (graph.source.id, 3, ((links, graph.middle.id), (links, graph.bridge.id), (links, graph.destination.id)))
+    ]
+    assert result.truncated_at_depth == 4
+
+
+async def test_shortest_mode_truncates_and_reports_depth_on_query_timeout(
+    db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
+) -> None:
+    """Fast (shortest) mode returns the shallower paths plus the failure depth on a tier timeout."""
+    person1, blue = person_with_paths_at_two_depths
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=blue, max_depth=3)
+    # The tier joins run at depth 1 then depth 3 (depth 2 has no middle); time out the 2nd join so
+    # the depth-1 path survives and the search truncates at depth 3.
+    runner = TimeoutOnNthQuery(name="path_traversal_join", nth=2)
+    executor = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, query_runner=runner
+    )
+
+    result = await executor.run(plan=plan, source_id=person1.id, max_paths=10, shortest_paths_only=True)
+
+    # Only the depth-1 path survives: person1 -primary_tag-> blue. The depth-3 tier timed out.
+    primary_tag = identifier_of(db=db, branch=default_branch, kind="TestPerson", relationship="primary_tag")
+    assert [_full_path(path) for path in result.paths] == [(person1.id, 1, ((primary_tag, blue.id),))]
+    assert result.truncated_at_depth == 3
+
+
+async def test_shortest_mode_expands_bfs_lazily(
+    db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
+) -> None:
+    """Fast mode expands the BFS frontier lazily — only as deep as needed, not to ceil(max_depth/2).
+
+    With ``max_depth=20`` an eager expansion would run ~20 single-hop expansions (radius 10 per side);
+    a lazy search stops once the small graph's frontiers are exhausted, after only a handful.
+    """
+    person1, blue = person_with_paths_at_two_depths
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=blue, max_depth=20)
+    counter = CountingQueryRunner()
+    executor = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, query_runner=counter
+    )
+
+    result = await executor.run(plan=plan, source_id=person1.id, max_paths=10, shortest_paths_only=True)
+
+    # Results are unchanged by lazy expansion: the depth-1 and depth-3 routes to blue.
+    assert {path.depth for path in result.paths} == {1, 3}
+    assert result.truncated_at_depth is None
+    # The eager single-shot BFS is no longer used, and the frontier is exhausted within a few hops.
+    assert counter.counts.get("path_traversal_bfs", 0) == 0
+    assert 0 < counter.counts["path_traversal_bfs_hop"] <= 8
+
+
+async def test_shortest_mode_truncates_on_bfs_expansion_timeout(
+    db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
+) -> None:
+    """A BFS expansion timeout truncates the search at the depth it was reaching for."""
+    person1, blue = person_with_paths_at_two_depths
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=blue, max_depth=3)
+    # The first BFS expansion is the depth-1 backward seed; time it out before any tier resolves.
+    runner = TimeoutOnNthQuery(name="path_traversal_bfs_hop", nth=1)
+    executor = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, query_runner=runner
+    )
+
+    result = await executor.run(plan=plan, source_id=person1.id, max_paths=10, shortest_paths_only=True)
+
+    assert result.paths == []
+    assert result.truncated_at_depth == 1
+
+
+async def test_returns_direct_peer_path_on_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, jack_with_blue_tag: tuple[Node, Node]
+) -> None:
+    person, tag = jack_with_blue_tag
+
+    plan = _build_plan(db=db, branch=default_branch, source=person, destination=tag)
+    assert not plan.is_empty
+
+    paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=person.id
+    )
+
+    assert len(paths) >= 1
+    shortest = paths[0]
+    assert shortest.depth == 1
+    assert shortest.start_node.uuid == person.id
+    assert len(shortest.hops) == 1
+    assert shortest.hops[-1].node.uuid == tag.id
+    assert shortest.hops[-1].relationship_identifier
+
+
+async def test_returns_direct_peer_path_on_non_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, jack_with_blue_tag: tuple[Node, Node]
+) -> None:
+    person, tag = jack_with_blue_tag
+    feature_branch = await create_branch(db=db, branch_name="feature")
+
+    plan = _build_plan(db=db, branch=feature_branch, source=person, destination=tag)
+    assert not plan.is_empty
+
+    paths = await _run_paths(
+        db=db, branch=feature_branch, default_branch_name=default_branch.name, plan=plan, source_id=person.id
+    )
+
+    assert len(paths) >= 1
+    assert paths[0].depth == 1
+    assert paths[0].start_node.uuid == person.id
+    assert len(paths[0].hops) == 1
+    assert paths[0].hops[-1].node.uuid == tag.id
+    assert paths[0].hops[-1].relationship_identifier
+
+
+async def test_branch_edge_is_invisible_on_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None, tag_blue_main: Node
+) -> None:
+    """A relationship created on a branch must not be visible when querying the default branch."""
+    # Both endpoints exist on the default branch before the fork; only the edge is branch-local.
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, firstname="Cy", lastname="Vee", primary_tag=tag_blue_main)
+    await person.save(db=db)
+    green = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
+    await green.new(db=db, name="Greenbranch")
+    await green.save(db=db)
+
+    feature_branch = await create_branch(db=db, branch_name="feature-branch-only-edge")
+    person_on_branch = await NodeManager.get_one(db=db, id=person.id, branch=feature_branch)
+    assert person_on_branch is not None
+    await person_on_branch.get_relationship("tags").update(db=db, data=[green])
+    await person_on_branch.save(db=db)
+
+    plan = _build_plan(db=db, branch=default_branch, source=person, destination=green, max_depth=2)
+    assert not plan.is_empty
+
+    paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=person.id
+    )
+
+    assert paths == [], "an edge created on the branch must not leak onto the default branch"
+
+
+async def test_edge_deleted_on_branch_is_hidden_on_branch_and_visible_on_default(
+    db: InfrahubDatabase, default_branch: Branch, jack_with_blue_tag: tuple[Node, Node]
+) -> None:
+    """A relationship deleted on a branch is hidden there but stays visible on the default branch."""
+    person, tag = jack_with_blue_tag
+    feature_branch = await create_branch(db=db, branch_name="feature-edge-deleted")
+
+    person_on_branch = await NodeManager.get_one(db=db, id=person.id, branch=feature_branch)
+    assert person_on_branch is not None
+    await person_on_branch.get_relationship("primary_tag").update(db=db, data=None)
+    await person_on_branch.save(db=db)
+
+    branch_plan = _build_plan(db=db, branch=feature_branch, source=person, destination=tag)
+    branch_paths = await _run_paths(
+        db=db, branch=feature_branch, default_branch_name=default_branch.name, plan=branch_plan, source_id=person.id
+    )
+    assert branch_paths == [], "deletion on the branch should hide the edge on that branch"
+
+    main_plan = _build_plan(db=db, branch=default_branch, source=person, destination=tag)
+    main_paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=main_plan, source_id=person.id
+    )
+    assert len(main_paths) == 1, "the branch-local deletion must not affect the default branch"
+    assert [hop.node.uuid for hop in main_paths[0].hops] == [tag.id]
+
+
+async def test_edge_deleted_on_default_after_fork_is_visible_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, jack_with_blue_tag: tuple[Node, Node]
+) -> None:
+    """A relationship deleted on the default branch AFTER an isolated branch forked stays visible on it."""
+    person, tag = jack_with_blue_tag
+    feature_branch = await create_branch(db=db, branch_name="feature-default-delete-after-fork")
+
+    # Delete the edge on the DEFAULT branch, after the fork.
+    person_on_main = await NodeManager.get_one(db=db, id=person.id, branch=default_branch)
+    assert person_on_main is not None
+    await person_on_main.get_relationship("primary_tag").update(db=db, data=None)
+    await person_on_main.save(db=db)
+
+    branch_plan = _build_plan(db=db, branch=feature_branch, source=person, destination=tag)
+    branch_paths = await _run_paths(
+        db=db, branch=feature_branch, default_branch_name=default_branch.name, plan=branch_plan, source_id=person.id
+    )
+    assert len(branch_paths) == 1, "a post-fork default-branch deletion must not reach back into the branch"
+    assert [hop.node.uuid for hop in branch_paths[0].hops] == [tag.id]
+
+    main_plan = _build_plan(db=db, branch=default_branch, source=person, destination=tag)
+    main_paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=main_plan, source_id=person.id
+    )
+    assert main_paths == [], "the deletion took effect on the default branch"
+
+
+async def test_default_branch_edge_remains_visible_on_user_branch_when_not_deleted(
+    db: InfrahubDatabase, default_branch: Branch, jack_with_blue_tag: tuple[Node, Node]
+) -> None:
+    """Test relationship created before branch forked is visible on branch"""
+    person, tag = jack_with_blue_tag
+    feature_branch = await create_branch(db=db, branch_name="feature-untouched")
+
+    plan = _build_plan(db=db, branch=feature_branch, source=person, destination=tag)
+    assert not plan.is_empty
+
+    paths = await _run_paths(
+        db=db, branch=feature_branch, default_branch_name=default_branch.name, plan=plan, source_id=person.id
+    )
+
+    assert len(paths) == 1
+    only = paths[0]
+    assert only.depth == 1
+    assert only.start_node.uuid == person.id
+    assert [hop.node.uuid for hop in only.hops] == [tag.id]
+
+
+async def test_default_branch_edge_added_after_fork_is_invisible_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None, tag_blue_main: Node
+) -> None:
+    """A default-branch relationship created after an isolated branch forked must be invisible on it."""
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, firstname="Ada", lastname="One", primary_tag=tag_blue_main)
+    await person.save(db=db)
+
+    # Tag exists before the fork, but is NOT yet linked to the person.
+    green = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
+    await green.new(db=db, name="Green")
+    await green.save(db=db)
+
+    feature_branch = await create_branch(db=db, branch_name="feature-late-default-edge")
+
+    # AFTER the fork, link person -> green ON THE DEFAULT BRANCH.
+    person_on_main = await NodeManager.get_one(db=db, id=person.id, branch=default_branch)
+    assert person_on_main is not None
+    await person_on_main.get_relationship("tags").update(db=db, data=[green])
+    await person_on_main.save(db=db)
+
+    plan = _build_plan(db=db, branch=feature_branch, source=person, destination=green, max_depth=2)
+    assert not plan.is_empty
+
+    paths = await _run_paths(
+        db=db, branch=feature_branch, default_branch_name=default_branch.name, plan=plan, source_id=person.id
+    )
+
+    assert paths == [], "default-branch edge added after the fork must not leak into the isolated branch"
+
+
+async def test_relationship_filter_selects_one_of_two_parallel_relationships(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_with_owner_and_driver: tuple[Node, Node, Node],
+) -> None:
+    # Two distinct schema-level relationships connect TestCar to TestPerson.
+    # relationship_filter must narrow the path to the chosen identifier.
+    car, owner, driver = car_with_owner_and_driver
+    owner_identifier = identifier_of(db=db, branch=default_branch, kind="TestCar", relationship="owner")
+    driver_identifier = identifier_of(db=db, branch=default_branch, kind="TestCar", relationship="driver")
+    assert owner_identifier != driver_identifier
+
+    owner_plan = _build_plan(
+        db=db,
+        branch=default_branch,
+        source=car,
+        destination=owner,
+        user_filters=UserFilters(excluded_namespaces=frozenset(), relationship_filter=frozenset({owner_identifier})),
+    )
+    owner_paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=owner_plan, source_id=car.id
+    )
+    assert len(owner_paths) == 1
+    assert owner_paths[0].hops[-1].node.uuid == owner.id
+    assert owner_paths[0].hops[-1].relationship_identifier == owner_identifier
+
+    # Filtering to the driver identifier with destination=owner produces no
+    # path: the planner allows the hop schema-wise, but no data edge with the
+    # driver identifier reaches the owner node.
+    driver_only_to_owner_plan = _build_plan(
+        db=db,
+        branch=default_branch,
+        source=car,
+        destination=owner,
+        user_filters=UserFilters(excluded_namespaces=frozenset(), relationship_filter=frozenset({driver_identifier})),
+    )
+    driver_only_to_owner_paths = await _run_paths(
+        db=db,
+        branch=default_branch,
+        default_branch_name=default_branch.name,
+        plan=driver_only_to_owner_plan,
+        source_id=car.id,
+    )
+    assert driver_only_to_owner_paths == []
+
+    # And as a positive control: driver identifier with destination=driver returns
+    # exactly the driver edge.
+    driver_plan = _build_plan(
+        db=db,
+        branch=default_branch,
+        source=car,
+        destination=driver,
+        user_filters=UserFilters(excluded_namespaces=frozenset(), relationship_filter=frozenset({driver_identifier})),
+    )
+    driver_paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=driver_plan, source_id=car.id
+    )
+    assert len(driver_paths) == 1
+    assert driver_paths[0].hops[-1].node.uuid == driver.id
+    assert driver_paths[0].hops[-1].relationship_identifier == driver_identifier
+
+
+async def test_kind_filter_accepts_generic_terminal(
+    db: InfrahubDatabase, default_branch: Branch, human_with_two_pets: tuple[Node, Node, Node]
+) -> None:
+    # Source is a concrete kind; destination is a concrete implementor of a
+    # generic. Passing the generic into kind_filter must still admit the
+    # concrete destination
+    human, dog, _cat = human_with_two_pets
+
+    plan = _build_plan(
+        db=db,
+        branch=default_branch,
+        source=human,
+        destination=dog,
+        user_filters=UserFilters(excluded_namespaces=frozenset(), kind_filter=frozenset({"TestAnimal"})),
+    )
+    paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=human.id
+    )
+
+    assert len(paths) == 1
+    only = paths[0]
+    assert only.depth == 1
+    assert only.start_node.uuid == human.id
+    assert [hop.node.uuid for hop in only.hops] == [dog.id]
+
+
+async def test_excluded_kinds_with_generic_drops_all_concrete_implementors(
+    db: InfrahubDatabase, default_branch: Branch, human_with_two_pets: tuple[Node, Node, Node]
+) -> None:
+    # The destination is a concrete implementor of the excluded generic, so
+    # the plan must come out empty.
+    human, dog, _cat = human_with_two_pets
+
+    plan = _build_plan(
+        db=db,
+        branch=default_branch,
+        source=human,
+        destination=dog,
+        user_filters=UserFilters(excluded_namespaces=frozenset(), excluded_kinds=frozenset({"TestAnimal"})),
+    )
+    assert plan.is_empty
+
+
+async def test_default_excluded_kinds_hide_ipam_namespace_bounce(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    two_ips_in_one_namespace: tuple[Node, Node, Node],
+) -> None:
+    # Two IPs share only their namespace; the namespace-kind default exclusion
+    # must remove the IP > namespace > IP' bounce while the prefix route keeps
+    # the plan renderable.
+    _namespace, ip1, ip2 = two_ips_in_one_namespace
+
+    plan = _build_plan(
+        db=db,
+        branch=default_branch,
+        source=ip1,
+        destination=ip2,
+        max_depth=2,
+        user_filters=UserFilters(),
+    )
+    assert "IpamNamespace" in plan.excluded_kinds
+    assert not plan.is_empty
+
+    paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=ip1.id
+    )
+
+    assert paths == []
+
+
+async def test_included_kinds_re_include_ipam_namespace_bounce(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    two_ips_in_one_namespace: tuple[Node, Node, Node],
+) -> None:
+    # Re-including the namespace kind restores the bounce path, proving the
+    # default behavior is an exclusion rather than absence of data.
+    namespace, ip1, ip2 = two_ips_in_one_namespace
+
+    plan = _build_plan(
+        db=db,
+        branch=default_branch,
+        source=ip1,
+        destination=ip2,
+        max_depth=2,
+        user_filters=UserFilters(included_kinds=frozenset({"IpamNamespace"})),
+    )
+    assert "IpamNamespace" not in plan.excluded_kinds
+
+    paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=ip1.id
+    )
+
+    assert len(paths) == 1
+    assert paths[0].depth == 2
+    assert [hop.node.uuid for hop in paths[0].hops] == [namespace.id, ip2.id]
+
+
+async def test_executor_returns_shortest_first_across_depths(
+    db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
+) -> None:
+    person1, blue = person_with_paths_at_two_depths
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=blue, max_depth=3)
+    assert not plan.is_empty
+
+    paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=person1.id
+    )
+
+    assert [p.depth for p in paths] == [1, 3]
+
+
+async def test_executor_respects_max_paths(
+    db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
+) -> None:
+    person1, blue = person_with_paths_at_two_depths
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=blue, max_depth=3)
+    assert not plan.is_empty
+
+    paths = await _run_paths(
+        db=db,
+        branch=default_branch,
+        default_branch_name=default_branch.name,
+        plan=plan,
+        source_id=person1.id,
+        max_paths=1,
+    )
+
+    assert len(paths) == 1
+    assert paths[0].depth == 1
+    assert paths[0].start_node.uuid == person1.id
+    assert [hop.node.uuid for hop in paths[0].hops] == [blue.id]
+
+
+async def _person_with_two_paths_at_depth_three(db: InfrahubDatabase, branch: Branch, blue: Node) -> Node:
+    """Source person reaching ``blue`` directly (depth 1) and via two depth-3 routes.
+
+    ``person1 -tags- {red, green}``; both tags are also on ``person2``, which has
+    ``blue`` as its primary tag. So ``person1 → blue`` has one depth-1 path
+    (primary_tag) and two distinct depth-3 paths (through ``red`` and through
+    ``green``) — a tier with more than one path, for cap/ordering coverage.
+    """
+    red = await Node.init(db=db, schema=InfrahubKind.TAG, branch=branch)
+    await red.new(db=db, name="Red")
+    await red.save(db=db)
+    green = await Node.init(db=db, schema=InfrahubKind.TAG, branch=branch)
+    await green.new(db=db, name="Green")
+    await green.save(db=db)
+
+    person2 = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await person2.new(db=db, firstname="Bea", lastname="Two", primary_tag=blue, tags=[red, green])
+    await person2.save(db=db)
+
+    person1 = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await person1.new(db=db, firstname="Ada", lastname="One", primary_tag=blue, tags=[red, green])
+    await person1.save(db=db)
+    return person1
+
+
+async def test_increasing_max_paths_only_appends_paths(
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None, tag_blue_main: Node
+) -> None:
+    """Raising the cap must only add paths."""
+    person1 = await _person_with_two_paths_at_depth_three(db=db, branch=default_branch, blue=tag_blue_main)
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=tag_blue_main, max_depth=3)
+    assert not plan.is_empty
+
+    results: dict[int, list[tuple[int, tuple[str, ...]]]] = {}
+    for cap in (1, 2, 3):
+        paths = await _run_paths(
+            db=db,
+            branch=default_branch,
+            default_branch_name=default_branch.name,
+            plan=plan,
+            source_id=person1.id,
+            max_paths=cap,
+        )
+        assert len(paths) == cap
+        results[cap] = [_path_signature(p) for p in paths]
+
+    # depth-ascending, and each cap is a strict prefix of the next
+    assert results[1] == results[2][:1] == results[3][:1]
+    assert results[2] == results[3][:2]
+    assert results[1][0][0] == 1, "the single shortest path is the depth-1 direct edge"
+    assert {sig[0] for sig in results[3]} == {1, 3}, "depth-1 path plus two depth-3 paths"
+
+
+async def test_result_is_deterministic_across_runs(
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None, tag_blue_main: Node
+) -> None:
+    """Same query + same data → identical ordered output."""
+    person1 = await _person_with_two_paths_at_depth_three(db=db, branch=default_branch, blue=tag_blue_main)
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=tag_blue_main, max_depth=3)
+
+    first = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=person1.id
+    )
+    second = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=person1.id
+    )
+
+    assert [_path_signature(p) for p in first] == [_path_signature(p) for p in second]

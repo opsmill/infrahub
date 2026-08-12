@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import type React from "react";
 import DateTimePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
+import { Button } from "@infrahub/ui";
 import { isValid } from "date-fns";
-import { forwardRef } from "react";
 
-import { Button } from "@/shared/components/ui/button";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { DATE_TIME_FORMAT } from "@/shared/utils/date";
@@ -16,25 +16,24 @@ interface CustomInputProps {
   disabled?: boolean;
   className?: string;
   onClick?: () => void;
+  ref?: React.Ref<HTMLInputElement>;
 }
 
-const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
-  ({ id, value, disabled, className, onClick }, ref) => (
-    <input
-      id={id}
-      onClick={onClick}
-      ref={ref}
-      value={value}
-      readOnly
-      className={classNames(inputStyle, "cursor-pointer pr-10", className)}
-      disabled={disabled}
-    />
-  )
+const CustomInput = ({ id, value, disabled, className, onClick, ref }: CustomInputProps) => (
+  <input
+    id={id}
+    onClick={onClick}
+    ref={ref}
+    value={value}
+    readOnly
+    className={classNames(inputStyle, "cursor-pointer pr-10", className)}
+    disabled={disabled}
+  />
 );
 
 interface DatePickerProps {
   id?: string;
-  date?: Date;
+  date?: Date | null;
   onChange: (date: Date | null) => void;
   disabled?: boolean;
   isProtected?: boolean;
@@ -81,10 +80,9 @@ export const DatePicker = ({
         <div className="absolute top-0 right-1 bottom-0 flex items-center">
           <Button
             variant="ghost"
-            size="icon"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
+            size="xs"
+            shape="circle"
+            onPress={() => {
               handleClear();
             }}
           >

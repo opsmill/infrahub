@@ -17,10 +17,11 @@ if TYPE_CHECKING:
 
 class Migration008(InternalSchemaMigration):
     name: str = "008_node_add_human_friendly_id"
+    description: str = "N/A"
     minimum_version: int = 7
 
     @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
+    def init(cls, **kwargs: Any) -> Self:
         internal_schema = cls.get_internal_schema()
         schema_node = internal_schema.get_node(name="SchemaNode")
         schema_generic = internal_schema.get_node(name="SchemaGeneric")
@@ -41,8 +42,7 @@ class Migration008(InternalSchemaMigration):
                 ),
             ),
         ]
-        return cls(migrations=migrations, **kwargs)  # type: ignore[arg-type]
+        return cls(migrations=migrations, **kwargs)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

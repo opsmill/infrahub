@@ -1,0 +1,252 @@
+---
+title: Generics & inheritance
+---
+
+# Generics & inheritance
+
+A `Generic` in Infrahub is a reusable base that shares attributes and relationships across multiple node types. They work similarly to abstract base classes or interfaces in object-oriented programming — you define common structure once, and node types that `inherit_from` a generic receive that structure automatically.
+
+## When to use a generic
+
+Use a `Node` when you need to represent a concrete object in your infrastructure model with specific attributes and relationships.
+
+Use a `Generic` when you want to share common attributes or relationships across multiple node types. This helps to avoid redundancy and ensures consistency across your schema. For example, if you have different types of network interfaces (physical, logical) that share common attributes like name and description, you can define a `Generic` interface with these attributes and have the specific interface types inherit from it.
+
+`Generic`s can also be used to connect multiple types of Nodes to the same relationship.
+
+:::info Instantiation Requirement
+A `Generic` cannot exist independently; it must be instantiated by at least one `Node`.
+:::
+
+:::warning Limitations
+
+Two limitations could have an impact on your choice of node vs generic:
+
+- computed attributes can only be used on Nodes, see [computed attributes](../computed-attributes/overview) for more information.
+- Generic's properties are propagated to Nodes only during the first import — see [Inherited properties](#inherited-properties) below.
+
+:::
+
+## Defining a generic
+
+A generic can be used to:
+
+- Share multiple attributes or relationships between different types of nodes.
+- Connect multiple types of Node to the same relationship.
+- Define Attribute and Relationship on a specific list of nodes and avoid creating attributes for everything.
+
+In the example below, `Car` is a generic with 2 attributes and 1 relationship and 2 models. `ElectricCar` and `GazCar` are referencing it.
+In the GraphQL schema, `ElectricCar` and `GazCar` will have all the attributes and the relationships of `Car` in addition to the ones defined under their respective section.
+
+```yaml showLineNumbers
+generics:
+  - name: Car
+    namespace: Example1
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - name: color
+        kind: Color
+    relationships:
+      - cardinality: one
+        identifier: person__car
+        name: owner
+        optional: false
+        peer: Example1Person
+nodes:
+  - name: ElectricCar
+    namespace: Example1
+    attributes:
+      - kind: Number
+        name: nbr_engine
+    inherit_from: [ Example1Car ]
+  - name: GazCar
+    namespace: Example1
+    attributes:
+      - kind: Number
+        name: mpg
+    inherit_from: [ Example1Car ]
+  - name: Person
+    namespace: Example1
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Number
+        name: height
+        optional: true
+    relationships:
+      - cardinality: many
+        identifier: person__car
+        name: cars
+        peer: Example1Car
+```
+
+## Inheritance between generics and nodes
+
+### Basic inheritance
+
+Inheritance allows Nodes to derive properties from Generics. This relationship ensures that Nodes maintain a consistent set of attributes defined at the Generic level, reducing redundancy and simplifying updates.
+
+### Single generic inheritance
+
+When a Node is derived from a single Generic, it inherits all properties defined in that Generic unless overridden at the Node level.
+
+```yaml
+generics:
+  - name: GenericDevice
+    namespace: Infra
+    description: "Generic Device object."
+    label: "Device"
+    icon: "mdi:server"
+    human_friendly_id: ["name__value"]
+    order_by:
+      - name__value
+    display_label: "{{ name__value }}"
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        order_weight: 1000
+      - name: description
+        kind: Text
+        optional: true
+        order_weight: 1100
+
+nodes:
+  - name: Device
+    namespace: Infra
+    inherit_from:
+      - "GenericDevice"
+    attributes:
+      - name: role
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: core
+            label: Core Router
+            description: Central part of the network.
+            color: "#7f7fff"
+          - name: spine
+            label: Spine Router
+            description: "Aggregation router part of a Fabric."
+            color: "#aeeeee"
+          - name: leaf
+            label: Leaf Switch
+            description: "Top of Rack part of a Fabric."
+            color: "#e6e6fa"
+        order_weight: 1400
+```
+
+### Multiple generics inheritance
+
+When multiple Generics are involved, determining which properties to inherit can be challenging. The implemented solution prioritizes the first Generic listed in the `inherited_from` array.
+
+:::info First Generic Preference
+
+Properties will be inherited from the first Generic in the `inherited_from` list if not explicitly defined at the Node level. This approach simplifies conflict resolution.
+
+:::
+
+```yaml
+generics:
+  - name: GenericDevice
+    namespace: Infra
+    icon: "mdi:router"
+    human_friendly_id: ["name__value"]
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        order_weight: 1000
+
+  - name: Asset
+    namespace: Infra
+    icon: "mdi:server"
+    attributes:
+      - name: asset_tag
+        label: Asset Tag
+        kind: Text
+        unique: true
+        order_weight: 1000
+
+nodes:
+  - name: Device
+    namespace: Infra
+    inherit_from:
+      - "InfraGenericDevice"
+      - "InfraAsset"
+```
+
+### Restricting inheritance by namespace
+
+The `restricted_namespaces` property on a generic limits which namespaces are allowed to define nodes that inherit from it. When set, any node with `inherit_from` referencing that generic must belong to one of the listed namespaces — schema validation fails otherwise.
+
+This is useful when a generic is designed to be implemented only by a specific, known set of nodes. Without the restriction, the generic appears available to anyone, which can mislead schema authors into creating node types that look valid but behave incorrectly at runtime.
+
+```yaml
+generics:
+  - name: GenericService
+    namespace: Customer
+    restricted_namespaces:
+      - Customer
+    attributes:
+      - name: service_name
+        kind: Text
+        unique: true
+      - name: customer_account
+        kind: Text
+
+nodes:
+  - name: SingleSiteService
+    namespace: Customer     # Allowed — Customer is in restricted_namespaces
+    inherit_from:
+      - CustomerGenericService
+    attributes:
+      - name: site_name
+        kind: Text
+
+  - name: CloudService
+    namespace: Customer     # Allowed — Customer is in restricted_namespaces
+    inherit_from:
+      - CustomerGenericService
+
+  - name: HttpService
+    namespace: Dcim         # Error — Dcim is not in restricted_namespaces
+    inherit_from:
+      - CustomerGenericService
+```
+
+:::info
+`restricted_namespaces` is optional. When not set on a generic, nodes from any namespace can inherit from it.
+:::
+
+Infrahub uses this same mechanism on several of its own built-in generics — for example `CoreGenericRepository` and `CoreWebhook` — to prevent accidental extension of types that rely on specific internal code. Nodes inheriting from these generics must belong to the `Core` namespace.
+
+## Inherited properties {#inherited-properties}
+
+### List of inheritable properties
+
+- **human_friendly_id**: A user-friendly identifier for the entity (also known as HFID).
+- **display_label**: Label used for display purposes.
+- **menu_placement**: Defines where the entity appears in menus.
+- **uniqueness_constraints**: Constraints ensuring unique values for certain attributes.
+- **icon**: The icon representing the entity.
+- **order_by**: The default order in which entities are listed.
+
+:::warning Limitations and Considerations
+Inheritance of properties occurs only during the first import. If a Generic's properties are updated after the Node has been created, these updates will not be propagated to the Node. Users must manually update Nodes if they want to reflect changes made to Generics.
+:::
+
+## Reserved namespaces
+
+Some namespaces like `Core`, `Infrahub`, `Profile`, and `Builtin` are reserved and cannot be used by users to define new Nodes and Generics.
+
+In a similar fashion, some attribute names cannot be used, like `attribute` or `relationship`.
+
+## Related concepts
+
+- [Nodes & attributes](./nodes-and-attributes) — Node properties and attribute kinds
+- [Hierarchy](./hierarchy) — Hierarchical generics for tree structures
+- [Schema extensions](./extensions) — Adding to existing nodes without redefining them

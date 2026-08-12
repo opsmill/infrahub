@@ -11,6 +11,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m042_profile_attrs_in_db import Migration042
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.test_app import TestInfrahubApp
@@ -44,14 +45,14 @@ class WrappedMigration042(Migration042):
 
 class TestMigration042(TestInfrahubApp):
     @pytest.fixture
-    async def profile_1(self, db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> Node:
+    async def profile_1(self, db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> Node:
         profile = await Node.init(db=db, schema="ProfileTestCriticality")
         await profile.new(db=db, profile_name="profile_1", is_true=True, color="profile1", profile_priority=1001)
         await profile.save(db=db)
         return profile
 
     @pytest.fixture
-    async def profile_2(self, db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> Node:
+    async def profile_2(self, db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> Node:
         profile = await Node.init(db=db, schema="ProfileTestCriticality")
         await profile.new(
             db=db,
@@ -174,8 +175,8 @@ class TestMigration042(TestInfrahubApp):
         criticality_high: Node,
         profile_1: Node,
         profile_2: Node,
-        load_data,
-        load_branch_data,
+        load_data: None,
+        load_branch_data: None,
         value_branch: Branch,
         priority_branch: Branch,
         deleted_profile_branch: Branch,

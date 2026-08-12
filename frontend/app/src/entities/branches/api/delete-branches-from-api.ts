@@ -2,6 +2,7 @@ import { deleteBranchFromApi } from "@/entities/branches/api/delete-branch-from-
 
 export type DeleteBranchesFromApiParams = {
   names: string[];
+  deleteFromGit?: boolean;
 };
 
 export type DeleteBranchesFromApiResult = {
@@ -13,7 +14,7 @@ export async function deleteBranchesFromApi(
   params: DeleteBranchesFromApiParams
 ): Promise<DeleteBranchesFromApiResult> {
   const results = await Promise.allSettled(
-    params.names.map((name) => deleteBranchFromApi({ name }))
+    params.names.map((name) => deleteBranchFromApi({ name, deleteFromGit: params.deleteFromGit }))
   );
 
   return params.names.reduce<DeleteBranchesFromApiResult>(

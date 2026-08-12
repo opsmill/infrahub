@@ -19,7 +19,7 @@ class DeleteDuplicateHasValueEdgesQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // -------------------
 // find Attribute nodes with multiple identical edges to AttributeValue nodes with the same value
@@ -80,7 +80,7 @@ class DeleteDuplicateBooleanEdgesQuery(Query):
     insert_return = False
     edge_type: DatabaseEdgeType | None = None
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         if not self.edge_type:
             raise RuntimeError("edge_type is required for this query")
         query = """
@@ -116,9 +116,11 @@ class DeleteDuplicateIsProtectedEdgesQuery(DeleteDuplicateBooleanEdgesQuery):
 
 
 class Migration020(GraphMigration):
-    """
-    1. Find duplicate edges. These can be duplicated if multiple AttributeValue nodes with the same value exist b/c of concurrent
+    """1.
+
+    Find duplicate edges. These can be duplicated if multiple AttributeValue nodes with the same value exist b/c of concurrent
         database updates.
+
         a. (a:Attribute)-[e:HAS_VALUE]->(av:AttributeValue)
             grouped by (a, e.branch, e.from, e.to, e.status, av.value, av.is_default) to determine the number of duplicates.
         b. (a:Attribute)-[e:HAS_VALUE]->(b:Boolean)
@@ -126,7 +128,7 @@ class Migration020(GraphMigration):
     2. For a given set of duplicate edges
         a. delete all of the duplicate edges
         b. merge one edge with the properties of the deleted edges
-    3. If there are any orphaned AttributeValue nodes after these changes, then delete them
+    3. If there are any orphaned AttributeValue nodes after these changes, then delete them.
 
     This migration does not account for consolidating duplicated AttributeValue nodes because more might be created
     in the future due to concurrent database updates. A migration to consolidate duplicated AttributeValue nodes
@@ -134,6 +136,7 @@ class Migration020(GraphMigration):
     """
 
     name: str = "020_delete_duplicate_edges"
+    description: str = "N/A"
     minimum_version: int = 19
     queries: Sequence[type[Query]] = [
         DeleteDuplicateHasValueEdgesQuery,
@@ -145,5 +148,4 @@ class Migration020(GraphMigration):
         return await self.do_execute(migration_input=migration_input)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

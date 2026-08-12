@@ -10,8 +10,7 @@
 | `.ts` | TypeScript module | any | `format-date.ts` |
 | `.field.tsx` | Form field component | shared/components/form/fields/ | `input.field.tsx` |
 | `.atom.ts` | Jotai atom | shared/stores/ | `time.atom.ts` |
-| `.types.ts` | Domain types | domain/ | `branch.types.ts` |
-| `.mappers.ts` | Transform functions (optional) | domain/ | `branch.mappers.ts` |
+| `.mappers.ts` | Wire → domain mappers (optional) | api/ | `branch.mappers.ts` |
 | `.query.ts` | queryOptions + useQuery hook | ui/queries/ | `get-branches.query.ts` |
 | `.mutation.ts` | useMutation hook | ui/queries/ | `create-branch.mutation.ts` |
 | `.query-keys.ts` | Query key factory | ui/queries/ | `branch.query-keys.ts` |
@@ -27,12 +26,16 @@
 | `shared/hooks/` | `useCamelCase.ts` | `useDebounce.ts` |
 | `shared/stores/` | `kebab-case.atom.ts` | `time.atom.ts` |
 | `entities/{name}/api/` | `verb-noun-from-api.ts` | `get-branches-from-api.ts` |
-| `entities/{name}/domain/` | `verb-noun.ts` | `get-branches.ts` |
-| `entities/{name}/domain/` | `{noun}.types.ts` | `branch.types.ts` |
-| `entities/{name}/domain/` | `{noun}.mappers.ts` (optional) | `branch.mappers.ts` |
+| `entities/{name}/api/` | `verb-noun-query.ts` (shared query builder only — inline single-consumer builders) | `get-nodes-query.ts` |
+| `entities/{name}/api/` | `{noun}.mappers.ts` (optional) | `branch.mappers.ts` |
+| `entities/{name}/domain/model/` | `{noun}.ts` | `branch.ts` |
+| `entities/{name}/domain/rules/` | `kebab-case.ts` (pure functions) | `branch-filters.ts` |
+| `entities/{name}/domain/use-cases/` | `verb-noun.ts` | `get-branches.ts` |
 | `entities/{name}/ui/queries/` | `verb-noun.query.ts` | `get-branches.query.ts` |
 | `entities/{name}/ui/queries/` | `verb-noun.mutation.ts` | `create-branch.mutation.ts` |
-| `entities/{name}/ui/queries/` | `{noun}.query-keys.ts` | `branch.query-keys.ts` |
+| `entities/{name}/ui/queries/` | `{noun}.query-keys.ts` (singular file, plural export — `branchesQueryKeys`) | `branch.query-keys.ts` |
+| `entities/{name}/ui/hooks/` | `use-kebab-case.ts` | `use-branch-exists.ts` |
+| `entities/{name}/ui/routing/` | `{noun}-urls.ts`, `use-{noun}-outlet.ts` | `branch-urls.ts` |
 | `entities/{name}/ui/` | `kebab-case.tsx` | `branches-table.tsx` |
 | `pages/` | `kebab-case.tsx` | `login.tsx` |
 
@@ -40,5 +43,128 @@
 
 - All files: `kebab-case`
 - Tests: colocate with source, never in `__tests__/`
-- Types: `{noun}.types.ts` in entity `domain/`, or inline in component
+- Types: `{noun}.ts` in the entity's `domain/model/` (no `.types` suffix), or inline in component
 - Avoid `index.ts` barrel exports; prefer direct imports
+
+## Domain Function Types
+
+Every `entities/*/domain/use-cases/{verb-noun}.ts` exports a matched pair of types so callers stay decoupled from the GraphQL shape:
+
+- `{Verb}{Noun}Params` — the input the domain function accepts. Aliases the `*FromApiParams` type 1:1 unless the domain wraps additional fields.
+- `{Verb}{Noun}Result` — the value the domain function returns. Either an explicit shape or `Awaited<ReturnType<typeof verbNoun>>`.
+
+```ts
+// ✅ Good
+export type GetDiffSummaryParams = GetDiffTreeSummaryFromApiParams;
+export type GetDiffSummaryResult = {
+  num_added: number;
+  num_updated: number;
+  num_removed: number;
+  num_conflicts: number;
+};
+
+// ❌ Bad — `*Response` ties the type to the wire shape
+export type GetDiffSummaryResponse = { /* ... */ };
+```
+
+Do not use `*Response`, `*Output`, `*Outcome`, or `*Data` suffixes — `*Result` is the only sanctioned name.
+
+## Hook Names
+
+Hooks that fetch or mutate through the API carry a CRUD verb, so a reader sees the operation at the call site and `grep` finds it by verb:
+
+```ts
+// ✅ Good
+useGetEffectivePreferences();
+useUpsertUserPreferences();
+
+// ❌ Bad — no verb; reads like a value, not a call
+useEffectivePreferences();
+```
+
+Match the verb to the operation (`useGet…`, `useCreate…`, `useUpdate…`, `useUpsert…`, `useDelete…`) and keep it consistent with the underlying `domain/use-cases/{verb-noun}.ts` function.
+
+## Query Keys
+
+Build query keys from a single object, not positional spreads. Object-shaped keys are easier to read in devtools, easier to invalidate by partial match, and easier to diff.
+
+```ts
+// ✅ Good
+export const pathTraversalKeys = {
+  all: ["path-traversal"] as const,
+  traverse: (params: { sourceId: string; destinationId: string; maxDepth: number }) =>
+    [...pathTraversalKeys.all, "traverse", params] as const,
+};
+
+// ❌ Bad: positional spread
+traverse: (sourceId, destinationId, maxDepth) =>
+  [...pathTraversalKeys.all, "traverse", sourceId, destinationId, maxDepth] as const,
+```
+
+Partial invalidation works naturally with the object form: `queryClient.invalidateQueries({ queryKey: pathTraversalKeys.all })`.
+
+## Mutation Invalidation
+
+**Invalidation lives in the mutation hook, not at the callsite.** Co-locating `onSuccess`/`onSettled` with the `useMutation` makes the cache contract auditable — every callsite gets it for free, and you can grep for missing invalidations in CI.
+
+```ts
+// ✅ Good — invalidation in the hook
+export function useMergeBranch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: mergeBranch,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
+    },
+  });
+}
+```
+
+Use callsite-level invalidation **only** when the queryKey depends on context the hook does not have (e.g., the conflict resolution mutation needs the proposed-change id from the page it is rendered on). When you make that choice, leave a top-of-file comment containing the literal phrase `invalidation-at-callsite` so the audit script below stays green:
+
+```ts
+// invalidation-at-callsite: callers pass an explicit `onSuccess` because
+// the queryKey depends on the proposed change being viewed.
+```
+
+For mutations that genuinely don't change any cached server state (e.g., a connectivity probe), use the same comment and explain why.
+
+### Audit
+
+Every `.mutation.ts` file must contain either `onSuccess`, `onSettled`, or the marker comment:
+
+```bash
+for f in $(find frontend/app/src/entities -name '*.mutation.ts'); do
+  grep -q 'onSuccess\|onSettled\|invalidation-at-callsite' "$f" || echo "MISSING: $f"
+done
+```
+
+The output must be empty.
+
+## API files: `*-from-api.ts` / `*-query.ts` / `*.mappers.ts`
+
+The dot suffixes `.query.ts` / `.mutation.ts` / `.query-keys.ts` are **reserved for TanStack Query
+files in `ui/queries/`** — never use them in `api/`.
+
+Every file under `entities/*/api/` ends in one of:
+
+- `*-from-api.ts` — calls `graphqlClient.query`/`graphqlClient.mutate` (or REST equivalent).
+  Query/mutation string builders (e.g., `jsonToGraphQLQuery`) with a single consumer — the common
+  case — are inlined here, not split into their own file.
+- `*-query.ts` (hyphenated) — a pure query-string builder shared by **several** `*-from-api.ts`
+  files. Don't create one for a single consumer (none exist today).
+- `*.mappers.ts` — generated wire shape → domain type mappers (optional, see `dev/knowledge/frontend/entities-structure.md`).
+
+Known exception: `authentication/api/token-storage.ts` (localStorage token I/O — storage keys live
+with their consumer, see `dev/knowledge/frontend/auth-methods.md`).
+
+The check is enforced by:
+
+```bash
+find frontend/app/src/entities -type f -path '*/api/*.ts' \
+  ! -name '*-from-api.ts' ! -name '*-query.ts' ! -name '*.mappers.ts' \
+  ! -path '*/authentication/api/token-storage.ts'
+```
+
+The output must be empty.

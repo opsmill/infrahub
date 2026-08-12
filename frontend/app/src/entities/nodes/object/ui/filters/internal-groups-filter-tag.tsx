@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import type { TagProps } from "react-aria-components";
 
-import useFilters, { type Filter } from "@/shared/hooks/useFilters";
-
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { FilterSuggestionTag } from "@/entities/nodes/object/ui/filters/filter-suggestion-tag";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
 
@@ -34,6 +34,12 @@ export const InternalGroupsFilterTag = ({ ...props }: TagProps) => {
   }
 
   return (
-    <FilterTag id={SHOW_INTERNAL_GROUPS_ID} label="internal groups" value="hidden" {...props} />
+    <FilterTag
+      id={SHOW_INTERNAL_GROUPS_ID}
+      label="internal groups"
+      condition="is"
+      value="hidden"
+      {...props}
+    />
   );
 };

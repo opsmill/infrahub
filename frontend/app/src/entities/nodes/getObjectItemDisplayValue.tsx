@@ -1,3 +1,4 @@
+import { Meter } from "@infrahub/ui";
 import { CheckIcon, XIcon } from "lucide-react";
 
 import type {
@@ -12,7 +13,7 @@ import type {
   NumberAttribute,
   RelationshipProperty,
   TextAttribute,
-} from "@/shared/api/graphql/generated/graphql";
+} from "@/shared/api/graphql/generated/types";
 import { ColorDisplay } from "@/shared/components/display/color-display";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { PasswordDisplay } from "@/shared/components/display/password-display";
@@ -23,10 +24,15 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import type {
+  AttributeKind,
+  AttributeSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
 import type { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
-import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 const getTextValue = (data: any) => {
   // If data.node is a node object, use getNodeLabel
@@ -106,7 +112,7 @@ export const getDisplayValue = (
   }
 
   if (attribute?.kind === "DateTime" && row[attribute?.name]?.value) {
-    return <DateDisplay date={row[attribute?.name]?.value} />;
+    return <DateDisplay date={row[attribute?.name]?.value} fullTimestamp />;
   }
 
   const textValue = getTextValue(row[attribute?.name]);
@@ -177,10 +183,19 @@ export const ObjectAttributeValue = ({
   attributeData,
 }: {
   attributeSchema: FieldSchema;
-  attributeData: AttributeType;
+  attributeData: NodeAttributeWithMetadata;
 }) => {
   if (!attributeData.value && attributeData.value !== 0 && attributeData.value !== false) {
     return "-";
+  }
+
+  if (attributeSchema.name === "utilization" && typeof attributeData.value === "number") {
+    return (
+      <Meter
+        value={attributeData.value}
+        aria-label={attributeSchema.label ?? attributeSchema.name}
+      />
+    );
   }
 
   switch (attributeSchema.kind as AttributeKind) {
@@ -193,6 +208,7 @@ export const ObjectAttributeValue = ({
     case ATTRIBUTE_KIND.FILE:
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
+    case ATTRIBUTE_KIND.IP_ADDRESS:
     case ATTRIBUTE_KIND.ANY:
       return <TextDisplay>{getTextValue(attributeData).toString()}</TextDisplay>;
     case ATTRIBUTE_KIND.URL:
@@ -212,27 +228,27 @@ export const ObjectAttributeValue = ({
     case ATTRIBUTE_KIND.HASHED_PASSWORD:
       return <PasswordDisplay value={getTextValue(attributeData)} />;
     case ATTRIBUTE_KIND.DROPDOWN: {
-      const dropdownAttribute = attributeData as Dropdown;
+      const dropdownAttribute = attributeData as unknown as Dropdown;
       return (
         <ColorDisplay value={getTextValue(dropdownAttribute)} color={dropdownAttribute.color} />
       );
     }
     case ATTRIBUTE_KIND.COLOR:
-      return <ColorDisplay color={attributeData.value} />;
+      return <ColorDisplay color={attributeData.value as string | null} />;
     case ATTRIBUTE_KIND.LIST: {
-      const items = attributeData.value?.map((value?: string) => value ?? "-").slice(0, 5);
-
-      const rest = attributeData.value.slice(5).length;
+      const listData = attributeData.value as string[] | null;
+      const items = listData?.slice(0, 5);
+      const rest = listData?.slice(5).length;
 
       return (
         <div className="flex flex-wrap items-center gap-1">
-          {items?.map((item: string, index: number) => (
+          {items?.map((item, index) => (
             <Badge key={index} className="font-normal">
               {item}
             </Badge>
           ))}
 
-          {items?.length !== attributeData.value?.length && <i>{`(${rest} more)`}</i>}
+          {items?.length !== listData?.length && <i>{`(${rest} more)`}</i>}
         </div>
       );
     }

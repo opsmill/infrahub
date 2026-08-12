@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
@@ -11,9 +12,7 @@ from typing import (
     Iterator,
     Literal,
     Mapping,
-    Sequence,
     TypeVar,
-    cast,
     overload,
 )
 
@@ -24,6 +23,7 @@ from pydantic import BaseModel, Field
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
 from infrahub.core.constants import SYSTEM_USER_ID, BranchSupportType, InfrahubKind, MetadataOptions, RelationshipKind
+from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo, MetadataQueryOptions
@@ -88,6 +88,7 @@ class RelationshipUpdateDetails:
 @dataclass
 class PeerWithRelationshipMetadata:
     peer: Node | str
+    peer_kind: str | None = None
     created_at: Timestamp | None = None
     created_by: str | None = None
     updated_at: Timestamp | None = None
@@ -139,6 +140,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self._peer: Node | str | None = None
         self.peer_id: str | None = None
         self.peer_hfid: list[str] | None = None
+        self._resolved_peer_kind: str | None = None
         self.data: dict | RelationshipPeerData | str | Node | None = None
 
         self.from_pool: dict[str, Any] | None = None
@@ -154,7 +156,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     def __hash__(self) -> int:
         """Generate a hash based on the Peer and the properties."""
-
         values = [self.id, self.db_id, self.peer_id]
         for prop_name in self._flag_properties:
             values.append(getattr(self, prop_name))
@@ -176,6 +177,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         return self._peer.get_kind()
 
+    def get_concrete_peer_kind(self) -> str | None:
+        """Return the peer's concrete kind, or None when only the schema's (possibly generic) peer kind is known."""
+        if self._peer and not isinstance(self._peer, str):
+            return self._peer.get_kind()
+
+        return self._resolved_peer_kind
+
     @property
     def node_id(self) -> str:
         if self._node_id:
@@ -185,11 +193,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         raise ValueError("Cannot get ID for relationship node")
 
     def get_branch_based_on_support_type(self) -> Branch:
-        """If the attribute is branch aware, return the Branch object associated with this attribute
-        If the attribute is branch agnostic return the Global Branch
+        """If the attribute is branch aware, return the Branch object associated with this attribute.
+
+        If the attribute is branch agnostic return the Global Branch.
 
         Returns:
             Branch:
+
         """
         if self.schema.branch == BranchSupportType.AGNOSTIC:
             return registry.get_global_branch()
@@ -221,6 +231,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     def _process_relationship_peer_data(self, data: RelationshipPeerData) -> None:
         self.set_peer(value=str(data.peer_id))
+        self._resolved_peer_kind = data.peer_kind
 
         if not self.id and data.rel_node_id:
             self.id = data.rel_node_id
@@ -261,6 +272,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     def _process_peer_with_relationship_metadata(self, data: PeerWithRelationshipMetadata) -> None:
         self.set_peer(value=data.peer)
+        self._resolved_peer_kind = data.peer_kind
         self._set_created_at(data.created_at)
         self._set_created_by(data.created_by)
         self._set_updated_at(data.updated_at)
@@ -344,7 +356,12 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
     async def get_peer(self, db: InfrahubDatabase, peer_type: None = ...) -> Node: ...
 
     async def get_peer(self, db: InfrahubDatabase, peer_type: type[PeerType] | None = None) -> Any:  # noqa: ARG002
-        """Return the peer of the relationship."""
+        """Return the peer of the relationship.
+
+        Raises:
+            NodeNotFoundError: When the peer of the relationship cannot be resolved.
+
+        """
         if self._peer is None:
             await self._get_peer(db=db)
 
@@ -415,7 +432,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     async def _create(self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None) -> None:
         """Add a relationship with another object by creating a new relationship node."""
-
         create_at = Timestamp(at)
         self._set_created_by(value=user_id)
         self._set_created_at(value=create_at)
@@ -448,7 +464,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         at: Timestamp | None = None,
     ) -> None:
         """Update the properties of an existing relationship."""
-
         update_at = Timestamp(at)
         branch = self.get_branch_based_on_support_type()
 
@@ -527,8 +542,12 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         fields: list[str] | None = None,
         user_id: str = SYSTEM_USER_ID,
     ) -> None:
-        """Resolve the peer of the relationship."""
+        """Resolve the peer of the relationship.
 
+        Raises:
+            NodeNotFoundError: When the resource pool referenced by `from_pool` cannot be found.
+
+        """
         fields = fields or []
         query_fields = dict.fromkeys(fields)
         if "display_label" not in query_fields:
@@ -570,7 +589,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 results = await registry.manager.query(
                     db=db, schema=InfrahubKind.RESOURCEPOOL, filters={"name__value": pool_id}, branch=self.branch
                 )
-                results = cast("list[Node]", results)
                 pool = results[0] if results else None
 
             if not pool:
@@ -598,7 +616,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> Self:
         """Create or Update the Relationship in the database."""
-
         save_at = Timestamp(at)
 
         if not self.id:
@@ -609,7 +626,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     async def to_graphql(self, fields: dict | None, db: InfrahubDatabase, related_node_ids: set | None = None) -> dict:
         """Generate GraphQL Payload for the associated Peer."""
-
         if not fields:
             peer_fields, rel_fields = {}, {}
         else:
@@ -644,7 +660,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 response[f"{PREFIX_PROPERTY}{field_name}"] = await created_at.to_graphql() if created_at else None
             elif field_name == "created_by":
                 response[f"{PREFIX_PROPERTY}{field_name}"] = self._get_created_by()
-            elif field_name in ["_updated_at", "updated_at"]:
+            elif field_name == "updated_at":
                 updated_at = self._get_updated_at()
                 response[f"{PREFIX_PROPERTY}{field_name}"] = await updated_at.to_graphql() if updated_at else None
             elif field_name == "updated_by":
@@ -690,6 +706,7 @@ class RelationshipValidatorList:
 
     Raises:
         ValidationError: If the number of relationships is not within the min and max count.
+
     """
 
     def __init__(
@@ -703,6 +720,7 @@ class RelationshipValidatorList:
 
         Raises:
             ValidationError: The number of relationships is not within the min and max count.
+
         """
         if max_count is not None and min_count is not None and max_count < min_count:
             raise ValidationError({"msg": "max_count must be greater than min_count"})
@@ -849,7 +867,7 @@ class RelationshipValidatorList:
         self.validate_max()
 
 
-class RelationshipManager:
+class RelationshipManager[RelationshipManagerPeerType]:
     def __init__(
         self, schema: RelationshipSchema, branch: Branch, at: Timestamp, node: Node, is_from_profile: bool = False
     ) -> None:
@@ -906,6 +924,17 @@ class RelationshipManager:
         await rm._validate_hierarchy()
 
         for item in data:
+            if isinstance(item, dict) and item.get("from_pool") is not None and rm.node._schema.is_template_schema:
+                pool_rel_name = f"{rm.name}{RESOURCE_POOL_REL_SUFFIX}"
+                raise ValidationError(
+                    {
+                        rm.name: (
+                            f"'from_pool' is not supported on template relationships. "
+                            f"Set the '{pool_rel_name}' relationship on this template instead."
+                        )
+                    }
+                )
+
             if not isinstance(item, rm.rel_class | str | dict) and not hasattr(item, "_schema"):
                 raise ValidationError({rm.name: f"Invalid data provided to form a relationship {item}"})
 
@@ -977,7 +1006,7 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: None = ...,
         raise_on_error: Literal[False] = ...,
-    ) -> Node | None: ...
+    ) -> RelationshipManagerPeerType | None: ...
 
     @overload
     async def get_peer(
@@ -985,7 +1014,7 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: None = ...,
         raise_on_error: Literal[True] = ...,
-    ) -> Node: ...
+    ) -> RelationshipManagerPeerType: ...
 
     @overload
     async def get_peer(
@@ -993,7 +1022,7 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: None = ...,
         raise_on_error: bool = ...,
-    ) -> Node: ...
+    ) -> RelationshipManagerPeerType: ...
 
     async def get_peer(
         self,
@@ -1010,8 +1039,7 @@ class RelationshipManager:
         if not rels and raise_on_error:
             raise LookupError("Unable to find the peer")
 
-        peer = await rels[0].get_peer(db=db)
-        return peer
+        return await rels[0].get_peer(db=db)
 
     @overload
     async def get_peers(
@@ -1029,7 +1057,7 @@ class RelationshipManager:
         peer_type: None = None,
         branch_agnostic: bool = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
-    ) -> Mapping[str, Node]: ...
+    ) -> Mapping[str, RelationshipManagerPeerType]: ...
 
     async def get_peers(
         self,
@@ -1040,23 +1068,24 @@ class RelationshipManager:
     ) -> Mapping[str, Node | PeerType]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]
-        nodes = await registry.manager.get_many(
+        return await registry.manager.get_many(
             db=db,
             ids=peer_ids,
             branch=self.branch,
             branch_agnostic=branch_agnostic,
             include_metadata=include_metadata,
         )
-        return nodes
 
     def get_branch_based_on_support_type(self) -> Branch:
-        """If the attribute is branch aware, return the Branch object associated with this attribute
-        If the attribute is branch agnostic return the Global Branch
+        """If the attribute is branch aware, return the Branch object associated with this attribute.
+
+        If the attribute is branch agnostic return the Global Branch.
 
         Note that if this relationship is Aware and source node is Agnostic, it will return -global- branch.
 
         Returns:
             Branch:
+
         """
         if self.schema.branch == BranchSupportType.AGNOSTIC:
             return registry.get_global_branch()
@@ -1086,9 +1115,11 @@ class RelationshipManager:
         force_refresh: bool = True,
     ) -> RelationshipUpdateDetails:
         """Fetch the latest relationships from the database and returns :
+
         - the list of nodes present on both sides
         - the list of nodes present only locally
-        - the list of nodes present only in the database
+        - the list of nodes present only in the database.
+
         """
         if not force_refresh and self._relationship_id_details is not None:
             return self._relationship_id_details
@@ -1123,7 +1154,6 @@ class RelationshipManager:
         force_refresh: bool = True,
     ) -> None:
         """Fetch the latest relationships from the database and update the local cache."""
-
         details = await self.fetch_relationship_ids(
             at=at, db=db, branch_agnostic=branch_agnostic, force_refresh=force_refresh
         )
@@ -1191,7 +1221,7 @@ class RelationshipManager:
 
     async def update(
         self,
-        data: list[str | Node | dict[str, Any] | PeerWithRelationshipMetadata]
+        data: Sequence[str | Node | dict[str, Any] | PeerWithRelationshipMetadata]
         | dict[str, Any]
         | str
         | Node
@@ -1202,8 +1232,14 @@ class RelationshipManager:
         user_id: str = SYSTEM_USER_ID,
         at: Timestamp | None = None,
     ) -> bool:
-        """Replace and Update the list of relationships with this one."""
-        if not isinstance(data, list):
+        """Replace and Update the list of relationships with this one.
+
+        Raises:
+            ValidationError: When the supplied data cannot form a valid relationship.
+
+        """
+        # A str satisfies Sequence but stands for a single peer id, so it must not be iterated.
+        if isinstance(data, str) or not isinstance(data, Sequence):
             list_data: Sequence[str | Node | dict[str, Any] | PeerWithRelationshipMetadata | None] = [data]
         else:
             list_data = data
@@ -1217,49 +1253,14 @@ class RelationshipManager:
         changed = False
 
         for item in list_data:
-            if not isinstance(
-                item, self.rel_class | str | dict | type(None) | PeerWithRelationshipMetadata
-            ) and not hasattr(item, "_schema"):
-                raise ValidationError({self.name: f"Invalid data provided to form a relationship {item}"})
-
-            if hasattr(item, "_schema"):
-                item_id = getattr(item, "id", None)
-                if item_id and item_id in previous_relationships:
-                    self._relationships.append(previous_relationships[str(item_id)])
-                    continue
-
-            if item is None:
-                if previous_relationships:
-                    if process_delete:
-                        for rel in previous_relationships.values():
-                            await rel.delete(db=db, at=update_at, user_id=user_id)
-                    changed = True
-                continue
-
-            if isinstance(item, str) and item in previous_relationships:
-                self._relationships.append(previous_relationships[item])
-                continue
-
-            if isinstance(item, dict) and item.get("id", None) in previous_relationships:
-                rel = previous_relationships[item["id"]]
-                hash_before = hash(rel)
-                rel.load(data=item, db=db)
-                if hash(rel) != hash_before:
-                    changed = True
-                self._relationships.append(rel)
-                continue
-
-            # If the item is not present in the previous list of relationship, we create a new one.
-            self._relationships.append(
-                await self.rel_class(
-                    schema=self.schema,
-                    branch=self.branch,
-                    source_kind=self.node.get_kind(),
-                    at=update_at,
-                    node=self.node,
-                ).new(db=db, data=item)
+            changed |= await self._process_update_item(
+                db=db,
+                item=item,
+                previous_relationships=previous_relationships,
+                update_at=update_at,
+                process_delete=process_delete,
+                user_id=user_id,
             )
-            changed = True
 
         # Check if some relationship got removed by checking if the previous list of relationship is a subset of the current list of not
         if set(previous_relationships.keys()) <= {rel.peer_id for rel in await self.get_relationships(db=db)}:
@@ -1270,8 +1271,84 @@ class RelationshipManager:
 
         return changed
 
+    def _detach_profile_source(self, rel: Relationship) -> None:
+        """A peer explicitly provided by the user is no longer sourced from a profile."""
+        if rel.is_from_profile:
+            rel.is_from_profile = False
+            rel.clear_source()
+
+    async def _process_update_item(
+        self,
+        db: InfrahubDatabase,
+        item: str | Node | dict[str, Any] | PeerWithRelationshipMetadata | None,
+        previous_relationships: dict[str, Relationship],
+        update_at: Timestamp,
+        process_delete: bool,
+        user_id: str,
+    ) -> bool:
+        """Process a single item from update()'s input, appending to self._relationships as needed.
+
+        Returns True if the item represents a change to the relationship set.
+
+        Raises:
+            ValidationError: When the supplied data cannot form a valid relationship.
+
+        """
+        if not isinstance(
+            item, self.rel_class | str | dict | type(None) | PeerWithRelationshipMetadata
+        ) and not hasattr(item, "_schema"):
+            raise ValidationError({self.name: f"Invalid data provided to form a relationship {item}"})
+
+        if hasattr(item, "_schema"):
+            item_id = getattr(item, "id", None)
+            if item_id and item_id in previous_relationships:
+                rel = previous_relationships[str(item_id)]
+                self._detach_profile_source(rel)
+                self._relationships.append(rel)
+                return False
+
+        if item is None:
+            if previous_relationships:
+                if process_delete:
+                    for rel in previous_relationships.values():
+                        await rel.delete(db=db, at=update_at, user_id=user_id)
+                return True
+            return False
+
+        if isinstance(item, str) and item in previous_relationships:
+            rel = previous_relationships[item]
+            self._detach_profile_source(rel)
+            self._relationships.append(rel)
+            return False
+
+        if isinstance(item, dict) and item.get("id", None) in previous_relationships:
+            rel = previous_relationships[item["id"]]
+            hash_before = hash(rel)
+            rel.load(data=item, db=db)
+            changed = hash(rel) != hash_before
+            self._detach_profile_source(rel)
+            self._relationships.append(rel)
+            return changed
+
+        # If the item is not present in the previous list of relationship, we create a new one.
+        self._relationships.append(
+            await self.rel_class(
+                schema=self.schema,
+                branch=self.branch,
+                source_kind=self.node.get_kind(),
+                at=update_at,
+                node=self.node,
+            ).new(db=db, data=item)
+        )
+        return True
+
     async def add(self, data: dict[str, Any] | Node, db: InfrahubDatabase) -> bool:
-        """Add a new relationship to the list of existing ones, avoid duplication."""
+        """Add a new relationship to the list of existing ones, avoid duplication.
+
+        Raises:
+            ValidationError: When the supplied data cannot form a valid relationship.
+
+        """
         if not isinstance(data, self.rel_class | dict) and not hasattr(data, "_schema"):
             raise ValidationError({self.name: f"Invalid data provided to form a relationship {data}"})
 
@@ -1306,8 +1383,12 @@ class RelationshipManager:
         peer_id: str | UUID,
         db: InfrahubDatabase,
     ) -> bool:
-        """Remove a peer id from the local relationships list"""
+        """Remove a peer id from the local relationships list.
 
+        Raises:
+            IndexError: When no relationship matches the provided `peer_id`.
+
+        """
         for idx, rel in enumerate(await self.get_relationships(db=db)):
             if str(rel.peer_id) != str(peer_id):
                 continue
@@ -1356,7 +1437,6 @@ class RelationshipManager:
         self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None
     ) -> RelationshipCardinalityManyChangelog | RelationshipCardinalityOneChangelog:
         """Create or Update the Relationship in the database."""
-
         await self.resolve(db=db, user_id=user_id)
         branch_agnostic = self.schema.branch is BranchSupportType.AGNOSTIC
 
@@ -1404,7 +1484,6 @@ class RelationshipManager:
         self, db: InfrahubDatabase, at: Timestamp | None = None
     ) -> RelationshipCardinalityManyChangelog | RelationshipCardinalityOneChangelog:
         """Delete all the relationships."""
-
         delete_at = Timestamp(at)
         relationship_mapper = ChangelogRelationshipMapper(schema=self.schema)
 
@@ -1451,6 +1530,9 @@ class RelationshipManager:
         is_changed = False
         len_rels_to_remove = len(relationships_to_remove)
         len_rels_to_insert = len(relationships_to_insert)
+
+        if not len_rels_to_remove and not len_rels_to_insert:
+            return False
 
         if len_rels_to_remove and not len_rels_to_insert:
             for rel_to_remove in relationships_to_remove:

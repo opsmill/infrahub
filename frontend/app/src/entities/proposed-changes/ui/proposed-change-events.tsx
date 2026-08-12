@@ -7,7 +7,7 @@ import { InfiniteTrigger } from "@/shared/components/utils/infinite-trigger";
 
 import { EventCard } from "@/entities/events/ui/event-card";
 import { useGetEvents } from "@/entities/events/ui/queries/get-events.query";
-import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
+import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/domain/model/proposed-change-events";
 
 export const ProposedChangeEvents = () => {
   const { proposedChangeId } = useParams();

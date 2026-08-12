@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/ldap/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login Ldap */
+        post: operations["login_ldap_api_auth_ldap_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/diff/files": {
         parameters: {
             query?: never;
@@ -133,6 +150,10 @@ export interface paths {
         /**
          * Get File
          * @description Retrieve a file from a git repository.
+         *
+         *     Raises:
+         *         CommitNotFoundError: When no commit is provided and the repository has no commits.
+         *         PropagatedFromWorkerError: When the worker returns an error response while reading the file.
          */
         get: operations["get_file_api_file__repository_id___file_path__get"];
         put?: never;
@@ -396,6 +417,9 @@ export interface paths {
          *     Requires `VIEW` permission on the FileObject node.
          *     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
          *     filename.
+         *
+         *     Raises:
+         *         HTTPException: When the requested kind does not inherit from the FileObject schema.
          */
         get: operations["download_file_object_by_hfid_api_storage_files_by_hfid__kind__get"];
         put?: never;
@@ -420,6 +444,9 @@ export interface paths {
          *     Requires `VIEW` permission on the FileObject node.
          *     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
          *     filename.
+         *
+         *     Raises:
+         *         NodeNotFoundError: When no FileObject node matches the provided storage_id.
          */
         get: operations["download_file_object_by_storage_id_api_storage_files_by_storage_id__storage_id__get"];
         put?: never;
@@ -505,6 +532,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/telemetry/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Telemetry Snapshots */
+        get: operations["get_telemetry_snapshots_api_telemetry_snapshots_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/transform/python/{transform_id}": {
         parameters: {
             query?: never;
@@ -560,473 +604,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** APIGenericSchema */
-        APIGenericSchema: {
-            /**
-             * Id
-             * @description The ID of the node
-             */
-            id?: string | null;
-            /**
-             * @description Expected state of the node/generic after loading the schema
-             * @default present
-             */
-            state: components["schemas"]["HashableModelState"];
-            /**
-             * Name
-             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
-             */
-            name: string;
-            /**
-             * Namespace
-             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
-             */
-            namespace: string;
-            /**
-             * Description
-             * @description Short description of the model, will be visible in the frontend.
-             */
-            description?: string | null;
-            /**
-             * Label
-             * @description Human friendly representation of the name/kind
-             */
-            label?: string | null;
-            /**
-             * @description Type of branch support for the model.
-             * @default aware
-             */
-            branch: components["schemas"]["BranchSupportType"];
-            /**
-             * Default Filter
-             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
-             */
-            default_filter?: string | null;
-            /**
-             * Human Friendly Id
-             * @description Human friendly and unique identifier for the object.
-             */
-            human_friendly_id?: string[] | null;
-            /**
-             * Display Label
-             * @description Attribute or Jinja2 template to use to generate the display label
-             */
-            display_label?: string | null;
-            /**
-             * Display Labels
-             * @description List of attributes to use to generate the display label (deprecated)
-             */
-            display_labels?: string[] | null;
-            /**
-             * Include In Menu
-             * @description Defines if objects of this kind should be included in the menu.
-             */
-            include_in_menu?: boolean | null;
-            /**
-             * Menu Placement
-             * @description Defines where in the menu this object should be placed.
-             */
-            menu_placement?: string | null;
-            /**
-             * Icon
-             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
-             */
-            icon?: string | null;
-            /**
-             * Order By
-             * @description List of attributes to use to order the results by default
-             */
-            order_by?: string[] | null;
-            /**
-             * Uniqueness Constraints
-             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
-             */
-            uniqueness_constraints?: string[][] | null;
-            /**
-             * Documentation
-             * @description Link to a documentation associated with this object, can be internal or external.
-             */
-            documentation?: string | null;
-            /**
-             * Attributes
-             * @description Node attributes
-             */
-            attributes?: components["schemas"]["AttributeSchema-Output"][];
-            /**
-             * Relationships
-             * @description Node Relationships
-             */
-            relationships?: components["schemas"]["RelationshipSchema"][];
-            /**
-             * Hierarchical
-             * @description Defines if the Generic support the hierarchical mode.
-             * @default false
-             */
-            hierarchical: boolean;
-            /**
-             * Generate Profile
-             * @description Indicate if a profile schema should be generated for this schema
-             * @default true
-             */
-            generate_profile: boolean;
-            /**
-             * Used By
-             * @description List of Nodes that are referencing this Generic
-             */
-            used_by?: string[];
-            /** Kind */
-            kind?: string | null;
-            /** Hash */
-            hash: string;
-        };
-        /** APINodeSchema */
-        APINodeSchema: {
-            /**
-             * Id
-             * @description The ID of the node
-             */
-            id?: string | null;
-            /**
-             * @description Expected state of the node/generic after loading the schema
-             * @default present
-             */
-            state: components["schemas"]["HashableModelState"];
-            /**
-             * Name
-             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
-             */
-            name: string;
-            /**
-             * Namespace
-             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
-             */
-            namespace: string;
-            /**
-             * Description
-             * @description Short description of the model, will be visible in the frontend.
-             */
-            description?: string | null;
-            /**
-             * Label
-             * @description Human friendly representation of the name/kind
-             */
-            label?: string | null;
-            /**
-             * @description Type of branch support for the model.
-             * @default aware
-             */
-            branch: components["schemas"]["BranchSupportType"];
-            /**
-             * Default Filter
-             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
-             */
-            default_filter?: string | null;
-            /**
-             * Human Friendly Id
-             * @description Human friendly and unique identifier for the object.
-             */
-            human_friendly_id?: string[] | null;
-            /**
-             * Display Label
-             * @description Attribute or Jinja2 template to use to generate the display label
-             */
-            display_label?: string | null;
-            /**
-             * Display Labels
-             * @description List of attributes to use to generate the display label (deprecated)
-             */
-            display_labels?: string[] | null;
-            /**
-             * Include In Menu
-             * @description Defines if objects of this kind should be included in the menu.
-             */
-            include_in_menu?: boolean | null;
-            /**
-             * Menu Placement
-             * @description Defines where in the menu this object should be placed.
-             */
-            menu_placement?: string | null;
-            /**
-             * Icon
-             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
-             */
-            icon?: string | null;
-            /**
-             * Order By
-             * @description List of attributes to use to order the results by default
-             */
-            order_by?: string[] | null;
-            /**
-             * Uniqueness Constraints
-             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
-             */
-            uniqueness_constraints?: string[][] | null;
-            /**
-             * Documentation
-             * @description Link to a documentation associated with this object, can be internal or external.
-             */
-            documentation?: string | null;
-            /**
-             * Attributes
-             * @description Node attributes
-             */
-            attributes?: components["schemas"]["AttributeSchema-Output"][];
-            /**
-             * Relationships
-             * @description Node Relationships
-             */
-            relationships?: components["schemas"]["RelationshipSchema"][];
-            /**
-             * Inherit From
-             * @description List of Generic Kind that this node is inheriting from
-             */
-            inherit_from?: string[];
-            /**
-             * Generate Profile
-             * @description Indicate if a profile schema should be generated for this schema
-             * @default true
-             */
-            generate_profile: boolean;
-            /**
-             * Generate Template
-             * @description Indicate if an object template schema should be generated for this schema
-             * @default false
-             */
-            generate_template: boolean;
-            /**
-             * Hierarchy
-             * @description Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode
-             */
-            hierarchy?: string | null;
-            /**
-             * Parent
-             * @description Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.
-             */
-            parent?: string | null;
-            /**
-             * Children
-             * @description Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.
-             */
-            children?: string | null;
-            /** Kind */
-            kind?: string | null;
-            /** Hash */
-            hash: string;
-        };
-        /** APIProfileSchema */
-        APIProfileSchema: {
-            /**
-             * Id
-             * @description The ID of the node
-             */
-            id?: string | null;
-            /**
-             * @description Expected state of the node/generic after loading the schema
-             * @default present
-             */
-            state: components["schemas"]["HashableModelState"];
-            /**
-             * Name
-             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
-             */
-            name: string;
-            /**
-             * Namespace
-             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
-             */
-            namespace: string;
-            /**
-             * Description
-             * @description Short description of the model, will be visible in the frontend.
-             */
-            description?: string | null;
-            /**
-             * Label
-             * @description Human friendly representation of the name/kind
-             */
-            label?: string | null;
-            /**
-             * @description Type of branch support for the model.
-             * @default aware
-             */
-            branch: components["schemas"]["BranchSupportType"];
-            /**
-             * Default Filter
-             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
-             */
-            default_filter?: string | null;
-            /**
-             * Human Friendly Id
-             * @description Human friendly and unique identifier for the object.
-             */
-            human_friendly_id?: string[] | null;
-            /**
-             * Display Label
-             * @description Attribute or Jinja2 template to use to generate the display label
-             */
-            display_label?: string | null;
-            /**
-             * Display Labels
-             * @description List of attributes to use to generate the display label (deprecated)
-             */
-            display_labels?: string[] | null;
-            /**
-             * Include In Menu
-             * @description Defines if objects of this kind should be included in the menu.
-             */
-            include_in_menu?: boolean | null;
-            /**
-             * Menu Placement
-             * @description Defines where in the menu this object should be placed.
-             */
-            menu_placement?: string | null;
-            /**
-             * Icon
-             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
-             */
-            icon?: string | null;
-            /**
-             * Order By
-             * @description List of attributes to use to order the results by default
-             */
-            order_by?: string[] | null;
-            /**
-             * Uniqueness Constraints
-             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
-             */
-            uniqueness_constraints?: string[][] | null;
-            /**
-             * Documentation
-             * @description Link to a documentation associated with this object, can be internal or external.
-             */
-            documentation?: string | null;
-            /**
-             * Attributes
-             * @description Node attributes
-             */
-            attributes?: components["schemas"]["AttributeSchema-Output"][];
-            /**
-             * Relationships
-             * @description Node Relationships
-             */
-            relationships?: components["schemas"]["RelationshipSchema"][];
-            /**
-             * Inherit From
-             * @description List of Generic Kind that this profile is inheriting from
-             */
-            inherit_from?: string[];
-            /** Kind */
-            kind?: string | null;
-            /** Hash */
-            hash: string;
-        };
-        /** APITemplateSchema */
-        APITemplateSchema: {
-            /**
-             * Id
-             * @description The ID of the node
-             */
-            id?: string | null;
-            /**
-             * @description Expected state of the node/generic after loading the schema
-             * @default present
-             */
-            state: components["schemas"]["HashableModelState"];
-            /**
-             * Name
-             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
-             */
-            name: string;
-            /**
-             * Namespace
-             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
-             */
-            namespace: string;
-            /**
-             * Description
-             * @description Short description of the model, will be visible in the frontend.
-             */
-            description?: string | null;
-            /**
-             * Label
-             * @description Human friendly representation of the name/kind
-             */
-            label?: string | null;
-            /**
-             * @description Type of branch support for the model.
-             * @default aware
-             */
-            branch: components["schemas"]["BranchSupportType"];
-            /**
-             * Default Filter
-             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
-             */
-            default_filter?: string | null;
-            /**
-             * Human Friendly Id
-             * @description Human friendly and unique identifier for the object.
-             */
-            human_friendly_id?: string[] | null;
-            /**
-             * Display Label
-             * @description Attribute or Jinja2 template to use to generate the display label
-             */
-            display_label?: string | null;
-            /**
-             * Display Labels
-             * @description List of attributes to use to generate the display label (deprecated)
-             */
-            display_labels?: string[] | null;
-            /**
-             * Include In Menu
-             * @description Defines if objects of this kind should be included in the menu.
-             */
-            include_in_menu?: boolean | null;
-            /**
-             * Menu Placement
-             * @description Defines where in the menu this object should be placed.
-             */
-            menu_placement?: string | null;
-            /**
-             * Icon
-             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
-             */
-            icon?: string | null;
-            /**
-             * Order By
-             * @description List of attributes to use to order the results by default
-             */
-            order_by?: string[] | null;
-            /**
-             * Uniqueness Constraints
-             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
-             */
-            uniqueness_constraints?: string[][] | null;
-            /**
-             * Documentation
-             * @description Link to a documentation associated with this object, can be internal or external.
-             */
-            documentation?: string | null;
-            /**
-             * Attributes
-             * @description Node attributes
-             */
-            attributes?: components["schemas"]["AttributeSchema-Output"][];
-            /**
-             * Relationships
-             * @description Node Relationships
-             */
-            relationships?: components["schemas"]["RelationshipSchema"][];
-            /**
-             * Inherit From
-             * @description List of Generic Kind that this template is inheriting from
-             */
-            inherit_from?: string[];
-            /** Kind */
-            kind?: string | null;
-            /** Hash */
-            hash: string;
-        };
         /** AccessTokenResponse */
         AccessTokenResponse: {
             /**
@@ -1066,241 +643,13 @@ export interface components {
             /** Display Label */
             display_label?: string | null;
         };
-        /** AttributeParameters */
-        AttributeParameters: {
-            /** Id */
-            id?: string | null;
-            /** @default present */
-            state: components["schemas"]["HashableModelState"];
-        };
-        /** AttributeSchema */
-        "AttributeSchema-Input": {
-            /**
-             * Id
-             * @description The ID of the attribute
-             */
-            id?: string | null;
-            /**
-             * @description Expected state of the attribute after loading the schema
-             * @default present
-             */
-            state: components["schemas"]["HashableModelState"];
-            /**
-             * Name
-             * @description Attribute name, must be unique within a model and must be all lowercase.
-             */
-            name: string;
-            /**
-             * Kind
-             * @description Defines the type of the attribute.
-             */
-            kind: string;
-            /**
-             * Enum
-             * @description Define a list of valid values for the attribute.
-             */
-            enum?: unknown[] | null;
-            /** @description Defines how the value of this attribute will be populated. */
-            computed_attribute?: components["schemas"]["ComputedAttribute-Input"] | null;
-            /**
-             * Choices
-             * @description Define a list of valid choices for a dropdown attribute.
-             */
-            choices?: components["schemas"]["DropdownChoice"][] | null;
-            /**
-             * Regex
-             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
-             */
-            regex?: string | null;
-            /**
-             * Max Length
-             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
-             */
-            max_length?: number | null;
-            /**
-             * Min Length
-             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
-             */
-            min_length?: number | null;
-            /**
-             * Label
-             * @description Human friendly representation of the name. Will be autogenerated if not provided
-             */
-            label?: string | null;
-            /**
-             * Description
-             * @description Short description of the attribute.
-             */
-            description?: string | null;
-            /**
-             * Read Only
-             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
-             * @default false
-             */
-            read_only: boolean;
-            /**
-             * Unique
-             * @description Indicate if the value of this attribute must be unique in the database for a given model.
-             * @default false
-             */
-            unique: boolean;
-            /**
-             * Optional
-             * @description Indicate if this attribute is mandatory or optional.
-             * @default false
-             */
-            optional: boolean;
-            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
-            branch?: components["schemas"]["BranchSupportType"] | null;
-            /**
-             * Order Weight
-             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
-             */
-            order_weight?: number | null;
-            /**
-             * Default Value
-             * @description Default value of the attribute.
-             */
-            default_value?: unknown | null;
-            /**
-             * Inherited
-             * @description Internal value to indicate if the attribute was inherited from a Generic node.
-             * @default false
-             */
-            inherited: boolean;
-            /**
-             * @description Type of allowed override for the attribute.
-             * @default any
-             */
-            allow_override: components["schemas"]["AllowOverrideType"];
-            /**
-             * Parameters
-             * @description Extra parameters specific to this kind of attribute
-             */
-            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["ListAttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
-            /**
-             * Deprecation
-             * @description Mark attribute as deprecated and provide a user-friendly message to display
-             */
-            deprecation?: string | null;
-        };
-        /** AttributeSchema */
-        "AttributeSchema-Output": {
-            /**
-             * Id
-             * @description The ID of the attribute
-             */
-            id?: string | null;
-            /**
-             * @description Expected state of the attribute after loading the schema
-             * @default present
-             */
-            state: components["schemas"]["HashableModelState"];
-            /**
-             * Name
-             * @description Attribute name, must be unique within a model and must be all lowercase.
-             */
-            name: string;
-            /**
-             * Kind
-             * @description Defines the type of the attribute.
-             */
-            kind: string;
-            /**
-             * Enum
-             * @description Define a list of valid values for the attribute.
-             */
-            enum?: unknown[] | null;
-            /** @description Defines how the value of this attribute will be populated. */
-            computed_attribute?: components["schemas"]["ComputedAttribute-Output"] | null;
-            /**
-             * Choices
-             * @description Define a list of valid choices for a dropdown attribute.
-             */
-            choices?: components["schemas"]["DropdownChoice"][] | null;
-            /**
-             * Regex
-             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
-             */
-            regex?: string | null;
-            /**
-             * Max Length
-             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
-             */
-            max_length?: number | null;
-            /**
-             * Min Length
-             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
-             */
-            min_length?: number | null;
-            /**
-             * Label
-             * @description Human friendly representation of the name. Will be autogenerated if not provided
-             */
-            label?: string | null;
-            /**
-             * Description
-             * @description Short description of the attribute.
-             */
-            description?: string | null;
-            /**
-             * Read Only
-             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
-             * @default false
-             */
-            read_only: boolean;
-            /**
-             * Unique
-             * @description Indicate if the value of this attribute must be unique in the database for a given model.
-             * @default false
-             */
-            unique: boolean;
-            /**
-             * Optional
-             * @description Indicate if this attribute is mandatory or optional.
-             * @default false
-             */
-            optional: boolean;
-            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
-            branch?: components["schemas"]["BranchSupportType"] | null;
-            /**
-             * Order Weight
-             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
-             */
-            order_weight?: number | null;
-            /**
-             * Default Value
-             * @description Default value of the attribute.
-             */
-            default_value?: unknown | null;
-            /**
-             * Inherited
-             * @description Internal value to indicate if the attribute was inherited from a Generic node.
-             * @default false
-             */
-            inherited: boolean;
-            /**
-             * @description Type of allowed override for the attribute.
-             * @default any
-             */
-            allow_override: components["schemas"]["AllowOverrideType"];
-            /**
-             * Parameters
-             * @description Extra parameters specific to this kind of attribute
-             */
-            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["ListAttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
-            /**
-             * Deprecation
-             * @description Mark attribute as deprecated and provide a user-friendly message to display
-             */
-            deprecation?: string | null;
-        };
+        /** AttributeParametersRead */
+        AttributeParametersRead: Record<string, never>;
+        /** AttributeParametersWrite */
+        AttributeParametersWrite: Record<string, never>;
         /** Body_upload_file_api_storage_upload_file_post */
         Body_upload_file_api_storage_upload_file_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** BranchDiffArtifact */
@@ -1351,32 +700,74 @@ export interface components {
          * @enum {string}
          */
         BranchSupportType: "aware" | "agnostic" | "local";
-        /** ComputedAttribute */
-        "ComputedAttribute-Input": {
-            /** Id */
-            id?: string | null;
-            /** @default present */
-            state: components["schemas"]["HashableModelState"];
-            kind: components["schemas"]["ComputedAttributeKind"];
+        /** ComputedAttributeJinja2Read */
+        ComputedAttributeJinja2Read: {
+            /**
+             * @description Defines how the value of the attribute is computed. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "Jinja2";
             /**
              * Jinja2 Template
-             * @description The Jinja2 template in string format, required when assignment_type=jinja2
+             * @description Jinja2 template used to compute the value, required when kind is Jinja2.
              */
-            jinja2_template?: string | null;
+            jinja2_template: string;
+        };
+        /** ComputedAttributeJinja2Write */
+        ComputedAttributeJinja2Write: {
+            /**
+             * @description Defines how the value of the attribute is computed. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "Jinja2";
+            /**
+             * Jinja2 Template
+             * @description Jinja2 template used to compute the value, required when kind is Jinja2.
+             */
+            jinja2_template: string;
+        };
+        /** ComputedAttributeTransformPythonRead */
+        ComputedAttributeTransformPythonRead: {
+            /**
+             * @description Defines how the value of the attribute is computed. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "TransformPython";
             /**
              * Transform
-             * @description The Python Transform name or ID, required when assignment_type=transform
+             * @description Python transform name or ID, required when kind is TransformPython.
              */
-            transform?: string | null;
-        } & (unknown & unknown);
-        "ComputedAttribute-Output": {
-            [key: string]: unknown;
+            transform: string;
         };
-        /**
-         * ComputedAttributeKind
-         * @enum {string}
-         */
-        ComputedAttributeKind: "User" | "Jinja2" | "TransformPython";
+        /** ComputedAttributeTransformPythonWrite */
+        ComputedAttributeTransformPythonWrite: {
+            /**
+             * @description Defines how the value of the attribute is computed. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "TransformPython";
+            /**
+             * Transform
+             * @description Python transform name or ID, required when kind is TransformPython.
+             */
+            transform: string;
+        };
+        /** ComputedAttributeUserRead */
+        ComputedAttributeUserRead: {
+            /**
+             * @description Defines how the value of the attribute is computed. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "User";
+        };
+        /** ComputedAttributeUserWrite */
+        ComputedAttributeUserWrite: {
+            /**
+             * @description Defines how the value of the attribute is computed. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "User";
+        };
         /** ConfigAPI */
         ConfigAPI: {
             main: components["schemas"]["MainSettings"];
@@ -1384,6 +775,7 @@ export interface components {
             analytics: components["schemas"]["AnalyticsSettings"];
             experimental_features: components["schemas"]["ExperimentalFeaturesSettings"];
             sso: components["schemas"]["SSOInfo"];
+            ldap: components["schemas"]["LDAPInfo"];
             /** Installation Type */
             installation_type: string;
             policy: components["schemas"]["PolicySettings"];
@@ -1393,20 +785,63 @@ export interface components {
          * @enum {string}
          */
         DiffAction: "added" | "removed" | "updated" | "unchanged";
-        /** DropdownChoice */
-        DropdownChoice: {
-            /** Id */
-            id?: string | null;
-            /** @default present */
-            state: components["schemas"]["HashableModelState"];
-            /** Name */
+        /** DropdownChoiceRead */
+        DropdownChoiceRead: {
+            /**
+             * Name
+             * @description Name of the choice, must be unique within the dropdown.
+             */
             name: string;
-            /** Description */
+            /**
+             * Description
+             * @description Description of the choice.
+             */
             description?: string | null;
-            /** Color */
+            /**
+             * Color
+             * @description Color of the choice, must be a valid HTML color code.
+             */
             color?: string | null;
-            /** Label */
+            /**
+             * Label
+             * @description Human friendly representation of the choice.
+             */
             label?: string | null;
+        };
+        /** DropdownChoiceWrite */
+        DropdownChoiceWrite: {
+            /**
+             * Name
+             * @description Name of the choice, must be unique within the dropdown.
+             */
+            name: string;
+            /**
+             * Description
+             * @description Description of the choice.
+             */
+            description?: string | null;
+            /**
+             * Color
+             * @description Color of the choice, must be a valid HTML color code.
+             */
+            color?: string | null;
+            /**
+             * Label
+             * @description Human friendly representation of the choice.
+             */
+            label?: string | null;
+        };
+        /** EnterpriseRequiredResponse */
+        EnterpriseRequiredResponse: {
+            /**
+             * Error Code
+             * @default ENTERPRISE_REQUIRED
+             */
+            error_code: string;
+            /** Feature */
+            feature: string;
+            /** Message */
+            message?: string | null;
         };
         /** ExperimentalFeaturesSettings */
         ExperimentalFeaturesSettings: {
@@ -1422,21 +857,251 @@ export interface components {
              */
             value_db_index: boolean;
         };
-        /**
-         * GenericSchema
-         * @description A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined.
-         */
-        GenericSchema: {
+        /** GenericAttributeRead */
+        GenericAttributeRead: {
+            /**
+             * Id
+             * @description The ID of the attribute
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Attribute name, must be unique within a model and must be all lowercase.
+             */
+            name: string;
+            /**
+             * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "Any" | "Bandwidth" | "Boolean" | "Checkbox" | "Color" | "DateTime" | "Dropdown" | "Email" | "File" | "HashedPassword" | "ID" | "IPAddress" | "IPHost" | "IPNetwork" | "JSON" | "MacAddress" | "Password" | "URL";
+            /**
+             * Enum
+             * @description Define a list of valid values for the attribute.
+             */
+            enum?: unknown[] | null;
+            /**
+             * Computed Attribute
+             * @description Defines how the value of this attribute will be populated.
+             */
+            computed_attribute?: (components["schemas"]["ComputedAttributeUserRead"] | components["schemas"]["ComputedAttributeJinja2Read"] | components["schemas"]["ComputedAttributeTransformPythonRead"]) | null;
+            /**
+             * Choices
+             * @description Define a list of valid choices for a dropdown attribute.
+             */
+            choices?: components["schemas"]["DropdownChoiceRead"][] | null;
+            /**
+             * Regex
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
+             */
+            regex?: string | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
+             */
+            max_length?: number | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
+             */
+            min_length?: number | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name. Will be autogenerated if not provided
+             */
+            label?: string | null;
+            /**
+             * Description
+             * @description Short description of the attribute.
+             */
+            description?: string | null;
+            /**
+             * Read Only
+             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Unique
+             * @description Indicate if the value of this attribute must be unique in the database for a given model.
+             * @default false
+             */
+            unique: boolean;
+            /**
+             * Optional
+             * @description Indicate if this attribute is mandatory or optional.
+             * @default false
+             */
+            optional: boolean;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
+            /**
+             * Order Weight
+             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+             */
+            order_weight?: number | null;
+            /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
+            /**
+             * Default Value
+             * @description Default value of the attribute.
+             */
+            default_value?: unknown | null;
+            /**
+             * Inherited
+             * @description Internal value to indicate if the attribute was inherited from a Generic node.
+             * @default false
+             */
+            inherited: boolean;
+            /**
+             * @description Expected state of the attribute after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * @description Type of allowed override for the attribute.
+             * @default any
+             */
+            allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
+            /** @description Extra parameters specific to this kind of attribute */
+            parameters?: components["schemas"]["AttributeParametersRead"] | null;
+        };
+        /** GenericAttributeWrite */
+        GenericAttributeWrite: {
+            /**
+             * Id
+             * @description The ID of the attribute
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Attribute name, must be unique within a model and must be all lowercase.
+             */
+            name: string;
+            /**
+             * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "Any" | "Bandwidth" | "Boolean" | "Checkbox" | "Color" | "DateTime" | "Dropdown" | "Email" | "File" | "HashedPassword" | "ID" | "IPAddress" | "IPHost" | "IPNetwork" | "JSON" | "MacAddress" | "Password" | "URL";
+            /**
+             * Enum
+             * @description Define a list of valid values for the attribute.
+             */
+            enum?: unknown[] | null;
+            /**
+             * Computed Attribute
+             * @description Defines how the value of this attribute will be populated.
+             */
+            computed_attribute?: (components["schemas"]["ComputedAttributeUserWrite"] | components["schemas"]["ComputedAttributeJinja2Write"] | components["schemas"]["ComputedAttributeTransformPythonWrite"]) | null;
+            /**
+             * Choices
+             * @description Define a list of valid choices for a dropdown attribute.
+             */
+            choices?: components["schemas"]["DropdownChoiceWrite"][] | null;
+            /**
+             * Regex
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
+             */
+            regex?: string | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
+             */
+            max_length?: number | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
+             */
+            min_length?: number | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name. Will be autogenerated if not provided
+             */
+            label?: string | null;
+            /**
+             * Description
+             * @description Short description of the attribute.
+             */
+            description?: string | null;
+            /**
+             * Read Only
+             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Unique
+             * @description Indicate if the value of this attribute must be unique in the database for a given model.
+             * @default false
+             */
+            unique: boolean;
+            /**
+             * Optional
+             * @description Indicate if this attribute is mandatory or optional.
+             * @default false
+             */
+            optional: boolean;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
+            /**
+             * Order Weight
+             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+             */
+            order_weight?: number | null;
+            /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
+            /**
+             * Default Value
+             * @description Default value of the attribute.
+             */
+            default_value?: unknown | null;
+            /**
+             * @description Expected state of the attribute after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * @description Type of allowed override for the attribute.
+             * @default any
+             */
+            allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
+            /** @description Extra parameters specific to this kind of attribute */
+            parameters?: components["schemas"]["AttributeParametersWrite"] | null;
+        };
+        /** GenericSchemaRead */
+        GenericSchemaRead: {
             /**
              * Id
              * @description The ID of the node
              */
             id?: string | null;
-            /**
-             * @description Expected state of the node/generic after loading the schema
-             * @default present
-             */
-            state: components["schemas"]["HashableModelState"];
             /**
              * Name
              * @description Node name, must be unique within a namespace and must start with an uppercase letter.
@@ -1499,7 +1164,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**
@@ -1513,15 +1178,25 @@ export interface components {
              */
             documentation?: string | null;
             /**
+             * @description Expected state of the node/generic after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
              * Attributes
              * @description Node attributes
              */
-            attributes?: components["schemas"]["AttributeSchema-Input"][];
+            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
             /**
              * Relationships
              * @description Node Relationships
              */
-            relationships?: components["schemas"]["RelationshipSchema"][];
+            relationships?: components["schemas"]["RelationshipSchemaRead"][];
+            /**
+             * Hash
+             * @description Hash of the node computed by the server.
+             */
+            hash?: string | null;
             /**
              * Hierarchical
              * @description Defines if the Generic support the hierarchical mode.
@@ -1539,6 +1214,128 @@ export interface components {
              * @description List of Nodes that are referencing this Generic
              */
             used_by?: string[];
+            /**
+             * Restricted Namespaces
+             * @description Nodes inheriting from this Generic schema must belong to one of the listed namespaces
+             */
+            restricted_namespaces?: string[] | null;
+            /** Kind */
+            readonly kind: string;
+        };
+        /** GenericSchemaWrite */
+        GenericSchemaWrite: {
+            /**
+             * Id
+             * @description The ID of the node
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+             */
+            name: string;
+            /**
+             * Namespace
+             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+             */
+            namespace: string;
+            /**
+             * Description
+             * @description Short description of the model, will be visible in the frontend.
+             */
+            description?: string | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name/kind
+             */
+            label?: string | null;
+            /**
+             * @description Type of branch support for the model.
+             * @default aware
+             */
+            branch: components["schemas"]["BranchSupportType"];
+            /**
+             * Default Filter
+             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
+             */
+            default_filter?: string | null;
+            /**
+             * Human Friendly Id
+             * @description Human friendly and unique identifier for the object.
+             */
+            human_friendly_id?: string[] | null;
+            /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
+             * Display Labels
+             * @description List of attributes to use to generate the display label (deprecated)
+             */
+            display_labels?: string[] | null;
+            /**
+             * Include In Menu
+             * @description Defines if objects of this kind should be included in the menu.
+             */
+            include_in_menu?: boolean | null;
+            /**
+             * Menu Placement
+             * @description Defines where in the menu this object should be placed.
+             */
+            menu_placement?: string | null;
+            /**
+             * Icon
+             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+             */
+            icon?: string | null;
+            /**
+             * Order By
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
+             */
+            order_by?: string[] | null;
+            /**
+             * Uniqueness Constraints
+             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+             */
+            uniqueness_constraints?: string[][] | null;
+            /**
+             * Documentation
+             * @description Link to a documentation associated with this object, can be internal or external.
+             */
+            documentation?: string | null;
+            /**
+             * @description Expected state of the node/generic after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * Attributes
+             * @description Node attributes
+             */
+            attributes?: (components["schemas"]["TextAttributeWrite"] | components["schemas"]["NumberAttributeWrite"] | components["schemas"]["ListAttributeWrite"] | components["schemas"]["NumberPoolAttributeWrite"] | components["schemas"]["GenericAttributeWrite"])[];
+            /**
+             * Relationships
+             * @description Node Relationships
+             */
+            relationships?: components["schemas"]["RelationshipSchemaWrite"][];
+            /**
+             * Hierarchical
+             * @description Defines if the Generic support the hierarchical mode.
+             * @default false
+             */
+            hierarchical: boolean;
+            /**
+             * Generate Profile
+             * @description Indicate if a profile schema should be generated for this schema
+             * @default true
+             */
+            generate_profile: boolean;
+            /**
+             * Restricted Namespaces
+             * @description Nodes inheriting from this Generic schema must belong to one of the listed namespaces
+             */
+            restricted_namespaces?: string[] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1560,11 +1357,6 @@ export interface components {
                 [key: string]: components["schemas"]["HashableModelDiff"] | null;
             };
         };
-        /**
-         * HashableModelState
-         * @enum {string}
-         */
-        HashableModelState: "present" | "absent";
         /** InfoAPI */
         InfoAPI: {
             /** Deployment Id */
@@ -1623,20 +1415,306 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
-        /**
-         * ListAttributeParameters
-         * @description Parameters for List attributes supporting regex validation on list items.
-         */
-        ListAttributeParameters: {
-            /** Id */
-            id?: string | null;
-            /** @default present */
-            state: components["schemas"]["HashableModelState"];
+        /** LDAPAuthErrorResponse */
+        LDAPAuthErrorResponse: {
+            /** Error Code */
+            error_code: string;
+            /** Message */
+            message?: string | null;
+        };
+        /** LDAPCollisionResponse */
+        LDAPCollisionResponse: {
+            /**
+             * Error Code
+             * @default LDAP_ACCOUNT_COLLISION
+             */
+            error_code: string;
+            /** Account Name */
+            account_name: string;
+            /** Message */
+            message?: string | null;
+        };
+        /** LDAPCredentials */
+        LDAPCredentials: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
+        /** LDAPInfo */
+        LDAPInfo: {
+            /**
+             * Enabled
+             * @description True when LDAP sign-in is available on this deployment, meaning it has been configured and the running edition supports it.
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Display Label
+             * @description Text shown on the LDAP sign-in button on the login page.
+             * @default Sign in with LDAP
+             */
+            display_label: string;
+            /**
+             * Icon
+             * @description Icon shown on the LDAP sign-in button on the login page.
+             * @default mdi:account-key-outline
+             */
+            icon: string;
+        };
+        /** ListAttributeParametersRead */
+        ListAttributeParametersRead: {
             /**
              * Regex
              * @description Regular expression that each list item value must match if defined
              */
             regex?: string | null;
+        };
+        /** ListAttributeParametersWrite */
+        ListAttributeParametersWrite: {
+            /**
+             * Regex
+             * @description Regular expression that each list item value must match if defined
+             */
+            regex?: string | null;
+        };
+        /** ListAttributeRead */
+        ListAttributeRead: {
+            /**
+             * Id
+             * @description The ID of the attribute
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Attribute name, must be unique within a model and must be all lowercase.
+             */
+            name: string;
+            /**
+             * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "List";
+            /**
+             * Enum
+             * @description Define a list of valid values for the attribute.
+             */
+            enum?: unknown[] | null;
+            /**
+             * Computed Attribute
+             * @description Defines how the value of this attribute will be populated.
+             */
+            computed_attribute?: (components["schemas"]["ComputedAttributeUserRead"] | components["schemas"]["ComputedAttributeJinja2Read"] | components["schemas"]["ComputedAttributeTransformPythonRead"]) | null;
+            /**
+             * Choices
+             * @description Define a list of valid choices for a dropdown attribute.
+             */
+            choices?: components["schemas"]["DropdownChoiceRead"][] | null;
+            /**
+             * Regex
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
+             */
+            regex?: string | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
+             */
+            max_length?: number | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
+             */
+            min_length?: number | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name. Will be autogenerated if not provided
+             */
+            label?: string | null;
+            /**
+             * Description
+             * @description Short description of the attribute.
+             */
+            description?: string | null;
+            /**
+             * Read Only
+             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Unique
+             * @description Indicate if the value of this attribute must be unique in the database for a given model.
+             * @default false
+             */
+            unique: boolean;
+            /**
+             * Optional
+             * @description Indicate if this attribute is mandatory or optional.
+             * @default false
+             */
+            optional: boolean;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
+            /**
+             * Order Weight
+             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+             */
+            order_weight?: number | null;
+            /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
+            /**
+             * Default Value
+             * @description Default value of the attribute.
+             */
+            default_value?: unknown | null;
+            /**
+             * Inherited
+             * @description Internal value to indicate if the attribute was inherited from a Generic node.
+             * @default false
+             */
+            inherited: boolean;
+            /**
+             * @description Expected state of the attribute after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * @description Type of allowed override for the attribute.
+             * @default any
+             */
+            allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
+            /** @description Extra parameters specific to this kind of attribute */
+            parameters?: components["schemas"]["ListAttributeParametersRead"] | null;
+        };
+        /** ListAttributeWrite */
+        ListAttributeWrite: {
+            /**
+             * Id
+             * @description The ID of the attribute
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Attribute name, must be unique within a model and must be all lowercase.
+             */
+            name: string;
+            /**
+             * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "List";
+            /**
+             * Enum
+             * @description Define a list of valid values for the attribute.
+             */
+            enum?: unknown[] | null;
+            /**
+             * Computed Attribute
+             * @description Defines how the value of this attribute will be populated.
+             */
+            computed_attribute?: (components["schemas"]["ComputedAttributeUserWrite"] | components["schemas"]["ComputedAttributeJinja2Write"] | components["schemas"]["ComputedAttributeTransformPythonWrite"]) | null;
+            /**
+             * Choices
+             * @description Define a list of valid choices for a dropdown attribute.
+             */
+            choices?: components["schemas"]["DropdownChoiceWrite"][] | null;
+            /**
+             * Regex
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
+             */
+            regex?: string | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
+             */
+            max_length?: number | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
+             */
+            min_length?: number | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name. Will be autogenerated if not provided
+             */
+            label?: string | null;
+            /**
+             * Description
+             * @description Short description of the attribute.
+             */
+            description?: string | null;
+            /**
+             * Read Only
+             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Unique
+             * @description Indicate if the value of this attribute must be unique in the database for a given model.
+             * @default false
+             */
+            unique: boolean;
+            /**
+             * Optional
+             * @description Indicate if this attribute is mandatory or optional.
+             * @default false
+             */
+            optional: boolean;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
+            /**
+             * Order Weight
+             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+             */
+            order_weight?: number | null;
+            /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
+            /**
+             * Default Value
+             * @description Default value of the attribute.
+             */
+            default_value?: unknown | null;
+            /**
+             * @description Expected state of the attribute after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * @description Type of allowed override for the attribute.
+             * @default any
+             */
+            allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
+            /** @description Extra parameters specific to this kind of attribute */
+            parameters?: components["schemas"]["ListAttributeParametersWrite"] | null;
         };
         /** LoggingSettings */
         LoggingSettings: {
@@ -1700,6 +1778,30 @@ export interface components {
              * @default true
              */
             schema_strict_mode: boolean;
+            /**
+             * Diff Update After Merge
+             * @description When enabled, diff updates are triggered for active branches after a branch merge.
+             * @default true
+             */
+            diff_update_after_merge: boolean;
+            /**
+             * Delete Branch After Merge
+             * @description When enabled, the Infrahub branch is automatically deleted after a successful merge.
+             * @default false
+             */
+            delete_branch_after_merge: boolean;
+            /**
+             * Selective Execution After Merge
+             * @description When enabled, only the generators and artifact definitions affected by a merge are re-executed; when disabled, every generator and artifact definition is re-executed.
+             * @default true
+             */
+            selective_execution_after_merge: boolean;
+            /**
+             * Merge Failure Grace Period Seconds
+             * @description How long a branch may stay in MERGING with a dead merge-lock holder before it is flagged MERGE_FAILED.
+             * @default 180
+             */
+            merge_failure_grace_period_seconds: number;
         };
         /** Menu */
         Menu: {
@@ -1779,31 +1881,31 @@ export interface components {
          * @enum {string}
          */
         MenuSection: "object" | "internal";
-        /** NodeExtensionSchema */
-        NodeExtensionSchema: {
-            /** Id */
-            id?: string | null;
-            /** @default present */
-            state: components["schemas"]["HashableModelState"];
-            /** Kind */
+        /** NodeExtensionWrite */
+        NodeExtensionWrite: {
+            /**
+             * Kind
+             * @description Kind of the existing node to extend.
+             */
             kind: string;
-            /** Attributes */
-            attributes?: components["schemas"]["AttributeSchema-Input"][];
-            /** Relationships */
-            relationships?: components["schemas"]["RelationshipSchema"][];
+            /**
+             * Attributes
+             * @description Attributes to add to the existing node.
+             */
+            attributes?: (components["schemas"]["TextAttributeWrite"] | components["schemas"]["NumberAttributeWrite"] | components["schemas"]["ListAttributeWrite"] | components["schemas"]["NumberPoolAttributeWrite"] | components["schemas"]["GenericAttributeWrite"])[];
+            /**
+             * Relationships
+             * @description Relationships to add to the existing node.
+             */
+            relationships?: components["schemas"]["RelationshipSchemaWrite"][];
         };
-        /** NodeSchema */
-        NodeSchema: {
+        /** NodeSchemaRead */
+        NodeSchemaRead: {
             /**
              * Id
              * @description The ID of the node
              */
             id?: string | null;
-            /**
-             * @description Expected state of the node/generic after loading the schema
-             * @default present
-             */
-            state: components["schemas"]["HashableModelState"];
             /**
              * Name
              * @description Node name, must be unique within a namespace and must start with an uppercase letter.
@@ -1866,7 +1968,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**
@@ -1880,15 +1982,25 @@ export interface components {
              */
             documentation?: string | null;
             /**
+             * @description Expected state of the node/generic after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
              * Attributes
              * @description Node attributes
              */
-            attributes?: components["schemas"]["AttributeSchema-Input"][];
+            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
             /**
              * Relationships
              * @description Node Relationships
              */
-            relationships?: components["schemas"]["RelationshipSchema"][];
+            relationships?: components["schemas"]["RelationshipSchemaRead"][];
+            /**
+             * Hash
+             * @description Hash of the node computed by the server.
+             */
+            hash?: string | null;
             /**
              * Inherit From
              * @description List of Generic Kind that this node is inheriting from
@@ -1921,13 +2033,136 @@ export interface components {
              * @description Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.
              */
             children?: string | null;
+            /** Kind */
+            readonly kind: string;
         };
-        /** NumberAttributeParameters */
-        NumberAttributeParameters: {
-            /** Id */
+        /** NodeSchemaWrite */
+        NodeSchemaWrite: {
+            /**
+             * Id
+             * @description The ID of the node
+             */
             id?: string | null;
-            /** @default present */
-            state: components["schemas"]["HashableModelState"];
+            /**
+             * Name
+             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+             */
+            name: string;
+            /**
+             * Namespace
+             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+             */
+            namespace: string;
+            /**
+             * Description
+             * @description Short description of the model, will be visible in the frontend.
+             */
+            description?: string | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name/kind
+             */
+            label?: string | null;
+            /**
+             * @description Type of branch support for the model.
+             * @default aware
+             */
+            branch: components["schemas"]["BranchSupportType"];
+            /**
+             * Default Filter
+             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
+             */
+            default_filter?: string | null;
+            /**
+             * Human Friendly Id
+             * @description Human friendly and unique identifier for the object.
+             */
+            human_friendly_id?: string[] | null;
+            /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
+             * Display Labels
+             * @description List of attributes to use to generate the display label (deprecated)
+             */
+            display_labels?: string[] | null;
+            /**
+             * Include In Menu
+             * @description Defines if objects of this kind should be included in the menu.
+             */
+            include_in_menu?: boolean | null;
+            /**
+             * Menu Placement
+             * @description Defines where in the menu this object should be placed.
+             */
+            menu_placement?: string | null;
+            /**
+             * Icon
+             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+             */
+            icon?: string | null;
+            /**
+             * Order By
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
+             */
+            order_by?: string[] | null;
+            /**
+             * Uniqueness Constraints
+             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+             */
+            uniqueness_constraints?: string[][] | null;
+            /**
+             * Documentation
+             * @description Link to a documentation associated with this object, can be internal or external.
+             */
+            documentation?: string | null;
+            /**
+             * @description Expected state of the node/generic after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * Attributes
+             * @description Node attributes
+             */
+            attributes?: (components["schemas"]["TextAttributeWrite"] | components["schemas"]["NumberAttributeWrite"] | components["schemas"]["ListAttributeWrite"] | components["schemas"]["NumberPoolAttributeWrite"] | components["schemas"]["GenericAttributeWrite"])[];
+            /**
+             * Relationships
+             * @description Node Relationships
+             */
+            relationships?: components["schemas"]["RelationshipSchemaWrite"][];
+            /**
+             * Inherit From
+             * @description List of Generic Kind that this node is inheriting from
+             */
+            inherit_from?: string[];
+            /**
+             * Generate Profile
+             * @description Indicate if a profile schema should be generated for this schema
+             * @default true
+             */
+            generate_profile: boolean;
+            /**
+             * Generate Template
+             * @description Indicate if an object template schema should be generated for this schema
+             * @default false
+             */
+            generate_template: boolean;
+            /**
+             * Parent
+             * @description Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.
+             */
+            parent?: string | null;
+            /**
+             * Children
+             * @description Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.
+             */
+            children?: string | null;
+        };
+        /** NumberAttributeParametersRead */
+        NumberAttributeParametersRead: {
             /**
              * Min Value
              * @description Set a minimum value allowed.
@@ -1944,12 +2179,522 @@ export interface components {
              */
             excluded_values?: string | null;
         };
-        /** NumberPoolParameters */
-        NumberPoolParameters: {
-            /** Id */
+        /** NumberAttributeParametersWrite */
+        NumberAttributeParametersWrite: {
+            /**
+             * Min Value
+             * @description Set a minimum value allowed.
+             */
+            min_value?: number | null;
+            /**
+             * Max Value
+             * @description Set a maximum value allowed.
+             */
+            max_value?: number | null;
+            /**
+             * Excluded Values
+             * @description List of values or range of values not allowed for the attribute, format is: '100,150-200,280,300-400'
+             */
+            excluded_values?: string | null;
+        };
+        /** NumberAttributeRead */
+        NumberAttributeRead: {
+            /**
+             * Id
+             * @description The ID of the attribute
+             */
             id?: string | null;
-            /** @default present */
-            state: components["schemas"]["HashableModelState"];
+            /**
+             * Name
+             * @description Attribute name, must be unique within a model and must be all lowercase.
+             */
+            name: string;
+            /**
+             * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "Number";
+            /**
+             * Enum
+             * @description Define a list of valid values for the attribute.
+             */
+            enum?: unknown[] | null;
+            /**
+             * Computed Attribute
+             * @description Defines how the value of this attribute will be populated.
+             */
+            computed_attribute?: (components["schemas"]["ComputedAttributeUserRead"] | components["schemas"]["ComputedAttributeJinja2Read"] | components["schemas"]["ComputedAttributeTransformPythonRead"]) | null;
+            /**
+             * Choices
+             * @description Define a list of valid choices for a dropdown attribute.
+             */
+            choices?: components["schemas"]["DropdownChoiceRead"][] | null;
+            /**
+             * Regex
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
+             */
+            regex?: string | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
+             */
+            max_length?: number | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
+             */
+            min_length?: number | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name. Will be autogenerated if not provided
+             */
+            label?: string | null;
+            /**
+             * Description
+             * @description Short description of the attribute.
+             */
+            description?: string | null;
+            /**
+             * Read Only
+             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Unique
+             * @description Indicate if the value of this attribute must be unique in the database for a given model.
+             * @default false
+             */
+            unique: boolean;
+            /**
+             * Optional
+             * @description Indicate if this attribute is mandatory or optional.
+             * @default false
+             */
+            optional: boolean;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
+            /**
+             * Order Weight
+             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+             */
+            order_weight?: number | null;
+            /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
+            /**
+             * Default Value
+             * @description Default value of the attribute.
+             */
+            default_value?: unknown | null;
+            /**
+             * Inherited
+             * @description Internal value to indicate if the attribute was inherited from a Generic node.
+             * @default false
+             */
+            inherited: boolean;
+            /**
+             * @description Expected state of the attribute after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * @description Type of allowed override for the attribute.
+             * @default any
+             */
+            allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
+            /** @description Extra parameters specific to this kind of attribute */
+            parameters?: components["schemas"]["NumberAttributeParametersRead"] | null;
+        };
+        /** NumberAttributeWrite */
+        NumberAttributeWrite: {
+            /**
+             * Id
+             * @description The ID of the attribute
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Attribute name, must be unique within a model and must be all lowercase.
+             */
+            name: string;
+            /**
+             * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "Number";
+            /**
+             * Enum
+             * @description Define a list of valid values for the attribute.
+             */
+            enum?: unknown[] | null;
+            /**
+             * Computed Attribute
+             * @description Defines how the value of this attribute will be populated.
+             */
+            computed_attribute?: (components["schemas"]["ComputedAttributeUserWrite"] | components["schemas"]["ComputedAttributeJinja2Write"] | components["schemas"]["ComputedAttributeTransformPythonWrite"]) | null;
+            /**
+             * Choices
+             * @description Define a list of valid choices for a dropdown attribute.
+             */
+            choices?: components["schemas"]["DropdownChoiceWrite"][] | null;
+            /**
+             * Regex
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
+             */
+            regex?: string | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
+             */
+            max_length?: number | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
+             */
+            min_length?: number | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name. Will be autogenerated if not provided
+             */
+            label?: string | null;
+            /**
+             * Description
+             * @description Short description of the attribute.
+             */
+            description?: string | null;
+            /**
+             * Read Only
+             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Unique
+             * @description Indicate if the value of this attribute must be unique in the database for a given model.
+             * @default false
+             */
+            unique: boolean;
+            /**
+             * Optional
+             * @description Indicate if this attribute is mandatory or optional.
+             * @default false
+             */
+            optional: boolean;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
+            /**
+             * Order Weight
+             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+             */
+            order_weight?: number | null;
+            /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
+            /**
+             * Default Value
+             * @description Default value of the attribute.
+             */
+            default_value?: unknown | null;
+            /**
+             * @description Expected state of the attribute after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * @description Type of allowed override for the attribute.
+             * @default any
+             */
+            allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
+            /** @description Extra parameters specific to this kind of attribute */
+            parameters?: components["schemas"]["NumberAttributeParametersWrite"] | null;
+        };
+        /** NumberPoolAttributeRead */
+        NumberPoolAttributeRead: {
+            /**
+             * Id
+             * @description The ID of the attribute
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Attribute name, must be unique within a model and must be all lowercase.
+             */
+            name: string;
+            /**
+             * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "NumberPool";
+            /**
+             * Enum
+             * @description Define a list of valid values for the attribute.
+             */
+            enum?: unknown[] | null;
+            /**
+             * Computed Attribute
+             * @description Defines how the value of this attribute will be populated.
+             */
+            computed_attribute?: (components["schemas"]["ComputedAttributeUserRead"] | components["schemas"]["ComputedAttributeJinja2Read"] | components["schemas"]["ComputedAttributeTransformPythonRead"]) | null;
+            /**
+             * Choices
+             * @description Define a list of valid choices for a dropdown attribute.
+             */
+            choices?: components["schemas"]["DropdownChoiceRead"][] | null;
+            /**
+             * Regex
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
+             */
+            regex?: string | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
+             */
+            max_length?: number | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
+             */
+            min_length?: number | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name. Will be autogenerated if not provided
+             */
+            label?: string | null;
+            /**
+             * Description
+             * @description Short description of the attribute.
+             */
+            description?: string | null;
+            /**
+             * Read Only
+             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Unique
+             * @description Indicate if the value of this attribute must be unique in the database for a given model.
+             * @default false
+             */
+            unique: boolean;
+            /**
+             * Optional
+             * @description Indicate if this attribute is mandatory or optional.
+             * @default false
+             */
+            optional: boolean;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
+            /**
+             * Order Weight
+             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+             */
+            order_weight?: number | null;
+            /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
+            /**
+             * Default Value
+             * @description Default value of the attribute.
+             */
+            default_value?: unknown | null;
+            /**
+             * Inherited
+             * @description Internal value to indicate if the attribute was inherited from a Generic node.
+             * @default false
+             */
+            inherited: boolean;
+            /**
+             * @description Expected state of the attribute after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * @description Type of allowed override for the attribute.
+             * @default any
+             */
+            allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
+            /** @description Extra parameters specific to this kind of attribute */
+            parameters?: components["schemas"]["NumberPoolParametersRead"] | null;
+        };
+        /** NumberPoolAttributeWrite */
+        NumberPoolAttributeWrite: {
+            /**
+             * Id
+             * @description The ID of the attribute
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Attribute name, must be unique within a model and must be all lowercase.
+             */
+            name: string;
+            /**
+             * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "NumberPool";
+            /**
+             * Enum
+             * @description Define a list of valid values for the attribute.
+             */
+            enum?: unknown[] | null;
+            /**
+             * Computed Attribute
+             * @description Defines how the value of this attribute will be populated.
+             */
+            computed_attribute?: (components["schemas"]["ComputedAttributeUserWrite"] | components["schemas"]["ComputedAttributeJinja2Write"] | components["schemas"]["ComputedAttributeTransformPythonWrite"]) | null;
+            /**
+             * Choices
+             * @description Define a list of valid choices for a dropdown attribute.
+             */
+            choices?: components["schemas"]["DropdownChoiceWrite"][] | null;
+            /**
+             * Regex
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
+             */
+            regex?: string | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
+             */
+            max_length?: number | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
+             */
+            min_length?: number | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name. Will be autogenerated if not provided
+             */
+            label?: string | null;
+            /**
+             * Description
+             * @description Short description of the attribute.
+             */
+            description?: string | null;
+            /**
+             * Read Only
+             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Unique
+             * @description Indicate if the value of this attribute must be unique in the database for a given model.
+             * @default false
+             */
+            unique: boolean;
+            /**
+             * Optional
+             * @description Indicate if this attribute is mandatory or optional.
+             * @default false
+             */
+            optional: boolean;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
+            /**
+             * Order Weight
+             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+             */
+            order_weight?: number | null;
+            /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
+            /**
+             * Default Value
+             * @description Default value of the attribute.
+             */
+            default_value?: unknown | null;
+            /**
+             * @description Expected state of the attribute after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * @description Type of allowed override for the attribute.
+             * @default any
+             */
+            allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
+            /** @description Extra parameters specific to this kind of attribute */
+            parameters?: components["schemas"]["NumberPoolParametersWrite"] | null;
+        };
+        /** NumberPoolParametersRead */
+        NumberPoolParametersRead: {
+            /**
+             * End Range
+             * @description End range for numbers for the associated NumberPool
+             * @default 9223372036854776000
+             */
+            end_range: number;
+            /**
+             * Start Range
+             * @description Start range for numbers for the associated NumberPool
+             * @default 1
+             */
+            start_range: number;
+            /**
+             * Number Pool Id
+             * @description The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.
+             */
+            number_pool_id?: string | null;
+        };
+        /** NumberPoolParametersWrite */
+        NumberPoolParametersWrite: {
             /**
              * End Range
              * @description End range for numbers for the associated NumberPool
@@ -1996,6 +2741,116 @@ export interface components {
              */
             revoke_proposed_change_approvals: boolean;
         };
+        /** ProfileSchemaRead */
+        ProfileSchemaRead: {
+            /**
+             * Id
+             * @description The ID of the node
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+             */
+            name: string;
+            /**
+             * Namespace
+             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+             */
+            namespace: string;
+            /**
+             * Description
+             * @description Short description of the model, will be visible in the frontend.
+             */
+            description?: string | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name/kind
+             */
+            label?: string | null;
+            /**
+             * @description Type of branch support for the model.
+             * @default aware
+             */
+            branch: components["schemas"]["BranchSupportType"];
+            /**
+             * Default Filter
+             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
+             */
+            default_filter?: string | null;
+            /**
+             * Human Friendly Id
+             * @description Human friendly and unique identifier for the object.
+             */
+            human_friendly_id?: string[] | null;
+            /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
+             * Display Labels
+             * @description List of attributes to use to generate the display label (deprecated)
+             */
+            display_labels?: string[] | null;
+            /**
+             * Include In Menu
+             * @description Defines if objects of this kind should be included in the menu.
+             */
+            include_in_menu?: boolean | null;
+            /**
+             * Menu Placement
+             * @description Defines where in the menu this object should be placed.
+             */
+            menu_placement?: string | null;
+            /**
+             * Icon
+             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+             */
+            icon?: string | null;
+            /**
+             * Order By
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
+             */
+            order_by?: string[] | null;
+            /**
+             * Uniqueness Constraints
+             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+             */
+            uniqueness_constraints?: string[][] | null;
+            /**
+             * Documentation
+             * @description Link to a documentation associated with this object, can be internal or external.
+             */
+            documentation?: string | null;
+            /**
+             * @description Expected state of the node/generic after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * Attributes
+             * @description Node attributes
+             */
+            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
+            /**
+             * Relationships
+             * @description Node Relationships
+             */
+            relationships?: components["schemas"]["RelationshipSchemaRead"][];
+            /**
+             * Hash
+             * @description Hash of the node computed by the server.
+             */
+            hash?: string | null;
+            /**
+             * Inherit From
+             * @description List of Generic Kind that this profile is inheriting from
+             */
+            inherit_from?: string[];
+            /** Kind */
+            readonly kind: string;
+        };
         /** QueryPayload */
         QueryPayload: {
             /** Variables */
@@ -2023,18 +2878,13 @@ export interface components {
          * @enum {string}
          */
         RelationshipKind: "Generic" | "Attribute" | "Component" | "Parent" | "Group" | "Hierarchy" | "Profile" | "Template";
-        /** RelationshipSchema */
-        RelationshipSchema: {
+        /** RelationshipSchemaRead */
+        RelationshipSchemaRead: {
             /**
              * Id
              * @description The ID of the relationship schema
              */
             id?: string | null;
-            /**
-             * @description Expected state of the relationship after loading the schema
-             * @default present
-             */
-            state: components["schemas"]["HashableModelState"];
             /**
              * Name
              * @description Relationship name, must be unique within a model and must be all lowercase.
@@ -2121,6 +2971,11 @@ export interface components {
              * @description Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind
              */
             hierarchical?: string | null;
+            /**
+             * @description Expected state of the relationship after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
             /** @description Default is no-action. If cascade, related node(s) are deleted when this node is deleted. */
             on_delete?: components["schemas"]["RelationshipDeleteBehavior"] | null;
             /**
@@ -2139,6 +2994,122 @@ export interface components {
              * @description Mark relationship as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
+            /**
+             * @description Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
+        };
+        /** RelationshipSchemaWrite */
+        RelationshipSchemaWrite: {
+            /**
+             * Id
+             * @description The ID of the relationship schema
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Relationship name, must be unique within a model and must be all lowercase.
+             */
+            name: string;
+            /**
+             * Peer
+             * @description Type (kind) of objects supported on the other end of the relationship.
+             */
+            peer: string;
+            /**
+             * @description Defines the type of the relationship.
+             * @default Generic
+             */
+            kind: components["schemas"]["RelationshipKind"];
+            /**
+             * Label
+             * @description Human friendly representation of the name. Will be autogenerated if not provided
+             */
+            label?: string | null;
+            /**
+             * Description
+             * @description Short description of the relationship.
+             */
+            description?: string | null;
+            /**
+             * Identifier
+             * @description Unique identifier of the relationship within a model, identifiers must match to traverse a relationship on both direction.
+             */
+            identifier?: string | null;
+            /**
+             * @description Defines how many objects are expected on the other side of the relationship.
+             * @default many
+             */
+            cardinality: components["schemas"]["RelationshipCardinality"];
+            /**
+             * Min Count
+             * @description Defines the minimum objects allowed on the other side of the relationship.
+             * @default 0
+             */
+            min_count: number;
+            /**
+             * Max Count
+             * @description Defines the maximum objects allowed on the other side of the relationship.
+             * @default 0
+             */
+            max_count: number;
+            /**
+             * Common Parent
+             * @description Name of a parent relationship on the peer schema that must share the same related object with the object's parent.
+             */
+            common_parent?: string | null;
+            /**
+             * Common Relatives
+             * @description List of relationship names on the peer schema for which all objects must share the same set of peers.
+             */
+            common_relatives?: string[] | null;
+            /**
+             * Order Weight
+             * @description Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.
+             */
+            order_weight?: number | null;
+            /**
+             * Optional
+             * @description Indicate if this relationship is mandatory or optional.
+             * @default true
+             */
+            optional: boolean;
+            /** @description Type of branch support for the relationship. If not defined, it will be determined based on both peers. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
+            /**
+             * @description Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side.
+             * @default bidirectional
+             */
+            direction: components["schemas"]["RelationshipDirection"];
+            /**
+             * @description Expected state of the relationship after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /** @description Default is no-action. If cascade, related node(s) are deleted when this node is deleted. */
+            on_delete?: components["schemas"]["RelationshipDeleteBehavior"] | null;
+            /**
+             * @description Type of allowed override for the relationship.
+             * @default any
+             */
+            allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Read Only
+             * @description Set the relationship as read-only, users won't be able to change its value.
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Deprecation
+             * @description Mark relationship as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
+            /**
+             * @description Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
         };
         /** RemoteLoggingSettings */
         RemoteLoggingSettings: {
@@ -2154,6 +3125,11 @@ export interface components {
             /** Git Agent Dsn */
             git_agent_dsn?: string | null;
         };
+        /**
+         * RemoteSendStatus
+         * @enum {string}
+         */
+        RemoteSendStatus: "pending" | "sent" | "skipped" | "failed";
         /** SSOInfo */
         SSOInfo: {
             /** Providers */
@@ -2180,6 +3156,11 @@ export interface components {
             /** Token Path */
             readonly token_path: string;
         };
+        /**
+         * SchemaAttributeDisplay
+         * @enum {string}
+         */
+        SchemaAttributeDisplay: "default" | "extra";
         /** SchemaBranchHash */
         SchemaBranchHash: {
             /** Main */
@@ -2208,30 +3189,23 @@ export interface components {
                 [key: string]: components["schemas"]["HashableModelDiff"];
             };
         };
-        /** SchemaExtension */
-        SchemaExtension: {
-            /** Id */
-            id?: string | null;
-            /** @default present */
-            state: components["schemas"]["HashableModelState"];
-            /** Nodes */
-            nodes?: components["schemas"]["NodeExtensionSchema"][];
+        /** SchemaExtensionWrite */
+        SchemaExtensionWrite: {
+            /**
+             * Nodes
+             * @description Nodes to extend with additional attributes and relationships.
+             */
+            nodes?: components["schemas"]["NodeExtensionWrite"][];
         };
         /** SchemaLoadAPI */
         SchemaLoadAPI: {
             /** Version */
             version: string;
-            /** Generics */
-            generics?: components["schemas"]["GenericSchema"][];
             /** Nodes */
-            nodes?: components["schemas"]["NodeSchema"][];
-            /**
-             * @default {
-             *       "state": "present",
-             *       "nodes": []
-             *     }
-             */
-            extensions: components["schemas"]["SchemaExtension"];
+            nodes?: components["schemas"]["NodeSchemaWrite"][];
+            /** Generics */
+            generics?: components["schemas"]["GenericSchemaWrite"][];
+            extensions?: components["schemas"]["SchemaExtensionWrite"] | null;
         };
         /** SchemaNamespace */
         SchemaNamespace: {
@@ -2248,16 +3222,21 @@ export interface components {
              */
             main: string;
             /** Nodes */
-            nodes?: components["schemas"]["APINodeSchema"][];
+            nodes?: components["schemas"]["NodeSchemaRead"][];
             /** Generics */
-            generics?: components["schemas"]["APIGenericSchema"][];
+            generics?: components["schemas"]["GenericSchemaRead"][];
             /** Profiles */
-            profiles?: components["schemas"]["APIProfileSchema"][];
+            profiles?: components["schemas"]["ProfileSchemaRead"][];
             /** Templates */
-            templates?: components["schemas"]["APITemplateSchema"][];
+            templates?: components["schemas"]["TemplateSchemaRead"][];
             /** Namespaces */
             namespaces?: components["schemas"]["SchemaNamespace"][];
         };
+        /**
+         * SchemaState
+         * @enum {string}
+         */
+        SchemaState: "present" | "absent";
         /** SchemaUpdate */
         SchemaUpdate: {
             /**
@@ -2279,7 +3258,7 @@ export interface components {
             warnings?: components["schemas"]["SchemaWarning"][];
             /**
              * Schema Updated
-             * @description Indicates if the loading of the schema changed the existing schema
+             * @description Indicates if the loading of the schema changed the existing schema.
              */
             readonly schema_updated: boolean;
         };
@@ -2321,12 +3300,147 @@ export interface components {
             /** Schemas */
             schemas: components["schemas"]["SchemaLoadAPI"][];
         };
-        /** TextAttributeParameters */
-        TextAttributeParameters: {
+        /** TelemetrySnapshotListResponse */
+        TelemetrySnapshotListResponse: {
+            /** Count */
+            count: number;
+            /** Snapshots */
+            snapshots: components["schemas"]["TelemetrySnapshotResponse"][];
+        };
+        /** TelemetrySnapshotResponse */
+        TelemetrySnapshotResponse: {
             /** Id */
+            id: string;
+            /** Created At */
+            created_at: string;
+            /** Kind */
+            kind: string;
+            /** Payload Format */
+            payload_format: string;
+            /** Deployment Id */
+            deployment_id: string;
+            /** Infrahub Version */
+            infrahub_version: string;
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            };
+            /** Checksum */
+            checksum: string;
+            remote_send_status: components["schemas"]["RemoteSendStatus"];
+        };
+        /** TemplateSchemaRead */
+        TemplateSchemaRead: {
+            /**
+             * Id
+             * @description The ID of the node
+             */
             id?: string | null;
-            /** @default present */
-            state: components["schemas"]["HashableModelState"];
+            /**
+             * Name
+             * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+             */
+            name: string;
+            /**
+             * Namespace
+             * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+             */
+            namespace: string;
+            /**
+             * Description
+             * @description Short description of the model, will be visible in the frontend.
+             */
+            description?: string | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name/kind
+             */
+            label?: string | null;
+            /**
+             * @description Type of branch support for the model.
+             * @default aware
+             */
+            branch: components["schemas"]["BranchSupportType"];
+            /**
+             * Default Filter
+             * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
+             */
+            default_filter?: string | null;
+            /**
+             * Human Friendly Id
+             * @description Human friendly and unique identifier for the object.
+             */
+            human_friendly_id?: string[] | null;
+            /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
+             * Display Labels
+             * @description List of attributes to use to generate the display label (deprecated)
+             */
+            display_labels?: string[] | null;
+            /**
+             * Include In Menu
+             * @description Defines if objects of this kind should be included in the menu.
+             */
+            include_in_menu?: boolean | null;
+            /**
+             * Menu Placement
+             * @description Defines where in the menu this object should be placed.
+             */
+            menu_placement?: string | null;
+            /**
+             * Icon
+             * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+             */
+            icon?: string | null;
+            /**
+             * Order By
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
+             */
+            order_by?: string[] | null;
+            /**
+             * Uniqueness Constraints
+             * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+             */
+            uniqueness_constraints?: string[][] | null;
+            /**
+             * Documentation
+             * @description Link to a documentation associated with this object, can be internal or external.
+             */
+            documentation?: string | null;
+            /**
+             * @description Expected state of the node/generic after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * Attributes
+             * @description Node attributes
+             */
+            attributes?: (components["schemas"]["TextAttributeRead"] | components["schemas"]["NumberAttributeRead"] | components["schemas"]["ListAttributeRead"] | components["schemas"]["NumberPoolAttributeRead"] | components["schemas"]["GenericAttributeRead"])[];
+            /**
+             * Relationships
+             * @description Node Relationships
+             */
+            relationships?: components["schemas"]["RelationshipSchemaRead"][];
+            /**
+             * Hash
+             * @description Hash of the node computed by the server.
+             */
+            hash?: string | null;
+            /**
+             * Inherit From
+             * @description List of Generic Kind that this template is inheriting from
+             */
+            inherit_from?: string[];
+            /** Kind */
+            readonly kind: string;
+        };
+        /** TextAttributeParametersRead */
+        TextAttributeParametersRead: {
             /**
              * Regex
              * @description Regular expression that attribute value must match if defined
@@ -2342,6 +3456,262 @@ export interface components {
              * @description Set a maximum number of characters allowed.
              */
             max_length?: number | null;
+        };
+        /** TextAttributeParametersWrite */
+        TextAttributeParametersWrite: {
+            /**
+             * Regex
+             * @description Regular expression that attribute value must match if defined
+             */
+            regex?: string | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed.
+             */
+            min_length?: number | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed.
+             */
+            max_length?: number | null;
+        };
+        /** TextAttributeRead */
+        TextAttributeRead: {
+            /**
+             * Id
+             * @description The ID of the attribute
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Attribute name, must be unique within a model and must be all lowercase.
+             */
+            name: string;
+            /**
+             * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "Text" | "TextArea";
+            /**
+             * Enum
+             * @description Define a list of valid values for the attribute.
+             */
+            enum?: unknown[] | null;
+            /**
+             * Computed Attribute
+             * @description Defines how the value of this attribute will be populated.
+             */
+            computed_attribute?: (components["schemas"]["ComputedAttributeUserRead"] | components["schemas"]["ComputedAttributeJinja2Read"] | components["schemas"]["ComputedAttributeTransformPythonRead"]) | null;
+            /**
+             * Choices
+             * @description Define a list of valid choices for a dropdown attribute.
+             */
+            choices?: components["schemas"]["DropdownChoiceRead"][] | null;
+            /**
+             * Regex
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
+             */
+            regex?: string | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
+             */
+            max_length?: number | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
+             */
+            min_length?: number | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name. Will be autogenerated if not provided
+             */
+            label?: string | null;
+            /**
+             * Description
+             * @description Short description of the attribute.
+             */
+            description?: string | null;
+            /**
+             * Read Only
+             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Unique
+             * @description Indicate if the value of this attribute must be unique in the database for a given model.
+             * @default false
+             */
+            unique: boolean;
+            /**
+             * Optional
+             * @description Indicate if this attribute is mandatory or optional.
+             * @default false
+             */
+            optional: boolean;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
+            /**
+             * Order Weight
+             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+             */
+            order_weight?: number | null;
+            /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
+            /**
+             * Default Value
+             * @description Default value of the attribute.
+             */
+            default_value?: unknown | null;
+            /**
+             * Inherited
+             * @description Internal value to indicate if the attribute was inherited from a Generic node.
+             * @default false
+             */
+            inherited: boolean;
+            /**
+             * @description Expected state of the attribute after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * @description Type of allowed override for the attribute.
+             * @default any
+             */
+            allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
+            /** @description Extra parameters specific to this kind of attribute */
+            parameters?: components["schemas"]["TextAttributeParametersRead"] | null;
+        };
+        /** TextAttributeWrite */
+        TextAttributeWrite: {
+            /**
+             * Id
+             * @description The ID of the attribute
+             */
+            id?: string | null;
+            /**
+             * Name
+             * @description Attribute name, must be unique within a model and must be all lowercase.
+             */
+            name: string;
+            /**
+             * @description Defines the type of the attribute. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "Text" | "TextArea";
+            /**
+             * Enum
+             * @description Define a list of valid values for the attribute.
+             */
+            enum?: unknown[] | null;
+            /**
+             * Computed Attribute
+             * @description Defines how the value of this attribute will be populated.
+             */
+            computed_attribute?: (components["schemas"]["ComputedAttributeUserWrite"] | components["schemas"]["ComputedAttributeJinja2Write"] | components["schemas"]["ComputedAttributeTransformPythonWrite"]) | null;
+            /**
+             * Choices
+             * @description Define a list of valid choices for a dropdown attribute.
+             */
+            choices?: components["schemas"]["DropdownChoiceWrite"][] | null;
+            /**
+             * Regex
+             * @description Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)
+             */
+            regex?: string | null;
+            /**
+             * Max Length
+             * @description Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)
+             */
+            max_length?: number | null;
+            /**
+             * Min Length
+             * @description Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)
+             */
+            min_length?: number | null;
+            /**
+             * Label
+             * @description Human friendly representation of the name. Will be autogenerated if not provided
+             */
+            label?: string | null;
+            /**
+             * Description
+             * @description Short description of the attribute.
+             */
+            description?: string | null;
+            /**
+             * Read Only
+             * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Unique
+             * @description Indicate if the value of this attribute must be unique in the database for a given model.
+             * @default false
+             */
+            unique: boolean;
+            /**
+             * Optional
+             * @description Indicate if this attribute is mandatory or optional.
+             * @default false
+             */
+            optional: boolean;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
+            /**
+             * Order Weight
+             * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+             */
+            order_weight?: number | null;
+            /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
+            /**
+             * Default Value
+             * @description Default value of the attribute.
+             */
+            default_value?: unknown | null;
+            /**
+             * @description Expected state of the attribute after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+            /**
+             * @description Type of allowed override for the attribute.
+             * @default any
+             */
+            allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
+            /** @description Extra parameters specific to this kind of attribute */
+            parameters?: components["schemas"]["TextAttributeParametersWrite"] | null;
         };
         /** UploadContentPayload */
         UploadContentPayload: {
@@ -2394,6 +3764,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
     };
     responses: never;
@@ -2549,6 +3923,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    login_ldap_api_auth_ldap_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LDAPCredentials"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserToken"];
+                };
+            };
+            /** @description Authentication failed. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LDAPAuthErrorResponse"];
+                };
+            };
+            /** @description Enterprise runtime not active. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnterpriseRequiredResponse"];
+                };
+            };
+            /** @description Username collides with an existing local-only account. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LDAPCollisionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description LDAP directory unavailable. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LDAPAuthErrorResponse"];
                 };
             };
         };
@@ -3047,7 +4490,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["APIProfileSchema"] | components["schemas"]["APINodeSchema"] | components["schemas"]["APIGenericSchema"] | components["schemas"]["APITemplateSchema"];
+                    "application/json": components["schemas"]["ProfileSchemaRead"] | components["schemas"]["NodeSchemaRead"] | components["schemas"]["GenericSchemaRead"] | components["schemas"]["TemplateSchemaRead"];
                 };
             };
             /** @description Validation Error */
@@ -3369,6 +4812,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_telemetry_snapshots_api_telemetry_snapshots_get: {
+        parameters: {
+            query?: {
+                /** @description Include snapshots created on or after this date (ISO 8601) */
+                start_date?: string | null;
+                /** @description Include snapshots created on or before this date (ISO 8601) */
+                end_date?: string | null;
+                /** @description Maximum number of snapshots to return */
+                limit?: number;
+                /** @description Number of snapshots to skip */
+                offset?: number;
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetrySnapshotListResponse"];
                 };
             };
             /** @description Validation Error */

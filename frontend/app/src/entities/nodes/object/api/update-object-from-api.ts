@@ -1,14 +1,13 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { BranchContextParams } from "@/shared/api/types";
 import {
   RELATIONSHIP_BULK_ADD_PREFIX,
   RELATIONSHIP_BULK_REMOVE_PREFIX,
 } from "@/shared/components/form/constants";
 
-import { getRelationshipMutation } from "@/entities/nodes/object/utils/get-relationship-mutations";
+import { getRelationshipMutation } from "@/entities/nodes/object/domain/rules/get-relationship-mutations";
 
 export interface UpdateObjectFromApiParams extends BranchContextParams {
   objectKind: string;
@@ -20,7 +19,7 @@ export interface UpdateObjectFromApiParams extends BranchContextParams {
 export function updateObjectFromApi({
   data,
   objectKind,
-  profileIds = [],
+  profileIds,
   branchName,
   file,
 }: UpdateObjectFromApiParams) {
@@ -81,7 +80,7 @@ export function updateObjectFromApi({
       __args: {
         data: {
           ...objectData,
-          ...(profileIds?.length
+          ...(profileIds !== undefined
             ? { profiles: profileIds.map((profileId) => ({ id: profileId })) }
             : {}),
         },
@@ -123,7 +122,7 @@ export function updateObjectFromApi({
   });
 
   return graphqlClient.mutate({
-    mutation: gql(mutation),
+    mutation: graphql(mutation),
     variables: file ? { file } : undefined,
     context: {
       branch: branchName,

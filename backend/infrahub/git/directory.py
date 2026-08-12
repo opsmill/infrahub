@@ -14,9 +14,10 @@ def get_repositories_directory() -> Path:
 def initialize_repositories_directory() -> bool:
     """Check if the main repositories_directory already exist, if not create it.
 
-    Return
+    Return:
         True if the directory has been created,
         False if the directory was already present.
+
     """
     repos_dir = get_repositories_directory()
     if not repos_dir.exists():

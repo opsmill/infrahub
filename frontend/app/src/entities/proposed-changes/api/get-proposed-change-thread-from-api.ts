@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 const GET_THREAD = graphql(`
   query GetCoreThread($ids: [ID]) {
@@ -15,25 +13,18 @@ const GET_THREAD = graphql(`
           resolved {
             value
           }
-          created_by {
-            node {
-              display_label
-            }
-          }
           comments {
             count
             edges {
+              node_metadata {
+                created_at
+                created_by {
+                  display_label
+                }
+              }
               node {
                 id
                 display_label
-                created_by {
-                  node {
-                    display_label
-                  }
-                }
-                created_at {
-                  value
-                }
                 text {
                   value
                 }

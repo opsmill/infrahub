@@ -318,6 +318,11 @@ class TestConvertObjectType(TestInfrahubApp):
         branch_name = "branch_convert_type"
         _ = await create_branch(branch_name=branch_name, db=db)
 
+        merged_branch_name = "merged_branch_convert_type"
+        merged_branch = await create_branch(branch_name=merged_branch_name, db=db)
+        merged_branch.status = BranchStatus.MERGED
+        await merged_branch.save(db=db)
+
         mapping = {
             "name_agnostic": ConversionFieldInput(source_field="name_agnostic"),
             "age_aware": ConversionFieldInput(source_field="age_aware"),
@@ -359,3 +364,7 @@ class TestConvertObjectType(TestInfrahubApp):
         assert main_branch.status == BranchStatus.OPEN.value
         global_branch = await Branch.get_by_name(name=GLOBAL_BRANCH_NAME, db=db)
         assert global_branch.status == BranchStatus.OPEN.value
+
+        # Merged branches are terminal/read-only and must not be reopened
+        refreshed_merged = await Branch.get_by_name(name=merged_branch_name, db=db)
+        assert refreshed_merged.status == BranchStatus.MERGED.value

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from fast_depends import Depends, inject
 
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
@@ -13,10 +13,7 @@ class ProposedChangeChecker(ABC):
     async def verify_proposed_change_is_mergeable(
         self, proposed_change: Node, db: InfrahubDatabase, account_session: AccountSession
     ) -> None:
-        """
-        Raise an error if proposed change cannot be merged.
-        """
-
+        """Raise an error if proposed change cannot be merged."""
         raise NotImplementedError()
 
 

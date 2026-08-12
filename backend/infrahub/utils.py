@@ -1,11 +1,32 @@
+from __future__ import annotations
+
 import hashlib
+from contextlib import contextmanager
 from enum import Enum, EnumMeta
 from pathlib import Path
 from re import finditer
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from infrahub.log import InfrahubLogger
 
 KWARGS_TO_DROP = ["session"]
 AnyClass = TypeVar("AnyClass", bound=type)
+
+
+@contextmanager
+def log_exception_guard(log: InfrahubLogger, message: str) -> Iterator[None]:
+    """Run the block, logging any exception it raises and absorbing it instead of propagating.
+
+    Use where a failure in the block must not abort the caller and logging the error is the only
+    required reaction; a block that has to recover from the failure must handle it explicitly.
+    """
+    try:
+        yield
+    except Exception:
+        log.exception(message)
 
 
 def get_fixtures_dir() -> Path:
@@ -94,6 +115,7 @@ def has_any_key(data: dict[str, Any], keys: list[str]) -> bool:
 
     Returns:
         True if any of the keys are found at any level of the dictionary, False otherwise
+
     """
     for key, value in data.items():
         if key in keys:

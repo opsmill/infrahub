@@ -220,6 +220,118 @@ class TestDiffCoordinator:
         assert diff_property.previous_value == str(original_height)
         assert diff_property.new_value == "3"
 
+    async def test_tracking_diff_not_duplicated_after_rebase(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+    ) -> None:
+        branch = await create_branch(db=db, branch_name="branch")
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+
+        person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        person_john_branch.get_attribute("height").value = 1
+        await person_john_branch.save(db=db)
+
+        # tracked diff calculated before the rebase, using the original branched_from time
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        # a rebase advances branched_from, so the pre-rebase root now sits before the branch's
+        # from_time and is invisible to the time-bounded aggregation query
+        await branch.rebase(db=db)
+
+        # recalculating the tracked diff must not leave the pre-rebase root behind, otherwise two
+        # roots share the branch tracking_id and a single-diff lookup by tracking_id fails
+        full_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        tracking_diff = await diff_repository.get_one(
+            diff_branch_name=branch.name, tracking_id=BranchTrackingId(name=branch.name)
+        )
+        assert tracking_diff.uuid == full_diff.uuid
+
+    async def test_same_named_diffs_on_two_branches_do_not_delete_each_other(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+    ) -> None:
+        branch_1 = await create_branch(db=db, branch_name="branch_1")
+        branch_2 = await create_branch(db=db, branch_name="branch_2")
+        component_registry = get_component_registry()
+        diff_coordinator_1 = await component_registry.get_component(DiffCoordinator, db=db, branch=branch_1)
+        diff_coordinator_2 = await component_registry.get_component(DiffCoordinator, db=db, branch=branch_2)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch_1)
+        diff_name = "shared-name"
+
+        person_john_branch_1 = await NodeManager.get_one(db=db, branch=branch_1, id=person_john_main.id)
+        person_john_branch_1.get_attribute("height").value = 1
+        await person_john_branch_1.save(db=db)
+        person_john_branch_2 = await NodeManager.get_one(db=db, branch=branch_2, id=person_john_main.id)
+        person_john_branch_2.get_attribute("height").value = 2
+        await person_john_branch_2.save(db=db)
+
+        branch_1_diff = await diff_coordinator_1.create_or_update_arbitrary_timeframe_diff(
+            base_branch=default_branch,
+            diff_branch=branch_1,
+            from_time=Timestamp(branch_1.get_branched_from()),
+            to_time=Timestamp(),
+            name=diff_name,
+        )
+        branch_2_diff = await diff_coordinator_2.create_or_update_arbitrary_timeframe_diff(
+            base_branch=default_branch,
+            diff_branch=branch_2,
+            from_time=Timestamp(branch_2.get_branched_from()),
+            to_time=Timestamp(),
+            name=diff_name,
+        )
+
+        # a name-based tracking id is not branch-qualified, so updating the named diff on one branch
+        # must leave the identically named diff on the other branch untouched
+        updated_branch_1_diff = await diff_coordinator_1.create_or_update_arbitrary_timeframe_diff(
+            base_branch=default_branch,
+            diff_branch=branch_1,
+            from_time=Timestamp(branch_1.get_branched_from()),
+            to_time=Timestamp(),
+            name=diff_name,
+        )
+
+        retrieved_branch_2_diff = await diff_repository.get_one(
+            diff_branch_name=branch_2.name, tracking_id=NameTrackingId(name=diff_name)
+        )
+        assert retrieved_branch_2_diff.uuid == branch_2_diff.uuid
+        retrieved_branch_1_diff = await diff_repository.get_one(
+            diff_branch_name=branch_1.name, tracking_id=NameTrackingId(name=diff_name)
+        )
+        assert retrieved_branch_1_diff.uuid == updated_branch_1_diff.uuid
+        assert branch_1_diff.uuid == updated_branch_1_diff.uuid
+
+    async def test_recalculate_skips_already_deleted_diff(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+    ) -> None:
+        branch = await create_branch(db=db, branch_name="branch")
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+
+        person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        person_john_branch.get_attribute("height").value = 1
+        await person_john_branch.save(db=db)
+
+        pre_rebase_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        # a rebase followed by a diff update deletes the pre-rebase root, but a recalculation queued
+        # for the pre-rebase root before the update may still run afterwards with the deleted root's id
+        await branch.rebase(db=db)
+        full_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+        assert full_diff.uuid != pre_rebase_diff.uuid
+
+        result = await diff_coordinator.recalculate(
+            base_branch=default_branch, diff_branch=branch, diff_id=pre_rebase_diff.uuid
+        )
+
+        assert result is None
+        # the surviving tracked diff is untouched
+        tracking_diff = await diff_repository.get_one(
+            diff_branch_name=branch.name, tracking_id=BranchTrackingId(name=branch.name)
+        )
+        assert tracking_diff.uuid == full_diff.uuid
+
     async def test_no_changes_skips_expensive_operations(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
     ) -> None:
@@ -400,7 +512,7 @@ class TestDiffCoordinator:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        person_john_main,
+        person_john_main: Node,
     ) -> None:
         branch = await create_branch(db=db, branch_name="branch1")
         component_registry = get_component_registry()
@@ -535,23 +647,28 @@ class TestDiffCoordinator:
         for metadata in retrieved_metadata:
             assert metadata.proposed_change_id == proposed_change_id
 
-    async def test_open_proposed_change_discovered_when_not_provided(
+    @pytest.mark.parametrize("pc_state", [ProposedChangeState.OPEN, ProposedChangeState.MERGING])
+    async def test_active_proposed_change_discovered_when_not_provided(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         person_john_main: Node,
+        pc_state: ProposedChangeState,
     ) -> None:
-        """When update_branch_diff is called without proposed_change_id but an OPEN
-        CoreProposedChange exists for the branch, the diff should be linked to it."""
+        """When update_branch_diff is called without proposed_change_id but an OPEN or MERGING.
+
+        CoreProposedChange exists for the branch, the diff should be linked to it.
+
+        """
         branch = await create_branch(db=db, branch_name="branch")
 
-        # Create a real OPEN CoreProposedChange for this branch
         proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE, branch=default_branch)
         await proposed_change.new(
             db=db,
-            name="test-pc",
+            name=f"test-pc-{pc_state.value}",
             source_branch=branch.name,
             destination_branch=default_branch.name,
+            state=pc_state.value,
         )
         await proposed_change.save(db=db)
 
@@ -567,7 +684,6 @@ class TestDiffCoordinator:
         # Update branch diff WITHOUT providing proposed_change_id
         diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
 
-        # The diff should have discovered and linked the open proposed change
         assert diff_metadata.proposed_change_id == proposed_change.id
 
         # Verify both diff roots are linked via the repository
@@ -588,7 +704,7 @@ class TestDiffCoordinator:
         """Diffs should not be linked to CLOSED, CANCELED, or MERGED proposed changes."""
         branch = await create_branch(db=db, branch_name="branch")
 
-        # Create proposed changes in non-open states for this branch
+        # Create proposed changes in terminal states for this branch
         for state in (ProposedChangeState.CLOSED, ProposedChangeState.CANCELED, ProposedChangeState.MERGED):
             pc = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE, branch=default_branch)
             await pc.new(
@@ -611,7 +727,7 @@ class TestDiffCoordinator:
         # Update branch diff WITHOUT providing proposed_change_id
         diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
 
-        # The diff should NOT be linked to any of the non-open proposed changes
+        # The diff should NOT be linked to any of the terminal proposed changes
         assert diff_metadata.proposed_change_id is None
 
     async def test_parent_reassigned_then_deleted(
@@ -620,7 +736,7 @@ class TestDiffCoordinator:
         default_branch: Branch,
         hierarchical_location_schema_simple: SchemaRoot,
     ) -> None:
-        """Test reassigning a child to a new parent and deleting the old parent"""
+        """Test reassigning a child to a new parent and deleting the old parent."""
         branch = await create_branch(db=db, branch_name="branch_parent_reassign")
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)

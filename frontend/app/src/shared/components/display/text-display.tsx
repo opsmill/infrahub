@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { forwardRef, type HTMLAttributes, useState } from "react";
+import React from "react";
 
 import { classNames } from "@/shared/utils/common";
 
@@ -16,7 +16,7 @@ export const TextDisplay = ({
   maxChars = MAX_TEXT_LENGTH,
   preventShowMore,
 }: TextDisplayProps) => {
-  const [showFullText, setShowFullText] = useState(false);
+  const [showFullText, setShowFullText] = React.useState(false);
 
   const shouldShowReadMore = children.length > maxChars;
   const shouldTruncateText = shouldShowReadMore && !showFullText;
@@ -49,12 +49,14 @@ const ToggleFullTextButton = ({ isFullText, setShowFullText }: ToggleFullTextBut
   );
 };
 
-const ButtonStyled = forwardRef<HTMLButtonElement, HTMLAttributes<HTMLButtonElement>>(
-  ({ className, ...props }, ref) => (
-    <button
-      ref={ref}
-      className={classNames("font-semibold text-custom-blue-700", className)}
-      {...props}
-    />
-  )
+interface ButtonStyledProps extends React.HTMLAttributes<HTMLButtonElement> {
+  ref?: React.Ref<HTMLButtonElement>;
+}
+
+const ButtonStyled = ({ className, ref, ...props }: ButtonStyledProps) => (
+  <button
+    ref={ref}
+    className={classNames("font-semibold text-custom-blue-700", className)}
+    {...props}
+  />
 );

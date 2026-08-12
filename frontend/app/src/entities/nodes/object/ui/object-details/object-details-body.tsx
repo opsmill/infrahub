@@ -1,11 +1,15 @@
+import { Card } from "@infrahub/ui";
+import { Outlet } from "react-router";
+
+import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { ObjectDetails } from "@/entities/nodes/object/ui/object-details/object-details";
 import { ObjectDetailsTabs } from "@/entities/nodes/object/ui/object-details/object-details-tabs";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ObjectDetailsOutletContext } from "@/entities/nodes/object/ui/routing/use-object-details-outlet";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface ObjectDetailsBodyProps {
   objectId: string;
@@ -25,9 +29,13 @@ export function ObjectDetailsBody({ objectSchema, objectId, permission }: Object
   }
 
   return (
-    <>
+    <Col className="gap-0 overflow-auto p-1">
       <ObjectDetailsTabs objectSchema={objectSchema} objectData={objectData} />
-      <ObjectDetails objectSchema={objectSchema} objectData={objectData} permission={permission} />
-    </>
+      <Card className="overflow-auto bg-neutral-50">
+        <Outlet
+          context={{ objectSchema, objectData, permission } satisfies ObjectDetailsOutletContext}
+        />
+      </Card>
+    </Col>
   );
 }

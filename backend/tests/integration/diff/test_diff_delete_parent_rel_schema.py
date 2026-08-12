@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from infrahub.core.constants import DiffAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -102,15 +103,17 @@ class TestDiffDeleteParentRelSchema(TestInfrahubApp):
         diff_branch: Branch,
         client: InfrahubClient,
     ) -> None:
-        """Removing a Parent relationship from the schema after data is created should
-        produce a diff where the child node no longer has the removed relationship.
+        """Removing a Parent relationship from the schema after data is created should not break the diff.
+
+        The relationship is created and removed on the same branch, so it is a no-op on merge and the
+        diff must not report it as a change (the migration closes the underlying data cleanly).
 
         1. Create TestCluster + VirtualInterface (provider=TestCluster) on branch.
         2. Update the branch diff.
         3. Schema change: mark ``provider`` relationship as absent.
         4. Modify VirtualInterface and delete TestCluster.
         5. Update the branch diff again.
-        6. Validate VirtualInterface is in the diff without the ``provider`` relationship.
+        6. Validate VirtualInterface is in the diff and the ``provider`` relationship is unchanged.
         """
         # Create data on the branch
         cluster = await Node.init(schema=CLUSTER_KIND, db=db, branch=diff_branch)
@@ -174,7 +177,9 @@ class TestDiffDeleteParentRelSchema(TestInfrahubApp):
         vi_node = nodes_by_id[vi.id]
         assert vi_node.kind == VIRTUAL_INTERFACE_KIND
 
-        # this relationship should be removed once #2474 is implemented
-        # assert not vi_node.has_relationship("provider"), (
-        #     "The 'provider' Parent relationship should not be in the diff after being removed from the schema"
-        # )
+        # The provider relationship was both created and removed on this branch, so it is a no-op once
+        # the branch merges into main. The diff still surfaces the relationship, but only as unchanged,
+        # never added/updated/removed.
+        provider_rel = next(rel for rel in vi_node.relationships if rel.name == "provider")
+        assert provider_rel.action is DiffAction.UNCHANGED
+        assert all(element.action is DiffAction.UNCHANGED for element in provider_rel.relationships)

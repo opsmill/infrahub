@@ -1,8 +1,9 @@
 import { Tag, type TagProps } from "react-aria-components";
 
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
-import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
+
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 
 type FilterTagProps = {
   label: string;
@@ -14,7 +15,7 @@ export const FilterTag = ({ children, label, currentFilter, ...props }: FilterTa
     <Tag
       className={classNames(
         focusVisibleStyle,
-        "group inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-gray-300 text-sm",
+        "group inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border-strong text-sm",
         currentFilter?.value && "cursor-pointer bg-neutral-100 pl-1 text-gray-600",
         !currentFilter?.value && "cursor-pointer border-dashed px-1 text-gray-400",
         "data-hovered:border-gray-600 data-hovered:bg-gray-100 data-hovered:text-gray-600"

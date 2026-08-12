@@ -858,7 +858,9 @@ async def test_number_pool_utilization(
     assert first.data
     assert second.data
     assert third.data
+    first_id = first.data["TestingTicketCreate"]["object"]["id"]
     second_id = second.data["TestingTicketCreate"]["object"]["id"]
+    third_id = third.data["TestingTicketCreate"]["object"]["id"]
 
     utilization = await graphql(
         schema=gql_params.schema,
@@ -895,6 +897,15 @@ async def test_number_pool_utilization(
     assert allocation.data["InfrahubResourcePoolAllocated"]["count"] == 3
     numbers = [entry["node"]["display_label"] for entry in allocation.data["InfrahubResourcePoolAllocated"]["edges"]]
     assert sorted(numbers) == ["1", "2", "3"]
+
+    # Validate that each allocation has the node UUID as identifier
+    allocations_by_value = {
+        str(entry["node"]["display_label"]): entry["node"]
+        for entry in allocation.data["InfrahubResourcePoolAllocated"]["edges"]
+    }
+    assert allocations_by_value["1"]["identifier"] == first_id
+    assert allocations_by_value["2"]["identifier"] == second_id
+    assert allocations_by_value["3"]["identifier"] == third_id
 
     remove_two = await graphql(
         schema=gql_params.schema,

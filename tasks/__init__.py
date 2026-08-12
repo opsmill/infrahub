@@ -2,7 +2,7 @@
 
 from invoke import Collection, Context, task
 
-from . import backend, bundle, demo, dev, docs, main, performance, release, schema, sdk
+from . import backend, demo, dev, docs, frontend, main, performance, release, schema, sdk
 from .utils import ESCAPED_REPO_PATH
 
 ns = Collection()
@@ -11,7 +11,7 @@ ns.add_collection(dev)
 ns.add_collection(docs)
 ns.add_collection(performance)
 ns.add_collection(backend)
-ns.add_collection(bundle)
+ns.add_collection(frontend)
 ns.add_collection(demo)
 ns.add_collection(main)
 ns.add_collection(schema)
@@ -20,20 +20,21 @@ ns.add_collection(release)
 
 @task
 def yamllint(context: Context) -> None:
-    """This will run yamllint to validate formatting of all yaml files."""
-
+    """Validate formatting of all YAML files with yamllint."""
     exec_cmd = "yamllint -s ."
     context.run(exec_cmd, pty=True)
 
 
 @task(name="format")
 def format_all(context: Context) -> None:
+    """Run all formatters for main and backend code."""
     main.format_all(context)
     backend.format_all(context)
 
 
 @task(name="lint")
 def lint_all(context: Context) -> None:
+    """Run all linters for YAML, main, and backend code."""
     yamllint(context)
     main.lint(context)
     backend.lint(context)

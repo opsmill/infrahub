@@ -51,6 +51,7 @@ def build(
         context (obj): Used to run specific commands
         python_ver (str): Define the Python version docker image to build from
         nocache (bool): Do not use cache when building the image
+
     """
     build_images(
         context=context, service=service, python_ver=python_ver, nocache=nocache, database=database, namespace=NAMESPACE
@@ -104,7 +105,7 @@ def infra_git_create(
     name: str = "demo-edge",
     location: str = "/remote/infrahub-demo-edge",
 ) -> None:
-    """Load some demo data."""
+    """Register a Git repository with Infrahub via docker compose."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=NAMESPACE)
         compose_cmd = get_compose_cmd(namespace=NAMESPACE)
@@ -117,7 +118,7 @@ def infra_git_create(
 
 @task(optional=["database"])
 def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Load some demo data."""
+    """Initialize a demo Git repository inside the worker container."""
     REPO_NAME = "infrahub-demo-edge"
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=NAMESPACE)
@@ -185,7 +186,6 @@ def status(
 @task(optional=["database"])
 def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = False, reload: bool = False) -> None:
     """Start a local instance of Infrahub within docker compose."""
-
     if reload:
         # Need to use `uvicorn` instead of `gunicorn` for reload option because of this issue:
         # https://github.com/benoitc/gunicorn/issues/2339
@@ -210,7 +210,7 @@ def upgrade(context: Context, database: str = INFRAHUB_DATABASE, rebase_branches
 
 @task
 def test_add_dummy_data(context: Context, branch: str = "main") -> str:  # noqa: ARG001
-    """Load dummy data for testing"""
+    """Load dummy data for testing."""
     from infrahub_sdk import InfrahubClientSync
     from infrahub_sdk.uuidt import generate_uuid
 
@@ -229,7 +229,12 @@ def test_add_dummy_data(context: Context, branch: str = "main") -> str:  # noqa:
 
 @task
 def test_branch_rebase(context: Context, branch: str, data_to_check: str = "") -> None:  # noqa: ARG001
-    """Rebase branch and check for schema and data."""
+    """Rebase branch and check for schema and data.
+
+    Raises:
+        AssertionError: When the precondition fails or the expected schema is missing after rebase.
+
+    """
     from infrahub_sdk import InfrahubClientSync
     from infrahub_sdk.exceptions import NodeNotFoundError
     from infrahub_sdk.task.models import TaskFilter
@@ -273,6 +278,12 @@ def test_branch_rebase(context: Context, branch: str, data_to_check: str = "") -
 
 @task
 def test_branch_graph_version(context: Context, branch: str) -> None:  # noqa: ARG001
+    """Verify a branch has been rebased and upgraded with a valid graph version.
+
+    Raises:
+        AssertionError: When the branch has no graph version set.
+
+    """
     from infrahub_sdk import InfrahubClientSync
 
     client = InfrahubClientSync()

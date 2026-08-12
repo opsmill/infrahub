@@ -1,0 +1,33 @@
+---
+feature: Menu Customization
+pr: TBD
+description: |
+  Migrated the Menu Customization guide from docs/guides/menu.mdx to docs/menu/index.mdx
+  using the single-page merge pattern. The reference doc at docs/reference/menu.mdx remains
+  in place. Legacy URLs continue to resolve during iteration; redirects are installed at cleanup.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/guides/menu
+    to: /docs/menu/
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/menu/
+    title: Menu Customization
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (will resolve via redirect at runtime but should be updated to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/topics/labels.mdx
+    line: 356
+    current: ../guides/menu.mdx
+    should_be: ../menu/
+  - file: docs/docs/topics/schema.mdx
+    line: 1081
+    current: ../guides/menu.mdx
+    should_be: ../menu/
+  - file: docs/docs/reference/menu.mdx
+    line: 7
+    current: ../guides/menu.mdx
+    should_be: ../menu/

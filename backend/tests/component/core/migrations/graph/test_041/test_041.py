@@ -13,13 +13,15 @@ from tests.helpers.db_validation import verify_no_duplicate_paths
 
 
 class TestMigration041:
-    """Test Migration041 to delete duplicated edges after a merge that includes peers with updated kinds/inheritance
+    """Test Migration041 to delete duplicated edges after a merge that includes peers with updated kinds/inheritance.
+
     - load a known bad data set, then massage it into a state that can be used by the migration and NodeManager
     - get the nodes before the migration
     - run the migration
     - verify the duplicate paths are all gone
     - get the nodes after the migration
-    - verify the nodes attribute values and peers are the same
+    - verify the nodes attribute values and peers are the same.
+
     """
 
     @pytest.fixture
@@ -89,7 +91,9 @@ DETACH DELETE r
         """
         await db.execute_query(query=query)
 
-    async def test_migration_041(self, db: InfrahubDatabase, load_bad_data, car_person_schema: SchemaBranch) -> None:
+    async def test_migration_041(
+        self, db: InfrahubDatabase, load_bad_data: None, car_person_schema: SchemaBranch
+    ) -> None:
         for schema_name in car_person_schema.node_names:
             if schema_name == "TestCar":
                 car_schema = car_person_schema.get(name=schema_name, duplicate=False)

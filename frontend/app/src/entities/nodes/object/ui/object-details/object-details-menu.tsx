@@ -1,8 +1,17 @@
 import { Icon } from "@iconify-icon/react";
+import {
+  Button,
+  type ButtonProps,
+  Menu,
+  MenuItem,
+  MenuSection,
+  MenuTrigger,
+  Popover,
+  Sheet,
+} from "@infrahub/ui";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { BookTextIcon, ChevronDownIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
-import { Pressable } from "react-aria-components";
 import { useNavigate } from "react-router";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
@@ -10,34 +19,25 @@ import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-import {
-  CopyToClipboardMenuItem,
-  Menu,
-  MenuItem,
-  MenuItemWithTooltip,
-  MenuPopover,
-  MenuSection,
-  MenuTrigger,
-} from "@/shared/components/aria/menu";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { CopyToClipboardMenuItem } from "@/shared/components/menu/copy-to-clipboard-menu-item";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
-import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { isNodeRelationshipOne } from "@/entities/nodes/object/domain/rules/is-node-relationship-one";
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
+import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { isNodeRelationshipOne } from "@/entities/nodes/object/utils/is-node-relationship-one";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import type { NodeObject } from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { Permission } from "@/entities/permission/types";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";
 import { RepositoryMenuSection } from "@/entities/repository/ui/repository-menu-section";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 export interface ObjectDetailsMenuProps extends ButtonProps {
   objectSchema: ModelSchema;
@@ -67,13 +67,11 @@ export function ObjectDetailsMenu({
   return (
     <>
       <MenuTrigger>
-        <Pressable>
-          <Button variant="outline" size="sm" data-testid="object-details-menu" {...props}>
-            Actions <ChevronDownIcon className="ml-2 size-3.5" />
-          </Button>
-        </Pressable>
+        <Button variant="outline" size="sm" data-testid="object-details-menu" {...props}>
+          Actions <ChevronDownIcon className="size-3.5" />
+        </Button>
 
-        <MenuPopover placement="bottom end">
+        <Popover placement="bottom end">
           <Menu>
             <MenuSection title="Actions">
               <CopyToClipboardMenuItem textToCopy={objectData.id}>Copy ID</CopyToClipboardMenuItem>
@@ -92,6 +90,12 @@ export function ObjectDetailsMenu({
               >
                 <TasksStatusIcon width="12" height="12" className="ml-0.5" />
                 Tasks
+              </MenuItem>
+              <MenuItem
+                href={constructPath("/path-traversal", [{ name: "source", value: objectData.id }])}
+              >
+                <Icon icon="mdi:map-marker-path" />
+                Find paths
               </MenuItem>
               <MenuItem
                 href={constructPath("/schema", [{ name: "kind", value: objectSchema.kind }])}
@@ -136,7 +140,7 @@ export function ObjectDetailsMenu({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <BookTextIcon className="size-3.5" />
+                  <BookTextIcon />
                   Documentation
                 </MenuItem>
               )}
@@ -152,92 +156,74 @@ export function ObjectDetailsMenu({
             )}
 
             <MenuSection title="Manage">
-              <MenuItemWithTooltip
+              <MenuItem
                 isDisabled={!isEditAllowed}
-                tooltipEnabled={!isEditAllowed}
-                tooltipContent={editTooltipMessage}
+                tooltip={editTooltipMessage}
                 onAction={() => setIsEditModalOpen(true)}
               >
-                <PencilLineIcon className="size-3.5" />
+                <PencilLineIcon />
                 <span>Edit</span>
-              </MenuItemWithTooltip>
+              </MenuItem>
 
-              <MenuItemWithTooltip
+              <MenuItem
                 isDisabled={!isEditAllowed}
-                tooltipEnabled={!isEditAllowed}
-                tooltipContent={editTooltipMessage}
+                tooltip={editTooltipMessage}
                 onAction={() => setIsManageGroupsDrawerOpen(true)}
               >
-                <GroupIcon className="size-3.5" />
+                <GroupIcon />
                 <span>Groups</span>
-              </MenuItemWithTooltip>
+              </MenuItem>
 
-              <MenuItemWithTooltip
+              <MenuItem
                 isDisabled={!isEditAllowed}
-                tooltipEnabled={!isEditAllowed}
-                tooltipContent={editTooltipMessage}
+                tooltip={editTooltipMessage}
                 href={constructPath(`/objects/${objectData.__typename}/${objectData.id}/convert`)}
               >
                 <Icon icon="mdi:swap-horizontal" className="size-3" />
                 Convert object type
-              </MenuItemWithTooltip>
+              </MenuItem>
 
-              <MenuItemWithTooltip
+              <MenuItem
                 isDisabled={!isDeleteAllowed}
-                tooltipEnabled={!isDeleteAllowed}
-                tooltipContent={deleteTooltipMessage}
+                tooltip={deleteTooltipMessage}
                 className="text-red-500"
                 onAction={() => setIsDeleteModalOpen(true)}
               >
-                <Trash2Icon className="size-3.5" />
+                <Trash2Icon />
                 <span>Delete</span>
-              </MenuItemWithTooltip>
+              </MenuItem>
             </MenuSection>
           </Menu>
-        </MenuPopover>
+        </Popover>
       </MenuTrigger>
 
-      <SlideOver
-        open={isManageGroupsDrawerOpen}
-        setOpen={setIsManageGroupsDrawerOpen}
-        title={
-          <SlideOverTitle
-            schema={objectSchema}
-            currentObjectLabel={nodeLabel}
-            title="Manage groups"
-            subtitle="Add and unassign groups"
-          />
-        }
-      >
-        <GroupsManager
+      <Sheet isOpen={isManageGroupsDrawerOpen} onOpenChange={setIsManageGroupsDrawerOpen}>
+        <SlideOverTitle
           schema={objectSchema}
-          objectId={objectData.id}
-          className="overflow-auto p-4"
+          currentObjectLabel={nodeLabel}
+          title="Manage groups"
+          subtitle="Add and unassign groups"
         />
-      </SlideOver>
+        <GroupsManager schema={objectSchema} objectId={objectData.id} />
+      </Sheet>
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={objectSchema}
-            currentObjectLabel={nodeLabel}
-            title={`Edit ${nodeLabel}`}
-            subtitle={objectSchema.description}
-          />
-        }
-        open={isEditModalOpen}
-        setOpen={setIsEditModalOpen}
-      >
-        <ObjectItemEditComponent
+      <Sheet isOpen={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <SlideOverTitle
+          schema={objectSchema}
+          currentObjectLabel={nodeLabel}
+          title={`Edit ${nodeLabel}`}
+          subtitle={objectSchema.description}
+        />
+        <ObjectEdit
           closeDrawer={() => setIsEditModalOpen(false)}
           onUpdateComplete={async () => {
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsEditModalOpen(false);
           }}
           objectId={objectData.id!}
-          objectname={objectSchema.kind!}
+          objectKind={objectSchema.kind!}
         />
-      </SlideOver>
+      </Sheet>
 
       <ModalDeleteObject
         label={objectSchema.label}

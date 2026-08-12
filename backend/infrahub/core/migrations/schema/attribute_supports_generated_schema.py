@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
+from infrahub.core import registry
 from infrahub.core.migrations.query.attribute_remove import AttributeRemoveQuery
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
@@ -124,20 +125,32 @@ class AttributeSupportsGeneratedSchemaMigration(AttributeSchemaMigration):
         all_queries: list[type[AttributeMigrationQuery]] = []
 
         # Check profile support changes
+        previous_profile_support_condition = self.previous_schema.check_if_attr_supports_profiles(
+            attribute_schema=self.previous_attribute_schema
+        )
+        new_profile_support_condition = self.new_schema.check_if_attr_supports_profiles(
+            attribute_schema=self.new_attribute_schema
+        )
         if (
             isinstance(self.new_schema, (NodeSchema, GenericSchema))
             and self.new_schema.generate_profile
-            and self.previous_attribute_schema.support_profiles != self.new_attribute_schema.support_profiles
+            and previous_profile_support_condition != new_profile_support_condition
         ):
-            if self.new_attribute_schema.support_profiles:
+            if new_profile_support_condition:
                 all_queries.append(ProfilesAttributeAddMigrationQuery)
             else:
                 all_queries.append(ProfilesAttributeRemoveMigrationQuery)
 
         # Check template support changes
+        schema_branch = (
+            registry.schema.get_schema_branch(name=branch.name)
+            if registry.schema.has_schema_branch(name=branch.name)
+            else None
+        )
+        is_sub_template = schema_branch is not None and schema_branch.has(name=f"Template{self.new_schema.kind}")
         if (
             isinstance(self.new_schema, NodeSchema)
-            and self.new_schema.generate_template
+            and (self.new_schema.generate_template or is_sub_template)
             and self.previous_attribute_schema.support_templates != self.new_attribute_schema.support_templates
         ):
             if self.new_attribute_schema.support_templates:

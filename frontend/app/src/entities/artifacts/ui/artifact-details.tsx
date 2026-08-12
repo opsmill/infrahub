@@ -1,18 +1,19 @@
+import { Card, CardHeader } from "@infrahub/ui";
+
 import { Separator } from "@/shared/components/aria/separator";
 import { Col, Row } from "@/shared/components/container";
 import { getExtensionFromContentType } from "@/shared/components/data-viewer/types";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Card } from "@/shared/components/ui/card";
 
-import { assertArtifactObject } from "@/entities/artifacts/types";
+import { assertArtifactObject } from "@/entities/artifacts/domain/rules/assert-artifact-object";
 import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
 import { ArtifactHeader } from "@/entities/artifacts/ui/artifact-header";
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
 import { NodeDescription } from "@/entities/nodes/object/ui/node-description";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface ArtifactsDetailsProps {
   artifactSchema: ModelSchema;
@@ -41,10 +42,11 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
 
   const contentType = artifact.content_type.value;
   const extension = getExtensionFromContentType(contentType);
+  const storageId = artifact.storage_id.value;
 
   return (
     <div className="flex w-full grow flex-wrap gap-0.5 overflow-auto lg:flex-nowrap">
-      <Content.Card className="flex grow flex-col">
+      <Content.Card className="grow">
         <Col className="gap-3 p-4 pb-2">
           <ArtifactHeader artifact={artifact} />
 
@@ -57,15 +59,21 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
           </Row>
         </Col>
 
-        <ArtifactFile
-          storageId={artifact.storage_id.value}
-          fileName={`${artifactId}.${extension}`}
-          contentType={contentType}
-          className="m-1 grow overflow-hidden"
-        />
+        {storageId ? (
+          <ArtifactFile
+            storageId={storageId}
+            fileName={`${artifactId}.${extension}`}
+            contentType={contentType}
+            className="m-1 grow overflow-hidden"
+          />
+        ) : (
+          <div className="flex grow items-center justify-center p-4 text-gray-500">
+            No artifact content available
+          </div>
+        )}
       </Content.Card>
-      <Card className="min-w-90 overflow-auto p-0">
-        <div className="border-gray-200 border-b p-2 font-semibold">Activities</div>
+      <Card className="min-w-90 overflow-auto">
+        <CardHeader>Activities</CardHeader>
         <NodeEvents objectId={artifactId} objectKind={artifactKind} />
       </Card>
     </div>

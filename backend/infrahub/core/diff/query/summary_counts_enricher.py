@@ -7,7 +7,7 @@ from ..model.path import TrackingId
 
 
 class DiffFieldsSummaryCountsEnricherQuery(Query):
-    """Update summary counters for the attributes and relationshipsin in a diff"""
+    """Update summary counters for the attributes and relationshipsin in a diff."""
 
     name = "diff_fields_summary_count_enricher"
     type = QueryType.WRITE
@@ -131,7 +131,7 @@ CALL (dn) {
 
 
 class DiffNodesSummaryCountsEnricherQuery(Query):
-    """Update summary counters for the nodes and root in a diff"""
+    """Update summary counters for the nodes and root in a diff."""
 
     name = "diff_nodes_summary_count_enricher"
     type = QueryType.WRITE

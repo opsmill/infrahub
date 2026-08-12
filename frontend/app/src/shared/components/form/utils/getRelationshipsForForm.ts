@@ -1,12 +1,18 @@
-import { relationshipKindForForm } from "@/shared/config/constants";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
+import { relationshipKindForForm } from "@/entities/nodes/object/domain/model/view-config";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
-import {
-  IP_ADDRESS_GENERIC,
-  IP_PREFIX_GENERIC,
-  IP_SUMMARY_RELATIONSHIPS_BLACKLIST,
-} from "@/entities/ipam/constants";
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+// Relationships not editable through IPAM prefix/address forms: group/profile
+// memberships are managed elsewhere, children and ip_addresses are derived
+const IPAM_FORM_EXCLUDED_RELATIONSHIPS = [
+  "member_of_groups",
+  "subscriber_of_groups",
+  "children",
+  "profiles",
+  "ip_addresses",
+];
 
 export const getRelationshipsForForm = (
   schema: ModelSchema,
@@ -19,7 +25,7 @@ export const getRelationshipsForForm = (
     if (!isUpdate && relationship.name === "member_of_groups") return true;
 
     if (isIpamSchema) {
-      return !IP_SUMMARY_RELATIONSHIPS_BLACKLIST.includes(relationship.name);
+      return !IPAM_FORM_EXCLUDED_RELATIONSHIPS.includes(relationship.name);
     }
 
     const isEligibleKind = relationshipKindForForm.includes(relationship.kind);

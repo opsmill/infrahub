@@ -261,6 +261,51 @@ from infrahub.core.schema.schema_branch import SchemaBranch
             SchemaRoot(
                 nodes=[
                     NodeSchema(
+                        name="Region",
+                        namespace="Testing",
+                        attributes=[AttributeSchema(name="name", kind="Text")],
+                    ),
+                    NodeSchema(
+                        name="Site",
+                        namespace="Testing",
+                        attributes=[AttributeSchema(name="name", kind="Text")],
+                        relationships=[
+                            RelationshipSchema(
+                                name="region", peer="TestingRegion", cardinality=RelationshipCardinality.ONE
+                            )
+                        ],
+                    ),
+                    NodeSchema(
+                        name="Building",
+                        namespace="Testing",
+                        attributes=[
+                            AttributeSchema(
+                                name="name",
+                                kind="Text",
+                            ),
+                            AttributeSchema(
+                                name="computed",
+                                kind="Text",
+                                read_only=True,
+                                computed_attribute=ComputedAttribute(
+                                    kind=ComputedAttributeKind.JINJA2,
+                                    jinja2_template="{{ site__region__name__value }}",
+                                ),
+                            ),
+                        ],
+                        relationships=[
+                            RelationshipSchema(name="site", peer="TestingSite", cardinality=RelationshipCardinality.ONE)
+                        ],
+                    ),
+                ],
+            ),
+            "TestingBuilding: Attribute 'computed' the 'site__region__name__value' variable is not found within the schema path",
+            id="multi_hop_relationship_path",
+        ),
+        pytest.param(
+            SchemaRoot(
+                nodes=[
+                    NodeSchema(
                         name="Person",
                         namespace="Testing",
                         attributes=[
@@ -362,6 +407,60 @@ from infrahub.core.schema.schema_branch import SchemaBranch
             ),
             "TestingPerson: Attribute 'computed' is assigned by a jinja2 template, but has an invalid template: The 'pprint' filter isn't allowed to be used",  # noqa:E501
             id="template_invalid_format",
+        ),
+        pytest.param(
+            SchemaRoot(
+                nodes=[
+                    NodeSchema(
+                        name="Person",
+                        namespace="Testing",
+                        attributes=[
+                            AttributeSchema(
+                                name="name",
+                                kind="Text",
+                            ),
+                            AttributeSchema(
+                                name="computed",
+                                kind="Text",
+                                read_only=True,
+                                computed_attribute=ComputedAttribute(
+                                    kind=ComputedAttributeKind.JINJA2,
+                                    jinja2_template="{{ name__value | artifact_content }}",
+                                ),
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            "TestingPerson: Attribute 'computed' is assigned by a jinja2 template, but has an invalid template: The 'artifact_content' filter isn't allowed to be used",  # noqa:E501
+            id="artifact_content_blocked_in_core",
+        ),
+        pytest.param(
+            SchemaRoot(
+                nodes=[
+                    NodeSchema(
+                        name="Person",
+                        namespace="Testing",
+                        attributes=[
+                            AttributeSchema(
+                                name="name",
+                                kind="Text",
+                            ),
+                            AttributeSchema(
+                                name="computed",
+                                kind="Text",
+                                read_only=True,
+                                computed_attribute=ComputedAttribute(
+                                    kind=ComputedAttributeKind.JINJA2,
+                                    jinja2_template="{{ name__value | file_object_content }}",
+                                ),
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            "TestingPerson: Attribute 'computed' is assigned by a jinja2 template, but has an invalid template: The 'file_object_content' filter isn't allowed to be used",  # noqa:E501
+            id="file_object_content_blocked_in_core",
         ),
     ],
 )

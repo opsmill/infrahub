@@ -1,3 +1,4 @@
+import { Spinner } from "@infrahub/ui";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -5,19 +6,18 @@ import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
 import Content from "@/shared/components/layout/content";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import useFilters from "@/shared/hooks/useFilters";
 
-import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
+import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/ip-namespaces/domain/model/ip-namespace";
 import { IpNamespaceCard } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-card";
 import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/ui/queries/get-ip-namespace-list.query";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface IpNamespaceListPageProps {
@@ -38,8 +38,8 @@ function IpamNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListP
   const isLoading = isPending || isFetchingNextPage;
 
   return (
-    <Content.Card className="flex h-full flex-col gap-0 overflow-hidden">
-      <div className="flex h-14 shrink-0 items-center border-gray-200 border-b px-2">
+    <Content.Card className="h-full gap-0 overflow-hidden">
+      <div className="flex h-14 shrink-0 items-center border-b px-2">
         <FilterSearchInput schema={namespaceSchema} />
 
         <ObjectCreateFormTrigger

@@ -1,20 +1,18 @@
-import { formatISO } from "date-fns";
+import { Card, CardContent } from "@infrahub/ui";
 import { type HTMLAttributes, useRef } from "react";
 import { useParams } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Card } from "@/shared/components/ui/card";
 import type { FormRef } from "@/shared/components/ui/form";
+import { classNames } from "@/shared/utils/common";
+
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 import {
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
   PROPOSED_CHANGES_THREAD_OBJECT,
-} from "@/shared/config/constants";
-import { classNames } from "@/shared/utils/common";
-
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
+} from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 
 import { ProposedChangeEvents } from "./proposed-change-events";
@@ -24,13 +22,9 @@ export const Overview = ({ className, ...props }: HTMLAttributes<HTMLDivElement>
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
   const { proposedChangeId } = useParams();
-  const auth = useAuth();
-  const approverId = auth.user?.id;
 
   const handleSubmit = async ({ comment }: { comment: string }) => {
-    if (!approverId) return;
-
-    const newDate = formatISO(new Date());
+    if (!comment) return;
 
     const newThread = {
       change: {
@@ -38,9 +32,6 @@ export const Overview = ({ className, ...props }: HTMLAttributes<HTMLDivElement>
       },
       label: {
         value: "Conversation",
-      },
-      created_at: {
-        value: newDate,
       },
       resolved: {
         value: false,
@@ -59,12 +50,6 @@ export const Overview = ({ className, ...props }: HTMLAttributes<HTMLDivElement>
           const newComment = {
             text: {
               value: comment,
-            },
-            created_by: {
-              id: approverId,
-            },
-            created_at: {
-              value: newDate,
             },
             thread: {
               id: threadId,
@@ -108,7 +93,9 @@ export const Overview = ({ className, ...props }: HTMLAttributes<HTMLDivElement>
       <ProposedChangeEvents />
 
       <Card>
-        <AddComment ref={formRef} onSubmit={handleSubmit} />
+        <CardContent>
+          <AddComment ref={formRef} onSubmit={handleSubmit} />
+        </CardContent>
       </Card>
     </div>
   );

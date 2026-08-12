@@ -22,6 +22,7 @@ from .mutations.diff_conflict import ResolveDiffConflict
 from .mutations.display_label import UpdateDisplayLabel
 from .mutations.generator import GeneratorDefinitionRequestRun
 from .mutations.hfid import UpdateHFID
+from .mutations.preferences import InfrahubSetPreferences
 from .mutations.profile import InfrahubProfilesRefresh
 from .mutations.proposed_change import (
     ProposedChangeCheckForApprovalRevoke,
@@ -33,20 +34,25 @@ from .mutations.relationship import RelationshipAdd, RelationshipRemove
 from .mutations.repository import ProcessRepository, ReadOnlyRepositoryImportLastCommit, ValidateRepositoryConnectivity
 from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
 from .mutations.schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
+from .mutations.task import InfrahubTaskCancel, InfrahubTaskRetry
 from .queries import (
     AccountPermissions,
     AccountToken,
     BranchQueryList,
-    DeprecatedIPAddressGetNextAvailable,
-    DeprecatedIPPrefixGetNextAvailable,
     InfrahubBranchQueryList,
+    InfrahubEffectivePreferences,
+    InfrahubGlobalPreferences,
+    InfrahubGraphQLQueryReport,
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
+    InfrahubPathTraversal,
+    InfrahubReachableNodes,
     InfrahubResourcePoolAllocated,
     InfrahubResourcePoolUtilization,
     InfrahubSearchAnywhere,
     InfrahubStatus,
+    InfrahubUserPreferences,
     ProposedChangeAvailableActions,
     Relationship,
 )
@@ -54,6 +60,18 @@ from .queries.convert_object_type_mapping import FieldsMappingTypeConversion
 from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
 from .queries.event import Event
 from .queries.task import Task, TaskBranchStatus
+
+# Root query fields that require an authenticated session even when anonymous read access is
+# enabled: they resolve data bound to the caller's identity. Enforced fail-closed at the edge by the
+# permission-checker pipeline, on top of each resolver's own check.
+QUERIES_REQUIRING_AUTHENTICATION = frozenset(
+    {
+        "InfrahubAccountToken",
+        "InfrahubEffectivePreferences",
+        "InfrahubUserPreferences",
+        "InfrahubGlobalPreferences",
+    }
+)
 
 
 class InfrahubBaseQuery(ObjectType):
@@ -67,9 +85,15 @@ class InfrahubBaseQuery(ObjectType):
     Relationship = Relationship
 
     InfrahubBranch = InfrahubBranchQueryList
+    InfrahubEffectivePreferences = InfrahubEffectivePreferences
+    InfrahubUserPreferences = InfrahubUserPreferences
+    InfrahubGlobalPreferences = InfrahubGlobalPreferences
+    InfrahubGraphQLQueryReport = InfrahubGraphQLQueryReport
     InfrahubInfo = InfrahubInfo
     InfrahubStatus = InfrahubStatus
 
+    InfrahubPathTraversal = InfrahubPathTraversal
+    InfrahubReachableNodes = InfrahubReachableNodes
     InfrahubSearchAnywhere = InfrahubSearchAnywhere
 
     InfrahubTask = Task
@@ -78,8 +102,6 @@ class InfrahubBaseQuery(ObjectType):
 
     CoreProposedChangeAvailableActions = ProposedChangeAvailableActions
 
-    IPAddressGetNextAvailable = DeprecatedIPAddressGetNextAvailable
-    IPPrefixGetNextAvailable = DeprecatedIPPrefixGetNextAvailable
     InfrahubIPAddressGetNextAvailable = InfrahubIPAddressGetNextAvailable
     InfrahubIPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
     InfrahubResourcePoolAllocated = InfrahubResourcePoolAllocated
@@ -99,12 +121,6 @@ class InfrahubBaseMutation(ObjectType):
 
     InfrahubIPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()
     InfrahubIPAddressPoolGetResource = IPAddressPoolGetResource.Field()
-    IPPrefixPoolGetResource = IPPrefixPoolGetResource.Field(
-        deprecation_reason="This mutation has been renamed to 'InfrahubIPPrefixPoolGetResource'. It will be removed in the next version of Infrahub."
-    )
-    IPAddressPoolGetResource = IPAddressPoolGetResource.Field(
-        deprecation_reason="This mutation has been renamed to 'InfrahubIPAddressPoolGetResource'. It will be removed in the next version of Infrahub."
-    )
 
     BranchCreate = BranchCreate.Field()
     BranchDelete = BranchDelete.Field()
@@ -114,6 +130,9 @@ class InfrahubBaseMutation(ObjectType):
     BranchValidate = BranchValidate.Field()
 
     DiffUpdate = DiffUpdateMutation.Field()
+
+    InfrahubTaskRetry = InfrahubTaskRetry.Field()
+    InfrahubTaskCancel = InfrahubTaskCancel.Field()
 
     InfrahubReadOnlyRepositoryImportLastCommit = ReadOnlyRepositoryImportLastCommit.Field()
     InfrahubRepositoryProcess = ProcessRepository.Field()
@@ -134,3 +153,5 @@ class InfrahubBaseMutation(ObjectType):
     ConvertObjectType = ConvertObjectType.Field()
     CoreProposedChangeCheckForApprovalRevoke = ProposedChangeCheckForApprovalRevoke.Field()
     InfrahubProfilesRefresh = InfrahubProfilesRefresh.Field()
+
+    InfrahubSetPreferences = InfrahubSetPreferences.Field()

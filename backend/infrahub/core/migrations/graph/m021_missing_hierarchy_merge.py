@@ -18,7 +18,7 @@ class SetMissingHierarchyQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH (r:Root)
         WITH r.default_branch AS default_branch
@@ -36,15 +36,16 @@ class SetMissingHierarchyQuery(Query):
 
 
 class Migration021(GraphMigration):
-    """
-    A bug in diff merge logic caused the hierarchy information on IS_RELATED edges to be lost when merged into
+    """A bug in diff merge logic caused the hierarchy information on IS_RELATED edges to be lost when merged into.
+
     main. This migration sets the missing hierarchy data.
+
     """
 
     name: str = "021_replace_hierarchy"
+    description: str = "N/A"
     minimum_version: int = 20
     queries: Sequence[type[Query]] = [SetMissingHierarchyQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

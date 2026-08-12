@@ -6,15 +6,17 @@ import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import { useGetNextIpAddressAvailable } from "@/entities/ipam/ip-addresses/ui/queries/get-next-ip-address-available.query";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { useGetNextIpPrefixAvailable } from "@/entities/ipam/ip-prefixes/ui/queries/get-next-ip-prefix-available.query";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
+import { buildAllocateResourceInput } from "@/entities/resource-manager/domain/build-allocate-resource-input";
+import { getAllocateMutationNameFromSchema } from "@/entities/resource-manager/domain/rules/get-allocate-mutation-name-from-schema";
 import { useAllocateResourceMutation } from "@/entities/resource-manager/ui/queries/allocate-resource.mutation";
-import { getAllocateMutationNameFromSchema } from "@/entities/resource-manager/utils/get-allocate-mutation-name-from-schema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 export interface IpamCreationFormProps extends NodeFormProps {}
 
@@ -52,15 +54,16 @@ function IpamCreationForm(props: IpamCreationFormProps) {
   const nextIpValue = isIpPrefixSchema ? nextIpPrefix : nextIpAddress;
 
   const onSuccess: NodeFormProps["onSuccess"] = (newNode) => {
+    const nodeLabel = getNodeLabel(newNode);
     toast(
       () => (
-        <Alert
-          type={ALERT_TYPES.SUCCESS}
-          message={`${props.schema.label} ${getNodeLabel(newNode)} created`}
-        />
+        <Alert type={ALERT_TYPES.SUCCESS} message={`${props.schema.label} ${nodeLabel} created`} />
       ),
       {
-        toastId: `alert-success-${props.schema.name}-created`,
+        // Per-node id so two same-kind allocations in quick succession each render their
+        // own confirmation. A constant per-kind id makes react-toastify dedupe the second
+        // toast while the first is still on screen (autoClose 5s). Matches account-role-form.
+        toastId: `alert-success-${props.schema.name}-created-${newNode.id}`,
       }
     );
     props.onSuccess?.(newNode);
@@ -97,11 +100,15 @@ function IpamCreationForm(props: IpamCreationFormProps) {
         const allocateMutationName = getAllocateMutationNameFromSchema(props.schema);
 
         if (fieldDataForIpField?.source?.type === "pool" && allocateMutationName) {
+          // IPAM allocates the IP node from the pool via the dedicated GetResource mutation.
           await allocateResource.mutateAsync(
             {
               poolGetResourceMutationName: allocateMutationName,
-              poolId: fieldDataForIpField.source.id,
-              data: getCreateMutationFromFormData(formFieldsWithoutIpField, formData),
+              data: buildAllocateResourceInput({
+                poolId: fieldDataForIpField.source.id,
+                poolFieldValue: fieldDataForIpField.value,
+                nodeData: getCreateMutationFromFormData(formFieldsWithoutIpField, formData),
+              }),
             },
             {
               onSuccess,

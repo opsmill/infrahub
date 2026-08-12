@@ -30,7 +30,7 @@ async def test_new_choice_value(db: InfrahubDatabase, default_branch: Branch, cr
         constraint_name="attribute.choices.update",
         node_schema=crit_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCriticality", field_name="status"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = AttributeChoicesChecker(db=db, branch=default_branch)
@@ -58,7 +58,7 @@ async def test_remove_choice(db: InfrahubDatabase, default_branch: Branch, criti
         constraint_name="attribute.choices.update",
         node_schema=crit_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCriticality", field_name="status"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = AttributeChoicesChecker(db=db, branch=default_branch)
@@ -96,7 +96,7 @@ async def test_convert_to_choice(db: InfrahubDatabase, branch: Branch, criticali
         constraint_name="attribute.choices.update",
         node_schema=crit_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCriticality", field_name="name"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = AttributeChoicesChecker(db=db, branch=branch)
@@ -159,7 +159,7 @@ async def test_attribute_update_on_branch(
         constraint_name="attribute.choices.update",
         node_schema=crit_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCriticality", field_name="status"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = AttributeChoicesChecker(db=db, branch=branch)
@@ -221,7 +221,7 @@ async def test_node_delete_on_branch(
         constraint_name="attribute.choices.update",
         node_schema=crit_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCriticality", field_name="status"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = AttributeChoicesChecker(db=db, branch=branch)
@@ -281,7 +281,7 @@ async def test_validator(
         constraint_name="attribute.choices.update",
         node_schema=crit_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCriticality", field_name="status"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = AttributeChoicesChecker(db=db, branch=branch)

@@ -1,19 +1,53 @@
 import { Icon } from "@iconify-icon/react";
+import { IdCardIcon } from "lucide-react";
 import { Outlet, useParams } from "react-router";
 
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { FormContext } from "@/shared/components/form/utils/form-context";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { LinkTab } from "@/shared/components/ui/link";
 
+import { constructPathForIpam } from "@/entities/ipam/ip-namespaces/ui/routing/ipam-urls";
 import { IpamDetailsHeader } from "@/entities/ipam/ip-prefixes/ui/ipam-details-header";
-import { IpamDetailsTabs } from "@/entities/ipam/ipam-details-tabs";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-tab";
+import { ObjectDetailsTab } from "@/entities/nodes/object/ui/object-details/object-details-tab";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
+
+export interface IpamDetailsTabsProps {
+  objectSchema: ModelSchema;
+  objectData: NodeObject;
+}
+
+function IpamDetailsTabs({ objectSchema, objectData }: IpamDetailsTabsProps) {
+  const relationshipVisible = getRelationshipsVisibleInTab(objectSchema.relationships ?? []);
+
+  return (
+    <Row className="border-b">
+      <LinkTab to={constructPathForIpam("details")}>
+        <IdCardIcon className="size-4" />
+        Details
+      </LinkTab>
+
+      {relationshipVisible.map((relationship) => {
+        return (
+          <ObjectDetailsTab
+            key={relationship.name}
+            parentKind={objectSchema.kind as string}
+            parentId={objectData.id}
+            relationship={relationship}
+          />
+        );
+      })}
+    </Row>
+  );
+}
 
 interface IpamDetailsPageProps {
   objectSchema: ModelSchema;

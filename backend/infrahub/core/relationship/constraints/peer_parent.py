@@ -23,7 +23,12 @@ class RelationshipPeerParentConstraint(RelationshipManagerConstraintInterface):
     async def _check_relationship_peers_parent(
         self, relm: RelationshipManager, parent_rel_name: str, node: Node, peers: Mapping[str, Node]
     ) -> None:
-        """Validate that all peers of a given `relm` have the same parent for the given `relationship_name`."""
+        """Validate that all peers of a given `relm` have the same parent for the given `relationship_name`.
+
+        Raises:
+            ValidationError: When the node or any peer does not have a parent peer, or when peers do not share the same parent.
+
+        """
         node_parent = await node.get_parent_relationship_peer(db=self.db, name=parent_rel_name)
         if not node_parent:
             # If the schema is properly validated we are not expecting this to happen

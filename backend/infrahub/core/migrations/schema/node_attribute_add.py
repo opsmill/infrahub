@@ -31,7 +31,7 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuer
         schema_kinds = [schema.kind]
         if not isinstance(schema, (NodeSchema, GenericSchema)):
             return schema_kinds
-        if new_attribute_schema.support_profiles:
+        if schema.check_if_attr_supports_profiles(attribute_schema=new_attribute_schema):
             schema_kinds.append(f"Profile{schema.kind}")
             if isinstance(schema, GenericSchema) and schema.used_by:
                 schema_kinds.extend([f"Profile{kind}" for kind in schema.used_by])
@@ -107,7 +107,7 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         async def allocate_numbers(db: InfrahubDatabase) -> None:
             for node in nodes:
                 number = await number_pool.get_resource(  # type: ignore[attr-defined]
-                    db=db, branch=branch, node=node, attribute=self.new_attribute_schema, at=at
+                    db=db, branch=branch, identifier=node.get_id(), attribute=self.new_attribute_schema, at=at
                 )
                 attr = node.get_attribute(name=self.new_attribute_schema.name)
                 attr.value = number

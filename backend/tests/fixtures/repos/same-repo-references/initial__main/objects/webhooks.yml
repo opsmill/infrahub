@@ -1,0 +1,10 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreCustomWebhook
+  data:
+    - name: tags-webhook
+      url: https://example.com/webhook
+      active: false
+      transformation: TagsTransform

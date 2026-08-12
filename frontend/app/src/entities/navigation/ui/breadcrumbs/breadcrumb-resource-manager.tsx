@@ -1,24 +1,25 @@
-import { ChevronsUpDownIcon } from "lucide-react";
-import { Pressable } from "react-aria-components";
-import { Link, useParams } from "react-router";
-
-import { constructPath } from "@/shared/api/rest/fetch";
-import { Autocomplete } from "@/shared/components/aria/autocomplete";
 import {
+  Autocomplete,
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbItemError,
   BreadcrumbItemLoading,
   Breadcrumbs,
-} from "@/shared/components/aria/breadcrumbs";
-import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
-import { MenuTrigger } from "@/shared/components/aria/menu";
-import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
+  Button,
+  ListBox,
+  ListBoxItem,
+  MenuTrigger,
+  Popover,
+  PopoverDialog,
+} from "@infrahub/ui";
+import { ChevronsUpDownIcon } from "lucide-react";
+import { Link, useParams } from "react-router";
+
+import { constructPath } from "@/shared/api/rest/fetch";
 import { Col, Row } from "@/shared/components/container";
-import { Button } from "@/shared/components/ui/button";
 
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
-import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
 import { useGetPoolUtilization } from "@/entities/resource-manager/ui/queries/get-pool-utilization.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -83,17 +84,15 @@ function ResourceSelector({
         </Col>
 
         <MenuTrigger>
-          <Pressable>
-            <Button variant="ghost" className="size-5 p-0" aria-label="Select a different resource">
-              <ChevronsUpDownIcon className="size-3.5" />
-            </Button>
-          </Pressable>
+          <Button variant="ghost" className="size-5 p-0" aria-label="Select a different resource">
+            <ChevronsUpDownIcon className="size-3.5" />
+          </Button>
 
-          <Popover className="bg-stone-100/50 backdrop-blur">
+          <Popover>
             <PopoverDialog>
               {({ close }) => (
                 <Autocomplete>
-                  <ListBox items={resources} onAction={close}>
+                  <ListBox virtualized items={resources} onAction={close}>
                     {(resource) => (
                       <ListBoxItem
                         href={constructPath(

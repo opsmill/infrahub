@@ -12,6 +12,7 @@ from tests.helpers.test_app import TestInfrahubApp
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
@@ -45,7 +46,7 @@ class TestMigration047(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        car_person_schema,
+        car_person_schema: SchemaBranch,
         car_accord_main: Node,
         car_camry_main: Node,
     ) -> None:
@@ -78,7 +79,7 @@ class TestMigration047(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        car_person_schema,
+        car_person_schema: SchemaBranch,
         car_accord_main: Node,
         car_camry_main: Node,
         person_john_main: Node,
@@ -109,7 +110,7 @@ class TestMigration047(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        car_person_schema,
+        car_person_schema: SchemaBranch,
         car_accord_main: Node,
     ) -> None:
         """Test that running migration 047 multiple times doesn't cause issues."""
@@ -135,7 +136,7 @@ class TestMigration047(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        car_person_schema,
+        car_person_schema: SchemaBranch,
         person_john_main: Node,
         person_jane_main: Node,
     ) -> None:
@@ -181,7 +182,7 @@ class TestMigration047(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        car_person_schema,
+        car_person_schema: SchemaBranch,
         person_john_main: Node,
         person_jane_main: Node,
     ) -> None:
@@ -221,7 +222,7 @@ class TestMigration047(TestInfrahubApp):
         assert branch_values[person_jane_main.id] == "Jane"
 
     async def test_migration_047_execute_against_branch_with_name_change(
-        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema, person_john_main: Node
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, person_john_main: Node
     ) -> None:
         """Test that branch with changed name gets correct display_label after migration on main."""
         await self.erase_display_label(db=db, node=person_john_main)

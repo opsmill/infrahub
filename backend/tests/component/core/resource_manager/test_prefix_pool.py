@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 from infrahub.core import registry
@@ -8,6 +10,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import ValidationError
 
 
 async def test_get_next(
@@ -41,6 +44,116 @@ async def test_get_next(
         db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
     )
     assert next_prefix.id == next_prefix2.id
+
+
+async def test_get_resource_conflicting_prefixlen_raises(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_schema: SchemaBranch,
+    ip_dataset_prefix_v4: dict,
+) -> None:
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net140 = ip_dataset_prefix_v4["net140"]
+    net141 = ip_dataset_prefix_v4["net141"]
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(db=db, name="pool1", resources=[net140, net141], ip_namespace=ns1)
+    await pool.save(db=db)
+
+    first = await pool.get_resource(
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+    )
+
+    # An explicit prefixlen that conflicts with the existing reservation is rejected
+    # rather than silently ignored.
+    expected_error = (
+        f"IPPrefixPool: pool1 | This resource is already allocated as {first.get_attribute('prefix').value}; "
+        "its prefix length cannot be changed, only /17 can be used."
+    )
+    with pytest.raises(ValidationError, match=rf"^{re.escape(expected_error)}$"):
+        await pool.get_resource(
+            db=db,
+            prefixlen=18,
+            prefix_type="IpamIPPrefix",
+            member_type="prefix",
+            identifier="item1",
+            branch=default_branch,
+        )
+
+    # The same prefixlen, or none at all, stays idempotent.
+    same = await pool.get_resource(
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+    )
+    assert same.id == first.id
+
+    same_no_prefixlen = await pool.get_resource(
+        db=db, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+    )
+    assert same_no_prefixlen.id == first.id
+
+
+async def test_get_resource_accepts_size_alias(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_schema: SchemaBranch,
+    ip_dataset_prefix_v4: dict,
+) -> None:
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net140 = ip_dataset_prefix_v4["net140"]
+    net141 = ip_dataset_prefix_v4["net141"]
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(db=db, name="pool1", resources=[net140, net141], ip_namespace=ns1)
+    await pool.save(db=db)
+
+    # `size` is the inline from_pool field name for the carved prefix's length.
+    first = await pool.get_resource(
+        db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+    )
+    assert str(first.get_attribute("prefix").value).endswith("/17")
+
+    # Idempotent reuse with the same size, and via the prefixlen spelling.
+    same_size = await pool.get_resource(
+        db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+    )
+    assert same_size.id == first.id
+    same_prefixlen = await pool.get_resource(
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+    )
+    assert same_prefixlen.id == first.id
+
+    # A conflicting size hits the reservation guard, same as a conflicting prefixlen.
+    expected_error = (
+        f"IPPrefixPool: pool1 | This resource is already allocated as {first.get_attribute('prefix').value}; "
+        "its prefix length cannot be changed, only /17 can be used."
+    )
+    with pytest.raises(ValidationError, match=rf"^{re.escape(expected_error)}$"):
+        await pool.get_resource(
+            db=db,
+            size=18,
+            prefix_type="IpamIPPrefix",
+            member_type="prefix",
+            identifier="item1",
+            branch=default_branch,
+        )
+
+    # An explicit prefixlen wins over a divergent size.
+    same_both = await pool.get_resource(
+        db=db,
+        prefixlen=17,
+        size=18,
+        prefix_type="IpamIPPrefix",
+        member_type="prefix",
+        identifier="item1",
+        branch=default_branch,
+    )
+    assert same_both.id == first.id
 
 
 async def test_get_next_weighted(
@@ -418,5 +531,163 @@ async def test_ipv6_small_prefix_pool_full_allocation(
             prefix_type="IpamIPPrefix",
             member_type="prefix",
             identifier="v6_small_overflow",
+            branch=default_branch,
+        )
+
+
+async def test_ipv4_same_prefixlen_pool_exhaustion(
+    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node, register_ipam_schema: SchemaBranch
+) -> None:
+    """Test that a pool whose resource prefix length equals the requested allocation length.
+
+    Allocates exactly one prefix and then signals exhaustion rather than returning duplicates.
+    A /30 parent has room for exactly one /30 allocation. The second request must raise IndexError.
+    """
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+
+    ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns.new(db=db, name="ns_ipv4_same_prefixlen")
+    await ns.save(db=db)
+
+    parent = await Node.init(db=db, schema=prefix_schema)
+    await parent.new(db=db, prefix="172.16.0.0/30", ip_namespace=ns)
+    await parent.save(db=db)
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(db=db, name="pool_ipv4_same_prefixlen", resources=[parent], ip_namespace=ns)
+    await pool.save(db=db)
+
+    first = await pool.get_resource(
+        db=db,
+        prefixlen=30,
+        prefix_type="IpamIPPrefix",
+        member_type="prefix",
+        identifier="v4_same_0",
+        branch=default_branch,
+    )
+    assert first.prefix.value == "172.16.0.0/30"
+
+    with pytest.raises(IndexError):
+        await pool.get_resource(
+            db=db,
+            prefixlen=30,
+            prefix_type="IpamIPPrefix",
+            member_type="prefix",
+            identifier="v4_same_1",
+            branch=default_branch,
+        )
+
+
+async def test_mixed_prefixlen_allocation_two_resources(
+    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node, register_ipam_schema: SchemaBranch
+) -> None:
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+
+    ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns.new(db=db, name="ns_mixed_prefixlen")
+    await ns.save(db=db)
+
+    resource_a = await Node.init(db=db, schema=prefix_schema)
+    await resource_a.new(db=db, prefix="192.168.0.0/30", ip_namespace=ns)
+    await resource_a.save(db=db)
+
+    resource_b = await Node.init(db=db, schema=prefix_schema)
+    await resource_b.new(db=db, prefix="192.168.0.4/30", ip_namespace=ns)
+    await resource_b.save(db=db)
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(db=db, name="pool_mixed", resources=[resource_a, resource_b], ip_namespace=ns)
+    await pool.save(db=db)
+
+    # /31 from first /30 succeeds
+    first_31 = await pool.get_resource(
+        db=db,
+        prefixlen=31,
+        prefix_type="IpamIPPrefix",
+        member_type="prefix",
+        identifier="first_31",
+        branch=default_branch,
+    )
+    assert first_31.prefix.value == "192.168.0.0/31"
+
+    # /30 succeeds — first /30 is partially used so the allocator moves to the second /30
+    first_30 = await pool.get_resource(
+        db=db,
+        prefixlen=30,
+        prefix_type="IpamIPPrefix",
+        member_type="prefix",
+        identifier="first_30",
+        branch=default_branch,
+    )
+    assert first_30.prefix.value == "192.168.0.4/30"
+
+    # second /30 is exhausted, first /30 can't fit another /30 — fails
+    with pytest.raises(IndexError):
+        await pool.get_resource(
+            db=db,
+            prefixlen=30,
+            prefix_type="IpamIPPrefix",
+            member_type="prefix",
+            identifier="second_30",
+            branch=default_branch,
+        )
+
+    # /31 still fits in the remaining space of the first /30
+    second_31 = await pool.get_resource(
+        db=db,
+        prefixlen=31,
+        prefix_type="IpamIPPrefix",
+        member_type="prefix",
+        identifier="second_31",
+        branch=default_branch,
+    )
+    assert second_31.prefix.value == "192.168.0.2/31"
+
+
+async def test_ipv6_same_prefixlen_pool_exhaustion(
+    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node, register_ipam_schema: SchemaBranch
+) -> None:
+    """Test that a pool whose resource prefix length equals the requested allocation length.
+
+    Allocates exactly one prefix and then signals exhaustion rather than returning duplicates.
+    A /127 parent has room for exactly one /127 allocation. The second request must raise IndexError.
+    """
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+
+    ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns.new(db=db, name="ns_ipv6_same_prefixlen")
+    await ns.save(db=db)
+
+    parent = await Node.init(db=db, schema=prefix_schema)
+    await parent.new(db=db, prefix="2001:db8::/127", ip_namespace=ns)
+    await parent.save(db=db)
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(db=db, name="pool_ipv6_same_prefixlen", resources=[parent], ip_namespace=ns)
+    await pool.save(db=db)
+
+    first = await pool.get_resource(
+        db=db,
+        prefixlen=127,
+        prefix_type="IpamIPPrefix",
+        member_type="prefix",
+        identifier="v6_same_0",
+        branch=default_branch,
+    )
+    assert first.prefix.value == "2001:db8::/127"
+
+    with pytest.raises(IndexError):
+        await pool.get_resource(
+            db=db,
+            prefixlen=127,
+            prefix_type="IpamIPPrefix",
+            member_type="prefix",
+            identifier="v6_same_1",
             branch=default_branch,
         )

@@ -3,8 +3,9 @@ import { Navigate, useParams } from "react-router";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
-import { GRAPHQL_QUERY_OBJECT, MENU_EXCLUDELIST } from "@/shared/config/constants";
 
+import { MENU_EXCLUDELIST } from "@/entities/navigation/domain/model/menu";
+import { GRAPHQL_QUERY_OBJECT } from "@/entities/nodes/object/domain/model/object-kinds";
 import { GraphqlQueryDetails } from "@/entities/nodes/object/ui/CoreGraphQLQuery/graphql-query-details";
 import { ObjectDetailsBody } from "@/entities/nodes/object/ui/object-details/object-details-body";
 import { ObjectDetailsHeader } from "@/entities/nodes/object/ui/object-details/object-details-header";
@@ -28,7 +29,7 @@ function ObjectDetailsPage() {
   }
 
   return (
-    <Content.Card className="flex grow flex-col">
+    <Content.Card className="grow">
       <RequireObjectPermissions objectKind={schema.kind!} loadingClassName="h-full">
         {({ permission }) => (
           <>

@@ -1,0 +1,92 @@
+---
+feature: Deployment & Management — Configure Infrahub
+pr: TBD
+description: |
+  Moves guides/configuration-changes.mdx → deploy-manage/install-configure/configure-infrahub.mdx.
+  The sidebar label "Configure Infrahub" and the page H1 "How to configure Infrahub" are
+  preserved (label matches the existing sidebar entry; H1 matches the page title per Fatih).
+  The Configuration reference (reference/configuration) stays in its canonical
+  Reference location but is cross-linked from the Install & configure sub-category.
+  The original guides/configuration-changes.mdx remains on disk during iteration.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/guides/configuration-changes
+    to: /docs/deploy-manage/install-configure/configure-infrahub
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/deploy-manage/install-configure/configure-infrahub
+    title: Configure Infrahub (How to configure Infrahub)
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via redirect at runtime; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/change-approval/change-approval-workflow.mdx
+    line: 143
+    current: ../guides/configuration-changes.mdx
+    should_be: ../deploy-manage/install-configure/configure-infrahub.mdx
+  - file: docs/docs/change-approval/change-approval-workflow.mdx
+    line: 161
+    current: ../guides/configuration-changes
+    should_be: ../deploy-manage/install-configure/configure-infrahub
+  - file: docs/docs/git-integration/connect-repository.mdx
+    line: 605
+    current: ../guides/configuration-changes.mdx
+    should_be: ../deploy-manage/install-configure/configure-infrahub.mdx
+  - file: docs/docs/git-integration/connect-repository.mdx
+    line: 629
+    current: ../guides/configuration-changes
+    should_be: ../deploy-manage/install-configure/configure-infrahub
+  - file: docs/docs/git-integration/branch-synchronization.mdx
+    line: 52
+    current: ../guides/configuration-changes.mdx
+    should_be: ../deploy-manage/install-configure/configure-infrahub.mdx
+  - file: docs/docs/git-integration/branch-synchronization.mdx
+    line: 54
+    current: ../guides/configuration-changes
+    should_be: ../deploy-manage/install-configure/configure-infrahub
+  - file: docs/docs/schema/file-object.mdx
+    line: 139
+    current: ../guides/configuration-changes
+    should_be: ../deploy-manage/install-configure/configure-infrahub
+  - file: docs/docs/guides/change-approval-workflow.mdx
+    line: 143
+    current: ./configuration-changes.mdx
+    should_be: ../deploy-manage/install-configure/configure-infrahub.mdx
+  - file: docs/docs/guides/change-approval-workflow.mdx
+    line: 161
+    current: ./configuration-changes
+    should_be: ../deploy-manage/install-configure/configure-infrahub
+  - file: docs/docs/guides/repository.mdx
+    line: 605
+    current: ./configuration-changes.mdx
+    should_be: ../deploy-manage/install-configure/configure-infrahub.mdx
+  - file: docs/docs/guides/repository.mdx
+    line: 629
+    current: ./configuration-changes
+    should_be: ../deploy-manage/install-configure/configure-infrahub
+  - file: docs/docs/guides/sso.mdx
+    line: 197
+    current: ./configuration-changes.mdx
+    should_be: ../deploy-manage/install-configure/configure-infrahub.mdx
+  - file: docs/docs/guides/sso.mdx
+    line: 292
+    current: ./configuration-changes
+    should_be: ../deploy-manage/install-configure/configure-infrahub
+  - file: docs/docs/guides/selective-branch-sync.mdx
+    line: 49
+    current: ./configuration-changes.mdx
+    should_be: ../deploy-manage/install-configure/configure-infrahub.mdx
+  - file: docs/docs/guides/selective-branch-sync.mdx
+    line: 65
+    current: ./configuration-changes
+    should_be: ../deploy-manage/install-configure/configure-infrahub
+  - file: docs/docs/topics/object-storage.mdx
+    line: 102
+    current: ../guides/configuration-changes
+    should_be: ../deploy-manage/install-configure/configure-infrahub
+  - file: docs/docs/topics/file-object.mdx
+    line: 139
+    current: ../guides/configuration-changes
+    should_be: ../deploy-manage/install-configure/configure-infrahub

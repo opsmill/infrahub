@@ -19,19 +19,17 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.utils import get_models_dir
+from tests.helpers.constants import (
+    PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS,
+    PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
+)
 from tests.helpers.file_repo import FileRepo
-
-
-@pytest.fixture(scope="session", autouse=True)
-def add_tracker() -> None:
-    os.environ["PYTEST_RUNNING"] = "true"
 
 
 @pytest.fixture(scope="session")
 def event_loop() -> Generator:
-    """Overrides pytest default function scoped event loop"""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
+    """Overrides pytest default function scoped event loop."""
+    loop = asyncio.new_event_loop()
     yield loop
     loop.close()
 
@@ -105,18 +103,20 @@ def git_repos_dir(tmp_path_factory: TempPathFactory) -> Path:
 @pytest.fixture(scope="session")
 def git_repo_infrahub_demo_edge_integration(git_sources_dir: Path) -> FileRepo:
     """Git Repository used as part of the  demo-edge tutorial."""
-
     return FileRepo(name="infrahub-demo-edge-integration", sources_directory=git_sources_dir)
 
 
 @pytest.fixture(scope="session")
 def git_repo_car_dealership(git_sources_dir: Path) -> FileRepo:
     """Simple Git Repository used for testing."""
-
     return FileRepo(name="car-dealership", sources_directory=git_sources_dir)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def prefect_test_fixture() -> Generator:
-    with prefect_test_harness(server_startup_timeout=60):
+    os.environ["PREFECT_SERVER_API_MAX_PARAMETER_SIZE"] = "0"
+    os.environ["PREFECT_FLOWS_HEARTBEAT_FREQUENCY"] = PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS
+    os.environ.update(PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS)
+
+    with prefect_test_harness(server_startup_timeout=180):
         yield

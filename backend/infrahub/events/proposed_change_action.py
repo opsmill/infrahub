@@ -72,7 +72,7 @@ class ProposedChangeReviewRevokedEvent(ProposedChangeEvent):
 
 
 class ProposedChangeMergedEvent(ProposedChangeEvent):
-    """Event generated when a proposed change has been merged"""
+    """Event generated when a proposed change has been merged."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.merged"
 
@@ -101,7 +101,7 @@ class ProposedChangeMergedEvent(ProposedChangeEvent):
 
 
 class ProposedChangeReviewRequestedEvent(ProposedChangeEvent):
-    """Event generated when a proposed change has been flagged for review"""
+    """Event generated when a proposed change has been flagged for review."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.review_requested"
 
@@ -127,25 +127,25 @@ class ProposedChangeReviewRequestedEvent(ProposedChangeEvent):
 
 
 class ProposedChangeApprovedEvent(ProposedChangeReviewEvent):
-    """Event generated when a proposed change has been approved"""
+    """Event generated when a proposed change has been approved."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.approved"
 
 
 class ProposedChangeRejectedEvent(ProposedChangeReviewEvent):
-    """Event generated when a proposed change has been rejected"""
+    """Event generated when a proposed change has been rejected."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.rejected"
 
 
 class ProposedChangeApprovalRevokedEvent(ProposedChangeReviewRevokedEvent):
-    """Event generated when a proposed change approval has been revoked"""
+    """Event generated when a proposed change approval has been revoked."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.approval_revoked"
 
 
 class ProposedChangeRejectionRevokedEvent(ProposedChangeReviewRevokedEvent):
-    """Event generated when a proposed change rejection has been revoked"""
+    """Event generated when a proposed change rejection has been revoked."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change.rejection_revoked"
 
@@ -190,14 +190,14 @@ class ProposedChangeThreadEvent(ProposedChangeEvent):
 
 
 class ProposedChangeThreadCreatedEvent(ProposedChangeThreadEvent):
-    """Event generated when a thread has been created in a proposed change"""
+    """Event generated when a thread has been created in a proposed change."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change_thread.created"
     action: MutationAction = MutationAction.CREATED
 
 
 class ProposedChangeThreadUpdatedEvent(ProposedChangeThreadEvent):
-    """Event generated when a thread has been updated in a proposed change"""
+    """Event generated when a thread has been updated in a proposed change."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.proposed_change_thread.updated"
     action: MutationAction = MutationAction.UPDATED

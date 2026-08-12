@@ -6,14 +6,13 @@ from fastapi import APIRouter, Depends, Request
 from starlette.responses import PlainTextResponse
 
 from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreGenericRepository
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import CommitNotFoundError, PropagatedFromWorkerError
 from infrahub.message_bus.messages import GitFileGet, GitFileGetResponse
 
 if TYPE_CHECKING:
-    from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
     from infrahub.services import InfrahubServices
 
 
@@ -30,18 +29,28 @@ async def get_file(
     commit: str | None = None,
     _: str = Depends(get_current_user),
 ) -> PlainTextResponse:
-    """Retrieve a file from a git repository."""
+    """Retrieve a file from a git repository.
+
+    Raises:
+        CommitNotFoundError: When no commit is provided and the repository has no commits.
+        PropagatedFromWorkerError: When the worker returns an error response while reading the file.
+
+    """
     service: InfrahubServices = request.app.state.service
 
-    repo: CoreRepository | CoreReadOnlyRepository = await NodeManager.get_one_by_id_or_default_filter(
+    repo = await NodeManager.get_one_by_id_or_default_filter(
         db=db,
         id=repository_id,
-        kind=InfrahubKind.GENERICREPOSITORY,
+        kind=CoreGenericRepository,
         branch=branch_params.branch,
         at=branch_params.at,
     )
 
-    commit = commit or repo.commit.value
+    # `commit` is defined on CoreRepository/CoreReadOnlyRepository but not on
+    # CoreGenericRepository; arguably it belongs on the generic since every concrete
+    # repository kind carries one. Until that's lifted, the runtime kind here is always
+    # one of the subclasses, so the access is safe.
+    commit = commit or repo.commit.value  # type: ignore[attr-defined]
 
     if not commit:
         raise CommitNotFoundError(identifier=repository_id, commit="", message="No commits found on this repository")

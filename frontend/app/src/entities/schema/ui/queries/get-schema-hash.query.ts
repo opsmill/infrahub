@@ -5,11 +5,15 @@ import type { QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { type GetSchemaHashParams, getSchemaHash } from "@/entities/schema/domain/get-schema-hash";
+import {
+  type GetSchemaHashParams,
+  getSchemaHash,
+} from "@/entities/schema/domain/use-cases/get-schema-hash";
+import { schemaQueryKeys } from "@/entities/schema/ui/queries/schema.query-keys";
 
 export function getSchemaHashQueryOptions({ branchName, atDate }: GetSchemaHashParams) {
   return queryOptions({
-    queryKey: [branchName, atDate, "schema", "hash"],
+    queryKey: schemaQueryKeys.hash({ branchName, atDate }),
     queryFn: async () => {
       return getSchemaHash({ branchName, atDate });
     },

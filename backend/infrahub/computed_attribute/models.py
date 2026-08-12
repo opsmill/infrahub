@@ -18,6 +18,7 @@ from infrahub.core.schema.schema_branch_computed import (  # noqa: TC001
     PythonDefinition,
 )
 from infrahub.events import NodeCreatedEvent, NodeUpdatedEvent
+from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer  # noqa: TC001
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import (
@@ -25,6 +26,7 @@ from infrahub.trigger.models import (
     ExecuteWorkflow,
     TriggerBranchDefinition,
     TriggerType,
+    jinja_parameter,
 )
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
@@ -137,8 +139,11 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         trigger_node: ComputedAttributeTriggerNode,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
-        """
-        This function is used to create a trigger definition for a computed attribute of type Jinja2.
+        """This function is used to create a trigger definition for a computed attribute of type Jinja2.
+
+        Raises:
+            ValueError: When the computed attribute does not define a Jinja2 template.
+
         """
         event_trigger = EventTrigger()
         event_trigger.events.add(NodeUpdatedEvent.event_name)
@@ -163,6 +168,7 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         elif not branches_out_of_scope and branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
+        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
         event_trigger.match_related = {
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
             "infrahub.field.name": trigger_node.fields,
@@ -171,9 +177,9 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         workflow = ExecuteWorkflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
             parameters={
-                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                "node_kind": "{{ event.resource['infrahub.node.kind'] }}",
-                "object_id": "{{ event.resource['infrahub.node.id'] }}",
+                "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
+                "node_kind": jinja_parameter("{{ event.resource['infrahub.node.kind'] }}"),
+                "object_id": jinja_parameter("{{ event.resource['infrahub.node.id'] }}"),
                 "computed_attribute_name": computed_attribute.attribute.name,
                 "computed_attribute_kind": computed_attribute.kind,
                 "updated_fields": {
@@ -193,7 +199,7 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
             },
         )
 
-        definition = cls(
+        return cls(
             name=f"{computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{trigger_node.kind}",
             template_hash=template_hash,
             trigger_kind=trigger_node.kind,
@@ -202,8 +208,6 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
             trigger=event_trigger,
             actions=[workflow],
         )
-
-        return definition
 
 
 class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
@@ -237,13 +241,10 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
         }
 
-        if update_fields and "display_label" not in update_fields:
-            # The GraphQLQuery analyzer doesn't yet support figuring out which updates would match the "display label"
-            # of a query. Because of this we temporarily match any field if the display_label is part of the computed
-            # attribute query
+        if update_fields:
             event_trigger.match_related["infrahub.field.name"] = update_fields
 
-        definition = cls(
+        return cls(
             name=computed_attribute.computed_attribute.key_name,
             branch=branch,
             computed_attribute=computed_attribute,
@@ -252,9 +253,9 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
                 ExecuteWorkflow(
                     workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
                     parameters={
-                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                        "node_kind": "{{ event.resource['infrahub.node.kind'] }}",
-                        "object_id": "{{ event.resource['infrahub.node.id'] }}",
+                        "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
+                        "node_kind": jinja_parameter("{{ event.resource['infrahub.node.kind'] }}"),
+                        "object_id": jinja_parameter("{{ event.resource['infrahub.node.id'] }}"),
                         "computed_attribute_name": computed_attribute.computed_attribute.attribute.name,
                         "computed_attribute_kind": computed_attribute.computed_attribute.kind,
                         "context": {
@@ -268,8 +269,6 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
                 ),
             ],
         )
-
-        return definition
 
 
 class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
@@ -295,20 +294,15 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(kind=kind)
         event_trigger.match_related = {
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
+            "infrahub.field.name": update_fields,
         }
-
-        if update_fields and "display_label" not in update_fields:
-            # The GraphQLQuery analyzer doesn't yet support figuring out which updates would match the "display label"
-            # of a query. Because of this we temporarily match any field if the display_label is part of the computed
-            # attribute query
-            event_trigger.match_related["infrahub.field.name"] = update_fields
 
         if branches_out_of_scope:
             event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
         elif not branches_out_of_scope and branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
-        definition = cls(
+        return cls(
             name=f"{computed_attribute.computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
             branch=branch,
             trigger=event_trigger,
@@ -316,9 +310,9 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
                 ExecuteWorkflow(
                     workflow=QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
                     parameters={
-                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                        "node_kind": "{{ event.resource['infrahub.node.kind'] }}",
-                        "object_id": "{{ event.resource['infrahub.node.id'] }}",
+                        "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
+                        "node_kind": jinja_parameter("{{ event.resource['infrahub.node.kind'] }}"),
+                        "object_id": jinja_parameter("{{ event.resource['infrahub.node.id'] }}"),
                         "context": {
                             "__prefect_kind": "json",
                             "value": {
@@ -330,8 +324,6 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
                 ),
             ],
         )
-
-        return definition
 
 
 class ComputedAttrJinja2GraphQLResponse(BaseModel):
@@ -345,7 +337,7 @@ class ComputedAttrJinja2GraphQL(BaseModel):
     attribute_schema: AttributeSchema = Field(..., description="The computed attribute")
     variables: list[str] = Field(..., description="The list of variable names used within the computed attribute")
 
-    def render_graphql_query(self, query_filter: str, filter_id: str) -> str:
+    def render_graphql_query(self, query_filter: str, filter_id: str | list[str]) -> str:
         query_fields = self.query_fields
         query_fields["id"] = None
         query_fields[self.attribute_schema.name] = {"value": None}
@@ -374,7 +366,13 @@ class ComputedAttrJinja2GraphQL(BaseModel):
                 if relationship.cardinality == RelationshipCardinality.ONE:
                     if field_name not in output:
                         output[field_name] = {"node": {}}
-                    output[field_name]["node"][related_attribute] = {related_value: None}
+                    if relationship.hierarchical and relationship.peer != relationship.hierarchical:
+                        fragment_key = f"... on {relationship.peer}"
+                        if fragment_key not in output[field_name]["node"]:
+                            output[field_name]["node"][fragment_key] = {}
+                        output[field_name]["node"][fragment_key][related_attribute] = {related_value: None}
+                    else:
+                        output[field_name]["node"][related_attribute] = {related_value: None}
         return output
 
     def parse_response(self, response: dict[str, Any]) -> list[ComputedAttrJinja2GraphQLResponse]:

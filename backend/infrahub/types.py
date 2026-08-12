@@ -269,6 +269,16 @@ class IPNetwork(InfrahubDataType):
     infrahub = "IPNetwork"
 
 
+class IPAddress(InfrahubDataType):
+    label: str = "IPAddress"
+    graphql = graphene.String
+    graphql_query = "IPAddressType"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
+    graphql_filter = graphene.String
+    infrahub = "IPAddress"
+
+
 class Boolean(InfrahubDataType):
     label: str = "Boolean"
     graphql = graphene.Boolean
@@ -337,6 +347,7 @@ ATTRIBUTE_TYPES: dict[str, type[InfrahubDataType]] = {
     "Bandwidth": Bandwidth,
     "IPHost": IPHost,
     "IPNetwork": IPNetwork,
+    "IPAddress": IPAddress,
     "Boolean": Boolean,
     "Checkbox": Checkbox,
     "List": List,
@@ -362,6 +373,7 @@ ATTRIBUTE_PYTHON_TYPES: dict[str, type] = {
     "Bandwidth": float,  # Bandwidth in some units, represented as a float
     "IPHost": IPvAnyAddress,  # type: ignore[dict-item]
     "IPNetwork": str,
+    "IPAddress": IPvAnyAddress,  # type: ignore[dict-item]
     "Boolean": bool,
     "Checkbox": bool,  # Checkboxes represent boolean values
     "List": list[Any],  # Lists can contain any type of items
@@ -376,8 +388,11 @@ LARGE_ATTRIBUTE_TYPES = [TextArea, JSON, List]
 
 
 def get_attribute_type(kind: str = "Default") -> type[InfrahubDataType]:
-    """Return an InfrahubDataType object for a given kind
-    If no kind is provided, return the default one."""
+    """Return an InfrahubDataType object for a given kind.
+
+    If no kind is provided, return the default one.
+
+    """
     return ATTRIBUTE_TYPES.get(kind, Default)
 
 

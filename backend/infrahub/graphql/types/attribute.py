@@ -39,6 +39,7 @@ class IPPrefixPoolInput(GenericPoolInput):
 
 class RelatedIPAddressNodeInput(InputObjectType):
     id = String(required=False)
+    hfid = Field(List(of_type=String), required=False)
     from_pool = Field(IPAddressPoolInput, required=False)
     _relation__is_protected = Boolean(required=False)
     _relation__owner = String(required=False)
@@ -60,7 +61,6 @@ class PermissionType(ObjectType):
 
 class AttributeInterface(InfrahubInterface):
     is_default = Field(Boolean)
-    is_inherited = Field(Boolean)
     is_protected = Field(Boolean)
     updated_at = Field(DateTime)
     # Since source and owner are using a Type that is generated dynamically
@@ -84,7 +84,7 @@ class BaseAttribute(InfrahubAttributeMetaObject):
     permissions = Field(PermissionType, required=False)
 
     @classmethod
-    def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         registry.default_graphql_type[cls.__name__] = cls
 
@@ -142,6 +142,16 @@ class IPNetworkType(BaseAttribute):
     class Meta:
         description = "Attribute of type IPNetwork"
         name = "IPNetwork"
+        interfaces = {AttributeInterface}
+
+
+class IPAddressType(BaseAttribute):
+    value = Field(String)
+    version = Field(Int)
+
+    class Meta:
+        description = "Attribute of type IPAddress"
+        name = "IPAddress"
         interfaces = {AttributeInterface}
 
 

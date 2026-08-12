@@ -26,6 +26,7 @@ def _sort_arguments(args: tuple[InputValueDefinitionNode, ...] | None) -> list[I
 
     Returns:
         Sorted list of input value definition nodes, or None if input was None.
+
     """
     if not args:
         return None
@@ -40,6 +41,7 @@ def _sort_fields(fields: tuple[FieldDefinitionNode, ...] | None) -> list[FieldDe
 
     Returns:
         Sorted list of field definition nodes with sorted arguments, or None if input was None.
+
     """
     if not fields:
         return None
@@ -67,6 +69,7 @@ def _sort_enum_values(values: tuple[EnumValueDefinitionNode, ...] | None) -> lis
 
     Returns:
         Sorted list of enum value definition nodes, or None if input was None.
+
     """
     if not values:
         return None
@@ -81,6 +84,7 @@ def _sort_input_fields(fields: tuple[InputValueDefinitionNode, ...] | None) -> l
 
     Returns:
         Sorted list of input value definition nodes, or None if input was None.
+
     """
     if not fields:
         return None
@@ -95,6 +99,7 @@ def _sort_interfaces(interfaces: tuple[NamedTypeNode, ...] | None) -> list[Named
 
     Returns:
         Sorted list of named type nodes, or None if input was None.
+
     """
     if not interfaces:
         return None
@@ -115,8 +120,8 @@ def sort_schema_ast(document: DocumentNode) -> DocumentNode:
 
     Returns:
         A new DocumentNode with all elements sorted alphabetically by name.
-    """
 
+    """
     sorted_definitions: list[
         ObjectTypeDefinitionNode
         | InterfaceTypeDefinitionNode

@@ -107,7 +107,7 @@ async def test_get_display_labels_with_branch(
 async def r1_update_01(data_diff_attribute: dict[str, Any]) -> dict[str, Any]:
     r1 = data_diff_attribute["r1"]
 
-    expected_response = {
+    return {
         "kind": InfrahubKind.REPOSITORY,
         "id": r1,
         "path": f"data/{r1}",
@@ -142,7 +142,6 @@ async def r1_update_01(data_diff_attribute: dict[str, Any]) -> dict[str, Any]:
         "action": {"branch2": "updated"},
         "display_label": {"branch2": "repo01"},
     }
-    return expected_response
 
 
 async def test_diff_artifact(

@@ -1,22 +1,22 @@
 import { Icon } from "@iconify-icon/react";
+import { Tree, TreeItem, TreeItemContent, TreeItemLoader } from "@infrahub/ui";
 import { ListTreeIcon } from "lucide-react";
 import React from "react";
 import { Collection } from "react-aria-components";
 import { Link } from "react-router";
 
-import { Tree, TreeItem, TreeItemContent, TreeItemLoader } from "@/shared/components/aria/tree";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { classNames } from "@/shared/utils/common";
 
 import { useGetTreeNodesByParent } from "@/entities/nodes/hierarchy/ui/queries/get-tree-nodes-by-parent.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeCore } from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
 export interface ObjectHierarchyTreeProps {
   treeSchema: ModelSchema;

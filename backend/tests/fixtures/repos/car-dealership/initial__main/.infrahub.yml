@@ -24,6 +24,7 @@ jinja2_transforms:
 
 python_transforms:
   - name: PersonWithCarsTransform
+    description: "Transform to generate a JSON report of a person and the cars they own"
     class_name: PersonWithCarsTransform
     file_path: "transforms/person_with_cars_transform.py"
   - name: ConvertedPersonWithCarsTransform

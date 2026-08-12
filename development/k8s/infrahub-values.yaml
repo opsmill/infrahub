@@ -2,7 +2,7 @@
 # yamllint disable rule:line-length
 infrahub:
   global:
-    infrahubTag: 1.7.0
+    infrahubTag: 1.7.6
   infrahubServer:
     podLabels:
       infrahub/service: server
@@ -81,4 +81,35 @@ infrahub:
   rabbitmq:
     enabled: false
   prefect-server:
-    enabled: false
+    server:
+      replicaCount: 3
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  infrahub/service: task-manager
+              topologyKey: kubernetes.io/hostname
+    backgroundServices:
+      messaging:
+        redis:
+          host: "redis-sentinel-proxy"
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  infrahub/service: task-manager-background-svc
+              topologyKey: kubernetes.io/hostname
+    secret:
+      create: true
+      name: ""
+      username: "prefect"
+      password: "prefect"
+      host: "taskmanagerdb-rw"
+      port: "5432"
+      database: "prefect"
+    serviceAccount:
+      create: false
+    postgresql:
+      enabled: false

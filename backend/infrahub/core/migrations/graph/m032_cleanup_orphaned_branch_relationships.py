@@ -16,15 +16,13 @@ log = get_logger()
 
 
 class DeletedBranchCleanupQuery(Query):
-    """
-    Find all unique edge branch names for which there is no Branch object
-    """
+    """Find all unique edge branch names for which there is no Branch object."""
 
     name = "deleted_branch_cleanup"
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (b:Branch)
 WITH collect(DISTINCT b.name) AS branch_names
@@ -38,15 +36,13 @@ RETURN DISTINCT (e.branch) AS branch_name
 
 
 class DeleteOrphanRelationshipsQuery(Query):
-    """
-    Find all Relationship vertices that link to fewer than 2 Node vertices and delete them
-    """
+    """Find all Relationship vertices that link to fewer than 2 Node vertices and delete them."""
 
     name = "delete_orphan_relationships"
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (r:Relationship)-[:IS_RELATED]-(n:Node)
 WITH DISTINCT r, n
@@ -58,11 +54,10 @@ DETACH DELETE r
 
 
 class Migration032(ArbitraryMigration):
-    """
-    Delete edges for branches that were not completely deleted
-    """
+    """Delete edges for branches that were not completely deleted."""
 
     name: str = "032_cleanup_deleted_branches"
+    description: str = "N/A"
     minimum_version: int = 31
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

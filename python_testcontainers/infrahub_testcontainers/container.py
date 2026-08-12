@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import time
+import urllib.request
 import uuid
 from dataclasses import dataclass, field
 from functools import cached_property
+from http import HTTPStatus
 from pathlib import Path
 
 from testcontainers.compose import DockerCompose
@@ -32,8 +35,9 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
 PROJECT_ENV_VARIABLES: dict[str, str] = {
     "MESSAGE_QUEUE_DOCKER_IMAGE": "rabbitmq:4.2.1-management",
     "CACHE_DOCKER_IMAGE": "redis:8.4.0",
+    "NEO4J_DOCKER_IMAGE": "neo4j:2025.10.1-community",
     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",
-    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",  # noqa: E501
+    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",
     "INFRAHUB_TESTING_IMAGE_VERSION": infrahub_version,
     "INFRAHUB_TESTING_PRODUCTION": "false",
     "INFRAHUB_TESTING_DB_ADDRESS": "database",
@@ -63,6 +67,10 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_SCHEMA_STRICT_MODE": "true",
     "INFRAHUB_TESTING_TASKMGR_API_WORKERS": "1",
     "INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS": "0",
+    # Neo4j Bolt connector thread-pool ceiling. 400 matches Neo4j's own default, so this is a
+    # no-op for normal test runs; heavy dataset/perf runs override it via the environment to
+    # avoid Neo.TransientError.Request.NoThreadsAvailable under a wide recompute fan-out.
+    "INFRAHUB_TESTING_DB_BOLT_THREAD_POOL_MAX_SIZE": "400",
 }
 
 
@@ -149,10 +157,10 @@ class InfrahubDockerCompose(DockerCompose):
             PROJECT_ENV_VARIABLES.update(
                 {
                     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub-enterprise",
-                    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",  # noqa: E501
+                    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",
                     "INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE": "infrahubentasync",
                     "INFRAHUB_TESTING_PREFECT_UI_ENABLED": "false",
-                    "NEO4J_DOCKER_IMAGE": "neo4j:2025.10.1-enterprise",
+                    "NEO4J_DOCKER_IMAGE": "neo4j:2026.05.0-enterprise",
                 }
             )
         if os.environ.get("INFRAHUB_TESTING_TASKMGR_SCALEOUT"):
@@ -166,10 +174,7 @@ class InfrahubDockerCompose(DockerCompose):
                     "PREFECT__SERVER_WEBSERVER_ONLY": "true",
                     "PREFECT_API_DATABASE_MIGRATE_ON_START": "false",
                     "PREFECT_API_BLOCKS_REGISTER_ON_START": "false",
-                    "PREFECT_SERVER_SERVICES_EVENT_LOGGER_ENABLED": "false",
-                    "PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED": "false",
-                    "PREFECT_SERVER_SERVICES_TRIGGERS_ENABLED": "false",
-                    "PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED": "false",
+                    "PREFECT_SERVER_DOCKET_URL": "redis://cache:6379/2",
                 }
             )
 
@@ -193,6 +198,50 @@ class InfrahubDockerCompose(DockerCompose):
         if self.services:
             cmd.extend(self.services)
         self._run_command(cmd=cmd)
+
+    def set_server_response_delay(self, delay: int) -> None:
+        """Enable a per-GraphQL-request delay on the running infrahub-server.
+
+        POSTs to the ``/api/response-delay`` endpoint, which broadcasts the new value over the
+        message bus so every API worker process across all server replicas applies it at
+        runtime — no restart involved. Each worker consumes the broadcast asynchronously, so
+        the change is then verified by timing GraphQL probes until consecutive responses
+        observe the delay.
+
+        Intended to be called AFTER the dataset is loaded: a boot-time delay would slow the
+        demo-data load (thousands of GraphQL mutations).
+        """
+        address = f"http://localhost:{self.get_services_port()['server']}"
+        token = self.get_env_var("INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN")
+        request = urllib.request.Request(  # noqa: S310 (fixed localhost URL)
+            url=f"{address}/api/response-delay",
+            data=json.dumps({"response_delay": delay}).encode("utf-8"),
+            headers={"Content-Type": "application/json", "X-INFRAHUB-KEY": token},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310 (fixed localhost URL)
+            if response.status != HTTPStatus.OK:
+                raise RuntimeError(f"Failed to set the response delay: HTTP {response.status}")
+
+        if not delay:
+            return
+
+        required_delayed_probes = 5
+        consecutive_delayed = 0
+        deadline = time.monotonic() + 60
+        while consecutive_delayed < required_delayed_probes:
+            if time.monotonic() > deadline:
+                raise RuntimeError("The response delay did not become active on the server within 60s")
+            probe = urllib.request.Request(  # noqa: S310 (fixed localhost URL)
+                url=f"{address}/graphql",
+                data=json.dumps({"query": "query { __typename }"}).encode("utf-8"),
+                headers={"Content-Type": "application/json", "X-INFRAHUB-KEY": token},
+                method="POST",
+            )
+            start = time.monotonic()
+            with urllib.request.urlopen(probe, timeout=30 + delay):  # noqa: S310 (fixed localhost URL)
+                pass
+            consecutive_delayed = consecutive_delayed + 1 if time.monotonic() - start >= delay else 0
 
     def start_container(self, service_name: str | list[str]) -> None:
         """
@@ -229,7 +278,6 @@ class InfrahubDockerCompose(DockerCompose):
             up_cmd.append(service_name)
         self._run_command(cmd=up_cmd)
 
-    # TODO would be good to the support for project_name upstream
     @cached_property
     def compose_command_property(self) -> list[str]:
         docker_compose_cmd = [self.docker_command_path or "docker", "compose"]
@@ -483,7 +531,7 @@ class InfrahubDockerCompose(DockerCompose):
                         )
                         debug_logs[node] = logs
                     except Exception as e:
-                        debug_logs[node] = f"Could not retrieve logs: {str(e)}"
+                        debug_logs[node] = f"Could not retrieve logs: {e!s}"
 
                 debug_info = f"Raw output from SHOW DATABASES command:\n{raw_output}\n\n"
                 debug_info += f"Final node status: {nodes_status}\n\n"

@@ -14,8 +14,6 @@ from infrahub.api.dependencies import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import (
-    CoreGenericRepository,
-    CoreGraphQLQuery,
     CoreTransformJinja2,
     CoreTransformPython,
 )
@@ -26,9 +24,10 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.utils import extract_data
 from infrahub.transformations.models import TransformJinjaTemplateData, TransformPythonData
 from infrahub.workflows.catalogue import TRANSFORM_JINJA2_RENDER, TRANSFORM_PYTHON_RENDER
+from infrahub.workflows.constants import WorkflowPriority
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.context import InfrahubContext
     from infrahub.services import InfrahubServices
 router = APIRouter()
@@ -53,8 +52,8 @@ async def transform_python(
         at=branch_params.at,
     )
 
-    query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
-    repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
+    query = await transform.query.get_peer(db=db, raise_on_error=True)
+    repository = await transform.repository.get_peer(db=db, raise_on_error=True)
 
     if repository.commit.value is None:  # type: ignore[attr-defined]
         raise TransformError(
@@ -94,7 +93,10 @@ async def transform_python(
     )
 
     response = await service.workflow.execute_workflow(
-        workflow=TRANSFORM_PYTHON_RENDER, context=context, parameters={"message": message}
+        workflow=TRANSFORM_PYTHON_RENDER,
+        context=context,
+        parameters={"message": message},
+        priority=WorkflowPriority.HIGH,
     )
     return JSONResponse(content=response)
 
@@ -118,8 +120,8 @@ async def transform_jinja2(
         at=branch_params.at,
     )
 
-    query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
-    repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
+    query = await transform.query.get_peer(db=db, raise_on_error=True)
+    repository = await transform.repository.get_peer(db=db, raise_on_error=True)
 
     if repository.commit.value is None:  # type: ignore[attr-defined]
         raise TransformError(
@@ -158,6 +160,10 @@ async def transform_jinja2(
     service: InfrahubServices = request.app.state.service
 
     response = await service.workflow.execute_workflow(
-        workflow=TRANSFORM_JINJA2_RENDER, context=context, expected_return=str, parameters={"message": message}
+        workflow=TRANSFORM_JINJA2_RENDER,
+        context=context,
+        expected_return=str,
+        parameters={"message": message},
+        priority=WorkflowPriority.HIGH,
     )
     return PlainTextResponse(content=response)

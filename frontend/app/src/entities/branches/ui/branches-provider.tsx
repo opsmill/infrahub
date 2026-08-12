@@ -1,19 +1,16 @@
-import { useAtom } from "jotai";
 import { useQueryState } from "nuqs";
-import React, { useEffect } from "react";
+import React from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
-import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
-import { currentBranchAtom } from "@/entities/branches/stores";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
+import { findSelectedBranch } from "@/entities/branches/domain/rules/find-selected-branch";
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
-import { findSelectedBranch } from "@/entities/branches/utils";
 
 type BranchContext = {
   currentBranch: BranchListItem;
@@ -33,45 +30,43 @@ export function useCurrentBranch() {
 
 export const BranchesProvider = ({ children }: { children?: React.ReactNode }) => {
   const { data: branches, isPending, error } = useGetBranches();
-  const [currentBranch, setCurrentBranch] = useAtom(currentBranchAtom);
-  const [branchInQueryString] = useQueryState(QSP.BRANCH);
+  const [branchInQueryString, setBranchInQueryString] = useQueryState(QSP.BRANCH);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!branches) return;
+  const currentBranch = branches ? findSelectedBranch(branches, branchInQueryString) : null;
 
-    const selectedBranch = findSelectedBranch(branches, branchInQueryString);
-    if (selectedBranch) {
-      setCurrentBranch(selectedBranch);
-      return;
-    }
+  // The branch QSP is the source of truth: the default branch is represented by its absence
+  const setCurrentBranch = (branch: BranchListItem) => {
+    setBranchInQueryString(branch.is_default ? null : branch.name);
+  };
+
+  React.useEffect(() => {
+    if (!branches || currentBranch) return;
 
     toast(
       <Alert
         type={ALERT_TYPES.ERROR}
         message={
           <>
-            Branch <b>{branchInQueryString}</b> not found, you have been redirected to the main
+            Branch <b>{branchInQueryString}</b> not found, you have been redirected to the default
             branch.
           </>
         }
       />
     );
-    const mainBranch = findSelectedBranch(branches, DEFAULT_BRANCH_NAME);
-    setCurrentBranch(mainBranch);
     navigate("/");
-  }, [branches, branchInQueryString]);
+  }, [branches, currentBranch]);
 
   if (isPending) {
-    return <InfrahubLoading>loading branches...</InfrahubLoading>;
+    return <InfrahubLoading>Loading branches...</InfrahubLoading>;
   }
 
   if (error) {
     return <ErrorScreen message={error.message} />;
   }
 
-  if (currentBranch?.name !== (branchInQueryString ?? DEFAULT_BRANCH_NAME)) {
-    return <InfrahubLoading>loading branches...</InfrahubLoading>;
+  if (!currentBranch) {
+    return <InfrahubLoading>Loading branches...</InfrahubLoading>;
   }
 
   return <BranchContext value={{ currentBranch, setCurrentBranch }}>{children}</BranchContext>;

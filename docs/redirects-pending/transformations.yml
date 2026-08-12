@@ -1,0 +1,152 @@
+---
+feature: Transformations
+pr: TBD
+description: |
+  Transformations feature migration to hub + 2 recipe-form how-tos + 2 tutorial
+  extractions (matching Generators PR precedent).
+
+  - topics/transformation.mdx → transformations/index.mdx (hub)
+  - guides/jinja2-transform.mdx (tutorial-shaped, 8 steps with single
+    device-config running example) → academy/tutorials/transformations/build-a-jinja2-transformation.mdx;
+    new recipe-form how-to at transformations/jinja2.mdx
+  - guides/python-transform.mdx (tutorial-shaped, 8 steps with same running
+    example) → academy/tutorials/transformations/build-a-python-transformation.mdx;
+    new recipe-form how-to at transformations/python.mdx
+
+  GraphQL fragments (guides/graphql-fragment.mdx) was scoped out of this PR
+  per the Confluence recommendation — its canonical home is Development
+  Resources → APIs & interfaces, handled in a future migration.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/transformation
+    to: /docs/transformations/
+  - from: /docs/guides/jinja2-transform
+    to: /docs/academy/tutorials/transformations/build-a-jinja2-transformation
+  - from: /docs/guides/python-transform
+    to: /docs/academy/tutorials/transformations/build-a-python-transformation
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/transformations/
+    title: Transformations (hub)
+  - path: /docs/transformations/jinja2
+    title: Write a Jinja2 transformation (recipe-form how-to)
+  - path: /docs/transformations/python
+    title: Write a Python transformation (recipe-form how-to)
+  - path: /docs/academy/tutorials/transformations/build-a-jinja2-transformation
+    title: Build a Jinja2 transformation (Academy tutorial)
+  - path: /docs/academy/tutorials/transformations/build-a-python-transformation
+    title: Build a Python transformation (Academy tutorial)
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (will resolve via redirect at runtime but should be updated to new paths at cleanup)
+cross_links_to_update:
+  # Links to topics/transformation
+  - file: docs/docs/home.mdx
+    line: 69
+    current: topics/transformation
+    should_be: transformations/
+  - file: docs/docs/overview/concepts.mdx
+    line: 31
+    current: ../topics/transformation
+    should_be: ../transformations/
+  - file: docs/docs/proposed-changes/index.mdx
+    line: 71
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/proposed-changes/index.mdx
+    line: 129
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/groups/use-in-automation.mdx
+    line: 33
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/groups/use-in-automation.mdx
+    line: 83
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/computed-attributes/index.mdx
+    line: 132
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/git-integration/infrahub-yml.mdx
+    line: 159
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/topics/infrahub-yml.mdx
+    line: 159
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/topics/webhooks.mdx
+    line: 27
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/topics/resources-testing-framework.mdx
+    line: 9
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/guides/artifact.mdx
+    line: 172
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/guides/artifact-content-composition.mdx
+    line: 7
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/guides/computed-attributes.mdx
+    line: 10
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/guides/graphql-fragment.mdx
+    line: 9
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/guides/webhooks.mdx
+    line: 10
+    current: ../topics/transformation.mdx
+    should_be: ../transformations/
+  - file: docs/docs/tutorials/getting-started/rendering-configuration.mdx
+    line: 14
+    current: ../../topics/transformation.mdx
+    should_be: ../../transformations/
+  - file: docs/docs/tutorials/getting-started/git-integration.mdx
+    line: 52
+    current: ../../topics/transformation.mdx
+    should_be: ../../transformations/
+
+  # Links to guides/jinja2-transform (now an academy tutorial)
+  - file: docs/docs/topics/graphql.mdx
+    line: 470
+    current: ../guides/jinja2-transform.mdx
+    should_be: ../academy/tutorials/transformations/build-a-jinja2-transformation
+  - file: docs/docs/guides/graphql-fragment.mdx
+    line: 191
+    current: ../guides/jinja2-transform.mdx
+    should_be: ../academy/tutorials/transformations/build-a-jinja2-transformation
+
+  # Links to guides/python-transform (now an academy tutorial)
+  - file: docs/docs/topics/graphql.mdx
+    line: 469
+    current: ../guides/python-transform.mdx
+    should_be: ../academy/tutorials/transformations/build-a-python-transformation
+  - file: docs/docs/guides/graphql-fragment.mdx
+    line: 192
+    current: ../guides/python-transform.mdx
+    should_be: ../academy/tutorials/transformations/build-a-python-transformation
+  - file: docs/docs/computed-attributes/index.mdx
+    line: 228
+    current: ../guides/python-transform.mdx
+    should_be: ../academy/tutorials/transformations/build-a-python-transformation
+  - file: docs/docs/topics/webhooks.mdx
+    line: 277
+    current: ../guides/python-transform.mdx
+    should_be: ../academy/tutorials/transformations/build-a-python-transformation
+
+  # Excluded from rewrite (historical content; rely on the runtime redirect):
+  excluded:
+    - docs/docs/release-notes/infrahub/release-1_1_0.mdx (release notes)
+    - docs/docs/topics/transformation.mdx (legacy, will be deleted at cleanup)
+    - docs/docs/guides/jinja2-transform.mdx (legacy)
+    - docs/docs/guides/python-transform.mdx (legacy)

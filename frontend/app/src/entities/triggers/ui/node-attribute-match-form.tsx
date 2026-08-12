@@ -1,6 +1,8 @@
+import { Button } from "@infrahub/ui";
 import { type FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
+import { Row } from "@/shared/components/container";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
@@ -19,15 +21,18 @@ import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/util
 import type { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { NODE_TRIGGER_ATTRIBUTE_MATCH, NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
+import {
+  NODE_TRIGGER_ATTRIBUTE_MATCH,
+  NODE_TRIGGER_RULE,
+} from "@/entities/triggers/domain/model/trigger";
 
 interface NodeAttributeMatchFormProps extends NodeFormProps {}
 
@@ -39,6 +44,7 @@ export const NodeAttributeMatchForm = ({
   onCancel,
   ...props
 }: NodeAttributeMatchFormProps) => {
+  const { currentBranch } = useCurrentBranch();
   const { parentData, parentSchema } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
   const updateObject = useUpdateObjectMutation();
@@ -46,6 +52,7 @@ export const NodeAttributeMatchForm = ({
   const schemaFields = getFormFieldsFromSchema({
     ...props,
     initialObject: currentObject,
+    isDefaultBranch: !!currentBranch.is_default,
     isUpdate,
     parentData,
     parentSchema,
@@ -147,25 +154,23 @@ export const NodeAttributeMatchForm = ({
   }
 
   return (
-    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
-      <Form form={form} onSubmit={handleSubmit}>
-        <NodeAttributeField field={attributeField} />
+    <Form form={form} onSubmit={handleSubmit}>
+      <NodeAttributeField field={attributeField} />
 
-        {fields.map((field) => {
-          return <DynamicField key={field.name} {...field} />;
-        })}
+      {fields.map((field) => {
+        return <DynamicField key={field.name} {...field} />;
+      })}
 
-        <div className="text-right">
-          {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
-              Cancel
-            </Button>
-          )}
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
+        )}
 
-          <FormSubmit>Save</FormSubmit>
-        </div>
-      </Form>
-    </div>
+        <FormSubmit>Save</FormSubmit>
+      </Row>
+    </Form>
   );
 };
 

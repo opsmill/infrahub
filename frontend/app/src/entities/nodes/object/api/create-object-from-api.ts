@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { BranchContextParams } from "@/shared/api/types";
 
 export interface CreateObjectFromApiParams extends BranchContextParams {
@@ -9,10 +8,6 @@ export interface CreateObjectFromApiParams extends BranchContextParams {
   data: Record<string, unknown>;
   profileIds?: Array<string>;
   file?: File;
-}
-
-function buildProfiles(profileIds: Array<string>) {
-  return profileIds.map((id) => ({ id }));
 }
 
 export function createObjectFromApi({
@@ -29,7 +24,7 @@ export function createObjectFromApi({
         __args: {
           data: {
             ...data,
-            ...(profileIds.length && { profiles: buildProfiles(profileIds) }),
+            ...(profileIds.length && { profiles: profileIds.map((id) => ({ id })) }),
           },
           ...(file && { file: new VariableType("file") }),
         },
@@ -44,7 +39,7 @@ export function createObjectFromApi({
   });
 
   return graphqlClient.mutate({
-    mutation: gql(mutation),
+    mutation: graphql(mutation),
     variables: file ? { file } : undefined,
     context: {
       branch: branchName,

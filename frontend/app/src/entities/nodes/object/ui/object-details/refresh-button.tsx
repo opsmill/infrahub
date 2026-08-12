@@ -1,13 +1,11 @@
+import { Button, type ButtonProps, Tooltip } from "@infrahub/ui";
 import { useIsFetching } from "@tanstack/react-query";
 import { CheckIcon, RefreshCwIcon } from "lucide-react";
 import React from "react";
-import { Focusable } from "react-aria-components";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { classNames } from "@/shared/utils/common";
-import { formatFullDate } from "@/shared/utils/date";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
@@ -27,6 +25,7 @@ export function RefreshButton({ queryKey, ...props }: RefreshButtonProps) {
   const [dataUpdatedAt, setDataUpdatedAt] = React.useState(getLastUpdateTime());
   const isFetching = useIsFetching({ queryKey: watchedQueryKey });
   const isRefetching = isFetching > 0;
+  const { formatDate } = useFormatDate();
 
   React.useEffect(() => {
     if (isFetching > 0) return;
@@ -46,29 +45,28 @@ export function RefreshButton({ queryKey, ...props }: RefreshButtonProps) {
         dataUpdatedAt ? (
           <>
             <div>Last data refresh</div>
-            <div className="text-neutral-200">{formatFullDate(dataUpdatedAt)}</div>
+            <div className="text-neutral-200">{formatDate(dataUpdatedAt, "datetime")}</div>
           </>
         ) : (
           "Refresh"
         )
       }
     >
-      <Focusable isDisabled={isRefetching}>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={isRefetching}
-          aria-label="Refresh data"
-          {...props}
-        >
-          {isRefreshSuccess ? (
-            <CheckIcon className="size-3.5 text-green-600" />
-          ) : (
-            <RefreshCwIcon className={classNames("size-3.5", isRefetching && "animate-spin")} />
-          )}
-        </Button>
-      </Focusable>
+      <Button
+        variant="outline"
+        size="sm"
+        shape="square"
+        isDisabledAndFocusable={isRefetching}
+        onPress={handleRefresh}
+        aria-label="Refresh data"
+        {...props}
+      >
+        {isRefreshSuccess ? (
+          <CheckIcon className="size-3.5 text-green-600" />
+        ) : (
+          <RefreshCwIcon className={classNames("size-3.5", isRefetching && "animate-spin")} />
+        )}
+      </Button>
     </Tooltip>
   );
 }

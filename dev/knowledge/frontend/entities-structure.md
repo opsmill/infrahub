@@ -6,35 +6,155 @@ Location: `frontend/app/src/entities/`
 
 Each entity is organized into three layers with strict import rules. Dependencies flow in one direction: ui/ -> domain/ -> api/.
 
+`domain/` is **always** organized as `model/` (types + vocabulary), `rules/` (pure functions), and `use-cases/` (orchestration) — every entity, regardless of size; there is no file-count threshold below which `domain/` stays flat. Use-cases always live in `domain/use-cases/` — even a single one; types always in `domain/model/`. Never add **entity-root catch-all files** (`types.ts`, `constants.ts`, `stores.ts`) or an **entity-root `utils/` folder**: types/vocabulary → `domain/model`, pure helpers → `domain/rules`, view-model/table helpers and hooks → `ui/`, and generated↔domain **mappers live in `api/`**. A few entities still violate this — see [Known exceptions (migration debt)](#known-exceptions-migration-debt).
+
 ```text
 entities/{name}/
-├── api/                              # Transport — raw network calls
-│   ├── get-{noun}-from-api.ts
-│   └── create-{noun}-from-api.ts
-├── domain/                           # Business logic — pure TypeScript
-│   ├── {noun}.types.ts               # Domain types (the canonical contract)
-│   ├── {noun}.mappers.ts             # OPTIONAL — only when transformation is non-trivial
-│   ├── get-{noun}.ts                 # Async function: calls api/, returns domain types
-│   └── create-{noun}.ts
-└── ui/                               # React — framework integration
+├── api/                              # Transport + anti-corruption. Flat (no subfolders).
+│   ├── get-{noun}-from-api.ts        # Raw GraphQL/REST call (owns generated wire types)
+│   ├── create-{noun}-from-api.ts
+│   └── {noun}.mappers.ts             # generated wire shape → DOMAIN type. Imports domain/model (type-only).
+├── domain/                           # Business core — framework-free TypeScript
+│   ├── model/                        # Domain vocabulary: types, IDs, filters, sorts, inputs, results
+│   │   └── {noun}.ts                 # MAY import generated types incl. wire DTOs
+│   ├── rules/                        # owns pure business functions only. No I/O
+│   │   └── {noun}-filters.ts
+│   └── use-cases/                    # owns orchestration. It composes model + rules and calls api/.
+│       ├── get-{noun}.ts
+│       └── create-{noun}.ts
+└── ui/                               # React — framework integration (nested subfolders OK)
     ├── queries/
     │   ├── {noun}.query-keys.ts      # Query key factory
     │   ├── get-{noun}.query.ts       # queryOptions factory + useQuery hook
     │   └── create-{noun}.mutation.ts # useMutation hook + cache invalidation
     ├── hooks/
     │   └── use-{noun}-{thing}.ts     # Entity-specific React hooks
+    ├── routing/                      # Route helpers: {noun}-urls.ts builders, use-{noun}-outlet.ts hooks
     └── {noun}-table.tsx              # React components
 ```
+
+The `ui/routing/` sub-folder is a consistent convention across entities: URL builders
+(`object-urls.ts`, `branch-urls.ts`, `proposed-change-urls.ts`), outlet-context hooks
+(`use-*-outlet.ts`), and `authentication`'s `login-redirect.ts` all live there.
+
+### Classifying a file into `domain/`
+
+Classify by role, then place it — don't leave anything at the `domain/` root:
+
+- **type declaration or vocabulary** (a type, a kind constant, a state string, an enum) → `domain/model/`
+- **pure, no-I/O function** (predicate, extraction, shaping) → `domain/rules/`
+- **orchestration** that calls `api/` (a fetch/mutation flow) → `domain/use-cases/`
+
+Within `model/`/`rules/`/`use-cases/`, split into multiple files by concept (e.g. `proposed-change.ts`,
+`proposed-change-state.ts`, `proposed-change-thread.ts`) rather than one grab-bag `types.ts`/`constants.ts`.
+Group by domain concept and relatedness, not by "types vs constants".
+
+### When to split a concept out
+
+Give a concept its own file (or cluster of files) inside the layer folders only when one of these
+is true:
+
+1. The domain core is becoming too large to navigate.
+2. A new concept appears with enough model, rules, tests, and context to deserve its own area.
+3. The new concept is different enough that keeping it inside the generic model/rules files makes
+   those files harder to understand.
+
+Never split on a file-count threshold — counts are arbitrary and make similar entities look
+different for no comprehension gain.
+
+<!-- Extracted from specs/001-entities-arch-migration on 2026-07-03 -->
+**Where a type lives — model vs colocated.** Move a type to `domain/model/` when it is **shared
+domain vocabulary** — an entity, value object, ID, filter, or union that multiple call-sites import
+as a concept (e.g. `FilterDefinition`, `NumberPool`, `BranchListItem`). Keep a type **colocated with
+its function** when it is that function's own contract — a `Params`/`Result`/function-signature
+alias used only to type one use-case or rule (e.g. `GetBranchesParams`/`GetBranchesResult` stay in
+the `get-branches` use-case; `SchemaResult` stays in `rules/resolve-schema.ts`). Value-object *data*
+(predefined constant instances of domain types, e.g. `ALL_METADATA_FILTERS`) is vocabulary → `model/`.
+
+A former entity-root `utils/` folder is an anti-pattern: reclassify each file — pure functions to
+`domain/rules/`, React/table/view helpers to `ui/`.
+
+### Generated types in `domain/`
+
+Generated GraphQL/REST types are the backend↔frontend contract (regenerated by `pnpm codegen`), so a backend drift surfaces as a compile error at the domain boundary. They **may** be imported anywhere in `domain/` — including wire-shape response DTOs (e.g. `UserToken`), not only enums/scalars.
+
+A hand-written domain type plus an `api/` mapper is **optional** — reach for it only when the domain genuinely needs a shape distinct from the wire shape. When the domain shape equals the wire shape (the common case), use the generated type directly; a mapper that just re-copies fields is churn and a second source of truth that can drift.
 
 ## Layer Rules
 
 | Layer | Allowed imports | Prohibited |
 |-------|----------------|------------|
-| **api/** | `shared/api/` only | React, domain/, other entities |
-| **domain/** | `api/` (same entity), `shared/utils/`, other entities' `domain/` | React, TanStack, Jotai |
+| **api/** | `shared/api/`, own `domain/model` (types for mapper returns; plain vocabulary constants OK — see below) | `domain/rules`, `domain/use-cases`, `ui/`, other entities |
+| **domain/model** | `shared/` types, generated types (incl. wire DTOs), other entities' `domain/model` | `api/`, `domain/rules`, `domain/use-cases`, `ui/` (pure leaf) |
+| **domain/rules** | own `domain/model`, `shared/`, generated types | `api/`, `ui/`, React, TanStack, Jotai, browser storage |
+| **domain/use-cases** | own `api/` (incl. mappers), own `domain/model` + `rules`, `shared/`, generated types | `ui/`, React, TanStack, Jotai, browser storage |
 | **ui/** | `domain/` (same entity), `shared/`, other entities' `domain/` and `ui/` | Another entity's `api/` |
 
-Key constraint: no circular dependencies between entities. The dependency graph must be a DAG.
+<!-- Extracted from specs/001-entities-arch-migration on 2026-07-03 -->
+These rules are **enforced by review only** — there is no lint guard (a Biome `noRestrictedImports`
+guard was trialled and dropped; dependency-cruiser is a deferred proposal).
+
+Key constraints: no circular dependencies (the graph must be a DAG); `domain/model` is a pure leaf so `api → domain/model` + `domain → api` stays acyclic. Because `domain/model` imports nothing back, `api/` may import it not only for mapper return **types** but also for plain **vocabulary constants** (schema kinds, state strings, enums used to build queries) — the import stays acyclic. What `api/` must never import is domain **logic** (`domain/rules`, `domain/use-cases`) or `ui/`. Generated types (incl. wire DTOs) may enter `domain/` (see above); `domain/` must not read or write browser storage or global state directly (one known violation remains — see [Known exceptions (migration debt)](#known-exceptions-migration-debt)).
+
+## `shared/` vs entities
+
+`shared/` holds **only generic, entity-agnostic code** — UI primitives, generic utils (`array`, `date`,
+`file`), the API clients, generic display constants (`MAX_VALUE_LENGTH_DISPLAY`), and query-string
+keys (`shared/config/qsp.ts`). If a `shared/` file needs to know about an entity (a schema kind, an
+entity shape, a specific component), it is **misplaced — move it into that entity**. An entity's
+component/hook/type may be imported by other entities and by higher layers — never by `shared/`,
+apart from the sanctioned exceptions below.
+
+What this means in practice:
+
+- **Entity vocabulary is never in `shared/`.** Schema kinds, states, event-type names, and filter
+  names live in the owning entity's `domain/model` (e.g. `NODE_OBJECT` in `nodes/object`, the
+  `Filter` type + `SEARCH_*` in `nodes/filters`). Only
+  genuinely generic values stay in `shared/config/constants.ts` (display limits) and
+  `shared/config/qsp.ts` (URL param keys).
+- **`shared/` stays a leaf** (imports no entity) — with these sanctioned exceptions (other
+  `shared/` → entity edges still exist as [migration debt](#known-exceptions-migration-debt)):
+  - **The form subsystem `shared/components/form/`** is a cross-entity framework: it renders the
+    right form per node kind, so it legitimately imports many entities. Treat it as framework code.
+  - **`shared/api/` transport** reaches two cross-cutting entities: `authentication` (the REST/GraphQL
+    clients + graphiql fetcher need the access token / `redirectToLogin`) and `nodes/filters` (the
+    GraphQL query builder `addFiltersToRequest` needs the `Filter` type). These can't move without
+    breaking `api` layering, so they are accepted edges — not a general licence.
+- **Pagination page size is a UI concern:** keep the page-size constant in `ui/queries` and pass it
+  to the domain use-case as `limit`; the domain never imports a page size or defaults to one.
+- **Cross-entity `ui → api` stays forbidden** for everyone (only `authentication`'s token surface is exempt).
+
+## Known exceptions (migration debt)
+
+The rules above are the target. These violations still exist in the codebase — do not copy them,
+and remove them when touching the code:
+
+- Entity-root state and files: `branches/stores.ts` (Jotai `branchesState`), `schema/stores/`,
+  `proposed-changes/stores/`, and the stray root component
+  `nodes/getObjectItemDisplayValue.tsx`.
+- Global state in a use-case: `branches/domain/use-cases/get-branches.ts` imports `store` from
+  `@/shared/stores` and calls `store.set(branchesState, branches)` inside `getAllBranches`.
+- Page size outside `ui/queries`: `BRANCHES_PER_PAGE` is defined in
+  `branches/api/get-branches-from-api.ts` (which also defaults its `limit` to it) and imported by
+  `ui/queries/get-branches.query.ts`.
+- `shared/` → entity edges beyond the sanctioned ones: `shared/api/graphql/utils.ts` (also imports
+  `ipam/ip-availability` and `schema` domain models), `shared/api/rest/client.ts` (imports
+  `authentication`'s `ui/queries` refresh-token query), most of `shared/components/inputs/`
+  (`peer`, `enum`, `dropdown`, `pool-select`, `relationship-one`/`-many`, `node-kind-select`,
+  `kind-multi-select`), plus `shared/components/display/slide-over.tsx`,
+  `shared/components/display/meta-details-tooltips.tsx`, `shared/components/table/data-table.tsx`,
+  `shared/components/ui/id.tsx`, and `shared/libs/graphiql/use-graphiql-fetcher.ts` (which even
+  reaches `nodes/object`'s `api/`).
+<!-- Extracted from specs/001-entities-arch-migration on 2026-07-03 -->
+- Backend-authoritative violation: `path-traversal/domain/rules/visible-namespace.ts`
+  (`HIDDEN_NAMESPACES`) is a client-side mirror of the backend `DEFAULT_EXCLUDED_NAMESPACES` —
+  exactly what [Backend is authoritative](#backend-is-authoritative) forbids. The migration only
+  relocated it; the fix is to surface excluded namespaces via the API.
+- One remaining `utils/` **directory** awaiting the fan-out treatment applied to `utils.ts` files:
+  `nodes/object/ui/object-table/utils/`.
+- `api/` calling another entity's use-case: `nodes/relationships/api/get-default-parent-from-api.ts`
+  imports `getSchema` from schema's `domain/use-cases` (forbidden: `api/` may only import `shared/`
+  and its own `domain/model`). Fix by lifting the `getSchema` call into a `relationships` use-case.
 
 ## Data Flow
 
@@ -54,31 +174,77 @@ queryOptions factories and useQuery/useMutation hooks live in `ui/queries/`, not
 
 Rationale: `queryOptions` configures TanStack Query, a framework concern. Caching strategy, query keys, and reactive subscriptions belong in the UI layer. A TUI or CLI would call domain async functions directly without TanStack.
 
-```ts
-// domain/get-branches.ts — pure, no framework imports
-export async function getBranches(
-  branch: string,
-  date?: string,
-  filters?: BranchFilters
-): Promise<BranchListItem[]> {
-  const raw = await getBranchesFromApi(branch, date, filters);
-  return raw.CoreBranch.edges.map(mapToBranchListItem);
-}
+From `entities/branches/domain/use-cases/get-branches.ts` — no React/TanStack imports:
 
-// ui/queries/get-branches.query.ts — React + TanStack integration
-export function getBranchesQueryOptions(branch: string, date?: string, filters?: BranchFilters) {
-  return queryOptions({
-    queryKey: branchKeys.list(branch, date, filters),
-    queryFn: () => getBranches(branch, date, filters),
+```ts
+export type GetBranchesParams = PaginationParams & {
+  filters?: Filter[];
+};
+
+// Paginated fetch for branches list view
+export const getBranches: GetBranches = async (params = {}) => {
+  const nameValue = getNameFilterValue(params.filters);
+  const statusValue = getStatusFilterValue(params.filters);
+  const createdById = getCreatedByFilterValue(params.filters);
+  const dateFilters = getBranchDateFilters(params.filters);
+  const { data, errors } = await getBranchesFromApi({
+    limit: params.limit,
+    offset: params.offset,
+    nameValue,
+    partialMatch: nameValue ? true : undefined,
+    statusValue,
+    createdById,
+    ...dateFilters,
+  });
+
+  if (errors) {
+    throw new Error(errors.map((e) => e.message).join("; "));
+  }
+
+  const response = data as InfrahubBranchResponse;
+  const branches = response?.InfrahubBranch?.edges.map((edge) => mapToBranchListItem(edge)) ?? [];
+
+  return branches;
+};
+```
+
+The same file also exports `getAllBranches`, which currently writes its result into a Jotai atom
+(`store.set(branchesState, branches)`) — a known layer violation, see
+[Known exceptions (migration debt)](#known-exceptions-migration-debt).
+
+From `entities/branches/ui/queries/get-branches.query.ts` — React + TanStack integration (the query
+key factory is `branchesQueryKeys` in `ui/queries/branch.query-keys.ts`):
+
+```ts
+// Paginated query for branches list view
+export function getBranchesInfiniteQueryOptions(
+  params: GetBranchesInfiniteQueryOptionsParams = {}
+) {
+  return infiniteQueryOptions({
+    queryKey: branchesQueryKeys.list(params),
+    queryFn: ({ pageParam }) => {
+      return getBranches({
+        ...params,
+        offset: pageParam,
+      });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _, lastPageParam) => {
+      if (lastPage.length < BRANCHES_PER_PAGE) {
+        return;
+      }
+      return lastPageParam + BRANCHES_PER_PAGE;
+    },
   });
 }
 
-export function useGetBranches(filters?: BranchFilters) {
-  const branch = useCurrentBranch();
-  const date = useAtomValue(datetimeAtom);
-  return useQuery(getBranchesQueryOptions(branch, date, filters));
+export function useGetBranchesPaginated(params: GetBranchesInfiniteQueryOptionsParams = {}) {
+  return useInfiniteQuery(getBranchesInfiniteQueryOptions(params));
 }
 ```
+
+The file also exports a non-paginated `getAllBranchesQueryOptions`/`useGetBranches` pair for the
+branch selector and provider.
 
 ## Cross-Entity Imports
 
@@ -86,10 +252,10 @@ Import from another entity's `domain/` (types, async functions) or `ui/` (hooks,
 
 ```ts
 // Allowed: importing another entity's domain types
-import type { SchemaNode } from "@/entities/schema/domain/schema.types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 // Allowed: importing another entity's UI hook
-import { useGetSchema } from "@/entities/schema/ui/queries/get-schema.query";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 // Prohibited: importing another entity's api/
 import { getSchemaFromApi } from "@/entities/schema/api/get-schema-from-api"; // NEVER
@@ -97,28 +263,125 @@ import { getSchemaFromApi } from "@/entities/schema/api/get-schema-from-api"; //
 
 ## Mappers
 
-Mappers are optional. Use them only when transformation is non-trivial (more than 5-6 lines of field access). For simple entities, inline the transformation in the domain async function.
+Mappers (generated wire shape ↔ domain type) live in **`api/`**, e.g. `api/{noun}.mappers.ts`. They import the generated types and return `domain/model` types (`domain/model` is the only part of `domain/` that `api/` may import — its types, and plain vocabulary constants; never `domain/rules` or `domain/use-cases`). Mappers are **optional** — only needed when the domain shape differs from the wire shape; when they match, a `domain/use-cases/` function may return the generated type directly. For a trivial mapping, inline it in the `api/` fetcher rather than a separate mappers file.
+
+## GraphQL fetching: go through the entity layer
+
+The `ui/` layer **never** builds `gql` strings inline or calls `graphqlClient.query` directly. Either:
+
+1. Use a hook from another entity's `ui/queries/` (e.g. `useGetObject` from `entities/nodes/object`).
+2. Add a new fetcher: `api/get-{noun}-from-api.ts` → `domain/use-cases/get-{noun}.ts` → `ui/queries/get-{noun}.query.ts`.
+
+Inline `gql` in `ui/` bypasses caching, branch context, schema typing, and the layered architecture. It is a pattern bug, not a shortcut.
+
+### Single-object reads
+
+For "I have a UUID, give me the node", always use `useGetObject` from `entities/nodes/object/ui/queries/get-object.query.ts`. Its `objectSchema` parameter is a full `ModelSchema`, so pass a schema obtained from `useSchema` rather than an inline literal:
+
+```ts
+const { schema } = useSchema(kind, { throwIfNotFound: true });
+const { data } = useGetObject({ objectId, objectSchema: schema });
+```
+
+Do not write a one-off `resolveUuid` function.
+
+### api-layer `graphqlClient` call conventions
+
+- **Mutations already surface their own error toast.** The client routes a failed request to a toast. If the caller *also* renders one (e.g. in a `useMutation` `onError`), the user sees two. To let the caller own the toast, suppress the client's with the mutation `context`:
+
+  ```ts
+  graphqlClient.mutate({
+    mutation,
+    variables,
+    context: { processErrorMessage: () => {} }, // caller renders the toast; don't double up
+  });
+  ```
+
+## Backend is authoritative
+
+If the server defaults, filters, sorts, or hides something, the client must not maintain a parallel constant. Examples:
+
+- Default namespace exclusions (Core, Internal, Builtin, Lineage, Profile, Template) are applied server-side. Do not duplicate them in a client `HIDDEN_NAMESPACES` constant.
+- Schema kinds and their hidden flags come from the loaded schema — read it via `useSchema`
+  (`entities/schema/ui/hooks/useSchema.ts`); `useGetSchemaHash` detects schema changes.
+- Pagination defaults, sort order, and ACL checks live on the server.
+
+If the client genuinely needs to display a server-side default, surface it via the API response — do not mirror the constant.
+
+## Schema-driven rendering: the extra-field tier
+
+The object views tier a node's attributes and relationships by the schema `display` field
+(`default` | `extra`), a frontend-only concern the backend never acts on. Classification is pure
+`domain/rules`; the tiering is `ui/`:
+
+- `entities/nodes/object/domain/rules/` — `has-extra-fields.ts` reports whether any field is
+  `extra`; `get-attributes-visible-in-list-view.ts` and `get-relationships-visible-in-list-view.ts`
+  drop `extra` fields from list view.
+- `entities/nodes/object/ui/object-details/object-data-display/` — `object-data-display.tsx` hides
+  `extra` fields in the detail view until a `showExtra` toggle reveals them, and
+  `object-attribute-row.tsx` / `object-relationship-row.tsx` mark them with an `ExtraFieldIndicator`.
+
+`display` is read off the loaded schema like any other schema fact (see
+[Backend is authoritative](#backend-is-authoritative)); there is no client-side list of which fields
+are advanced.
 
 ## Reference Example: branches
+
+`branches` is the canonical migrated entity, with two caveats it does **not** model correctly: the
+entity-root `stores.ts` and the `store.set` call in `getAllBranches` are migration debt, not part of
+the pattern (see [Known exceptions (migration debt)](#known-exceptions-migration-debt)).
 
 ```text
 entities/branches/
 ├── api/
-│   ├── get-branches-from-api.ts
-│   └── create-branch-from-api.ts
+│   ├── get-branches-from-api.ts      # raw GraphQL call (also defines BRANCHES_PER_PAGE — debt)
+│   ├── create-branch-from-api.ts
+│   ├── … (delete/merge/rebase/validate/count/details/action-state fetchers)
+│   └── branch.mappers.ts             # mapToBranchListItem/Detail, InfrahubBranchResponse DTO
 ├── domain/
-│   ├── branch.types.ts
-│   ├── get-branches.ts
-│   └── create-branch.ts
+│   ├── model/
+│   │   ├── branch.ts                 # BranchListItem, BranchDetail (imports generated BranchStatus)
+│   │   └── branch-events.ts
+│   ├── rules/
+│   │   ├── branch-filters.ts         # pure filter-extraction helpers
+│   │   └── find-selected-branch.ts
+│   └── use-cases/
+│       ├── get-branches.ts           # calls api fetcher + api mapper; extracts filters via rules
+│       ├── create-branch.ts
+│       └── … (delete/merge/rebase/validate/count/details/action-state)
+├── stores.ts                         # branchesState — migration debt, do not copy
 └── ui/
     ├── queries/
-    │   ├── branch.query-keys.ts
+    │   ├── branch.query-keys.ts      # branchesQueryKeys factory
     │   ├── get-branches.query.ts
-    │   └── create-branch.mutation.ts
-    ├── branches-table.tsx
-    └── branches-provider.tsx
+    │   └── … (create/delete/merge/rebase/validate mutations, count/details/action-state queries)
+    ├── hooks/
+    │   └── use-branch-exists.ts, use-navigate-after-branch-removal.ts
+    ├── routing/
+    │   ├── branch-urls.ts
+    │   └── use-branch-details-outlet.ts
+    ├── branches-table/               # table, toolbar, column defs, cells/
+    ├── branch-list-item/
+    ├── filters/
+    ├── branches-provider.tsx
+    └── … (selector, tabs, create form, details, action buttons)
 ```
+
+A use-case (`domain/use-cases/get-branches.ts`) imports its mapper from `api/branch.mappers.ts`
+(allowed: `use-cases → own api/`).
 
 ## File Naming
 
 See `dev/guidelines/frontend/naming-conventions.md` for the full naming conventions table.
+
+## GraphQL transport vs server-state hooks
+
+`@urql/core` is the GraphQL transport (auth, error routing, token refresh, uploads) only — there is no GraphQL-layer cache and there are no GraphQL hooks. All server-state hooks are TanStack Query.
+
+- `@urql/core` imports are allowed **only** in `src/shared/api/graphql/client.ts` (tests may import it to build documents). There is no provider to wrap the app in — the client is used imperatively.
+- Everything else imports `graphql` and `graphqlClient` from `@/shared/api/graphql/client`, so the transport library stays swappable. `graphql()` covers both cases: a template literal gives a typed document, and a runtime-assembled string (the `jsonToGraphQLQuery` sites) gives an untyped one.
+- Use `useQuery` / `useMutation` from `@tanstack/react-query` (typically via the pattern in `ui/queries/`) for all data fetching.
+
+### Mutation invalidation
+
+Mutations own their cache invalidation. Place `onSuccess`/`onSettled` inside the `useMutation` hook in `ui/queries/*.mutation.ts`. See `dev/guidelines/frontend/naming-conventions.md#mutation-invalidation` for the convention and the audit script.

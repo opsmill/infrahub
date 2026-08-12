@@ -115,10 +115,13 @@ class InfrahubDatabaseProfiler(InfrahubDatabase):
         name: str = "undefined",
         context: dict[str, str] | None = None,
         type: QueryType | None = None,
+        timeout_seconds: float | None = None,
     ) -> tuple[list[Record], dict[str, Any]]:
         if not self.profiling_enabled:
             # Profiling might be disabled to avoid capturing queries while loading data
-            return await super().execute_query_with_metadata(query=query, params=params, name=name, type=type)
+            return await super().execute_query_with_metadata(
+                query=query, params=params, name=name, type=type, timeout_seconds=timeout_seconds
+            )
 
         # We don't want to memory profile all queries
         if self.profile_memory and name in self.queries_names_to_config:
@@ -132,7 +135,9 @@ class InfrahubDatabaseProfiler(InfrahubDatabase):
 
         # Do the query and measure duration
         time_start = time.time()
-        response, metadata = await super().execute_query_with_metadata(query=query, params=params, name=name, type=type)
+        response, metadata = await super().execute_query_with_metadata(
+            query=query, params=params, name=name, type=type, timeout_seconds=timeout_seconds
+        )
         duration_time = time.time() - time_start
 
         assert len(response) < SETTINGS.database.query_size_limit // 2, "make sure data return is small"
@@ -149,15 +154,14 @@ class InfrahubDatabaseProfiler(InfrahubDatabase):
         return response, metadata
 
     def profile(self, profile_memory: bool) -> Self:
-        """
-        This method allows to enable profiling of a InfrahubDatabaseProfiler instance
+        """This method allows to enable profiling of a InfrahubDatabaseProfiler instance.
+
         through a context manager with this syntax:
 
         `with db.profile(profile_memory=...):
             # run code to profile
         `
         """
-
         self.profile_memory = profile_memory
         return self
 

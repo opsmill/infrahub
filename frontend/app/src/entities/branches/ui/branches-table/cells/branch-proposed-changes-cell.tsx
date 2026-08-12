@@ -1,21 +1,20 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton, Spinner } from "@infrahub/ui";
 import { Link } from "react-router";
 
 import { Row } from "@/shared/components/container";
 import { TableCell } from "@/shared/components/table/table-cell";
-import { LinkButton } from "@/shared/components/ui/button";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { QSP } from "@/shared/config/qsp";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import {
   OPEN_STATE,
-  PROPOSED_CHANGE_OBJECT,
   STATE_VALUES_FILTER,
-} from "@/entities/proposed-changes/constants";
+} from "@/entities/proposed-changes/domain/model/proposed-change-state";
 import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
 const OPEN_STATE_FILTER = { name: STATE_VALUES_FILTER, value: [OPEN_STATE] };
 
@@ -59,10 +58,10 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
         <LinkButton
           variant="outline"
           size="sm"
-          to={detailUrl}
-          className="max-w-40 rounded-full pr-2.5 hover:border-custom-blue-700 hover:underline"
+          href={detailUrl}
+          className="max-w-40 rounded-full pr-2.5 data-hovered:border-custom-blue-700 data-hovered:underline"
         >
-          <Icon icon={getSchemaIcon(schema)} className="mr-1 shrink-0 text-custom-blue-800" />
+          <Icon icon={getSchemaIcon(schema)} className="shrink-0 text-custom-blue-800" />
           <span className="truncate">{firstPC.node.name.value}</span>
         </LinkButton>
 

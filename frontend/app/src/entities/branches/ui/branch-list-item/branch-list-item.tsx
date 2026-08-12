@@ -1,18 +1,18 @@
 import { ListBoxItem, type ListBoxItemProps } from "react-aria-components";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { Col, Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { classNames } from "@/shared/utils/common";
 
-import type { BranchListItem as BranchListItemType } from "@/entities/branches/domain/branch.mappers";
+import type { BranchListItem as BranchListItemType } from "@/entities/branches/domain/model/branch";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchGitSyncBadge } from "@/entities/branches/ui/branch-list-item/branch-git-sync-badge";
 import { BranchMetadata } from "@/entities/branches/ui/branch-list-item/branch-metadata";
 import { BranchSchemaChangesBadge } from "@/entities/branches/ui/branch-list-item/branch-schema-changes-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 
 interface BranchListItemProps extends ListBoxItemProps {
   branch: BranchListItemType;
@@ -22,11 +22,11 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
   return (
     <ListBoxItem
       textValue={branch.name}
-      href={constructPath(`/branches/${branch.name}`)}
+      href={getBranchDetailsUrl(branch.name)}
       className={classNames(
         focusVisibleStyle,
         "grid grid-cols-[minmax(200px,1fr)_auto_1fr] items-center gap-4 px-6 py-4",
-        "border border-transparent not-last:border-b-gray-200",
+        "border border-transparent not-last:border-b-border",
         "first:rounded-t-lg last:rounded-b-lg",
         "hover:bg-neutral-100",
         className
@@ -43,7 +43,7 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
             <BranchStatusBadge status={branch.status} />
           )}
 
-          {branch.has_schema_changes && <BranchSchemaChangesBadge />}
+          {branch.schema_differs_from_default_branch && <BranchSchemaChangesBadge />}
         </Row>
 
         <p className="truncate text-gray-600 text-xs">{branch.description}</p>

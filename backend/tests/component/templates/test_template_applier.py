@@ -59,6 +59,7 @@ def _validate_template_fields(
         expected_relationships: List of expected relationship peers
         user_fields: Original user fields (should be preserved as-is)
         excluded_fields: List of field names that should NOT be in the output
+
     """
     user_fields = user_fields or {}
     expected_attrs = expected_attrs or []
@@ -494,19 +495,19 @@ class TestNodeTemplateApplierNumberPoolAttributes:
         device_with_rack_unit_schema: None,
         number_pool: CoreNumberPool,
     ) -> Node:
-        """A device template with from_pool reference for rack_unit."""
+        """A device template with _from_resource_pool relationship for rack_unit."""
         template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch)
         template = await Node.init(schema=template_schema, db=db, branch=default_branch)
         await template.new(
             db=db,
             template_name="device-with-rack-unit-template",
             manufacturer="Acme",
-            rack_unit={"from_pool": {"id": number_pool.id}},
+            rack_unit_from_resource_pool={"id": number_pool.id},
         )
         await template.save(db=db)
         return template
 
-    async def test_applier_passes_from_pool_to_target(
+    async def test_applier_allocates_number_from_pool(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
@@ -514,7 +515,32 @@ class TestNodeTemplateApplierNumberPoolAttributes:
         number_pool: CoreNumberPool,
         device_template_with_pool: Node,
     ) -> None:
-        """Applier should pass from_pool reference to target fields for later allocation."""
+        """Applier should allocate a number from the pool and set it on the attribute."""
+        applier = NodeTemplateApplier(
+            db=db, branch=default_branch, pool_allocator=DefaultPoolAllocator(db=db, branch=default_branch)
+        )
+        target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+        user_fields: dict[str, Any] = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
+
+        fields = await applier.apply(
+            template=device_template_with_pool,
+            target_schema=target_schema,
+            target_id="new-device-id",
+            user_fields=user_fields,
+        )
+
+        _validate_template_fields(fields=fields, user_fields=user_fields)
+        assert fields["rack_unit"] == {"value": 1, "source": number_pool.id}
+
+    async def test_applier_skips_pool_attribute_with_noop_allocator(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        device_with_rack_unit_schema: None,
+        number_pool: CoreNumberPool,
+        device_template_with_pool: Node,
+    ) -> None:
+        """With NoOpPoolAllocator, pool-backed attributes should not appear in fields."""
         applier = NodeTemplateApplier(db=db, branch=default_branch, pool_allocator=NoOpPoolAllocator())
         target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
         user_fields: dict[str, Any] = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
@@ -527,7 +553,7 @@ class TestNodeTemplateApplierNumberPoolAttributes:
         )
 
         _validate_template_fields(fields=fields, user_fields=user_fields)
-        assert fields["rack_unit"] == {"from_pool": {"id": number_pool.id}}
+        assert "rack_unit" not in fields
 
     async def test_applier_preserves_user_value_over_pool_reference(
         self,
@@ -550,3 +576,166 @@ class TestNodeTemplateApplierNumberPoolAttributes:
         )
 
         _validate_template_fields(fields=fields, user_fields=user_fields)
+
+
+class TestNodeTemplateApplierGroupForInstances:
+    @pytest.fixture
+    async def standard_group(self, db: InfrahubDatabase, default_branch: Branch, device_schema: None) -> Node:
+        group_schema = registry.schema.get_node_schema(name=InfrahubKind.STANDARDGROUP, branch=default_branch)
+        group = await Node.init(db=db, schema=group_schema)
+        await group.new(db=db, name="staged-devices")
+        await group.save(db=db)
+        return group
+
+    @pytest.fixture
+    async def second_standard_group(self, db: InfrahubDatabase, default_branch: Branch, device_schema: None) -> Node:
+        group_schema = registry.schema.get_node_schema(name=InfrahubKind.STANDARDGROUP, branch=default_branch)
+        group = await Node.init(db=db, schema=group_schema)
+        await group.new(db=db, name="prod-devices")
+        await group.save(db=db)
+        return group
+
+    async def test_member_of_groups_for_instances_propagates_to_instance(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        device_schema: None,
+        standard_group: Node,
+        second_standard_group: Node,
+    ) -> None:
+        template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
+        template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+        await template.new(
+            db=db,
+            template_name="grouped-template",
+            manufacturer="Acme",
+            member_of_groups_for_instances=[{"id": standard_group.id}, {"id": second_standard_group.id}],
+        )
+        await template.save(db=db)
+
+        applier = NodeTemplateApplier(db=db, branch=default_branch, pool_allocator=NoOpPoolAllocator())
+        target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+        user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
+
+        fields = await applier.apply(
+            template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
+        )
+
+        _validate_template_fields(
+            fields=fields,
+            expected_relationships=[
+                ExpectedTemplateRelationship(
+                    name="member_of_groups", peer_ids=[standard_group.id, second_standard_group.id]
+                ),
+            ],
+            user_fields=user_fields,
+            excluded_fields=["member_of_groups_for_instances"],
+        )
+
+    async def test_subscriber_of_groups_for_instances_propagates_to_instance(
+        self, db: InfrahubDatabase, default_branch: Branch, device_schema: None, standard_group: Node
+    ) -> None:
+        template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
+        template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+        await template.new(
+            db=db,
+            template_name="subscribed-template",
+            manufacturer="Acme",
+            subscriber_of_groups_for_instances=[{"id": standard_group.id}],
+        )
+        await template.save(db=db)
+
+        applier = NodeTemplateApplier(db=db, branch=default_branch, pool_allocator=NoOpPoolAllocator())
+        target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+        user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
+
+        fields = await applier.apply(
+            template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
+        )
+
+        _validate_template_fields(
+            fields=fields,
+            expected_relationships=[
+                ExpectedTemplateRelationship(name="subscriber_of_groups", peer_ids=[standard_group.id]),
+            ],
+            user_fields=user_fields,
+            excluded_fields=["subscriber_of_groups_for_instances"],
+        )
+
+    async def test_template_member_of_groups_does_not_propagate(
+        self, db: InfrahubDatabase, default_branch: Branch, device_schema: None, standard_group: Node
+    ) -> None:
+        template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
+        template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+        await template.new(
+            db=db,
+            template_name="self-member-template",
+            manufacturer="Acme",
+            member_of_groups=[{"id": standard_group.id}],
+        )
+        await template.save(db=db)
+
+        applier = NodeTemplateApplier(db=db, branch=default_branch, pool_allocator=NoOpPoolAllocator())
+        target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+        user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
+
+        fields = await applier.apply(
+            template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
+        )
+
+        _validate_template_fields(
+            fields=fields, user_fields=user_fields, excluded_fields=["member_of_groups", "subscriber_of_groups"]
+        )
+
+    async def test_user_member_of_groups_takes_precedence(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        device_schema: None,
+        standard_group: Node,
+        second_standard_group: Node,
+    ) -> None:
+        template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
+        template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+        await template.new(
+            db=db,
+            template_name="grouped-template",
+            manufacturer="Acme",
+            member_of_groups_for_instances=[{"id": standard_group.id}],
+        )
+        await template.save(db=db)
+
+        applier = NodeTemplateApplier(db=db, branch=default_branch, pool_allocator=NoOpPoolAllocator())
+        target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+        user_fields = {
+            "name": "my-device",
+            "weight": 100,
+            "airflow": "Front to rear",
+            "member_of_groups": [{"id": second_standard_group.id}],
+        }
+
+        fields = await applier.apply(
+            template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
+        )
+
+        _validate_template_fields(fields=fields, user_fields=user_fields)
+
+    async def test_empty_for_instances_does_not_set_field(
+        self, db: InfrahubDatabase, default_branch: Branch, device_schema: None
+    ) -> None:
+        template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
+        template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+        await template.new(db=db, template_name="empty-groups-template", manufacturer="Acme")
+        await template.save(db=db)
+
+        applier = NodeTemplateApplier(db=db, branch=default_branch, pool_allocator=NoOpPoolAllocator())
+        target_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+        user_fields = {"name": "my-device", "weight": 100, "airflow": "Front to rear"}
+
+        fields = await applier.apply(
+            template=template, target_schema=target_schema, target_id="new-device-id", user_fields=user_fields
+        )
+
+        _validate_template_fields(
+            fields=fields, user_fields=user_fields, excluded_fields=["member_of_groups", "subscriber_of_groups"]
+        )

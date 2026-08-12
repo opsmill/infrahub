@@ -3,12 +3,16 @@ from infrahub.core.branch import Branch
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath, SchemaPathType
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 
 def test_SchemaApplyMigrationData_serializer(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, car_person_schema
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
 ) -> None:
     schema_main = registry.schema.get_schema_branch(name=default_branch.name)
 

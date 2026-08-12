@@ -6,6 +6,9 @@ ci_config: &ci_config
 github_workflows: &github_workflows
   - ".github/workflows/*.yml"
 
+version_upgrade_workflow:
+  - ".github/workflows/version-upgrade.yml"
+
 development_files: &development_files
   - "development/**"
   - "tasks/**"
@@ -19,7 +22,7 @@ backend_files: &backend_files
 sdk_files: &sdk_files
   - "python_sdk" # Catch updates to the submodule commit
 
-testcontainers_files:
+testcontainers_files: &testcontainers_files
   - "python_testcontainers/**"
 
 infrahub_uv_files: &infrahub_uv_files
@@ -28,6 +31,10 @@ infrahub_uv_files: &infrahub_uv_files
 
 frontend_files: &frontend_files
   - "frontend/app/**"
+  - "frontend/packages/**"
+  - "frontend/package.json"
+  - "frontend/pnpm-workspace.yaml"
+  - "frontend/pnpm-lock.yaml"
 
 openapi_schema_files: &openapi_schema_files
   - "schema/openapi.json"
@@ -35,11 +42,18 @@ openapi_schema_files: &openapi_schema_files
 
 graphql_schema_files: &graphql_schema_files
   - "schema/schema.graphql"
-  - "frontend/app/src/shared/api/graphql/graphql-env.d.ts"
-  - "frontend/app/src/shared/api/graphql/graphql-cache.d.ts"
+  - "frontend/app/src/shared/api/graphql/generated/**"
+
+error_catalogue_files: &error_catalogue_files
+  - "schema/error-catalogue.json"
+  - "frontend/app/src/shared/api/errors/catalogue.generated.ts"
+  - "frontend/app/scripts/generate-error-bindings.mjs"
 
 e2e_test_files:
   - "frontend/app/tests/e2e/**"
+
+e2e_pytest_test_files: &e2e_pytest_test_files
+  - "tests/e2e/**"
 
 demo_files: &demo_files
   - "models/**"
@@ -92,6 +106,7 @@ documentation_all:
   - *doc_files
   - *markdown_all
   - *vale_files
+  - *sdk_files
 
 documentation_generated_all:
   - *infrahub_reference_generated
@@ -112,6 +127,17 @@ openapi_schema_all:
 graphql_schema_all:
   - *graphql_schema_files
 
+error_catalogue_all:
+  - *error_catalogue_files
+
+observability_standalone_all:
+  - "development/docker-compose-observability.yml"
+  - "development/convert_compose_standalone.py"
+  - "development/alloy/**"
+  - "development/grafana/**"
+  - "development/loki/**"
+  - "development/tempo/**"
+
 e2e_all:
   - *backend_files
   - *frontend_files
@@ -120,3 +146,6 @@ e2e_all:
   - *development_files
   - *infrahub_uv_files
   - *sdk_files
+  - *e2e_pytest_test_files
+  # The pytest e2e suite boots its stack with infrahub-testcontainers.
+  - *testcontainers_files

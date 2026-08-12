@@ -17,10 +17,11 @@ if TYPE_CHECKING:
 
 class Migration006(InternalSchemaMigration):
     name: str = "006_add_rel_on_delete"
+    description: str = "N/A"
     minimum_version: int = 5
 
     @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
+    def init(cls, **kwargs: Any) -> Self:
         internal_schema = cls.get_internal_schema()
         schema_rel = internal_schema.get_node(name="SchemaRelationship")
 
@@ -33,8 +34,7 @@ class Migration006(InternalSchemaMigration):
                 ),
             ),
         ]
-        return cls(migrations=migrations, **kwargs)  # type: ignore[arg-type]
+        return cls(migrations=migrations, **kwargs)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

@@ -70,7 +70,6 @@ class TestExtractProfileIdentifiersFromInput:
 
     def test_objects_with_id_attribute(self) -> None:
         """Profiles can be Node objects with an 'id' attribute."""
-
         node1 = MagicMock(spec=Node, id="uuid1")
         node2 = MagicMock(spec=Node, id="uuid2")
 
@@ -86,7 +85,7 @@ async def schema(db: InfrahubDatabase, default_branch: Branch, register_core_mod
 
 class TestGetMandatoryFieldsFromProfiles:
     async def test_no_profiles_returns_empty(self, db: InfrahubDatabase, default_branch: Branch, schema: None) -> None:
-        """When no profiles are provided, returns empty sets"""
+        """When no profiles are provided, returns empty sets."""
         thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=default_branch)
 
         profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=default_branch)
@@ -103,7 +102,7 @@ class TestGetMandatoryFieldsFromProfiles:
     async def test_profile_provides_mandatory_attribute(
         self, db: InfrahubDatabase, default_branch: Branch, schema: None
     ) -> None:
-        """Profile providing mandatory attribute should be detected"""
+        """Profile providing mandatory attribute should be detected."""
         thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=default_branch)
         profile_schema = registry.schema.get_profile_schema(f"Profile{TestKind.THING}", branch=default_branch)
 
@@ -125,7 +124,7 @@ class TestGetMandatoryFieldsFromProfiles:
     async def test_profile_does_not_provide_attribute(
         self, db: InfrahubDatabase, default_branch: Branch, schema: None
     ) -> None:
-        """Profile not providing the attribute should not be in the result"""
+        """Profile not providing the attribute should not be in the result."""
         thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=default_branch)
         profile_schema = registry.schema.get_profile_schema(f"Profile{TestKind.THING}", branch=default_branch)
 
@@ -146,7 +145,7 @@ class TestGetMandatoryFieldsFromProfiles:
     async def test_profile_provides_mandatory_relationship(
         self, db: InfrahubDatabase, default_branch: Branch, schema: None
     ) -> None:
-        """Profile providing mandatory relationship should be detected"""
+        """Profile providing mandatory relationship should be detected."""
         child_schema = registry.schema.get_node_schema(name=TestKind.CHILD, branch=default_branch)
         thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=default_branch)
 
@@ -173,7 +172,7 @@ class TestGetMandatoryFieldsFromProfiles:
     async def test_multiple_profiles_aggregate(
         self, db: InfrahubDatabase, default_branch: Branch, schema: None
     ) -> None:
-        """Multiple profiles should aggregate their provided fields"""
+        """Multiple profiles should aggregate their provided fields."""
         thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=default_branch)
         profile_schema = registry.schema.get_profile_schema(f"Profile{TestKind.THING}", branch=default_branch)
         child_schema = registry.schema.get_node_schema(name=TestKind.CHILD, branch=default_branch)
@@ -202,7 +201,7 @@ class TestGetMandatoryFieldsFromProfiles:
         assert provided_rels == {"owner"}
 
     async def test_profile_lookup_by_hfid(self, db: InfrahubDatabase, default_branch: Branch, schema: None) -> None:
-        """Profile can be looked up by HFID"""
+        """Profile can be looked up by HFID."""
         thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=default_branch)
         profile_schema = registry.schema.get_profile_schema(f"Profile{TestKind.THING}", branch=default_branch)
         profile = await Node.init(db=db, branch=default_branch, schema=profile_schema)

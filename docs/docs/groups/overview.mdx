@@ -1,0 +1,72 @@
+---
+title: Groups
+---
+
+# Groups
+
+Groups are containers that establish relationships between objects in your infrastructure. They let you create logical collections that span different object types — you might group together devices, locations, and configurations that share a common purpose or characteristic.
+
+Unlike traditional static lists, Infrahub groups are first-class objects in the graph database: they have their own attributes, relationships, and lifecycle. This means groups participate in the broader infrastructure model as active entities rather than passive containers.
+
+## The group architecture
+
+### CoreGroup — the foundation
+
+Every group in Infrahub inherits from `CoreGroup`, a generic model that provides the essential structure. The CoreGroup defines two primary relationships:
+
+- **Members** — objects that belong to the group.
+- **Subscribers** — objects that observe or react to changes in the group.
+
+This dual-relationship model reflects a key design decision: groups aren't just about membership, they're about creating actionable connections between objects.
+
+### Bidirectional relationships
+
+When an object becomes a member of a group, Infrahub automatically creates inverse relationships. Every object gains:
+
+- `member_of_groups` — a computed relationship showing all groups containing this object.
+- `subscriber_of_groups` — a computed relationship showing all groups this object subscribes to.
+
+These automatic relationships enable powerful graph traversals such as "what groups does this device belong to?" or "what objects are affected by changes to this group?" — see [Query group membership](./query-members.mdx) for how to use them.
+
+## Types of groups
+
+Infrahub provides three group types, each for a different use case:
+
+| Type | Class | Membership managed by | Use when |
+|---|---|---|---|
+| **Standard** | `CoreStandardGroup` | You | You want to hand-pick members based on business logic |
+| **Generator** | `CoreGeneratorGroup` | The Generator that owns it | Objects are produced by a Generator and should track back to their origin |
+| **Query** | `CoreGraphQLQueryGroup` | A live GraphQL query | Membership should change dynamically as the underlying data changes |
+
+**Choosing between types:**
+
+- If you are manually deciding what goes in the group, use a **Standard** group.
+- If you have a Generator producing objects, let it own a **Generator** group automatically.
+- If membership should reflect "everything matching criteria X right now," use a **Query** group.
+
+## The visibility model
+
+Infrahub distinguishes between two visibility levels for groups:
+
+- **Default groups** are user-managed and appear in the standard interface. They represent the organizational structure you actively maintain and reference in daily operations.
+- **Internal groups** are system-managed and operate behind the scenes, supporting Infrahub's internal processes. You can toggle visibility when needed for debugging or advanced operations.
+
+Hiding internal groups by default reduces visual complexity while keeping the underlying power available.
+
+## Where groups are used
+
+Groups serve as a bridge between different Infrahub features, creating a unified way to target operations across the system:
+
+- **artifact generation** — an artifact definition targets a group; the definition is decoupled from a specific device list, making it reusable.
+- **Transformations** — Transformations can operate on entire groups, applying consistent changes across all members.
+- **Checks** — validation checks target groups, running the same logic across all members without duplicating code.
+
+For concrete patterns, see [Use groups in automation](./use-in-automation.mdx).
+
+## Learn by doing
+
+New to groups? Walk through [Organize objects with groups](../academy/tutorials/groups.mdx) in Academy. It creates a group end-to-end using a running example.
+
+## Reference
+
+- [Groups schema specification](../reference/schema/groups.mdx)

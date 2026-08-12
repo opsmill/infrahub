@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.constants.database import IndexType
 from infrahub.core.attribute import MAX_STRING_LENGTH
-from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.database.index import IndexItem
 from infrahub.database.neo4j import IndexManagerNeo4j
@@ -37,13 +37,13 @@ class SchemaAttributeTimeframe:
 
 
 class GetLargeAttributeTypesQuery(Query):
-    """For every active attribute on every branch, return a SchemaAttributeTimeframe object"""
+    """For every active attribute on every branch, return a SchemaAttributeTimeframe object."""
 
     name = "get_large_attribute_types_query"
     type = QueryType.READ
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (branch:Branch)
 // --------------
@@ -215,7 +215,7 @@ class DeIndexLargeAttributeValuesQuery(Query):
         self.max_value_size = max_value_size
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["max_value_size"] = self.max_value_size
         query = """
 MATCH (av:AttributeValueIndexed)
@@ -238,7 +238,7 @@ class CreateNonIndexedAttributeValueQuery(Query):
         super().__init__(**kwargs)
         self.schema_attribute_timeframe = schema_attribute_timeframe
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(
             {
                 "attribute_name": self.schema_attribute_timeframe.attr_name,
@@ -331,7 +331,7 @@ class RevertNonIndexOnBranchQuery(Query):
         super().__init__(**kwargs)
         self.schema_attribute_timeframe = schema_attribute_timeframe
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(
             {
                 "attribute_name": self.schema_attribute_timeframe.attr_name,
@@ -416,7 +416,7 @@ class SetAttributeValueIndexedQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (av:AttributeValue)
 SET av:AttributeValueIndexed
@@ -429,7 +429,7 @@ class FinalizeAttributeValueNonIndexedQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (av_no_index:AttributeValueNonIndexed)
 SET av_no_index:AttributeValue
@@ -439,8 +439,7 @@ REMOVE av_no_index:AttributeValueNonIndexed
 
 
 class Migration037(ArbitraryMigration):
-    """
-    Update AttributeValue vertices to be AttributeValueIndexed, unless they include values for LARGE_ATTRIBUTE_TYPES
+    """Update AttributeValue vertices to be AttributeValueIndexed, unless they include values for LARGE_ATTRIBUTE_TYPES.
 
     0. Drop the index on the AttributeValueIndexed vertex, there are no AttributeValueIndexed vertices at this point anyway
     1. For all attributes of all schema on all branches, determine if the attribute is a LARGE_ATTRIBUTE_TYPE and when
@@ -456,15 +455,14 @@ class Migration037(ArbitraryMigration):
     """
 
     name: str = "037_index_attr_vals"
+    description: str = "N/A"
     minimum_version: int = 36
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-
-        return result
+        return MigrationResult()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:  # noqa: PLR0915
-        console = get_migration_console()
+        console = migration_input.console
         db = migration_input.db
         result = MigrationResult()
 

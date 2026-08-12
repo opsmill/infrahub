@@ -6,7 +6,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from infrahub_sdk.protocols import CoreArtifact, CoreArtifactDefinition
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core import registry
 from infrahub.core.constants import DiffAction, InfrahubKind
@@ -49,7 +50,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def context(self, db: InfrahubDatabase) -> InfrahubContext:
-        """Placeholder context for now, would be good to implement some auth and permissions here"""
+        """Placeholder context for now, would be good to implement some auth and permissions here."""
         admin_account = await NodeManager.get_one_by_hfid(
             db=db, kind=InfrahubKind.ACCOUNT, hfid=["admin"], raise_on_error=True
         )

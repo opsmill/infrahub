@@ -1,0 +1,1 @@
+Added a personal **Preferences** card to the account Profile tab, where each user picks their own date format (from curated presets) and timezone (searchable IANA list). A field left unset inherits the organisation default, or the browser default when none is set.

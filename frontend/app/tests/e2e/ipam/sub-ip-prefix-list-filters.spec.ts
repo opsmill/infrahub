@@ -20,6 +20,7 @@ test.describe("/ipam - IP Prefix List Filtering", () => {
 
     await test.step("filter using column filtering", async () => {
       await page.getByRole("button", { name: "Member Type" }).click();
+      await page.getByRole("menuitem", { name: "Filter" }).click();
       await page.getByRole("option", { name: "Prefix Prefix serves as" }).click();
       await page.getByRole("button", { name: "Apply" }).click();
 

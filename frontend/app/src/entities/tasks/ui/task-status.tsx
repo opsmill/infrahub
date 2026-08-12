@@ -1,13 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton, type LinkButtonProps, Spinner, Tooltip } from "@infrahub/ui";
 import { useQuery } from "@tanstack/react-query";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 
-import { constructPath } from "@/shared/api/rest/fetch";
-import { LinkButton, type LinkButtonProps } from "@/shared/components/ui/button";
+import { constructPath, type overrideQueryParams } from "@/shared/api/rest/fetch";
 import { Pulse } from "@/shared/components/ui/pulse";
-import { Spinner } from "@/shared/components/ui/spinner";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { QSP } from "@/shared/config/qsp";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -30,17 +28,26 @@ export function TaskStatus() {
     value: currentBranch.name,
   };
 
+  // The branch must come from the context, not the URL: nuqs writes it one render later, so a
+  // param inherited from the URL would still point at the previous branch.
+  const branchParam: overrideQueryParams = currentBranch.is_default
+    ? { name: QSP.BRANCH, exclude: true }
+    : { name: QSP.BRANCH, value: currentBranch.name };
+
   const commonButtonProps: LinkButtonProps = {
-    size: "square",
-    variant: "ghost",
-    className: "h-8 w-8 bg-neutral-50 border border-neutral-200 rounded-lg relative shrink-0",
-    to: constructPath("/tasks", [{ name: QSP.FILTER, value: JSON.stringify([filter]) }]),
+    shape: "square",
+    variant: "outline",
+    size: "sm",
+    href: constructPath("/tasks", [
+      branchParam,
+      { name: QSP.FILTER, value: JSON.stringify([filter]) },
+    ]),
   };
 
   if (error) {
     const tooltipContent = "Error checking task status";
     return (
-      <Tooltip enabled content={tooltipContent}>
+      <Tooltip message={tooltipContent}>
         <LinkButton {...commonButtonProps} aria-label={tooltipContent}>
           <Icon icon="mdi:error-outline" className="text-red-500" />
         </LinkButton>
@@ -53,7 +60,7 @@ export function TaskStatus() {
     : "View branch tasks";
 
   return (
-    <Tooltip enabled content={tooltipContent}>
+    <Tooltip message={tooltipContent}>
       <LinkButton {...commonButtonProps} aria-label={tooltipContent}>
         {isPending ? <Spinner /> : <TasksStatusIcon />}
         {isTaskRunningOnBranch && (

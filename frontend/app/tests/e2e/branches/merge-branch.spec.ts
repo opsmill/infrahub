@@ -33,7 +33,7 @@ test.describe("Branch - Merge action", () => {
       await expect(page.getByText("COMPLETEDMerge branch graphQL")).toBeVisible({
         timeout: 5 * 60 * 1000,
       });
-      await expect(page.getByRole("button", { name: "Merge", exact: true })).toBeEnabled();
+      await expect(page.getByRole("button", { name: "Merge", exact: true })).toBeDisabled();
     });
   });
 });

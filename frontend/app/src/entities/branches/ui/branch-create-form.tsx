@@ -1,13 +1,14 @@
-import { useQueryState } from "nuqs";
+import { Button } from "@infrahub/ui";
 
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/types";
+import { Row } from "@/shared/components/container";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import InputField from "@/shared/components/form/fields/input.field";
 import { isMinLength, isRequired } from "@/shared/components/form/utils/validation";
-import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { QSP } from "@/shared/config/qsp";
 
+import { SYNC_WITH_GIT_DESCRIPTION } from "@/entities/branches/domain/model/branch";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { useCreateBranchMutation } from "@/entities/branches/ui/queries/create-branch.mutation";
 
 type BranchFormData = {
@@ -23,14 +24,14 @@ type BranchCreateFormProps = {
 };
 
 const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCreateFormProps) => {
-  const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
+  const { setCurrentBranch } = useCurrentBranch();
   const { mutateAsync: createBranch } = useCreateBranchMutation();
 
   const handleSubmit = async (branchFormData: BranchFormData) => {
     await createBranch(branchFormData, {
       onSuccess: async (branchCreated) => {
         if (!branchCreated) return;
-        setBranchInQueryString(branchCreated.is_default ? null : branchCreated.name);
+        setCurrentBranch(branchCreated);
         if (onSuccess) onSuccess(branchCreated);
       },
       onError: (error) => {
@@ -69,15 +70,21 @@ const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCrea
 
       <InputField name="description" label="New branch description" />
 
-      <CheckboxField name="sync_with_git" label="Sync with Git" rules={{ required: true }} />
+      <CheckboxField
+        name="sync_with_git"
+        label="Sync with Git"
+        description={SYNC_WITH_GIT_DESCRIPTION}
+      />
 
-      <div className="text-right">
-        <Button variant="outline" className="mr-2" onClick={onCancel}>
+      <Row className="justify-end">
+        <Button variant="outline" size="sm" onPress={onCancel}>
           Cancel
         </Button>
 
-        <FormSubmit data-testid="submit-create-new-branch">Create a new branch</FormSubmit>
-      </div>
+        <FormSubmit size="sm" data-testid="submit-create-new-branch">
+          Create a new branch
+        </FormSubmit>
+      </Row>
     </Form>
   );
 };

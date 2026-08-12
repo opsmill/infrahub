@@ -1,13 +1,11 @@
 import { toast } from "react-toastify";
 
-import { queryClient } from "@/shared/api/rest/client";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { pluralize } from "@/shared/utils/string";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useDeleteObjects } from "@/entities/nodes/object/ui/queries/delete-objects.mutation";
-import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import type { NodeCore } from "@/entities/nodes/types";
 
 export interface DeleteObjectModalProps {
   selectedRows: Array<NodeCore>;
@@ -32,9 +30,6 @@ export function DeleteObjectsModal({ selectedRows, isOpen, onOpenChange }: Delet
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Objects deleted!"} />);
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-    },
   });
 
   const handleRemoveObjects = async () => {
@@ -48,7 +43,7 @@ export function DeleteObjectsModal({ selectedRows, isOpen, onOpenChange }: Delet
   };
 
   return (
-    <ModalDelete
+    <ModalDanger
       title="Delete"
       description={
         <>
@@ -58,7 +53,7 @@ export function DeleteObjectsModal({ selectedRows, isOpen, onOpenChange }: Delet
       }
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      onDelete={handleRemoveObjects}
+      onConfirm={handleRemoveObjects}
       isLoading={isPending}
     />
   );

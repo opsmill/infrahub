@@ -180,7 +180,7 @@ class GraphQLExtractor:
     async def extract_fields(
         self, selection_set: SelectionSetNode | None, path: str = "/"
     ) -> dict[str, dict | None] | None:
-        """Extract fields and apply Directives"""
+        """Extract fields and apply Directives."""
         if not selection_set:
             return None
 

@@ -1,0 +1,48 @@
+---
+feature: Deployment & Management — Upgrade (hub + 3 spokes)
+pr: TBD
+description: |
+  Splits guides/upgrade.mdx into a hub + 3 spokes under
+  deploy-manage/maintain-upgrade/upgrade/:
+    - index.mdx                 Hub (general overview + known issues; net-new content)
+    - community.mdx             Community upgrade (Docker, Helm, Dev/Demo)
+    - enterprise.mdx            Enterprise upgrade (Docker, Helm)
+    - observability-stack.mdx   Observability stack upgrade
+  No legacy topic file existed for upgrade; only the guide is being moved.
+  Original guides/upgrade.mdx remains on disk during iteration.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/guides/upgrade
+    to: /docs/deploy-manage/maintain-upgrade/upgrade/
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/deploy-manage/maintain-upgrade/upgrade/
+    title: Upgrade (hub)
+  - path: /docs/deploy-manage/maintain-upgrade/upgrade/community
+    title: Upgrade Community
+  - path: /docs/deploy-manage/maintain-upgrade/upgrade/enterprise
+    title: Upgrade Enterprise
+  - path: /docs/deploy-manage/maintain-upgrade/upgrade/observability-stack
+    title: Upgrade the observability stack
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via redirect at runtime; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/home.mdx
+    line: 85
+    current: "guides/upgrade"
+    should_be: "deploy-manage/maintain-upgrade/upgrade/"
+  - file: docs/docs/faq/faq.mdx
+    line: 127
+    current: ../guides/upgrade.mdx
+    should_be: ../deploy-manage/maintain-upgrade/upgrade/
+  - file: docs/docs/deploy-manage/install-configure/production-deployment/index.mdx
+    line: 104
+    current: url="../../../guides/upgrade"
+    should_be: url="../../../deploy-manage/maintain-upgrade/upgrade/"
+  - file: docs/docs/deploy-manage/install-configure/install/enterprise.mdx
+    line: 124
+    current: ../../../guides/upgrade.mdx#upgrading-the-observability-stack
+    should_be: ../../../deploy-manage/maintain-upgrade/upgrade/observability-stack.mdx

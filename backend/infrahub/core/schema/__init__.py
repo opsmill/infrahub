@@ -8,6 +8,7 @@ from infrahub_sdk.utils import deep_merge_dict
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.core.constants import RESTRICTED_NAMESPACES
+from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.models import HashableModel
 from infrahub.exceptions import SchemaNotFoundError
 
@@ -71,7 +72,6 @@ class SchemaRoot(BaseModel):
     @classmethod
     def has_schema(cls, values: dict[str, Any], name: str) -> bool:
         """Check if a schema exist locally as a node or as a generic."""
-
         available_schemas = [item.kind for item in values.get("nodes", []) + values.get("generics", [])]
         if name not in available_schemas:
             return False
@@ -79,21 +79,50 @@ class SchemaRoot(BaseModel):
         return True
 
     def get(self, name: str) -> NodeSchema | GenericSchema:
-        """Check if a schema exist locally as a node or as a generic."""
+        """Check if a schema exist locally as a node or as a generic.
 
+        Raises:
+            SchemaNotFoundError: When no node or generic with the given name exists locally.
+
+        """
         for item in self.nodes + self.generics:
             if item.kind == name:
                 return item
 
         raise SchemaNotFoundError(branch_name="undefined", identifier=name)
 
-    def validate_namespaces(self) -> list[str]:
+    def validate_reserved_names(self) -> list[str]:
+        """Validate that no model, attribute or relationship uses a name reserved for internal use.
+
+        Returns:
+            One error message per restricted namespace and per reserved name suffix found, empty when the schema is valid.
+
+        """
+        return self._validate_namespaces() + self._validate_reserved_suffixes()
+
+    def _validate_namespaces(self) -> list[str]:
         models = self.nodes + self.generics
         errors: list[str] = []
         for model in models:
             if model.namespace in RESTRICTED_NAMESPACES:
                 errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
 
+        return errors
+
+    def _validate_reserved_suffixes(self) -> list[str]:
+        models = self.nodes + self.generics + self.extensions.nodes
+        errors: list[str] = []
+        for model in models:
+            for attr in model.attributes:
+                if attr.name.endswith(RESOURCE_POOL_REL_SUFFIX):
+                    errors.append(
+                        f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on attribute '{attr.name}' in '{model.kind}'"
+                    )
+            for rel in model.relationships:
+                if rel.name.endswith(RESOURCE_POOL_REL_SUFFIX):
+                    errors.append(
+                        f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on relationship '{rel.name}' in '{model.kind}'"
+                    )
         return errors
 
     def gather_warnings(self) -> list[SchemaWarning]:
@@ -137,8 +166,11 @@ class SchemaRoot(BaseModel):
         return warnings
 
     def generate_uuid(self) -> None:
-        """Generate UUID for all nodes, attributes & relationships
-        Mainly useful during unit tests."""
+        """Generate UUID for all nodes, attributes & relationships.
+
+        Mainly useful during unit tests.
+
+        """
         for node in self.nodes + self.generics:
             if not node.id:
                 node.id = str(uuid.uuid4())

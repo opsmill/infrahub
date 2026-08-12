@@ -1,0 +1,63 @@
+---
+feature: Deployment & Management — Database Backup (hub + 2 spokes)
+pr: TBD
+description: |
+  Moves two pages from legacy topic/guide locations into the new
+  deploy-manage/maintain-upgrade/database-backup/ sub-category:
+    - topics/database-backup.mdx    → maintain-upgrade/database-backup/index.mdx (hub)
+    - guides/database-backup.mdx    → split into two spokes:
+        backup-and-restore.mdx          (standalone backup/restore + advanced usage)
+        cluster-backup-and-restore.mdx  (Neo4j cluster backup/restore)
+  Original source files remain on disk during iteration.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/database-backup
+    to: /docs/deploy-manage/maintain-upgrade/database-backup/
+  - from: /docs/guides/database-backup
+    to: /docs/deploy-manage/maintain-upgrade/database-backup/backup-and-restore
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/deploy-manage/maintain-upgrade/database-backup/
+    title: Database backup (hub)
+  - path: /docs/deploy-manage/maintain-upgrade/database-backup/backup-and-restore
+    title: Backup and restore
+  - path: /docs/deploy-manage/maintain-upgrade/database-backup/cluster-backup-and-restore
+    title: Cluster backup and restore
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via redirect at runtime; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/home.mdx
+    line: 91
+    current: "guides/database-backup"
+    should_be: "deploy-manage/maintain-upgrade/database-backup/backup-and-restore"
+  - file: docs/docs/faq/faq.mdx
+    line: 115
+    current: ../topics/database-backup.mdx
+    should_be: ../deploy-manage/maintain-upgrade/database-backup/
+  - file: docs/docs/deploy-manage/install-configure/install/index.mdx
+    line: 38
+    current: ../../../guides/database-backup.mdx
+    should_be: ../../../deploy-manage/maintain-upgrade/database-backup/backup-and-restore.mdx
+  - file: docs/docs/deploy-manage/install-configure/production-deployment/index.mdx
+    line: 84
+    current: url="../../../guides/database-backup"
+    should_be: url="../../../deploy-manage/maintain-upgrade/database-backup/backup-and-restore"
+  - file: docs/docs/schema/file-object.mdx
+    line: 149
+    current: ../guides/database-backup#step-3-backup-the-object-storage
+    should_be: ../deploy-manage/maintain-upgrade/database-backup/backup-and-restore#step-3-backup-the-object-storage
+  - file: docs/docs/topics/object-storage.mdx
+    line: 122
+    current: ../guides/database-backup#step-3-backup-the-object-storage
+    should_be: ../deploy-manage/maintain-upgrade/database-backup/backup-and-restore#step-3-backup-the-object-storage
+  - file: docs/docs/release-notes/infrahub/release-1_2_0.mdx
+    line: 172
+    current: ../../guides/database-backup.mdx
+    should_be: ../../deploy-manage/maintain-upgrade/database-backup/backup-and-restore.mdx
+  - file: docs/docs/release-notes/infrahub/release-1_2_0.mdx
+    line: 174
+    current: ../../guides/database-backup.mdx#create-a-full-backup
+    should_be: ../../deploy-manage/maintain-upgrade/database-backup/backup-and-restore.mdx#create-a-full-backup

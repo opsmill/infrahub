@@ -31,6 +31,42 @@ export async function uploadFile(
 }
 
 /**
+ * Build a valid, minimal single-page PDF document.
+ *
+ * The browser's PDF viewer (PDFium) validates the document structure when a
+ * saved file is previewed in an `<iframe src="data:application/pdf;...">`.
+ * Uploading plain text with a `application/pdf` mime type makes the viewer fail
+ * with "Failed to load PDF document", so PDF tests must use real PDF bytes.
+ */
+export function createMinimalPdfBuffer(text = "Mock PDF content for E2E testing"): Buffer {
+  const escaped = text.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  const stream = `BT /F1 18 Tf 36 100 Td (${escaped}) Tj ET`;
+
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 144] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /Contents 4 0 R >>",
+    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
+  ];
+
+  let body = "%PDF-1.4\n";
+  const offsets: number[] = [];
+  objects.forEach((object, index) => {
+    offsets.push(Buffer.byteLength(body));
+    body += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+
+  const xrefOffset = Buffer.byteLength(body);
+  let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) {
+    xref += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  }
+  const trailer = `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+
+  return Buffer.from(body + xref + trailer);
+}
+
+/**
  * Common file types for testing
  */
 export const TEST_FILE_TYPES = {
@@ -98,7 +134,7 @@ export async function fillCircuitContractFields(
     ...options,
   };
 
-  const form = page.getByTestId("side-panel-container");
+  const form = page.getByLabel("sheet");
 
   // Wait for form to be ready
   await form.getByLabel("Contract Number").waitFor({ state: "visible" });

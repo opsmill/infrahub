@@ -59,7 +59,13 @@ async def plan_patch_cmd(
     apply: bool = typer.Option(False, help="Apply the patch immediately after creating it"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Create a plan for a given patch and save it in the patch plans directory to be applied/reverted"""
+    """Create a plan for a given patch and save it in the patch plans directory to be applied/reverted.
+
+    Raises:
+        Exit: When no PatchQuery subclass is found in the provided module or when more than one
+            is defined (raises typer.Exit to terminate the CLI command).
+
+    """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -105,7 +111,13 @@ async def apply_patch_cmd(
     patch_plan_dir: Path = typer.Argument(help="Path to the directory containing a patch plan"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Apply a given patch plan"""
+    """Apply a given patch plan.
+
+    Raises:
+        Exit: When the provided patch_plan_dir does not exist or is not a directory
+            (raises typer.Exit to terminate the CLI command).
+
+    """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -133,7 +145,13 @@ async def revert_patch_cmd(
     patch_plan_dir: Path = typer.Argument(help="Path to the directory containing a patch plan"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Revert a given patch plan"""
+    """Revert a given patch plan.
+
+    Raises:
+        Exit: When the provided patch_plan_dir does not exist or is not a directory
+            (raises typer.Exit to terminate the CLI command).
+
+    """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)

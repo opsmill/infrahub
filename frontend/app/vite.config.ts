@@ -1,23 +1,21 @@
 /// <reference types="vite" />
+import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import monacoEditorPlugin from "vite-plugin-monaco-editor-esm";
 import svgr from "vite-plugin-svgr";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 // https://vitejs.dev/config/
 export default defineConfig({
   server: {
     port: 8080,
     watch: {
-      ignored: [
-        "**/graphql-env.d.ts",
-        "**/graphql-cache.d.ts",
-        "**/graphql/generated/**",
-        "**/rest/types.generated.ts",
-        "**/playwright-report/**",
-      ],
+      ignored: ["**/generated/**", "**/*.generated.ts", "**/playwright-report/**"],
+      followSymlinks: true,
+    },
+    fs: {
+      allow: [".."],
     },
   },
   preview: {
@@ -26,13 +24,12 @@ export default defineConfig({
   },
   plugins: [
     tailwindcss(),
-    react({
-      babel: {
-        plugins: ["babel-plugin-react-compiler"],
-      },
+    react(),
+    babel({
+      presets: [reactCompilerPreset()],
+      exclude: ["**/node_modules/**", "**/generated/**", "**/*.generated.ts"],
     }),
     svgr(),
-    tsconfigPaths(),
     monacoEditorPlugin({
       languageWorkers: ["editorWorkerService", "json"],
       customWorkers: [
@@ -44,4 +41,12 @@ export default defineConfig({
       publicPath: "assets/monaco-editor",
     }),
   ],
+  resolve: {
+    tsconfigPaths: true,
+    // @infrahub/graph declares @xyflow/react as a peer dependency; resolve it
+    // from the app's own copy so a single module instance backs the React Flow
+    // context (and so the prod Docker install, which skips devDependencies,
+    // can still resolve it from graph source files).
+    dedupe: ["@xyflow/react"],
+  },
 });

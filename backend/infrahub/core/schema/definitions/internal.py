@@ -7,7 +7,7 @@ from types import GenericAlias
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 from infrahub.core.constants import (
     DEFAULT_DESCRIPTION_LENGTH,
@@ -29,7 +29,9 @@ from infrahub.core.constants import (
     RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
+    SchemaAttributeDisplay,
     UpdateSupport,
+    Visibility,
 )
 from infrahub.core.schema.attribute_parameters import (
     AttributeParameters,
@@ -47,6 +49,7 @@ from infrahub.types import ATTRIBUTE_KIND_LABELS
 
 class ExtraField(TypedDict):
     update: UpdateSupport
+    visibility: NotRequired[Visibility]
 
 
 class SchemaAttribute(BaseModel):
@@ -58,9 +61,14 @@ class SchemaAttribute(BaseModel):
     regex: str | None = None
     unique: bool | None = None
     optional: bool | None = None
+    ordered: bool | None = None
     min_length: int | None = None
     max_length: int | None = None
     enum: list[str] | None = None
+    enum_class: str | None = Field(
+        default=None,
+        description="Name of the generated SDK enum class that carries this field's constrained values.",
+    )
     default_value: Any | None = None
     default_factory: str | None = None
     default_to_none: bool = False
@@ -74,12 +82,23 @@ class SchemaAttribute(BaseModel):
     def to_dict(self) -> dict[str, Any]:
         model = self.model_dump(
             exclude_none=True,
-            exclude={"default_factory", "default_to_none", "extra", "internal_kind", "override_default_value"},
+            exclude={
+                "default_factory",
+                "default_to_none",
+                "extra",
+                "internal_kind",
+                "override_default_value",
+                "enum_class",
+            },
         )
         if self.default_value is not None and isinstance(self.default_value, Enum):
             model["default_value"] = self.default_value.value
 
         return model
+
+    @property
+    def visibility(self) -> Visibility:
+        return self.extra.get("visibility", Visibility.INTERNAL)
 
     @property
     def optional_in_model(self) -> bool:
@@ -138,9 +157,110 @@ class SchemaAttribute(BaseModel):
         return f"default={formatted_default}"
 
     @property
+    def external_object_kind(self) -> str:
+        """Self-contained type annotation for the user-facing (SDK) write/read models.
+
+        Constrained fields are typed with a dedicated ``(str, Enum)`` class emitted alongside
+        the models, so the allowed-value set is carried by a self-contained enum rather than an
+        inline ``Literal``. Backend-only complex kinds collapse to plain JSON-compatible
+        containers so the models import with only the SDK installed.
+        """
+        if self.enum:
+            if self.enum_class is not None:
+                return self.enum_class
+            values = ", ".join(repr(value) for value in self.enum)
+            return f"Literal[{values}]"
+        if self.internal_kind is not None:
+            return self._external_internal_kind()
+
+        kind_map = {
+            "Any": "Any",
+            "Boolean": "bool",
+            "Text": "str",
+            "List": "list",
+            "Number": "int",
+            "URL": "str",
+            "JSON": "dict[str, Any]",
+        }
+        return kind_map[self.kind]
+
+    def _external_internal_kind(self) -> str:
+        fixed_types: dict[Any, str] = {
+            AttributeSchema: "list[AttributeSchema__VARIANT__]",
+            RelationshipSchema: "list[RelationshipSchema__VARIANT__]",
+            DropdownChoice: "list[DropdownChoice__VARIANT__]",
+            ComputedAttribute: "ComputedAttribute__VARIANT__",
+        }
+        internal = self.internal_kind
+        if isinstance(internal, list):
+            return "AttributeParametersUnion__VARIANT__"
+        if isinstance(internal, GenericAlias):
+            return str(internal)
+        if internal in fixed_types:
+            return fixed_types[internal]
+        if internal is None:
+            return "Any"
+        if self.kind == "List":
+            return f"list[{internal.__name__}]"
+        return internal.__name__
+
+    @property
+    def external_is_optional(self) -> bool:
+        if self.optional_in_model:
+            return True
+        # A non-list factory (e.g. a rich parameters model) is not reproducible in a
+        # self-contained model, so the field is exposed as nullable instead.
+        if self.default_factory and self.default_factory != "list":
+            return True
+        return False
+
+    @property
+    def external_type_annotation(self) -> str:
+        if self.external_is_optional:
+            return f"{self.external_object_kind} | None"
+        return self.external_object_kind
+
+    @property
+    def external_default_definition(self) -> str:
+        if self.default_factory == "list":
+            return "default_factory=list"
+        if self.default_factory:
+            return "default=None"
+        if not self.optional and self.default_value is None:
+            return "..."
+        if self.override_default_value is not None:
+            return f"default={self.override_default_value}"
+        return self._external_formatted_default()
+
+    def _external_formatted_default(self) -> str:
+        default = self.default_value
+        if self.enum_class is not None and isinstance(default, Enum):
+            # The field is typed with the generated enum, so its default must be the enum member
+            # (not the raw value) to type-check; ``use_enum_values`` coerces it to the value at runtime.
+            return f"default={self.enum_class}.{default.name}"
+        if isinstance(default, Enum):
+            return f"default={default.value!r}"
+        if isinstance(default, str):
+            return f"default={default!r}"
+        if self.default_to_none:
+            return "default=None"
+        return f"default={default}"
+
+    @property
     def pattern(self) -> str:
         if self.regex:
             return f"pattern='{self.regex}',"
+        return ""
+
+    @property
+    def external_pattern(self) -> str:
+        """Pattern rendering for the self-contained SDK models.
+
+        Emitted as a raw string literal so regex escapes such as ``\\b`` keep their
+        regular-expression meaning instead of being parsed as string escapes.
+        """
+        if self.regex:
+            return f'pattern=r"{self.regex}",'
         return ""
 
     @property
@@ -167,9 +287,16 @@ class SchemaRelationship(BaseModel):
     cardinality: str
     branch: str
     optional: bool
+    extra: ExtraField | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return self.model_dump(exclude_none=True)
+        return self.model_dump(exclude_none=True, exclude={"extra"})
+
+    @property
+    def visibility(self) -> Visibility:
+        if self.extra is None:
+            return Visibility.INTERNAL
+        return self.extra.get("visibility", Visibility.INTERNAL)
 
 
 class SchemaNode(BaseModel):
@@ -181,7 +308,7 @@ class SchemaNode(BaseModel):
     attributes: list[SchemaAttribute]
     relationships: list[SchemaRelationship]
     display_label: str | None = None
-    display_labels: list[str]
+    display_labels: list[str] | None = None
     uniqueness_constraints: list[list[str]] | None = None
     human_friendly_id: list[str] | None = None
 
@@ -228,14 +355,14 @@ base_node_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    display_labels=["label__value"],
+    display_label="label__value",
     attributes=[
         SchemaAttribute(
             name="id",
             description="The ID of the node",
             kind="Text",
             optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="name",
@@ -245,7 +372,7 @@ base_node_schema = SchemaNode(
             regex=str(NODE_NAME_REGEX),
             min_length=DEFAULT_NAME_MIN_LENGTH,
             max_length=DEFAULT_NAME_MAX_LENGTH,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="namespace",
@@ -254,7 +381,7 @@ base_node_schema = SchemaNode(
             regex=str(NAMESPACE_REGEX),
             min_length=DEFAULT_KIND_MIN_LENGTH,
             max_length=DEFAULT_KIND_MAX_LENGTH,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="description",
@@ -262,7 +389,7 @@ base_node_schema = SchemaNode(
             description="Short description of the model, will be visible in the frontend.",
             optional=True,
             max_length=DEFAULT_DESCRIPTION_LENGTH,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="label",
@@ -270,7 +397,7 @@ base_node_schema = SchemaNode(
             description="Human friendly representation of the name/kind",
             optional=True,
             max_length=DEFAULT_LABEL_MAX_LENGTH,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="branch",
@@ -278,9 +405,13 @@ base_node_schema = SchemaNode(
             internal_kind=BranchSupportType,
             description="Type of branch support for the model.",
             enum=BranchSupportType.available_types(),
+            enum_class="BranchSupportType",
             default_value=BranchSupportType.AWARE,
             optional=True,
-            extra={"update": UpdateSupport.NOT_SUPPORTED},  # https://github.com/opsmill/infrahub/issues/2477
+            extra={
+                "update": UpdateSupport.NOT_SUPPORTED,
+                "visibility": Visibility.WRITE,
+            },  # https://github.com/opsmill/infrahub/issues/2477
         ),
         SchemaAttribute(
             name="default_filter",
@@ -288,7 +419,7 @@ base_node_schema = SchemaNode(
             regex=str(NAME_REGEX_OR_EMPTY),
             description="Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)",
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="human_friendly_id",
@@ -296,14 +427,15 @@ base_node_schema = SchemaNode(
             internal_kind=str,
             description="Human friendly and unique identifier for the object.",
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            ordered=True,
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="display_label",
             kind="Text",
             description="Attribute or Jinja2 template to use to generate the display label",
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="display_labels",
@@ -311,7 +443,8 @@ base_node_schema = SchemaNode(
             internal_kind=str,
             description="List of attributes to use to generate the display label (deprecated)",
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            ordered=True,
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="include_in_menu",
@@ -320,29 +453,33 @@ base_node_schema = SchemaNode(
             default_value=True,
             default_to_none=True,
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="menu_placement",
             kind="Text",
             description="Defines where in the menu this object should be placed.",
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="icon",
             kind="Text",
             description="Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/",
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="order_by",
             kind="List",
             internal_kind=str,
-            description="List of attributes to use to order the results by default",
+            description=(
+                "List of entries to order results by. Supports attributes, relationship attributes, "
+                "and node_metadata with __asc/__desc."
+            ),
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            ordered=True,
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="uniqueness_constraints",
@@ -350,14 +487,15 @@ base_node_schema = SchemaNode(
             internal_kind=list[list[str]],
             description="List of multi-element uniqueness constraints that can combine relationships and attributes",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            ordered=True,
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="documentation",
             kind="URL",
             description="Link to a documentation associated with this object, can be internal or external.",
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="state",
@@ -366,8 +504,9 @@ base_node_schema = SchemaNode(
             description="Expected state of the node/generic after loading the schema",
             default_value=HashableModelState.PRESENT,
             enum=HashableModelState.available_types(),
+            enum_class="SchemaState",
             optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="attributes",
@@ -376,7 +515,7 @@ base_node_schema = SchemaNode(
             description="Node attributes",
             default_factory="list",
             optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="relationships",
@@ -385,7 +524,7 @@ base_node_schema = SchemaNode(
             description="Node Relationships",
             default_factory="list",
             optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
     ],
     relationships=[],
@@ -396,7 +535,7 @@ node_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    display_labels=["label__value"],
+    display_label="label__value",
     human_friendly_id=["namespace__value", "name__value"],
     uniqueness_constraints=[["namespace__value", "name__value"]],
     attributes=base_node_schema.attributes
@@ -408,7 +547,7 @@ node_schema = SchemaNode(
             default_factory="list",
             description="List of Generic Kind that this node is inheriting from",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="generate_profile",
@@ -416,7 +555,7 @@ node_schema = SchemaNode(
             description="Indicate if a profile schema should be generated for this schema",
             default_value=True,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="generate_template",
@@ -424,28 +563,28 @@ node_schema = SchemaNode(
             description="Indicate if an object template schema should be generated for this schema",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="hierarchy",
             kind="Text",
             description="Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.READ},
         ),
         SchemaAttribute(
             name="parent",
             kind="Text",
             description="Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="children",
             kind="Text",
             description="Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
     ],
     relationships=[
@@ -458,6 +597,7 @@ node_schema = SchemaNode(
             cardinality="many",
             branch=BranchSupportType.AWARE.value,
             optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
         SchemaRelationship(
             name="relationships",
@@ -468,6 +608,7 @@ node_schema = SchemaNode(
             cardinality="many",
             branch=BranchSupportType.AWARE.value,
             optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
     ],
 )
@@ -478,7 +619,7 @@ attribute_schema = SchemaNode(
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     default_filter=None,
-    display_labels=["name__value"],
+    display_label="name__value",
     uniqueness_constraints=[["name__value", "node"]],
     attributes=[
         SchemaAttribute(
@@ -486,7 +627,7 @@ attribute_schema = SchemaNode(
             description="The ID of the attribute",
             kind="Text",
             optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="name",
@@ -495,21 +636,23 @@ attribute_schema = SchemaNode(
             regex=str(NAME_REGEX),
             min_length=DEFAULT_KIND_MIN_LENGTH,
             max_length=DEFAULT_KIND_MAX_LENGTH,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="kind",
             kind="Text",
             description="Defines the type of the attribute.",
             enum=ATTRIBUTE_KIND_LABELS,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+            enum_class="AttributeKind",
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="enum",
             kind="List",
             description="Define a list of valid values for the attribute.",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            ordered=False,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="computed_attribute",
@@ -517,7 +660,7 @@ attribute_schema = SchemaNode(
             internal_kind=ComputedAttribute,
             description="Defines how the value of this attribute will be populated.",
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="choices",
@@ -525,28 +668,29 @@ attribute_schema = SchemaNode(
             internal_kind=DropdownChoice,
             description="Define a list of valid choices for a dropdown attribute.",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            ordered=False,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="regex",
             kind="Text",
             description="Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="max_length",
             kind="Number",
             description="Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="min_length",
             kind="Number",
             description="Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="label",
@@ -554,7 +698,7 @@ attribute_schema = SchemaNode(
             optional=True,
             description="Human friendly representation of the name. Will be autogenerated if not provided",
             max_length=DEFAULT_LABEL_MAX_LENGTH,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="description",
@@ -562,7 +706,7 @@ attribute_schema = SchemaNode(
             optional=True,
             description="Short description of the attribute.",
             max_length=DEFAULT_DESCRIPTION_LENGTH,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="read_only",
@@ -571,7 +715,7 @@ attribute_schema = SchemaNode(
             "Mainly relevant for internal object.",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="unique",
@@ -579,7 +723,7 @@ attribute_schema = SchemaNode(
             description="Indicate if the value of this attribute must be unique in the database for a given model.",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="optional",
@@ -588,7 +732,7 @@ attribute_schema = SchemaNode(
             default_value=False,
             override_default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="branch",
@@ -596,22 +740,35 @@ attribute_schema = SchemaNode(
             internal_kind=BranchSupportType,
             description="Type of branch support for the attribute, if not defined it will be inherited from the node.",
             enum=BranchSupportType.available_types(),
+            enum_class="BranchSupportType",
             optional=True,
-            extra={"update": UpdateSupport.NOT_SUPPORTED},  # https://github.com/opsmill/infrahub/issues/2475
+            extra={
+                "update": UpdateSupport.NOT_SUPPORTED,
+                "visibility": Visibility.WRITE,
+            },  # https://github.com/opsmill/infrahub/issues/2475
         ),
         SchemaAttribute(
             name="order_weight",
             kind="Number",
             description="Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.",
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+        ),
+        SchemaAttribute(
+            name="ordered",
+            kind="Boolean",
+            description="Whether element order is significant. When False, reordering a List "
+            "or JSON-array attribute is not a merge/rebase conflict.",
+            default_value=True,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="default_value",
             kind="Any",
             description="Default value of the attribute.",
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="inherited",
@@ -619,7 +776,7 @@ attribute_schema = SchemaNode(
             default_value=False,
             description="Internal value to indicate if the attribute was inherited from a Generic node.",
             optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.READ},
         ),
         SchemaAttribute(
             name="state",
@@ -628,8 +785,9 @@ attribute_schema = SchemaNode(
             description="Expected state of the attribute after loading the schema",
             default_value=HashableModelState.PRESENT,
             enum=HashableModelState.available_types(),
+            enum_class="SchemaState",
             optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="allow_override",
@@ -637,9 +795,10 @@ attribute_schema = SchemaNode(
             internal_kind=AllowOverrideType,
             description="Type of allowed override for the attribute.",
             enum=AllowOverrideType.available_types(),
+            enum_class="AllowOverrideType",
             default_value=AllowOverrideType.ANY,
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="parameters",
@@ -653,7 +812,7 @@ attribute_schema = SchemaNode(
             ],
             optional=True,
             description="Extra parameters specific to this kind of attribute",
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
             default_factory="AttributeParameters",
         ),
         SchemaAttribute(
@@ -662,7 +821,21 @@ attribute_schema = SchemaNode(
             optional=True,
             description="Mark attribute as deprecated and provide a user-friendly message to display",
             max_length=DEFAULT_DESCRIPTION_LENGTH,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+        ),
+        SchemaAttribute(
+            name="display",
+            kind="Text",
+            internal_kind=SchemaAttributeDisplay,
+            description=(
+                "Controls where the attribute is displayed. 'default' shows in the main view, "
+                "'extra' shows in an expanded/secondary section."
+            ),
+            enum=SchemaAttributeDisplay.available_types(),
+            enum_class="SchemaAttributeDisplay",
+            default_value=SchemaAttributeDisplay.DEFAULT,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
     ],
     relationships=[
@@ -674,6 +847,7 @@ attribute_schema = SchemaNode(
             cardinality="one",
             branch=BranchSupportType.AWARE.value,
             optional=False,
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.INTERNAL},
         )
     ],
 )
@@ -684,7 +858,7 @@ relationship_schema = SchemaNode(
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     default_filter=None,
-    display_labels=["name__value"],
+    display_label="name__value",
     uniqueness_constraints=[["name__value", "node"]],
     attributes=[
         SchemaAttribute(
@@ -692,7 +866,7 @@ relationship_schema = SchemaNode(
             description="The ID of the relationship schema",
             kind="Text",
             optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="name",
@@ -701,14 +875,14 @@ relationship_schema = SchemaNode(
             regex=str(NAME_REGEX),
             min_length=DEFAULT_KIND_MIN_LENGTH,
             max_length=DEFAULT_KIND_MAX_LENGTH,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="peer",
             kind="Text",
             description="Type (kind) of objects supported on the other end of the relationship.",
             regex=str(NODE_KIND_REGEX),
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="kind",
@@ -716,8 +890,9 @@ relationship_schema = SchemaNode(
             internal_kind=RelationshipKind,
             description="Defines the type of the relationship.",
             enum=RelationshipKind.available_types(),
+            enum_class="RelationshipKind",
             default_value=RelationshipKind.GENERIC,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="label",
@@ -725,7 +900,7 @@ relationship_schema = SchemaNode(
             description="Human friendly representation of the name. Will be autogenerated if not provided",
             optional=True,
             max_length=DEFAULT_LABEL_MAX_LENGTH,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="description",
@@ -733,7 +908,7 @@ relationship_schema = SchemaNode(
             optional=True,
             description="Short description of the relationship.",
             max_length=DEFAULT_DESCRIPTION_LENGTH,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="identifier",
@@ -743,7 +918,7 @@ relationship_schema = SchemaNode(
             regex=str(NAME_REGEX),
             max_length=DEFAULT_REL_IDENTIFIER_LENGTH,
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.NOT_SUPPORTED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="cardinality",
@@ -751,9 +926,10 @@ relationship_schema = SchemaNode(
             internal_kind=RelationshipCardinality,
             description="Defines how many objects are expected on the other side of the relationship.",
             enum=RelationshipCardinality.available_types(),
+            enum_class="RelationshipCardinality",
             default_value=RelationshipCardinality.MANY,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="min_count",
@@ -761,7 +937,7 @@ relationship_schema = SchemaNode(
             description="Defines the minimum objects allowed on the other side of the relationship.",
             default_value=0,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="max_count",
@@ -769,14 +945,14 @@ relationship_schema = SchemaNode(
             description="Defines the maximum objects allowed on the other side of the relationship.",
             default_value=0,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="common_parent",
             kind="Text",
             optional=True,
             description="Name of a parent relationship on the peer schema that must share the same related object with the object's parent.",
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="common_relatives",
@@ -784,14 +960,14 @@ relationship_schema = SchemaNode(
             internal_kind=str,
             optional=True,
             description="List of relationship names on the peer schema for which all objects must share the same set of peers.",
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="order_weight",
             kind="Number",
             description="Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.",
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="optional",
@@ -800,7 +976,7 @@ relationship_schema = SchemaNode(
             default_value=False,
             override_default_value=True,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="branch",
@@ -808,8 +984,12 @@ relationship_schema = SchemaNode(
             internal_kind=BranchSupportType,
             description="Type of branch support for the relationship. If not defined, it will be determined based on both peers.",
             enum=BranchSupportType.available_types(),
+            enum_class="BranchSupportType",
             optional=True,
-            extra={"update": UpdateSupport.NOT_SUPPORTED},  # https://github.com/opsmill/infrahub/issues/2476
+            extra={
+                "update": UpdateSupport.NOT_SUPPORTED,
+                "visibility": Visibility.WRITE,
+            },  # https://github.com/opsmill/infrahub/issues/2476
         ),
         SchemaAttribute(
             name="inherited",
@@ -817,7 +997,7 @@ relationship_schema = SchemaNode(
             description="Internal value to indicate if the relationship was inherited from a Generic node.",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.READ},
         ),
         SchemaAttribute(
             name="direction",
@@ -826,16 +1006,23 @@ relationship_schema = SchemaNode(
             description="Defines the direction of the relationship, "
             " Unidirectional relationship are required when the same model is on both side.",
             enum=RelationshipDirection.available_types(),
+            enum_class="RelationshipDirection",
             default_value=RelationshipDirection.BIDIR,
             optional=True,
-            extra={"update": UpdateSupport.NOT_SUPPORTED},  # https://github.com/opsmill/infrahub/issues/2471
+            extra={
+                "update": UpdateSupport.NOT_SUPPORTED,
+                "visibility": Visibility.WRITE,
+            },  # https://github.com/opsmill/infrahub/issues/2471
         ),
         SchemaAttribute(
             name="hierarchical",
             kind="Text",
             description="Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind",
             optional=True,
-            extra={"update": UpdateSupport.NOT_SUPPORTED},  # https://github.com/opsmill/infrahub/issues/2596
+            extra={
+                "update": UpdateSupport.NOT_SUPPORTED,
+                "visibility": Visibility.READ,
+            },  # https://github.com/opsmill/infrahub/issues/2596
         ),
         SchemaAttribute(
             name="state",
@@ -844,8 +1031,9 @@ relationship_schema = SchemaNode(
             description="Expected state of the relationship after loading the schema",
             default_value=HashableModelState.PRESENT,
             enum=HashableModelState.available_types(),
+            enum_class="SchemaState",
             optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="on_delete",
@@ -853,9 +1041,10 @@ relationship_schema = SchemaNode(
             internal_kind=RelationshipDeleteBehavior,
             description="Default is no-action. If cascade, related node(s) are deleted when this node is deleted.",
             enum=RelationshipDeleteBehavior.available_types(),
+            enum_class="RelationshipDeleteBehavior",
             default_value=None,
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="allow_override",
@@ -863,9 +1052,10 @@ relationship_schema = SchemaNode(
             internal_kind=AllowOverrideType,
             description="Type of allowed override for the relationship.",
             enum=AllowOverrideType.available_types(),
+            enum_class="AllowOverrideType",
             default_value=AllowOverrideType.ANY,
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="read_only",
@@ -873,7 +1063,7 @@ relationship_schema = SchemaNode(
             description="Set the relationship as read-only, users won't be able to change its value.",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="deprecation",
@@ -881,7 +1071,21 @@ relationship_schema = SchemaNode(
             optional=True,
             description="Mark relationship as deprecated and provide a user-friendly message to display",
             max_length=DEFAULT_DESCRIPTION_LENGTH,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+        ),
+        SchemaAttribute(
+            name="display",
+            kind="Text",
+            internal_kind=SchemaAttributeDisplay,
+            description=(
+                "Controls where the relationship is displayed. 'default' shows in the main view, "
+                "'extra' shows in an expanded/secondary section."
+            ),
+            enum=SchemaAttributeDisplay.available_types(),
+            enum_class="SchemaAttributeDisplay",
+            default_value=SchemaAttributeDisplay.DEFAULT,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
     ],
     relationships=[
@@ -893,6 +1097,7 @@ relationship_schema = SchemaNode(
             cardinality="one",
             branch=BranchSupportType.AWARE.value,
             optional=False,
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.INTERNAL},
         )
     ],
 )
@@ -902,7 +1107,7 @@ generic_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    display_labels=["label__value"],
+    display_label="label__value",
     human_friendly_id=["namespace__value", "name__value"],
     uniqueness_constraints=[["namespace__value", "name__value"]],
     attributes=base_node_schema.attributes
@@ -913,7 +1118,7 @@ generic_schema = SchemaNode(
             description="Defines if the Generic support the hierarchical mode.",
             optional=True,
             default_value=False,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="generate_profile",
@@ -921,7 +1126,7 @@ generic_schema = SchemaNode(
             description="Indicate if a profile schema should be generated for this schema",
             default_value=True,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="used_by",
@@ -930,7 +1135,17 @@ generic_schema = SchemaNode(
             default_factory="list",
             description="List of Nodes that are referencing this Generic",
             optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
+            ordered=False,
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.READ},
+        ),
+        SchemaAttribute(
+            name="restricted_namespaces",
+            kind="List",
+            internal_kind=str,
+            description="Nodes inheriting from this Generic schema must belong to one of the listed namespaces",
+            optional=True,
+            ordered=False,
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
     ],
     relationships=[
@@ -941,6 +1156,7 @@ generic_schema = SchemaNode(
             cardinality="many",
             branch=BranchSupportType.AWARE.value,
             optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
         SchemaRelationship(
             name="relationships",
@@ -949,6 +1165,7 @@ generic_schema = SchemaNode(
             cardinality="many",
             branch=BranchSupportType.AWARE.value,
             optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
     ],
 )

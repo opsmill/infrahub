@@ -18,7 +18,12 @@ log = get_logger(__name__)
 async def get_display_labels_per_kind(
     kind: str, ids: list[str], branch_name: str, db: InfrahubDatabase, skip_missing_schema: bool = False
 ) -> dict[str, str]:
-    """Return the display_labels of a list of nodes of a specific kind."""
+    """Return the display_labels of a list of nodes of a specific kind.
+
+    Raises:
+        SchemaNotFoundError: When the schema for `kind` cannot be found and `skip_missing_schema` is False.
+
+    """
     branch = await registry.get_branch(branch=branch_name, db=db)
     schema_branch = db.schema.get_schema_branch(name=branch.name)
     try:

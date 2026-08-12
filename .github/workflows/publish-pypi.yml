@@ -38,16 +38,22 @@ jobs:
         package_dir: ["", "python_testcontainers"]
     needs: prepare-environment
     steps:
+      - name: "Install libldap2-dev and libsasl2-dev"
+        run: "sudo apt-get -y update && sudo apt-get -y install libldap2-dev libsasl2-dev"
+
       - name: "Set up Python"
         id: python
-        uses: "actions/setup-python@v6"
+        uses: "actions/setup-python@v7"
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
 
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
+          # Full history + tags so hatch-vcs stamps the real tag version, not the fallback
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7

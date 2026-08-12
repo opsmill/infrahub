@@ -4,16 +4,19 @@ import { useLocation } from "react-router";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 
-import type { EventType } from "@/entities/events/types";
+import type { EventType } from "@/entities/events/domain/model/event";
+import { AccountLoggedInEventTitle } from "@/entities/events/ui/account-events/account-logged-in-event-title";
+import { AccountLoggedOutEventTitle } from "@/entities/events/ui/account-events/account-logged-out-event-title";
 import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";
 import { BranchEventTitle } from "@/entities/events/ui/branch-events/branch-event-title";
 import { EventDetailsPopover } from "@/entities/events/ui/event-details-popover";
+import { GroupAutoCreateEventTitle } from "@/entities/events/ui/group-auto-create-events/group-auto-create-event-title";
 import { GroupEventTitle } from "@/entities/events/ui/group-events/group-event-title";
 import { EventAttributes } from "@/entities/events/ui/node-events/event-attributes";
 import { NodeEventTitle } from "@/entities/events/ui/node-events/node-event-title";
 import { ProposedChangeEventTitle } from "@/entities/events/ui/proposed-change-events/proposed-change-event-title";
 import { StandardEventTitle } from "@/entities/events/ui/standard-events/standard-event-title";
-import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
+import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/domain/model/proposed-change-events";
 
 const EventContent = (props: EventType) => {
   const { pathname } = useLocation();
@@ -52,8 +55,24 @@ const EventContent = (props: EventType) => {
     return <GroupEventTitle {...props} />;
   }
 
+  if (
+    props.__typename === "GroupAutoCreatedEventType" ||
+    props.__typename === "GroupAutoCreateRejectedEventType" ||
+    props.__typename === "GroupAutoCreateCappedEventType"
+  ) {
+    return <GroupAutoCreateEventTitle {...props} />;
+  }
+
   if (props.__typename === "ArtifactEvent") {
     return <ArtifactEventTitle {...props} />;
+  }
+
+  if (props.__typename === "AccountLoggedInEventType") {
+    return <AccountLoggedInEventTitle {...props} />;
+  }
+
+  if (props.__typename === "AccountLoggedOutEventType") {
+    return <AccountLoggedOutEventTitle {...props} />;
   }
 
   return <span className="text-gray-600 text-sm">{props.event}</span>;
@@ -66,7 +85,7 @@ export const EventCard = (props: EventType) => {
     <div className="flex gap-2">
       <TimelineBorder />
 
-      <div className="flex min-w-0 grow flex-col gap-3 rounded-md border border-gray-200 bg-white p-2 text-sm shadow-xs">
+      <div className="flex min-w-0 grow flex-col gap-3 rounded-md border bg-white p-2 text-sm shadow-xs">
         <EventContent {...props} />
 
         <div className="flex justify-between text-gray-500">

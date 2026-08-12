@@ -1,13 +1,14 @@
+import { Button, Popover, PopoverDialog, Tooltip } from "@infrahub/ui";
 import { DialogTrigger } from "react-aria-components";
 
-import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
+import { queryClient } from "@/shared/api/rest/client";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { BulkMutateGroups } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/bulk-mutate-groups";
-import { ToolbarButtonWithTooltip } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
-import { addRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships";
-import type { NodeCore } from "@/entities/nodes/types";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+import { addRelationships } from "@/entities/nodes/relationships/domain/use-cases/add-relationships";
 
 export interface ToolbarAddToGroupActionProps {
   selectedRows: Array<NodeCore>;
@@ -20,17 +21,21 @@ export function ToolbarAddToGroupsAction({ selectedRows }: ToolbarAddToGroupActi
 
   if (!isAllowed) {
     return (
-      <ToolbarButtonWithTooltip isDisabled tooltipEnabled tooltipContent={message}>
-        Add to groups
-      </ToolbarButtonWithTooltip>
+      <Tooltip message={message}>
+        <Button variant="outline" size="xs" isDisabledAndFocusable>
+          Add to groups
+        </Button>
+      </Tooltip>
     );
   }
 
   return (
     <DialogTrigger>
-      <ToolbarButtonWithTooltip>Add to groups</ToolbarButtonWithTooltip>
+      <Button variant="outline" size="xs">
+        Add to groups
+      </Button>
 
-      <Popover placement="top start">
+      <Popover placement="top start" className="bg-white">
         <PopoverDialog>
           {({ close }) => {
             return (
@@ -43,7 +48,11 @@ export function ToolbarAddToGroupsAction({ selectedRows }: ToolbarAddToGroupActi
                     branchName: currentBranch.name,
                   });
                 }}
-                onSuccess={close}
+                onSuccess={async () => {
+                  await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+                }}
+                onClose={close}
+                groupsQueryFilter={{ group_type__values: ["default"] }}
               />
             );
           }}

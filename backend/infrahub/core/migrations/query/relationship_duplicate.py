@@ -36,13 +36,11 @@ class RelationshipDuplicateQuery(Query):
         super().__init__(**kwargs)
 
     def render_match(self) -> str:
-        query = """
+        return """
         // Find all the active nodes
         MATCH (source:%(src_peer)s)-[:IS_RELATED]-(rel:Relationship { name: $previous_rel.name })-[:IS_RELATED]-(destination:%(dst_peer)s)
         WHERE source <> destination
         """ % {"src_peer": self.previous_rel.src_peer, "dst_peer": self.previous_rel.dst_peer}
-
-        return query
 
     @staticmethod
     def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, direction: GraphRelDirection) -> str:
@@ -87,7 +85,7 @@ class RelationshipDuplicateQuery(Query):
         sub_query_in = "\nUNION\n".join(sub_queries_in)
         return sub_query_in, sub_query_in_args
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 

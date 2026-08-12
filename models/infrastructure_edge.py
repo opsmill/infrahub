@@ -486,7 +486,13 @@ DEVICE_STATUSES = ["active", "provisioning", "drained"]
 class SiteDesign:
     def __init__(self, number_of_device: int) -> None:
         """Takes the number of devices that need to be created on a given site.
-        This method will decide how many device of each type to create and return all those objects as a list."""
+
+        This method will decide how many device of each type to create and return all those objects as a list.
+
+        Raises:
+            ValueError: When ``number_of_device`` is not a positive integer.
+
+        """
         if number_of_device > 0:
             self.number_of_device = number_of_device
         else:
@@ -571,7 +577,6 @@ def site_generator(nbr_site: int = 2) -> list[Site]:
     site_names_generator(nbr_site=12)
         result >> ["atl1", "ord1", "jfk1", "den1", "dfw1", "iad1", "bkk1", "sfo1", "iah1", "mco1", "atl2", "ord2"]
     """
-
     sites: list[Site] = []
 
     # Calculate how many loop over the entire list we need to make
@@ -840,6 +845,24 @@ VLANS = (
 )
 
 
+async def save_connected_interfaces(
+    first_interface: InfraInterfaceL2 | InfraInterfaceL3,
+    second_interface: InfraInterfaceL2 | InfraInterfaceL3,
+) -> None:
+    """Save the two sides of one symmetric connected_endpoint pair SEQUENTIALLY.
+
+    `connected_endpoint` is a SYMMETRIC, cardinality-one relationship: when the two
+    sides are saved concurrently (separate batch tasks at concurrency > 1), each
+    side's transaction misses the other's freshly created edge and writes its own,
+    leaving the nodes with 2 peers — which the card-one validation then rejects
+    ("has 2 peers for connected__endpoint, maximum of 1 allowed"). Saving the pair
+    inside one batch task keeps pairs concurrent with each other while the two
+    sides stay ordered: the second save is an idempotent update of the same edge.
+    """
+    await first_interface.save()
+    await second_interface.save()
+
+
 async def find_and_connect_interfaces(
     client: InfrahubClient,
     batch: InfrahubBatch,
@@ -856,11 +879,21 @@ async def find_and_connect_interfaces(
 
     first_interface.description.value = f"Connected to {second_device_name}::{second_interface.name.value}"
     first_interface.connected_endpoint = second_interface
-    batch.add(task=first_interface.save, node=first_interface)
 
-    # Adjust description on second interface
+    # `connected_endpoint` is a SYMMETRIC peer relationship (Infra/Endpoint.connected__endpoint),
+    # so set it explicitly on this side too: otherwise saving the second interface with an unset
+    # peer clears the link the first save just established (serialized loads,
+    # INFRAHUB_MAX_CONCURRENT_EXECUTION=1). Both sides are saved by ONE batch task so they never
+    # run concurrently (see save_connected_interfaces).
     second_interface.description.value = f"Connected to {first_device_name}::{first_interface.name.value}"
-    batch.add(task=second_interface.save, node=second_interface)
+    second_interface.connected_endpoint = first_interface
+
+    batch.add(
+        task=save_connected_interfaces,
+        node=first_interface,
+        first_interface=first_interface,
+        second_interface=second_interface,
+    )
 
     log.info(
         f" - Connected '{first_device_name}::{first_interface_name}' <> '{second_device_name}::{second_interface_name}'"
@@ -901,9 +934,7 @@ async def find_and_connect_interfaces(
 
 
 async def apply_interface_profiles_and_groups(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
-    """
-    Apply profiles to upstream/backbone L3 interfaces and add them to their respective groups.
-    """
+    """Apply profiles to upstream/backbone L3 interfaces and add them to their respective groups."""
     log.info("Applying profiles to interfaces and update interface groups")
 
     # Fetch upstream and backbone interfaces.
@@ -979,9 +1010,10 @@ async def apply_interface_profiles_and_groups(client: InfrahubClient, log: loggi
 
 
 async def apply_devices_groups(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
-    """
-    Fetch devices from Infrahub, group them based on their role and manufacturer,
+    """Fetch devices from Infrahub, group them based on their role and manufacturer,.
+
     and update the corresponding device groups.
+
     """
     log.info("Adding devices to groups")
 
@@ -1873,9 +1905,7 @@ async def generate_site(
 async def branch_scenario_add_upstream(
     client: InfrahubClient, log: logging.Logger, site_name: str, external_pool: CoreNode
 ) -> None:
-    """
-    Create a new branch and Add a new upstream link with GTT on the edge1 device of the given site.
-    """
+    """Create a new branch and Add a new upstream link with GTT on the edge1 device of the given site."""
     log.info("Create a new branch and Add a new upstream link with GTT on the edge1 device of the given site")
     device_name = f"{site_name}-edge1"
 
@@ -1983,9 +2013,7 @@ async def branch_scenario_add_upstream(
 async def branch_scenario_replace_ip_addresses(
     client: InfrahubClient, log: logging.Logger, site_name: str, interconnection_pool: CoreNode
 ) -> None:
-    """
-    Create a new Branch and Change the IP addresses between edge1 and edge2 on the selected site
-    """
+    """Create a new Branch and Change the IP addresses between edge1 and edge2 on the selected site."""
     device1_name = f"{site_name}-edge1"
     device2_name = f"{site_name}-edge2"
 
@@ -2044,9 +2072,7 @@ async def branch_scenario_replace_ip_addresses(
 
 
 async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logger, site_name: str) -> None:
-    """
-    Create a new Branch and Delete Colt Upstream Circuit
-    """
+    """Create a new Branch and Delete Colt Upstream Circuit."""
     log.info("Create a new Branch and Delete Colt Upstream Circuit")
     new_branch_name = f"{site_name}-delete-upstream"
     await client.branch.create(
@@ -2109,9 +2135,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
 
 
 async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.Logger, site_name: str) -> None:
-    """
-    Create a new Branch and introduce some conflicts
-    """
+    """Create a new Branch and introduce some conflicts."""
     log.info("Create a new Branch and introduce some conflicts")
     device1_name = f"{site_name}-edge1"
     f"{site_name}-edge2"
@@ -2152,9 +2176,7 @@ async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.L
 
 
 async def branch_scenario_conflict_platform(client: InfrahubClient, log: logging.Logger) -> None:
-    """
-    Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE
-    """
+    """Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE."""
     log.info("Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE")
     new_branch_name = "platform-conflict"
     await client.branch.create(

@@ -50,7 +50,7 @@ async def test_diff(
     diff_branch = await create_branch(branch_name="diff_branch", db=db_profiling_queries)
 
     # Build function to profile
-    async def init_and_execute():
+    async def init_and_execute() -> None:
         # Need this function to avoid loading data between `init` and `execute` methods.
         diff_calculator = DiffCalculator(db=db_profiling_queries)
         calculated_diffs = await diff_calculator.calculate_diff(

@@ -1,0 +1,203 @@
+---
+title: Menu customization
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Infrahub lets you control the menu on the left side of the web interface.
+
+The menu has two sections. The bottom section is fixed — it lists navigation for built-in Infrahub features. The top section is user-controlled: organize your schema's node types in the order that makes sense for your use case, with custom groupings and icons.
+
+By default, nodes without a menu placement are grouped under **Other**.
+
+## Prerequisites
+
+- A running Infrahub instance
+
+<details>
+<summary>Schema used in this guide</summary>
+
+The examples on this page use the following schema nodes. Adapt the type names to match your own schema.
+
+```yaml
+---
+version: "1.0"
+generics:
+  - name: Generic
+    namespace: Location
+    include_in_menu: false
+    hierarchical: true
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+nodes:
+  - name: Country
+    namespace: Location
+    inherit_from:
+      - LocationGeneric
+    parent: ""
+    children: LocationSite
+  - name: Site
+    namespace: Location
+    inherit_from:
+      - LocationGeneric
+    parent: LocationCountry
+    children: ""
+    relationships:
+      - name: devices
+        kind: Generic
+        peer: NetworkDevice
+        cardinality: many
+        optional: true
+  - name: Device
+    namespace: Network
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+    relationships:
+      - name: site
+        kind: Attribute
+        cardinality: one
+        optional: true
+        peer: LocationSite
+      - name: interfaces
+        kind: Component
+        cardinality: many
+        optional: true
+        peer: NetworkInterface
+  - name: Interface
+    namespace: Network
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+    relationships:
+      - name: device
+        kind: Parent
+        optional: false
+        cardinality: one
+        peer: NetworkDevice
+```
+
+</details>
+
+## Define a menu file
+
+A menu file is a YAML file with a defined structure. See the [menu file reference](../reference/menu.mdx) for the full schema.
+
+Icons support any entry from the [Material Design Icons](https://icon-sets.iconify.design/mdi/) library on iconify.design.
+
+An [Infrahub skill](https://github.com/opsmill/infrahub-skills) called `/infrahub-menu-creator` can generate this file for you. For production-grade examples, see the menus in [infrahub-demo-dc](https://github.com/opsmill/infrahub-demo-dc/blob/main/menus/menu-full.yml) and [infrahub-solution-ai-dc](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/menus/menu.yml).
+
+The following example defines two top-level sections — Location and Infrastructure. Adjust namespaces and kinds to match your schema:
+
+```yaml
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/menu/latest.json
+---
+apiVersion: infrahub.app/v1
+kind: Menu
+spec:
+  data:
+    - namespace: Location
+      name: Mainmenu
+      label: Location
+      icon: "mingcute:location-line"
+      children:
+        data:
+          - namespace: Location
+            name: Country
+            label: Countries
+            kind: LocationCountry
+            icon: "gis:search-country"
+
+          - namespace: Location
+            name: Site
+            label: Sites
+            kind: LocationSite
+            icon: "ri:building-line"
+
+    - namespace: Infrastructure
+      name: Mainmenu
+      label: Infrastructure
+      icon: "mdi:domain"
+      children:
+        data:
+          - namespace: Network
+            name: Device
+            label: Devices
+            kind: NetworkDevice
+            icon: "mdi:router"
+
+          - namespace: Network
+            name: Interface
+            label: Interface
+            kind: NetworkInterface
+            icon: "mdi:ethernet"
+```
+
+:::info
+
+For complex schemas, split menu definitions across multiple files — the same pattern used for schema files. By convention, keep them in a `menus/` folder; you can then pass the folder path to `infrahubctl menu load` to load all files at once.
+
+:::
+
+## Load a menu file
+
+:::info
+
+Use `infrahubctl` for development and testing. The git integration option is better suited for production.
+
+:::
+
+<Tabs groupId="method" queryString>
+  <TabItem value="infrahubctl" label="infrahubctl" default>
+
+```bash
+infrahubctl menu load menus/menu.yml
+```
+
+See the [infrahubctl menu documentation]($(base_url)infrahubctl/infrahubctl-menu) for details.
+
+  </TabItem>
+  <TabItem value="git" label="Git integration">
+
+Add the menu file to `.infrahub.yml`:
+
+```yaml
+---
+menus:
+  - menus/menu.yml
+```
+
+See the [infrahub.yml documentation](../git-integration/infrahub-yml.mdx) for details.
+
+  </TabItem>
+</Tabs>
+
+## Good practices
+
+### Disable schema-driven menu entries
+
+The schema's `include_in_menu` flag provides basic menu control. When you introduce a custom menu file, set it to `false` on every node and generic — otherwise the schema and the menu file both drive the same entries, which can produce unexpected behavior.
+
+```yaml {4}
+nodes:
+  - name: Node
+    namespace: Example
+    include_in_menu: false
+```
+
+### The IPAM section is built in
+
+If your schema includes nodes that inherit from `BuiltinIPPrefix` or `BuiltinIPAddress`, Infrahub automatically adds an IPAM section to the menu. You do not need to define it in your menu file.
+
+## Search anywhere
+
+Beyond the menu, you can jump directly to any object, schema, or page from a single search dialog.
+
+Press `Cmd+K` (macOS) or `Ctrl+K` (Windows and Linux) anywhere in the web interface to open it, then start typing. The dialog searches across objects, attributes, schemas, menu items, and documentation. You can also open it from the **Search** button at the top of the left menu, which shows the keyboard shortcut.

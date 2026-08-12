@@ -85,13 +85,13 @@ class GeneratedBaseNodeSchema(HashableModel):
     )
     order_by: list[str] | None = Field(
         default=None,
-        description="List of attributes to use to order the results by default",
+        description="List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.",
         json_schema_extra={"update": "allowed"},
     )
     uniqueness_constraints: list[list[str]] | None = Field(
         default=None,
         description="List of multi-element uniqueness constraints that can combine relationships and attributes",
-        json_schema_extra={"update": "validate_constraint"},
+        json_schema_extra={"update": "migration_required"},
     )
     documentation: str | None = Field(
         default=None,

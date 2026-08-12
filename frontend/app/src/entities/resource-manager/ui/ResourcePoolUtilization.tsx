@@ -1,7 +1,8 @@
+import { Tooltip } from "@infrahub/ui";
+
 import MultipleProgressBar, {
   type MultipleProgressBarProps,
 } from "@/shared/components/stats/multiple-progress-bar";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { roundNumber } from "@/shared/utils/number";
 
@@ -47,15 +48,15 @@ const ResourcePoolUtilization = ({
         {...props}
       />
       <Tooltip
-        content={
+        message={
           <ResourceUtilizationTooltipContent
             value={utilizationOverall}
             description="The overall utilization of the pool"
           />
         }
-        enabled
+        nonInteractiveTrigger
       >
-        <span className="w-8 text-right font-medium text-custom-blue-700">
+        <span className="w-8 text-right font-medium text-cyan-700">
           {roundNumber(utilizationOverall, 0)}%
         </span>
       </Tooltip>

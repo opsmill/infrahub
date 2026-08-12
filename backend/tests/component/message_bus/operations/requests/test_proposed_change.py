@@ -8,11 +8,12 @@ from pytest_httpx import HTTPXMock
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction, InfrahubKind, SchemaPathType
+from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality, RelationshipKind, SchemaPathType
 from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.database import InfrahubDatabase
@@ -41,13 +42,10 @@ async def mock_schema_query_02(helper: TestHelper, httpx_mock: HTTPXMock) -> HTT
 
 @pytest.fixture
 def branch_diff_01() -> ProposedChangeBranchDiff:
-    diff = ProposedChangeBranchDiff(
+    return ProposedChangeBranchDiff(
         pipeline_id=uuid4(),
         repositories=[],
-        subscribers=[],
     )
-
-    return diff
 
 
 @pytest.fixture
@@ -62,7 +60,7 @@ def branch_diff_01_summary() -> list[NodeDiff]:
             "elements": [
                 {
                     "name": "name",
-                    "element_type": DiffElementType.ATTRIBUTE.value,
+                    "element_type": DiffElementType.ATTRIBUTE.name,
                     "action": DiffAction.UPDATED.value,
                     "summary": {"added": 0, "updated": 1, "removed": 0},
                 }
@@ -77,13 +75,13 @@ def branch_diff_01_summary() -> list[NodeDiff]:
             "elements": [
                 {
                     "name": "height",
-                    "element_type": DiffElementType.ATTRIBUTE.value,
+                    "element_type": DiffElementType.ATTRIBUTE.name,
                     "action": DiffAction.UPDATED.value,
                     "summary": {"added": 0, "updated": 1, "removed": 0},
                 },
                 {
                     "name": "cars",
-                    "element_type": DiffElementType.RELATIONSHIP_MANY.value,
+                    "element_type": DiffElementType.RELATIONSHIP_MANY.name,
                     "action": DiffAction.UPDATED.value,
                     "summary": {"added": 0, "updated": 1, "removed": 0},
                     "peers": [
@@ -130,143 +128,44 @@ async def test_get_proposed_change_schema_integrity_constraints(
 ) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     constraints = await _get_proposed_change_schema_integrity_constraints(
-        schema=schema, diff_summary=branch_diff_01_summary
+        db=db, schema=schema, diff_summary=branch_diff_01_summary, branch=default_branch
     )
-    non_generate_profile_constraints = [c for c in constraints if c.constraint_name != "node.generate_profile.update"]
-    # should be updated/removed when ConstraintValidatorDeterminer is updated (#2592)
-    assert len(constraints) == 237
-    assert len(non_generate_profile_constraints) == 144
-    dumped_constraints = [c.model_dump() for c in non_generate_profile_constraints]
-    assert {
-        "constraint_name": "relationship.optional.update",
-        "path": {
-            "field_name": "cars",
-            "path_type": SchemaPathType.RELATIONSHIP,
-            "property_name": "optional",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "relationship.peer.update",
-        "path": {
-            "field_name": "cars",
-            "path_type": SchemaPathType.RELATIONSHIP,
-            "property_name": "peer",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "relationship.cardinality.update",
-        "path": {
-            "field_name": "cars",
-            "path_type": SchemaPathType.RELATIONSHIP,
-            "property_name": "cardinality",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "relationship.min_count.update",
-        "path": {
-            "field_name": "cars",
-            "path_type": SchemaPathType.RELATIONSHIP,
-            "property_name": "min_count",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "relationship.max_count.update",
-        "path": {
-            "field_name": "cars",
-            "path_type": SchemaPathType.RELATIONSHIP,
-            "property_name": "max_count",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "attribute.optional.update",
-        "path": {
-            "field_name": "height",
-            "path_type": SchemaPathType.ATTRIBUTE,
-            "property_name": "optional",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "attribute.unique.update",
-        "path": {
-            "field_name": "height",
-            "path_type": SchemaPathType.ATTRIBUTE,
-            "property_name": "unique",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "attribute.optional.update",
-        "path": {
-            "field_name": "name",
-            "path_type": SchemaPathType.ATTRIBUTE,
-            "property_name": "optional",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "attribute.unique.update",
-        "path": {
-            "field_name": "name",
-            "path_type": SchemaPathType.ATTRIBUTE,
-            "property_name": "unique",
-            "schema_id": None,
-            "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "node.parent.update",
-        "path": {
-            "field_name": "parent",
-            "path_type": SchemaPathType.NODE,
-            "property_name": "parent",
-            "schema_id": None,
-            "schema_kind": "CoreStandardGroup",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "node.children.update",
-        "path": {
-            "field_name": "children",
-            "path_type": SchemaPathType.NODE,
-            "property_name": "children",
-            "schema_id": None,
-            "schema_kind": "CoreStandardGroup",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "node.parent.update",
-        "path": {
-            "field_name": "parent",
-            "path_type": SchemaPathType.NODE,
-            "property_name": "parent",
-            "schema_id": None,
-            "schema_kind": "CoreGraphQLQueryGroup",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "node.children.update",
-        "path": {
-            "field_name": "children",
-            "path_type": SchemaPathType.NODE,
-            "property_name": "children",
-            "schema_id": None,
-            "schema_kind": "CoreGraphQLQueryGroup",
-        },
-    } in dumped_constraints
+    # the diff changes name on one TestPerson and height+cars on another; only name participates in
+    # uniqueness, so the uniqueness check is scoped to just the node that changed name, while every
+    # field-level check spans the population (node_uuids=None)
+    name_changed_person_uuids = ("11111111-1111-1111-1111-111111111111",)
+    actual = {
+        (
+            c.constraint_name,
+            c.path.schema_kind,
+            c.path.field_name,
+            c.path.property_name,
+            c.path.path_type,
+            tuple(c.node_uuids) if c.node_uuids is not None else None,
+        )
+        for c in constraints
+    }
+    assert actual == {
+        ("attribute.kind.update", "TestPerson", "name", "kind", SchemaPathType.ATTRIBUTE, None),
+        ("attribute.kind.update", "TestPerson", "height", "kind", SchemaPathType.ATTRIBUTE, None),
+        ("attribute.optional.update", "TestPerson", "name", "optional", SchemaPathType.ATTRIBUTE, None),
+        ("attribute.optional.update", "TestPerson", "height", "optional", SchemaPathType.ATTRIBUTE, None),
+        ("attribute.unique.update", "TestPerson", "name", "unique", SchemaPathType.ATTRIBUTE, None),
+        ("attribute.unique.update", "TestPerson", "height", "unique", SchemaPathType.ATTRIBUTE, None),
+        ("relationship.optional.update", "TestPerson", "cars", "optional", SchemaPathType.RELATIONSHIP, None),
+        ("relationship.peer.update", "TestPerson", "cars", "peer", SchemaPathType.RELATIONSHIP, None),
+        ("relationship.cardinality.update", "TestPerson", "cars", "cardinality", SchemaPathType.RELATIONSHIP, None),
+        ("relationship.min_count.update", "TestPerson", "cars", "min_count", SchemaPathType.RELATIONSHIP, None),
+        ("relationship.max_count.update", "TestPerson", "cars", "max_count", SchemaPathType.RELATIONSHIP, None),
+        (
+            "node.uniqueness_constraints.update",
+            "TestPerson",
+            "uniqueness_constraints",
+            "uniqueness_constraints",
+            SchemaPathType.NODE,
+            name_changed_person_uuids,
+        ),
+    }
 
 
 async def test_schema_integrity(
@@ -347,3 +246,43 @@ async def test_schema_integrity(
         assert len(checks) == 1
         assert checks[0].conclusion.value.value == "success"
         assert checks[0].conflicts.value == []
+
+
+async def test_schema_integrity_process_validation_error(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+    schema_integrity_01: RequestProposedChangeSchemaIntegrity,
+    branch_diff_01_summary: list[NodeDiff],
+    dependency_provider: Provider,
+) -> None:
+    cache = MemoryCache()
+    with dependency_provider.scope(build_cache, lambda: cache):
+        branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
+        branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
+        person_schema = branch2_schema.get(name="TestPerson")
+        person_schema.relationships.append(
+            RelationshipSchema(
+                name="name",
+                peer="TestCar",
+                cardinality=RelationshipCardinality.MANY,
+                kind=RelationshipKind.ATTRIBUTE,
+            )
+        )
+        branch2_schema.set(name="TestPerson", schema=person_schema)
+
+        await set_diff_summary_cache(
+            pipeline_id=schema_integrity_01.branch_diff.pipeline_id, diff_summary=branch_diff_01_summary, cache=cache
+        )
+
+        await run_proposed_change_schema_integrity_check(model=schema_integrity_01)
+
+        checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
+        assert len(checks) == 1
+        assert checks[0].conclusion.value.value == "failure"
+        conflicts = checks[0].conflicts.value
+        assert len(conflicts) == 1
+        assert conflicts[0]["type"] == "schema.process.validation"
+        assert conflicts[0]["kind"] == "TestPerson"
+        assert "unique" in conflicts[0]["value"].lower()

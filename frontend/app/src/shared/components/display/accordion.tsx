@@ -10,6 +10,8 @@ export type AccordionProps = {
   titleClassName?: string;
   iconClassName?: string;
   defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   style?: CSSProperties;
   hideChevron?: boolean;
   ref?: Ref<HTMLDivElement>;
@@ -18,6 +20,8 @@ export type AccordionProps = {
 export default function Accordion({
   title,
   defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
   children,
   className,
   hideChevron,
@@ -26,13 +30,20 @@ export default function Accordion({
   ref,
   ...props
 }: AccordionProps) {
-  const [isOpen, setIsOpen] = useState<boolean>();
+  const [internalOpen, setInternalOpen] = useState<boolean>();
 
-  const open = isOpen === undefined ? defaultOpen : isOpen;
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : (internalOpen ?? defaultOpen);
+
+  const toggle = () => {
+    const next = !open;
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
 
   return (
     <div ref={ref} className={className} {...props}>
-      <div className="relative flex cursor-pointer items-center" onClick={() => setIsOpen(!open)}>
+      <div className="relative flex cursor-pointer items-center" onClick={toggle}>
         <span
           className={classNames(
             "relative mx-2 flex items-center",
@@ -43,7 +54,7 @@ export default function Accordion({
           {open ? <Icon icon={"mdi:chevron-down"} /> : <Icon icon={"mdi:chevron-right"} />}
         </span>
 
-        <span className={classNames("flex-1 justify-start text-left font-semibold")}>{title}</span>
+        <span className="flex-1 justify-start text-left font-semibold">{title}</span>
       </div>
 
       {open && children}

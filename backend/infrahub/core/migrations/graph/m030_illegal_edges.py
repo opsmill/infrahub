@@ -18,7 +18,7 @@ class DeletePosthumousEdges(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // ------------
 // find deleted nodes
@@ -69,14 +69,12 @@ DETACH DELETE peer
 
 
 class Migration030(GraphMigration):
-    """
-    Edges could have been added to Nodes after the Node was deleted, so we need to hard-delete those illegal edges
-    """
+    """Edges could have been added to Nodes after the Node was deleted, so we need to hard-delete those illegal edges."""
 
     name: str = "030_delete_illegal_edges"
+    description: str = "N/A"
     minimum_version: int = 29
     queries: Sequence[type[Query]] = [DeletePosthumousEdges]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

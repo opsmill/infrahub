@@ -7,8 +7,10 @@ from prefect.client.schemas.objects import StateType
 
 from infrahub import config
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
-from infrahub.task_manager.task import PrefectTask
+from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
+from infrahub.task_manager.flow_run.retention import FlowRunRetention
 from infrahub.tasks.dummy import DUMMY_FLOW, DummyInput
+from infrahub.workers.dependencies import build_tls_registry
 from infrahub.workflows.initialization import setup_task_manager
 from infrahub.workflows.models import WorkerPoolDefinition
 
@@ -21,7 +23,7 @@ async def init(
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),  # noqa: ARG001
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Initialize the task manager"""
+    """Initialize the task manager."""
     logging.getLogger("prefect").setLevel(logging.ERROR)
 
     config.load_and_exit(config_file_name=config_file)
@@ -35,7 +37,7 @@ async def execute(
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),  # noqa: ARG001
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Check the current format of the internal graph and apply the necessary migrations"""
+    """Check the current format of the internal graph and apply the necessary migrations."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -43,7 +45,7 @@ async def execute(
     config.load_and_exit(config_file_name=config_file)
 
     async with get_client(sync_client=False) as client:
-        worker = WorkflowWorkerExecution()
+        worker = WorkflowWorkerExecution(tls_registry=build_tls_registry())
         await DUMMY_FLOW.save(
             client=client, work_pool=WorkerPoolDefinition(name="infrahub-worker", worker_type="infrahubasync")
         )
@@ -66,17 +68,18 @@ async def flow_runs(
     days_to_keep: int = 30,
     batch_size: int = 100,
 ) -> None:
-    """Flush old task runs"""
+    """Flush old task runs."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
 
     config.load_and_exit(config_file_name=config_file)
 
-    await PrefectTask.delete_flow_runs(
-        days_to_keep=days_to_keep,
-        batch_size=batch_size,
-    )
+    async with get_client(sync_client=False) as client:
+        await FlowRunRetention(client=PrefectClientAdapter(client)).purge(
+            days_to_keep=days_to_keep,
+            batch_size=batch_size,
+        )
 
 
 @flush_app.command()
@@ -86,13 +89,14 @@ async def stale_runs(
     days_to_keep: int = 2,
     batch_size: int = 100,
 ) -> None:
-    """Flush stale task runs"""
+    """Flush stale task runs."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
 
     config.load_and_exit(config_file_name=config_file)
 
-    await PrefectTask.delete_flow_runs(
-        states=[StateType.RUNNING], delete=False, days_to_keep=days_to_keep, batch_size=batch_size
-    )
+    async with get_client(sync_client=False) as client:
+        await FlowRunRetention(client=PrefectClientAdapter(client)).purge(
+            states=[StateType.RUNNING], delete=False, days_to_keep=days_to_keep, batch_size=batch_size
+        )

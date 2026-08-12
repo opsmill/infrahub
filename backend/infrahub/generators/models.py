@@ -1,6 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    from infrahub_sdk.protocols import CoreGeneratorDefinition
+
+
+class GeneratorInstanceNode(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    status: str
 
 
 class RequestGeneratorRun(BaseModel):
@@ -66,5 +78,55 @@ class GeneratorDefinitionModel(BaseModel):
 
 
 class ProposedChangeGeneratorDefinition(GeneratorDefinitionModel):
+    query_id: str = Field(..., description="The id of the query to use when collecting data.")
     query_models: list[str] = Field(..., description="The models to use when collecting data.")
+    query_payload: str = Field(..., description="The GraphQL query string used to collect data.")
     repository_id: str = Field(..., description="The id of the repository.")
+    dependencies: list[str] | None = Field(
+        default=None,
+        description="Canonical repo-relative paths this generator reads from. None means not yet computed.",
+    )
+    dependencies_complete: bool | None = Field(
+        default=None,
+        description="True when the dependency list is fully resolved. False when partial. None when not yet computed.",
+    )
+    fingerprint: str | None = Field(
+        default=None,
+        description="Content hash of the definition's inputs, recomputed on each import. None when not yet computed.",
+    )
+
+    @property
+    def source_noun(self) -> str:
+        return "generator source"
+
+    @property
+    def instance_noun(self) -> str:
+        return "instances"
+
+
+def build_generator_definition(generator: CoreGeneratorDefinition) -> ProposedChangeGeneratorDefinition:
+    """Map a fetched generator definition node onto the model the run pipeline carries.
+
+    Shared by every caller that turns fetched nodes into run requests, so a field added to the
+    model reaches all of them at once instead of only the site that prompted it. Requires the
+    node's ``query``, ``repository`` and ``targets`` peers to be resolved.
+    """
+    return ProposedChangeGeneratorDefinition(
+        definition_id=generator.id,
+        definition_name=generator.name.value,
+        class_name=generator.class_name.value,
+        file_path=generator.file_path.value,
+        query_name=generator.query.peer.name.value,
+        query_id=generator.query.peer.id,
+        query_models=generator.query.peer.models.value,
+        query_payload=generator.query.peer.query.value,
+        repository_id=generator.repository.peer.id,
+        parameters=generator.parameters.value,
+        group_id=generator.targets.peer.id,
+        convert_query_response=generator.convert_query_response.value,
+        execute_in_proposed_change=generator.execute_in_proposed_change.value,
+        execute_after_merge=generator.execute_after_merge.value,
+        dependencies=generator.dependencies.value,
+        dependencies_complete=generator.dependencies_complete.value,
+        fingerprint=generator.fingerprint.value,
+    )

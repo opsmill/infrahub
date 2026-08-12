@@ -1,0 +1,1 @@
+Replaced the frontend GraphQL transport (`@apollo/client`) with the lighter `@urql/core`, reducing the JavaScript bundle size. Apollo was used transport-only (no hooks, no cache); all request behavior — auth, request priority, error routing, token refresh, and file uploads — is preserved. No user-facing behavior changes.

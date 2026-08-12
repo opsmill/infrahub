@@ -1,3 +1,6 @@
 [submodule "python_sdk"]
 	path = python_sdk
 	url = https://github.com/opsmill/infrahub-sdk-python.git
+[submodule "frontend/packages/schema-visualizer"]
+	path = frontend/packages/schema-visualizer
+	url = https://github.com/opsmill/infrahub-schema-visualizer.git

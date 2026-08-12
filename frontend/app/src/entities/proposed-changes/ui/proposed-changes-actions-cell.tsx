@@ -1,18 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
+import { Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@/shared/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
-import type { Permission } from "@/entities/permission/types";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 
 export interface ActionsCellProps {
   permission: Permission;
@@ -26,33 +19,32 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            size="square"
-            variant="ghost"
-            className="size-6"
-            data-testid={`actions-row-button-${objectLabel}`}
-          >
-            <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
-          </Button>
-        </DropdownMenuTrigger>
+      <MenuTrigger>
+        <Button
+          size="sm"
+          shape="square"
+          variant="ghost"
+          data-testid={`actions-row-button-${objectLabel}`}
+          aria-label="Actions"
+        >
+          <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
+        </Button>
 
-        <DropdownMenuContent align="end">
-          <Tooltip enabled={!isDeleteAllowed} content={permission.delete.message} side="left">
-            <div>
-              <DropdownMenuItem
-                disabled={!isDeleteAllowed}
-                onClick={() => isDeleteAllowed && setShowDeleteModal(true)}
-                data-testid={"delete-row-button"}
-              >
-                <Icon icon="mdi:delete-outline" className="text-base" />
-                Delete
-              </DropdownMenuItem>
-            </div>
-          </Tooltip>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        <Popover placement="bottom end">
+          <Menu aria-label="Actions">
+            <MenuItem
+              isDisabled={!isDeleteAllowed}
+              tooltip={permission.delete.message}
+              className="text-red-500"
+              onAction={() => setShowDeleteModal(true)}
+              data-testid={"delete-row-button"}
+            >
+              <Trash2Icon />
+              <span>Delete</span>
+            </MenuItem>
+          </Menu>
+        </Popover>
+      </MenuTrigger>
 
       <DeleteObjectModal
         objectKind={PROPOSED_CHANGE_OBJECT}

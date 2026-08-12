@@ -11,8 +11,7 @@ def find_keyword_violations(
     exclude_dirs: set[str],
     exclude_patterns: tuple[str, ...],
 ) -> list[str]:
-    """
-    Traverse files once and check each line for any prohibited keyword.
+    """Traverse files once and check each line for any prohibited keyword.
 
     Args:
         keywords: List of prohibited keywords (case-insensitive).
@@ -22,6 +21,7 @@ def find_keyword_violations(
 
     Returns:
         List of file paths (as strings) where any keyword was found.
+
     """
     violations = []
     lowered_keywords = [k.lower() for k in keywords]
@@ -43,14 +43,14 @@ def find_keyword_violations(
 
 
 def find_keyword_in_git_commits(keywords: list[str]) -> list[str]:
-    """
-    Scan git commit messages for any prohibited keyword.
+    """Scan git commit messages for any prohibited keyword.
 
     Args:
         keywords: List of prohibited keywords (case-insensitive).
 
     Returns:
         List of commit hashes where a prohibited keyword was found.
+
     """
     violations = []
     lowered_keywords = [k.lower() for k in keywords]
@@ -74,8 +74,7 @@ def find_keyword_in_git_commits(keywords: list[str]) -> list[str]:
 
 
 def main() -> None:
-    """
-    Scan the repository for prohibited keywords.
+    """Scan the repository for prohibited keywords.
 
     This function traverses all files (excluding certain directories and patterns) once,
     checking each line for any of the keywords specified in the KEYWORDS_LIST environment variable.
@@ -93,6 +92,7 @@ def main() -> None:
 
     Examples:
         $ uv run python utilities/scan.py
+
     """
     keyword_list = os.environ.get("KEYWORDS_LIST", "")
     if not keyword_list:

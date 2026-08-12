@@ -10,12 +10,14 @@ from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema  # noqa: TC001
 from infrahub.events import NodeUpdatedEvent
-from infrahub.trigger.constants import NAME_SEPARATOR
+from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
+from infrahub.trigger.constants import NAME_SEPARATOR, TRIGGER_PLACEHOLDER_FIELD
 from infrahub.trigger.models import (
     EventTrigger,
     ExecuteWorkflow,
     TriggerBranchDefinition,
     TriggerType,
+    jinja_parameter,
 )
 from infrahub.workflows.catalogue import HFID_PROCESS
 
@@ -44,10 +46,7 @@ class HFIDTriggerDefinition(TriggerBranchDefinition):
         hfids: HFIDs,
         branches_out_of_scope: list[str] | None = None,
     ) -> list[HFIDTriggerDefinition]:
-        """
-        This function is used to create a trigger definition for a display labels of type Jinja2.
-        """
-
+        """This function is used to create a trigger definition for a display labels of type Jinja2."""
         definitions: list[HFIDTriggerDefinition] = []
 
         for node_kind, hfid_definition in hfids.get_template_nodes().items():
@@ -57,7 +56,7 @@ class HFIDTriggerDefinition(TriggerBranchDefinition):
                     node_kind=node_kind,
                     target_kind=node_kind,
                     fields=[
-                        "_trigger_placeholder"
+                        TRIGGER_PLACEHOLDER_FIELD
                     ],  # Triggers for the nodes themselves are only used to determine if all nodes should be regenerated
                     hfid_hash=hfid_definition.get_hash(),
                     branches_out_of_scope=branches_out_of_scope,
@@ -128,6 +127,9 @@ class HFIDTriggerDefinition(TriggerBranchDefinition):
             event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
         elif not branches_out_of_scope and branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
+        # The coalesced merge and rebase recompute owns this family, so its per-node automation
+        # fires only for live mutations, excluding the replayed merge and rebase changes.
+        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
 
         event_trigger.match_related = {
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
@@ -137,9 +139,9 @@ class HFIDTriggerDefinition(TriggerBranchDefinition):
         workflow = ExecuteWorkflow(
             workflow=HFID_PROCESS,
             parameters={
-                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
                 "node_kind": node_kind,
-                "object_id": "{{ event.resource['infrahub.node.id'] }}",
+                "object_id": jinja_parameter("{{ event.resource['infrahub.node.id'] }}"),
                 "target_kind": target_kind,
                 "context": {
                     "__prefect_kind": "json",
@@ -174,7 +176,7 @@ class HFIDGraphQL(BaseModel):
     node_schema: NodeSchema = Field(..., description="The node kind where the computed attribute is defined")
     variables: list[str] = Field(..., description="The list of variable names used within the computed attribute")
 
-    def render_graphql_query(self, filter_id: str) -> str:
+    def render_graphql_query(self, filter_id: str | list[str]) -> str:
         query_fields = self.query_fields
         query_fields["id"] = None
         query_fields["hfid"] = None
@@ -203,7 +205,13 @@ class HFIDGraphQL(BaseModel):
                 if relationship.cardinality == RelationshipCardinality.ONE:
                     if field_name not in output:
                         output[field_name] = {"node": {}}
-                    output[field_name]["node"][related_attribute] = {related_value: None}
+                    if relationship.hierarchical and relationship.peer != relationship.hierarchical:
+                        fragment_key = f"... on {relationship.peer}"
+                        if fragment_key not in output[field_name]["node"]:
+                            output[field_name]["node"][fragment_key] = {}
+                        output[field_name]["node"][fragment_key][related_attribute] = {related_value: None}
+                    else:
+                        output[field_name]["node"][related_attribute] = {related_value: None}
         return output
 
     def parse_response(self, response: dict[str, Any]) -> list[HFIDGraphQLResponse]:

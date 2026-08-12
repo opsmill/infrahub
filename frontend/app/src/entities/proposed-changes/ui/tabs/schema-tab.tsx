@@ -1,15 +1,16 @@
-import { DIFF_TABS } from "@/shared/config/constants";
-
 import { useGetDiffSummary } from "@/entities/diff/ui/queries/get-diff-summary.query";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/ui/routing/proposed-change-urls";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
 
 export interface SchemaTabProps {
   sourceBranch: string;
+  proposedChangeId: string;
 }
 
-export function SchemaTab({ sourceBranch }: SchemaTabProps) {
+export function SchemaTab({ sourceBranch, proposedChangeId }: SchemaTabProps) {
   const { isPending, data, error } = useGetDiffSummary({
     branch: sourceBranch,
+    proposedChangeId,
     filters: {
       namespace: { includes: ["Schema"], excludes: ["Profile"] },
       status: { excludes: ["UNCHANGED"] },
@@ -20,7 +21,7 @@ export function SchemaTab({ sourceBranch }: SchemaTabProps) {
 
   return (
     <ProposedChangeTab
-      tabId={DIFF_TABS.SCHEMA}
+      to={getProposedChangeDetailsUrl(proposedChangeId, "schema")}
       label="Schema"
       count={count}
       isCountLoading={isPending}

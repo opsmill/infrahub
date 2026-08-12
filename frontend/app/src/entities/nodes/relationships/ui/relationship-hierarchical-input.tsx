@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
-import { forwardRef, useState } from "react";
+import { Button } from "@infrahub/ui";
+import React from "react";
 
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -20,8 +20,9 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import {
   RelationshipComboboxList,
@@ -29,11 +30,28 @@ import {
 } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 import { RelationshipHierarchicalComboboxList } from "@/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list";
 
-export interface RelationshipHierarchicalContentProps extends RelationshipComboboxListProps {}
+export interface RelationshipHierarchicalContentProps extends RelationshipComboboxListProps {
+  // The tree explorer browses the peer's own hierarchy and cannot honor an external filterQuery,
+  // so it is dropped when a filter must be enforced (e.g. common_parent).
+  hideExplore?: boolean;
+  // Pre-fills the "Add new" create form so a created peer satisfies an enforced filter.
+  addNewInitialObject?: NodeFieldsWithMetadata;
+}
 
 export const RelationshipHierarchicalContent = ({
+  hideExplore,
+  addNewInitialObject,
   ...props
 }: RelationshipHierarchicalContentProps) => {
+  if (hideExplore) {
+    return (
+      <ComboboxContent>
+        <RelationshipComboboxList {...props} />
+        <AddRelationshipAction {...props} initialObject={addNewInitialObject} />
+      </ComboboxContent>
+    );
+  }
+
   return (
     <ComboboxContent>
       <PopoverTabs defaultValue="list">
@@ -44,7 +62,7 @@ export const RelationshipHierarchicalContent = ({
 
         <PopoverTabsContent value="list">
           <RelationshipComboboxList {...props} />
-          <AddRelationshipAction {...props} />
+          <AddRelationshipAction {...props} initialObject={addNewInitialObject} />
         </PopoverTabsContent>
 
         <PopoverTabsContent value="tree">
@@ -57,16 +75,28 @@ export const RelationshipHierarchicalContent = ({
 
 export interface RelationshipHierarchicalInputProps
   extends Omit<ComboboxTriggerProps, "value" | "onChange"> {
+  ref?: React.Ref<HTMLButtonElement>;
   onChange?: (value: RelationshipNode | null) => void;
   value?: RelationshipNode | null;
   peer: string;
+  filterQuery?: Record<string, string | number | boolean | string[]>;
+  hideExplore?: boolean;
+  addNewInitialObject?: NodeFieldsWithMetadata;
+  enforceFilterQueryOnIdSearch?: boolean;
 }
 
-export const RelationshipHierarchicalInput = forwardRef<
-  HTMLButtonElement,
-  RelationshipHierarchicalInputProps
->(({ value, onChange, peer, ...props }, ref) => {
-  const [open, setOpen] = useState(false);
+export const RelationshipHierarchicalInput = ({
+  ref,
+  value,
+  onChange,
+  peer,
+  filterQuery,
+  hideExplore,
+  addNewInitialObject,
+  enforceFilterQueryOnIdSearch,
+  ...props
+}: RelationshipHierarchicalInputProps) => {
+  const [open, setOpen] = React.useState(false);
 
   const handleSelect = (relationship: RelationshipNode) => {
     onChange?.(relationship.id === value?.id ? null : relationship);
@@ -79,23 +109,44 @@ export const RelationshipHierarchicalInput = forwardRef<
         {value ? getNodeLabel(value) : ""}
       </ComboboxTrigger>
 
-      <RelationshipHierarchicalContent peer={peer} onSelect={handleSelect} value={value} />
+      <RelationshipHierarchicalContent
+        peer={peer}
+        onSelect={handleSelect}
+        value={value}
+        filterQuery={filterQuery}
+        hideExplore={hideExplore}
+        addNewInitialObject={addNewInitialObject}
+        enforceFilterQueryOnIdSearch={enforceFilterQueryOnIdSearch}
+      />
     </Combobox>
   );
-});
+};
 
 export interface RelationshipHierarchicalManyInputProps
   extends Omit<ComboboxTriggerProps, "value" | "onChange"> {
+  ref?: React.Ref<HTMLButtonElement>;
   onChange: (value: RelationshipNode[]) => void;
   value?: RelationshipNode[] | null;
   peer: string;
+  filterQuery?: Record<string, string | number | boolean | string[]>;
+  hideExplore?: boolean;
+  addNewInitialObject?: NodeFieldsWithMetadata;
+  enforceFilterQueryOnIdSearch?: boolean;
 }
 
-export const RelationshipHierarchicalManyInput = forwardRef<
-  HTMLButtonElement,
-  RelationshipHierarchicalManyInputProps
->(({ value, onChange, peer, className, ...props }, ref) => {
-  const [open, setOpen] = useState(false);
+export const RelationshipHierarchicalManyInput = ({
+  ref,
+  value,
+  onChange,
+  peer,
+  className,
+  filterQuery,
+  hideExplore,
+  addNewInitialObject,
+  enforceFilterQueryOnIdSearch,
+  ...props
+}: RelationshipHierarchicalManyInputProps) => {
+  const [open, setOpen] = React.useState(false);
 
   const handleSelect = (relationship: Node) => {
     onChange(value ? [...value, relationship] : [relationship]);
@@ -118,13 +169,13 @@ export const RelationshipHierarchicalManyInput = forwardRef<
                 {getNodeLabel(node)}
 
                 <Button
-                  size="icon"
+                  size="xs"
+                  shape="circle"
                   variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onPress={() => {
                     onChange(value?.filter((item) => item.id !== node.id));
                   }}
-                  className="h-4 w-4 text-gray-500 hover:text-gray-800"
+                  className="h-4 w-4 text-gray-500 data-hovered:text-gray-800"
                   aria-label={`Remove ${getNodeLabel(node)}`}
                   data-testid="remove-option"
                 >
@@ -150,7 +201,11 @@ export const RelationshipHierarchicalManyInput = forwardRef<
         peer={peer}
         onSelect={handleSelect}
         filterItem={(node) => !value?.some((v) => v.id === node.id)}
+        filterQuery={filterQuery}
+        hideExplore={hideExplore}
+        addNewInitialObject={addNewInitialObject}
+        enforceFilterQueryOnIdSearch={enforceFilterQueryOnIdSearch}
       />
     </Combobox>
   );
-});
+};

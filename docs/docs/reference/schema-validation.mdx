@@ -2,7 +2,7 @@
 title: Schema validation
 ---
 
-Infrahub requires the user to define multiple YAML files. One or more files defining the [schema in Infrahub](../topics/schema.mdx) and the [external repository configuration file](../topics/repository.mdx).
+Infrahub requires the user to define multiple YAML files. One or more files defining the [schema in Infrahub](../schema/overview) and the [external repository configuration file](../git-integration/overview).
 
 To help with the process of creating and maintaining these files, we publish JSON schemas that allow you to validate the schema of these files.
 
@@ -61,5 +61,27 @@ schemas:
 :::note
 
 The schema of the Infrahub external repository configuration file has been published on [JSON Schema store](https://www.schemastore.org/). It allows an editor, like Visual Studio Code to download the correct schema validation file. Visual Studio Code will automatically validate a file named `.infrahub.y(a)ml` with this schema, if the Red Hat YAML Language server is installed.
+
+:::
+
+## Schema strict mode
+
+By default, Infrahub operates in schema strict mode: all schema validators run every time a schema change is made or when the CI pipeline runs schema validation checks.
+
+New Infrahub versions occasionally introduce new validators — for new features or previously uncovered scenarios. This may require changes to existing data or schema before upgrading, which isn't always immediately possible.
+
+For this reason, strict mode can be disabled using the `INFRAHUB_SCHEMA_STRICT_MODE` environment variable.
+
+The following validators are disabled when `INFRAHUB_SCHEMA_STRICT_MODE` is set to `false`:
+
+- relationships same parent constraint validator
+- `min_length` less than `max_length` attribute parameter validator
+- `min_value` less than `max_value` attribute parameter validator
+- HFID uses only unique attribute validator
+- `min_value`, `max_value`, `excluded_values` number attribute constraints validator
+
+:::info
+
+Schema strict mode should only be disabled temporarily to ease upgrades when new validations have been introduced. Re-enable it as quickly as possible.
 
 :::

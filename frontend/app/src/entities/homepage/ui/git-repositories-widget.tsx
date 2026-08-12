@@ -1,18 +1,20 @@
 import { Icon } from "@iconify-icon/react";
+import { ScrollArea } from "@infrahub/ui";
 import { Collection, ListBox, ListBoxLoadMoreItem } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 import { type GitRepositoryData, GitRepositoryItem } from "@/entities/homepage/ui/git-repository";
 import { HomeCard } from "@/entities/homepage/ui/home-card";
 import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
-import { REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME } from "@/entities/repository/constants";
+import {
+  GENERIC_REPOSITORY_KIND,
+  REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME,
+} from "@/entities/repository/domain/model/repository";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface GitRepositoriesWidgetProps {

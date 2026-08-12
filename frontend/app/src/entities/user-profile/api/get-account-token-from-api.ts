@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 const query = graphql(`
   query InfrahubAccountToken {
@@ -11,6 +9,7 @@ const query = graphql(`
           id
           name
           expiration
+          __typename
         }
       }
     }

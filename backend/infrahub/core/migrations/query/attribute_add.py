@@ -33,7 +33,7 @@ class AttributeAddQuery(Query):
         self.uuids = uuids
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
@@ -114,7 +114,16 @@ class AttributeAddQuery(Query):
         CALL (a, n) {
             WITH a, n
             WHERE $set_metadata
+            // The Attribute vertex is created here, so it has no prior metadata to snapshot for rollback
             SET a.created_at = $current_time, a.created_by = $user_id, a.updated_at = $current_time, a.updated_by = $user_id
+            SET n.previous_updated_at = CASE
+                    WHEN n.updated_at IS NULL OR n.updated_at <> $current_time THEN n.updated_at
+                    ELSE n.previous_updated_at
+                END,
+                n.previous_updated_by = CASE
+                    WHEN n.updated_at IS NULL OR n.updated_at <> $current_time THEN n.updated_by
+                    ELSE n.previous_updated_by
+                END
             SET n.updated_at = $current_time, n.updated_by = $user_id
         }
         FOREACH (i in CASE WHEN has_attr_e.status = "deleted" THEN [1] ELSE [] END |

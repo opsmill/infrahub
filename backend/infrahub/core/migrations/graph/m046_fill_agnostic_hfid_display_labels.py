@@ -9,14 +9,14 @@ from rich.progress import Progress, TaskID
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, SchemaPathType
 from infrahub.core.initialization import get_root_node
-from infrahub.core.migrations.graph.m044_backfill_hfid_display_label_in_db import (
+from infrahub.core.migrations.graph.m044_backfill_hfid_display_label_in_db import UpdateAttributeValuesQuery
+from infrahub.core.migrations.query.path_details import (
     DefaultBranchNodeCount,
     GetPathDetailsDefaultBranch,
     GetResultMapQuery,
-    UpdateAttributeValuesQuery,
 )
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
-from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
 
@@ -34,7 +34,7 @@ class DeleteBranchAwareAttrsForBranchAgnosticNodesQuery(Query):
     insert_return = False
     raise_error_if_empty = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (n:Node {branch_support: "agnostic"})
 MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute)
@@ -48,15 +48,16 @@ CALL (attr) {
 
 
 class Migration046(ArbitraryMigration):
-    """
-    Delete any branch-aware human_friendly_id and display_label attributes added to branch-agnostic nodes
+    """Delete any branch-aware human_friendly_id and display_label attributes added to branch-agnostic nodes.
+
     Add human_friendly_id and display_label attributes to branch-agnostic nodes
-    Set human_friendly_id and display_label attributes for branch-agnostic nodes on global branch
+    Set human_friendly_id and display_label attributes for branch-agnostic nodes on global branch.
 
     Uses and duplicates code from Migration044
     """
 
     name: str = "046_fill_agnostic_hfid_display_labels"
+    description: str = "N/A"
     minimum_version: int = 45
     update_batch_size: int = 1000
 
@@ -137,12 +138,13 @@ class Migration046(ArbitraryMigration):
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         try:
             return await self._do_execute(migration_input=migration_input)
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             return MigrationResult(errors=[str(exc)])
 
     async def _do_execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db
-        console = get_migration_console()
+        console = migration_input.console
         result = MigrationResult()
 
         root_node = await get_root_node(db=db, initialize=False)
@@ -192,7 +194,8 @@ class Migration046(ArbitraryMigration):
                     execution_result = await migration.execute(migration_input=migration_input, branch=global_branch)
                     result.errors.extend(execution_result.errors)
                     progress.update(update_task, advance=1)
-                except Exception as exc:
+                # First failing sub-migration is recorded as a result error and aborts the remaining steps
+                except Exception as exc:  # noqa: BLE001
                     result.errors.append(str(exc))
                     return result
 

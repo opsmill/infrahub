@@ -11,14 +11,22 @@ from opentelemetry import trace
 
 from infrahub import config, models
 from infrahub.api.dependencies import get_db
-from infrahub.auth import (
+from infrahub.api.event_builder import make_event_meta, make_login_event
+from infrahub.auth.auth import (
+    ExternalIdentity,
     SSOStateCache,
+    extract_sso_groups,
     get_groups_from_provider,
     signin_sso_account,
     validate_auth_response,
 )
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
+from infrahub.core import registry
+from infrahub.events.account_action import AuthMethod
 from infrahub.exceptions import ProcessingError
+from infrahub.external_protocols import ExternalAuthProtocol
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
 
@@ -138,33 +146,68 @@ async def token(
 
     validate_auth_response(response=userinfo_response, provider_type="OAuth 2.0")
     user_info = userinfo_response.json()
-    sso_groups = user_info.get("groups", []) or await get_groups_from_provider(
-        provider=provider, service=service, payload=payload, user_info=user_info
-    )
+    sso_groups = extract_sso_groups(
+        payload=user_info,
+        claim_key=provider.groups_claim,
+        provider_name=provider_name,
+        source="oauth2_userinfo",
+    ) or await get_groups_from_provider(provider=provider, service=service, payload=payload, user_info=user_info)
 
     log.info(
         "SSO user authenticated",
         body={"user_name": user_info.get("name"), "groups": sso_groups},
     )
 
-    if not sso_groups and config.SETTINGS.security.sso_user_default_group:
-        sso_groups = [config.SETTINGS.security.sso_user_default_group]
+    sub = user_info.get("sub")
+    if not sub:
+        raise ProcessingError(
+            message="SSO provider did not return a 'sub' claim. Ensure 'openid' is included in the configured scopes."
+        )
+
+    external_identity = ExternalIdentity(
+        sub=sub,
+        provider_name=provider_name,
+        protocol=ExternalAuthProtocol.OAUTH2,
+        display_name=user_info["name"],
+        email=user_info["email"],
+    )
 
     with trace.get_tracer(__name__).start_as_current_span("signin_sso_account") as span:
         span.set_attribute("account_name", ujson.dumps(userinfo_response.json()))
         span.set_attribute("sso_groups", sso_groups)
-        user_token = await signin_sso_account(db=db, account_name=user_info["name"], sso_groups=sso_groups)
+        auth_result = await signin_sso_account(
+            db=db, external_identity=external_identity, sso_groups=sso_groups, event_service=service.event
+        )
 
     response.set_cookie(
-        "access_token", user_token.access_token, httponly=True, max_age=config.SETTINGS.security.access_token_lifetime
+        "access_token",
+        auth_result.token.access_token,
+        httponly=True,
+        max_age=config.SETTINGS.security.access_token_lifetime,
     )
     response.set_cookie(
         "refresh_token",
-        user_token.refresh_token,
+        auth_result.token.refresh_token,
         httponly=True,
         max_age=config.SETTINGS.security.refresh_token_lifetime,
     )
+    session = AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=auth_result.account_id)
+    branch = await registry.get_branch(db=db)
+    try:
+        event = make_login_event(
+            request=request,
+            event_meta=await make_event_meta(account_session=session, branch=branch),
+            auth_result=auth_result,
+            auth_method=AuthMethod.OAUTH2,
+            identity_source=provider_name,
+        )
+        await service.event.send(event=event)
+    # Login event emission is best-effort telemetry; it must never fail a successful OAuth2 login
+    except Exception as ex:  # noqa: BLE001
+        log.warning(f"Failed to emit OAuth2 login event for account_id={auth_result.account_id}: {str(ex)}")
 
     return models.UserTokenWithUrl(
-        access_token=user_token.access_token, refresh_token=user_token.refresh_token, final_url=sso_state.final_url
+        access_token=auth_result.token.access_token,
+        refresh_token=auth_result.token.refresh_token,
+        final_url=sso_state.final_url,
     )

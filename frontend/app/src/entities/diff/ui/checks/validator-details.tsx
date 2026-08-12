@@ -1,13 +1,10 @@
-import { gql } from "@apollo/client";
-
-import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Pagination } from "@/shared/components/ui/pagination";
 import usePagination from "@/shared/hooks/usePagination";
 
-import { getValidatorDetails } from "@/entities/diff/api/getValidatorDetails";
+import { useGetValidatorDetails } from "@/entities/diff/ui/queries/get-validator-details.query";
 
 import { Check } from "./check";
 
@@ -18,26 +15,17 @@ type tValidatorDetails = {
 export const ValidatorDetails = ({ id }: tValidatorDetails) => {
   const [pagination] = usePagination();
 
-  const filtersString = [
-    // Add pagination filters
-    ...[
-      { name: "offset", value: pagination?.offset },
-      { name: "limit", value: pagination?.limit },
-    ].map((row: any) => `${row.name}: ${row.value}`),
-  ].join(",");
-
-  const queryString = getValidatorDetails({
-    id,
-    filters: filtersString,
+  const {
+    isLoading,
+    error,
+    data: validator,
+  } = useGetValidatorDetails({
+    ids: [id],
+    checksOffset: pagination?.offset,
+    checksLimit: pagination?.limit,
   });
 
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { loading, error, data } = useQuery(query);
-
-  if (loading) {
+  if (isLoading) {
     return <LoadingIndicator className="p-4" />;
   }
 
@@ -45,11 +33,9 @@ export const ValidatorDetails = ({ id }: tValidatorDetails) => {
     return <ErrorScreen message="Something went wrong when fetching the validator details." />;
   }
 
-  const validator = data?.CoreValidator?.edges[0]?.node;
-
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="grid grid-cols-1 gap-4 p-2 2xl:grid-cols-2">
+    <div className="flex min-w-0 flex-1 flex-col">
+      <div className="grid min-w-0 grid-cols-1 gap-4 p-2 2xl:grid-cols-2">
         {validator?.checks?.edges?.map((check: any) => (
           <Check key={check?.node?.id} id={check?.node?.id} />
         ))}

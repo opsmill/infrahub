@@ -1,0 +1,14 @@
+---
+feature: Computed Attributes
+pr: TBD
+description: |
+  Computed Attributes feature migration to single-page merge. The legacy guide
+  content has been folded into the topic page as `## How to add a Jinja2
+  computed attribute`, `## How to add a Python computed attribute`, and
+  `## How to test Jinja2 computed attributes locally` sections. The canonical
+  page is now at /docs/computed-attributes; legacy URLs redirect there.
+redirects:
+  - from: /docs/guides/computed-attributes
+    to: /docs/computed-attributes
+  - from: /docs/topics/computed-attributes
+    to: /docs/computed-attributes

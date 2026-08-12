@@ -1,26 +1,24 @@
+import { LinkButton, Popover, PopoverTrigger, Spinner } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
 import React from "react";
 import { Button as AriaButton } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { LinkButton } from "@/shared/components/ui/button";
 import {
   ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
   type ComboboxListProps,
 } from "@/shared/components/ui/combobox";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames, debounce } from "@/shared/utils/common";
 
-import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
+import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/use-cases/get-ip-namespace-list";
 import { useCurrentIpNamespace } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/ui/queries/get-ip-namespace-list.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 
 interface IpNamespaceSelectorProps {
   className?: string;
@@ -49,7 +47,7 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
         </Row>
       </AriaButton>
 
-      <Popover placement="bottom start" className="w-(--trigger-width)">
+      <Popover placement="bottom start" className="w-(--trigger-width) bg-white">
         <IpNamespaceComboboxList
           onNamespaceSelection={(value) => {
             setCurrentIpNamespace(value);
@@ -57,9 +55,9 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
           }}
         />
 
-        <Col className="border-neutral-200 border-t p-2">
+        <Col className="border-t p-2">
           <LinkButton
-            to={constructPath("/ipam/namespaces")}
+            href={constructPath("/ipam/namespaces")}
             variant="ghost"
             size="sm"
             className="justify-start text-xs"

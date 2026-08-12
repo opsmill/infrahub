@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { Tooltip } from "@infrahub/ui";
 
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 
 import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
 
@@ -9,9 +9,17 @@ export interface DiffEmptyProps {
   branchName: string;
   lastRefreshedAt: Date;
   branchExists?: boolean;
+  hideActions?: boolean;
 }
 
-export function DiffEmpty({ branchName, lastRefreshedAt, branchExists = true }: DiffEmptyProps) {
+export function DiffEmpty({
+  branchName,
+  lastRefreshedAt,
+  branchExists = true,
+  hideActions,
+}: DiffEmptyProps) {
+  const { formatDate } = useFormatDate();
+
   return (
     <div className="my-10 flex flex-col items-center gap-5">
       <div className="inline-flex rounded-full bg-white p-3">
@@ -22,15 +30,17 @@ export function DiffEmpty({ branchName, lastRefreshedAt, branchExists = true }: 
       <div className="text-center">
         <p>
           The last comparison was made{" "}
-          <Tooltip enabled content={formatFullDate(lastRefreshedAt)}>
-            <span className="font-semibold">{formatRelativeTimeFromNow(lastRefreshedAt)}</span>
+          <Tooltip message={formatDate(lastRefreshedAt, "datetime")} nonInteractiveTrigger>
+            <span className="font-semibold">{formatDate(lastRefreshedAt, "relative")}</span>
           </Tooltip>
           .
         </p>
-        {branchExists && <p>If you have made any changes, please refresh the diff:</p>}
+        {branchExists && !hideActions && (
+          <p>If you have made any changes, please refresh the diff:</p>
+        )}
       </div>
 
-      {branchExists && <DiffRefreshButton branchName={branchName} />}
+      {branchExists && !hideActions && <DiffRefreshButton branchName={branchName} />}
     </div>
   );
 }

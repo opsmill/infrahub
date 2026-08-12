@@ -1,15 +1,15 @@
 import { Icon } from "@iconify-icon/react";
+import { Tooltip } from "@infrahub/ui";
 import { ListBoxItem } from "react-aria-components";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Badge } from "@/shared/components/ui/badge";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { CHECK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
-import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";
+import { CHECK_OBJECT } from "@/entities/diff/domain/model/check";
+import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/use-cases/get-proposed-changes";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary/proposed-change-diff-summary";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -18,7 +18,7 @@ type ProposedChangesItemLightProps = {
 };
 
 export const ProposedChangesItemLight = ({ proposedChange }: ProposedChangesItemLightProps) => {
-  const { node } = proposedChange;
+  const { node, metadata } = proposedChange;
 
   return (
     <ListBoxItem className="flex items-center p-4">
@@ -35,7 +35,7 @@ export const ProposedChangesItemLight = ({ proposedChange }: ProposedChangesItem
           branchName={node.source_branch?.value}
           comments={node.total_comments.value ?? 0}
           validations={node.validations.count}
-          updatedAt={node._updated_at}
+          updatedAt={metadata.updated_at}
         />
       </div>
     </ListBoxItem>
@@ -72,7 +72,7 @@ type ProposedChangesDataProps = {
   branchName: string;
   comments: number;
   validations: number;
-  updatedAt: string;
+  updatedAt: string | null;
 };
 
 const ProposedChangesData = ({
@@ -94,11 +94,7 @@ const ProposedChangesData = ({
 
       <ProposedChangesChecks validations={validations} />
 
-      <DateDisplay
-        date={updatedAt}
-        containerClassName={"col-span-2 text-right justify-end"}
-        dateFormat="d MMM yyyy HH:mm"
-      />
+      <DateDisplay date={updatedAt} containerClassName={"col-span-2 text-right justify-end"} />
     </div>
   );
 };
@@ -109,7 +105,7 @@ const ProposedChangesComments = ({ comments }: { comments: number }) => {
   }
 
   return (
-    <Tooltip enabled content="Comments">
+    <Tooltip message="Comments" nonInteractiveTrigger>
       <span className="flex items-center justify-center gap-1">
         <Icon icon={"mdi:comment-outline"} /> {comments}
       </span>
@@ -121,7 +117,7 @@ const ProposedChangesChecks = ({ validations }: { validations: number }) => {
   const { schema } = useSchema(CHECK_OBJECT);
 
   return (
-    <Tooltip enabled content="Checks">
+    <Tooltip message="Checks" nonInteractiveTrigger>
       <span className="flex items-center justify-center">
         <Icon icon={schema?.icon ?? "mdi:check-circle-outline"} /> {validations}
       </span>

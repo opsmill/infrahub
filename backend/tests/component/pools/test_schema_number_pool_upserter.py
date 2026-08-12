@@ -154,7 +154,9 @@ async def test_upsert_number_pool_with_pool_id_set(
     assert retrieved_pool.id == default_number_pool.id
 
 
-async def test_upsert_number_pool_inherited_uses_generic_kind(db: InfrahubDatabase) -> None:
+async def test_upsert_number_pool_inherited_uses_generic_kind(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch
+) -> None:
     """Test that upsert_number_pool uses the generic's kind for inherited attributes."""
     # Register the schemas with generics
     schema = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
@@ -177,7 +179,9 @@ async def test_upsert_number_pool_inherited_uses_generic_kind(db: InfrahubDataba
     assert pool.node_attribute.value == "number"
 
 
-async def test_upsert_number_pool_inherited_shares_pool(db: InfrahubDatabase) -> None:
+async def test_upsert_number_pool_inherited_shares_pool(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch
+) -> None:
     """Test that inherited attributes from different nodes share the same pool."""
     schema = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
     schema_branch = registry.schema.register_schema(schema=schema)
@@ -206,7 +210,9 @@ async def test_upsert_number_pool_inherited_shares_pool(db: InfrahubDatabase) ->
     assert pool_incident.node.value == "SnowTask"
 
 
-async def test_upsert_number_pool_non_inherited_gets_own_pool(db: InfrahubDatabase) -> None:
+async def test_upsert_number_pool_non_inherited_gets_own_pool(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch
+) -> None:
     """Test that non-inherited attributes get their own pools."""
     generic_schema = GenericSchema(
         name="BaseGeneric",
@@ -273,7 +279,9 @@ async def test_upsert_number_pool_non_inherited_gets_own_pool(db: InfrahubDataba
     assert pool_b.node.value == "TestNodeB"
 
 
-async def test_upsert_number_pool_invalid_type_raises(db: InfrahubDatabase) -> None:
+async def test_upsert_number_pool_invalid_type_raises(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch
+) -> None:
     """Test that upsert_number_pool raises ValueError for non-NumberPool attributes."""
     upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
     attribute = SNOW_INCIDENT.get_attribute("identifier")
@@ -286,7 +294,9 @@ async def test_upsert_number_pool_invalid_type_raises(db: InfrahubDatabase) -> N
         )
 
 
-async def test_get_inherited_pool_info_returns_none_for_non_node_schema(db: InfrahubDatabase) -> None:
+async def test_get_inherited_pool_info_returns_none_for_non_node_schema(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch
+) -> None:
     """Test that get_inherited_pool_info returns None for GenericSchema."""
     upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
 
@@ -299,7 +309,9 @@ async def test_get_inherited_pool_info_returns_none_for_non_node_schema(db: Infr
     assert result is None
 
 
-async def test_get_inherited_pool_info_returns_info_for_inherited_attribute(db: InfrahubDatabase) -> None:
+async def test_get_inherited_pool_info_returns_info_for_inherited_attribute(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch
+) -> None:
     """Test that get_inherited_pool_info returns correct info for inherited attributes."""
     schema = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT])
     schema_branch = registry.schema.register_schema(schema=schema)

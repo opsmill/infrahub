@@ -5,8 +5,8 @@ from invoke import Context, task
 MAIN_DIRECTORY_PATH = Path(__file__).parent
 
 
-@task
-def format(context: Context) -> None:
+@task(name="format")
+def format_code(context: Context) -> None:
     """Run RUFF to format all Python files."""
 
     exec_cmds = ["ruff format .", "ruff check . --fix"]

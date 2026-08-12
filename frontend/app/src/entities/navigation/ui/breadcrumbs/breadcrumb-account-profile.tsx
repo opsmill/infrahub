@@ -1,5 +1,6 @@
+import { BreadcrumbItem, Breadcrumbs } from "@infrahub/ui";
+
 import { constructPath } from "@/shared/api/rest/fetch";
-import { BreadcrumbItem, Breadcrumbs } from "@/shared/components/aria/breadcrumbs";
 
 export function BreadcrumbAccountProfile() {
   return (

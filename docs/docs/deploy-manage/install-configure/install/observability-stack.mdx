@@ -1,0 +1,225 @@
+---
+title: Observability stack
+---
+
+import ReferenceLink from "../../../../src/components/Card";
+
+# Observability stack
+
+Infrahub ships an observability stack that runs alongside Infrahub:
+
+- **Grafana Alloy** — collects logs and metrics
+- **Loki** — log storage
+- **Prometheus** — metric storage
+- **Tempo** — distributed tracing
+- **Grafana** — dashboards and visualization
+- **Prefect exporter** — task-manager metrics
+
+You can deploy it with **Docker Compose** (Infrahub Enterprise) or on **Kubernetes** with the `infrahub-observability` Helm chart. Grafana comes provisioned with pre-built dashboards and data sources for Infrahub, Neo4j, RabbitMQ, and Prefect.
+
+<ReferenceLink title="infrahub-observability Helm chart" url="https://github.com/opsmill/infrahub-helm/tree/stable/charts/infrahub-observability" openInNewTab />
+
+## Docker Compose
+
+The Infrahub Enterprise Docker Compose deployment can include the observability stack. Add the `?observability=true` query parameter when you fetch the compose file:
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?observability=true" > docker-compose.yml
+docker compose -p infrahub up -d
+```
+
+It combines with other parameters such as a sizing preset:
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?size=small&observability=true" > docker-compose.yml
+```
+
+Once running, Grafana is available at [http://localhost:3500](http://localhost:3500) with the default credentials `admin` / `admin`.
+
+:::tip Enable request tracing
+
+Infrahub can export OpenTelemetry traces so you can follow a single request as it moves across the API server, task workers, and the database. Traces are sent to the bundled Tempo instance and surfaced in Grafana under the Tempo data source. To enable it, add the following to a `.env` file alongside the compose file:
+
+```bash
+INFRAHUB_TRACE_ENABLE=true
+INFRAHUB_TRACE_EXPORTER_TYPE=otlp
+INFRAHUB_TRACE_EXPORTER_PROTOCOL=grpc
+INFRAHUB_TRACE_EXPORTER_ENDPOINT=http://infrahub-tempo:4317
+INFRAHUB_TRACE_INSECURE=true
+```
+
+:::
+
+For the full Infrahub Enterprise Compose install, see the [Enterprise install guide](./enterprise).
+
+## Kubernetes with Helm
+
+On Kubernetes the stack is the `infrahub-observability` Helm chart, which wraps the upstream Grafana and Prometheus community charts. Deploy it bundled with your Infrahub release or as a standalone release.
+
+### Prerequisites
+
+- A Kubernetes cluster (version 1.24 or later)
+- [Helm](https://helm.sh/docs/intro/install/) (version 3 or later) installed on your system
+- A persistent volume provisioner in the cluster. Loki, Prometheus, Tempo, and Grafana enable persistence by default
+
+The stack installs and runs on its own. To collect Infrahub's own metrics and Prefect task data, install it in the same namespace as an Infrahub or Infrahub Enterprise release (or set `global.infrahubReleaseName` when the release name differs). Without a reachable Infrahub, the stack still starts, but the Prefect exporter stays unhealthy and the Infrahub scrape targets report no data.
+
+### Deploy
+
+Deploy the stack either bundled with your Infrahub release or as its own release.
+
+#### Bundled with Infrahub
+
+The `infrahub` and `infrahub-enterprise` charts package the observability stack as a subchart, gated by `infrahub-observability.enabled` (default `false`). Enable it in your Infrahub values to deploy the stack as part of the same release and namespace — no separate install.
+
+For the `infrahub` (Community) chart:
+
+```yaml
+# infrahub values
+infrahub-observability:
+  enabled: true
+```
+
+For the `infrahub-enterprise` chart, nest the key under `infrahub`:
+
+```yaml
+# infrahub-enterprise values
+infrahub:
+  infrahub-observability:
+    enabled: true
+```
+
+Apply the change with `helm upgrade` on your Infrahub release. Enabling the bundled stack also turns tracing on automatically: Infrahub emits traces to the bundled Tempo at `<release>-tempo:4317` (where `<release>` is your Infrahub release name) with no further configuration.
+
+#### Standalone release
+
+To manage the stack on its own release lifecycle — for example, to add it next to an existing Infrahub release without changing that release — install the chart directly. The `--create-namespace` flag creates the target namespace if it does not already exist; drop it when installing into the namespace where Infrahub already runs:
+
+```bash
+helm install obs oci://registry.opsmill.io/opsmill/chart/infrahub-observability --version 0.1.0 -n infrahub --create-namespace
+```
+
+The release name (`obs` above) prefixes the service names referenced throughout this guide.
+
+A standalone release does not wire Infrahub's tracing for you. To send traces to its Tempo, set `global.tracing` on the Infrahub release:
+
+```yaml
+# infrahub values
+global:
+  tracing:
+    enabled: true
+    endpoint: "obs-tempo:4317"
+    protocol: grpc
+    insecure: true
+```
+
+### Services and access
+
+Every component is exposed through a `ClusterIP` service, reachable only from inside the cluster:
+
+| Service | Purpose |
+|---------|---------|
+| `<release>-grafana` | Grafana UI |
+| `<release>-loki` | Log storage (Alloy pushes logs here) |
+| `<release>-prometheus-server` | Metric storage (Alloy remote-writes here) |
+| `<release>-tempo` | Trace storage (OTLP receiver on port 4317) |
+| `<release>-prometheus-node-exporter` | Host metrics |
+| `<release>-infrahub-observability-prefect-exporter` | Prefect metrics (scraped by Alloy on port 8000) |
+
+`<release>` is your Infrahub release name when bundled, or the observability release name (`obs` above) when standalone. Run `kubectl get svc -n infrahub` to list the exact service names for your release.
+
+The log, metric, and trace services only need to be reachable from inside the cluster, so keep them as `ClusterIP`. Grafana is the only component intended for people to browse.
+
+To open Grafana, forward its service to your machine (replace `obs` with your Infrahub release name if you bundled the stack):
+
+```bash
+kubectl port-forward svc/obs-grafana 3000:80 -n infrahub
+```
+
+Then browse to [http://localhost:3000](http://localhost:3000) and sign in with the default credentials `admin` / `admin`.
+
+To reach Grafana without port-forwarding, set `grafana.service.type` to `LoadBalancer` or `NodePort`, or enable an ingress with `grafana.ingress.enabled`.
+
+:::warning
+
+Change the default Grafana credentials before exposing it outside the cluster. Set `grafana.admin.existingSecret` to a secret you manage rather than relying on the default `admin` / `admin`.
+
+:::
+
+### Configure the stack
+
+The component values below set the size, retention, and exposure of each part of the stack:
+
+```yaml
+# Turn off components you don't need
+tempo:
+  enabled: false        # disable tracing
+
+# Persistence and retention
+loki:
+  singleBinary:
+    persistence:
+      size: 20Gi
+prometheus:
+  server:
+    retention: 7d
+    persistentVolume:
+      size: 50Gi
+
+# Expose Grafana through an ingress and use a managed admin secret
+grafana:
+  ingress:
+    enabled: true
+  admin:
+    existingSecret: grafana-admin
+```
+
+Where you place these values depends on how you deploy:
+
+- **Standalone** — set them at the top level of the observability `values.yml`.
+- **Bundled** — nest the same blocks under `infrahub-observability:` (or `infrahub.infrahub-observability:` for Enterprise) in your Infrahub values:
+
+```yaml
+# infrahub values (bundled)
+infrahub-observability:
+  tempo:
+    enabled: false
+  grafana:
+    ingress:
+      enabled: true
+```
+
+:::warning global values are shared, not nested
+
+`global.*` values are Helm global values, shared across Infrahub and the bundled subchart, so they always stay at the **top level** of your values — never nest them under `infrahub-observability:`. The same applies to the Infrahub chart's `global.tracing`. When bundled, the stack resolves the Infrahub release name and namespace from the release itself, so `global.infrahubReleaseName` and `global.infrahubNamespace` are only needed for a standalone release that points at a separately named or located Infrahub.
+
+:::
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `<component>.enabled` | `true` | Toggle any of `alloy`, `loki`, `tempo`, `grafana`, `prometheus`, `prometheus-node-exporter`, `prefectExporter` |
+| component persistence `size` | Loki `10Gi`, Tempo `10Gi`, Prometheus `20Gi`, Grafana `5Gi` | Persistent volume size per component |
+| `loki.loki.limits_config.retention_period` | `24h` | Log retention |
+| `tempo.tempo.retention`, `prometheus.server.retention` | `96h` | Trace and metric retention |
+| `grafana.service.type`, `grafana.ingress.enabled` | `ClusterIP`, `false` | How Grafana is exposed |
+| `grafana.adminPassword`, `grafana.admin.existingSecret` | `admin` | Grafana credentials |
+| `alloy.cadvisor.enabled` | `true` | Scrape per-container metrics from the kubelet cAdvisor endpoint. Disable where cluster policy forbids `nodes/proxy` access |
+| `tempo.tempo.metricsGenerator.enabled` | `false` | Generate request metrics from spans. Requires `tempo.tempo.metricsGenerator.remoteWriteUrl` |
+| `prefectExporter.enabled` | `true` | Deploy the Prefect metrics exporter |
+| `global.infrahubReleaseName`, `global.infrahubNamespace` | `infrahub`, release namespace | Standalone only (top-level, never nested): point the release at a separately named or located Infrahub. Auto-resolved when bundled |
+
+For the complete list of values, see the chart's `values.yaml`.
+
+<ReferenceLink title="infrahub-observability values.yaml" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-observability/values.yaml" openInNewTab />
+
+### Verify the deployment
+
+Check that the stack's pods are running:
+
+```bash
+kubectl get pods -n infrahub
+```
+
+You should see an Alloy pod on each node (deployed as a DaemonSet), single-instance Loki, Tempo, Prometheus, and Grafana pods, a node exporter on each node, and the Prefect exporter. The Prefect exporter only becomes healthy once it can reach the Infrahub task manager, so deploy it alongside an Infrahub release. Once Grafana is reachable, open it and confirm that the Infrahub dashboards render and that the Prometheus and Loki data sources connect successfully.
+
+To upgrade the stack later, see [Upgrade the observability stack](../../maintain-upgrade/upgrade/observability-stack).

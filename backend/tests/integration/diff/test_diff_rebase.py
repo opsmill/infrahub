@@ -15,7 +15,7 @@ from infrahub.core.constants import (
     RelationshipKind,
 )
 from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.core.diff.model.path import BranchTrackingId
+from infrahub.core.diff.model.path import BranchTrackingId, FrozenTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -453,6 +453,26 @@ class TestDiffRebase(TestInfrahubApp):
                 assert prop_diff.previous_value == (check_value if expected_action is DiffAction.REMOVED else None)
                 assert prop_diff.new_value == (check_value if expected_action is DiffAction.ADDED else None)
                 assert prop_diff.conflict is None
+
+        # Verify that branch_1's diffs are frozen after merge
+        branch_1_frozen_metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[branch_1.name, "main"],
+            tracking_id=FrozenTrackingId(name=branch_1.name),
+            exclude_merged=False,
+        )
+        assert len(branch_1_frozen_metadata) == 2, "Merged branch should have 2 frozen diff roots (branch + base)"
+        for m in branch_1_frozen_metadata:
+            assert m.is_frozen is True
+            assert isinstance(m.tracking_id, FrozenTrackingId)
+            assert m.tracking_id.name == branch_1.name
+
+        # Original BranchTrackingId should no longer find branch_1 diffs
+        branch_1_active_metadata = await diff_repository.get_roots_metadata(
+            diff_branch_names=[branch_1.name],
+            tracking_id=BranchTrackingId(name=branch_1.name),
+            exclude_merged=False,
+        )
+        assert len(branch_1_active_metadata) == 0, "Merged branch should have no active branch-tracking diffs"
 
     async def test_resolve_conflict(
         self,

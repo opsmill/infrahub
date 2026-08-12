@@ -25,6 +25,19 @@ All events extend `InfrahubEvent` from `backend/infrahub/events/models.py` and c
 - **related**: Additional context resources (returned by `get_related()`)
 - **payload**: Event-specific data (returned by `get_event_payload()`)
 
+### Related resources cap
+
+The Prefect API rejects any event whose `related` list exceeds
+`PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES` (500 in the Infrahub image) —
+an oversized event is dropped entirely, never recorded. Node mutation events
+build their related resources in priority order — node-scoped entries first
+(attribute updates, parent, the node's own related-node entry), then
+relationship updates (which automation triggers match on), then per-peer
+related-node entries — and truncate at that maximum with a warning log. A node
+with a very large cardinality-many relationship therefore keeps its event, but
+not every peer is represented in `related`; the full peer list remains
+available in the event payload's changelog.
+
 ## Event Types
 
 Events are organized by domain in `backend/infrahub/events/`:
@@ -33,7 +46,7 @@ Events are organized by domain in `backend/infrahub/events/`:
 |--------|--------|------|
 | Node | `NodeCreatedEvent`, `NodeUpdatedEvent`, `NodeDeletedEvent` | `node_action.py` |
 | Branch | `BranchCreatedEvent`, `BranchDeletedEvent`, `BranchMergedEvent`, `BranchRebasedEvent` | `branch_action.py` |
-| Group | `GroupMemberAddedEvent`, `GroupMemberRemovedEvent` | `group_action.py` |
+| Group | `GroupMemberAddedEvent`, `GroupMemberRemovedEvent`, `GroupAutoCreatedEvent`, `GroupAutoCreateRejectedEvent`, `GroupAutoCreateCappedEvent` | `group_action.py` |
 | Schema | `SchemaUpdatedEvent` | `schema_action.py` |
 | Artifact | `ArtifactCreatedEvent`, `ArtifactUpdatedEvent` | `artifact_action.py` |
 | Validator | `ValidatorStartedEvent`, `ValidatorPassedEvent`, `ValidatorFailedEvent` | `validator_action.py` |
@@ -57,6 +70,14 @@ InfrahubEventService.send(event)
                    └──► emit_event() → Prefect Automations
 ```
 
+## Trigger action parameters
+
+A trigger definition's `ExecuteWorkflow` action passes parameters to the target deployment. Each parameter value is a Jinja template that Prefect renders server-side, against the triggering event, when the automation fires.
+
+Prefect's `RunDeployment._upgrade_v1_templates` (>=3.6.24) rewrites a bare single-expression string such as `"{{ event.id }}"` by appending `| tojson`, which JSON-serializes the rendered value to preserve its type. `json.dumps` raises on values that are not JSON-native (a `UUID` or a `datetime`) or that resolve to an undefined resource key, so the render fails and the deployment never runs.
+
+Emit single-expression parameters through `jinja_parameter()` in `trigger/models.py`, which wraps them as an explicit `{"__prefect_kind": "jinja", "template": ...}` value. Prefect leaves a parameter that already declares a `__prefect_kind` untouched, so it renders as a plain string on every Prefect version. Values that must keep their non-string type use the `{"__prefect_kind": "json", "value": {"__prefect_kind": "jinja", "template": "... | tojson"}}` form instead.
+
 ## Event Metadata
 
 The `EventMeta` class provides rich context:
@@ -69,6 +90,7 @@ The `EventMeta` class provides rich context:
 - **account_id**: Initiating account
 - **request_id**: Correlation ID
 - **context**: Full `InfrahubContext` for the operation
+- **origin**: For node mutation events, how the mutation was produced (`live`, `merge`, `rebase`, `recompute`), defaulting to `live`. The recompute triggers for computed attributes, display labels, and human-friendly ids match only `live`, so a merge, rebase, or recompute write does not re-trigger their per-node flows. See [merge-recompute.md](merge-recompute.md).
 
 Use `EventMeta.from_parent()` to create child events that maintain hierarchy.
 
@@ -94,4 +116,7 @@ Events can be queried through:
 
 - [ADR-0002: Prefect Events System](../../adr/0002-events-system.md) - Why we use Prefect Events
 - [Creating Events Guide](../../guides/backend/creating-events.md) - How to create a new event
+- [Authentication](authentication.md) - SSO group resolution and auto-create group events
+- [Webhooks](webhooks.md) - HTTP notification delivery triggered by events
+- [Merge/Rebase Recompute](merge-recompute.md) - node mutation origin and how it suppresses recompute triggers
 - [Backend Architecture](architecture.md) - Overall backend structure

@@ -1,5 +1,4 @@
-import { TASK_TAB } from "@/shared/config/constants";
-
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/ui/routing/proposed-change-urls";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
 import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 
@@ -11,6 +10,11 @@ export function TasksTab({ proposedChangeId }: TasksTabProps) {
   const { isPending, data: count } = useGetTaskCount({ relatedNodeIds: [proposedChangeId] });
 
   return (
-    <ProposedChangeTab tabId={TASK_TAB} label="Tasks" count={count} isCountLoading={isPending} />
+    <ProposedChangeTab
+      to={getProposedChangeDetailsUrl(proposedChangeId, "tasks")}
+      label="Tasks"
+      count={count}
+      isCountLoading={isPending}
+    />
   );
 }

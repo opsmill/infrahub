@@ -5,7 +5,7 @@
             "name": "device",
             "kind": "Device",
             "default_filter": "name__value",
-            "display_labels": ["name__value"],
+            "display_label": "name__value",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": true},
                 {"name": "description", "kind": "NotAValidType", "optional": true},
@@ -25,7 +25,7 @@
         {
             "name": "interface",
             "kind": "Interface",
-            "display_labels": ["name__value"],
+            "display_label": "name__value",
             "attributes": [
                 {"name": "name", "kind": "Text"},
                 {"name": "description", "kind": "Text", "optional": true},

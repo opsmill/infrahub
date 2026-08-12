@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 class Migration051(ArbitraryMigration):
     name: str = "051_subtract_branched_from_microsecond"
+    description: str = "N/A"
     minimum_version: int = 50
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
@@ -21,12 +22,9 @@ class Migration051(ArbitraryMigration):
         db = migration_input.db
         result = MigrationResult()
 
-        branches = await Branch.get_list(db=db)
+        branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True)
 
         for branch in branches:
-            if branch.is_default or branch.is_global:
-                continue
-
             if not branch.branched_from:
                 continue
 

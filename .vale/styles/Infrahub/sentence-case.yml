@@ -17,6 +17,7 @@ exceptions:
   - Neo4j
   - GraphQL
   - RabbitMQ
+  - PostgreSQL
   - Kubernetes
   - Helm
   - Terraform
@@ -25,6 +26,11 @@ exceptions:
   - GitHub
   - GitLab
   - IP Fabric
+  - Testcontainers
+  - Compose
+  - Marketplace
+  - Sync
+  - Community
 
   # Acronyms and abbreviations
   - API
@@ -32,6 +38,11 @@ exceptions:
   - REST
   - SDK
   - SSO
+  - LDAP
+  - LDAPS
+  - STARTTLS
+  - MCP
+  - AI
   - IPAM
   - IP
   - CI
@@ -50,6 +61,16 @@ exceptions:
   - VLAN
   - WebUI
   - IDE
+  - TCP
+  - TLS
+  - UDP
+  - RFC
+  - SIEM
+  - PRI
+  - SBOM
+  - SBOMs
+  - SPDX
+  - CycloneDX
 
   # Technical terms that should keep their case
   - Python
@@ -61,6 +82,14 @@ exceptions:
   - Generics
   - Docker
   - Profiles
+  - Profile
+  - Transformation
+  - Transformations
+  - Generator
+  - Generators
+  - Resource
+  - Manager
+  - Jinja
   - Display
   - Label
   - Enterprise

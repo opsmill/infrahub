@@ -1,10 +1,8 @@
-import { graphql, type VariablesOf } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 
 const GET_PROPOSED_CHANGES_DIFF_SUMMARY = graphql(`
-  query GET_DIFF_TREE_SUMMARY($branch: String, $filters: DiffTreeQueryFilters) {
-    DiffTreeSummary(branch: $branch, filters: $filters) {
+  query GET_DIFF_TREE_SUMMARY($branch: String, $filters: DiffTreeQueryFilters, $proposedChangeId: String) {
+    DiffTreeSummary(branch: $branch, filters: $filters, proposed_change_id: $proposedChangeId) {
       num_added
       num_updated
       num_removed

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from itertools import starmap
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
@@ -35,7 +36,7 @@ class AttributeRenameQuery(Query):
         super().__init__(**kwargs)
 
     def render_match(self) -> str:
-        query = """
+        return """
         // Find all the active nodes
         CALL () {
             MATCH (node:%(node_kind)s)
@@ -52,8 +53,6 @@ class AttributeRenameQuery(Query):
         }
         WITH node
         """ % {"node_kind": self.previous_attr.node_kind}
-
-        return query
 
     @staticmethod
     def _render_sub_query_per_rel_type_update_active(rel_type: str, rel_def: FieldInfo) -> str:
@@ -87,7 +86,7 @@ class AttributeRenameQuery(Query):
         subquery.append("RETURN peer_node as p2")
         return "\n".join(subquery)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
@@ -118,16 +117,14 @@ class AttributeRenameQuery(Query):
         # Set metadata for vertex properties on default/global branch
         self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
-        sub_queries_create = [
-            self._render_sub_query_per_rel_type_create_new(rel_type, rel_def)
-            for rel_type, rel_def in GraphAttributeRelationships.model_fields.items()
-        ]
+        sub_queries_create = list(
+            starmap(self._render_sub_query_per_rel_type_create_new, GraphAttributeRelationships.model_fields.items())
+        )
         sub_query_create_all = "\nUNION\n".join(sub_queries_create)
 
-        sub_queries_update = [
-            self._render_sub_query_per_rel_type_update_active(rel_type, rel_def)
-            for rel_type, rel_def in GraphAttributeRelationships.model_fields.items()
-        ]
+        sub_queries_update = list(
+            starmap(self._render_sub_query_per_rel_type_update_active, GraphAttributeRelationships.model_fields.items())
+        )
         sub_query_update_all = "\nUNION\n".join(sub_queries_update)
 
         self.add_to_query(self.render_match())
@@ -193,8 +190,17 @@ class AttributeRenameQuery(Query):
             CALL (new_attr, active_node) {
                 WITH new_attr, active_node
                 WHERE $set_metadata
+                // The renamed Attribute vertex is created here, so it has no prior metadata to snapshot
                 SET new_attr.created_at = $current_time, new_attr.created_by = $user_id
                 SET new_attr.updated_at = $current_time, new_attr.updated_by = $user_id
+                SET active_node.previous_updated_at = CASE
+                        WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
+                        ELSE active_node.previous_updated_at
+                    END,
+                    active_node.previous_updated_by = CASE
+                        WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
+                        ELSE active_node.previous_updated_by
+                    END
                 SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
             }
             RETURN DISTINCT new_attr

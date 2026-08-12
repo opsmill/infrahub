@@ -18,10 +18,7 @@ log = get_logger()
 
 
 def update_graphql_schema(branch: Branch, schema_branch: SchemaBranch) -> None:
-    """
-    Update the GraphQL schema for the given branch.
-    """
-
+    """Update the GraphQL schema for the given branch."""
     gqlm = graphql_registry.get_manager_for_branch(branch=branch, schema_branch=schema_branch)
     gqlm.get_graphql_schema(
         include_query=True,
@@ -33,7 +30,6 @@ def update_graphql_schema(branch: Branch, schema_branch: SchemaBranch) -> None:
 
 async def create_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
     """Create a new entry in the registry for a given branch."""
-
     log.info("New branch detected, pulling schema", branch=branch.name, worker=WORKER_IDENTITY)
     await registry.schema.load_schema(db=db, branch=branch)
     registry.branch[branch.name] = branch
@@ -43,7 +39,6 @@ async def create_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
 
 async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
     """Update the registry for a branch if the schema hash has changed or the branch was rebased."""
-
     existing_branch: Branch = registry.branch[branch.name]
 
     if not existing_branch.schema_hash:
@@ -92,7 +87,6 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
     If a branch is already present with a different value for the hash
     We pull the new schema from the database and we update the registry.
     """
-
     async with lock.registry.local_schema_lock():
         active_branches = await registry.branch_object.get_list(db=db)
         for active_branch in active_branches:

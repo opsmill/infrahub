@@ -55,8 +55,12 @@ class RedisCache(InfrahubCache):
 
         return [key.decode() for key in keys]
 
-    async def set(self, key: str, value: str, expires: KVTTL | None = None, not_exists: bool = False) -> bool | None:
-        return await self.connection.set(name=key, value=value, ex=expires.value if expires else None, nx=not_exists)
+    async def set(
+        self, key: str, value: str, expires: KVTTL | int | None = None, not_exists: bool = False
+    ) -> bool | None:
+        # redis-py cannot encode an IntEnum (e.g. KVTTL) directly, so coerce the TTL to a plain int.
+        ex = int(expires) if expires else None
+        return await self.connection.set(name=key, value=value, ex=ex, nx=not_exists)
 
     @classmethod
     async def new(cls) -> RedisCache:

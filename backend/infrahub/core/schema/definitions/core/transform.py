@@ -1,6 +1,7 @@
 from infrahub.core.constants import (
     BranchSupportType,
     InfrahubKind,
+    RelationshipDeleteBehavior,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
@@ -21,15 +22,34 @@ core_transform = GenericSchema(
     label="Transformation",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["label__value"],
+    display_label="label__value",
     branch=BranchSupportType.AWARE,
     documentation="/topics/proposed-change",
     uniqueness_constraints=[["name__value"]],
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(name="name", kind="Text", unique=True),
         Attr(name="label", kind="Text", optional=True),
         Attr(name="description", kind="Text", optional=True),
         Attr(name="timeout", kind="Number", description="Maximum execution time in seconds", default_value=60),
+        Attr(
+            name="fingerprint",
+            kind="Text",
+            description="Content hash of the definition's inputs, recomputed on each import",
+            optional=True,
+        ),
+        Attr(
+            name="dependencies",
+            kind="List",
+            description="Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.",
+            optional=True,
+        ),
+        Attr(
+            name="dependencies_complete",
+            kind="Boolean",
+            description="True when the dependency closure can be trusted. False when auto-detection found unresolved references.",
+            optional=True,
+        ),
     ],
     relationships=[
         Rel(
@@ -55,6 +75,15 @@ core_transform = GenericSchema(
             optional=True,
             cardinality=Cardinality.MANY,
         ),
+        Rel(
+            name="artifact_definitions",
+            peer=InfrahubKind.ARTIFACTDEFINITION,
+            identifier="artifact_definition___transformation",
+            kind=RelKind.GENERIC,
+            cardinality=Cardinality.MANY,
+            optional=True,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
+        ),
     ],
 )
 
@@ -66,7 +95,7 @@ core_transform_jinja2 = NodeSchema(
     label="Transform Jinja2",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     inherit_from=[InfrahubKind.TRANSFORM],
     generate_profile=False,
     branch=BranchSupportType.AWARE,
@@ -84,7 +113,7 @@ core_transform_python = NodeSchema(
     label="Transform Python",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     inherit_from=[InfrahubKind.TRANSFORM],
     generate_profile=False,
     branch=BranchSupportType.AWARE,

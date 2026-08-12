@@ -12,7 +12,7 @@ describe("isFieldDisabled", () => {
       isProtected: false,
       isReadOnly: true,
       owner: null,
-      auth: null,
+      auth: undefined,
     };
 
     // WHEN
@@ -28,7 +28,7 @@ describe("isFieldDisabled", () => {
       isProtected: false,
       isReadOnly: false,
       owner: null,
-      auth: null,
+      auth: undefined,
     };
 
     // WHEN
@@ -44,7 +44,7 @@ describe("isFieldDisabled", () => {
       isProtected: true,
       isReadOnly: false,
       owner: null,
-      auth: null,
+      auth: undefined,
     };
 
     // WHEN

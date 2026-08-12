@@ -15,6 +15,8 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.tasks.dummy import dummy_flow, dummy_flow_broken
+from infrahub.webhook.tasks.process import webhook_send
+from infrahub.workers.dependencies import clear_singletons
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 from tests.helpers.graphql import graphql
 
@@ -120,6 +122,58 @@ query TaskQuery(
   }
 }
 """
+
+
+QUERY_TASK_TYPED = """
+query TaskQuery {
+  InfrahubTask {
+    count
+    edges {
+      node {
+        __typename
+        id
+        title
+        workflow
+        available_actions {
+            action
+            available
+            unavailability_reason
+        }
+        error {
+            status_class
+            message
+            remediation
+        }
+        ... on WebhookDeliveryTask {
+            http_request {
+                url
+                headers
+            }
+            http_response {
+                status_code
+                body
+                latency_ms
+            }
+        }
+      }
+    }
+  }
+}
+"""
+
+
+@pytest.fixture(autouse=True)
+def cache_singleton_with_redis_settings(redis: dict[int, int] | None) -> Generator[None, None, None]:
+    """The task queries read flow-run counts through the process-wide cache singleton.
+
+    Depending on which modules ran earlier in this process, that singleton may have been
+    built while the redis settings of this module were not applied yet, pointing it at a
+    cache that does not exist. Drop it so it is rebuilt against the active settings, and
+    drop it again afterwards so later modules do not inherit it.
+    """
+    clear_singletons()
+    yield
+    clear_singletons()
 
 
 @pytest.fixture
@@ -595,7 +649,7 @@ async def test_task_query_filter_node(
             ],
             "title": flow.name,
             "updated_at": flow.updated.isoformat(),
-            "start_time": None,
+            "start_time": flow.start_time.isoformat(),
             "workflow": "dummy-flow-broken",
         }
     }
@@ -657,12 +711,11 @@ async def test_task_query_with_log_offset(
     delete_flow_runs: None,
     flow_runs_data: dict[str, FlowRun],
 ) -> None:
-    """
-    In unit tests logs are not forwarded to the Prefect server for unknown reasons.
+    """In unit tests logs are not forwarded to the Prefect server for unknown reasons.
+
     Therefore this test mainly tests log_offset and log_limit do not break the query when they are specified,
     but their logic itself is not tested on a large amount of logs.
     """
-
     result = await run_query(
         db=db,
         branch=default_branch,
@@ -825,6 +878,120 @@ async def test_task_no_count(
         "dummy-scheduled-blue-db",
         "dummy-scheduled-br1-db",
     ]
+
+
+async def test_task_query_polymorphic_typing(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    prefect_client: PrefectClient,
+    delete_flow_runs: None,
+    flow_runs_data: dict[str, FlowRun],
+) -> None:
+    """A webhook-send run resolves to the delivery type; every other run stays a plain task node."""
+    delivery = await prefect_client.create_flow_run(
+        flow=webhook_send,
+        name="webhook-send-completed",
+        parameters={
+            "webhook_id": "17b3b2f0-89aa-4fdd-8beb-c1e5b0e5d661",
+            "webhook_kind": "CoreStandardWebhook",
+            "webhook_name": "component-test-webhook",
+            "payload": {"event_type": "branch.created"},
+        },
+        tags=[TAG_NAMESPACE],
+        state=State(type="COMPLETED"),
+    )
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_TASK_TYPED,
+        variables={},
+    )
+    assert result.errors is None
+    assert result.data
+
+    nodes = {edge["node"]["title"]: edge["node"] for edge in result.data["InfrahubTask"]["edges"]}
+
+    delivery_node = nodes["webhook-send-completed"]
+    assert delivery_node["__typename"] == "WebhookDeliveryTask"
+    assert delivery_node["id"] == str(delivery.id)
+    assert delivery_node["workflow"] == "webhook-send"
+    assert delivery_node["available_actions"] == [
+        {"action": "RETRY", "available": True, "unavailability_reason": None},
+        {"action": "CANCEL", "available": False, "unavailability_reason": "Delivery already settled"},
+    ]
+    # The captured request/response artifact is not written yet: the delivery-specific fields resolve to null.
+    assert delivery_node["http_request"] is None
+    assert delivery_node["http_response"] is None
+    assert delivery_node["error"] is None
+
+    dummy_node = nodes["dummy-completed-br1-db"]
+    assert dummy_node["__typename"] == "TaskNode"
+    assert dummy_node["workflow"] == "dummy-flow"
+    assert dummy_node["available_actions"] == []
+    # The classified error is a common field carried by every task, null when the task has none.
+    assert dummy_node["error"] is None
+    assert "http_request" not in dummy_node
+
+
+async def test_task_query_fragment_selecting_only_common_fields(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    prefect_client: PrefectClient,
+    delete_flow_runs: None,
+) -> None:
+    """An inline fragment matches a delivery even when it selects no delivery-specific field.
+
+    The concrete type is resolved from the run's workflow name, which nothing in this selection
+    names explicitly — the fragment's fields are all common ones — so this guards the invariant
+    that the discriminant is fetched with the runs rather than derived from the selected fields.
+    """
+    delivery = await prefect_client.create_flow_run(
+        flow=webhook_send,
+        name="webhook-send-fragment",
+        parameters={
+            "webhook_id": "17b3b2f0-89aa-4fdd-8beb-c1e5b0e5d661",
+            "webhook_kind": "CoreStandardWebhook",
+            "webhook_name": "fragment-test-webhook",
+            "payload": {"event_type": "branch.created"},
+        },
+        tags=[TAG_NAMESPACE],
+        state=State(type="COMPLETED"),
+    )
+
+    QUERY = """
+    query {
+      InfrahubTask {
+        edges {
+          node {
+            id
+            ... on WebhookDeliveryTask {
+                title
+                state
+            }
+          }
+        }
+      }
+    }
+    """
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY,
+        variables={},
+    )
+    assert result.errors is None
+    assert result.data
+
+    node = result.data["InfrahubTask"]["edges"][0]["node"]
+    assert node == {
+        "id": str(delivery.id),
+        "title": "webhook-send-fragment",
+        "state": "COMPLETED",
+    }
 
 
 async def test_task_only_count(

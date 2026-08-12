@@ -1,9 +1,8 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 
-import { Button } from "@/shared/components/ui/button";
-import useFilters from "@/shared/hooks/useFilters";
-
-import type { ModelSchema } from "@/entities/schema/types";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export function ObjectTableEmpty({ schema }: { schema: ModelSchema }) {
   const [filters, setFilters] = useFilters();
@@ -25,8 +24,8 @@ export function ObjectTableEmpty({ schema }: { schema: ModelSchema }) {
         <>
           <div className="font-medium text-lg">No {schemaLabel} found</div>
           <div className="text-sm">No {schemaLabel} matches the current filters</div>
-          <Button size="sm" variant="outline" className="mt-4" onClick={handleClearFilters}>
-            <Icon icon="mdi:filter-variant-remove" className="mr-1.5" />
+          <Button size="sm" variant="outline" className="mt-4" onPress={handleClearFilters}>
+            <Icon icon="mdi:filter-variant-remove" />
             Clear filters
           </Button>
         </>

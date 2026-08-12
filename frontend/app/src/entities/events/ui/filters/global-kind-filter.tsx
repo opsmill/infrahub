@@ -4,11 +4,10 @@ import { useState } from "react";
 import type { TagProps } from "react-aria-components";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import useFilters from "@/shared/hooks/useFilters";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeCore } from "@/entities/nodes/types";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 
 import { FilterTag } from "./global-filter-tag";
 import { GlobalKindFilterForm } from "./global-kind-filter-form";
@@ -16,10 +15,9 @@ import { GlobalKindFilterForm } from "./global-kind-filter-form";
 interface FilterTagProps extends TagProps {
   label: React.ReactNode;
   name: string;
-  fieldSchema: AttributeSchema | RelationshipSchema;
 }
 
-export function GlobalKindFilter({ label, name, fieldSchema, ...props }: FilterTagProps) {
+export function GlobalKindFilter({ label, name, ...props }: FilterTagProps) {
   const [filters, setFilters] = useFilters();
   const [showFilters, setShowFilters] = useState(false);
 
@@ -73,7 +71,7 @@ export function GlobalKindFilter({ label, name, fieldSchema, ...props }: FilterT
         </PopoverTrigger>
 
         <PopoverContent className="relative rounded-tl-none" align="start">
-          <div className="absolute -top-[1.8rem] -left-px rounded-t-md border border-gray-200 border-b-0 bg-white px-2 py-1">
+          <div className="absolute -top-[1.8rem] -left-px rounded-t-md border border-b-0 bg-white px-2 py-1">
             Filter by
             <span className="ml-1 font-semibold">{label}</span>
           </div>

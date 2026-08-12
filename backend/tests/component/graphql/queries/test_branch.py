@@ -2,12 +2,16 @@ import operator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from infrahub_sdk import InfrahubClient
 
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.models import SchemaBranchHash
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.types import BranchType, InfrahubBranch
@@ -251,12 +255,14 @@ class TestBranchQuery(TestInfrahubApp):
             }
         """
         gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+
+        # Query all branches without pagination
         all_branches = await graphql(
             schema=gql_params.schema,
             source=query,
             context_value=gql_params.context,
             root_value=None,
-            variable_values={"offset": 2, "limit": 5},
+            variable_values={},
         )
         assert all_branches.errors is None
         assert all_branches.data
@@ -285,6 +291,19 @@ class TestBranchQuery(TestInfrahubApp):
         )
 
         assert all_branches.data["InfrahubBranch"]["default_branch"]["name"]["value"] == "main"
+
+        # Query with offset and limit to verify pagination works
+        paginated_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"offset": 2, "limit": 5},
+        )
+        assert paginated_branches.errors is None
+        assert paginated_branches.data
+        assert paginated_branches.data["InfrahubBranch"]["count"] == 12  # count reflects total, not paginated
+        assert len(paginated_branches.data["InfrahubBranch"]["edges"]) == 5
 
         name_branches = await graphql(
             schema=gql_params.schema,
@@ -771,6 +790,31 @@ class TestBranchQuery(TestInfrahubApp):
         assert len(result.errors) > 0
         assert "created_at" in str(result.errors[0]) or "updated_at" in str(result.errors[0])
 
+    async def test_order_by_rejects_by_field(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+    ) -> None:
+        """Branch's MetadataOrderInput does not expose `by`, so the field is unknown to the schema."""
+        query = """
+        query {
+            InfrahubBranch(order: {by: [{field: "node_metadata__created_at", direction: ASC}]}) {
+                edges { node { name { value } } }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+
+        assert result.errors is not None
+        assert any("by" in str(err.message) for err in result.errors)
+
     async def test_filter_by_status(
         self,
         db: InfrahubDatabase,
@@ -843,6 +887,45 @@ class TestBranchQuery(TestInfrahubApp):
         assert result.data
         branch_names = [edge["node"]["name"]["value"] for edge in result.data["InfrahubBranch"]["edges"]]
         assert "status-test-branch" not in branch_names
+
+    async def test_merge_failed_status_is_visible(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+    ) -> None:
+        """A branch left in MERGE_FAILED reports that state through normal branch inspection."""
+        branch = Branch(
+            name="merge-failed-branch",
+            status=BranchStatus.MERGE_FAILED,
+            branched_from=Timestamp().to_string(),
+        )
+        await branch.save(db=db)
+
+        query = """
+        query {
+            InfrahubBranch {
+                edges {
+                    node { name { value } status { value } }
+                }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+
+        assert result.errors is None
+        assert result.data
+        statuses = {
+            edge["node"]["name"]["value"]: edge["node"]["status"]["value"]
+            for edge in result.data["InfrahubBranch"]["edges"]
+        }
+        assert statuses["merge-failed-branch"] == "MERGE_FAILED"
 
     async def test_filter_by_created_at_range(
         self,
@@ -1124,3 +1207,165 @@ class TestBranchQuery(TestInfrahubApp):
         assert result.data
         # Count should reflect total matching, edges limited by limit
         assert len(result.data["InfrahubBranch"]["edges"]) <= 2
+
+
+HAS_SCHEMA_CHANGES_DEPRECATION_REASON = (
+    "Use schema_differs_from_default_branch instead. has_schema_changes is scheduled for removal in Infrahub 1.14.0."
+)
+
+
+class TestBranchSchemaDivergence(TestInfrahubApp):
+    """`schema_differs_from_default_branch` reports whether a branch's schema hash differs from default.
+
+    It returns the same value as `has_schema_changes`; both fields stay queryable while
+    `has_schema_changes` advertises its deprecation in favour of this one.
+    """
+
+    default_hash = "hash-default-current"
+
+    # branch name -> whether its schema is expected to differ from the default branch
+    expected_divergence = {
+        "main": False,  # the default branch never differs from itself
+        "branch-matches-default": False,  # schema identical to the current default
+        "branch-changed-schema": True,  # branch uploaded its own schema change
+        "branch-default-moved": True,  # untouched branch, default advanced afterwards
+    }
+
+    async def _persist_branch(self, db: InfrahubDatabase, name: str, main_hash: str) -> None:
+        branch = Branch(
+            name=name,
+            status=BranchStatus.OPEN,
+            branched_from=Timestamp().to_string(),
+            origin_branch="main",
+        )
+        branch.schema_hash = SchemaBranchHash(main=main_hash, nodes={"a": "1", "b": "2"}, generics={"g": "1", "h": "2"})
+        await branch.save(db=db)
+
+    @pytest.fixture(scope="class")
+    async def branch_states(self, db: InfrahubDatabase, default_branch: Branch, service: InfrahubServices) -> None:
+        # get_origin_branch reads the default branch from the registry, so pin its hash there (the app
+        # bootstrap may have replaced the object the default_branch fixture originally returned).
+        registry.get_branch_from_registry(default_branch.name).schema_hash = SchemaBranchHash(
+            main=self.default_hash, nodes={"a": "1", "b": "2"}, generics={"g": "1", "h": "2"}
+        )
+        await self._persist_branch(db=db, name="branch-matches-default", main_hash=self.default_hash)
+        await self._persist_branch(db=db, name="branch-changed-schema", main_hash="hash-branch-own-change")
+        await self._persist_branch(db=db, name="branch-default-moved", main_hash="hash-default-previous")
+
+    async def test_schema_differs_across_branch_states(
+        self, db: InfrahubDatabase, default_branch: Branch, service: InfrahubServices, branch_states: None
+    ) -> None:
+        query = """
+        query {
+            Branch {
+                name
+                schema_differs_from_default_branch
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+
+        assert result.errors is None
+        assert result.data
+        divergence = {branch["name"]: branch["schema_differs_from_default_branch"] for branch in result.data["Branch"]}
+        assert divergence == self.expected_divergence
+
+    async def test_new_and_old_fields_return_identical_values(
+        self, db: InfrahubDatabase, default_branch: Branch, service: InfrahubServices, branch_states: None
+    ) -> None:
+        query = """
+        query {
+            Branch {
+                name
+                has_schema_changes
+                schema_differs_from_default_branch
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+
+        assert result.errors is None
+        assert result.data
+        old_field = {branch["name"]: branch["has_schema_changes"] for branch in result.data["Branch"]}
+        new_field = {branch["name"]: branch["schema_differs_from_default_branch"] for branch in result.data["Branch"]}
+        assert old_field == self.expected_divergence
+        assert new_field == old_field
+
+    async def test_new_and_old_fields_agree_on_paginated_type(
+        self, db: InfrahubDatabase, default_branch: Branch, service: InfrahubServices, branch_states: None
+    ) -> None:
+        query = """
+        query {
+            InfrahubBranch {
+                edges {
+                    node {
+                        name { value }
+                        has_schema_changes { value }
+                        schema_differs_from_default_branch { value }
+                    }
+                }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+
+        assert result.errors is None
+        assert result.data
+        nodes = [edge["node"] for edge in result.data["InfrahubBranch"]["edges"]]
+        old_field = {node["name"]["value"]: node["has_schema_changes"]["value"] for node in nodes}
+        new_field = {node["name"]["value"]: node["schema_differs_from_default_branch"]["value"] for node in nodes}
+        assert old_field == self.expected_divergence
+        assert new_field == old_field
+
+    async def test_has_schema_changes_is_deprecated_on_both_types(
+        self, db: InfrahubDatabase, default_branch: Branch, service: InfrahubServices
+    ) -> None:
+        query = """
+        query($type_name: String!) {
+            __type(name: $type_name) {
+                fields(includeDeprecated: true) {
+                    name
+                    isDeprecated
+                    deprecationReason
+                }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        for type_name in ("Branch", "InfrahubBranch"):
+            result = await graphql(
+                schema=gql_params.schema,
+                source=query,
+                context_value=gql_params.context,
+                root_value=None,
+                variable_values={"type_name": type_name},
+            )
+            assert result.errors is None
+            assert result.data
+            fields = {field["name"]: field for field in result.data["__type"]["fields"]}
+
+            assert fields["has_schema_changes"]["isDeprecated"] is True
+            assert fields["has_schema_changes"]["deprecationReason"] == HAS_SCHEMA_CHANGES_DEPRECATION_REASON
+            assert fields["schema_differs_from_default_branch"]["isDeprecated"] is False
+            assert fields["schema_differs_from_default_branch"]["deprecationReason"] is None

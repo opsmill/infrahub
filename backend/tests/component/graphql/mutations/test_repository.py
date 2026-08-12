@@ -5,7 +5,8 @@ from unittest.mock import call, patch
 
 import pytest
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
@@ -161,6 +162,52 @@ async def test_repository_update(
 def test_cleanup_payload(test_input: dict[str, Any], expected: dict[str, Any]) -> None:
     cleanup_payload(data=test_input)
     assert test_input == expected
+
+
+async def test_import_last_commit_rejects_non_read_only_repository(
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    default_branch: Branch,
+    create_test_admin: Node,
+    default_permission_backend: None,
+) -> None:
+    """Calling InfrahubReadOnlyRepositoryImportLastCommit on a CoreRepository must fail.
+
+    with a clear error instead of an AttributeError on the missing 'ref' attribute.
+
+    """
+    repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
+    recorder = BusRecorder()
+    service = await InfrahubServices.new(database=db, message_bus=recorder, workflow=WorkflowLocalExecution())
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+    )
+
+    IMPORT_LAST_COMMIT = """
+    mutation InfrahubReadOnlyRepositoryImportLastCommit($id: String!) {
+        InfrahubReadOnlyRepositoryImportLastCommit(
+            data: {
+                id: $id
+            }) {
+            ok
+        }
+    }
+    """
+
+    repo = await Node.init(schema=repository_model, db=db, branch=default_branch)
+    await repo.new(db=db, name="test-regular-repo", location="/tmp/regular-repo")
+    await repo.save(db=db)
+
+    result = await graphql_mutation(
+        query=IMPORT_LAST_COMMIT,
+        db=db,
+        variables={"id": repo.id},
+        service=service,
+        account_session=account_session,
+    )
+
+    assert result.errors
+    assert "not a CoreReadOnlyRepository" in str(result.errors[0].message)
 
 
 async def test_import_read_only_repository_last_commit(

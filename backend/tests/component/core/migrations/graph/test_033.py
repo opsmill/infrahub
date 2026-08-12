@@ -336,7 +336,9 @@ CREATE (rel_node_two)-[:IS_RELATED {status: "active", branch: rel.branch, branch
             params={"relationships": legal_relationship_dicts + illegal_relationship_dicts},
         )
 
-    async def test_migration_033(self, db: InfrahubDatabase, load_bad_data, legal_relationship_dicts) -> None:
+    async def test_migration_033(
+        self, db: InfrahubDatabase, load_bad_data: None, legal_relationship_dicts: list[dict[str, str | int]]
+    ) -> None:
         # Run the migration
         migration = Migration033()
         execution_result = await migration.execute(migration_input=MigrationInput(db=db))

@@ -1,0 +1,651 @@
+---
+title: How to connect external Git repositories
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import ReferenceLink from "../../src/components/Card";
+
+# How to connect external Git repositories
+
+Connecting an external Git repository will enable many features in Infrahub, such as Transformations, Generators, Checks ... that rely on the repository to store code files.
+
+This guide explains how to connect repositories, pull changes, and troubleshoot common issues.
+
+:::info Repository vs. Read-only Repository
+
+If you want to know more about the differences between these two types, refer to the topic on [Repositories](./overview.mdx).
+
+**TL;DR:**
+
+- **Repository**: fully integrates with Git version control, including branch tracking and two-way branch synchronization
+- **Read-only Repository**: links a particular branch in Infrahub to a particular ref in the Git repository. It will only read from the Git repository and never make changes to the external repository.
+
+Most of the time, you will want to use a **Repository** connection.
+
+:::
+
+## Prerequisites
+
+Before you begin, you'll need:
+
+- An Infrahub instance up and running
+- Access to a Git repository containing valid Infrahub resources (see [Initializing an Infrahub repository](../development-resources/developer-guide#initializing-an-infrahub-repository))
+  - A [`.infrahub.yml`](./overview.mdx#infrahub-yaml) configuration file in your Git repository
+- For private repositories and or Read-Write repositories: appropriate credentials or access tokens
+- Depending on the method you choose, you may need to install the [Infrahub SDK]($(base_url)python-sdk/introduction) or [infrahubctl]($(base_url)infrahubctl/infrahubctl)
+
+:::info Authentication for repositories
+
+If your repository is private or if you want to set up a Read-Write Repository, you'll need to create an access token for authentication.
+
+Depending on your Git provider, the process may vary:
+
+- For GitHub repositories, see the [GitHub access token guide](#github-access-token).
+- For GitLab repositories, see the [GitLab access token guide](#gitlab-access-token).
+
+:::
+
+## Connect a repository
+
+### Step 1: Collect repository information
+
+To create a repository connection in Infrahub, you'll need to prepare the following information:
+
+- **Name:** The identifier you wish to assign to the repository in Infrahub (for example, `My Git Repository`)
+- **Repository location:** The URL of the external Git repository (for example, `https://github.com/opsmill/infrahub.git`)
+
+For Read-only repositories, you will also need:
+
+- **Ref:** A branch, tag, or commit reference to pull (for example, `main`, `v1.0`, or a specific commit hash)
+
+For private repositories and/or Read-Write repositories:
+
+- **Authentication:** A username/password combination or personal access token
+
+### Step 2: Add the repository
+
+:::warning Access token configuration
+
+If you are using a **personal access token for authentication**, you should put the token in the `password` field of the credential and leave the `username` field empty.
+
+:::
+
+<Tabs groupId="method" queryString>
+<TabItem value="Via the Web Interface" default>
+  1. Log in to the Infrahub UI
+  2. Go to **Integrations > Git Repositories**
+  3. Click on the **+ Add Git Repository** button
+  4. Select the repository type (`Repository` or `Read-only Repository`)
+  5. Complete the required information:
+      - Enter the repository name and location (URL)
+      - Select a credential if connecting to a private repository
+      - For Read-only Repository, specify the ref to pull
+      - Add optional description and tags
+
+  ![Add a Git Repository](../media/create_repository.png) {/*TODO: Generate this screen*/}
+</TabItem>
+<TabItem value="Via infrahubctl">
+  Using the [infrahubctl]($(base_url)infrahubctl/infrahubctl) command-line tool, you can add a repository by running the following command:
+
+  <Tabs groupId="repository-type" queryString>
+    <TabItem value="Repository" default>
+    ```shell
+    infrahubctl repository add "My Git Repository" "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git" --username MY_USERNAME --password MY_TOKEN_OR_PASSWORD
+    ```
+    </TabItem>
+    <TabItem value="Read-only Repository">
+    ```shell
+    infrahubctl repository add "My Git Repository" "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git" --read-only --username MY_USERNAME --password MY_TOKEN_OR_PASSWORD
+    ```
+    </TabItem>
+  </Tabs>
+</TabItem>
+<TabItem value="Via the GraphQL Interface">
+
+  Using the GraphQL API, you can add a `Repository` or `Read-only Repository` via mutations.
+
+  1. Open the **GraphQL Interface**
+
+  :::note GraphQL Sandbox
+
+  Access the sandbox by clicking your user icon in the bottom left corner and selecting **GraphQL Sandbox**.
+
+  :::
+
+  2. If relevant, create a Credential object with your username and password/token:
+
+  ```graphql
+  mutation {
+    CorePasswordCredentialCreate(
+      data: {
+        name: { value: "my-git-credential" },
+        username: { value: "MY_USERNAME" },
+        password: { value: "MY_TOKEN_OR_PASSWORD" }
+      }
+    ) {
+      ok
+      object {
+        hfid
+      }
+    }
+  }
+  ```
+
+  3. Use one of the mutations below based on your repository type:
+
+  <Tabs groupId="repository-type" queryString>
+    <TabItem value="Repository" default>
+    ```graphql
+    mutation {
+      CoreRepositoryCreate(
+        data: {
+          name: { value: "My Git Repository" },
+          location: { value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git" },
+          # The HFID returned in step 2 will be used for the credentials
+          credential: { hfid: ["my-git-credential"] }
+        }
+      ) {
+        ok
+        object {
+          id
+        }
+      }
+    }
+    ```
+    </TabItem>
+    <TabItem value="Read-only Repository">
+    ```graphql
+    mutation {
+      CoreReadOnlyRepositoryCreate(
+        data: {
+          name: { value: "My Git Repository" },
+          location: { value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git" },
+          ref: { value: "BRANCH/TAG/COMMIT_TO_TRACK" },
+          # Optional: use the credential created earlier
+          credential: { hfid: ["my-git-credential"] }
+        }
+      ) {
+        ok
+        object {
+          id
+        }
+      }
+    }
+    ```
+    </TabItem>
+  </Tabs>
+</TabItem>
+<TabItem value="Via the Infrahub SDK">
+  1. If relevant, create a Credential object with your username and password/token:
+
+  ```python
+  # Create credential object
+  credential = client.create(
+      "CorePasswordCredential",
+      name="My Git Credential",
+      username="MY_USERNAME",
+      password="MY_TOKEN_OR_PASSWORD",
+  )
+  credential.save()
+  ```
+
+  2. Create the repository object:
+
+  <Tabs groupId="repository-type" queryString>
+    <TabItem value="Repository" default>
+    ```python
+    # Create repository object
+    repository = client.create(
+        "CoreRepository",
+        name="My Git repository",
+        location="https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git",
+        credential=credential,  # The credential object created above
+    )
+    repository.save()
+    ```
+    </TabItem>
+    <TabItem value="Read-only Repository">
+    ```python
+    # Create repository object
+    repository = client.create(
+        "CoreReadOnlyRepository",
+        name="My Git repository",
+        location="https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git",
+        ref="BRANCH/TAG/COMMIT_TO_TRACK",
+        credential=credential,  # Optional: use the credential created above
+    )
+    repository.save()
+    ```
+    </TabItem>
+  </Tabs>
+</TabItem>
+</Tabs>
+
+:::success Check repository connectivity
+
+After creation, your new repository should appear under **Integrations > Git Repositories**. If the status shows `Unknown` or an error state, please refer to the [troubleshooting section](#troubleshoot-repository-connections).
+
+:::
+
+## Advanced use cases
+
+### Update a read-only repository with remote changes
+
+Unlike fully integrated repositories which sync automatically, read-only repositories require manual action to pull in new changes. There are two ways to do this:
+
+- **Change the `ref` property**: Point the repository to a different branch, tag, or commit hash
+- **Import latest commit**: Fetch the latest commit from the remote for the current ref and re-import resources
+
+For more details on how each repository type tracks changes, refer to the [Repository Topic](./overview.mdx#read-only-vs-core).
+
+#### Change the ref
+
+<Tabs groupId="method" queryString>
+<TabItem value="Via the Web Interface" default>
+
+1. Log in to the Infrahub UI
+2. Go to **Integrations > Git Repositories**
+3. Click on the `CoreReadOnlyRepository` record you want to update
+4. Click on the **Edit Read-Only Repository** button
+5. Update the `ref` field with the new branch, tag, or commit reference to pull
+6. Click **Save** to apply the changes
+
+</TabItem>
+<TabItem value="Via the GraphQL Interface">
+
+1. Open the **GraphQL Interface**
+
+:::note GraphQL Sandbox
+
+Access the sandbox by clicking your user icon in the bottom left corner and selecting **GraphQL Sandbox**.
+
+:::
+
+2. Execute the update mutation with the new ref value:
+
+```graphql
+mutation {
+  CoreReadOnlyRepositoryUpdate(
+    data: {
+      hfid: ["My Git repository"],
+      ref: { value: "BRANCH/TAG/COMMIT_TO_TRACK" }
+    }
+  ) {
+    ok
+    object {
+      id
+      syncStatus
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+:::success Check synchronization status
+
+After updating the ref, the repository will begin synchronizing. You can monitor the process by checking the repository's sync status, which should change to `Syncing` and then to `In sync` when complete. The commit field will also update to reflect the latest commit from the specified ref.
+
+:::
+
+#### Import latest commit
+
+If the remote repository has new commits on the same ref that your read-only repository is already tracking, you can pull the latest commit without changing the ref. This fetches from the remote, resolves the latest commit for the tracked ref, and re-imports all resources.
+
+<Tabs groupId="method" queryString>
+<TabItem value="Via the Web Interface" default>
+
+1. Log in to the Infrahub UI
+2. Go to **Integrations > Git Repositories**
+3. Click on the `CoreReadOnlyRepository` record you want to update
+4. Click the **More** menu
+5. Select **Import latest commit**
+
+The repository will fetch the latest changes from the remote, update to the most recent commit on the tracked ref, and re-import resources.
+
+</TabItem>
+<TabItem value="Via the GraphQL Interface">
+
+1. Open the **GraphQL Interface**
+
+:::note GraphQL Sandbox
+
+Access the sandbox by clicking your user icon in the bottom left corner and selecting **GraphQL Sandbox**.
+
+:::
+
+2. Execute the import mutation with the repository ID:
+
+```graphql
+mutation {
+  InfrahubReadOnlyRepositoryImportLastCommit(
+    data: {
+      id: "REPOSITORY_ID"
+    }
+  ) {
+    ok
+    task {
+      id
+    }
+  }
+}
+```
+
+The mutation returns a task ID that you can use to monitor the progress of the import operation.
+
+</TabItem>
+</Tabs>
+
+:::success Check synchronization status
+
+After triggering the import, the repository will fetch from the remote and re-import resources. You can monitor the process by checking the repository's sync status and the commit field, which will update to reflect the latest commit from the tracked ref.
+
+:::
+
+### Troubleshoot repository connections
+
+If you encounter issues with your repository connections, you can use the following steps to diagnose and resolve them:
+
+1. Check the repository status indicators:
+   - **Admin status**: Indicates if Infrahub is actively using the repository
+   - **Operational status**: Shows connectivity between Infrahub and the repository
+   - **Sync status**: Tracks synchronization operations
+
+   For detailed information about what each status means, refer to the [Repository Status documentation](./overview.mdx#repository-statuses).
+
+2. View detailed operation logs:
+   - Log in to the Infrahub UI
+   - Go to **Integrations > Git Repositories**
+   - Select the relevant repository record
+   - Click on the **Tasks** tab to view detailed logs of Git operations
+
+3. Use repository actions for advanced troubleshooting:
+   - From the repository detail view, click the **More** menu
+   - Select **Check connectivity** to verify authentication and connection
+   - Select **Reimport current commit** to force reimport without changing the reference
+   - For read-only repositories, select **Import latest commit** to fetch and import the latest commit from the remote for the tracked ref
+
+:::success Validation
+A healthy repository connection should show `Online` for operational status and `In sync` for sync status once all operations complete.
+:::
+
+### GitHub access token
+
+Please refer to the official GitHub documentation for creating access tokens. GitHub offers two types of tokens:
+
+- [Personal Access Token (classic)](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic)
+- [Fine-grained Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token)
+
+:::info Personal Access Token vs. Fine-grained Access Token
+
+For new repositories, we recommend using the **Fine-grained Access Token** as it allows more granular control over permissions.
+
+:::
+
+Grant the token permission:
+
+- For a `Repository`, grant **Read/Write** access to the repository content
+- For a `Read-only Repository`, grant **Read** access only
+
+:::success Token created
+
+Now that you have created your token, you can use it to connect your GitHub repository to Infrahub. In this case, you will need to put the token in the `password` field of the credential and leave the `username` field empty.
+
+:::
+
+### GitLab access token
+
+Please refer to the official GitLab documentation for creating access tokens.
+
+:::info Project Access Tokens
+
+We recommend using a [project access token](https://docs.gitlab.com/user/project/settings/project_access_tokens/) which has the advantage of being scoped to a specific project.
+
+:::
+
+:::warning Security best practice
+
+While personal access tokens or username/password authentication might work depending on your setup, we strongly recommend against using them as they are scoped to user accounts rather than specific repositories.
+
+:::
+
+Grant the token permission:
+
+- For a `Repository`, select both `read_repository` and `write_repository` scopes
+- For a `Read-only Repository`, select the `read_repository` scope
+
+:::success Token created
+
+Now that you have created your token, you can use it to connect your GitLab repository to Infrahub. In this case, you will need to put the token in the `password` field of the credential and leave the `username` field empty.
+
+:::
+
+### Installing custom CA certificates
+
+If your Git server uses a certificate signed by a custom Certificate Authority (CA) not recognized by default, you'll need to add your CA certificate to the Infrahub container.
+
+:::warning Maintenance consideration
+
+This process requires building a custom Docker image, which you'll need to rebuild with each Infrahub release.
+
+:::
+
+Follow these steps to add your custom CA certificate:
+
+1. Save your CA certificate (and any intermediate certificates) in PEM format (such as `mycacertificate.crt`)
+2. Create a Dockerfile in the same directory as your certificate:
+
+```dockerfile
+ARG INFRAHUB_VERSION=latest
+FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_VERSION}
+
+COPY mycacertificate.crt /usr/local/share/ca-certificates/
+RUN update-ca-certificates
+```
+
+3. Build the Docker image:
+
+```shell
+INFRAHUB_VERSION=latest && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
+```
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="Using Docker Compose" default>
+
+If you are using Docker Compose, you can override part of your existing `docker-compose.yml` file to use your custom image. See the official [Docker Compose documentation](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/#how-to-merge-multiple-compose-files) for more details.
+
+4. Create a `docker-compose.override.yml` file in the same directory as your `docker-compose.yml` file:
+
+```yaml
+---
+services:
+  task-worker:
+    image: custom/infrahub:latest
+```
+
+5. Start your environment using the `docker compose` command.
+
+</TabItem>
+</Tabs>
+
+:::success Validation
+
+After restarting your environment, Infrahub should now trust your custom CA and be able to connect to Git servers using certificates signed by it.
+
+:::
+
+### Disabling certificate verification (not recommended)
+
+:::danger Security risk
+
+Disabling certificate validation is a bad security practice and is strongly discouraged. Only use this option in controlled development environments.
+
+:::
+
+:::warning Custom Docker Image
+
+This process requires building a custom Docker image, which you'll need to rebuild with each Infrahub release.
+
+:::
+
+If you absolutely need to disable certificate verification for testing purposes:
+
+1. Create a Dockerfile with the following content:
+
+```dockerfile
+ARG INFRAHUB_VERSION=latest
+FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_VERSION}
+
+RUN git config --global http.sslVerify "false"
+```
+
+2. Build the Docker image:
+
+```shell
+INFRAHUB_VERSION=latest && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
+```
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="Using Docker Compose" default>
+
+If you are using Docker Compose, you can override part of your existing `docker-compose.yml` file to use your custom image. See the official [Docker Compose documentation](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/#how-to-merge-multiple-compose-files) for more details.
+
+3. Create a `docker-compose.override.yml` file in the same directory as your `docker-compose.yml` file:
+
+```yaml
+---
+services:
+  task-worker:
+    image: custom/infrahub:latest
+```
+
+4. Start your environment using the `docker compose` command.
+
+</TabItem>
+</Tabs>
+
+:::success Validation
+
+After restarting your environment, Infrahub should now connect to Git servers without validating SSL certificates.
+
+:::
+
+### Using a proxy server
+
+In some network environments, Infrahub's Git worker containers may need to connect through a proxy server to access external repositories.
+
+:::info Connection limitation
+
+This method only works for HTTP(S) connections. SSH connections through proxies are not supported in this configuration.
+
+:::
+
+:::warning Maintenance consideration
+
+This process requires building a custom Docker image, which you'll need to rebuild with each Infrahub release.
+
+:::
+
+1. Create a Dockerfile with your proxy configuration (update with your actual proxy details):
+
+```dockerfile
+ARG INFRAHUB_VERSION=latest
+FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_VERSION}
+
+RUN git config --global http.proxy http://user:password@internal.proxy:8080
+```
+
+2. Build the Docker image:
+
+```shell
+INFRAHUB_VERSION=latest && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
+```
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="Using Docker Compose" default>
+
+If you are using Docker Compose, you can override part of your existing `docker-compose.yml` file to use your custom image. See the official [Docker Compose documentation](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/#how-to-merge-multiple-compose-files) for more details.
+
+3. Create a `docker-compose.override.yml` file in the same directory as your `docker-compose.yml` file:
+
+```yaml
+---
+services:
+  task-worker:
+    image: custom/infrahub:latest
+```
+
+4. Start your environment using the `docker compose` command.
+
+</TabItem>
+</Tabs>
+
+:::success Validation
+
+After restarting your environment, Infrahub should now connect through your configured proxy server.
+
+:::
+
+### Customizing Git merge behavior
+
+:::info
+
+This configuration applies only to standard repositories, not read-only repositories.
+
+:::
+
+By default, Infrahub performs fast-forward only (ff-only) merges between branches. When merging a branch linked to Git, Infrahub updates the destination branch pointer without creating a merge commit. To maintain consistency or improve auditability, you can configure Infrahub to always create a merge commit.
+
+:::important
+
+The configuration process will require a restart of the Infrahub server and depends on your deployment method.
+
+For detailed instructions on how to apply configuration changes to your Infrahub instance, see [How to configure Infrahub](../deploy-manage/install-configure/configure-infrahub).
+
+Essentially you will need to set the following environment variables to the desired values:
+
+```shell
+INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT=<true|false>
+
+# Optional: set user name and email for Git commits
+INFRAHUB_GIT_USER_NAME="<git-user-name>"
+INFRAHUB_GIT_USER_EMAIL="<git-user-email>"
+```
+
+So in our case, we will set:
+
+```shell
+INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT=true
+
+# Optional: set user name and email for Git commits
+INFRAHUB_GIT_USER_NAME="infrahub-automation"
+INFRAHUB_GIT_USER_EMAIL="infrahub-automation@example.com"
+```
+
+:::
+
+<ReferenceLink title="How to configure Infrahub" url="../deploy-manage/install-configure/configure-infrahub" openInNewTab />
+
+:::success Validation
+
+Test the merge behavior by merging a branch linked to Git. Infrahub should now create a merge commit in the main branch instead of performing a fast-forward update.
+
+:::
+
+## Verification
+
+After completing this guide, you should have successfully connected external Git repositories to Infrahub.
+
+You can verify your repository integration is working by checking that:
+
+- The repository shows an "Online" operational status
+- The repository shows an "In sync" sync status
+- Branches from your repository appear in Infrahub (for fully integrated repositories)
+- Resources defined in your `.infrahub.yml` file are accessible in Infrahub
+
+## Related resources
+
+- [Repository concept explanation](./overview.mdx)
+- [Infrahub configuration file documentation](./infrahub-yml.mdx)

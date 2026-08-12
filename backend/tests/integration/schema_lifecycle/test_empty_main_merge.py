@@ -176,7 +176,7 @@ query GetDiffTree($branch: String){
 
 
 class TestProposedChangeOnEmptyMain(TestInfrahubApp):
-    """Test adding schema and data on branch and merging it into a fresh default branch"""
+    """Test adding schema and data on branch and merging it into a fresh default branch."""
 
     @pytest.fixture(scope="class")
     async def branch(self, db: InfrahubDatabase) -> Branch:
@@ -267,8 +267,7 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
                 "destination_branch": default_branch.name,
             },
         )
-        proposed_change_id = result["CoreProposedChangeCreate"]["object"]["id"]
-        return proposed_change_id
+        return result["CoreProposedChangeCreate"]["object"]["id"]
 
     def _get_diff_node_attribute_values(self, diff_node: dict[str, Any]) -> dict[str, Any]:
         diff_attribute_values_by_name = {}

@@ -12,8 +12,7 @@ if TYPE_CHECKING:
 
 
 class UpdateAttributeValuesQuery(Query):
-    """
-    Update the values of the given attribute schema for the input node-id-to-value map.
+    """Update the values of the given attribute schema for the input node-id-to-value map.
 
     This version only expires existing values when they're different from the new value,
     making it safe to run idempotently without clearing correct existing values.
@@ -31,7 +30,7 @@ class UpdateAttributeValuesQuery(Query):
         self.is_branch_agnostic = attribute_schema.get_branch() is BranchSupportType.AGNOSTIC
         self.values_by_id_map = values_by_id_map
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "node_uuids": list(self.values_by_id_map.keys()),
             "attribute_name": self.attribute_name,

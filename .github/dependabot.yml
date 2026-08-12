@@ -1,16 +1,14 @@
----
-# yamllint disable rule:truthy
-version: 2
-
 updates:
-  # Maintain dependencies for GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-    target-branch: stable
-    labels:
-      - "type/housekeeping"
-      - "ci/skip-changelog"
+- directory: /
+  ignore:
+  - dependency-name: "github/gh-aw-actions/**" # Managed by gh aw compile. Version-locked to the gh-aw compiler; do not bump.
+  labels:
+  - type/housekeeping
+  - ci/skip-changelog
+  package-ecosystem: github-actions
+  schedule:
+    day: monday
+    interval: weekly
+    time: "09:00"
+  target-branch: stable
+version: 2

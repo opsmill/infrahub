@@ -129,17 +129,17 @@ class DiffCoordinator:
         )
 
     async def _get_proposed_change_id_for_branch(self, branch_name: str) -> str | None:
-        """Look up the ID of an OPEN CoreProposedChange for the given source branch."""
-        open_proposed_changes = await NodeManager.query(
+        """Look up the ID of an active CoreProposedChange for the given source branch."""
+        active_proposed_changes = await NodeManager.query(
             db=self.db,
             schema=CoreProposedChange,
             filters={
                 "source_branch__value": branch_name,
-                "state__value": ProposedChangeState.OPEN.value,
+                "state__values": [ProposedChangeState.OPEN.value, ProposedChangeState.MERGING.value],
             },
         )
-        if open_proposed_changes:
-            return open_proposed_changes[0].id
+        if active_proposed_changes:
+            return active_proposed_changes[0].id
         return None
 
     async def _link_diff_to_proposed_change(
@@ -150,8 +150,8 @@ class DiffCoordinator:
     ) -> str | None:
         """Link a diff root to a proposed change if needed.
 
-        If proposed_change_id is not provided, attempts to find an OPEN
-        CoreProposedChange for the given diff_branch_name.
+        If proposed_change_id is not provided, attempts to find an active
+        (OPEN or MERGING) CoreProposedChange for the given diff_branch_name.
 
         Updates the database link and the in-memory object's proposed_change_id.
         Returns the resolved proposed_change_id (may be None).
@@ -318,7 +318,7 @@ class DiffCoordinator:
         base_branch: Branch,
         diff_branch: Branch,
         diff_id: str,
-    ) -> EnrichedDiffRoot:
+    ) -> EnrichedDiffRoot | None:
         lock_request_time = Timestamp()
         async with self.diff_locker.acquire_lock(
             target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=False
@@ -326,7 +326,17 @@ class DiffCoordinator:
             lock_acquired_time = Timestamp()
             with trace.get_tracer(__name__).start_as_current_span("recalculate") as span:
                 self.logger.info(f"Acquired lock to recalculate diff for {base_branch.name} - {diff_branch.name}")
-                current_branch_diff = await self.diff_repo.get_one(diff_branch_name=diff_branch.name, diff_id=diff_id)
+                try:
+                    current_branch_diff = await self.diff_repo.get_one(
+                        diff_branch_name=diff_branch.name, diff_id=diff_id
+                    )
+                except ResourceNotFoundError:
+                    # a concurrent diff update can delete a stale root before its queued recalculation
+                    # runs; the root that replaced it is already up to date, so there is nothing to do
+                    self.logger.info(
+                        f"Diff {diff_id} for branch {diff_branch.name} no longer exists, skipping recalculation"
+                    )
+                    return None
                 current_base_diff = await self.diff_repo.get_one(
                     diff_branch_name=base_branch.name, diff_id=current_branch_diff.partner_uuid
                 )
@@ -477,20 +487,23 @@ class DiffCoordinator:
             ),
             partial_enriched_diffs=diff_pairs_metadata if not force_branch_refresh else None,
         )
-        diff_uuids_to_delete: list[str] = []
-        for diff_pair in diff_pairs_metadata:
-            if (
-                diff_pair.base_branch_diff.tracking_id == tracking_id
-                and diff_pair.base_branch_diff.uuid != aggregated_enriched_diffs.base_branch_diff.uuid
-                and diff_pair.base_branch_diff.exists_on_database
-            ):
-                diff_uuids_to_delete.append(diff_pair.base_branch_diff.uuid)
-            if (
-                diff_pair.diff_branch_diff.tracking_id == tracking_id
-                and diff_pair.diff_branch_diff.uuid != aggregated_enriched_diffs.diff_branch_diff.uuid
-                and diff_pair.diff_branch_diff.exists_on_database
-            ):
-                diff_uuids_to_delete.append(diff_pair.diff_branch_diff.uuid)
+        # A tracking_id identifies a single diff pair per branch, so every other root carrying it is
+        # stale and must be deleted
+        uuids_to_keep = {
+            aggregated_enriched_diffs.base_branch_diff.uuid,
+            aggregated_enriched_diffs.diff_branch_diff.uuid,
+        }
+        tracked_diff_pairs = await self.diff_repo.get_diff_pairs_metadata(
+            base_branch_names=[base_branch.name],
+            diff_branch_names=[diff_branch.name],
+            tracking_id=tracking_id,
+        )
+        diff_uuids_to_delete = [
+            root.uuid
+            for pair in tracked_diff_pairs
+            for root in (pair.base_branch_diff, pair.diff_branch_diff)
+            if root.uuid not in uuids_to_keep and root.exists_on_database
+        ]
 
         if diff_uuids_to_delete:
             await self.diff_repo.delete_diff_roots(diff_root_uuids=diff_uuids_to_delete)
@@ -529,9 +542,10 @@ class DiffCoordinator:
         diff_request: EnrichedDiffRequest,
         partial_enriched_diffs: list[EnrichedDiffsMetadata] | None,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]:
-        """
-        If return is an EnrichedDiffsMetadata, it acts as a pointer to a diff in the database that has all the
-            necessary data for this diff_request. Might have a different time range and/or tracking_id
+        """If the return is an EnrichedDiffsMetadata, it acts as a pointer to a diff in the database.
+
+        The referenced diff has all the necessary data for this diff_request and might have a
+        different time range and/or tracking_id.
         """
         aggregated_enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata | None = None
         if not partial_enriched_diffs:
@@ -612,13 +626,14 @@ class DiffCoordinator:
         diff_or_request_list: Sequence[EnrichedDiffsMetadata | EnrichedDiffRequest | None],
         full_diff_request: EnrichedDiffRequest,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata | None, set[NodeIdentifier]]:
-        """
-        Returns None if diff_or_request_list is empty or all Nones
+        """Returns None if diff_or_request_list is empty or all Nones.
+
             meaning there are no changes for the diff during this time period
         Returns EnrichedDiffsMetadata if diff_or_request_list includes one EnrichedDiffsMetadata and no EnrichedDiffRequests
             meaning no diffs needed to be hydrated and combined
         Otherwise, returns EnrichedDiffs
-            meaning multiple diffs (some that may have been freshly calculated) were combined
+            meaning multiple diffs (some that may have been freshly calculated) were combined.
+
         """
         previous_diff_pair: EnrichedDiffs | EnrichedDiffsMetadata | None = None
         updated_node_identifiers: set[NodeIdentifier] = set()

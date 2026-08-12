@@ -40,9 +40,12 @@ async def get_out_rels_peers_ids(node: Node, db: InfrahubDatabase, at: Timestamp
 
 
 async def build_data_new_node(db: InfrahubDatabase, mapping: dict[str, ConversionFieldInput], node: Node) -> dict:
-    """Value of a given field on the target kind to convert is either an input source attribute/relationship of the source node,
-    or a raw value."""
+    """Value of a given field on the target kind to convert is either an input source attribute/relationship of the source node, or a raw value.
 
+    Raises:
+        ValueError: When a `ConversionFieldInput` entry has not been validated correctly.
+
+    """
     data = {}
     for dest_field_name, conv_field_input in mapping.items():
         if conv_field_input.source_field is not None:
@@ -72,10 +75,7 @@ async def build_data_new_node(db: InfrahubDatabase, mapping: dict[str, Conversio
 async def get_unidirectional_rels_peers_ids(
     node: Node, branch: Branch, db: InfrahubDatabase, at: Timestamp
 ) -> list[str]:
-    """
-    Returns peers ids of nodes connected to input `node` through an incoming unidirectional relationship.
-    """
-
+    """Returns peers ids of nodes connected to input `node` through an incoming unidirectional relationship."""
     out_rels_identifier = [rel.identifier for rel in node.get_schema().relationships]
     branch_agnostic = node.get_schema().branch == BranchSupportType.AGNOSTIC
     query = await GetAllPeersIds.init(
@@ -88,11 +88,6 @@ async def get_unidirectional_rels_peers_ids(
     )
     await query.execute(db=db)
     return query.get_peers_uuids()
-
-
-async def _get_other_active_branches(db: InfrahubDatabase) -> list[Branch]:
-    branches = await Branch.get_list(db=db)
-    return [branch for branch in branches if not (branch.is_global or branch.is_default)]
 
 
 def _has_pass_thru_aware_attributes(node_schema: NodeSchema, mapping: dict[str, ConversionFieldInput]) -> bool:
@@ -151,8 +146,14 @@ async def convert_object_type(
     db: InfrahubDatabase,
 ) -> Node:
     """Delete the node and return the new created one. If creation fails, the node is not deleted, and raise an error.
-    An extra check is performed on input node peers relationships to make sure they are still valid."""
 
+    An extra check is performed on input node peers relationships to make sure they are still valid.
+
+    Raises:
+        ValueError: When the node schema is not a `NodeSchema`, when deletion does not return exactly one node,
+            or when converting an agnostic node with aware attributes on a non-default branch.
+
+    """
     node_schema = node.get_schema()
     if not isinstance(node_schema, NodeSchema):
         raise ValueError(f"Only a node with a NodeSchema can be converted, got {type(node_schema)}")
@@ -175,8 +176,10 @@ async def convert_object_type(
 
         # When converting an agnostic node with aware attributes, we need to put other branches in NEED_REBASE state
         # as aware attributes do not exist in other branches after conversion
-        other_branches = await _get_other_active_branches(db=db)
-        for br in other_branches:
+        active_user_branches = await Branch.get_list(
+            db=db, exclude_global=True, exclude_default=True, exclude_terminal=True
+        )
+        for br in active_user_branches:
             br.status = BranchStatus.NEED_REBASE
             await br.save(db=db)
             # Registry of other API workers are updated outside the transaction

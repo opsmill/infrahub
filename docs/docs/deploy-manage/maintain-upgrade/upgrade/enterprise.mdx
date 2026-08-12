@@ -1,0 +1,69 @@
+---
+title: Upgrade Enterprise
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
+
+# Upgrade Enterprise <EnterpriseBadge />
+
+The process to migrate your instance of Infrahub Enterprise to the latest version will vary depending on your deployment of Infrahub Enterprise. However, at a high-level, it will involve getting the latest version and performing any needed Database Migrations and Schema updates.
+
+For installation instructions, please refer to our [Enterprise installation guide](../../install-configure/install/enterprise.mdx).
+
+Follow the instructions below for your current release version and deployment method.
+
+:::info
+Even though a "smooth" migration is anticipated, we nonetheless strongly suggest creating a backup beforehand. For detailed information, see our [Backup guide](../database-backup/backup-and-restore.mdx).
+:::
+
+:::info
+In Infrahub 1.2 and later, the upgrade process has been streamlined with a unified upgrade command.
+For earlier versions, please refer to the [release notes](/release-notes/infrahub) for specific upgrade instructions.
+:::
+
+## Upgrading to Infrahub Enterprise 1.2 and after
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="docker" label="Docker" default>
+
+```bash
+# Stop the current instance
+docker compose down
+
+# Retrieve the latest docker-compose version
+curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+
+# Run the unified upgrade command
+docker compose run infrahub-server infrahub upgrade
+
+# Restart the instance
+docker compose up -d
+```
+
+:::note
+
+Old Docker images of Infrahub may remain on your machine and consume disk space after an upgrade. To free up space and keep disk usage under control, consider removing unused images.
+
+You can do this with: `docker image prune -a`
+
+:::
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+```bash
+# Upgrade the Helm release
+helm upgrade
+
+# Run the unified upgrade command inside the server pod
+kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
+
+# Restart deployments to apply changes
+kubectl rollout restart deployment/prefect-server
+kubectl rollout restart deployment/infrahub-infrahub-server
+```
+
+</TabItem>
+</Tabs>

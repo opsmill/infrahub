@@ -1,5 +1,4 @@
-"""
-This script creates all required objects to fake a proposed change with all kind of validators, checks in all possible states.
+"""This script creates all required objects to fake a proposed change with all kind of validators, checks in all possible states.
 
 It tries to be as idempotent as possible to avoid re-creating objects on re-run.
 """

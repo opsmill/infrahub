@@ -13,7 +13,7 @@ def get_metadata_options_from_fields(fields: dict[str, Any]) -> MetadataOptions:
         options |= MetadataOptions.CREATED_AT
     if "created_by" in fields:
         options |= MetadataOptions.CREATED_BY
-    if "updated_at" in fields or "_updated_at" in fields:
+    if "updated_at" in fields:
         options |= MetadataOptions.UPDATED_AT
     if "updated_by" in fields:
         options |= MetadataOptions.UPDATED_BY
@@ -49,7 +49,7 @@ def _extract_attribute_metadata_from_node_fields(node_fields: dict[str, Any]) ->
         metadata_properties_dict = field_properties_dict
 
         # Extract metadata from attribute fields
-        if "updated_at" in metadata_properties_dict or "_updated_at" in metadata_properties_dict:
+        if "updated_at" in metadata_properties_dict:
             attribute_metadata_options |= MetadataOptions.UPDATED_AT
         if "updated_by" in metadata_properties_dict:
             attribute_metadata_options |= MetadataOptions.UPDATED_BY
@@ -79,6 +79,7 @@ def build_metadata_query_options(
 
     Returns:
         MetadataQueryOptions with appropriate flags set for each level.
+
     """
     node_level = get_metadata_options_from_fields(node_metadata_fields or {})
     relationship_level = get_metadata_options_from_fields(relationship_metadata_fields or {})

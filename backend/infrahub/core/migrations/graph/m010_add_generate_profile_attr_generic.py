@@ -17,10 +17,11 @@ if TYPE_CHECKING:
 
 class Migration010(InternalSchemaMigration):
     name: str = "010_add_generate_profile_attr_generic"
+    description: str = "N/A"
     minimum_version: int = 9
 
     @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
+    def init(cls, **kwargs: Any) -> Self:
         internal_schema = cls.get_internal_schema()
         schema_generic = internal_schema.get_node(name="SchemaGeneric")
 
@@ -33,8 +34,7 @@ class Migration010(InternalSchemaMigration):
                 ),
             ),
         ]
-        return cls(migrations=migrations, **kwargs)  # type: ignore[arg-type]
+        return cls(migrations=migrations, **kwargs)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

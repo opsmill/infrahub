@@ -17,10 +17,11 @@ if TYPE_CHECKING:
 
 class Migration007(InternalSchemaMigration):
     name: str = "007_add_allow_override"
+    description: str = "N/A"
     minimum_version: int = 6
 
     @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
+    def init(cls, **kwargs: Any) -> Self:
         internal_schema = cls.get_internal_schema()
         schema_rel = internal_schema.get_node(name="SchemaRelationship")
         schema_attr = internal_schema.get_node(name="SchemaAttribute")
@@ -41,8 +42,7 @@ class Migration007(InternalSchemaMigration):
                 ),
             ),
         ]
-        return cls(migrations=migrations, **kwargs)  # type: ignore[arg-type]
+        return cls(migrations=migrations, **kwargs)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

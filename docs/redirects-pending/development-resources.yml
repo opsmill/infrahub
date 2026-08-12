@@ -1,0 +1,55 @@
+---
+feature: Development Resources — GraphQL hub + spokes
+pr: TBD
+description: |
+  Splits the flat GraphQL topic page into a hub + 4 spokes under
+  development-resources/graphql/, moves developer-guide and graphql-fragments
+  into development-resources/, merges the GraphQL fragments concept section
+  into graphql-fragments.mdx, and removes the REST API cross-link from the
+  APIs & interfaces sidebar category.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/developer-guide
+    to: /docs/development-resources/developer-guide
+  - from: /docs/topics/graphql
+    to: /docs/development-resources/graphql/
+  - from: /docs/guides/graphql-fragment
+    to: /docs/development-resources/graphql-fragments
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/development-resources/developer-guide
+    title: Developer Guide
+  - path: /docs/development-resources/graphql/
+    title: GraphQL (hub)
+  - path: /docs/development-resources/graphql/queries-and-mutations
+    title: Queries & mutations
+  - path: /docs/development-resources/graphql/stored-queries
+    title: Stored queries
+  - path: /docs/development-resources/graphql/single-target-queries
+    title: Single-target queries
+  - path: /docs/development-resources/graphql/groups
+    title: Working with groups
+  - path: /docs/development-resources/graphql-fragments
+    title: Using GraphQL fragments
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (will resolve via redirect at runtime but should be updated to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/topics/graphql.mdx
+    line: 301
+    current: ../guides/graphql-fragment.mdx
+    should_be: ../development-resources/graphql-fragments.mdx
+  - file: docs/docs/topics/transformation.mdx
+    line: ~
+    current: topics/graphql (any reference)
+    should_be: development-resources/graphql/
+  - file: docs/docs/topics/generator.mdx
+    line: ~
+    current: topics/graphql (any reference)
+    should_be: development-resources/graphql/
+  - file: docs/docs/topics/artifact.mdx
+    line: ~
+    current: topics/graphql (any reference)
+    should_be: development-resources/graphql/

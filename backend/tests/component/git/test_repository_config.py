@@ -31,8 +31,8 @@ class TestGetRepositoryConfig:
 
         Returns:
             The initialized Infrahub repository instance without a config file.
-        """
 
+        """
         # Clone the upstream repo to avoid polluting the shared fixture
         original_path = Path(git_upstream_repo_01["path"])
         clone_path = git_repos_dir / f"clone_no_config_{id(self)}"
@@ -45,13 +45,12 @@ class TestGetRepositoryConfig:
             cloned_repo.index.remove([".infrahub.yml"])
             cloned_repo.index.commit("Remove .infrahub.yml config file for testing")
 
-        repo = await InfrahubRepository.new(
+        return await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(clone_path),
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
         )
-        return repo
 
     @pytest.fixture
     async def repo_with_invalid_yaml(
@@ -65,8 +64,8 @@ class TestGetRepositoryConfig:
 
         Returns:
             The initialized Infrahub repository instance with an invalid YAML config.
-        """
 
+        """
         # Clone the upstream repo to avoid polluting the shared fixture
         original_path = Path(git_upstream_repo_01["path"])
         clone_path = git_repos_dir / f"clone_invalid_yaml_{id(self)}"
@@ -85,13 +84,12 @@ schemas:
         cloned_repo.index.add([".infrahub.yml"])
         cloned_repo.index.commit("Add invalid YAML config file")
 
-        repo = await InfrahubRepository.new(
+        return await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(clone_path),
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
         )
-        return repo
 
     @pytest.fixture
     async def repo_with_invalid_format(
@@ -105,8 +103,8 @@ schemas:
 
         Returns:
             The initialized Infrahub repository instance with an invalid format config.
-        """
 
+        """
         # Clone the upstream repo to avoid polluting the shared fixture
         original_path = Path(git_upstream_repo_01["path"])
         clone_path = git_repos_dir / f"clone_invalid_format_{id(self)}"
@@ -123,13 +121,12 @@ schemas: "should be a list, not a string"
         cloned_repo.index.add([".infrahub.yml"])
         cloned_repo.index.commit("Add invalid format config file")
 
-        repo = await InfrahubRepository.new(
+        return await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(clone_path),
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
         )
-        return repo
 
     @pytest.fixture
     async def repo_with_valid_config(
@@ -143,8 +140,8 @@ schemas: "should be a list, not a string"
 
         Returns:
             The initialized Infrahub repository instance with a valid config file.
-        """
 
+        """
         # Clone the upstream repo to avoid polluting the shared fixture
         original_path = Path(git_upstream_repo_01["path"])
         clone_path = git_repos_dir / f"clone_valid_config_{id(self)}"
@@ -161,13 +158,12 @@ schemas: []
         cloned_repo.index.add([".infrahub.yml"])
         cloned_repo.index.commit("Add valid .infrahub.yml config file")
 
-        repo = await InfrahubRepository.new(
+        return await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(clone_path),
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
         )
-        return repo
 
     async def test_missing_config_file_raises_error(
         self, repo_without_config: InfrahubRepository, prefect_test_fixture: None

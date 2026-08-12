@@ -14,6 +14,7 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from infrahub.exceptions import InitializationError
+from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 
 from ..shared import load_schema
 from .shared import (
@@ -139,7 +140,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         await blue.new(db=db, name="blue", cars=[accord, civic], persons=[jane])
         await blue.save(db=db)
 
-        objs = {
+        return {
             "john": john.id,
             "deleted_bob": deleted_bob.id,
             "jane": jane.id,
@@ -157,8 +158,6 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
             "red": red.id,
             "green": green.id,
         }
-
-        return objs
 
     @pytest.fixture(scope="class")
     def schema_step02(
@@ -359,7 +358,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         jane = persons[0]
         assert not hasattr(jane, "height")
 
-        for _ in range(10):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             parent_event = await client.execute_graphql(
                 query=QUERY_EVENT,
                 variables={
@@ -373,7 +372,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert parent_event["InfrahubEvent"]["count"] == 1
         parent_id = parent_event["InfrahubEvent"]["edges"][0]["node"]["id"]
 
-        for _ in range(10):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             mutation_events = await client.execute_graphql(
                 query=QUERY_EVENT,
                 variables={

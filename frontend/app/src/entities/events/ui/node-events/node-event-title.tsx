@@ -1,21 +1,23 @@
 import { useAtomValue } from "jotai";
 
-import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
+import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/types";
 import { Link } from "@/shared/components/ui/link";
 import { QSP } from "@/shared/config/qsp";
 
 import { NODE_EVENTS_MAPPING } from "@/entities/events/ui/node-events/constants";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 
-const NodeEventTitleContent = ({ primary_node, event, branch }: NodeMutatedEvent) => {
+const NodeEventTitleContent = ({ primary_node, event, payload, branch }: NodeMutatedEvent) => {
+  const displayLabel = payload.data.changelog?.display_label;
+
   if (!primary_node?.id || !primary_node?.kind) {
     return "-";
   }
 
   if (event.includes("deleted")) {
-    return <NodeLabel id={primary_node.id} kind={primary_node.kind} branch={branch} />;
+    return <span>{displayLabel ?? primary_node.id}</span>;
   }
 
   return (
@@ -25,7 +27,7 @@ const NodeEventTitleContent = ({ primary_node, event, branch }: NodeMutatedEvent
       ])}
       className="min-w-0 flex-1 cursor-pointer truncate rounded-md"
     >
-      <NodeLabel id={primary_node.id} kind={primary_node.kind} branch={branch} />
+      {displayLabel ?? primary_node.id}
     </Link>
   );
 };

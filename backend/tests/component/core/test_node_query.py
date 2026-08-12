@@ -77,6 +77,28 @@ async def test_query_NodeCreateAllQuery_iphost(
     assert await count_nodes(db=db, label="AttributeIPNetwork") == 0
 
 
+async def test_query_NodeCreateAllQuery_ipaddress(
+    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
+) -> None:
+    """A bare IPAddress value shares the AttributeIPHost vertex shape, without any prefix in its value."""
+    obj = await Node.init(db=db, schema="TestAllAttributeTypes", branch=default_branch)
+    await obj.new(db=db, bare_address="10.2.5.2")
+
+    query = await NodeCreateAllQuery.init(db=db, node=obj, user_id="abcd")
+    await query.execute(db=db)
+
+    nodes = await get_nodes(db=db, label="AttributeIPHost")
+    assert len(nodes) == 1
+    attribute = nodes[0]
+
+    assert attribute["value"] == "10.2.5.2"
+    assert attribute["version"] == 4
+    assert attribute["binary_address"] == "00001010000000100000010100000010"
+    assert attribute["prefixlen"] == 32
+
+    assert await count_nodes(db=db, label="AttributeIPNetwork") == 0
+
+
 async def test_query_NodeCreateAllQuery_ipnetwork(
     db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
 ) -> None:
@@ -493,9 +515,7 @@ async def test_query_NodeListGetRelationshipsQuery_pagination_and_parallel_runti
     query_limit_of_one: None,
     neo4j_runtime_parallel: None,
 ) -> None:
-    """
-    Test all expected results are returned with pagination and parallel runtime
-    """
+    """Test all expected results are returned with pagination and parallel runtime."""
     tags = []
     for i in range(10):
         tag = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)

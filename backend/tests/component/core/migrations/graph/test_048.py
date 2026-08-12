@@ -9,7 +9,8 @@ from tests.helpers.db_validation import verify_no_duplicate_paths
 
 
 class TestMigration048:
-    """Test Migration048 to fix Relationship vertices missing IS_VISIBLE/IS_PROTECTED edges
+    """Test Migration048 to fix Relationship vertices missing IS_VISIBLE/IS_PROTECTED edges.
+
     and remove duplicate IS_RELATED edges.
 
     The migration should:
@@ -381,7 +382,7 @@ CREATE (rel)-[:IS_RELATED {
     async def test_migration_048(
         self,
         db: InfrahubDatabase,
-        load_test_data,
+        load_test_data: None,
         relationship_dicts: list[dict[str, str | int | None]],
         duplicate_edge_relationship_dicts: list[dict[str, str | int | None]],
         multi_branch_relationship_dict: dict[str, str | int | None],

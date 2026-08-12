@@ -1,0 +1,29 @@
+# GraphQL Contract: InfrahubGraphQLQueryReport
+# Feature: IFC-2504
+# Pattern: Follows InfrahubStatus (backend/infrahub/graphql/queries/status.py)
+
+"""
+Analysis report for a submitted GraphQL query string.
+"""
+type InfrahubGraphQLQueryReport {
+  """
+  True if every operation in the submitted query resolves to uniquely
+  identifiable nodes (via required ids argument or required uniqueness
+  constraint field). When true, Infrahub can limit artifact regeneration
+  to only changed nodes. When false, all artifacts for the definition
+  will be regenerated on any relevant node change.
+  """
+  targets_unique_nodes: Boolean!
+}
+
+extend type Query {
+  """
+  Analyze a raw GraphQL query string and return a report describing how
+  Infrahub will interpret it. Branch context is resolved automatically
+  from the request — no branch argument is needed.
+  """
+  InfrahubGraphQLQueryReport(
+    "The raw GraphQL query string to analyze."
+    query: String!
+  ): InfrahubGraphQLQueryReport!
+}

@@ -8,7 +8,7 @@ import tomllib
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from infrahub_sdk.utils import generate_uuid
 from pydantic import (
@@ -22,11 +22,13 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
+from infrahub.log import get_logger
+from infrahub.tls.context_builder import TlsContextBuilder
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
@@ -34,7 +36,10 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.workflow import InfrahubWorkflow
 
 
-VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
+log = get_logger()
+
+# Neo4j naming rules: 3-63 chars, alphanumeric start/end, dots and dashes allowed within.
+VALID_DATABASE_NAME_REGEX = r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
 
 
@@ -43,7 +48,7 @@ def default_cors_allow_methods() -> list[str]:
 
 
 def default_cors_allow_headers() -> list[str]:
-    return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"]
+    return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with", "x-priority"]
 
 
 def default_append_git_suffix_domains() -> list[str]:
@@ -53,6 +58,8 @@ def default_append_git_suffix_domains() -> list[str]:
 class EnterpriseFeatures(StrEnum):
     PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
     REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
+    LOG_FORWARDING = "log_forwarding"
+    LDAP = "ldap"
 
 
 class UserInfoMethod(StrEnum):
@@ -201,6 +208,25 @@ class MainSettings(BaseSettings):
         description="Enable strict schema validation. When set to `False`, "
         "`human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes.",
     )
+    diff_update_after_merge: bool = Field(
+        default=True,
+        description="When enabled, diff updates are triggered for active branches after a branch merge.",
+    )
+    delete_branch_after_merge: bool = Field(
+        default=False,
+        description="When enabled, the Infrahub branch is automatically deleted after a successful merge.",
+    )
+    selective_execution_after_merge: bool = Field(
+        default=True,
+        description="When enabled, only the generators and artifact definitions affected by a merge "
+        "are re-executed; when disabled, every generator and artifact definition is re-executed.",
+    )
+    merge_failure_grace_period_seconds: int = Field(
+        default=180,
+        ge=0,
+        description="How long a branch may stay in MERGING with a dead merge-lock holder before it is "
+        "flagged MERGE_FAILED.",
+    )
 
     @field_validator("docs_index_path", mode="before")
     @classmethod
@@ -209,7 +235,12 @@ class MainSettings(BaseSettings):
 
     @property
     def infrahub_address(self) -> str:
-        """This is the address that the Prefect worker will use to connect to Infrahub API."""
+        """This is the address that the Prefect worker will use to connect to Infrahub API.
+
+        Raises:
+            InitializationError: When `internal_address` has not been configured.
+
+        """
         if self.internal_address:
             return self.internal_address
 
@@ -282,7 +313,11 @@ class DatabaseSettings(BaseSettings):
     protocol: str = "bolt"
     username: str = "neo4j"
     password: str = "admin"
-    address: str = "localhost"
+    address: str = Field(
+        default="localhost",
+        description="Database host, or a comma-separated list of cluster members in 'host[:port]' format. "
+        "Members without an explicit port use the value of the port setting.",
+    )
     port: int = 7687
     database: str | None = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
     policy: str | None = Field(default=None, description="Routing policy for database connections")
@@ -302,20 +337,79 @@ class DatabaseSettings(BaseSettings):
     retry_limit: int = Field(
         default=3, description="Maximum number of times a transient issue in a transaction should be retried."
     )
+    retry_base_delay: float = Field(
+        default=0.1, ge=0, description="Base delay in seconds for exponential backoff on transaction retries."
+    )
+    retry_max_delay: float = Field(
+        default=2.0, ge=0, description="Maximum delay in seconds for exponential backoff on transaction retries."
+    )
+    retry_jitter_max: float = Field(
+        default=0.1, ge=0, description="Maximum jitter in seconds added to retry delay to avoid thundering herd."
+    )
     max_concurrent_queries: int = Field(
         default=0, ge=0, description="Maximum number of concurrent queries that can run (0 means unlimited)."
     )
     max_concurrent_queries_delay: float = Field(
         default=0.01, ge=0, description="Delay to add when max_concurrent_queries is reached."
     )
+    path_traversal_query_timeout: float = Field(
+        default=30,
+        ge=1,
+        description=(
+            "Server-side transaction timeout in seconds for each point-to-point path-traversal "
+            "query. Point-to-point traversal runs many small queries one depth at a time, so a "
+            "single query that exceeds this budget marks a doomed search: it is aborted and the "
+            "shallower paths found so far are returned with a truncation depth, rather than the "
+            "whole request failing."
+        ),
+    )
+    reachable_nodes_query_timeout: float = Field(
+        default=75,
+        ge=1,
+        description=(
+            "Server-side transaction timeout in seconds for reachable-nodes queries; "
+            "the query is aborted once it is exceeded."
+        ),
+    )
+    max_connection_pool_size: int = Field(
+        default=100,
+        ge=1,
+        description="Maximum number of connections the driver keeps in its pool per remote address.",
+    )
+
+    @property
+    def address_members(self) -> list[str]:
+        """All members defined in the address setting, in 'host[:port]' format."""
+        return [member.strip() for member in self.address.split(",") if member.strip()]
 
     @property
     def database_uri(self) -> str:
-        """Constructs the database URI based on the configuration settings."""
-        base_uri = f"{self.protocol}://{self.address}:{self.port}"
+        """Constructs the database URI based on the configuration settings.
+
+        When multiple members are configured, only the first one is part of the URI;
+        the others are made available to the driver through a custom address resolver.
+        """
+        member = self.address_members[0] if self.address_members else self.address
+        host, member_port = self._split_member(member)
+        base_uri = f"{self.protocol}://{host}:{member_port or self.port}"
         if self.policy is not None:
             return f"{base_uri}?policy={self.policy}"
         return base_uri
+
+    @staticmethod
+    def _split_member(member: str) -> tuple[str, int | None]:
+        """Split a 'host[:port]' member into host and optional port, supporting bracketed IPv6 hosts."""
+        if member.startswith("["):
+            host, _, rest = member.partition("]")
+            host += "]"
+            if rest.startswith(":") and rest[1:].isdigit():
+                return host, int(rest[1:])
+            return host, None
+        if member.count(":") == 1:
+            host, _, port_str = member.partition(":")
+            if port_str.isdigit():
+                return host, int(port_str)
+        return member, None
 
     @property
     def database_name(self) -> str:
@@ -323,7 +417,7 @@ class DatabaseSettings(BaseSettings):
 
 
 class DevelopmentSettings(BaseSettings):
-    """The development settings are only relevant for local development"""
+    """The development settings are only relevant for local development."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_DEV_")
 
@@ -389,6 +483,15 @@ class CacheSettings(BaseSettings):
         ge=1,
         description="Age threshold in minutes: locks older than this and owned by inactive workers are deleted by the cleanup task.",
     )
+    init_lock_ttl_mins: int = Field(
+        default=20,
+        ge=1,
+        description=(
+            "Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, "
+            "the lock auto-expires after this period so Infrahub can recover on its own. "
+            "Only enforced with the Redis cache driver."
+        ),
+    )
 
     @property
     def service_port(self) -> int:
@@ -449,6 +552,135 @@ class ApiSettings(BaseSettings):
     cors_allow_credentials: bool = Field(
         default=True, description="If True, cookies will be allowed to be included in cross-site HTTP requests"
     )
+    backpressure_enabled: bool = Field(
+        default=True,
+        description="Kill-switch for priority-aware API backpressure; when disabled every request passes through.",
+    )
+    backpressure_codel_target_seconds: float = Field(
+        default=0.005,
+        gt=0,
+        allow_inf_nan=False,
+        description="CoDel target sojourn in seconds before shedding is considered.",
+    )
+    backpressure_codel_interval_seconds: float = Field(
+        default=0.1,
+        gt=0,
+        allow_inf_nan=False,
+        description="CoDel interval in seconds the sojourn must stay above target before dropping.",
+    )
+    backpressure_high_target_multiplier: float = Field(
+        default=4.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Multiplier applied to the CoDel target for the high-priority class.",
+    )
+    backpressure_backstop_max_waiters: int = Field(
+        default=1000, ge=1, description="Per-class hard cap on queued waiters before requests are rejected."
+    )
+    backpressure_retry_after_level1_seconds: int = Field(
+        default=1, ge=0, description="Retry-After (seconds) advised for a shed request at load level 1 (mild)."
+    )
+    backpressure_retry_after_level2_seconds: int = Field(
+        default=5, ge=0, description="Retry-After (seconds) advised for a shed request at load level 2 (moderate)."
+    )
+    backpressure_retry_after_level3_seconds: int = Field(
+        default=10, ge=0, description="Retry-After (seconds) advised for a shed request at load level 3 (severe)."
+    )
+    backpressure_retry_after_max_seconds: int = Field(
+        default=30,
+        ge=0,
+        description="Upper bound on the advised Retry-After after sustained-load escalation is applied.",
+    )
+    backpressure_significant_load_stress_ratio: float = Field(
+        default=20.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Stress ratio at or above which the server is counted as under significant sustained load.",
+    )
+    backpressure_sustained_load_warn_seconds: float = Field(
+        default=60.0,
+        gt=0,
+        allow_inf_nan=False,
+        description="Seconds of continuous significant load after which the advised Retry-After is escalated.",
+    )
+    backpressure_sustained_load_high_seconds: float = Field(
+        default=300.0,
+        gt=0,
+        allow_inf_nan=False,
+        description="Seconds of continuous significant load after which the advised Retry-After is escalated further.",
+    )
+    backpressure_max_concurrency_factor: float = Field(
+        default=0.5,
+        gt=0,
+        allow_inf_nan=False,
+        description="Scales the derived maximum admission concurrency.",
+    )
+    backpressure_stress_window_seconds: float = Field(
+        default=20.0,
+        gt=0,
+        allow_inf_nan=False,
+        description="Rolling window, in seconds, over which the database-stress signal is measured.",
+    )
+    backpressure_stress_min_samples: int = Field(
+        default=5,
+        ge=1,
+        description="Reference-query samples required in the window before the stress signal gates shedding.",
+    )
+    backpressure_shed_low_stress_ratio: float = Field(
+        default=10.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Database-stress ratio at or above which low-priority requests become eligible for shedding.",
+    )
+    backpressure_shed_medium_stress_ratio: float = Field(
+        default=25.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Database-stress ratio at or above which medium-priority requests become eligible for shedding.",
+    )
+    backpressure_shed_high_stress_ratio: float = Field(
+        default=100.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Database-stress ratio at or above which high-priority requests become eligible for shedding.",
+    )
+    backpressure_backstop_low_multiplier: float = Field(
+        default=0.5,
+        gt=0,
+        le=1,
+        allow_inf_nan=False,
+        description="Scales the base backstop waiter cap for the low-priority class.",
+    )
+    backpressure_backstop_high_multiplier: float = Field(
+        default=4.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Scales the base backstop waiter cap for the high-priority class.",
+    )
+
+    @model_validator(mode="after")
+    def validate_shed_stress_ratios_ordered_by_priority(self) -> Self:
+        """Require each class to start shedding no earlier than the one below it.
+
+        A class sheds once the database-stress ratio reaches its own trigger, so the whole point of
+        the feature — interactive traffic surviving longest — inverts silently if a higher-priority
+        class is given a lower trigger.
+
+        Raises:
+            ValueError: If the triggers are not ordered from low to high priority.
+
+        """
+        if not (
+            self.backpressure_shed_low_stress_ratio
+            <= self.backpressure_shed_medium_stress_ratio
+            <= self.backpressure_shed_high_stress_ratio
+        ):
+            raise ValueError(
+                "'backpressure_shed_low_stress_ratio' must not exceed "
+                "'backpressure_shed_medium_stress_ratio', which must not exceed "
+                "'backpressure_shed_high_stress_ratio', so lower-priority traffic sheds first"
+            )
+        return self
 
 
 class GitSettings(BaseSettings):
@@ -495,6 +727,11 @@ class GitSettings(BaseSettings):
     use_explicit_merge_commit: bool = Field(
         default=False, description="Whether to allow explicit merge commits when infrahub merges branches"
     )
+    delete_git_branch_after_merge: bool = Field(
+        default=False,
+        description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
+        "Requires delete_branch_after_merge to be enabled.",
+    )
 
     @model_validator(mode="after")
     def validate_sync_branch_names(self) -> Self:
@@ -527,35 +764,13 @@ class HTTPSettings(BaseSettings):
         try:
             # Validate that the context can be created, we want to raise this error during application start
             # instead of running into issues later when we first try to use the tls context.
-            self.get_tls_context()
+            TlsContextBuilder.build(
+                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
+            )
         except ssl.SSLError as exc:
             raise ValueError(f"Unable load CA bundle from {self.tls_ca_bundle}: {exc}") from exc
 
         return self
-
-    def get_tls_context(self, force_verify: bool = False) -> ssl.SSLContext:
-        if self.tls_insecure and not force_verify:
-            return ssl._create_unverified_context()
-
-        if not self.tls_ca_bundle:
-            return ssl.create_default_context()
-
-        tls_ca_path = Path(self.tls_ca_bundle)
-
-        try:
-            possibly_file = tls_ca_path.exists()
-        except OSError:
-            # Raised if the filename is too long which can indicate
-            # that the value is a PEM certificate in string form.
-            possibly_file = False
-
-        if possibly_file and tls_ca_path.is_file():
-            context = ssl.create_default_context(cafile=str(tls_ca_path))
-        else:
-            context = ssl.create_default_context()
-            context.load_verify_locations(cadata=self.tls_ca_bundle)
-
-        return context
 
 
 class InitialSettings(BaseSettings):
@@ -589,7 +804,7 @@ def _default_scopes() -> list[str]:
 
 
 class SecurityOIDCBaseSettings(BaseSettings):
-    """Baseclass for typing"""
+    """Baseclass for typing."""
 
     icon: str = Field(default="mdi:account-key")
     display_label: str = Field(default="Single Sign on")
@@ -597,6 +812,34 @@ class SecurityOIDCBaseSettings(BaseSettings):
     pkce_enabled: bool = Field(
         default=True, description="Enable PKCE (RFC 7636) with S256 method for authorization code flow"
     )
+    id_token_verify_signature: bool = Field(
+        default=True,
+        description="Verify the cryptographic signature, audience and issuer of the OIDC id_token.",
+    )
+    groups_claim: str = Field(
+        default="groups",
+        description=(
+            "Top-level key in the IdP claim payload from which the user's groups are read. "
+            "Defaults to `groups`. Set per provider when your IdP emits group memberships "
+            "under a different claim name (e.g., `roles`)."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def warn_when_signature_verification_disabled(self) -> Self:
+        if not self.id_token_verify_signature:
+            log.warning(
+                "OIDC id_token verification is disabled; any token presented to the callback will be trusted.",
+                provider=self.__class__.__name__,
+            )
+        return self
+
+    @field_validator("groups_claim")
+    @classmethod
+    def _validate_groups_claim(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("groups_claim must not be empty or whitespace-only")
+        return value.strip()
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):
@@ -607,7 +850,7 @@ class SecurityOIDCSettings(SecurityOIDCBaseSettings):
 
 
 class SecurityOIDCGoogle(SecurityOIDCSettings):
-    """Settings for the custom OIDC provider"""
+    """Settings for the custom OIDC provider."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_GOOGLE_")
 
@@ -625,13 +868,13 @@ class SecurityOIDCGoogle(SecurityOIDCSettings):
 
 
 class SecurityOIDCProvider1(SecurityOIDCSettings):
-    """Settings for the custom OIDC provider"""
+    """Settings for the custom OIDC provider."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_PROVIDER1_")
 
 
 class SecurityOIDCProvider2(SecurityOIDCSettings):
-    """Settings for the custom OIDC provider"""
+    """Settings for the custom OIDC provider."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_PROVIDER2_")
 
@@ -645,17 +888,32 @@ class SecurityOIDCProviderSettings(BaseModel):
 
 
 class SecurityOAuth2BaseSettings(BaseSettings):
-    """Baseclass for typing"""
+    """Baseclass for typing."""
 
     icon: str = Field(default="mdi:account-key")
     userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
     pkce_enabled: bool = Field(
         default=True, description="Enable PKCE (RFC 7636) with S256 method for authorization code flow"
     )
+    groups_claim: str = Field(
+        default="groups",
+        description=(
+            "Top-level key in the IdP claim payload from which the user's groups are read. "
+            "Defaults to `groups`. Set per provider when your IdP emits group memberships "
+            "under a different claim name (e.g., `roles`)."
+        ),
+    )
+
+    @field_validator("groups_claim")
+    @classmethod
+    def _validate_groups_claim(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("groups_claim must not be empty or whitespace-only")
+        return value.strip()
 
 
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
-    """Common base for Oauth2 providers"""
+    """Common base for Oauth2 providers."""
 
     client_id: str = Field(..., description="Client ID of the application created in the auth provider")
     client_secret: str | None = Field(default=None, description="Client secret as defined in auth provider")
@@ -667,13 +925,13 @@ class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
 
 
 class SecurityOAuth2Provider1(SecurityOAuth2Settings):
-    """Common base for Oauth2 providers"""
+    """Common base for Oauth2 providers."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_PROVIDER1_")
 
 
 class SecurityOAuth2Provider2(SecurityOAuth2Settings):
-    """Common base for Oauth2 providers"""
+    """Common base for Oauth2 providers."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_PROVIDER2_")
 
@@ -761,7 +1019,92 @@ class SecuritySettings(BaseSettings):
     _oidc_settings: dict[str, SecurityOIDCSettings] = PrivateAttr(default_factory=dict)
     sso_user_default_group: str | None = Field(
         default=None,
-        description="Name of the group to which users authenticated via SSO will belong if not provided by identity provider",
+        description="Name of the group assigned to an SSO user on their first login when the identity "
+        "provider supplies no group claims. Applied only when the account is first created; it is "
+        "not re-applied on subsequent logins, so removing a user from this group is not undone.",
+    )
+    auto_create_groups_filter: str | list[str] | None = Field(
+        default=None,
+        description="Regex(es) that decide which external identity-provider group claims become "
+        "Infrahub groups. Accepts one regex or a list; the first matching pattern wins. "
+        "Use a named capture group `(?P<name>...)` to set the group name; otherwise the "
+        "full claim is used. Leave empty to disable auto-creation.",
+    )
+    auto_create_groups_max_per_login: int = Field(
+        default=50,
+        ge=1,
+        description="Maximum number of groups that can be auto-created during a single login. "
+        "Once reached, further new groups are skipped (with a warning) but the login "
+        "still succeeds. Adding the user to groups that already exist is not limited.",
+    )
+    _auto_create_groups_filter_patterns: tuple[re.Pattern[str], ...] = PrivateAttr(default_factory=tuple)
+
+    @field_validator("auto_create_groups_filter", mode="after")
+    @classmethod
+    def _validate_auto_create_groups_filter(cls, value: str | list[str] | None) -> str | list[str] | None:
+        """Validate that every configured regex compiles cleanly at startup.
+
+        Empty / unset values are accepted unchanged — they mean "feature off".
+
+        Raises:
+            ValueError: When a configured regex pattern fails to compile. Pydantic surfaces the
+                error attached to the setting name.
+
+        """
+        if value is None:
+            return value
+
+        raw_patterns: list[str] = [value] if isinstance(value, str) else list(value)
+        raw_patterns = [stripped for p in raw_patterns if (stripped := p.strip())]
+        for index, pattern in enumerate(raw_patterns):
+            try:
+                re.compile(pattern)
+            except re.error as exc:
+                raise ValueError(f"auto_create_groups_filter[{index}]: invalid regex {pattern!r}: {exc}") from exc
+        return value
+
+    @model_validator(mode="after")
+    def _compile_auto_create_groups_filter_patterns(self) -> Self:
+        self.recompile_auto_create_groups_filter_patterns()
+        return self
+
+    def recompile_auto_create_groups_filter_patterns(self) -> None:
+        """Compile `auto_create_groups_filter` into the private patterns tuple.
+
+        Plain method (not a validator) so callers that mutate `auto_create_groups_filter`
+        on the live settings singleton — e.g. test fixtures — can re-trigger compilation
+        without going through Pydantic's validator chain.
+        """
+        if self.auto_create_groups_filter is None:
+            self._auto_create_groups_filter_patterns = ()
+            return
+
+        raw_patterns: list[str]
+        if isinstance(self.auto_create_groups_filter, str):
+            raw_patterns = [self.auto_create_groups_filter]
+        else:
+            raw_patterns = list(self.auto_create_groups_filter)
+        raw_patterns = [stripped for p in raw_patterns if (stripped := p.strip())]
+        self._auto_create_groups_filter_patterns = tuple(re.compile(p) for p in raw_patterns)
+
+    @property
+    def auto_create_groups_filter_patterns(self) -> tuple[re.Pattern[str], ...]:
+        """Compiled filter patterns. Empty tuple means the feature is off."""
+        return self._auto_create_groups_filter_patterns
+
+    @property
+    def auto_create_groups_enabled(self) -> bool:
+        """True iff at least one usable filter pattern is configured."""
+        return len(self._auto_create_groups_filter_patterns) > 0
+
+    sso_account_name_fallback: bool = Field(
+        default=True,
+        description=(
+            "When enabled, an SSO login that has no linked identity and matches an existing account by "
+            "display name claims that account, as long as it has not already been linked to another "
+            "identity. When disabled, such a login always provisions a separate account instead of "
+            "reusing an existing one."
+        ),
     )
 
     @model_validator(mode="after")
@@ -866,6 +1209,165 @@ class TraceSettings(BaseSettings):
     exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
 
 
+class SyslogProtocol(StrEnum):
+    TCP = "tcp"
+    UDP = "udp"
+
+
+class SyslogFormat(StrEnum):
+    RFC5424 = "rfc5424"
+    RFC3164 = "rfc3164"
+
+
+class TcpFraming(StrEnum):
+    NEWLINE = "newline"
+    OCTET_COUNTING = "octet-counting"
+
+
+class LogForwardingDestinationType(StrEnum):
+    SYSLOG = "syslog"
+
+
+class LogForwardingDestination(BaseModel):
+    name: str = Field(description="Unique name for the destination, used in all observability output.")
+    type: LogForwardingDestinationType = Field(
+        default=LogForwardingDestinationType.SYSLOG, description="Destination type."
+    )
+    host: str = Field(description="Destination host or IP address.")
+    port: int | None = Field(
+        default=None, ge=1, le=65535, description="Destination port number. Defaults to 6514 for TLS, 514 otherwise."
+    )
+    protocol: SyslogProtocol = Field(default=SyslogProtocol.UDP, description="Transport protocol (tcp or udp).")
+    format: SyslogFormat = Field(default=SyslogFormat.RFC5424, description="Syslog format standard.")
+    tcp_framing: TcpFraming = Field(
+        default=TcpFraming.NEWLINE, description="TCP framing method (newline or octet-counting)."
+    )
+    tls_enabled: bool = Field(default=False, description="Enable TLS encryption for TCP connections.")
+    tls_ca_bundle: str | None = Field(
+        default=None, description="Path or PEM string for CA bundle to validate syslog server certificate."
+    )
+    queue_size: int = Field(default=10000, ge=1, description="Maximum number of messages in the per-destination queue.")
+    max_reconnect_interval: int = Field(
+        default=60, ge=1, description="Maximum reconnection backoff interval in seconds."
+    )
+    shutdown_drain_timeout: int = Field(
+        default=10, ge=0, description="Seconds to wait for queue drain on graceful shutdown."
+    )
+    forward_application_logs: bool = Field(
+        default=False, description="Forward application log messages to this destination."
+    )
+    min_log_severity: ExtraLogLevel = Field(
+        default=ExtraLogLevel.WARNING,
+        description="Minimum Python log severity to forward when application log forwarding is enabled.",
+    )
+
+    @property
+    def service_port(self) -> int:
+        if self.port:
+            return self.port
+        if self.tls_enabled:
+            return 6514
+        return 514
+
+    @model_validator(mode="after")
+    def validate_tls_protocol(self) -> Self:
+        if self.tls_enabled and self.protocol == SyslogProtocol.UDP:
+            raise ValueError("TLS is only supported with TCP protocol, not UDP.")
+        return self
+
+
+_DESTINATION_NAME_RE = re.compile(r"^[a-z0-9_]+$")
+
+
+def _load_destination_from_env(name: str) -> LogForwardingDestination:
+    """Build a LogForwardingDestination by scanning os.environ for keys matching.
+
+    INFRAHUB_LOG_FORWARDING_DESTINATION_{NAME_UPPER}_{FIELD_UPPER}.
+
+    """
+    prefix = f"INFRAHUB_LOG_FORWARDING_DESTINATION_{name.upper()}_"
+    valid_field_names = set(LogForwardingDestination.model_fields.keys()) - {"name"}
+    fields: dict[str, Any] = {"name": name}
+    for env_key, env_val in os.environ.items():
+        if env_key.upper().startswith(prefix):
+            suffix = env_key[len(prefix) :].lower()
+            if suffix in valid_field_names:
+                fields[suffix] = env_val
+    return LogForwardingDestination.model_validate(fields)
+
+
+class LogForwardingSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_LOG_FORWARDING_")
+    hostname: str | None = Field(
+        default=None,
+        description="Hostname to use in syslog message headers. If not set, defaults to the system FQDN.",
+    )
+    destination_names: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description=(
+            "Comma-separated list of destination names to load from per-destination environment variables "
+            "(e.g. `INFRAHUB_LOG_FORWARDING_DESTINATION_PRIMARY_HOST` where `PRIMARY` is the destination name). "
+            "Names must match `[a-z0-9_]+`. Mutually exclusive with `destinations`."
+        ),
+    )
+    destinations: list[LogForwardingDestination] = Field(
+        default_factory=list,
+        description="List of log forwarding destinations. (Enterprise only: not available in the community version.)",
+    )
+
+    @field_validator("destination_names", mode="before")
+    @classmethod
+    def _split_destination_names(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return [n.strip() for n in v.split(",") if n.strip()]
+        return v
+
+    @model_validator(mode="after")
+    def _materialize_destinations_from_env(self) -> Self:
+        if not self.destination_names:
+            return self
+        for name in self.destination_names:
+            if not _DESTINATION_NAME_RE.match(name):
+                raise ValueError(
+                    f"Invalid log forwarding destination name '{name}': names configured via "
+                    "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES must match [a-z0-9_]+ (lowercase letters, "
+                    "digits, and underscores only)."
+                )
+        loaded = [_load_destination_from_env(name) for name in self.destination_names]
+        # Re-run uniqueness check (covers duplicates within destination_names itself).
+        self.__class__.validate_unique_names(loaded)
+        # in case destinations have already been loaded
+        if self.destinations == loaded:
+            return self
+        # if destinations already exist and != loaded, they must have be set in different places
+        # with different values
+        if self.destinations:
+            raise ValueError(
+                "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES cannot be combined with explicit `destinations` "
+                "(set via INFRAHUB_LOG_FORWARDING_DESTINATIONS or infrahub.toml). Use one mechanism, not both."
+            )
+        self.destinations = loaded
+        return self
+
+    @field_validator("destinations")
+    @classmethod
+    def validate_unique_names(cls, v: list[LogForwardingDestination]) -> list[LogForwardingDestination]:
+        unique_names = {d.name for d in v}
+        if len(unique_names) == len(v):
+            return v
+        all_names = [d.name for d in v]
+        duplicate_names = {name for name in unique_names if all_names.count(name) > 1}
+        sorted_dupes = ", ".join(sorted(duplicate_names))
+        raise ValueError(f"Destination names must be unique; duplicates found: {sorted_dupes}")
+
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns enterprise features enabled by log forwarding configuration."""
+        if any(d.type == LogForwardingDestinationType.SYSLOG for d in self.destinations):
+            return [EnterpriseFeatures.LOG_FORWARDING]
+        return []
+
+
 class PolicySettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_POLICY_")
     required_proposed_change_approvals: int = Field(
@@ -888,6 +1390,304 @@ class PolicySettings(BaseSettings):
         if self.revoke_proposed_change_approvals:
             features.append(EnterpriseFeatures.REVOKE_PROPOSED_CHANGE_APPROVALS)
         return features
+
+
+LDAP_DEFAULT_DISPLAY_LABEL = "Sign in with LDAP"
+LDAP_DEFAULT_ICON = "mdi:account-key-outline"
+
+
+class LDAPGroupResolutionStrategy(StrEnum):
+    BFS = "bfs"
+    AD_IN_CHAIN = "ad_in_chain"
+
+
+class LDAPTLSMinimumVersion(StrEnum):
+    TLS_1_2 = "TLSv1.2"
+    TLS_1_3 = "TLSv1.3"
+
+
+class LDAPInfo(BaseModel):
+    enabled: bool = Field(
+        default=False,
+        description=(
+            "True when LDAP sign-in is available on this deployment, meaning "
+            "it has been configured and the running edition supports it."
+        ),
+    )
+    display_label: str = Field(
+        default=LDAP_DEFAULT_DISPLAY_LABEL,
+        description="Text shown on the LDAP sign-in button on the login page.",
+    )
+    icon: str = Field(
+        default=LDAP_DEFAULT_ICON,
+        description="Icon shown on the LDAP sign-in button on the login page.",
+    )
+
+
+class LDAPSettings(BaseSettings):
+    """LDAP authentication configuration."""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_LDAP_")
+
+    enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable LDAP authentication on this deployment. When turned off, "
+            "new LDAP sign-ins are refused; existing sessions are unaffected."
+        ),
+    )
+    servers: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description=(
+            "Comma-separated list of LDAP server URIs (e.g. "
+            "`ldaps://dc1.example.com:636,ldaps://dc2.example.com:636`). Each "
+            "entry is tried in declaration order, falling through to the next "
+            "when one is unreachable, so list a primary first and any standby "
+            "replicas after it for high availability. URIs must use the `ldap` "
+            "or `ldaps` scheme."
+        ),
+    )
+
+    service_account_dn: str | None = Field(
+        default=None,
+        description=(
+            "Distinguished name of the directory account used to look up users before verifying their credentials."
+        ),
+    )
+    service_account_password: str | None = Field(
+        default=None,
+        description="Password for the service account used during the user lookup. ",
+    )
+
+    user_search_base: str | None = Field(
+        default=None,
+        description=(
+            "Distinguished name of the directory subtree where user entries "
+            "are stored, e.g. `OU=Users,DC=corp,DC=example,DC=com`."
+        ),
+    )
+    user_search_filter: str | None = Field(
+        default=None,
+        description=(
+            "LDAP filter used to locate a user entry by their sign-in name. "
+            "The `{username}` placeholder is substituted at sign-in time with "
+            "the user-supplied login name and is safely escaped to prevent "
+            "filter injection. If left empty, a default is generated from "
+            "the configured username attribute (`attribute_username`), so "
+            "changing the username attribute keeps the filter aligned "
+            "automatically."
+        ),
+    )
+
+    attribute_username: str = Field(
+        default="sAMAccountName",
+        description=(
+            "Name of the LDAP attribute that holds a user's sign-in name. "
+            "Defaults to `sAMAccountName` (typical on Active Directory); "
+            "`uid` is typical on OpenLDAP."
+        ),
+    )
+    attribute_display_name: str = Field(
+        default="displayName",
+        description="Name of the LDAP attribute that holds a user's human-readable display name.",
+    )
+    attribute_disabled: str | None = Field(
+        default="userAccountControl",
+        description=(
+            "Name of an LDAP attribute that signals whether an account is "
+            "disabled. Defaults to `userAccountControl` (Active Directory's "
+            "mechanism). Leave empty for directories that do not expose an "
+            "equivalent attribute; the disabled-account check is then skipped."
+        ),
+    )
+    attribute_disabled_bitmask: int = Field(
+        default=0x2,
+        ge=1,
+        description=(
+            "When `attribute_disabled` is set, the integer value of that "
+            "attribute is treated as a bitmask; the account is considered "
+            "disabled if any of these bits are set. Default `0x2` matches "
+            "Active Directory's standard 'account disabled' flag."
+        ),
+    )
+
+    group_enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable directory group resolution. When turned off, users sign "
+            "in successfully but receive no permissions until they are "
+            "assigned to local groups manually. When turned on, "
+            "`group_base_dn` must be set."
+        ),
+    )
+    group_base_dn: str | None = Field(
+        default=None,
+        description=(
+            "Distinguished name of the directory subtree where group entries "
+            "are stored, e.g. `OU=Groups,DC=corp,DC=example,DC=com`. Required "
+            "when `group_enabled` is true."
+        ),
+    )
+    group_filter: str = Field(
+        default="(member={user_dn})",
+        description=(
+            "LDAP filter used to look up the groups a user belongs to. The "
+            "`{user_dn}` placeholder is substituted with the user's "
+            "distinguished name at sign-in time and is safely escaped to "
+            "prevent filter injection."
+        ),
+    )
+    group_name_attribute: str = Field(
+        default="cn",
+        description=(
+            "Name of the LDAP attribute on group entries that is read as the "
+            "group's name. The value is matched against local group names to "
+            "grant the user the matching permissions."
+        ),
+    )
+    group_strategy: LDAPGroupResolutionStrategy = Field(
+        default=LDAPGroupResolutionStrategy.BFS,
+        description=(
+            "How nested-group memberships are resolved. `ad_in_chain` uses "
+            "Active Directory's transitive-membership search to retrieve all "
+            "nested groups in a single query; it is the fastest option "
+            "against AD. `bfs` walks group memberships level by level and "
+            "works against any LDAP-compatible directory."
+        ),
+    )
+    group_bfs_max_depth: int = Field(
+        default=16,
+        ge=10,
+        description=(
+            "Maximum number of nesting levels to traverse when "
+            "`group_strategy` is `bfs`. Has no effect for other strategies. "
+            "Cycles in the group structure are detected automatically. "
+            "Minimum value is 10."
+        ),
+    )
+
+    tls_enabled: bool = Field(
+        default=False,
+        description=(
+            "Use an encrypted connection to the LDAP server. Pair with "
+            "`ldaps://` server URIs, or set `tls_starttls = true` to upgrade "
+            "plain `ldap://` connections."
+        ),
+    )
+    tls_starttls: bool = Field(
+        default=False,
+        description="Upgrade a plain `ldap://` connection to TLS using STARTTLS instead of connecting via `ldaps://`.",
+    )
+    tls_ca_bundle: str | None = Field(
+        default=None,
+        description=(
+            "PEM-encoded certificate authority bundle used to verify the LDAP "
+            "server's TLS certificate. May be a path to a file or the PEM "
+            "contents directly. Checked at startup."
+        ),
+    )
+    tls_insecure: bool = Field(
+        default=False,
+        description=(
+            "Skip TLS certificate validation. Test and development environments only; never enable in production."
+        ),
+    )
+    tls_minimum_version: LDAPTLSMinimumVersion = Field(
+        default=LDAPTLSMinimumVersion.TLS_1_2,
+        description="Minimum TLS protocol version accepted when connecting to an LDAP server.",
+    )
+
+    per_server_timeout: float = Field(
+        default=10.0,
+        gt=0.0,
+        description=(
+            "Maximum time, in seconds, to wait for an LDAP server to respond "
+            "before treating it as unreachable and trying the next configured "
+            "server."
+        ),
+    )
+
+    display_label: str = Field(
+        default=LDAP_DEFAULT_DISPLAY_LABEL,
+        description="Text shown on the LDAP sign-in button on the login page.",
+    )
+    icon: str = Field(
+        default=LDAP_DEFAULT_ICON,
+        description="Icon shown on the LDAP sign-in button on the login page.",
+    )
+
+    @field_validator("servers", mode="before")
+    @classmethod
+    def _split_servers(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return [s.strip() for s in v.split(",") if s.strip()]
+        return v
+
+    @field_validator("servers")
+    @classmethod
+    def _validate_server_uris(cls, v: list[str]) -> list[str]:
+        for uri in v:
+            if not uri.startswith(("ldap://", "ldaps://")):
+                raise ValueError(f"LDAP URI scheme must be 'ldap' or 'ldaps', got: {uri!r}")
+            rest = uri.split("://", 1)[1]
+            host = rest.split("/", 1)[0].split(":", 1)[0]
+            if not host:
+                raise ValueError("LDAP URI must include a hostname")
+        return v
+
+    @property
+    def admin_enabled(self) -> bool:
+        return self.enabled and bool(self.servers)
+
+    @model_validator(mode="after")
+    def derive_default_user_search_filter(self) -> Self:
+        # Tie the filter to the configured username attribute so the two
+        # cannot drift. Operators who set their own filter are unaffected.
+        if self.user_search_filter is None:
+            self.user_search_filter = f"({self.attribute_username}={{username}})"
+        return self
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if not self.tls_enabled:
+            return self
+        if self.tls_insecure and self.tls_ca_bundle is not None:
+            raise ValueError("ldap.tls_insecure cannot be combined with ldap.tls_ca_bundle; pick one.")
+        try:
+            TlsContextBuilder.build(
+                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
+            )
+        except ssl.SSLError as exc:
+            raise ValueError(f"Unable to load LDAP CA bundle from {self.tls_ca_bundle}: {exc}") from exc
+        return self
+
+    @model_validator(mode="after")
+    def check_complete_when_enabled(self) -> Self:
+        if not self.enabled:
+            return self
+        problems: list[str] = []
+        if not self.servers:
+            problems.append("ldap.servers must be non-empty")
+        if not self.service_account_dn:
+            problems.append("ldap.service_account_dn is required")
+        if not self.service_account_password:
+            problems.append("ldap.service_account_password is required")
+        if not self.user_search_base:
+            problems.append("ldap.user_search_base is required")
+        if self.group_enabled and not self.group_base_dn:
+            problems.append("ldap.group_base_dn is required when ldap.group_enabled is true")
+        if self.tls_starttls and any(uri.startswith("ldaps://") for uri in self.servers):
+            problems.append("ldap.tls_starttls cannot be combined with an ldaps:// server URI")
+        if problems:
+            raise ValueError("Invalid LDAP configuration: " + "; ".join(problems))
+        return self
+
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns enterprise features enabled by LDAP configuration."""
+        if self.enabled:
+            return [EnterpriseFeatures.LDAP]
+        return []
 
 
 @dataclass
@@ -990,6 +1790,10 @@ class ConfiguredSettings:
         return self.active_settings.security
 
     @property
+    def ldap(self) -> LDAPSettings:
+        return self.active_settings.ldap
+
+    @property
     def storage(self) -> StorageSettings:
         return self.active_settings.storage
 
@@ -1025,14 +1829,22 @@ class Settings(BaseSettings):
     initial: InitialSettings = InitialSettings()
     policy: PolicySettings = PolicySettings()
     security: SecuritySettings = SecuritySettings()
+    ldap: LDAPSettings = LDAPSettings()
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
+    log_forwarding: LogForwardingSettings = LogForwardingSettings()
+
+    @model_validator(mode="after")
+    def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
+        if self.git.delete_git_branch_after_merge and not self.main.delete_branch_after_merge:
+            raise ValueError("'delete_git_branch_after_merge' requires 'delete_branch_after_merge' to be enabled")
+        return self
 
     @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
-        return self.policy.enterprise_features
+        return self.policy.enterprise_features + self.log_forwarding.enterprise_features + self.ldap.enterprise_features
 
 
 def load(config_file_name: Path | str = "infrahub.toml", config_data: dict[str, Any] | None = None) -> Settings:
@@ -1064,6 +1876,7 @@ def load_and_exit(config_file_name: Path | str = "infrahub.toml", config_data: d
     Args:
         config_file_name (str, optional): [description]. Defaults to "pyproject.toml".
         config_data (dict, optional): [description]. Defaults to None.
+
     """
     try:
         SETTINGS.settings = load(config_file_name=config_file_name, config_data=config_data)

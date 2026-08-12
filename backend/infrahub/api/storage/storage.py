@@ -15,7 +15,7 @@ from infrahub.core.protocols import CoreFileObject
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
 
 
 router = APIRouter(prefix="/storage")

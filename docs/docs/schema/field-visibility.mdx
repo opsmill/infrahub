@@ -1,0 +1,91 @@
+---
+title: Field visibility
+---
+
+import ReferenceLink from "../../src/components/Card";
+
+# Field visibility
+
+Infrahub schemas can declare how attributes and relationships should appear in the frontend, independently of their presence in the data model. These declarations are purely UI hints — they do not affect data access via the API, GraphQL, or forms.
+
+This separates two concerns that are often conflated: what data exists, and what data the interface surfaces by default.
+
+## Why this matters
+
+As schemas grow, object views and list views can become cluttered with internal tracking fields, audit metadata, or secondary attributes that aren't relevant for day-to-day operations. Without a way to distinguish primary fields from secondary ones at the schema level, all fields receive equal treatment in the UI, regardless of how often they're actually needed.
+
+Schema-level UI hints let the schema author encode that intent directly, rather than relying on each user to manually navigate around noise. The result is a focused interface for common tasks, with full data still accessible when needed.
+
+This principle — that the schema controls the default user experience, not just data structure — extends to any future capability that shapes how fields are organized or surfaced in the UI.
+
+## Visibility: the `display` property
+
+The `display` property on attributes and relationships controls whether a field appears in the main view or is moved to a secondary section.
+
+<ReferenceLink title="Attribute reference" url="../reference/schema/attribute#display" openInNewTab />
+<ReferenceLink title="Relationship reference" url="../reference/schema/relationship#display" openInNewTab />
+
+### Values
+
+| Value | Meaning |
+| --- | --- |
+| `default` | The field appears in all views. This is the default when `display` is not specified. |
+| `extra` | The field is hidden from list and detail views by default. It is accessible via an **Extras** toggle in the detail view and still visible in create and edit forms. |
+
+### Behavior by view
+
+| View | `display: default` | `display: extra` |
+| --- | --- | --- |
+| List view | Visible | Hidden |
+| Detail view | Visible | Accessible via Extras toggle |
+| Create / edit forms | Visible | Visible |
+| API / GraphQL | Accessible | Accessible |
+
+### Example
+
+```yaml
+nodes:
+  - name: Device
+    namespace: Infra
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+      - name: internal_tracking_id
+        kind: Text
+        display: extra          # hidden from list and detail views
+    relationships:
+      - name: primary_site
+        peer: LocationSite
+        cardinality: one
+      - name: audit_source
+        peer: AuditSource
+        cardinality: one
+        display: extra          # hidden from list and detail views
+```
+
+`internal_tracking_id` and `audit_source` are stored and fully accessible via the API but are not shown in the list or detail view by default.
+
+### Cardinality-many relationships
+
+Relationships with `cardinality: many` and `kind: Component` or `kind: Generic` are rendered in dedicated tabs in the detail view. The `display` property has no effect on these relationships — their tabs are always shown regardless of the `display` value.
+
+### Key design principle
+
+The `display` property is intentionally a UI hint rather than an access control mechanism. It does not prevent users from reading or writing `extra` fields — it only removes them from default views. Data integrity and API contracts are unaffected.
+
+For controlling who can read or write a field, use [permissions and roles](../deploy-manage/user-management/permissions-roles/overview) instead.
+
+## Interaction with other schema properties
+
+- **`order_weight`**: Controls the position of fields within a view. The order weight still applies within the Extras section for `display: extra` fields.
+- **`read_only`**: Marks a field as non-editable. Can be combined with `display: extra` for fields that should rarely be visible and never modified by users.
+- **`optional`**: Determines whether a value is required. Setting `display: extra` on a required field means users must still provide a value in forms, even though the field is hidden in other views.
+
+## Related concepts
+
+- [Order weight](./order-weight) — Controls field ordering within views
+- [Labels](./display_label) — Controls how fields and nodes are named in the UI
+- [Permissions and roles](../deploy-manage/user-management/permissions-roles/overview) — Controls who can read and write data
+- [Schema reference](../reference/schema/attribute) — Full attribute property reference

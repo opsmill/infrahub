@@ -1,8 +1,10 @@
-import type { Filter } from "@/shared/hooks/useFilters";
+import { EnumType } from "json-to-graphql-query";
 
-import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/ip-availability/domain/model/ip-availability-filter";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export type AddAttributesToRequestOptions = {
   withMetadata?: boolean;
@@ -129,10 +131,12 @@ export const addFiltersToRequest = (filters: Array<Filter>) => {
         return acc;
       }
 
-      const [fieldName, fieldKey] = filter.name.split("__");
-      if (!fieldName || !fieldKey) {
+      const parts = filter.name.split("__");
+      if (parts.length < 2) {
         return acc;
       }
+
+      const fieldKey = parts.at(-1);
 
       switch (fieldKey) {
         case "value":
@@ -149,12 +153,25 @@ export const addFiltersToRequest = (filters: Array<Filter>) => {
           acc[filter.name] = filter.value.map(({ id }: { id: string }) => id);
           break;
         }
+        case "before":
+        case "after": {
+          acc[filter.name] = filter.value;
+          break;
+        }
       }
 
       return acc;
     },
     {} as Record<string, string | number | boolean | string[]>
   );
+};
+
+export const addOrderByToRequest = (sort: Sort[]) => {
+  return {
+    order: {
+      by: sort.map(({ field, direction }) => ({ field, direction: new EnumType(direction) })),
+    },
+  };
 };
 
 export const dropIncludeAvailableWhenFalse = (filters?: Filter[]) =>

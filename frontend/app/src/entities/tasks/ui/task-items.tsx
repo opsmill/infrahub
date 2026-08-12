@@ -10,13 +10,13 @@ import { Table, type tColumn } from "@/shared/components/table/table";
 import { Id } from "@/shared/components/ui/id";
 import { Link } from "@/shared/components/ui/link";
 import { Pagination } from "@/shared/components/ui/pagination";
-import { SEARCH_ANY_FILTER, TASK_TAB } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
-import useFilters from "@/shared/hooks/useFilters";
 
+import { SEARCH_ANY_FILTER } from "@/entities/nodes/filters/domain/model/filter";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 import { useGetTaskList } from "@/entities/tasks/ui/queries/get-task-list.query";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
@@ -106,10 +106,8 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
       return constructPath(`/tasks/${id}`);
     }
 
-    return constructPath(pathname, [
-      { name: QSP.TAB, value: TASK_TAB },
-      { name: QSP.TASK_ID, value: id },
-    ]);
+    // pathname already ends in /tasks (parent route is the tasks tab); append /:taskId
+    return constructPath(`${pathname.replace(/\/$/, "")}/${id}`);
   };
 
   const rows = data?.map((task) => {
@@ -123,7 +121,7 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
           display: task.branch,
         },
         state: {
-          display: getStateBadge[task.state!],
+          display: task.state ? getStateBadge[task.state] : null,
         },
         related_nodes: {
           display: (
@@ -132,12 +130,12 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
               render={(item) => {
                 if (typeof item === "string") return null;
 
-                if (!item.id) return null;
+                if (!item.id || !item.kind) return null;
 
                 return (
                   <Link
                     key={item.id}
-                    to={getObjectDetailsUrl(item.kind!, item.id, [
+                    to={getObjectDetailsUrl(item.kind, item.id, [
                       { name: QSP.BRANCH, value: task.branch },
                     ])}
                   >
@@ -170,7 +168,7 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
   return (
     <Col className="gap-0">
       <Row className="p-2">
-        <RefreshButton className="rounded-md border-gray-300" queryKey={tasksQueryKeys.all} />
+        <RefreshButton className="rounded-md border-border-strong" queryKey={tasksQueryKeys.all} />
         <FilterSearchInput placeholder="Filter tasks..." />
         <TaskFilters />
       </Row>

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from itertools import starmap
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipStatus
@@ -28,7 +29,7 @@ class AttributeRemoveQuery(Query):
         self.node_kinds = node_kinds
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
@@ -89,10 +90,7 @@ class AttributeRemoveQuery(Query):
             subquery.append("RETURN peer_node as p2")
             return "\n".join(subquery)
 
-        sub_queries = [
-            render_sub_query_per_rel_type(rel_type, rel_def)
-            for rel_type, rel_def in GraphAttributeRelationships.model_fields.items()
-        ]
+        sub_queries = list(starmap(render_sub_query_per_rel_type, GraphAttributeRelationships.model_fields.items()))
         sub_query_all = "\nUNION\n".join(sub_queries)
 
         node_kinds_str = "|".join(self.node_kinds + profile_kinds_to_update + template_kinds_to_update)
@@ -144,7 +142,23 @@ class AttributeRemoveQuery(Query):
         CALL (active_attr, active_node) {
             WITH active_attr, active_node
             WHERE $set_metadata
+            SET active_attr.previous_updated_at = CASE
+                    WHEN active_attr.updated_at IS NULL OR active_attr.updated_at <> $current_time THEN active_attr.updated_at
+                    ELSE active_attr.previous_updated_at
+                END,
+                active_attr.previous_updated_by = CASE
+                    WHEN active_attr.updated_at IS NULL OR active_attr.updated_at <> $current_time THEN active_attr.updated_by
+                    ELSE active_attr.previous_updated_by
+                END
             SET active_attr.updated_at = $current_time, active_attr.updated_by = $user_id
+            SET active_node.previous_updated_at = CASE
+                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
+                    ELSE active_node.previous_updated_at
+                END,
+                active_node.previous_updated_by = CASE
+                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
+                    ELSE active_node.previous_updated_by
+                END
             SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
         }
         RETURN DISTINCT active_attr

@@ -11,7 +11,6 @@ from infrahub.workflows.utils import add_tags
 @flow(name="graphql-query-group-update", flow_run_name="Update GraphQLQuery Group '{model.query_name}'")
 async def update_graphql_query_group(model: RequestGraphQLQueryGroupUpdate) -> None:
     """Create or Update a GraphQLQueryGroup."""
-
     client = get_client()
 
     # If there is only one subscriber, associate the task to it

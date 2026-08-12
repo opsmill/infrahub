@@ -108,7 +108,12 @@ class DiffPropertyIntermediate:
         return ordered_values[0]
 
     def get_property_details(self, from_time: Timestamp) -> tuple[DiffAction, Timestamp, Any, Any]:
-        """Returns action, timestamp, previous_value, new_value"""
+        """Returns action, timestamp, previous_value, new_value.
+
+        Raises:
+            DiffNoChildPathError: When no ordered diff values are available.
+
+        """
         ordered_values = self.get_ordered_values_asc()
         previous: Any = None
         new: Any = None
@@ -563,9 +568,12 @@ class DiffQueryParser:
         return diff_node
 
     def _get_relationship_schema(self, database_path: DatabasePath) -> RelationshipSchema | None:
+        # Prefer the schema on the path's own branch, then fall back to the other branches
+        # in case the schema was deleted on this branch
         branches_to_check = [database_path.deepest_branch]
-        if database_path.deepest_branch == self.diff_branch_name:
-            branches_to_check.append(self.base_branch_name)
+        for fallback_branch in (self.diff_branch_name, self.base_branch_name):
+            if fallback_branch not in branches_to_check:
+                branches_to_check.append(fallback_branch)
         for schema_branch_name in branches_to_check:
             try:
                 node_schema = self.schema_manager.get(
@@ -703,8 +711,9 @@ class DiffQueryParser:
                 base_diff_property = base_diff_attribute.properties_by_type.get(property_type)
                 if not base_diff_property:
                     return
+                # only apply as a previous value if it predates the branched_from time
                 base_previous_diff_value = base_diff_property.earliest_diff_value
-                if base_previous_diff_value:
+                if base_previous_diff_value and base_previous_diff_value.changed_at < self.diff_branched_from_time:
                     diff_property.add_value(diff_value=base_previous_diff_value)
 
     def _apply_relationship_previous_values(

@@ -1,0 +1,153 @@
+---
+title: Manage objects from the command line
+---
+
+Use `infrahubctl` to query, create, update, and delete objects directly from your terminal. The commands accept any schema kind in your instance and can display results as a table, JSON, CSV, or YAML.
+
+These commands operate on individual objects, which suits interactive work and scripting. To load many objects at once from version-controlled files, see [Load data in bulk using YAML file](./load-from-yaml.mdx).
+
+## Prerequisites
+
+- A running Infrahub instance
+- `infrahubctl` installed and configured against that instance — see the [infrahubctl documentation]($(base_url)infrahubctl/infrahubctl)
+
+## Discover the schema
+
+Before you query or create objects, list the schema kinds available in your instance:
+
+```bash
+infrahubctl schema list
+```
+
+Narrow the list with a case-insensitive match on the kind name:
+
+```bash
+infrahubctl schema list --filter Device
+```
+
+Show the attributes and relationships of a single kind. Use this to find the field names you pass to `--set` and `--filter`:
+
+```bash
+infrahubctl schema show InfraDevice
+```
+
+## Query objects
+
+Omit the identifier to list every object of a kind. Empty columns are hidden by default; pass `--all-columns` to show them:
+
+```bash
+infrahubctl object get InfraDevice
+```
+
+Provide an identifier — a UUID, a name, or an HFID — to display a single object in detail. For a multi-part HFID, separate the components with `/`:
+
+```bash
+infrahubctl object get InfraDevice spine01
+```
+
+The identifier you pass to `update` and `delete` is any of these three values. To find it for an object in a list, use its name or HFID directly, or switch to `--output json` or `--output yaml` to see the object's UUID (`id`) and HFID alongside the other fields.
+
+Filter the results by attribute value with `attribute__value=<value>`:
+
+```bash
+infrahubctl object get InfraDevice --filter name__value=spine01
+```
+
+Page through large result sets with `--limit` and `--offset`:
+
+```bash
+infrahubctl object get InfraDevice --limit 10 --offset 20
+```
+
+A list query that matches no objects exits with code `80`, which lets scripts distinguish an empty result from an error.
+
+### Output formats
+
+The `--output` (`-o`) option controls the display format. `get` defaults to a table on an interactive terminal and to JSON when the output is piped.
+
+| Format | Flag | Use for |
+|---|---|---|
+| Table | `--output table` | Reading in an interactive terminal |
+| JSON | `--output json` | Scripting and piping to other tools |
+| CSV | `--output csv` | Importing into a spreadsheet |
+| YAML | `--output yaml` | Backing up and reloading with `infrahubctl object load` |
+
+```bash
+infrahubctl object get InfraDevice --output json
+```
+
+## Create objects
+
+Set field values inline with repeatable `--set key=value` flags:
+
+```bash
+infrahubctl object create InfraDevice --set name=spine01 --set status=active
+```
+
+Relationship values resolve by name. For example, `--set location=DC1` looks up the `DC1` node and links it:
+
+```bash
+infrahubctl object create InfraDevice --set name=spine01 --set location=DC1
+```
+
+Alternatively, supply the object as a JSON or YAML file with `--file` (`-f`). The `--set` and `--file` modes are mutually exclusive:
+
+```bash
+infrahubctl object create InfraDevice --file devices.yml
+```
+
+## Update objects
+
+Identify the object by kind and identifier, then apply the changes with `--set` or `--file`. The command fetches the object, applies the changes, and saves it back:
+
+```bash
+infrahubctl object update InfraDevice spine01 --set status=active
+```
+
+An update only changes the fields you provide. Attributes and relationships you leave out keep their current values — omitting a field does not clear it.
+
+With `--file`, the file defines which objects to update and what to change, so the kind and identifier on the command line are ignored:
+
+```bash
+infrahubctl object update InfraDevice spine01 --file updates.yml
+```
+
+## Delete objects
+
+Delete an object by kind and identifier. A confirmation prompt is shown first:
+
+```bash
+infrahubctl object delete InfraDevice spine01
+```
+
+Pass `--yes` (`-y`) to skip the prompt in scripts:
+
+```bash
+infrahubctl object delete InfraDevice spine01 --yes
+```
+
+## Back up and reload objects
+
+YAML output uses HFID references and omits empty values, so it reloads cleanly. Export a set of objects, then load them back with the `object` subcommand:
+
+```bash
+infrahubctl object get InfraDevice --output yaml > devices.yml
+infrahubctl object load devices.yml
+```
+
+## Work on a branch
+
+Every command accepts `--branch` (`-b`) to target a branch other than the default. Changes on a branch stay isolated until the branch is merged:
+
+```bash
+infrahubctl object get InfraDevice --branch develop
+infrahubctl object create InfraDevice --set name=spine02 --branch develop
+```
+
+## Reference
+
+- [`infrahubctl object get`]($(base_url)infrahubctl/infrahubctl-object#infrahubctl-object-get)
+- [`infrahubctl object create`]($(base_url)infrahubctl/infrahubctl-object#infrahubctl-object-create)
+- [`infrahubctl object update`]($(base_url)infrahubctl/infrahubctl-object#infrahubctl-object-update)
+- [`infrahubctl object delete`]($(base_url)infrahubctl/infrahubctl-object#infrahubctl-object-delete)
+- [`infrahubctl schema`]($(base_url)infrahubctl/infrahubctl-schema)

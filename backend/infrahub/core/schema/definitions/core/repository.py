@@ -2,6 +2,7 @@ from infrahub.core.constants import (
     AllowOverrideType,
     BranchSupportType,
     InfrahubKind,
+    RelationshipDeleteBehavior,
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
     RepositorySyncStatus,
@@ -26,7 +27,7 @@ core_repository = NodeSchema(
     label="Repository",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[
@@ -63,7 +64,7 @@ core_read_only_repository = NodeSchema(
     label="Read-Only Repository",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[
@@ -101,11 +102,12 @@ core_generic_repository = GenericSchema(
     include_in_menu=False,
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     icon="mdi:source-repository",
     branch=BranchSupportType.AGNOSTIC,
     uniqueness_constraints=[["name__value"], ["location__value"]],
     documentation="/topics/repository",
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(
             name="name",
@@ -266,6 +268,7 @@ core_generic_repository = GenericSchema(
             identifier="repository__transformation",
             optional=True,
             cardinality=Cardinality.MANY,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
             order_weight=10000,
         ),
         Rel(
@@ -274,6 +277,7 @@ core_generic_repository = GenericSchema(
             identifier="graphql_query__repository",
             optional=True,
             cardinality=Cardinality.MANY,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
             order_weight=9000,
         ),
         Rel(
@@ -282,6 +286,7 @@ core_generic_repository = GenericSchema(
             identifier="check_definition__repository",
             optional=True,
             cardinality=Cardinality.MANY,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
             order_weight=11000,
         ),
         Rel(
@@ -290,6 +295,7 @@ core_generic_repository = GenericSchema(
             identifier="generator_definition__repository",
             optional=True,
             cardinality=Cardinality.MANY,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
             order_weight=12000,
         ),
         Rel(
@@ -297,6 +303,7 @@ core_generic_repository = GenericSchema(
             peer=InfrahubKind.REPOSITORYGROUP,
             optional=True,
             cardinality=Cardinality.MANY,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
             order_weight=13000,
         ),
     ],

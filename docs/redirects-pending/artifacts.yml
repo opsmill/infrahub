@@ -1,0 +1,88 @@
+---
+feature: Artifacts
+pr: TBD
+description: |
+  Artifacts feature migration to hub + 2 spokes (matching Generators / Profiles
+  precedent).
+
+  - topics/artifact.mdx → artifacts/index.mdx (hub) — added "How Artifacts
+    relate to other features" conceptual section per the Confluence
+    recommendation; the proposed "Working with artifacts" body link list was
+    dropped per the skill's hub+spokes guidance (sidebar already exposes the
+    spokes, link list would be redundant clutter)
+  - guides/artifact.mdx → artifacts/use.mdx — reframed: "Step N:" prefixes
+    dropped, Prerequisites section condensed to a one-line assumption note,
+    action-named section headers
+  - guides/artifact-content-composition.mdx → artifacts/content-composition.mdx
+    — moved with cross-link updates only (page is recipe-shaped, not
+    tutorial-shaped; no extraction)
+
+  No tutorial extraction — guides/artifact.mdx is small enough (173 lines)
+  to reframe in place per the Confluence recommendation.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/artifact
+    to: /docs/artifacts/
+  - from: /docs/guides/artifact
+    to: /docs/artifacts/use
+  - from: /docs/guides/artifact-content-composition
+    to: /docs/artifacts/content-composition
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/artifacts/
+    title: Artifacts (hub)
+  - path: /docs/artifacts/use
+    title: Use artifacts
+  - path: /docs/artifacts/content-composition
+    title: Composing artifact content
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (will resolve via redirect at runtime but should be updated to new paths at cleanup)
+cross_links_to_update:
+  # Links to topics/artifact
+  - file: docs/docs/proposed-changes/index.mdx
+    line: 36
+    current: ../topics/artifact.mdx
+    should_be: ../artifacts/
+  - file: docs/docs/proposed-changes/index.mdx
+    line: 71
+    current: ../topics/artifact.mdx
+    should_be: ../artifacts/
+  - file: docs/docs/proposed-changes/index.mdx
+    line: 127
+    current: ../topics/artifact.mdx
+    should_be: ../artifacts/
+  - file: docs/docs/schema/file-object.mdx
+    line: 125
+    current: ../topics/artifact
+    should_be: ../artifacts/
+  - file: docs/docs/git-integration/infrahub-yml.mdx
+    line: 161
+    current: ../topics/artifact.mdx
+    should_be: ../artifacts/
+  - file: docs/docs/topics/infrahub-yml.mdx
+    line: 161
+    current: ../topics/artifact.mdx
+    should_be: ../artifacts/
+  - file: docs/docs/groups/use-in-automation.mdx
+    line: 27
+    current: ../topics/artifact.mdx
+    should_be: ../artifacts/
+  - file: docs/docs/groups/use-in-automation.mdx
+    line: 83
+    current: ../topics/artifact.mdx
+    should_be: ../artifacts/
+
+  # Links to guides/artifact (now artifacts/use)
+  - file: docs/docs/overview/next-steps.mdx
+    line: 39
+    current: ../guides/artifact
+    should_be: ../artifacts/use
+
+  # Excluded from rewrite (legacy files, will be deleted at cleanup):
+  excluded:
+    - docs/docs/topics/artifact.mdx (legacy)
+    - docs/docs/guides/artifact.mdx (legacy)
+    - docs/docs/guides/artifact-content-composition.mdx (legacy)

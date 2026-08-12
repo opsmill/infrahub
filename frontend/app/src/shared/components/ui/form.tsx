@@ -1,13 +1,6 @@
+import { Button, type ButtonProps, DismissGuardContext } from "@infrahub/ui";
 import { Slot } from "@radix-ui/react-slot";
-import React, {
-  createContext,
-  type FormHTMLAttributes,
-  type HTMLAttributes,
-  use,
-  useEffect,
-  useId,
-  useImperativeHandle,
-} from "react";
+import React from "react";
 import {
   Controller,
   type ControllerProps,
@@ -15,73 +8,92 @@ import {
   type UseFormReturn,
   useForm,
   useFormContext,
+  useFormState,
 } from "react-hook-form";
 
-import { SlideOverContext } from "@/shared/components/display/slide-over";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
+import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import Label, { type LabelProps } from "@/shared/components/ui/label";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { inputErrorStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 export type FormRef = ReturnType<typeof useForm>;
 
-export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
+export interface FormProps extends Omit<React.FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
   onSubmit?: (v: Record<string, any>) => void;
+  onCancel?: () => void;
   defaultValues?: Partial<Record<string, unknown>>;
   form?: UseFormReturn;
+  ref?: React.Ref<FormRef>;
 }
 
-export const Form = React.forwardRef<FormRef, FormProps>(
-  ({ form, defaultValues, className, children, onSubmit, ...props }: FormProps, ref) => {
-    const currentForm = form ?? useForm({ defaultValues });
+export const Form = ({
+  form,
+  defaultValues,
+  className,
+  children,
+  onSubmit,
+  onCancel,
+  ref,
+  ...props
+}: FormProps) => {
+  const currentForm = form ?? useForm({ defaultValues });
 
-    const slideOverContext = use(SlideOverContext);
+  const dismissGuard = React.use(DismissGuardContext);
+  const [showConfirm, setShowConfirm] = React.useState(false);
 
-    useImperativeHandle(ref, () => currentForm);
+  React.useImperativeHandle(ref, () => currentForm);
 
-    useEffect(() => {
-      if (!form) currentForm.reset(defaultValues);
-    }, [JSON.stringify(defaultValues)]);
+  React.useEffect(() => {
+    if (!form) currentForm.reset(defaultValues);
+  }, [JSON.stringify(defaultValues)]);
 
-    useEffect(() => {
-      // Stop logic if there is no context to prevent the slide over close
-      if (!slideOverContext?.setPreventClose) return;
+  const isDirty = currentForm.formState.isDirty;
+  React.useEffect(() => {
+    dismissGuard?.setDismissable(!isDirty, () => setShowConfirm(true));
+  }, [isDirty]);
 
-      slideOverContext.setPreventClose(currentForm.formState.isDirty);
-    }, [currentForm.formState.isDirty]);
+  return (
+    <FormProvider {...currentForm}>
+      <form
+        onSubmit={(event) => {
+          if (event && event.stopPropagation) {
+            event.stopPropagation();
+          }
 
-    return (
-      <FormProvider {...currentForm}>
-        <form
-          onSubmit={(event) => {
-            if (event && event.stopPropagation) {
-              event.stopPropagation();
-            }
+          if (onSubmit) {
+            currentForm.handleSubmit(async (data) => {
+              await onSubmit(data);
+              currentForm.reset(data);
+            })(event);
+          }
+        }}
+        className={classNames("space-y-4", className)}
+        {...props}
+      >
+        {children}
+      </form>
 
-            if (onSubmit) {
-              currentForm.handleSubmit(async (data) => {
-                await onSubmit(data);
-                currentForm.reset(data);
-              })(event);
-            }
-          }}
-          className={classNames("space-y-4", className)}
-          {...props}
-        >
-          {children}
-        </form>
-      </FormProvider>
-    );
-  }
-);
+      <ModalConfirm
+        isOpen={showConfirm}
+        onOpenChange={setShowConfirm}
+        title="Closing form"
+        description="Are you sure you want to close this form? All unsaved changes will be lost."
+        onConfirm={() => {
+          setShowConfirm(false);
+          dismissGuard?.setDismissable(true);
+          onCancel?.();
+        }}
+      />
+    </FormProvider>
+  );
+};
 
 type FormFieldContextType = { id: string; name: string };
-const FormFieldContext = createContext<FormFieldContextType>({} as FormFieldContextType);
+const FormFieldContext = React.createContext<FormFieldContextType>({} as FormFieldContextType);
 
 export const FormField = (props: ControllerProps) => {
   const { control } = useFormContext();
-  const id = useId();
+  const id = React.useId();
 
   return (
     <FormFieldContext value={{ id, name: props.name }}>
@@ -91,41 +103,64 @@ export const FormField = (props: ControllerProps) => {
 };
 
 export const FormLabel = ({ ...props }: LabelProps) => {
-  const { id } = use(FormFieldContext);
+  const { id } = React.use(FormFieldContext);
 
   return <Label htmlFor={id} {...props} />;
 };
 
-export const FormInput = React.forwardRef<
-  React.ElementRef<typeof Slot>,
-  React.ComponentPropsWithoutRef<typeof Slot>
->(({ className, ...props }, ref) => {
-  const { getFieldState, formState } = useFormContext();
-  const { id, name } = use(FormFieldContext);
+interface FormInputProps extends React.ComponentProps<typeof Slot> {}
+
+export const FormInput = ({ className, ref, ...props }: FormInputProps) => {
+  const { getFieldState } = useFormContext();
+  const { id, name } = React.use(FormFieldContext);
+  const formState = useFormState({ name });
   const { error } = getFieldState(name, formState);
+  // Flag the input only for this field's own error. A field that merely contains a
+  // nested child field's error (e.g. a from-pool allocation's prefix-length field)
+  // gets a nested error object with no top-level `type`, so its primary input must
+  // not light up for an error the child already surfaces.
+  const hasOwnError = Boolean(error?.type);
 
   return (
     <Slot
       ref={ref}
       id={id}
-      className={classNames(error && inputErrorStyle, className)}
-      aria-invalid={!!error}
+      className={classNames(hasOwnError && inputErrorStyle, className)}
+      aria-invalid={hasOwnError}
       {...props}
     />
   );
-});
+};
+
+/**
+ * Returns the first error message found in a react-hook-form error object,
+ * descending into nested child-field errors (e.g. a from-pool allocation's
+ * prefix-length field) so a field's message area can surface a sub-field's error
+ * full-width.
+ */
+export const findErrorMessage = (error: unknown): string | undefined => {
+  if (!error || typeof error !== "object") return;
+  const entry = error as { message?: unknown; [key: string]: unknown };
+  if (typeof entry.message === "string" && entry.message) return entry.message;
+  for (const key of Object.keys(entry)) {
+    if (key === "ref" || key === "type" || key === "message") continue;
+    const nested = findErrorMessage(entry[key]);
+    if (nested) return nested;
+  }
+  return;
+};
 
 export const FormMessage = ({
   children,
   className,
   ...props
-}: HTMLAttributes<HTMLParagraphElement>) => {
-  const { getFieldState, formState } = useFormContext();
-  const { name } = use(FormFieldContext);
-
+}: React.HTMLAttributes<HTMLParagraphElement>) => {
+  const { getFieldState } = useFormContext();
+  const { name } = React.use(FormFieldContext);
+  const formState = useFormState({ name });
   const { error } = getFieldState(name, formState);
 
-  const message = error?.message?.toString() ?? children;
+  const message = findErrorMessage(error) ?? children;
 
   if (!message) return null;
 
@@ -139,17 +174,12 @@ export const FormMessage = ({
   );
 };
 
-export const FormSubmit = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ children, ...props }, ref) => {
-    const { formState } = useFormContext();
+interface FormSubmitProps extends Omit<ButtonProps, "type" | "slot"> {}
 
-    const isLoading = formState.isSubmitting || formState.isValidating;
+export const FormSubmit = ({ ...props }: FormSubmitProps) => {
+  const { formState } = useFormContext();
 
-    return (
-      <Button ref={ref} disabled={isLoading} {...props} type="submit">
-        <span className={classNames(isLoading && "invisible")}>{children}</span>
-        {isLoading && <Spinner className="absolute" />}
-      </Button>
-    );
-  }
-);
+  const isLoading = formState.isSubmitting || formState.isValidating;
+
+  return <Button isPending={isLoading} {...props} type="submit" />;
+};

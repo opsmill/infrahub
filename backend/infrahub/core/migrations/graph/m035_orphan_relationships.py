@@ -15,7 +15,7 @@ class CleanupOrphanedRelationshipsQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (rel:Relationship)-[:IS_RELATED]-(peer:Node)
 WITH DISTINCT rel, peer.uuid AS p_uuid
@@ -27,11 +27,10 @@ DETACH DELETE rel
 
 
 class Migration035(GraphMigration):
-    """
-    Remove Relationship vertices that only have a single peer
-    """
+    """Remove Relationship vertices that only have a single peer."""
 
     name: str = "035_clean_up_orphaned_relationships"
+    description: str = "N/A"
     minimum_version: int = 34
     queries: Sequence[type[Query]] = [CleanupOrphanedRelationshipsQuery]
 

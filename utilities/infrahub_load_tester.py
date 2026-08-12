@@ -44,7 +44,8 @@ async def _create_one(idx: int, client: InfrahubClient, prefix: str, log: loggin
         )
         await proposed_change.save()
         log.info(f"✅ Created proposed change for branch {branch_name}")
-    except Exception as e:
+    # Load test: absorb any request failure and continue
+    except Exception as e:  # noqa: BLE001
         log.error(f"❌ Error creating proposed change for branch {branch_name}: {e}")
 
     log.info(f"✅ User {uname} created with branch {branch_name}")
@@ -66,7 +67,8 @@ async def _delete_branches(client: InfrahubClient, prefix: str, usernames: Itera
     """Delete branches `<prefix>/<username> one by one."""
     try:
         all_branches = await client.branch.all()
-    except Exception as e:
+    # Load test: absorb any request failure and continue
+    except Exception as e:  # noqa: BLE001
         log.error(f"Error retrieving branches: {e}")
 
     for uname in usernames:
@@ -81,7 +83,8 @@ async def _delete_branches(client: InfrahubClient, prefix: str, usernames: Itera
                 log.info(f"🗑️ Branch {br} deleted")
             else:
                 log.warning(f"Branch {br} not found")
-        except Exception as exc:
+        # Load test: absorb any request failure and continue with remaining branches
+        except Exception as exc:  # noqa: BLE001
             log.error(f"Error deleting branch {br}: {exc}")
 
 
@@ -105,12 +108,14 @@ async def _delete_users(client: InfrahubClient, usernames: Iterable[str], log: l
                         await user.delete()
                         log.info(f"🗑️ User {uname} Deleted")
                         break
-                    except Exception as e:
+                    # Load test: absorb any request failure and continue with remaining users
+                    except Exception as e:  # noqa: BLE001
                         log.error(f"Error while deleting: {str(e)}")
             else:
                 log.warning(f"User {uname} not found in the list")
 
-        except Exception as exc:
+        # Load test: absorb any request failure and continue with remaining users
+        except Exception as exc:  # noqa: BLE001
             log.error(f"❌ General: {exc}")
 
 
@@ -135,7 +140,8 @@ async def create_admin_branches(client: InfrahubClient, log: logging.Logger, *, 
             await tag.save()
 
             log.info(f"✅ Branch created: {branch_name} with test tag")
-        except Exception as exc:
+        # Load test: absorb any request failure and continue with remaining branches
+        except Exception as exc:  # noqa: BLE001
             log.error(f"❌ Error creating branch {branch_name}: {exc}")
 
 
@@ -145,7 +151,8 @@ async def delete_admin_branches(client: InfrahubClient, log: logging.Logger, *, 
 
     try:
         all_branches = await client.branch.all()
-    except Exception as e:
+    # Load test: abort branch cleanup gracefully on any request failure
+    except Exception as e:  # noqa: BLE001
         log.error(f"Error retrieving branches: {e}")
         return
 
@@ -162,7 +169,8 @@ async def delete_admin_branches(client: InfrahubClient, log: logging.Logger, *, 
                 log.info(f"🗑️ Branch {branch_name} deleted")
             else:
                 log.warning(f"Branch {branch_name} not found")
-        except Exception as exc:
+        # Load test: absorb any request failure and continue with remaining branches
+        except Exception as exc:  # noqa: BLE001
             log.error(f"Error deleting branch {branch_name}: {exc}")
 
 
@@ -175,7 +183,6 @@ async def run(
     prefix: str = DEFAULT_PREFIX,
 ) -> None:
     """Main entrypoint executed by **infrahubctl run**."""
-
     mode = str(mode).lower()
     prefix = str(prefix)
     n_users = int(n_users)

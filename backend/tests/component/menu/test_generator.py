@@ -113,7 +113,7 @@ async def test_generate_ipam_menu(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
 ) -> None:
-    """Validate that the IPAM menu only shows up if IP nodes are defined in the schema"""
+    """Validate that the IPAM menu only shows up if IP nodes are defined in the schema."""
     await create_default_menu(db=db)
 
     new_menu_items = generate_menu_fixtures(nbr_item=2)

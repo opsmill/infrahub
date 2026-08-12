@@ -5,16 +5,17 @@ import type {
   BranchDeletedEvent,
   BranchMergedEvent,
   BranchRebasedEvent,
-} from "@/shared/api/graphql/generated/graphql";
+} from "@/shared/api/graphql/generated/types";
 import { Link } from "@/shared/components/ui/link";
 
+import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
 export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = {
   "infrahub.branch.created": (props: BranchCreatedEvent) => (
     <div className="flex min-w-0 items-center gap-1 text-gray-600">
       <span className="whitespace-nowrap">created the branch</span>
-      <Link to={`/branches/${props.created_branch}`} className="min-w-0 truncate text-black">
+      <Link to={getBranchDetailsUrl(props.created_branch)} className="min-w-0 truncate text-black">
         {props.created_branch ?? "-"}
       </Link>
     </div>
@@ -22,7 +23,7 @@ export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = 
   "infrahub.branch.rebased": (props: BranchRebasedEvent) => (
     <div className="flex min-w-0 items-center gap-1 text-gray-600">
       <span className="whitespace-nowrap">rebased the branch</span>
-      <Link to={`/branches/${props.rebased_branch}`} className="min-w-0 truncate text-black">
+      <Link to={getBranchDetailsUrl(props.rebased_branch)} className="min-w-0 truncate text-black">
         {props.rebased_branch ?? "-"}
       </Link>
     </div>

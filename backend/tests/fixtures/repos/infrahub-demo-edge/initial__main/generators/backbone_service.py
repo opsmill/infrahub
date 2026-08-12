@@ -3,6 +3,7 @@ import logging
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.node import InfrahubNode
+from infrahub_sdk.protocols import CoreIPAddressPool, CoreIPPrefixPool
 
 
 async def find_interface(client: InfrahubClient, site_id: str) -> InfrahubNode:
@@ -97,7 +98,7 @@ class Generator(InfrahubGenerator):
 
         # Retrieve Pool for interconnection subnets
         log.info("Retrieve Pool for interconnection subnets")
-        internal_networks_pool = await self.client.get(kind="CoreIPPrefixPool", name__value="Internal networks pool")
+        internal_networks_pool = await self.client.get(kind=CoreIPPrefixPool, name__value="Internal networks pool")
 
         # Allocate the next free IP prefix for the service
         log.info("Allocate the next free IP prefix for the service")
@@ -113,7 +114,7 @@ class Generator(InfrahubGenerator):
         # Create a new Address Pool for this prefix
         log.info("Create a new Address Pool for this prefix")
         circuit_address_pool = await self.client.create(
-            kind="CoreIPAddressPool",
+            kind=CoreIPAddressPool,
             name=f"{service_name}-{service_id}",
             default_address_type="IpamIPAddress",
             default_prefix_size=31,
@@ -125,15 +126,11 @@ class Generator(InfrahubGenerator):
 
         # Use the new pool to allocate 2 IPs on the interfaces
         log.info("Use the new pool to allocate 2 IPs on the interfaces")
-        interface_a_ip = await self.client.allocate_next_ip_address(
-            resource_pool=circuit_address_pool,
-        )
+        interface_a_ip = await self.client.allocate_next_ip_address(resource_pool=circuit_address_pool)
         interface_a.ip_addresses.add(interface_a_ip)
         await interface_a.save(allow_upsert=True)
 
-        interface_b_ip = await self.client.allocate_next_ip_address(
-            resource_pool=circuit_address_pool,
-        )
+        interface_b_ip = await self.client.allocate_next_ip_address(resource_pool=circuit_address_pool)
         interface_b.ip_addresses.add(interface_b_ip)
         await interface_b.save(allow_upsert=True)
 

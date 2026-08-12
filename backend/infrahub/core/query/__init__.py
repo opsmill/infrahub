@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import operator
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypedDict, TypeVar
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
@@ -13,7 +15,7 @@ from neo4j.graph import Relationship as Neo4jRelationship
 from opentelemetry import trace
 
 from infrahub import config
-from infrahub.core.constants import SYSTEM_USER_ID, PermissionLevel
+from infrahub.core.constants import SYSTEM_USER_ID, PermissionLevel, RelationshipDirection
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import QueryError
 
@@ -37,7 +39,6 @@ def sort_results_by_time(results: list[QueryResult], rel_label: str) -> list[Que
         We are adding more weight (500) to the record for which the last action was to set "from"
          versus a record with "from" and "to" set.
     """
-
     results_dict = {}
 
     for result in results:
@@ -137,6 +138,36 @@ class QueryRel(QueryElement):
         return "-%s-" % main_str
 
 
+@dataclass
+class QueryArrow:
+    start: str
+    end: str
+
+
+@dataclass
+class QueryArrowInbound(QueryArrow):
+    start: str = "<-"
+    end: str = "-"
+
+
+@dataclass
+class QueryArrowOutbound(QueryArrow):
+    start: str = "-"
+    end: str = "->"
+
+
+@dataclass
+class QueryArrowBidir(QueryArrow):
+    start: str = "-"
+    end: str = "-"
+
+
+@dataclass
+class QueryArrows:
+    left: QueryArrow
+    right: QueryArrow
+
+
 class QueryType(Enum):
     READ = "read"
     WRITE = "write"
@@ -144,7 +175,8 @@ class QueryType(Enum):
 
 def cleanup_return_labels(labels: list[str]) -> list[str]:
     """Cleanup a list of return labels by checking if there is an alias defined.
-    if an alias is defined with `value AS alias` we extract just the alias from the label
+
+    if an alias is defined with `value AS alias` we extract just the alias from the label.
     """
     clean_labels = []
     for label in labels:
@@ -174,7 +206,8 @@ class QueryResult:
 
     def calculate_branch_score(self) -> None:
         """The branch score is a simple way to order and classify multiple responses for the same branch.
-        If the branch name is not the default branch it will get a higher score
+
+        If the branch name is not the default branch it will get a higher score.
         """
         self.branch_score = 0
 
@@ -187,9 +220,7 @@ class QueryResult:
             self.branch_score += branch_level
 
     def calculate_time_score(self) -> None:
-        """The time score look into the to and from time all relationships
-        if the 'to' field is not defined
-        """
+        """The time score look into the to and from time all relationships if the 'to' field is not defined."""
         self.time_score = 0
 
         for rel in self.get_rels():
@@ -206,7 +237,7 @@ class QueryResult:
                 self.time_score += 2
 
     def check_rels_status(self) -> None:
-        """Check if some relationships have the status deleted and update the flag `has_deleted_rels`"""
+        """Check if some relationships have the status deleted and update the flag `has_deleted_rels`."""
         for rel in self.get_rels():
             if rel.get("status", None) == "deleted":
                 self.has_deleted_rels = True
@@ -249,6 +280,29 @@ class QueryResult:
 
         return return_type(item)
 
+    def get_as_list_of_type(self, label: str, return_type: Callable[..., RETURN_TYPE]) -> list[RETURN_TYPE]:
+        """Return a label whose value is a Cypher-projected list.
+
+        Each element is constructed into ``return_type``. Map elements (e.g. a
+        ``collect`` of map projections) are unpacked as keyword arguments, so
+        ``return_type`` is typically a ``TypedDict`` or dataclass describing the
+        projection's field shape:
+
+            .get_as_list_of_type(label="hops", return_type=HopRow)
+
+        Scalar elements (e.g. a ``collect`` of strings) are passed positionally:
+
+            .get_as_list_of_type(label="terminal_uuids", return_type=str)
+
+        Raises:
+            ValueError: when the label's value is not a list.
+
+        """
+        entry = self._get(label=label)
+        if not isinstance(entry, list):
+            raise ValueError(f"{label} is not a list")
+        return [return_type(**item) if isinstance(item, Mapping) else return_type(item) for item in entry]
+
     def get_node_collection(self, label: str) -> list[Neo4jNode]:
         entry = self._get(label=label)
         if isinstance(entry, list):
@@ -275,7 +329,6 @@ class QueryResult:
 
     def get_rels(self) -> Generator[Neo4jRelationship, None, None]:
         """Return all relationships."""
-
         for item in self.data:
             if isinstance(item, Neo4jRelationship):
                 yield item
@@ -334,6 +387,18 @@ class QueryStat:
     def from_metadata(cls, data: dict[str, Any]) -> Self:
         data = {key.replace("-", "_"): value for key, value in data.items()}
         return cls(**data)
+
+
+class QueryInitKwargs(TypedDict, total=False):
+    """Keyword arguments every query constructor accepts and forwards to its base."""
+
+    branch: Branch | None
+    at: Timestamp | str | None
+    limit: int | None
+    offset: int | None
+    order_by: list[str] | None
+    branch_agnostic: bool
+    user_id: str
 
 
 class Query:
@@ -415,8 +480,24 @@ class Query:
 
     def get_context(self) -> dict[str, str]:
         """Provide additional context for this query, beyond the name.
-        Right now it's mainly used to add more labels to the metrics."""
+
+        Right now it's mainly used to add more labels to the metrics.
+        """
         return {}
+
+    @staticmethod
+    def get_query_arrows(direction: RelationshipDirection) -> QueryArrows:
+        """Return the 2 arrows of the node→Relationship→peer path for a relationship direction.
+
+        The edges around a Relationship vertex are created in the direction of the relationship, so
+        a query must traverse them the same way to tell the two ends of the path apart.
+        """
+        if direction == RelationshipDirection.OUTBOUND:
+            return QueryArrows(left=QueryArrowOutbound(), right=QueryArrowOutbound())
+        if direction == RelationshipDirection.INBOUND:
+            return QueryArrows(left=QueryArrowInbound(), right=QueryArrowInbound())
+
+        return QueryArrows(left=QueryArrowOutbound(), right=QueryArrowInbound())
 
     @staticmethod
     @lru_cache(maxsize=1024)
@@ -427,8 +508,8 @@ class Query:
         """Add a new section at the end of the query.
 
         A string with multiple lines will be broken down into multiple entries in self.query_lines
-        Trailing and leading spaces per line will be removed."""
-
+        Trailing and leading spaces per line will be removed.
+        """
         if isinstance(query, list):
             for item in query:
                 self.add_to_query(query=item)
@@ -520,11 +601,11 @@ class Query:
 
     def _get_params_for_neo4j_shell(self) -> str:
         """Generate string to define some parameters in Neo4j browser interface.
+
         It's especially useful to later execute a query that includes some variables.
 
         The params string must be executed on its own window in Neo4j, before executing the query.
         """
-
         params = []
 
         for key, value in self.params.items():
@@ -536,7 +617,7 @@ class Query:
         return ":params { " + ", ".join(params) + " }"
 
     @trace.get_tracer(__name__).start_as_current_span("Query.execute")
-    async def execute(self, db: InfrahubDatabase) -> Self:
+    async def execute(self, db: InfrahubDatabase, timeout_seconds: float | None = None) -> Self:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
@@ -548,14 +629,24 @@ class Query:
         if self.type == QueryType.READ:
             if self.limit or self.offset:
                 results = await db.execute_query(
-                    query=query_str, params=self.params, name=self.name, context=self.get_context(), type=self.type
+                    query=query_str,
+                    params=self.params,
+                    name=self.name,
+                    context=self.get_context(),
+                    type=self.type,
+                    timeout_seconds=timeout_seconds,
                 )
             else:
-                results = await self.query_with_size_limit(db=db)
+                results = await self.query_with_size_limit(db=db, timeout_seconds=timeout_seconds)
 
         elif self.type == QueryType.WRITE:
             results, metadata = await db.execute_query_with_metadata(
-                query=query_str, params=self.params, name=self.name, context=self.get_context(), type=self.type
+                query=query_str,
+                params=self.params,
+                name=self.name,
+                context=self.get_context(),
+                type=self.type,
+                timeout_seconds=timeout_seconds,
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))
@@ -571,7 +662,7 @@ class Query:
 
         return self
 
-    async def query_with_size_limit(self, db: InfrahubDatabase) -> list[Record]:
+    async def query_with_size_limit(self, db: InfrahubDatabase, timeout_seconds: float | None = None) -> list[Record]:
         query_limit = config.SETTINGS.database.query_size_limit
         offset = 0
         results: list[Record] = []
@@ -583,6 +674,7 @@ class Query:
                 name=self.name,
                 context=self.get_context(),
                 type=self.type,
+                timeout_seconds=timeout_seconds,
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))
@@ -596,9 +688,15 @@ class Query:
 
     async def count(self, db: InfrahubDatabase) -> int:
         """Count the number of results matching a READ query.
-        OFFSET and LIMIT are automatically excluded when counting.
-        """
 
+        OFFSET and LIMIT are automatically excluded when counting.
+
+        Raises:
+            TypeError: When the query is a WRITE query.
+            ValueError: When the query type is not READ.
+            QueryError: When the count query returns no results and `raise_error_if_empty` is True.
+
+        """
         if self.type == QueryType.WRITE:
             raise TypeError("Unable to count the number of response on a Write query.")
         if self.type != QueryType.READ:
@@ -615,7 +713,6 @@ class Query:
 
     def get_result(self) -> QueryResult | None:
         """Return a single Result."""
-
         if not self.has_been_executed:
             return None
 
@@ -629,12 +726,11 @@ class Query:
 
     def get_results(self) -> Generator[QueryResult, None, None]:
         """Get all the results sorted by score."""
-
         score_idx = {}
         for idx, result in enumerate(self.results):
             score_idx[idx] = result.branch_score
 
-        for idx, _ in sorted(score_idx.items(), key=lambda x: x[1], reverse=True):
+        for idx, _ in sorted(score_idx.items(), key=operator.itemgetter(1), reverse=True):
             yield self.results[idx]
 
     def get_results_group_by(self, *args: Any) -> Generator[QueryResult, None, None]:
@@ -642,8 +738,8 @@ class Query:
 
         Examples:
             get_results_group_by(("n", "uuid"), ("a", "name")):
-        """
 
+        """
         attrs_info = defaultdict(list)
 
         # Extract all attrname and relationships on all branches
@@ -665,9 +761,7 @@ class Query:
             attrs_info[tuple(identifier)].append(info)
 
         for values in attrs_info.values():
-            attr_info = sorted(
-                values, key=lambda i: (i["branch_score"], i["time_score"], not i["deleted"]), reverse=True
-            )[0]
+            attr_info = max(values, key=lambda i: (i["branch_score"], i["time_score"], not i["deleted"]))
             if attr_info["deleted"]:
                 continue
 

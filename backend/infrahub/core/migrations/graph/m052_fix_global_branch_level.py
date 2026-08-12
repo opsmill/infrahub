@@ -18,7 +18,7 @@ class FixGlobalBranchLevelQuery(Query):
     insert_return = False
     raise_error_if_empty = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
 
         query = """
@@ -32,8 +32,7 @@ class FixGlobalBranchLevelQuery(Query):
 
 
 class Migration052(GraphMigration):
-    """
-    Fix edges on the global branch that have incorrect branch_level.
+    """Fix edges on the global branch that have incorrect branch_level.
 
     Edges on the global branch ("-global-") should always have branch_level = 1.
     This migration corrects any edges that were incorrectly created with a different
@@ -41,6 +40,7 @@ class Migration052(GraphMigration):
     """
 
     name: str = "052_fix_global_branch_level"
+    description: str = "N/A"
     minimum_version: int = 51
     queries: Sequence[type[Query]] = [FixGlobalBranchLevelQuery]
 

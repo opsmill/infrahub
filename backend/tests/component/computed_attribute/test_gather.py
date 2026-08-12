@@ -1,15 +1,144 @@
+from copy import deepcopy
+from dataclasses import dataclass
+from typing import Any
+
+import pytest
+
 from infrahub.computed_attribute.gather import (
     gather_trigger_computed_attribute_jinja2,
     gather_trigger_computed_attribute_python,
 )
+from infrahub.computed_attribute.models import ComputedAttrPythonQueryTriggerDefinition
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema
+from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+
+TRANSFORM_NAME = "transform_person_cars"
+
+# TestPerson.cars peers with the TestCar generic, whose members are TestElectricCar and TestGazCar.
+# Only TestElectricCar is read through, so the other kinds behind the generic contribute no field.
+QUERY_THROUGH_GENERIC = """
+query PersonCars($id: ID!) {
+    TestPerson(ids: [$id]) {
+        edges {
+            node {
+                name { value }
+                cars {
+                    edges {
+                        node {
+                            ... on TestElectricCar {
+                                nbr_engine { value }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+QUERY_THROUGH_GENERIC_DISPLAY_LABEL = """
+query PersonCars($id: ID!) {
+    TestPerson(ids: [$id]) {
+        edges {
+            node {
+                name { value }
+                cars {
+                    edges {
+                        node {
+                            display_label
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+QUERY_THROUGH_GENERIC_HFID = """
+query PersonCars($id: ID!) {
+    TestPerson(ids: [$id]) {
+        edges {
+            node {
+                name { value }
+                cars {
+                    edges {
+                        node {
+                            hfid
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+
+async def _setup_person_transform(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    schema_dict: dict[str, Any],
+    query: str,
+) -> None:
+    """Give TestPerson a Python computed attribute fed by a transform that runs `query`."""
+    gql_query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY, branch=default_branch)
+    await gql_query.new(db=db, name="person_cars", query=query)
+    await gql_query.save(db=db)
+
+    repository = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
+    await repository.new(
+        db=db,
+        name="repo_generics",
+        ref=default_branch.name,
+        commit="commit01",
+        location="location01",
+        queries=[gql_query],
+    )
+    await repository.save(db=db)
+
+    transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON, branch=default_branch)
+    await transform.new(
+        db=db,
+        name=TRANSFORM_NAME,
+        file_path="transform.py",
+        class_name="Transform",
+        query=gql_query,
+        repository=repository,
+    )
+    await transform.save(db=db)
+
+    schema_dict = deepcopy(schema_dict)
+    person = next(node for node in schema_dict["nodes"] if node["name"] == "Person")
+    person["attributes"].append(
+        {
+            "name": "computed_desc_python",
+            "kind": "Text",
+            "read_only": True,
+            "optional": True,
+            "computed_attribute": {
+                "kind": ComputedAttributeKind.TRANSFORM_PYTHON.value,
+                "transform": TRANSFORM_NAME,
+            },
+        }
+    )
+    registry.schema.register_schema(schema=SchemaRoot(**schema_dict), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    await default_branch.save(db=db)
+
+
+def _triggers_by_kind(
+    triggers: list[ComputedAttrPythonQueryTriggerDefinition],
+) -> dict[str, ComputedAttrPythonQueryTriggerDefinition]:
+    return {trigger.trigger.match["infrahub.node.kind"]: trigger for trigger in triggers}
 
 
 async def test_gather_trigger_computed_attribute_jinja2_empty(register_core_models_schema: SchemaBranch) -> None:
@@ -70,10 +199,13 @@ async def test_gather_trigger_computed_attribute_python(
 ) -> None:
     triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
     assert triggers
-    assert trigger_queries
 
     trigger = triggers[0]
     assert trigger.name == "TestCar_computed_desc_python"
+
+    triggers_by_kind = _triggers_by_kind(trigger_queries)
+    assert set(triggers_by_kind) == {"TestCar"}
+    assert triggers_by_kind["TestCar"].trigger.match_related["infrahub.field.name"] == ["name"]
 
 
 async def test_gather_trigger_computed_attribute_python_only_on_branch(
@@ -82,8 +214,10 @@ async def test_gather_trigger_computed_attribute_python_only_on_branch(
     car_person_schema: SchemaBranch,
     transform01: Node,
 ) -> None:
-    """Test that gather_trigger_computed_attribute_python handles the case where
+    """Test that gather_trigger_computed_attribute_python handles the case where.
+
     a computed attribute only exists on a branch (not on main).
+
     """
     # Create a branch
     branch = await create_branch(branch_name="branch_with_computed_attr", db=db)
@@ -117,3 +251,66 @@ async def test_gather_trigger_computed_attribute_python_only_on_branch(
     trigger = triggers[0]
     assert trigger.name == "TestCar_computed_desc"
     assert trigger.branch == "branch_with_computed_attr"
+
+
+@dataclass
+class QueryTriggerCase:
+    name: str
+    query: str
+    expected_fields_by_kind: dict[str, list[str]]
+
+
+QUERY_TRIGGER_CASES = [
+    QueryTriggerCase(
+        name="unread_kind_behind_a_generic_gets_no_trigger",
+        query=QUERY_THROUGH_GENERIC,
+        expected_fields_by_kind={"TestPerson": ["cars", "name"], "TestElectricCar": ["nbr_engine"]},
+    ),
+    QueryTriggerCase(
+        name="display_label_is_matched_as_a_field",
+        query=QUERY_THROUGH_GENERIC_DISPLAY_LABEL,
+        expected_fields_by_kind={
+            "TestPerson": ["cars", "name"],
+            "TestCar": ["display_label"],
+            "TestElectricCar": ["display_label"],
+            "TestGazCar": ["display_label"],
+        },
+    ),
+    QueryTriggerCase(
+        name="hfid_is_matched_under_its_schema_name",
+        query=QUERY_THROUGH_GENERIC_HFID,
+        expected_fields_by_kind={
+            "TestPerson": ["cars", "name"],
+            "TestCar": ["human_friendly_id"],
+            "TestElectricCar": ["human_friendly_id"],
+            "TestGazCar": ["human_friendly_id"],
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize("case", QUERY_TRIGGER_CASES, ids=lambda case: case.name)
+async def test_gather_trigger_computed_attribute_python_query(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_generics_unregistered: dict[str, Any],
+    case: QueryTriggerCase,
+) -> None:
+    """The read set of the query decides which kinds get a trigger and which fields it matches.
+
+    A kind the query reads no field from gets none at all: with nothing to filter on, the trigger
+    would fire on every update to that kind and recompute a value those updates cannot change.
+    """
+    await _setup_person_transform(
+        db=db,
+        default_branch=default_branch,
+        schema_dict=car_person_schema_generics_unregistered,
+        query=case.query,
+    )
+
+    _, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    assert {
+        kind: sorted(trigger.trigger.match_related["infrahub.field.name"])
+        for kind, trigger in _triggers_by_kind(trigger_queries).items()
+    } == {kind: sorted(fields) for kind, fields in case.expected_fields_by_kind.items()}

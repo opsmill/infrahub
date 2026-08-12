@@ -16,7 +16,7 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
     name = "migration_attribute_kind"
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_params)
         needs_index = not is_large_attribute_type(self.migration.new_attribute_schema.kind)
@@ -147,7 +147,11 @@ CALL (has_value_e) {
 CALL (attr, n) {
     WITH attr, n
     WHERE $set_metadata
+    SET attr.previous_updated_at = CASE WHEN attr.updated_at IS NULL OR attr.updated_at <> $at THEN attr.updated_at ELSE attr.previous_updated_at END,
+        attr.previous_updated_by = CASE WHEN attr.updated_at IS NULL OR attr.updated_at <> $at THEN attr.updated_by ELSE attr.previous_updated_by END
     SET attr.updated_at = $at, attr.updated_by = $user_id
+    SET n.previous_updated_at = CASE WHEN n.updated_at IS NULL OR n.updated_at <> $at THEN n.updated_at ELSE n.previous_updated_at END,
+        n.previous_updated_by = CASE WHEN n.updated_at IS NULL OR n.updated_at <> $at THEN n.updated_by ELSE n.previous_updated_by END
     SET n.updated_at = $at, n.updated_by = $user_id
 }
         """ % {

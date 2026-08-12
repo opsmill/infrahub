@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import React from "react";
 import { ListBox } from "react-aria-components";
 
-import { Button } from "@/shared/components/ui/button";
 import { pluralize } from "@/shared/utils/string";
 
 import {
@@ -13,24 +13,30 @@ import {
   ProcessingGroupItem,
   type ProcessingGroupItemProps,
 } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/processing-group-item";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 
 export interface ProcessingGroupsPanelProps extends Omit<ProcessingGroupItemProps, "group"> {
   selectedGroups: RelationshipNode[];
+  onClose: () => void;
 }
 
 export function ProcessingGroupsPanel({
   selectedGroups,
   mutationFn,
   onSuccess,
+  onClose,
 }: ProcessingGroupsPanelProps) {
   const [successCount, setSuccessCount] = React.useState(0);
+  const allDone = selectedGroups.length > 0 && successCount === selectedGroups.length;
+
+  React.useEffect(() => {
+    if (allDone) {
+      onSuccess()?.catch(console.error);
+    }
+  }, [allDone]);
 
   return (
-    <div
-      className="flex max-h-[12rem] min-w-[15rem] max-w-sm flex-col"
-      data-testid="processing-groups-panel"
-    >
+    <div className="flex max-h-48 min-w-60 max-w-sm flex-col" data-testid="processing-groups-panel">
       <GroupPanelHeader>
         {successCount} / {pluralize(selectedGroups.length, "group")} updated successfully
       </GroupPanelHeader>
@@ -53,7 +59,7 @@ export function ProcessingGroupsPanel({
       </GroupPanelBody>
 
       <GroupPanelFooter>
-        <Button size="xs" onClick={onSuccess}>
+        <Button size="xs" onPress={onClose}>
           Close
         </Button>
       </GroupPanelFooter>

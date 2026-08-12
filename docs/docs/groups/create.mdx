@@ -1,0 +1,77 @@
+---
+title: Create a group
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Create a group
+
+Create a Standard group when you want to hand-pick the objects it contains.
+
+:::note Which type of group?
+This page covers **Standard** groups (`CoreStandardGroup`). Generator groups and Query groups are created by the Generator or query that owns them — see the [Groups overview](./overview.mdx) for when to use each type.
+:::
+
+## Prerequisites
+
+- Access to an Infrahub instance.
+- Permission to create groups on the target branch.
+
+## Create the group
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+Navigate to **Object Management** → **Groups** and click **New Group**. Provide:
+
+- A name (for example `prod-fabric-devices`).
+- An optional description.
+- The group type (`CoreStandardGroup`).
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation CreateGroup {
+  CoreStandardGroupCreate(data: {name: {value: "<group-name>"}}) {
+    ok
+    object {
+      hfid
+    }
+  }
+}
+```
+
+Save the returned `hfid` — you'll need it when adding members.
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+from infrahub_sdk import InfrahubClientSync
+
+client = InfrahubClientSync(address="http://localhost:8000")
+
+group = client.create(
+    kind="CoreStandardGroup",
+    name="<group-name>",
+)
+group.save()
+```
+
+</TabItem>
+</Tabs>
+
+## Troubleshooting
+
+**Create returns a permission error.** Check your permissions for group management on the target branch.
+
+**The group was created but doesn't appear in the UI.** The group may be in another branch, or you may be viewing with "internal groups" filtered out. See the [visibility model](./overview.mdx#the-visibility-model).
+
+## Next
+
+- [Add members to the group](./add-members.mdx)
+- [Delete a group](./delete.mdx) if it was created by mistake

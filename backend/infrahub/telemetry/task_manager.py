@@ -1,16 +1,43 @@
+from datetime import datetime
 from typing import Any
 
 from prefect import task
 from prefect.cache_policies import NONE
 from prefect.client.orchestration import PrefectClient, get_client
-from prefect.client.schemas.objects import WorkerStatus
+from prefect.client.schemas.filters import (
+    FlowFilter,
+    FlowFilterName,
+    FlowRunFilter,
+    FlowRunFilterStartTime,
+    FlowRunFilterState,
+    FlowRunFilterStateType,
+)
+from prefect.client.schemas.objects import StateType, WorkerStatus
+from prefect.types import DateTime
 
+from infrahub.events.account_action import AccountLoggedInEvent
+from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
+from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent
 from infrahub.events.utils import get_all_events
+from infrahub.events.validator_action import ValidatorFailedEvent, ValidatorPassedEvent, ValidatorStartedEvent
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import gather_all_automations
+from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
-from .models import TelemetryPrefectData, TelemetryWorkPoolData
+from .models import TelemetryActivity24hData, TelemetryPrefectData, TelemetryWorkPoolData
+from .utils import get_activity_window, inclusive_end, safe_metric
+
+WEBHOOK_FLOW_NAME = WEBHOOK_PROCESS.name
+WEBHOOK_FAILURE_STATES = [StateType.FAILED, StateType.CRASHED]
+
+
+async def _post_count_by(client: PrefectClient, path: str, payload: dict[str, Any]) -> list[Any]:
+    """POST a Prefect count-by query and return its buckets (empty when the response has none)."""
+    response = await client._client.post(path, json=payload)
+    response.raise_for_status()
+    data = response.json()
+    return data if isinstance(data, list) else []
 
 
 @task(name="telemetry-gather-work-pools", task_run_name="Gather Work Pools", cache_policy=NONE)
@@ -37,19 +64,116 @@ async def gather_prefect_events(client: PrefectClient) -> dict[str, Any]:
     infrahub_events = get_all_events()
     events: dict[str, int] = {}
 
-    async def count_events(event_name: str) -> int:
-        payload = {"filter": {"event": {"name": [event_name]}}}
-        response = await client._client.post("/events/count-by/event", json=payload)
-        response.raise_for_status()
-        data = response.json()
-        if not isinstance(data, list) or len(data) == 0:
-            return 0
-        return data[0]["count"]
-
     for event in infrahub_events:
-        events[event.event_name] = await count_events(event_name=event.event_name)
+        payload = {"filter": {"event": {"name": [event.event_name]}}}
+        buckets = await _post_count_by(client=client, path="/events/count-by/event", payload=payload)
+        events[event.event_name] = sum(bucket.get("count", 0) for bucket in buckets)
 
     return events
+
+
+def _windowed_event_filter(event_name: str, window_start: datetime, window_end: datetime) -> dict[str, Any]:
+    """Build the count-by filter for the half-open window ``[window_start, window_end)``."""
+    return {
+        "filter": {
+            "event": {"name": [event_name]},
+            "occurred": {"since": window_start.isoformat(), "until": inclusive_end(window_end).isoformat()},
+        }
+    }
+
+
+@task(name="telemetry-gather-windowed-event", task_run_name="Gather Windowed Event Count", cache_policy=NONE)
+async def count_windowed_event(
+    client: PrefectClient, event_name: str, window_start: datetime, window_end: datetime
+) -> int:
+    """Count events of one name that occurred within ``[window_start, window_end)``."""
+    payload = _windowed_event_filter(event_name=event_name, window_start=window_start, window_end=window_end)
+    buckets = await _post_count_by(client=client, path="/events/count-by/event", payload=payload)
+    return sum(bucket.get("count", 0) for bucket in buckets)
+
+
+@task(name="telemetry-gather-windowed-unique", task_run_name="Gather Windowed Unique Count", cache_policy=NONE)
+async def count_windowed_unique_resources(
+    client: PrefectClient, event_name: str, window_start: datetime, window_end: datetime
+) -> int:
+    """Count distinct resources emitting one event within ``[window_start, window_end)``."""
+    payload = _windowed_event_filter(event_name=event_name, window_start=window_start, window_end=window_end)
+    buckets = await _post_count_by(client=client, path="/events/count-by/resource", payload=payload)
+    return len(buckets)
+
+
+@task(name="telemetry-gather-webhook-runs", task_run_name="Gather Webhook Runs", cache_policy=NONE)
+async def count_webhook_runs(client: PrefectClient, window_start: datetime, window_end: datetime) -> tuple[int, int]:
+    """Return ``(success, failure)`` webhook flow-run counts started within the window.
+
+    Success = terminal ``COMPLETED``; failure = terminal ``FAILED``/``CRASHED``; non-terminal
+    runs count in neither.
+    """
+    flow_filter = FlowFilter(name=FlowFilterName(any_=[WEBHOOK_FLOW_NAME]))
+    after = DateTime.fromisoformat(window_start.isoformat())
+    before = DateTime.fromisoformat(inclusive_end(window_end).isoformat())
+
+    def runs_in_states(states: list[StateType]) -> FlowRunFilter:
+        return FlowRunFilter(
+            start_time=FlowRunFilterStartTime(after_=after, before_=before),
+            state=FlowRunFilterState(type=FlowRunFilterStateType(any_=states)),
+        )
+
+    # count_flow_runs returns a server-side count. read_flow_runs is deliberately not used here:
+    # it pages at the API limit and would undercount a busy day.
+    success = await client.count_flow_runs(
+        flow_filter=flow_filter, flow_run_filter=runs_in_states([StateType.COMPLETED])
+    )
+    failure = await client.count_flow_runs(
+        flow_filter=flow_filter, flow_run_filter=runs_in_states(WEBHOOK_FAILURE_STATES)
+    )
+    return success, failure
+
+
+@task(name="telemetry-gather-activity-24h", task_run_name="Gather 24h Activity", cache_policy=NONE)
+async def gather_activity_24h(client: PrefectClient) -> TelemetryActivity24hData:
+    """Assemble the 24h activity metrics over the previous full UTC calendar day."""
+    window_start, window_end = get_activity_window()
+
+    async def windowed_count(event_name: str) -> int | None:
+        return await safe_metric(
+            count_windowed_event.fn(
+                client=client,
+                event_name=event_name,
+                window_start=window_start,
+                window_end=window_end,
+            )
+        )
+
+    logins = await windowed_count(AccountLoggedInEvent.event_name)
+    unique_logins = await safe_metric(
+        count_windowed_unique_resources.fn(
+            client=client,
+            event_name=AccountLoggedInEvent.event_name,
+            window_start=window_start,
+            window_end=window_end,
+        )
+    )
+    webhook_counts = await safe_metric(
+        count_webhook_runs.fn(client=client, window_start=window_start, window_end=window_end)
+    )
+    webhooks_fired_success = webhook_counts[0] if webhook_counts is not None else None
+    webhooks_fired_failure = webhook_counts[1] if webhook_counts is not None else None
+
+    return TelemetryActivity24hData(
+        logins=logins,
+        unique_logins=unique_logins,
+        checks_started=await windowed_count(ValidatorStartedEvent.event_name),
+        checks_passed=await windowed_count(ValidatorPassedEvent.event_name),
+        checks_failed=await windowed_count(ValidatorFailedEvent.event_name),
+        artifacts_created=await windowed_count(ArtifactCreatedEvent.event_name),
+        artifacts_updated=await windowed_count(ArtifactUpdatedEvent.event_name),
+        branches_created=await windowed_count(BranchCreatedEvent.event_name),
+        branches_merged=await windowed_count(BranchMergedEvent.event_name),
+        branches_deleted=await windowed_count(BranchDeletedEvent.event_name),
+        webhooks_fired_success=webhooks_fired_success,
+        webhooks_fired_failure=webhooks_fired_failure,
+    )
 
 
 @task(name="telemetry-gather-automations", task_run_name="Gather Automations", cache_policy=NONE)
@@ -69,10 +193,8 @@ async def gather_prefect_automations(client: PrefectClient) -> dict[str, Any]:
 @task(name="telemetry-gather-prefect-information", task_run_name="Gather Prefect Information", cache_policy=NONE)
 async def gather_prefect_information() -> TelemetryPrefectData:
     async with get_client(sync_client=False) as client:
-        data = TelemetryPrefectData(
+        return TelemetryPrefectData(
             work_pools=await gather_prefect_work_pools(client=client),
             events=await gather_prefect_events(client=client),
             automations=await gather_prefect_automations(client=client),
         )
-
-        return data

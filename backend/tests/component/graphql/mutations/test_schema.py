@@ -2,7 +2,7 @@ from typing import Any, Generator
 
 import pytest
 
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
 from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -188,6 +188,164 @@ async def test_delete_dropdown_option_in_use(
     assert result.errors
     assert len(result.errors) == 1
     assert "There are still TestChoice objects using this dropdown" in str(result.errors[0])
+
+
+async def test_add_enum_option_success(
+    db: InfrahubDatabase,
+    default_permission_backend: Generator[None, Any, Any],
+    default_branch: Branch,
+    choices_schema: None,
+    session_admin: AccountSession,
+) -> None:
+    cache = MemoryCache()
+    bus = BusRecorder()
+    service = await InfrahubServices.new(
+        database=db,
+        message_bus=bus,
+        cache=cache,
+        component_type=ComponentType.API_SERVER,
+        component=InfrahubComponent(cache=cache, db=db, message_bus=bus, component_type=ComponentType.API_SERVER),
+    )
+
+    query = """
+    mutation {
+        SchemaEnumAdd(data: {kind: "BaseChoice", attribute: "color", enum: "yellow"}) {
+            ok
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, account_session=session_admin, service=service
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data
+    assert result.data["SchemaEnumAdd"]["ok"] is True
+
+    schema_after = registry.schema.get_schema_branch(name=default_branch.name)
+    base_choice = schema_after.get(name="BaseChoice", duplicate=False)
+    color_attr = base_choice.get_attribute("color")
+    assert color_attr.enum
+    assert "yellow" in color_attr.enum
+    assert color_attr.enum == ["red", "green", "blue", "yellow"]
+
+
+async def test_remove_enum_option_success(
+    db: InfrahubDatabase,
+    default_permission_backend: Generator[None, Any, Any],
+    default_branch: Branch,
+    choices_schema: None,
+    session_admin: AccountSession,
+) -> None:
+    cache = MemoryCache()
+    bus = BusRecorder()
+    service = await InfrahubServices.new(
+        database=db,
+        message_bus=bus,
+        cache=cache,
+        component_type=ComponentType.API_SERVER,
+        component=InfrahubComponent(cache=cache, db=db, message_bus=bus, component_type=ComponentType.API_SERVER),
+    )
+
+    query = """
+    mutation {
+        SchemaEnumRemove(data: {kind: "BaseChoice", attribute: "color", enum: "green"}) {
+            ok
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, account_session=session_admin, service=service
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data
+    assert result.data["SchemaEnumRemove"]["ok"] is True
+
+    schema_after = registry.schema.get_schema_branch(name=default_branch.name)
+    base_choice = schema_after.get(name="BaseChoice", duplicate=False)
+    color_attr = base_choice.get_attribute("color")
+    assert color_attr.enum
+    assert "green" not in color_attr.enum
+    assert color_attr.enum == ["red", "blue"]
+
+
+async def test_add_enum_option_does_not_corrupt_schema_cache(
+    db: InfrahubDatabase,
+    default_permission_backend: Generator[None, Any, Any],
+    default_branch: Branch,
+    choices_schema: None,
+    session_admin: AccountSession,
+) -> None:
+    cache = MemoryCache()
+    bus = BusRecorder()
+    service = await InfrahubServices.new(
+        database=db,
+        message_bus=bus,
+        cache=cache,
+        component_type=ComponentType.API_SERVER,
+        component=InfrahubComponent(cache=cache, db=db, message_bus=bus, component_type=ComponentType.API_SERVER),
+    )
+
+    schema_before = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    test_choice_schema = schema_before.get(name="TestChoice", duplicate=False)
+    assert test_choice_schema is not None
+
+    original_status_attr = test_choice_schema.get_attribute("status")
+    assert original_status_attr.enum
+    original_enums = list(original_status_attr.enum)
+    assert original_enums == ["active", "passive"]
+
+    query = """
+    mutation {
+        SchemaEnumAdd(data: {kind: "TestChoice", attribute: "status", enum: "inactive"}) {
+            ok
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, account_session=session_admin, service=service
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data
+    assert result.data["SchemaEnumAdd"]["ok"] is True
+
+    schema_after = registry.schema.get_schema_branch(name=default_branch.name)
+    test_choice_after = schema_after.get(name="TestChoice", duplicate=False)
+    status_attr_after = test_choice_after.get_attribute("status")
+    assert status_attr_after.enum
+    enums_after = list(status_attr_after.enum)
+    assert "inactive" in enums_after, f"Enum 'inactive' not found in choices: {enums_after}"
+    assert "active" in enums_after
+
+    mutated_status_attr = test_choice_schema.get_attribute("status")
+    assert mutated_status_attr.enum
+    mutated_enums = list(mutated_status_attr.enum)
+    assert "inactive" not in mutated_enums, (
+        f"Cached schema object was mutated in-place: {mutated_enums!r} instead of {original_enums!r}"
+    )
 
 
 async def test_delete_enum_option_in_use(

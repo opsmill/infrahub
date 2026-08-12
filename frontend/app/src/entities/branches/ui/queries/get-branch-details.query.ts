@@ -3,7 +3,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import {
   type GetBranchDetailsParams,
   getBranchDetails,
-} from "@/entities/branches/domain/get-branch-details";
+} from "@/entities/branches/domain/use-cases/get-branch-details";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 
 export function getBranchDetailsQueryOptions(params: GetBranchDetailsParams) {

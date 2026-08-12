@@ -14,3 +14,7 @@
 "type/documentation":
   - changed-files:
       - any-glob-to-any-file: ["docs/**"]
+
+"type/spec":
+  - changed-files:
+      - any-glob-to-any-file: ["dev/specs/**"]

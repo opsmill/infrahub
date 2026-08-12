@@ -5,12 +5,13 @@ from typing import TYPE_CHECKING
 from graphene import Boolean, Field, InputField, InputObjectType, List, Mutation, NonNull, String
 
 from infrahub.core.manager import NodeManager
-from infrahub.core.protocols import CoreGeneratorDefinition, CoreGenericRepository, CoreGraphQLQuery, CoreStandardGroup
+from infrahub.core.protocols import CoreGeneratorDefinition
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
 from infrahub.graphql.types.task import TaskInfo
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_RUN
+from infrahub.workflows.constants import WorkflowPriority
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -52,11 +53,9 @@ class GeneratorDefinitionRequestRun(Mutation):
             prefetch_relationships=True,
             raise_on_error=True,
         )
-        query = await generator_definition.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
-        repository = await generator_definition.repository.get_peer(
-            db=db, peer_type=CoreGenericRepository, raise_on_error=True
-        )
-        group = await generator_definition.targets.get_peer(db=db, peer_type=CoreStandardGroup, raise_on_error=True)
+        query = await generator_definition.query.get_peer(db=db, raise_on_error=True)
+        repository = await generator_definition.repository.get_peer(db=db, raise_on_error=True)
+        group = await generator_definition.targets.get_peer(db=db, raise_on_error=True)
 
         request_model = RequestGeneratorDefinitionRun(
             generator_definition=ProposedChangeGeneratorDefinition(
@@ -65,7 +64,9 @@ class GeneratorDefinitionRequestRun(Mutation):
                 class_name=generator_definition.class_name.value,
                 file_path=generator_definition.file_path.value,
                 query_name=query.name.value,
+                query_id=query.id,
                 query_models=query.models.value or [],
+                query_payload=query.query.value,
                 repository_id=repository.id,
                 parameters=generator_definition.parameters.value
                 if isinstance(generator_definition.parameters.value, dict)
@@ -97,5 +98,6 @@ class GeneratorDefinitionRequestRun(Mutation):
             workflow=REQUEST_GENERATOR_DEFINITION_RUN,
             context=graphql_context.get_context(),
             parameters={"model": request_model},
+            priority=WorkflowPriority.HIGH,
         )
         return cls(ok=True)

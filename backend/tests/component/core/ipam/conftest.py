@@ -33,7 +33,9 @@ async def register_internal_models_schema(default_branch: Branch) -> SchemaBranc
 
 
 @pytest.fixture(scope="module")
-async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
+async def register_core_models_schema(
+    default_branch: Branch, register_internal_models_schema: SchemaBranch
+) -> SchemaBranch:
     return await do_register_core_models_schema(branch=default_branch)
 
 
@@ -53,12 +55,14 @@ async def reset_registry(db: InfrahubDatabase) -> None:
 
 
 @pytest.fixture(scope="module")
-async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
+async def default_branch(
+    reset_registry: None, local_storage_dir: Path, empty_database: None, db: InfrahubDatabase
+) -> Branch:
     return await do_default_branch(db=db)
 
 
 @pytest.fixture(scope="module")
-async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Node | None:
+async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> Node | None:
     if not registry._default_ipnamespace:
         ip_namespace = await create_ipam_namespace(db=db)
         registry.default_ipnamespace = ip_namespace.id
@@ -151,7 +155,7 @@ async def ip_dataset_01_load(
     await net242.new(db=db, prefix="10.10.4.0/27", parent=net240, ip_namespace=ns2)
     await net242.save(db=db)
 
-    data = {
+    return {
         "ns1": ns1,
         "ns2": ns2,
         "net161": net161,
@@ -168,7 +172,6 @@ async def ip_dataset_01_load(
         "net241": net241,
         "net242": net242,
     }
-    return data
 
 
 @pytest.fixture(scope="module")
@@ -186,7 +189,7 @@ def start_time() -> Timestamp:
 async def ip_dataset_01(
     db: InfrahubDatabase,
     default_branch: Branch,
-    ip_dataset_01_load,
+    ip_dataset_01_load: dict[str, Node],
     diff_repository: DiffRepository,
     start_time: Timestamp,
 ) -> Generator[dict[str, Node], None, None]:

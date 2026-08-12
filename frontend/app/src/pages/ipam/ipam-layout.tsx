@@ -1,3 +1,4 @@
+import { Button, ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@infrahub/ui";
 import { useAtom, useAtomValue } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { SidebarIcon } from "lucide-react";
@@ -8,20 +9,13 @@ import { Separator } from "@/shared/components/aria/separator";
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
-import { Button } from "@/shared/components/ui/button";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/shared/components/ui/resizable";
 import { classNames } from "@/shared/utils/common";
 
-import { IPAM_TREE_KEY } from "@/entities/ipam/constants";
 import { IpNamespaceProvider } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import IpNamespaceSelector from "@/entities/ipam/ip-namespaces/ui/ip-namespace-selector";
 import { IpamTreeWithSearch } from "@/entities/ipam/ipam-tree/ui/ipam-tree-with-search";
 
-const ipamTreeCollapsedAtom = atomWithStorage(IPAM_TREE_KEY, false);
+const ipamTreeCollapsedAtom = atomWithStorage("ipam_tree_collapsed", false);
 
 export const Component = () => {
   const ipamTreeCollapsed = useAtomValue(ipamTreeCollapsedAtom);
@@ -38,7 +32,7 @@ export const Component = () => {
               maxSize="90%"
               className="flex grow flex-col"
             >
-              <Content.Card className="flex grow flex-col">
+              <Content.Card className="grow">
                 <IpamToolbar />
 
                 <ErrorBoundary
@@ -54,7 +48,7 @@ export const Component = () => {
         )}
 
         <ResizablePanel id="main-panel" className="flex grow flex-col">
-          <Content.Card className="flex grow flex-col">
+          <Content.Card className="grow">
             {ipamTreeCollapsed && <IpamToolbar className="max-w-74.5" />}
             <Outlet />
           </Content.Card>
@@ -72,10 +66,10 @@ function IpamToolbar({ className }: { className?: string }) {
       <Row className={classNames("h-11 gap-0", className)}>
         <Button
           variant="ghost"
-          size="square"
+          shape="square"
           aria-label="toggle IPAM tree"
-          onClick={() => setCollapsed(!collapsed)}
-          className="m-1 shrink-0 rounded-lg text-gray-400 hover:text-neutral-600"
+          onPress={() => setCollapsed(!collapsed)}
+          className="m-1 shrink-0 rounded-lg text-gray-400 data-hovered:text-neutral-600"
         >
           <SidebarIcon className="size-4" />
         </Button>

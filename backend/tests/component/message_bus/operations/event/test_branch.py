@@ -3,7 +3,8 @@ from uuid import uuid4
 
 import pytest
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import post_process_branch_merge
@@ -30,8 +31,7 @@ async def init_service() -> InfrahubServices:
     recorder = BusRecorder()
     database = MagicMock()
     workflow = WorkflowLocalExecution()
-    service = await InfrahubServices.new(message_bus=recorder, database=database, workflow=workflow)
-    return service
+    return await InfrahubServices.new(message_bus=recorder, database=database, workflow=workflow)
 
 
 @pytest.fixture
@@ -49,11 +49,12 @@ async def test_merged(
     context: InfrahubContext,
     init_service: InfrahubServices,
 ) -> None:
-    """
-    Test that merge flow triggers corrects events/workflows. It does not actually test these events/workflows behaviors
-    as they are mocked.
-    """
+    """Test that merge flow triggers corrects events/workflows.
 
+    It does not actually test these events/workflows behaviors
+    as they are mocked.
+
+    """
     source_branch_name = "cr1234"
     target_branch_name = "main"
     right_now = Timestamp()
@@ -140,6 +141,7 @@ async def test_merged(
         mock_submit_workflow.assert_has_calls(expected_calls)
         assert mock_submit_workflow.call_count == len(expected_calls)
 
-    # Use `db=ANY` as a new InfrahubDatabase object is created as we use a new session
-    mock_component_registry.get_component.assert_awaited_once_with(DiffRepository, db=ANY, branch=default_branch)
+    # `db=ANY` since a new InfrahubDatabase object is created for the new session. The selective
+    # post-merge dispatcher also fetches components, so this is awaited among other calls, not just once.
+    mock_component_registry.get_component.assert_any_await(DiffRepository, db=ANY, branch=default_branch)
     diff_repo.get_roots_metadata.assert_awaited_once_with(base_branch_names=[target_branch_name])

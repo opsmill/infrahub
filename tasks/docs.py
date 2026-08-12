@@ -1,3 +1,4 @@
+import json
 import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -43,6 +44,7 @@ def generate_schema(context: Context) -> None:  # noqa: ARG001
 
 @task
 def generate_config(context: Context) -> None:  # noqa: ARG001
+    """Generate documentation for Infrahub configuration settings."""
     _generate_infrahub_config_documentation()
 
 
@@ -83,6 +85,12 @@ def generate_infrahub_events(context: Context) -> None:  # noqa: ARG001
 
 
 @task
+def generate_error_catalogue(context: Context) -> None:  # noqa: ARG001
+    """Render the GraphQL error catalogue reference page from schema/error-catalogue.json."""
+    _generate_error_catalogue_documentation()
+
+
+@task
 def install(context: Context) -> None:
     """Install documentation dependencies."""
     exec_cmd = "npm install"
@@ -106,7 +114,6 @@ def validate(context: Context) -> None:
 @task
 def serve(context: Context) -> None:
     """Run documentation server in development mode."""
-
     exec_cmd = "npm run serve"
 
     with context.cd(DOCUMENTATION_DIRECTORY):
@@ -133,6 +140,10 @@ def markdownlint(context: Context) -> None:
     """Lint markdown files with markdownlint-cli2.
 
     Uses .markdownlint-cli2.yaml for configuration, globs, and ignore patterns.
+
+    Raises:
+        SystemExit: When the markdownlint-cli2 command is not installed.
+
     """
     has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
 
@@ -158,32 +169,51 @@ def format_markdownlint(context: Context) -> None:
 
 @task
 def format(context: Context) -> None:
-    """This will run all formatter."""
+    """Format all documentation markdown files."""
     format_markdownlint(context)
 
 
 @task
 def lint(context: Context) -> None:
-    """This will run all linter."""
+    """Run all documentation linters (markdownlint, vale)."""
     markdownlint(context)
     vale(context)
 
 
 def _generate_infrahub_cli_documentation(context: Context) -> None:
     """Generate the documentation for infrahub cli using typer-cli."""
-
     CLI_COMMANDS = (
         ("infrahub.cli.db", "infrahub db", "infrahub-db"),
         ("infrahub.cli.server", "infrahub server", "infrahub-server"),
         ("infrahub.cli.dev", "infrahub dev", "infrahub-dev"),
         ("infrahub.cli.upgrade", "infrahub upgrade", "infrahub-upgrade"),
+        ("infrahub.cli.recover", "infrahub recover", "infrahub-recover"),
     )
 
     print(" - Generate Infrahub CLI documentation")
     with context.cd(ESCAPED_REPO_PATH):
         for command in CLI_COMMANDS:
-            exec_cmd = f'uv run typer {command[0]} utils docs --name "{command[1]}" --output docs/docs/reference/infrahub-cli/{command[2]}.mdx'
+            output_path = f"docs/docs/reference/infrahub-cli/{command[2]}.mdx"
+            exec_cmd = f'uv run typer {command[0]} utils docs --name "{command[1]}" --output {output_path}'
             context.run(exec_cmd)
+            _strip_developer_sections_from_cli_doc(Path(output_path))
+
+
+def _strip_developer_sections_from_cli_doc(path: Path) -> None:
+    """Strip Sphinx-style `Raises:` blocks from a rendered CLI reference page.
+
+    The typer docs renderer copies Python docstrings verbatim, which leaks developer-facing
+    `Raises: typer.Exit:` text into the public CLI reference. The exception information stays
+    in the Python source for static analysis (DOC501); it is removed only from the rendered MDX.
+    """
+    import re
+
+    text = path.read_text(encoding="utf-8")
+    # Match "Raises:" at column 0, then indented (4-space) detail lines, then a blank line.
+    pattern = re.compile(r"^Raises:\n(?:    .*\n)+\n", flags=re.MULTILINE)
+    new_text = pattern.sub("", text)
+    if new_text != text:
+        path.write_text(new_text, encoding="utf-8")
 
 
 def _generate(context: Context) -> None:
@@ -194,6 +224,7 @@ def _generate(context: Context) -> None:
     _generate_infrahub_bus_events_documentation()
     _generate_infrahub_events_documentation()
     _generate_infrahub_config_documentation()
+    _generate_error_catalogue_documentation()
 
 
 def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
@@ -235,7 +266,7 @@ def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
 
 
 def _generate_infrahub_schema_documentation() -> None:
-    """Generate documentation for the schema"""
+    """Generate documentation for the schema."""
     import jinja2
 
     from infrahub.core.schema import internal, internal_schema
@@ -274,8 +305,7 @@ def _extract_nested_parameters(
     parent_default: dict | None = None,
     env_prefix: str | None = None,
 ) -> list["ConfigurationSectionParameter"]:
-    """
-    Recursively extract nested parameters for object-type config fields.
+    """Recursively extract nested parameters for object-type config fields.
 
     Args:
         prop_schema: The property schema dictionary.
@@ -287,6 +317,7 @@ def _extract_nested_parameters(
 
     Returns:
         List of ConfigurationSectionParameter objects for nested fields.
+
     """
     from infrahub import config
 
@@ -389,13 +420,20 @@ def _process_section_parameters(
 
     Returns:
         List of ConfigurationSectionParameter objects.
+
     """
     parameters = []
     for param_name, param_schema in section_schema["properties"].items():
         param_type = param_schema.get("type")
         if param_type == "array":
-            array_type = param_schema.get("items", {}).get("type")
+            items = param_schema.get("items", {})
+            array_type = items.get("type")
             if array_type:
+                param_type = f"array[{array_type}]"
+            elif "$ref" in items:
+                ref_name = items["$ref"].split("/")[-1]
+                ref_schema = defs.get(ref_name, {})
+                array_type = ref_schema.get("type", "object")
                 param_type = f"array[{array_type}]"
 
         env = f"{env_prefix}{param_name}".upper() if env_prefix else None
@@ -420,6 +458,24 @@ def _process_section_parameters(
                 param_type = definition.get("type")
                 if "enum" in definition:
                     param_type += " (" + ", ".join([str(e) for e in definition["enum"]]) + ")"
+
+        # Handle arrays of objects: resolve $ref in items and extract nested parameters
+        if param_type and param_type.startswith("array[object]") and not nested_parameters:
+            items = param_schema.get("items", {})
+            items_ref = items.get("$ref")
+            if items_ref:
+                items_def = defs.get(items_ref.split("/")[-1], {})
+            else:
+                items_def = items
+            if "properties" in items_def:
+                default = "Check nested parameters"
+                nested_parameters = _process_section_parameters(
+                    section_schema=items_def,
+                    model_fields={},
+                    env_source=env_source,
+                    defs=defs,
+                    env_prefix=None,
+                )
 
         parameters.append(
             ConfigurationSectionParameter(
@@ -511,7 +567,7 @@ def _get_env_vars() -> dict[str, str]:
 
 
 def _generate_infrahub_sdk_configuration_documentation() -> None:
-    """Generate documentation for the Infrahub SDK configuration"""
+    """Generate documentation for the Infrahub SDK configuration."""
     import jinja2
     from infrahub_sdk.config import ConfigBase
 
@@ -561,7 +617,7 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
 
 
 def _generate_infrahub_repository_configuration_documentation() -> None:
-    """Generate documentation for the Infrahub repository configuration file"""
+    """Generate documentation for the Infrahub repository configuration file."""
     from copy import deepcopy
 
     import jinja2
@@ -586,11 +642,17 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
 
     for name, definition in schema["$defs"].items():
         for property, value in definition["properties"].items():
-            definitions[name]["properties"][property]["required"] = property in definition["required"]
+            definitions[name]["properties"][property]["required"] = property in definition.get("required", [])
             if "anyOf" in value:
-                definitions[name]["properties"][property]["type"] = ", ".join(
-                    [i["type"] for i in value["anyOf"] if i["type"] != "null"]
-                )
+                type_names = []
+                for option in value["anyOf"]:
+                    if option.get("type") == "null":
+                        continue
+                    if "$ref" in option:
+                        type_names.append(option["$ref"].split("/")[-1])
+                    elif "type" in option:
+                        type_names.append(option["type"])
+                definitions[name]["properties"][property]["type"] = ", ".join(type_names)
 
     print(" - Generate Infrahub repository configuration documentation")
 
@@ -612,9 +674,9 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
 
 
 def _generate_infrahub_bus_events_documentation() -> None:
-    """
-    Generate documentation for all classes in the event system into a single file
-    using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
+    """Generate documentation for all classes in the event system into a single file using a Jinja2 template.
+
+    Accessible via `invoke generate_infrahub_events_documentation`.
     """
     from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
@@ -622,9 +684,7 @@ def _generate_infrahub_bus_events_documentation() -> None:
         classes: dict[str, type[InfrahubMessage | InfrahubResponse]],
         priority_map: dict[str, int] | None = None,
     ) -> dict[str, dict[str, list[dict[str, any]]]]:
-        """
-        Group classes into a nested dictionary by primary and secondary categories, including priority.
-        """
+        """Group classes into a nested dictionary by primary and secondary categories, including priority."""
         grouped = defaultdict(lambda: defaultdict(list))
         for event_name, cls in classes.items():
             parts = event_name.split(".")
@@ -722,6 +782,7 @@ class ConfigurationSection:
         name: The name of the configuration section.
         description: The section's description.
         parameters: The list of parameters in this section.
+
     """
 
     name: str
@@ -730,9 +791,10 @@ class ConfigurationSection:
 
 
 def _generate_infrahub_events_documentation() -> None:
-    """
-    Generate documentation for all Infrahub events into a single MDX file
-    using a Jinja2 template. Accessible via `invoke generate_infrahub_event_documentation`.
+    """Generate per-category MDX files for all Infrahub events using a Jinja2 template.
+
+    Outputs one file per event category to docs/docs/reference/infrahub-events/.
+    Accessible via `invoke generate_infrahub_event_documentation`.
 
     Note: Ensure all event classes (like GroupMutatedEvent, CommitUpdatedEvent, etc.) are imported
     so that they appear in the introspection.
@@ -753,8 +815,8 @@ def _generate_infrahub_events_documentation() -> None:
             import_module(modname)
 
     def format_event_name(raw_name: str) -> str:
-        """
-        Insert spaces before capitals and remove a trailing "Event", if present.
+        """Insert spaces before capitals and remove a trailing "Event", if present.
+
         For example: "NodeCreatedEvent" becomes "Node Created Event".
         """
         formatted = re.sub(r"(?<!^)(?=[A-Z])", " ", raw_name)
@@ -809,7 +871,7 @@ def _generate_infrahub_events_documentation() -> None:
         return grouped
 
     template_file = DOCUMENTATION_DIRECTORY / "_templates" / "infrahub-events.j2"
-    output_file = DOCUMENTATION_DIRECTORY / "docs" / "reference" / "infrahub-events.mdx"
+    output_dir = DOCUMENTATION_DIRECTORY / "docs" / "reference" / "infrahub-events"
 
     print(" - Generating Infrahub Events documentation")
 
@@ -826,8 +888,106 @@ def _generate_infrahub_events_documentation() -> None:
     all_event_classes = get_all_events()
     event_groups = group_events_by_category(event_classes=all_event_classes)
 
-    rendered_doc = template.render(event_groups=event_groups)
+    output_dir.mkdir(exist_ok=True, parents=True)
+    for category, events in event_groups.items():
+        output_file = output_dir / f"{category.lower()}.mdx"
+        output_file.write_text(template.render(title=category, events=events), encoding="utf-8")
+        print(f"Docs saved to: {output_file}")
 
-    output_file.parent.mkdir(exist_ok=True, parents=True)
-    output_file.write_text(rendered_doc, encoding="utf-8")
+
+def _error_catalogue_type_label(schema: dict[str, Any]) -> str:
+    """Render a JSON Schema fragment as a human-readable type label for the data-shape table.
+
+    The ``\\|`` escape keeps a nullable union (``string | null``) from breaking the markdown table.
+    """
+    if isinstance(schema.get("anyOf"), list):
+        return " \\| ".join(_error_catalogue_type_label(branch) for branch in schema["anyOf"])
+    if schema.get("format") == "date-time":
+        return "string (date-time)"
+    json_type = schema.get("type")
+    return str(json_type) if json_type is not None else "object"
+
+
+def _error_catalogue_example_value(schema: dict[str, Any]) -> Any:  # noqa: ANN401
+    """Produce a representative value for a property, used to render the worked-example envelope."""
+    if isinstance(schema.get("anyOf"), list):
+        for branch in schema["anyOf"]:
+            if branch.get("type") != "null":
+                return _error_catalogue_example_value(branch)
+        return None
+    if schema.get("format") == "date-time":
+        return "2026-01-01T00:00:00Z"
+    samples: dict[str, Any] = {"string": "example", "integer": 1, "number": 1, "boolean": True, "null": None}
+    return samples.get(str(schema.get("type")))
+
+
+def _generate_error_catalogue_documentation() -> None:
+    """Render the GraphQL error catalogue reference page from the committed JSON Schema artefact.
+
+    The output is fully data-driven and deterministic (codes sorted, no timestamps) so it can be
+    validated with `git diff --exit-code` the same way the other generated reference pages are.
+    """
+    import jinja2
+
+    schema_file = CURRENT_DIRECTORY.parent / "schema" / "error-catalogue.json"
+    template_file = DOCUMENTATION_DIRECTORY / "_templates" / "error-catalogue.j2"
+    output_file = DOCUMENTATION_DIRECTORY / "docs" / "reference" / "error-catalogue.mdx"
+
+    print(" - Generating Error Catalogue documentation")
+
+    for required_file in (schema_file, template_file):
+        if not required_file.exists():
+            print(f"Unable to find the file at {required_file}")
+            sys.exit(-1)
+
+    catalogue = json.loads(schema_file.read_text(encoding="utf-8"))
+    sorted_codes = dict(sorted(catalogue["codes"].items()))
+
+    codes: list[dict[str, Any]] = []
+    for code, entry in sorted_codes.items():
+        data_schema = entry["data_schema"]
+        properties: dict[str, Any] = data_schema.get("properties", {})
+        required = set(data_schema.get("required", []))
+        example_envelope = {
+            "data": None,
+            "errors": [
+                {
+                    "message": entry["description"],
+                    "extensions": {
+                        "code": code,
+                        "http_status": entry["http_status"],
+                        "data": {name: _error_catalogue_example_value(prop) for name, prop in properties.items()},
+                    },
+                }
+            ],
+        }
+        codes.append(
+            {
+                "code": code,
+                "description": entry["description"],
+                "stability": entry["stability"],
+                "http_status": entry["http_status"],
+                "fields": [
+                    {
+                        "name": name,
+                        "type": _error_catalogue_type_label(prop),
+                        "required": name in required,
+                    }
+                    for name, prop in properties.items()
+                ],
+                "example": json.dumps(example_envelope, indent=2),
+            }
+        )
+
+    template_text = template_file.read_text(encoding="utf-8")
+    environment = jinja2.Environment(trim_blocks=True)
+    template = environment.from_string(template_text)
+    rendered = template.render(
+        version=catalogue["infrahub_catalogue_version"],
+        code_count=len(codes),
+        codes=codes,
+    )
+
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    output_file.write_text(rendered, encoding="utf-8")
     print(f"Docs saved to: {output_file}")

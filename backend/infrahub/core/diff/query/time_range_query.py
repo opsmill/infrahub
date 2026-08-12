@@ -8,9 +8,9 @@ from ..model.path import TimeRange
 
 
 class EnrichedDiffTimeRangeQuery(Query):
-    """
-    Get the time ranges of all EnrichedDiffRoots for the given branches that are within the given timeframe in
-    chronological order
+    """Get the time ranges of all EnrichedDiffRoots for the given branches.
+
+    Only includes diffs within the given timeframe, in chronological order.
     """
 
     name = "enriched_diff_time_ranges"

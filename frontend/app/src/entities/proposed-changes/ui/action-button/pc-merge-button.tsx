@@ -1,16 +1,16 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
+import { Button, Tooltip } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
+import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
+import { useConfig } from "@/entities/config/ui/config-provider";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import { MERGE_STATE } from "@/entities/proposed-changes/constants";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
+import { MERGE_STATE } from "@/entities/proposed-changes/domain/model/proposed-change-state";
+import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
 import type { ProposedChangeActionButtonProps } from "./types";
@@ -18,28 +18,35 @@ import type { ProposedChangeActionButtonProps } from "./types";
 export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const { merge } = usePcActionsContext();
 
-  const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const proposedChangesDetails = useProposedChange();
+  const config = useConfig();
+  const { clearBranchIfCurrent } = useNavigateAfterBranchRemoval();
 
   const { mutate, isPending } = useUpdateObjectMutation({
     onSuccess: async () => {
       queryClient.invalidateQueries({
         predicate: (query) => query.queryKey.includes(proposedChangesDetails.id),
       });
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change merged!"} />);
+      const deleteBranchAfterMerge = config.main.delete_branch_after_merge;
+      const sourceBranch = proposedChangesDetails.source_branch?.value;
+
+      const message =
+        deleteBranchAfterMerge && sourceBranch
+          ? `Proposed change merged! Branch '${sourceBranch}' will be automatically deleted.`
+          : "Proposed change merged!";
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
+
+      if (deleteBranchAfterMerge && sourceBranch) {
+        clearBranchIfCurrent(sourceBranch);
+      }
     },
-    onError: () => {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occurred while merging proposed change"}
-        />
-      );
+    onError: (error) => {
+      toast(<Alert type={ALERT_TYPES.ERROR} message={error.message} />);
     },
   });
 
-  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-
+  const handleAction = () => {
     mutate({
       data: {
         id: proposedChangesDetails.id,
@@ -47,22 +54,23 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
           value: MERGE_STATE,
         },
       },
-      objectKind: PROPOSED_CHANGES_OBJECT,
+      objectKind: PROPOSED_CHANGE_OBJECT,
     });
   };
 
-  const tooltipContent = merge.unavailability_reason;
-  const tooltipEnabled = !merge.available;
+  const tooltipMessage = merge.unavailability_reason;
+  const isUnavailable = !merge.available;
 
   return (
     <>
-      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
+      <Tooltip message={isUnavailable ? tooltipMessage : undefined} className="whitespace-pre">
         <Button
           className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
-          onClick={handleAction}
+          onPress={handleAction}
           variant={"active"}
-          isLoading={isPending}
-          disabled={tooltipEnabled || isPending}
+          isPending={isPending}
+          isDisabled={isUnavailable || isPending}
+          isDisabledAndFocusable={isUnavailable && !isPending}
         >
           Merge
         </Button>
@@ -72,13 +80,12 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         className="h-full rounded-l-none border-l-0"
         variant={"active"}
         size={"sm"}
-        onClick={() => {
+        onPress={() => {
           setOpen(true);
         }}
-        disabled={isPending}
+        isDisabled={isPending}
         data-testid="proposed-change-action-button-select"
         aria-label="More actions"
-        type="button"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

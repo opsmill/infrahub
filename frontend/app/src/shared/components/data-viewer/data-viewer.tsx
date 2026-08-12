@@ -1,3 +1,4 @@
+import { ScrollArea } from "@infrahub/ui";
 import { EyeOffIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -7,7 +8,6 @@ import { Svg } from "@/shared/components/display/svg";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { CsvTable } from "@/shared/components/editor/csv-table";
 import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-viewer";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { classNames } from "@/shared/utils/common";
 
 export interface DataViewerProps {
@@ -46,12 +46,18 @@ function DataViewerContent({
 }) {
   switch (contentType) {
     case "text/markdown": {
-      return <MarkdownViewer>{content}</MarkdownViewer>;
+      return (
+        <ScrollArea scrollX scrollBarClassName="bg-transparent">
+          <MarkdownViewer>{content}</MarkdownViewer>
+        </ScrollArea>
+      );
     }
 
     case "image/svg+xml": {
       return (
-        <Svg value={content} className="grow rounded-lg border border-neutral-700 shadow-sm" />
+        <ScrollArea scrollX className="rounded-lg bg-white" scrollBarClassName="bg-transparent">
+          <Svg value={content} className="mx-auto" />
+        </ScrollArea>
       );
     }
 
@@ -80,7 +86,7 @@ function DataViewerContent({
     case "image/bmp":
     case "image/x-icon": {
       return (
-        <div className="flex justify-center rounded-lg border border-neutral-700 bg-white p-4">
+        <div className="flex justify-center rounded-lg bg-white p-4">
           <img
             src={`data:${contentType};base64,${content}`}
             alt="Preview"
@@ -112,7 +118,7 @@ function DataViewerContent({
       }
 
       return (
-        <div className="flex grow flex-col items-center justify-center gap-2 rounded-lg border border-neutral-700 p-8 text-neutral-400">
+        <div className="flex grow flex-col items-center justify-center gap-2 rounded-lg border p-8 text-neutral-400">
           <EyeOffIcon className="size-8" />
           <p>This file can&#39;t be previewed</p>
           <p className="text-sm">{contentType}</p>
@@ -126,7 +132,7 @@ function TextViewer({ content, language }: { content: string; language: string }
   return (
     <ScrollArea
       scrollX
-      className="grow rounded-lg border border-neutral-700 shadow-sm"
+      className="grow rounded-lg border shadow-sm"
       scrollBarClassName="bg-transparent"
     >
       <CodeViewer language={language} customStyle={{ margin: 0 }}>

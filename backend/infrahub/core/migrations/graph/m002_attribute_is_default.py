@@ -15,7 +15,7 @@ class Migration002Query01(Query):
     name = "migration_002_01"
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH (a:AttributeValue)
         WHERE a.is_default IS NULL
@@ -27,10 +27,9 @@ class Migration002Query01(Query):
 
 class Migration002(GraphMigration):
     name: str = "002_attribute_is_default"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [Migration002Query01]
     minimum_version: int = 1
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-
-        return result
+        return MigrationResult()

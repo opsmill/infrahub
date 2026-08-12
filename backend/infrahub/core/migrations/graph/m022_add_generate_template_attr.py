@@ -17,10 +17,11 @@ if TYPE_CHECKING:
 
 class Migration022(InternalSchemaMigration):
     name: str = "022_add_generate_template_attr"
+    description: str = "N/A"
     minimum_version: int = 21
 
     @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
+    def init(cls, **kwargs: Any) -> Self:
         internal_schema = cls.get_internal_schema()
         schema_node = internal_schema.get_node(name="SchemaNode")
         schema_generic = internal_schema.get_node(name="SchemaGeneric")
@@ -41,8 +42,7 @@ class Migration022(InternalSchemaMigration):
                 ),
             ),
         ]
-        return cls(migrations=migrations, **kwargs)  # type: ignore[arg-type]
+        return cls(migrations=migrations, **kwargs)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

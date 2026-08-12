@@ -1,17 +1,15 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, type ButtonProps, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
-import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 
-import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/model/artifact";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
-import { type ButtonProps, ButtonWithTooltip } from "../ui/button";
-
-interface ObjectCreateFormTriggerProps
-  extends Omit<ButtonProps, "disabled" | "tooltipEnabled" | "tooltipContent"> {
+interface ObjectCreateFormTriggerProps extends ButtonProps {
   schema: ModelSchema;
   onSuccess?: (newObject: any) => void;
   permission: Permission;
@@ -20,7 +18,6 @@ interface ObjectCreateFormTriggerProps
 export const ObjectCreateFormTrigger = ({
   schema,
   onSuccess,
-  isLoading,
   permission,
   ...props
 }: ObjectCreateFormTriggerProps) => {
@@ -33,30 +30,26 @@ export const ObjectCreateFormTrigger = ({
 
   return (
     <>
-      <ButtonWithTooltip
-        data-testid="create-object-button"
-        disabled={!isAllowed || isLoading}
-        onClick={() => setShowCreateDrawer(true)}
-        tooltipContent={message}
-        tooltipEnabled={!isAllowed}
-        {...props}
-      >
-        <Icon icon="mdi:plus" className="mr-1.5 text-sm" />
-        Add {schema?.label}
-      </ButtonWithTooltip>
+      <Tooltip message={message}>
+        <Button
+          data-testid="create-object-button"
+          size="sm"
+          isDisabledAndFocusable={!isAllowed}
+          onPress={() => setShowCreateDrawer(true)}
+          {...props}
+        >
+          <Icon icon="mdi:plus" />
+          Add {schema?.label}
+        </Button>
+      </Tooltip>
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel="New"
-            title={`Create ${schema.label}`}
-            subtitle={schema.description}
-          />
-        }
-        open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}
-      >
+      <Sheet isOpen={showCreateDrawer} onOpenChange={setShowCreateDrawer}>
+        <SlideOverTitle
+          schema={schema}
+          currentObjectLabel="New"
+          title={`Create ${schema.label}`}
+          subtitle={schema.description}
+        />
         <ObjectForm
           onSuccess={async (result: any) => {
             setShowCreateDrawer(false);
@@ -65,7 +58,7 @@ export const ObjectCreateFormTrigger = ({
           onCancel={() => setShowCreateDrawer(false)}
           kind={schema.kind!}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 };

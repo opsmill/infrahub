@@ -13,14 +13,14 @@ import {
 import type {
   AttributeSourceOption,
   ConvertSourceInputProps,
-} from "@/entities/nodes/convert/types";
+} from "@/entities/nodes/convert/ui/convert-source.types";
 import {
   SourceOptionItem,
   SourceOptionValue,
 } from "@/entities/nodes/convert/ui/source-option-item";
 import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeAttribute } from "@/entities/nodes/types";
-import type { AttributeSchema } from "@/entities/schema/types";
+import type { NodeAttribute } from "@/entities/nodes/object/domain/model/node";
+import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 interface ConvertSourceAttributeInputProps extends ConvertSourceInputProps {
   attribute: AttributeSchema;

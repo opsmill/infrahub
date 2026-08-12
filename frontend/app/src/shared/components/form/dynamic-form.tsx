@@ -1,6 +1,8 @@
-import { forwardRef } from "react";
+import { Button } from "@infrahub/ui";
+import type React from "react";
 
-import CheckboxField from "@/shared/components/form/fields/checkbox.field";
+import { Row } from "@/shared/components/container";
+import BooleanField from "@/shared/components/form/fields/boolean.field";
 import ColorField from "@/shared/components/form/fields/color.field";
 import DatetimeField from "@/shared/components/form/fields/datetime.field";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
@@ -17,48 +19,52 @@ import RelationshipManyField from "@/shared/components/form/fields/relationships
 import { SelectField } from "@/shared/components/form/fields/select.field";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
-import { Button } from "@/shared/components/ui/button";
 import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { isHierarchicalSchema } from "@/entities/schema/utils/is-hierarchical-schema";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import { isHierarchicalSchema } from "@/entities/schema/domain/rules/is-hierarchical-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   isBulkUpdate?: boolean;
   fields: Array<DynamicFieldProps>;
-  onCancel?: () => void;
   submitLabel?: string;
   onSubmit?: (data: Record<string, FormFieldValue>) => void;
+  ref?: React.Ref<FormRef>;
 }
 
-const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
-  ({ fields, onCancel, submitLabel, isBulkUpdate, ...props }, ref) => {
-    const formDefaultValues = fields.reduce(
-      (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
-      {}
-    );
+const DynamicForm = ({
+  fields,
+  onCancel,
+  submitLabel,
+  isBulkUpdate,
+  ref,
+  ...props
+}: DynamicFormProps) => {
+  const formDefaultValues = fields.reduce(
+    (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
+    {}
+  );
 
-    return (
-      <Form ref={ref} {...props} defaultValues={formDefaultValues}>
-        {fields.map((field) => (
-          <DynamicField key={`${field.type}_${field.name}`} {...field} />
-        ))}
+  return (
+    <Form ref={ref} {...props} onCancel={onCancel} defaultValues={formDefaultValues}>
+      {fields.map((field) => (
+        <DynamicField key={`${field.type}_${field.name}`} {...field} />
+      ))}
 
-        <div className="text-right">
-          {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
-              Cancel
-            </Button>
-          )}
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
+        )}
 
-          <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
-        </div>
-      </Form>
-    );
-  }
-);
+        <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
+      </Row>
+    </Form>
+  );
+};
 
 export const DynamicField = (props: DynamicFieldProps) => {
   switch (props.type) {
@@ -73,7 +79,7 @@ export const DynamicField = (props: DynamicFieldProps) => {
     case ATTRIBUTE_KIND.BOOLEAN:
     case ATTRIBUTE_KIND.CHECKBOX: {
       const { type, ...otherProps } = props;
-      return <CheckboxField {...otherProps} />;
+      return <BooleanField {...otherProps} />;
     }
     case ATTRIBUTE_KIND.DROPDOWN: {
       const { type, ...otherProps } = props;
@@ -103,6 +109,7 @@ export const DynamicField = (props: DynamicFieldProps) => {
     case ATTRIBUTE_KIND.ID:
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
+    case ATTRIBUTE_KIND.IP_ADDRESS:
     case ATTRIBUTE_KIND.MAC_ADDRESS:
     case ATTRIBUTE_KIND.TEXT:
     case ATTRIBUTE_KIND.URL: {

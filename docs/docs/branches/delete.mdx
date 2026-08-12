@@ -1,0 +1,32 @@
+---
+title: Delete a branch
+---
+
+After a branch has served its purpose — whether it's been merged, abandoned, or superseded — it can be deleted. Deleting a branch that has not been merged will permanently discard all changes accumulated on it.
+
+## Ways to delete a branch
+
+Branches can be deleted in two ways:
+
+- **Manually** via the branch detail view or any Infrahub interface (CLI, GraphQL).
+- **Automatically after merge** when `delete_branch_after_merge` is enabled in the [configuration](../reference/configuration.mdx).
+
+## Automatic branch cleanup after merge
+
+Infrahub can automatically delete a branch after it is successfully merged, keeping your branch list tidy without manual cleanup.
+
+The branch is deleted immediately after a successful merge, whether initiated through a direct branch merge or a Proposed Change. This behavior is opt-in: set `delete_branch_after_merge = true` (or `INFRAHUB_DELETE_BRANCH_AFTER_MERGE=true`) to enable it.
+
+To also remove the linked Git branch, set `delete_git_branch_after_merge = true` (`INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE=true`). This has no effect unless Infrahub branch deletion is also enabled.
+
+## What happens after deletion
+
+Once deleted, a branch no longer exists and cannot be interacted with.
+
+If the branch was linked to a Git repository, the deletion is propagated to Git. If the remote deletion fails, a log entry is available under the repository view in Infrahub.
+
+## Related
+
+- [Branches](./overview.mdx) — branch lifecycle and concepts
+- [Merge a branch](./merge.mdx) — common predecessor to deletion
+- [Configuration](../reference/configuration.mdx) — `delete_branch_after_merge` and `delete_git_branch_after_merge` settings

@@ -1,0 +1,53 @@
+---
+title: Automate with Resource Manager
+---
+
+IPAM and Resource Manager are complementary layers. IPAM defines the data model — your prefix and address objects live in the graph, organized into namespaces and hierarchies. Resource Manager is the allocation engine — it draws from those prefix objects as pool sources to assign addresses and subnets automatically, without manual tracking.
+
+## The two layers
+
+| Layer | What it does | Where it lives |
+|---|---|---|
+| IPAM | Models your IP space as objects (prefixes, addresses, namespaces) | Your schema + object data |
+| Resource Manager | Allocates from those objects on demand | `CoreIPAddressPool`, `CoreIPPrefixPool` |
+
+An IPAM schema gives you visibility and structure. Adding Resource Manager on top gives you automation: new devices get IPs, new customer services get subnets, and no two allocations ever conflict — even across branches.
+
+## When to add Resource Manager
+
+Consider Resource Manager when you need:
+
+- **Automated provisioning** — allocate IPs or subnets during device or service creation, without manual assignment
+- **Generators** — produce configurations that reference dynamically allocated addresses
+- **CI/CD pipelines** — reserve resources as part of infrastructure deployment workflows
+- **Idempotent allocation** — run the same provisioning script multiple times and always get the same resource back
+
+If you are only storing and querying IP data, IPAM alone is sufficient. Resource Manager becomes valuable when allocation needs to happen programmatically.
+
+## How they connect
+
+A `CoreIPAddressPool` or `CoreIPPrefixPool` takes your IPAM prefix objects as its `resources`. When an allocation is requested, the pool picks the next available address or subnet from those prefixes.
+
+```graphql
+mutation {
+  CoreIPAddressPoolCreate(data: {
+    name: {value: "Management IP Pool"},
+    default_address_type: {value: "IpamIPAddress"},
+    default_prefix_length: {value: 24},
+    resources: [{id: "<IpamIPPrefix-id>"}],
+    ip_namespace: {id: "default"}
+  }) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+The `resources` field references the `IpamIPPrefix` object you created in your IPAM. This is the only connection point between the two features — the pool reads from your IPAM data.
+
+## Next steps
+
+- [Allocate IP addresses](../resource-manager/allocate-ip-address.mdx) — create an IP address pool and allocate addresses to devices
+- [Allocate IP prefixes](../resource-manager/allocate-ip-prefix.mdx) — create a prefix pool and allocate subnets to customer services

@@ -20,13 +20,21 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 from infrahub import __version__, config
 from infrahub.api import router as api
-from infrahub.api.exception_handlers import generic_api_exception_handler
+from infrahub.api.admission.factory import build_admission_controller
+from infrahub.api.admission.middleware import AdmissionMiddleware
+from infrahub.api.admission.observers import (
+    AdmissionMetricsObserver,
+    SlotPoolMetricsObserver,
+    SustainedLoadMetricsObserver,
+)
+from infrahub.api.exception_handlers import generic_api_exception_handler, log_forwarding_exception_handler
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.initialization import initialization
+from infrahub.core.merge.failure_identifier import scan_for_failed_merges
 from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
-from infrahub.exceptions import Error, ValidationError
+from infrahub.exceptions import Error, ForwardableError, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
@@ -38,7 +46,9 @@ from infrahub.workers.dependencies import (
     get_cache,
     get_component,
     get_database,
+    get_http,
     get_installation_type,
+    get_log_forwarding_service,
     get_message_bus,
     get_workflow,
     set_component_type,
@@ -50,6 +60,18 @@ CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 async def app_initialization(application: FastAPI, enable_scheduler: bool = True) -> None:
     config.SETTINGS.initialize_and_exit()
     _validate_feature_selection(configuration=config.SETTINGS.active_settings)
+
+    # Build the admission controller once here, at startup, and publish it (with the kill-switch)
+    # on app.state for the outermost AdmissionMiddleware to read. Constructing it at the app entry
+    # point keeps settings resolution and the controller's object graph out of the middleware, and
+    # naming the metric sinks here keeps them out of the admission internals' import chain.
+    application.state.admission_controller = build_admission_controller(
+        settings=config.SETTINGS.active_settings,
+        admission_observers=[AdmissionMetricsObserver()],
+        slot_pool_observers=[SlotPoolMetricsObserver()],
+        retry_policy_observers=[SustainedLoadMetricsObserver()],
+    )
+    application.state.admission_enabled = config.SETTINGS.api.backpressure_enabled
 
     # Initialize trace
     if config.SETTINGS.trace.enable:
@@ -73,6 +95,8 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     message_bus = await get_message_bus()
     cache = await get_cache()
     component = await get_component()
+    http_service = get_http()
+    log_forwarding = get_log_forwarding_service()
     service = await InfrahubServices.new(
         cache=cache,
         database=database,
@@ -80,11 +104,19 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
         workflow=workflow,
         component=component,
         component_type=component_type,
+        http=http_service,
+        log_forwarding=log_forwarding,
     )
+    await log_forwarding.start()
     initialize_lock(service=service)
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
     async with application.state.db.start_session() as db:
         is_initial_setup = await initialization(db=db, add_database_indexes=True)
+        # Detect a failed merge, best effort to not block startup
+        try:
+            await scan_for_failed_merges(db=db, service=service)
+        except Exception:
+            log.exception("Failed-merge detection on startup failed; the recurring scan will retry")
 
     async with database.start_session() as dbs:
         await validate_graph_version(db=dbs)
@@ -93,7 +125,6 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     await service.initialize_workflow(is_initial_setup=is_initial_setup)
 
     application.state.service = service
-    application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
 
     if enable_scheduler:
         await service.scheduler.start_schedule()
@@ -157,8 +188,7 @@ async def logging_middleware(request: Request, call_next: Callable[[Request], Aw
     if trace_id:
         set_log_data(key="trace_id", value=trace_id)
 
-    response = await call_next(request)
-    return response
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -203,6 +233,12 @@ app.add_middleware(
     ),
 )
 
+# Registered last so it is the outermost middleware: load is shed before any downstream work
+# runs. Its controller and kill-switch are built during startup (see app_initialization) and read
+# from app.state per request, so the middleware itself builds nothing and depends on no settings.
+app.add_middleware(AdmissionMiddleware)
+
+app.add_exception_handler(ForwardableError, log_forwarding_exception_handler)
 app.add_exception_handler(Error, generic_api_exception_handler)
 app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_handler, http_code=400))
 app.add_exception_handler(ValidationError, partial(generic_api_exception_handler, http_code=400))
@@ -231,7 +267,7 @@ async def documentation() -> RedirectResponse:
 
 @app.get("/{rest_of_path:path}", include_in_schema=False)
 async def react_app(req: Request, rest_of_path: str) -> Response:  # noqa: ARG001
-    return templates.TemplateResponse("index.html", {"request": req})
+    return templates.TemplateResponse(request=req, name="index.html")
 
 
 def _validate_feature_selection(configuration: config.Settings) -> None:

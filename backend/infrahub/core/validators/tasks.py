@@ -46,14 +46,14 @@ async def schema_validate_migrations(message: SchemaValidateMigrationData) -> li
             node_schema=schema,
             schema_path=constraint.path,
             schema_branch=message.schema_branch,
+            node_uuids=constraint.node_uuids,
             database=await get_database(),
         )
 
-    results = [result async for _, result in batch.execute()]
-    return results
+    return [result async for _, result in batch.execute()]
 
 
-@task(  # type: ignore[arg-type]
+@task(
     name="schema-path-validate",
     task_run_name="Validate schema path {constraint_name} in {branch.name}",
     description="Validate if a given migration is compatible with the existing data",
@@ -67,6 +67,7 @@ async def schema_path_validate(
     schema_path: SchemaPath,
     schema_branch: SchemaBranch,
     database: InfrahubDatabase,
+    node_uuids: list[str] | None = None,
 ) -> SchemaValidatorPathResponseData:
     async with database.start_session(read_only=True) as db:
         constraint_request = SchemaConstraintValidatorRequest(
@@ -75,6 +76,7 @@ async def schema_path_validate(
             node_schema=node_schema,
             schema_path=schema_path,
             schema_branch=schema_branch,
+            node_uuids=node_uuids,
         )
 
         component_registry = get_component_registry()
@@ -83,7 +85,11 @@ async def schema_path_validate(
         )
         try:
             violations = await aggregated_constraint_checker.run_constraints(constraint_request)
-        except Exception as exc:
+        # Degrade any checker failure into a reported violation so schema validation fails visibly
+        # instead of crashing the task. NOTE: this also converts transient/infra errors into permanent
+        # violations on the first attempt, bypassing the configured task retries — narrowing the
+        # exception set is a separate follow-up.
+        except Exception as exc:  # noqa: BLE001
             violation = SchemaViolation(
                 node_id="unknown",
                 node_kind=node_schema.kind,

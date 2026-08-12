@@ -1,0 +1,35 @@
+---
+feature: IP Address Management (IPAM)
+pr: https://github.com/opsmill/infrahub/pull/9179
+description: |
+  Migrates IPAM documentation from the legacy topics/ipam.mdx single page
+  into a hub + spokes structure under docs/ipam/. Content is split into four
+  pages: an overview hub, IP Namespaces, Building your IPAM schema, and
+  Automate with Resource Manager. No guide page existed for IPAM previously.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /topics/ipam
+    to: /ipam/
+
+# Net-new pages introduced by this migration
+new_pages:
+  - path: /ipam/
+    title: IP Address Management (hub)
+  - path: /ipam/ip-namespaces
+    title: IP Namespaces
+  - path: /ipam/building-your-schema
+    title: Building your IPAM schema
+  - path: /ipam/automate-with-resource-manager
+    title: Automate with Resource Manager
+
+# Internal cross-link references in OTHER files that point at legacy paths
+cross_links_to_update:
+  - file: docs/docs/guides/resource-manager.mdx
+    line: 1149
+    current: ../topics/ipam.mdx
+    should_be: ../ipam/
+  - file: docs/docs/release-notes/infrahub/release-0_13.mdx
+    line: 45
+    current: ../../topics/ipam.mdx
+    should_be: ../../ipam/

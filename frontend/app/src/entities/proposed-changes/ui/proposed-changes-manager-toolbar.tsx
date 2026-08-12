@@ -1,14 +1,16 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, Tooltip } from "@infrahub/ui";
 import { useNavigate } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { ButtonWithTooltip } from "@/shared/components/ui/button";
+import { Row } from "@/shared/components/container";
 
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectItemsHeader } from "@/entities/nodes/object/ui/object-items-header";
-import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import { SortPicker } from "@/entities/nodes/sort/ui/sort-picker";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface ProposedChangesManagerToolbarProps {
   schema: ModelSchema;
@@ -25,27 +27,30 @@ export function ProposedChangesManagerToolbar({
     <>
       <ObjectItemsHeader schema={schema} />
 
-      <div className="flex h-14 items-center justify-between p-3">
-        <div className="flex shrink-0 items-center justify-between">
-          <FilterSearchInput schema={schema} />
+      <Row className="p-2">
+        <FilterSearchInput schema={schema} />
 
-          <ActiveObjectFilterTags schema={schema} className="mx-2" />
-        </div>
+        <SortPicker schema={schema} />
 
-        <div className="flex items-center gap-3">
-          <ButtonWithTooltip
+        <ActiveObjectFilterTags schema={schema} className="p-0" />
+
+        <Tooltip
+          message={
+            !permission.create.isAllowed ? (permission.create.message ?? undefined) : undefined
+          }
+        >
+          <Button
             size="sm"
-            disabled={!permission.create.isAllowed}
-            tooltipEnabled={!permission.create.isAllowed}
-            tooltipContent={permission.create.message ?? undefined}
-            onClick={() => navigate(constructPath("/proposed-changes/new"))}
+            isDisabledAndFocusable={!permission.create.isAllowed}
+            onPress={() => navigate(constructPath("/proposed-changes/new"))}
             data-testid="add-proposed-changes-button"
+            className="ml-auto"
           >
             <Icon icon="mdi:plus" className="text-sm" />
             New proposed change
-          </ButtonWithTooltip>
-        </div>
-      </div>
+          </Button>
+        </Tooltip>
+      </Row>
     </>
   );
 }

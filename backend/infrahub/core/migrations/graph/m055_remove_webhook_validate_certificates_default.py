@@ -23,7 +23,7 @@ class Migration055Query01(Query):
     name = "migration_055_01"
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["at"] = self.at.to_string()
         self.params["null_value"] = NULL_VALUE
 
@@ -77,10 +77,9 @@ SET new_hv.from = $at, new_hv.to = NULL
 
 class Migration055(GraphMigration):
     name: str = "055_remove_webhook_validate_certificates_default"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [Migration055Query01]
     minimum_version: int = 54
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-
-        return result
+        return MigrationResult()

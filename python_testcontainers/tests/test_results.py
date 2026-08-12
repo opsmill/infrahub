@@ -1,6 +1,7 @@
 import time
 
 import pytest
+
 from infrahub_testcontainers.measurements import (
     BRANCH_MERGE_TIME,
     SCRIPT_EXECUTION_TIME,

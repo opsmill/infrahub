@@ -4,13 +4,14 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m034_find_orphaned_schema_fields import Migration034
 from infrahub.core.migrations.shared import MigrationInput
+from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from tests.helpers.test_app import TestInfrahubApp
 
 
 class TestMigration034(TestInfrahubApp):
     async def test_migration_034(
-        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
     ) -> None:
         main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         await registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=main_schema_branch)

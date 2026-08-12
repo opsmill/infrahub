@@ -1,0 +1,30 @@
+---
+title: Event system
+---
+
+# Event system
+
+Infrahub emits a structured event every time a significant mutation happens in the system: a node is created, updated, or deleted; a branch is created, merged, rebased, or deleted; a group gains or loses a member; and many more. Events are the foundation of every event-driven feature — automation, webhook delivery, the activity log, and external SIEM forwarding all consume them.
+
+## Example event types
+
+A few common ones:
+
+- `infrahub.node.created`
+- `infrahub.node.updated`
+- `infrahub.node.deleted`
+- `infrahub.group.member_added`
+- `infrahub.group.member_removed`
+- `infrahub.branch.created`
+- `infrahub.branch.deleted`
+
+For the exhaustive list, see [Infrahub events](../reference/infrahub-events/overview).
+
+## What events feed
+
+Each event is processed by several consumers:
+
+- **Automation** — events drive [event rules](./event-rules) and [event actions](./event-actions) that you configure to react to specific conditions.
+- **[Activity log](../deploy-manage/run-observe/activity-log)** — every event lands in the chronological timeline of system changes.
+- **[Webhooks](../webhooks/overview)** — events can fire HTTP callbacks to external systems.
+- **[Log forwarding](../deploy-manage/run-observe/log-forwarding/overview)** — Enterprise deployments can stream events to external SIEM systems.

@@ -1,0 +1,66 @@
+---
+title: Immutable history
+---
+
+# Understanding immutable history in Infrahub
+
+At its foundation, Infrahub implements data immutability—a principle where information in the database cannot be deleted or modified in place. Instead, every change creates a new version while preserving all previous states. This approach mirrors version control systems like Git, providing a robust history of all infrastructure changes.
+
+This architectural decision provides several critical benefits for infrastructure management:
+
+- **Complete audit trail**: Every modification is permanently recorded with who, what, and when, providing full traceability
+- **Time travel queries**: Access the exact state of your infrastructure at any point in history to understand past configurations
+- **Risk-free rollbacks**: Return to any previous state without data loss when issues are detected
+- **Compliance and forensics**: Meet regulatory requirements with immutable change history for audits
+- **Parallel workflows**: Enable multiple teams to work on infrastructure changes simultaneously using branches
+- **Change verification**: Review proposed changes before committing them to production environments
+
+## Use cases
+
+Immutable history in Infrahub supports several crucial infrastructure management scenarios:
+
+- **Historical analysis**: View how your infrastructure looked at a specific point in time to troubleshoot issues or understand past decisions
+- **Compliance auditing**: Extract all changes performed within a specific time frame for regulatory compliance
+- **Change impact assessment**: Compare infrastructure states before and after significant changes
+- **Security investigation**: Trace unauthorized or unexpected changes to their source
+- **Knowledge preservation**: Understand why specific configuration decisions were made, even as team members change
+
+## Core concepts
+
+### Timestamps and commits
+
+Every change in Infrahub is organized into commits, each with an immutable timestamp. These commits capture:
+
+- The specific data that changed
+- Who made the change
+- When the change occurred
+
+This approach ensures a complete and coherent historical record that can never be rewritten or deleted.
+
+### Temporal queries
+
+Infrahub's temporal query system allows you to retrieve data from any point in time. When you query the database, you're not just accessing current data—you're accessing a specific moment in the database's history. By default, queries return the latest state, but you can specify any timestamp to see exactly how your infrastructure looked at that moment.
+
+This capability extends across all interfaces:
+
+- **Web UI**: Time navigation controls in the interface
+- **GraphQL API**: Timestamp parameters for historical queries
+- **REST API**: Temporal query support for retrieving historical data
+- **Python SDK**: Time-aware methods to access past states
+
+### Attribute-level change tracking
+
+Unlike systems that capture entire object snapshots, Infrahub's immutable history operates at the attribute level. This approach offers several advantages:
+
+- **Storage efficiency**: Only changed values are stored, not entire object copies
+- **Change clarity**: Easier identification of exactly what changed in each commit
+- **Performance optimization**: Faster queries and better scalability with large datasets
+
+## Implementation details
+
+There is a timestamp associated with every change in the database. This timestamp is immutable and cannot be changed or deleted. Every query to the database can be associated with a timestamp, allowing you to see the state of the database at that specific point in time.
+
+## Related topics
+
+- [Proposed Changes](../proposed-changes/overview.mdx)
+- [Branches](../branches/overview.mdx)

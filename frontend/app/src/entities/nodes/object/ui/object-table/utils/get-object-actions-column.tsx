@@ -1,13 +1,16 @@
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { ActionsHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/actions-header-cell";
 import { ObjectActionsCell } from "@/entities/nodes/object/ui/object-table/cells/object-actions-cell";
-import type { NodeObject } from "@/entities/nodes/types";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 
 const columnHelper = createColumnHelper<NodeObject>();
 
-export function getObjectActionsColumn(permission: Permission): ColumnDef<NodeObject> {
+export function getObjectActionsColumn(
+  permission: Permission,
+  options?: { extraRelationshipNames?: string[] }
+): ColumnDef<NodeObject> {
   return columnHelper.display({
     id: "actions",
     header: () => <ActionsHeaderCell />,
@@ -18,6 +21,7 @@ export function getObjectActionsColumn(permission: Permission): ColumnDef<NodeOb
           objectKind={row.original.__typename}
           objectLabel={row.getValue("id")}
           objectId={row.original.id}
+          extraRelationshipNames={options?.extraRelationshipNames}
         />
       );
     },

@@ -1,6 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 const EVENTS_QUERY = graphql(`
@@ -106,6 +104,52 @@ const EVENTS_QUERY = graphql(`
             artifact_definition_id
             checksum_previous
             storage_id_previous
+          }
+          ... on AccountLoggedInEventType {
+            account_name
+            account_type
+            auth_method
+            session_id
+            timestamp
+            client_ip
+            user_agent
+            groups
+            roles
+            identity_source
+          }
+          ... on AccountLoggedOutEventType {
+            account_name
+            logout_type
+            session_id
+            timestamp
+            client_ip
+            user_agent
+          }
+          ... on GroupAutoCreatedEventType {
+            idp
+            protocol
+            triggering_user_id
+            triggering_user_name
+            group_id
+            group_name
+            source_pattern
+            origin_value
+          }
+          ... on GroupAutoCreateRejectedEventType {
+            idp
+            protocol
+            triggering_user_id
+            triggering_user_name
+            rejected_claim_value
+          }
+          ... on GroupAutoCreateCappedEventType {
+            idp
+            protocol
+            triggering_user_id
+            triggering_user_name
+            cap_value
+            dropped_count
+            dropped_claims
           }
         }
       }

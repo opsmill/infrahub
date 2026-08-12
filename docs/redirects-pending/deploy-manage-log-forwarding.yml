@@ -1,0 +1,33 @@
+---
+feature: Deployment & Management — Log Forwarding (hub + Configure spoke)
+pr: TBD
+description: |
+  Moves two pages from legacy topic/guide locations into the new
+  deploy-manage/run-observe/log-forwarding/ sub-category:
+    - topics/log-forwarding.mdx  → run-observe/log-forwarding/index.mdx (hub)
+    - guides/log-forwarding.mdx  → run-observe/log-forwarding/configure-log-forwarding.mdx (spoke)
+  Also updates the internal link in deploy-manage/run-observe/activity-log.mdx
+  to point at the new hub instead of the legacy topics/log-forwarding.mdx path.
+  Original source files remain on disk during iteration.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/log-forwarding
+    to: /docs/deploy-manage/run-observe/log-forwarding/
+  - from: /docs/guides/log-forwarding
+    to: /docs/deploy-manage/run-observe/log-forwarding/configure-log-forwarding
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/deploy-manage/run-observe/log-forwarding/
+    title: Log forwarding (hub)
+  - path: /docs/deploy-manage/run-observe/log-forwarding/configure-log-forwarding
+    title: Configure log forwarding
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via redirect at runtime; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/topics/events.mdx
+    line: 31
+    current: ./log-forwarding.mdx
+    should_be: ../../deploy-manage/run-observe/log-forwarding/

@@ -1,12 +1,12 @@
 import { Skeleton } from "@/shared/components/loading/skeleton";
-import { NODE_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
+import { NODE_OBJECT } from "@/entities/nodes/object/domain/model/object-kinds";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useNodeLabel } from "@/entities/nodes/object/ui/queries/get-display-label.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 type NodeLabelProps = {
-  id?: string;
+  id?: string | null;
   kind?: string;
   branch?: string | null;
   className?: string;

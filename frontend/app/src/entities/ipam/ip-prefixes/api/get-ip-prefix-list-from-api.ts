@@ -1,23 +1,72 @@
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import {
   addAttributesToRequest,
   addFiltersToRequest,
+  addOrderByToRequest,
   addRelationshipsToRequest,
   dropIncludeAvailableWhenFalse,
 } from "@/shared/api/graphql/utils";
-import type { PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
+import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/ip-availability/domain/model/ip-availability-filter";
 import {
-  AVAILABLE_IP_FILTER_NAME,
   IP_PREFIX_AVAILABLE_KIND,
   IP_PREFIX_GENERIC,
-} from "@/entities/ipam/constants";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+} from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
+
+export interface GetIpPrefixListFromApiParams extends ContextParams, PaginationParams {
+  filters: Array<Filter>;
+  sort?: Sort[] | null;
+  objectKind: string;
+  attributes: Array<AttributeSchema>;
+  relationships: Array<RelationshipSchema>;
+  excludeIpAvailability: boolean;
+}
+
+export async function getIpPrefixListFromApi({
+  limit,
+  offset,
+  branchName,
+  atDate,
+  filters,
+  sort,
+  objectKind,
+  attributes,
+  relationships,
+  excludeIpAvailability,
+}: GetIpPrefixListFromApiParams) {
+  const queryString = (
+    excludeIpAvailability
+      ? buildGetIpPrefixListWithoutAvailabilityQuery
+      : buildGetIpPrefixListWithAvailabilityQuery
+  )({
+    limit,
+    offset,
+    filters,
+    sort,
+    objectKind,
+    attributes,
+    relationships,
+  });
+
+  const query = graphql(queryString);
+  return graphqlClient.query({
+    query,
+    context: {
+      branch: branchName,
+      date: atDate,
+    },
+  });
+}
 
 export interface BuildGetIpPrefixListQueryParams extends PaginationParams {
   filters?: Array<Filter>;
+  sort?: Sort[] | null;
   objectKind: string;
   attributes: Array<AttributeSchema>;
   relationships: Array<RelationshipSchema>;
@@ -40,6 +89,7 @@ export function buildGetIpPrefixListWithoutAvailabilityQuery({
   limit,
   offset,
   filters,
+  sort,
   objectKind,
   attributes,
   relationships,
@@ -54,6 +104,7 @@ export function buildGetIpPrefixListWithoutAvailabilityQuery({
           limit,
           offset,
           ...(cleanedFilters?.length ? addFiltersToRequest(cleanedFilters) : {}),
+          ...(sort?.length ? addOrderByToRequest(sort) : {}),
         },
         edges: {
           node: {
@@ -74,6 +125,7 @@ export function buildGetIpPrefixListWithAvailabilityQuery({
   limit,
   offset,
   filters,
+  sort,
   objectKind,
   attributes,
   relationships,
@@ -88,6 +140,7 @@ export function buildGetIpPrefixListWithAvailabilityQuery({
           [AVAILABLE_IP_FILTER_NAME]: true,
           ...(objectKind !== IP_PREFIX_GENERIC ? { kinds: [objectKind] } : {}),
           ...(filters ? addFiltersToRequest(filters) : {}),
+          ...(sort?.length ? addOrderByToRequest(sort) : {}),
         },
         edges: {
           node: {

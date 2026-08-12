@@ -16,7 +16,7 @@ class RemoveIsVisibleRelationshipQuery(Query):
     type: QueryType = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH ()-[rel:IS_VISIBLE]->()
         CALL (rel) {
@@ -43,6 +43,7 @@ class RemoveIsVisibleFromDiffsQuery(Query):
 
 class Migration049(GraphMigration):
     name: str = "049_remove_is_visible_relationship"
+    description: str = "N/A"
     minimum_version: int = 48
     queries: Sequence[type[Query]] = [RemoveIsVisibleRelationshipQuery, RemoveIsVisibleFromDiffsQuery]
 

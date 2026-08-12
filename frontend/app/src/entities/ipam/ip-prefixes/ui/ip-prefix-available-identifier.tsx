@@ -1,18 +1,17 @@
+import { Button, type ButtonProps, Sheet, Tooltip } from "@infrahub/ui";
 import { PlusIcon } from "lucide-react";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Row } from "@/shared/components/container";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
-import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
+import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 
 export interface IpPrefixAvailableIdentifierProps extends ButtonProps {
   ipPrefixNode: IpPrefixNode;
@@ -32,47 +31,36 @@ export function IpPrefixAvailableIdentifier({
 
   return (
     <>
-      <Tooltip
-        enabled={!isCreationAllowed}
-        content={!isCreationAllowed && permission.create.message}
-        side="right"
-      >
+      <Tooltip message={permission.create.message} placement="right">
         <Button
           variant="ghost"
           size="sm"
-          disabled={!isCreationAllowed}
+          isDisabledAndFocusable={!isCreationAllowed}
           className={classNames(
-            "gap-3.75 rounded-full px-2.5 pl-1.5 hover:bg-gray-400/10 hover:underline disabled:opacity-100",
+            "gap-2.5 rounded-full px-2.5 pl-1.5 text-neutral-400 hover:underline",
             className
           )}
-          onClick={() => setIsCreateFormOpen(true)}
+          onPress={() => setIsCreateFormOpen(true)}
           {...props}
         >
-          <div className="mr-px flex size-4 items-center justify-center">
-            <PlusIcon className="size-4 text-gray-300" />
-          </div>
+          <PlusIcon className="size-4 text-neutral-300" />
 
           <Row className="gap-2.5">
             {[...Array(ancestorsCount)].map((_, i) => (
-              <div className="size-1 rounded-full bg-gray-300" key={i} />
+              <div className="size-1 rounded-full bg-neutral-300" key={i} />
             ))}
             {ipPrefixNode.display_label}
           </Row>
         </Button>
       </Tooltip>
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={selectedSchema}
-            currentObjectLabel="New"
-            title={`Create ${selectedSchema.label}`}
-            subtitle={selectedSchema.description}
-          />
-        }
-        open={isCreateFormOpen}
-        setOpen={setIsCreateFormOpen}
-      >
+      <Sheet isOpen={isCreateFormOpen} onOpenChange={setIsCreateFormOpen}>
+        <SlideOverTitle
+          schema={selectedSchema}
+          currentObjectLabel="New"
+          title={`Create ${selectedSchema.label}`}
+          subtitle={selectedSchema.description}
+        />
         <ObjectForm
           onSuccess={() => {
             setIsCreateFormOpen(false);
@@ -93,7 +81,7 @@ export function IpPrefixAvailableIdentifier({
           onCancel={() => setIsCreateFormOpen(false)}
           kind={selectedSchema.kind!}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 }

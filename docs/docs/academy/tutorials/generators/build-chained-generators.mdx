@@ -1,0 +1,429 @@
+---
+title: Build chained generators
+---
+
+# Build chained generators
+
+By the end of this tutorial you will have wired two layers of [modular Generators](../../../generators/modular) together — fabric → pod → rack — using a checksum attribute and Infrahub's [event framework](../../../events/overview). You will have added a `GeneratorTarget` generic with a `checksum` attribute to your downstream node kinds, implemented a `GeneratorMixin` that writes the checksum to downstream targets as the last step of `generate()`, built downstream Generators that validate upstream completeness before doing any work, and created `CoreGeneratorAction` and `CoreNodeTriggerRule` objects so the chain runs automatically when an upstream layer finishes. You will leave with a concrete model of how a checksum makes Generator chaining idempotent — re-runs that produce the same output do not re-trigger the next layer.
+
+**Prerequisites:**
+
+- Familiarity with [Generators](../../../generators/overview) and [Build your first generator](./build-your-first-generator)
+- Understanding of the [modular Generators concept](../../../generators/modular)
+- Basic understanding of [event rules and actions](../../../events/overview)
+
+## How the pattern works
+
+**The problem:** Generator A creates objects that Generator B depends on. Generator B's targets exist before A runs, but B should only execute after A has finished its work.
+
+**The solution:** Generator A computes a hash (checksum) of all the node IDs it created or touched during execution. It writes this checksum to an attribute on Generator B's target objects. A `CoreNodeTriggerRule` watches for checksum changes on those targets and fires a `CoreGeneratorAction` to run Generator B.
+
+**Why a checksum?** It's idempotent. If Generator A runs again and produces the same output, the checksum doesn't change, so Generator B doesn't re-trigger. If the output differs (new nodes, removed nodes), the checksum changes and execution continues to the next layer. This makes re-runs safe by default.
+
+```text
+Generator A finishes
+  → calculates checksum of all created/touched node IDs
+  → writes checksum to each downstream target (e.g., pod.checksum = "abc123")
+  → Infrahub emits infrahub.node.updated event for each target
+     → CoreNodeTriggerRule matches: kind=NetworkPod, attribute=checksum, value_match=any
+        → CoreGeneratorAction runs Generator B for the updated target
+```
+
+## Step 1: Add a checksum attribute to target objects
+
+To signal downstream Generators, the target objects need an attribute that the upstream Generator can write to. The recommended approach is to define a schema generic with a `checksum` attribute and have target nodes inherit from it.
+
+### Define the generic
+
+```yaml
+# schemas/generator.yml
+version: "1.0"
+generics:
+  - name: Target
+    namespace: Generator
+    include_in_menu: false
+    attributes:
+      - name: checksum
+        kind: Text
+        optional: true
+```
+
+### Inherit from the generic
+
+Any node that an upstream Generator should be able to trigger inherits from `GeneratorTarget`:
+
+```yaml
+# schemas/logical_design.yml
+nodes:
+  - name: Pod
+    namespace: Network
+    inherit_from:
+      - NetworkBuildingBlock
+      - GeneratorTarget    # Adds the checksum attribute
+    # ... rest of the node definition
+```
+
+**Why a generic?** It keeps the pattern reusable. Any node kind that participates in a modular Generator setup just inherits from `GeneratorTarget` — no need to manually add checksum attributes to each schema.
+
+## Step 2: Calculate and write the checksum in your Generator
+
+After the Generator creates or modifies its objects, it needs to compute a checksum and write it to the downstream targets. This should be the **last step** in your `generate()` method — only signal completion after all work is done.
+
+### The checksum mixin
+
+The tracking context (`self.client.group_context`) automatically collects the IDs of all nodes and groups the Generator interacted with during execution. These make an ideal checksum input.
+
+```python
+# src/your_bundle/generator.py
+import hashlib
+
+
+class GeneratorMixin:
+    def calculate_checksum(self) -> str:
+        """Compute a checksum from all node IDs touched during this generator run."""
+        related_ids = (
+            self.client.group_context.related_group_ids
+            + self.client.group_context.related_node_ids
+        )
+        sorted_ids = sorted(related_ids)
+        joined = ",".join(sorted_ids)
+        return hashlib.sha256(joined.encode("utf-8")).hexdigest()
+```
+
+### Using the mixin in a Generator
+
+```python
+# generators/generate_fabric.py
+from infrahub_sdk.generator import InfrahubGenerator
+from your_bundle.generator import GeneratorMixin
+from your_bundle.protocols import NetworkPod
+
+
+class FabricGenerator(InfrahubGenerator, GeneratorMixin):
+    async def generate(self, data: dict) -> None:
+        fabric_id = data["NetworkFabric"]["edges"][0]["node"]["id"]
+
+        # ... create fabric-level objects (super spines, IP pools, etc.) ...
+
+        # Last step: signal downstream targets
+        await self.update_checksum(fabric_id)
+
+    async def update_checksum(self, fabric_id: str) -> None:
+        pods = await self.client.filters(kind=NetworkPod, parent__ids=[fabric_id])
+        checksum = self.calculate_checksum()
+
+        for pod in pods:
+            if pod.checksum.value != checksum:
+                pod.checksum.value = checksum
+                await pod.save(allow_upsert=True)
+```
+
+**Key points:**
+
+- The `if pod.checksum.value != checksum` guard prevents unnecessary saves — and unnecessary triggers — when the Generator is re-run with the same result.
+- `update_checksum()` must be the **last step** in `generate()`. Only signal downstream after all work is complete.
+- The checksum naturally reflects everything the Generator touched, because it's derived from the SDK tracking context.
+
+## Step 3: Validate upstream dependencies before generating
+
+In a modular Generator setup there is no central orchestrator sequencing execution. A checksum change fires a trigger per target — which means a downstream Generator could start before the upstream Generator has finished creating all its objects. Each Generator must therefore protect itself by validating that upstream work is complete before proceeding.
+
+Without this validation, a Generator might run against partial data and produce incomplete results or cryptic errors.
+
+### The pattern
+
+Before doing its work, a downstream Generator should:
+
+1. Query for expected upstream objects (for example, spine switches created by the pod Generator)
+2. Compare the actual count against the expected count from configuration
+3. Raise a clear `RuntimeError` if validation fails — don't proceed with partial data
+
+### Example: PodGenerator validating the fabric layer
+
+```python
+# generators/generate_pod.py
+from infrahub_sdk.generator import InfrahubGenerator
+from your_bundle.generator import GeneratorMixin
+from your_bundle.protocols import NetworkDevice
+
+
+class PodGenerator(InfrahubGenerator, GeneratorMixin):
+    async def generate(self, data: dict) -> None:
+        # ... extract pod data from query ...
+
+        # Guard: skip unsupported pod roles
+        if self.pod_role in EXCLUDED_POD_ROLES:
+            raise ValueError(
+                f"Cannot run pod generator on {self.pod_name}: "
+                f"{self.pod_role} is not supported by the generator!"
+            )
+
+        # Validate upstream: are all super spine switches present?
+        super_spine_switches = await self.client.filters(
+            kind=NetworkDevice, pod__ids=[fabric_pod_id], role__value="super_spine"
+        )
+        if self.expected_super_spine_count != len(super_spine_switches):
+            raise RuntimeError(
+                f"Cannot start pod generator on {self.pod_name}: "
+                f"the fabric doesn't seem to be fully generated yet!"
+            )
+
+        # Validate required configuration
+        if not self.pod_spine_switch_template:
+            raise RuntimeError(
+                f"Cannot start pod generator on {self.pod_name}: "
+                f"no spine switch template defined!"
+            )
+
+        # ... proceed with generation ...
+        # Last step: write checksum to downstream targets
+        await self.update_checksum(self.pod_id)
+```
+
+### Example: RackGenerator validating the pod layer
+
+```python
+# generators/generate_rack.py
+from infrahub_sdk.generator import InfrahubGenerator
+from your_bundle.protocols import NetworkDevice
+
+
+class RackGenerator(InfrahubGenerator):
+    async def generate(self, data: dict) -> None:
+        # ... extract rack data from query ...
+
+        # Validate upstream: are all spine switches present?
+        spine_switches = await self.client.filters(
+            kind=NetworkDevice, pod__ids=[self.pod_id], role__value="spine"
+        )
+        if self.expected_spine_count != len(spine_switches):
+            raise RuntimeError(
+                f"Cannot start rack generator on {self.rack_name}: "
+                f"the pod doesn't seem to be fully generated!"
+            )
+
+        # ... proceed with generation ...
+```
+
+### Why this matters
+
+- **Checksum fires per-target.** A pod's checksum could update before the fabric Generator has created all super spines. Without validation, the pod Generator would run against incomplete data.
+- **Compare count vs. expected.** The target's schema typically stores the expected count (for example, `amount_of_super_spines` on the fabric node). Query for actual objects and compare.
+- **Fail with a clear error.** Use `RuntimeError` with a message that identifies the target and what's missing. This shows up in task logs and makes debugging straightforward.
+- **This replaces orchestration.** Each Generator polices itself. No need for a central controller to sequence execution — if the upstream layer isn't ready, the Generator fails safely and will succeed on the next trigger.
+
+### Two types of validation
+
+| Type                       | What to check                                                | Example                                                                   |
+|----------------------------|--------------------------------------------------------------|---------------------------------------------------------------------------|
+| **Upstream completeness**  | Are the expected objects present?                            | Compare `len(super_spine_switches)` against `expected_super_spine_count`  |
+| **Required configuration** | Are necessary templates, pools, or settings defined?         | Check that `pod_spine_switch_template` is not `None`                      |
+
+Both checks should happen at the top of `generate()`, before any objects are created.
+
+## Step 4: Create trigger rules and actions
+
+With the checksum being written to downstream targets, you need trigger rules to detect the change and fire the next Generator. You can define these as object files in your repository (recommended) or create them via the UI.
+
+### Using object files (recommended)
+
+Object files make trigger configuration version-controlled alongside your Generators.
+
+#### Define Generator actions
+
+```yaml
+# objects/triggers.yml
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreGeneratorAction
+  data:
+    - name: run-pod-generator
+      generator: generate-pod
+    - name: run-rack-generator
+      generator: generate-rack
+```
+
+#### Define trigger rules
+
+```yaml
+# objects/triggers.yml (continued)
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreNodeTriggerRule
+  data:
+    - name: trigger-pod-generator-checksum
+      branch_scope: "other_branches"
+      node_kind: NetworkPod
+      mutation_action: "updated"
+      action: run-pod-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: checksum
+            value_match: any
+
+    - name: trigger-rack-generator-checksum
+      branch_scope: "other_branches"
+      node_kind: LocationRack
+      mutation_action: "updated"
+      action: run-rack-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: checksum
+            value_match: any
+```
+
+#### Reference in .infrahub.yml
+
+```yaml
+# .infrahub.yml
+objects:
+  - file_path: objects/triggers.yml
+```
+
+**Key configuration explained:**
+
+| Field             | Value                | Why                                                                                                                                                                                                                                                                                  |
+|-------------------|----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `branch_scope`    | `"other_branches"`   | **Recommended.** Triggers only fire on non-default branches (within proposed changes). This means all Generators run in a branch where results can be reviewed before merging. Alternatives: `"all_branches"` (fires everywhere) or `"default_branch"` (fires only on main).       |
+| `mutation_action`  | `"updated"`          | Fires when the target node is updated (the checksum write counts as an update).                                                                                                                                                                                                      |
+| `value_match`      | `any`                | Fires on any change to the attribute, regardless of the new value.                                                                                                                                                                                                                   |
+| `action`           | name of the action   | References the `CoreGeneratorAction` by name.                                                                                                                                                                                                                                        |
+
+Trigger rules loaded from object files are **active by default** — no separate activation step is needed.
+
+### Beyond checksums: triggering on user-facing attributes
+
+The checksum handles the connection between Generators, but you may also want Generators to re-run when a user changes a relevant attribute directly. For example, if a user changes the number of spines on a pod:
+
+```yaml
+    - name: trigger-pod-generator-amount-of-spines
+      branch_scope: "other_branches"
+      node_kind: NetworkPod
+      mutation_action: "updated"
+      action: run-pod-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: amount_of_spines
+            value_match: any
+
+    - name: trigger-pod-generator-role
+      branch_scope: "other_branches"
+      node_kind: NetworkPod
+      mutation_action: "updated"
+      action: run-pod-generator
+      matches:
+        kind: CoreNodeTriggerAttributeMatch
+        data:
+          - attribute_name: role
+            value_match: any
+```
+
+This gives you a complete event-driven system: downstream Generators run automatically when upstream Generators finish, **and** when users make relevant changes in the UI.
+
+### Repeat for each layer
+
+For each pair of (upstream Generator, downstream Generator), define one `CoreGeneratorAction` and one or more `CoreNodeTriggerRule` entries. A three-layer setup (fabric to pod to rack) needs two actions and at least two trigger rules.
+
+### Using the UI (alternative)
+
+If you prefer to create trigger rules via the Infrahub UI, follow the [creating event trigger rules and actions](../../../events/overview) guide. The configuration is the same:
+
+1. Create a **Generator Action** (Actions > Create > Generator Action) pointing to the downstream Generator
+2. Create a **Node Trigger Rule** (Trigger Rules > Create > Node Trigger) for the downstream target kind, with mutation action `updated`
+3. Add an **Attribute Match** on the `checksum` attribute with value match `any`
+4. Set the trigger to **active**
+
+UI-created triggers work identically but aren't version-controlled.
+
+## Step 5: Disable CI-based execution (optional)
+
+Generators that are entirely event-driven should have their CI execution disabled to avoid double-runs:
+
+```yaml
+# .infrahub.yml
+generator_definitions:
+  - name: generate-pod
+    file_path: "./generators/generate_pod.py"
+    query: generate_pod
+    targets: pods
+    parameters:
+      pod_name: name__value
+    class_name: PodGenerator
+    convert_query_response: false
+    execute_in_proposed_change: false    # Triggered by events, not CI
+    execute_after_merge: false           # Triggered by events, not CI
+```
+
+Set both `execute_in_proposed_change` and `execute_after_merge` to `false` for any Generator that's triggered via the checksum/trigger pattern. This prevents the Generator from running both as a CI check and as an event-triggered action.
+
+:::info
+This is a design choice. Some teams keep CI execution enabled for the first Generator (the entry point) and only use event triggers for downstream Generators.
+:::
+
+## Step 6: Test the modular setup
+
+### Run the first Generator manually
+
+```bash
+infrahubctl generator generate-fabric --branch=my-test-branch fabric_name=my-fabric
+```
+
+### Verify the checksum was written
+
+Check the downstream targets in the UI or via GraphQL:
+
+```graphql
+query {
+  NetworkPod(parent__name__value: "my-fabric") {
+    edges {
+      node {
+        name { value }
+        checksum { value }
+      }
+    }
+  }
+}
+```
+
+You should see a checksum value on each pod.
+
+### Verify downstream Generators triggered
+
+1. Check if the downstream Generator ran by looking at the objects it should have created
+2. Inspect the task logs in Infrahub for Generator execution entries
+3. For each subsequent layer, verify that:
+    - The upstream Generator wrote checksums to downstream targets
+    - The trigger fired and the next Generator ran
+    - The expected objects were created
+
+## Troubleshooting
+
+| Symptom                                    | Likely cause                                                                                       | Fix                                                                                                                                                                                                            |
+|--------------------------------------------|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Trigger doesn't fire                       | Trigger rule is not active, or `branch_scope` doesn't match the branch you're working on           | Check trigger rule status. If `branch_scope` is `other_branches`, the trigger won't fire on the default branch — work in a non-default branch.                                                                 |
+| Generator runs but creates nothing         | Downstream Generator's upstream validation is failing                                              | Check Generator logs. The Generator likely detects that upstream objects are incomplete and raises an error.                                                                                                    |
+| Generator runs in a loop                     | The downstream Generator modifies an attribute that triggers the upstream Generator                 | Ensure Generators only write checksums to *downstream* targets, never upstream. The checksum guard (`if checksum != old`) should also prevent repeated triggers for the same output.                            |
+| Checksum unchanged after re-run            | Generator produced the same output as before                                                       | This is **expected behavior** — execution correctly stops when nothing changed.                                                                                                                              |
+| Trigger fires but Generator errors         | Generator definition name doesn't match the action's Generator reference                           | Verify that the `generator` field in `CoreGeneratorAction` matches the `name` field in your Generator definition in `.infrahub.yml`.                                                                           |
+| Generator fails with "not fully generated" | Upstream validation caught incomplete data — the upstream Generator hasn't finished yet             | This is the validation from Step 3 working as intended. The Generator will succeed on the next trigger once the upstream layer is complete.                                                                     |
+
+## What you learned
+
+You now have a working two-stage Generator chain:
+
+- A `GeneratorTarget` generic that adds a `checksum` attribute to any downstream node kind
+- A `GeneratorMixin` that derives a checksum from the SDK tracking context and writes it to downstream targets only as the last step of `generate()`
+- Downstream Generators that validate upstream completeness before doing any work, failing fast and clearly when the upstream layer isn't ready
+- `CoreGeneratorAction` and `CoreNodeTriggerRule` objects loaded from object files, scoped to non-default branches so cascades run inside proposed changes
+
+## Next steps
+
+- See [best practices for modular Generators](../../../generators/modular-best-practices) for additional debugging techniques, pool scoping strategies, and operational guidance for running cascades in production
+- Revisit [modular Generators](../../../generators/modular) for the conceptual framing of why splitting Generators across layers is worth the overhead

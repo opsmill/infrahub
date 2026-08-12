@@ -1,0 +1,56 @@
+---
+feature: Events
+pr: TBD
+description: |
+  Events feature migration to hub + 3 spokes (matching Generators / Profiles
+  precedent). Per the May 6 Wim docs review, the existing three pages
+  (`topics/events`, `topics/event-actions`, `guides/events-rules-actions`)
+  didn't explain the event system holistically. The new structure introduces
+  the three components (events, event rules, event actions) at the hub level
+  and gives each component a dedicated concept + how-to spoke page.
+
+  - topics/events.mdx → events/event-system.mdx (spoke 1)
+  - topics/event-actions.mdx (rules + actions concepts) → split between
+    events/event-rules.mdx (rules concept + match filters) and
+    events/event-actions.mdx (actions concept)
+  - guides/events-rules-actions.mdx (UI walkthroughs) → split between
+    events/event-rules.mdx (trigger rule walkthroughs) and
+    events/event-actions.mdx (action walkthroughs); high-level "combining
+    the three" content moved to the hub
+  - events/index.mdx is net-new content: 3-component intro + worked workflows
+
+  No Academy tutorial in this PR. Per the call: deeper-dive use-case tutorials
+  (auto-add to group, auto-trigger generator) are deferred future work.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/events
+    to: /docs/events/event-system
+  - from: /docs/topics/event-actions
+    to: /docs/events/
+  - from: /docs/guides/events-rules-actions
+    to: /docs/events/
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/events/
+    title: Events (hub)
+  - path: /docs/events/event-system
+    title: Event system
+  - path: /docs/events/event-rules
+    title: Event rules
+  - path: /docs/events/event-actions
+    title: Event actions
+
+# Internal cross-link references in OTHER files that point at legacy paths.
+# Two inbound links were updated in this PR (not deferred to cleanup):
+# - docs/docs/overview/next-steps.mdx (was guides/events-rules-actions)
+# - docs/docs/reference/infrahub-events.mdx (was topics/events)
+#
+# Excluded from rewrite (legacy files, will be deleted at cleanup):
+cross_links_to_update:
+  excluded:
+    - docs/docs/topics/events.mdx (legacy)
+    - docs/docs/topics/event-actions.mdx (legacy)
+    - docs/docs/guides/events-rules-actions.mdx (legacy)
+    - docs/docs/guides/chaining-generators.mdx (legacy from prior Generators migration; will be deleted in same cleanup pass)

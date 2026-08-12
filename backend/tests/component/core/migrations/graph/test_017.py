@@ -1,18 +1,17 @@
 from infrahub.core import registry
-from infrahub.core.migrations.graph import Migration017
+from infrahub.core.branch.models import Branch
+from infrahub.core.migrations.graph.m017_add_core_profile import Migration017
 from infrahub.core.migrations.shared import MigrationInput
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
 async def test_migration_017(
     db: InfrahubDatabase,
-    default_branch,
-    register_internal_models_schema,
+    default_branch: Branch,
+    register_internal_models_schema: SchemaBranch,
 ) -> None:
-    """
-    Test migration correctly adds CoreProfile schema node.
-    """
-
+    """Test migration correctly adds CoreProfile schema node."""
     item = registry.schema.get(name="CoreProfile")
     # Make sure to remove CoreProfile from database if it is there
     if item.id is not None:

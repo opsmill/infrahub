@@ -1,0 +1,23 @@
+---
+title: Single sign-on (SSO)
+---
+
+# Single sign-on (SSO)
+
+Single sign-on (SSO) allows users to authenticate once with an external identity provider and gain access to Infrahub without needing separate credentials. Infrahub integrates with popular identity providers — Microsoft Entra ID, Okta, Google Workspace, and others — through industry-standard protocols.
+
+Infrahub supports two authentication protocols:
+
+- **OpenID Connect (OIDC)**: Recommended for new implementations. Provides standardized user Profile information on top of OAuth 2.0. Most modern identity providers support OIDC.
+- **OAuth 2.0**: Widely supported authorization protocol. May require additional configuration for user Profile mapping.
+
+Infrahub provides six configuration slots for identity providers — three OIDC slots (PROVIDER1, PROVIDER2, GOOGLE) and three OAuth2 slots (PROVIDER1, PROVIDER2, GOOGLE). This allows multiple identity providers to be configured simultaneously.
+
+When SSO is enabled, users are redirected to the identity provider's login screen. After successful authentication, they are returned to Infrahub and a corresponding local user record is created automatically if one does not already exist.
+
+For background on authentication concepts and the differences between OIDC and OAuth2, see [Authentication](../authentication.mdx).
+
+## SSO guides
+
+- [Configure SSO](./configure-sso.mdx) — Set up a new SSO integration step by step
+- [Advanced SSO configuration](./advanced-sso.mdx) — Multiple identity providers and group mapping

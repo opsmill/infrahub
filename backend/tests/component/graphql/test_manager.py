@@ -47,7 +47,6 @@ async def test_generate_graphql_object(
     assert issubclass(result.reference, InfrahubObject)
     assert result.reference._meta.name == "TestCriticality"
     assert sorted(result.reference._meta.fields.keys()) == [
-        "_updated_at",
         "color",
         "description",
         "display_label",
@@ -82,7 +81,6 @@ async def test_generate_graphql_object_with_interface(
     assert issubclass(result.reference, InfrahubObject)
     assert result.reference._meta.name == "TestCar"
     assert sorted(result.reference._meta.fields.keys()) == [
-        "_updated_at",
         "description",
         "display_label",
         "hfid",
@@ -145,7 +143,6 @@ async def test_generate_object_types(
     assert issubclass(relationship_property, graphene.ObjectType)
 
     assert sorted(car._meta.fields.keys()) == [
-        "_updated_at",
         "color",
         "display_label",
         "driver",
@@ -173,7 +170,6 @@ async def test_generate_object_types(
     assert str(nested_edged_car._meta.fields["properties"].type) == "RelationshipProperty"
 
     assert sorted(person._meta.fields.keys()) == [
-        "_updated_at",
         "cars",
         "cars_driven",
         "display_label",

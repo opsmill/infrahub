@@ -21,6 +21,7 @@ def generate_code_verifier() -> str:
 
     Returns:
         A 43-character URL-safe string (256 bits of entropy).
+
     """
     return secrets.token_urlsafe(32)
 
@@ -36,6 +37,7 @@ def compute_code_challenge(code_verifier: str) -> str:
 
     Returns:
         Base64URL-encoded SHA256 hash without padding.
+
     """
     digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
     return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")

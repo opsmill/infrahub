@@ -20,7 +20,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.server import app, lifespan
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
-from infrahub.workers.dependencies import build_database
+from infrahub.workers.dependencies import build_database, clear_singletons
 from infrahub.workflows.initialization import setup_task_manager
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_app import TestInfrahubApp
@@ -76,6 +76,12 @@ class TestInfrahubClient:
         async def _db(singleton: bool = True) -> InfrahubDatabase:
             return db_class
 
+        # Each class gets its own db_class with its own driver, and lifespan shutdown
+        # closes that driver. Cached singletons (notably the InfrahubComponent) hold
+        # references to the prior class's driver; drop them so the next lifespan()
+        # rebuilds them against the current db_class.
+        clear_singletons()
+
         with dependency_provider.scope(build_database, _db):
             async with lifespan(app):
                 yield InfrahubTestClient(app=app)
@@ -117,14 +123,12 @@ class TestInfrahubClient:
         await obj.save(db=db)
 
         # Initialize the repository on the file system
-        repo = await InfrahubRepository.new(
+        return await InfrahubRepository.new(
             id=obj.id,
             name=git_repo_infrahub_demo_edge_integration.name,
             location=git_repo_infrahub_demo_edge_integration.path,
             client=client,
         )
-
-        return repo
 
     async def test_import_schema_files(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
@@ -188,22 +192,15 @@ class TestInfrahubClient:
         with pytest.raises(NodeNotFoundError):
             await client.get(kind=CoreGraphQLQuery, id=obj.id)
 
-    async def test_import_all_python_files(
+    async def test_import_python_definitions(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99: Node
     ) -> None:
-        for group in ["backbone_services", "maintenance_circuits", "provisioning_circuits", "upstream_interfaces"]:
-            obj = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
-            await obj.new(
-                db=db,
-                name=group,
-            )
-            await obj.save(db=db)
-
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
         assert config_file
 
-        await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_check_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         check_definitions = await client.all(kind=CoreCheckDefinition)
         assert len(check_definitions) >= 1
@@ -213,7 +210,8 @@ class TestInfrahubClient:
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
         nbr_relationships_before = await count_relationships(db=db)
-        await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_check_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
         assert await count_relationships(db=db) == nbr_relationships_before
 
         # 1. Modify an object to validate if its being properly updated
@@ -255,7 +253,8 @@ class TestInfrahubClient:
         )
         await obj2.save(db=db)
 
-        await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_check_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         modified_check0 = await client.get(kind=CoreCheckDefinition, id=check_definitions[0].id)
         assert modified_check0.timeout.value == check_timeout_value_before_change
@@ -315,6 +314,57 @@ class TestInfrahubClient:
 
         with pytest.raises(NodeNotFoundError):
             await client.get(kind=CoreTransformJinja2, id=obj.id)
+
+    async def test_import_deletes_check_definition_pinned_by_validator(
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99: Node
+    ) -> None:
+        """Removing a check definition still referenced by a user validator must not abort the import.
+
+        A check evaluated by a proposed change is pinned by a CoreUserValidator through the
+        mandatory check_definition relationship. When the check is dropped from the repository
+        config, the import deletes it; the repository ownership cascade removes the pinning
+        validator too, so the delete succeeds and the import completes instead of aborting.
+        """
+        commit = repo.get_commit_value(branch_name="main")
+        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        assert config_file
+
+        # A check definition present in the graph but not in the repository config, so the
+        # reconcile treats it as removed and deletes it.
+        check = await Node.init(schema=InfrahubKind.CHECKDEFINITION, db=db)
+        await check.new(
+            db=db,
+            name="pinned_check",
+            query=str(query_99.id),
+            file_path="check.py",
+            class_name="MyCheck",
+            repository=str(repo.id),
+        )
+        await check.save(db=db)
+
+        # A historical proposed change and the user validator that evaluated the check. The
+        # validator pins the check through the mandatory check_definition relationship.
+        proposed_change = await Node.init(schema=InfrahubKind.PROPOSEDCHANGE, db=db)
+        await proposed_change.new(db=db, name="pinning-change", source_branch="feature", destination_branch="main")
+        await proposed_change.save(db=db)
+
+        validator = await Node.init(schema=InfrahubKind.USERVALIDATOR, db=db)
+        await validator.new(
+            db=db, proposed_change=proposed_change.id, check_definition=check.id, repository=str(repo.id)
+        )
+        await validator.save(db=db)
+
+        # Drop every check definition from the config so the pinned check is the only entry the
+        # reconcile deletes.
+        config_file.check_definitions = []
+
+        # The import completes; the delete cascades to the pinning validator.
+        await repo.import_python_check_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+
+        with pytest.raises(NodeNotFoundError):
+            await client.get(kind=CoreCheckDefinition, id=check.id)
+        with pytest.raises(NodeNotFoundError):
+            await client.get(kind=InfrahubKind.USERVALIDATOR, id=validator.id)
 
 
 class TestGetMissingFile(TestInfrahubApp):

@@ -10,6 +10,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
 from infrahub.events import EventMeta
+from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
@@ -104,11 +105,12 @@ class UpdateDisplayLabel(Mutation):
                 changelog=target_node.node_changelog,
                 fields=["display_label"],
                 meta=EventMeta(
-                    context=graphql_context.get_context(),
+                    context=graphql_context.to_event_context(),
                     initiator_id=WORKER_IDENTITY,
                     request_id=request_id,
                     account_id=graphql_context.active_account_session.account_id,
                     branch=graphql_context.branch,
+                    origin=NodeMutationOrigin.LIVE,
                 ),
             )
             await graphql_context.active_service.event.send(event=event)

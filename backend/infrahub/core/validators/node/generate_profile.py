@@ -28,7 +28,7 @@ class NodeGenerateProfileValidatorQuery(SchemaValidatorQuery):
         super().__init__(*args, **kwargs)
         self.profile_kind = f"Profile{self.node_schema.kind}"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_params)
 
@@ -60,6 +60,9 @@ class NodeGenerateProfileValidatorQuery(SchemaValidatorQuery):
 
 class NodeGenerateProfileChecker(ConstraintCheckerInterface):
     query_classes = [NodeGenerateProfileValidatorQuery]
+    # Only fires when generate_profile is turned off while profiles still exist; instance data
+    # changes cannot flip that schema flag, so a data diff can never trigger it.
+    triggered_by_data_change = False
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db

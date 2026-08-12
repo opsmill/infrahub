@@ -37,7 +37,7 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
     name = "migration_013_convert_repository_with_cred"
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         at = Timestamp()
         filters, params = at.get_query_filter_path()
 
@@ -166,7 +166,7 @@ class Migration013ConvertCoreRepositoryWithoutCred(Query):
     name = "migration_013_convert_repository_without_cred"
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         at = Timestamp()
         filters, params = at.get_query_filter_path()
 
@@ -293,6 +293,7 @@ class Migration013AddInternalStatusData(AttributeAddQuery):
 
 class Migration013(GraphMigration):
     name: str = "013_convert_git_password_credential"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [
         Migration013ConvertCoreRepositoryWithCred,
         Migration013ConvertCoreRepositoryWithoutCred,
@@ -304,6 +305,4 @@ class Migration013(GraphMigration):
     minimum_version: int = 12
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-
-        return result
+        return MigrationResult()

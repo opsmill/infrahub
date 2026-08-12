@@ -1,0 +1,18 @@
+---
+queries:
+  - name: person_section
+    file_path: templates/person_section.gql
+
+jinja2_transforms:
+  - name: person_section_transform
+    query: person_section
+    template_path: templates/person_section.j2
+
+artifact_definitions:
+  - name: "Section config"
+    artifact_name: "person-section"
+    parameters:
+      name: "name__value"
+    content_type: "text/plain"
+    targets: "people"
+    transformation: "person_section_transform"

@@ -1,22 +1,22 @@
-import { keepPreviousData } from "@tanstack/react-query";
-import { useLocation, useParams } from "react-router";
-
-import { constructPath } from "@/shared/api/rest/fetch";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbItemError,
   BreadcrumbItemLoading,
   Breadcrumbs,
-} from "@/shared/components/aria/breadcrumbs";
-import { MenuTrigger } from "@/shared/components/aria/menu";
-import { Popover } from "@/shared/components/aria/popover";
-import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
+  MenuTrigger,
+  Popover,
+} from "@infrahub/ui";
+import { keepPreviousData } from "@tanstack/react-query";
+import { useLocation, useParams } from "react-router";
+
+import { constructPath } from "@/shared/api/rest/fetch";
 
 import { BreadcrumbSelectorTrigger } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-selector-trigger";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbProposedChanges() {
@@ -36,7 +36,7 @@ export function BreadcrumbProposedChanges() {
 }
 
 function BreadcrumbProposedChangeSelector({ proposedChangeId }: { proposedChangeId: string }) {
-  const { schema } = useSchema(PROPOSED_CHANGES_OBJECT);
+  const { schema } = useSchema(PROPOSED_CHANGE_OBJECT);
   const { data, isPending, error } = useGetObject(
     {
       objectSchema: schema!,
@@ -61,8 +61,8 @@ function BreadcrumbProposedChangeSelector({ proposedChangeId }: { proposedChange
       <MenuTrigger>
         <BreadcrumbSelectorTrigger>{getNodeLabel(data)}</BreadcrumbSelectorTrigger>
 
-        <Popover className="bg-stone-100/50 backdrop-blur">
-          <ObjectAutocomplete className="max-h-58" objectKind={PROPOSED_CHANGES_OBJECT} />
+        <Popover>
+          <ObjectAutocomplete className="max-h-58" objectKind={PROPOSED_CHANGE_OBJECT} />
         </Popover>
       </MenuTrigger>
     </Breadcrumb>

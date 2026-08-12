@@ -17,7 +17,7 @@ class DeleteDuplicatedAttributesQuery(Query):
     insert_return: bool = False
     insert_limit: bool = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // -------------
 // get all the Nodes linked to multiple Attributes with the same name to drastically reduce the search space
@@ -74,6 +74,7 @@ DELETE dup_attr_to_delete
 
 class Migration040(GraphMigration):
     name: str = "040_duplicated_attributes"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [DeleteDuplicatedAttributesQuery]
     minimum_version: int = 39
 

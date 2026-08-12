@@ -23,8 +23,7 @@ def test_proposed_state_transitions() -> None:
 
 
 def test_infrahubkind_constant_for_all_core_schema_nodes() -> None:
-    "There should be an InfrahubKind constant defined for all the nodes in the core schema"
-
+    """There should be an InfrahubKind constant defined for all the nodes in the core schema."""
     expected_constants = sorted([node["name"].upper() for node in core_models["nodes"]])
 
     for constant in expected_constants:

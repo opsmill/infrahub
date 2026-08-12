@@ -20,7 +20,7 @@ class TestDiffInit:
         self.branch.created_at = self.created_at_str
         self.branch.get_origin_branch.return_value = self.origin_branch
 
-    async def __call_system_under_test(self, branch, **kwargs):
+    async def __call_system_under_test(self, branch: Branch, **kwargs):
         return await BranchDiffer.init(self.db, branch, **kwargs)
 
     async def test_diff_from_required_for_default_branch(self) -> None:

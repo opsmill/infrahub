@@ -1,15 +1,50 @@
+import { DEFAULT_PRIORITY, PRIORITY_HEADER } from "@/shared/api/priority";
+import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { QSP } from "@/shared/config/qsp";
 
-import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
+import { getAccessToken } from "@/entities/authentication/api/token-storage";
+
+// REST error envelope item. The REST and GraphQL envelopes carry different
+// `code` shapes and must not be conflated:
+//
+//   REST     extensions.code = number  (HTTP status, e.g. 401)
+//   GraphQL  extensions.code = string  (catalogue identifier, e.g. "TOKEN_EXPIRED")
+//            extensions.http_status = number (the HTTP status lives here instead)
+//
+// The GraphQL counterpart lives at @/shared/api/errors (`CatalogueError`).
+// If REST endpoints ever migrate to the catalogue, this type becomes a
+// discriminated union — until then, keep the two shapes distinct.
+export type RestErrorItem = { message: string; extensions: { code: number } };
+
+// Typed wrapper around a REST envelope that carries `errors`. `status`
+// is the HTTP status — usually non-2xx, but may also be 2xx for SSO-style
+// "200 with errors" responses (see pages/auth-callback.tsx), so callers
+// must not assume `status >= 400`.
+export class FetchError extends Error {
+  status: number;
+  errors?: RestErrorItem[];
+
+  constructor(status: number, errors?: RestErrorItem[]) {
+    super(`Request failed with status ${status}`);
+    this.name = "FetchError";
+    this.status = status;
+    this.errors = errors;
+  }
+}
 
 export const fetchUrl = async (url: string, payload?: RequestInit) => {
-  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const localToken = getAccessToken();
+
+  // Only stamp X-Priority for the Infrahub API. Compare URL origins so the header can never leak to an external host.
+  const isInfrahubApiOrigin =
+    new URL(url, INFRAHUB_API_SERVER_URL).origin === new URL(INFRAHUB_API_SERVER_URL).origin;
 
   const newPayload = {
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
       ...(localToken ? { authorization: `Bearer ${localToken}` } : {}),
+      ...(isInfrahubApiOrigin ? { [PRIORITY_HEADER]: DEFAULT_PRIORITY } : {}),
       ...payload?.headers,
     },
     method: payload?.method ?? "GET",
@@ -22,7 +57,27 @@ export const fetchUrl = async (url: string, payload?: RequestInit) => {
 
   const rawResponse = await fetch(url, newPayload);
 
-  return rawResponse?.json();
+  if (!rawResponse.ok) {
+    // Try to surface the REST error envelope ({errors: [...]}) so callers
+    // (e.g. SSO auth-callback → /login) can render server-provided messages.
+    // Falls back to a bare FetchError when the body is missing or not JSON.
+    let errors: RestErrorItem[] | undefined;
+    try {
+      const body = (await rawResponse.json()) as unknown;
+      if (
+        body &&
+        typeof body === "object" &&
+        Array.isArray((body as { errors?: unknown }).errors)
+      ) {
+        errors = (body as { errors: RestErrorItem[] }).errors;
+      }
+    } catch {
+      // Body wasn't JSON — leave errors undefined.
+    }
+    throw new FetchError(rawResponse.status, errors);
+  }
+
+  return rawResponse.json();
 };
 
 const QSP_TO_INCLUDE = [QSP.BRANCH, QSP.DATETIME];

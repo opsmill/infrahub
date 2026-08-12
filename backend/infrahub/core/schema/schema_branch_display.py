@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -23,7 +23,7 @@ class TemplateLabel:
 
     @property
     def has_related_components(self) -> bool:
-        """Indicate if the associated template use variables from relationships"""
+        """Indicate if the associated template use variables from relationships."""
         return len(self.relationships) > 0
 
     def get_hash(self) -> str:
@@ -69,7 +69,6 @@ class DisplayLabels:
 
     def register_template_schema_path(self, kind: str, schema_path: SchemaAttributePath, template: str) -> None:
         """Register Jinja2 template based display labels using the schema path of each impacted variable in the node."""
-
         if kind not in self._template_based_display_labels:
             self._template_based_display_labels[kind] = TemplateLabel(template=template)
 
@@ -106,7 +105,7 @@ class DisplayLabels:
             )
 
     def targets_node(self, kind: str) -> bool:
-        """Indicates if there is a display_label defined for the targeted node"""
+        """Indicates if there is a display_label defined for the targeted node."""
         return kind in self._template_based_display_labels
 
     def get_template_node(self, kind: str) -> TemplateLabel:
@@ -126,9 +125,10 @@ class DisplayLabels:
         for applicable_kinds in relationship_trigger.attributes.values():
             for relationship_identifier in applicable_kinds:
                 if target_kind == relationship_identifier.kind:
-                    template_label = self.get_template_node(kind=target_kind)
-                    template_label.filter_key = relationship_identifier.filter_key
-                    return template_label
+                    # Copy so the cached template keeps its own-id filter for self recomputes.
+                    return replace(
+                        self.get_template_node(kind=target_kind), filter_key=relationship_identifier.filter_key
+                    )
 
         raise ValueError(
             f"Unable to find registered template for {target_kind} registered on related node {related_kind}"

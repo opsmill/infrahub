@@ -1,5 +1,8 @@
 ---
 title: Release 1.2.12
+release_date: 2025-06-03
+release_type: patch
+description: "Remove uniqueness constraint on generic templates to support upsert mutations (6478) Add a migration to clean up duplicated data from improper merges of branches containing node schemas with an updated kind or inheritance (6502)"
 ---
 <table>
   <tbody>
@@ -43,6 +46,6 @@ The complete list of changes can always be found in the `CHANGELOG.md` file in t
 
 Please refer to the Upgrade Guide in the documentation for more information on how to upgrade your Infrahub instance.
 
-[Upgrade Guide](../../guides/upgrade.mdx)
+[Upgrade Guide](../../deploy-manage/maintain-upgrade/upgrade/overview)
 
 **After the upgrade, it is strongly recommended to rebase any open branches in Infrahub once the system is online again.**

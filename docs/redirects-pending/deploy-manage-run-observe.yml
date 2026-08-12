@@ -1,0 +1,41 @@
+---
+feature: Deployment & Management — Run & observe (Tasks, Telemetry, Activity Log)
+pr: TBD
+description: |
+  Moves three pages from legacy topic/guide locations into the new
+  deploy-manage/run-observe/ sub-category:
+    - topics/tasks.mdx           → run-observe/tasks.mdx
+    - guides/telemetry.mdx       → run-observe/telemetry.mdx
+    - topics/activity-log.mdx    → run-observe/activity-log.mdx
+  All content is verbatim; relative links updated for the new directory depth.
+  Original source files remain on disk during iteration.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/tasks
+    to: /docs/deploy-manage/run-observe/tasks
+  - from: /docs/guides/telemetry
+    to: /docs/deploy-manage/run-observe/telemetry
+  - from: /docs/topics/activity-log
+    to: /docs/deploy-manage/run-observe/activity-log
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/deploy-manage/run-observe/tasks
+    title: Tasks
+  - path: /docs/deploy-manage/run-observe/telemetry
+    title: Telemetry
+  - path: /docs/deploy-manage/run-observe/activity-log
+    title: Activity log
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via redirect at runtime; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/release-notes/infrahub/release-1_2_0.mdx
+    line: 115
+    current: ../../topics/activity-log.mdx
+    should_be: ../../deploy-manage/run-observe/activity-log.mdx
+  - file: docs/docs/guides/log-forwarding.mdx
+    line: 250
+    current: ../topics/activity-log.mdx
+    should_be: ../deploy-manage/run-observe/activity-log.mdx

@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
-import type { TextAttribute } from "@/shared/api/graphql/generated/graphql";
+import type { TextAttribute } from "@/shared/api/graphql/generated/types";
 
 export function UrlCell({ url }: { url: TextAttribute }) {
   if (!url.value) return "-";

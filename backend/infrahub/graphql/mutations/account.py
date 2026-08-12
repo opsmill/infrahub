@@ -3,23 +3,40 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, ObjectType, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk.uuidt import UUIDT
+from neo4j.exceptions import DriverError, Neo4jError
+from redis.exceptions import RedisError
 from typing_extensions import Self
 
-from infrahub.auth import AuthType
+from infrahub import lock
+from infrahub.auth.types import AuthType
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.order import OrderModel
+from infrahub.core.preferences.constants import PREFERENCE_LOCK_NAMESPACE
+from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.core.protocols import CoreAccount, CoreNode, InternalAccountToken
+from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
-from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
+from infrahub.exceptions import (
+    DatabaseError,
+    NodeNotFoundError,
+    PermissionDeniedError,
+    QueryTimeoutError,
+    ValidationError,
+)
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.mutations.main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
+from infrahub.log import get_logger
 
 from ..types import InfrahubObjectType
 
 if TYPE_CHECKING:
     from ..initialization import GraphqlContext
+
+log = get_logger()
 
 
 class InfrahubAccountTokenCreateInput(InputObjectType):
@@ -139,6 +156,19 @@ class AccountMixin:
         data: dict[str, Any],
         info: GraphQLResolveInfo,  # noqa: ARG003
     ) -> Self:
+        if data.get("password"):
+            external_identities = await NodeManager.query(
+                schema=InfrahubKind.EXTERNALIDENTITY,
+                filters={"account__ids": [account.id]},
+                db=db,
+                limit=1,
+            )
+            if external_identities:
+                raise PermissionDeniedError(
+                    "Password cannot be changed on accounts authenticated through an external "
+                    "directory; manage credentials in the provider."
+                )
+
         for field in ("password", "description"):
             if value := data.get(field):
                 getattr(account, field).value = value
@@ -169,3 +199,49 @@ class InfrahubAccountSelfUpdate(AccountMixin, Mutation):
         data = InfrahubAccountUpdateSelfInput(required=True)
 
     ok = Boolean()
+
+
+class InfrahubAccountMutation(InfrahubMutationMixin, Mutation):
+    @classmethod
+    def __init_subclass_with_meta__(
+        cls, schema: NodeSchema, _meta: Any | None = None, **options: dict[str, Any]
+    ) -> None:
+        if not isinstance(schema, NodeSchema):
+            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
+
+        if not _meta:
+            _meta = InfrahubMutationOptions(cls)
+        _meta.schema = schema
+
+        super().__init_subclass_with_meta__(_meta=_meta, **options)
+
+    @classmethod
+    async def mutate_delete(
+        cls,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+    ) -> DeleteResult:
+        graphql_context: GraphqlContext = info.context
+        obj = await NodeManager.find_object(
+            db=graphql_context.db,
+            kind=cls._meta.active_schema.kind,
+            id=data.get("id"),
+            hfid=data.get("hfid"),
+            branch=branch,
+        )
+
+        if graphql_context.account_session and obj.id == graphql_context.account_session.authenticating_account_id:
+            raise ValidationError(input_value="Cannot delete your own account")
+
+        result = await super().mutate_delete(info=info, data=data, branch=branch)
+
+        # Best-effort Preference cleanup: the shared per-owner lock keeps an in-flight preference
+        # upsert from re-creating the row, and a failure only logs (the orphaned row is benign).
+        try:
+            async with lock.registry.get(name=obj.id, namespace=PREFERENCE_LOCK_NAMESPACE, local=False):
+                await PreferenceRepository(db=graphql_context.db).delete_for_owner(owner_id=obj.id)
+        except (DatabaseError, QueryTimeoutError, DriverError, Neo4jError, RedisError) as exc:
+            log.warning(f"Failed to delete the Preference row of deleted account {obj.id}: {exc}")
+
+        return result

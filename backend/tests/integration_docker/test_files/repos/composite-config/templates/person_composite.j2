@@ -1,0 +1,7 @@
+! Composite config for {{ data.TestingPerson.edges[0].node.name.value }}
+{% for artifact in data.TestingPerson.edges[0].node.artifacts.edges %}
+{% if artifact.node.name.value == "person-section" and artifact.node.storage_id.value %}
+{{ artifact.node.storage_id.value | artifact_content }}
+{% endif %}
+{% endfor %}
+! End composite

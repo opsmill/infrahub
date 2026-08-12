@@ -9,8 +9,6 @@ from prefect.server.api.server import create_app
 from . import events
 from .bootstrap import init_prefect
 
-GLOBAL_TASKMGR_INIT_LOCK = "global.taskmgr.init"
-
 router = APIRouter(prefix="/infrahub")
 
 router.include_router(events.router)
@@ -27,7 +25,7 @@ async def _init_prefect() -> None:
     service = await InfrahubServices.new(cache=cache)
     initialize_lock(service=service)
 
-    async with lock.registry.get(name=GLOBAL_TASKMGR_INIT_LOCK):
+    async with lock.registry.get(name=lock.GLOBAL_TASKMGR_INIT_LOCK):
         await init_prefect()
 
 

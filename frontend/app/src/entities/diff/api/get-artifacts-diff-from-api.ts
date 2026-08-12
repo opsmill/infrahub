@@ -1,4 +1,7 @@
 import { apiClient } from "@/shared/api/rest/client";
+import type { components } from "@/shared/api/rest/types.generated";
+
+export type ArtifactDiff = components["schemas"]["BranchDiffArtifact"];
 
 export type GetArtifactsDiffFromApiParams = {
   branch: string;

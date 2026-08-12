@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import time
 from asyncio import sleep
+from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,7 +14,11 @@ from infrahub_sdk.task.models import TaskFilter, TaskState
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 
-from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE
+from infrahub.workflows.catalogue import (
+    COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+    TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+)
+from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -28,6 +34,30 @@ async def wait_for_all_tasks_to_be_completed(client: InfrahubClient) -> None:
         await sleep(1)
 
 
+async def load_schema_and_wait(client: InfrahubClient, schema: dict, *, branch: str | None = None) -> None:
+    """Load a schema, wait for it to converge, and assert it was applied.
+
+    When ``branch`` is omitted, also asserts that the global schema is in sync.
+    Per-branch loads skip that check since ``in_sync`` reflects global state.
+    """
+    if branch is None:
+        loaded = await client.schema.load(schemas=[schema], wait_until_converged=True)
+    else:
+        loaded = await client.schema.load(schemas=[schema], branch=branch, wait_until_converged=True)
+    assert loaded.schema_updated
+    if branch is None:
+        assert await client.schema.in_sync()
+
+
+def bump_order_weight(field: dict) -> None:
+    """Increment ``order_weight`` so the schema diff records a real change.
+
+    Assigning a fixed value would no-op if the field already happened to carry
+    that value (for example after an earlier test in the same class run).
+    """
+    field["order_weight"] = (field.get("order_weight") or 0) + 100
+
+
 class TestComputedAttributes(TestInfrahubDockerClient):
     @pytest.fixture(scope="class")
     def infrahub_version(self) -> str:
@@ -38,11 +68,8 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         return yaml.safe_load(Path(CURRENT_DIRECTORY / "test_files/computed_tshirt.yml").read_text(encoding="utf-8"))
 
     async def test_load_schema(self, client: InfrahubClient, schema_computed_tshirt: dict) -> None:
-        """Prepare the schema"""
-        tshirt_schema = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
-        assert tshirt_schema.schema_updated
-        # Validate that the schema is in sync after loading the device and interface schema
-        assert await client.schema.in_sync()
+        """Prepare the schema."""
+        await load_schema_and_wait(client, schema_computed_tshirt)
 
     async def test_computed_attribute_update(self, client: InfrahubClient) -> None:
         """Validate that the computed attribute is registered and created and also updated correctly."""
@@ -88,7 +115,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         )
         await color1_initial.save()
 
-        for _ in range(20):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             # Give the computed attribute triggers a little while to run
             tshirt1_updated = await client.get(kind="TestingTShirt", id=tshirt1.id)
             if (
@@ -111,7 +138,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
             "A Ember Glow Explorer t-shirt. A deep, fiery red-orange reminiscent of smoldering embers at dusk."
         )
 
-        for _ in range(20):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             # Give the computed attribute triggers a little while to run
             tshirt1_second_update_result = await client.get(kind="TestingTShirt", id=tshirt1.id)
             if tshirt1_second_update_result.description.value == expected_description:
@@ -123,7 +150,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         await tshirt1_second_update_result.save()
 
         expected_name_code = "WEARABLE-GARDENER"
-        for _ in range(20):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             # Give the computed attribute triggers a little while to run
             tshirt1_last_update_result = await client.get(kind="TestingTShirt", id=tshirt1.id)
             if tshirt1_last_update_result.name_code.value == expected_name_code:
@@ -198,7 +225,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         await sth_router_1.save()
 
         initial_name_router_1 = "se-sth-router-1"
-        for _ in range(20):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             # Provide some delay for the triggers to be setup and the computed attribute to render
             sth_router_1_collected = await client.get(kind="InfraDevice", id=sth_router_1.id, include=["name"])
             if sth_router_1_collected.name.value:
@@ -213,7 +240,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         await sweden_name_update.save()
 
         swe_name_router_1 = "swe-sth-router-1"
-        for _ in range(20):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             # Give the computed attribute triggers a little while to run
             sth_router_1_swe = await client.get(kind="InfraDevice", id=sth_router_1.id, include=["name"])
             if sth_router_1_swe.name.value == swe_name_router_1:
@@ -225,43 +252,207 @@ class TestComputedAttributes(TestInfrahubDockerClient):
     async def test_update_schema_not_related_to_computed_attribute(
         self, client: InfrahubClient, schema_computed_tshirt: dict
     ) -> None:
-        nbr_task_before = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
-        )
+        # The process flow runs once per recomputed node, so counting it scopes recompute; the stored
+        # value is what confirms correctness.
+        process_before = await client.task.count(filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name]))
 
-        # Update schema LocationSite with a change that IS NOT related to the computed attribute
-        # The computed attribute of type Jinja2 should not be updated neither on the sites nor on the continents
+        # A change that does not touch the computed attribute must recompute nothing: no process flow
+        # runs and the rendered slug stays at its current value.
         schema_computed_tshirt["nodes"][4]["description"] = "New Description that will trigger a new schema"
-        tshirt_schema = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
-        assert tshirt_schema.schema_updated
-
-        # Validate that the schema is in sync after loading the device and interface schema
-        assert await client.schema.in_sync()
+        await load_schema_and_wait(client, schema_computed_tshirt)
 
         await sleep(1)
         await wait_for_all_tasks_to_be_completed(client)
 
-        nbr_task_after_not_related = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
+        process_after_not_related = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name])
         )
-        assert nbr_task_after_not_related == nbr_task_before
+        assert process_after_not_related == process_before
+        assert (await client.get(kind="LocationSite", hfid=["sth"])).slug.value == "Welcome to sth!"
 
-        # Update schema LocationSite with a change that IS related to the computed attribute
-        # The computed attribute of type Jinja2 should be updated
+        # Editing the slug template must recompute it on every site and store the new value there.
         schema_computed_tshirt["nodes"][4]["attributes"][3]["computed_attribute"]["jinja2_template"] = (
             "WELCOME TO {{ name__value }}!"
         )
-        tshirt_schema = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
-        assert tshirt_schema.schema_updated
+        await load_schema_and_wait(client, schema_computed_tshirt)
 
-        # Validate that the schema is in sync after loading the device and interface schema
-        assert await client.schema.in_sync()
+        sth_slug = ""
+        deadline = time.monotonic() + PREFECT_EVENT_WAIT_SECONDS
+        while time.monotonic() < deadline:
+            await sleep(1)
+            await wait_for_all_tasks_to_be_completed(client)
+            sth_slug = (await client.get(kind="LocationSite", hfid=["sth"])).slug.value
+            if sth_slug == "WELCOME TO sth!":
+                break
+
+        # Every site, not only the one polled above, carries the recomputed value.
+        assert sth_slug == "WELCOME TO sth!"
+        assert (await client.get(kind="LocationSite", hfid=["par"])).slug.value == "WELCOME TO par!"
+
+    async def test_jinja2_scoped_recompute_on_read_field_change(
+        self, client: InfrahubClient, schema_computed_tshirt: dict
+    ) -> None:
+        """A Jinja2 attribute recomputes when a field it reads across a relationship changes.
+
+        TestingTShirt.description reads color__name__value, so a schema change to TestingColor.name
+        recomputes it, while a change to a field no template reads recomputes nothing. Re-ordering a
+        field does not change the rendered value, so this scopes recompute by counting the process
+        flow that runs once per recomputed node.
+        """
+        process_before = await client.task.count(filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name]))
+
+        # Unrelated: re-order a LocationSite field that no template reads -> no recompute.
+        bump_order_weight(schema_computed_tshirt["nodes"][4]["attributes"][1])  # LocationSite.address
+        await load_schema_and_wait(client, schema_computed_tshirt)
+
+        await sleep(1)
+        await wait_for_all_tasks_to_be_completed(client)
+        process_after_unrelated = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name])
+        )
+        assert process_after_unrelated == process_before
+
+        # Related: re-order TestingColor.name, which TestingTShirt.description reads via the color relationship.
+        bump_order_weight(schema_computed_tshirt["nodes"][0]["attributes"][0])  # TestingColor.name
+        await load_schema_and_wait(client, schema_computed_tshirt)
+
+        process_after_related = process_after_unrelated
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            await sleep(1)
+            await wait_for_all_tasks_to_be_completed(client)
+            process_after_related = await client.task.count(
+                filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name])
+            )
+            if process_after_related > process_after_unrelated:
+                break
+
+        assert process_after_related > process_after_unrelated
+
+    async def test_python_scoped_recompute_on_read_field_change(
+        self, client: InfrahubClient, schema_computed_tshirt: dict
+    ) -> None:
+        """A Python-transform attribute recomputes only when a field its query reads changes.
+
+        The DeviceNameAttribute query reads InfraDevice.device_type, so a schema change to that field
+        recomputes InfraDevice.name, while a change to a field the query does not read recomputes nothing.
+        """
+        python_before = await client.task.count(
+            filters=TaskFilter(workflow=[TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES.name])
+        )
+
+        # Unrelated: re-order a LocationSite field the transform query does not read -> no recompute.
+        bump_order_weight(schema_computed_tshirt["nodes"][4]["attributes"][2])  # LocationSite.contact
+        await load_schema_and_wait(client, schema_computed_tshirt)
+
+        await sleep(1)
+        await wait_for_all_tasks_to_be_completed(client)
+        python_after_unrelated = await client.task.count(
+            filters=TaskFilter(workflow=[TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES.name])
+        )
+        assert python_after_unrelated == python_before
+
+        # Related: re-order InfraDevice.device_type, which the DeviceNameAttribute query reads.
+        bump_order_weight(schema_computed_tshirt["nodes"][5]["attributes"][0])  # InfraDevice.device_type
+        await load_schema_and_wait(client, schema_computed_tshirt)
+
+        python_after_related = python_after_unrelated
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            await sleep(1)
+            await wait_for_all_tasks_to_be_completed(client)
+            python_after_related = await client.task.count(
+                filters=TaskFilter(workflow=[TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES.name])
+            )
+            if python_after_related > python_after_unrelated:
+                break
+
+        assert python_after_related > python_after_unrelated
+
+    async def test_branch_isolation_scopes_recompute_to_changed_branch(
+        self, client: InfrahubClient, schema_computed_tshirt: dict
+    ) -> None:
+        """A schema change on one branch recomputes only that branch's attributes.
+
+        Changing a Jinja2 template on an isolated branch recomputes that branch's objects but must not
+        recompute anything on the default branch. Branch scoping is applied before and independently of
+        changed-element scoping, so the branch's new template value never leaks onto the default branch.
+        """
+        branch = await client.branch.create(branch_name="scope-isolation")
+
+        main_process_before = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name], branch="main")
+        )
+        main_slug_before = (await client.get(kind="LocationSite", hfid=["sth"], branch="main")).slug.value
+
+        # Change the LocationSite.slug template only on the isolated branch.
+        branch_schema = deepcopy(schema_computed_tshirt)
+        branch_schema["nodes"][4]["attributes"][3]["computed_attribute"]["jinja2_template"] = (
+            "Isolated branch: {{ name__value }}"
+        )
+        await load_schema_and_wait(client, branch_schema, branch=branch.name)
+
+        branch_slug = ""
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            await sleep(1)
+            await wait_for_all_tasks_to_be_completed(client)
+            branch_slug = (await client.get(kind="LocationSite", hfid=["sth"], branch=branch.name)).slug.value
+            if branch_slug == "Isolated branch: sth":
+                break
+
+        main_process_after = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name], branch="main")
+        )
+        main_slug_after = (await client.get(kind="LocationSite", hfid=["sth"], branch="main")).slug.value
+
+        # The branch recomputed to its new template; the default branch neither recomputed nor inherited
+        # the branch's value.
+        assert branch_slug == "Isolated branch: sth"
+        assert main_process_after == main_process_before
+        assert main_slug_after == main_slug_before
+
+    async def test_merge_triggers_scoped_recompute(self, client: InfrahubClient, schema_computed_tshirt: dict) -> None:
+        """Merging a branch's computed-attribute template change recomputes the affected attribute on main.
+
+        The merge applies the new schema to the default branch and emits a scoped schema-update event, so
+        the computed-attribute setup refreshes the changed attribute on main-only nodes instead of leaving
+        them stale until their next mutation. The assertion pins the content of the dispatched recompute by
+        checking the refreshed value, not just that some recompute task ran.
+        """
+        # A main-only TestingTShirt rendered by the computed-attribute template; it is absent from the
+        # merge data diff, so only the schema-scoped refresh can update its stored description.
+        color = await client.create(kind="TestingColor", data={"name": "Scoped", "description": "scoped"})
+        await color.save()
+        tshirt = await client.create(kind="TestingTShirt", data={"name": "ScopedMerge", "color": color})
+        await tshirt.save()
+        expected = "Merged template: ScopedMerge"
+        assert (await client.get(kind="TestingTShirt", id=tshirt.id)).description.value != expected
+
+        branch = await client.branch.create(branch_name="merge-scope")
+
+        # Schema-only change on the branch (a Jinja2 template edit); no object data is touched.
+        branch_schema = deepcopy(schema_computed_tshirt)
+        branch_schema["nodes"][1]["attributes"][1]["computed_attribute"]["jinja2_template"] = (
+            "Merged template: {{ name__value }}"  # TestingTShirt.description
+        )
+        await load_schema_and_wait(client, branch_schema, branch=branch.name)
 
         await sleep(1)
         await wait_for_all_tasks_to_be_completed(client)
 
-        # The computed attribute of type Jinja2 should be updated on the sites but NOT on the continents
-        nbr_task_after_related = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
-        )
-        assert nbr_task_after_related == nbr_task_after_not_related + 2
+        merged = await client.branch.merge(branch_name=branch.name)
+        assert merged
+
+        # The merge-driven backfill is asynchronous; poll until the main-only node refreshes to the merged
+        # template's output, which pins both that a recompute was dispatched and the value it produced.
+        description = ""
+        deadline = time.monotonic() + PREFECT_EVENT_WAIT_SECONDS
+        while time.monotonic() < deadline:
+            await sleep(1)
+            await wait_for_all_tasks_to_be_completed(client)
+            description = (await client.get(kind="TestingTShirt", id=tshirt.id)).description.value
+            if description == expected:
+                break
+
+        assert description == expected

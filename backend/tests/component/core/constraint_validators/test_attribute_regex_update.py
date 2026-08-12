@@ -171,7 +171,7 @@ async def test_validator(
         constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value,
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = AttributeRegexChecker(db=db, branch=default_branch)

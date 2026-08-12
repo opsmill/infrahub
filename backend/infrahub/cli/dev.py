@@ -38,7 +38,6 @@ async def export_graphql_schema(
     out: Path = typer.Option("schema.graphql"),  # noqa: B008
 ) -> None:
     """Export the Core GraphQL schema to a file."""
-
     config.load_and_exit(config_file_name=config_file)
 
     schema = SchemaRoot(**internal_schema)
@@ -95,7 +94,6 @@ async def database_init(
     ),
 ) -> None:
     """Erase the content of the database and initialize it with the core schema."""
-
     log = get_logger()
 
     # --------------------------------------------------
@@ -126,7 +124,6 @@ async def load_test_data(
     dataset: str = "dataset01",
 ) -> None:
     """Load test data into the database from the `test_data` directory."""
-
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     config.load_and_exit(config_file_name=config_file)
 

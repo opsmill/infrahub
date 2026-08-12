@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "presets": {
+    "infrahub": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:4c489fa51392b80ba0553462e1d80b344e0d6af997596a42b485d2d021902139",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.git.feature"
+        ]
+      },
+      "registered_skills": [
+        "speckit-git-feature"
+      ],
+      "installed_at": "2026-04-27T14:53:47.261545+00:00"
+    }
+  }
+}

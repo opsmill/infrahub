@@ -1,0 +1,83 @@
+---
+title: Update a Profile
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Change Profile values; all objects assigned to the Profile inherit the change automatically. Objects that have explicitly overridden the attribute keep their override — only objects relying on the Profile value see the change.
+
+## Update the Profile
+
+<Tabs groupId="method" queryString>
+<TabItem value="web" label="Web interface">
+
+1. Navigate to **Object Management → Profiles**
+2. Locate the Profile by name and click it
+3. Click **Edit**
+4. Change the attribute values you want to update
+5. Click **Save**
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  Profile<Kind>Update(
+    data: {
+      hfid: ["<profile-name>"]
+      <attribute>: { value: <new-value> }
+    }
+  ) {
+    ok
+  }
+}
+```
+
+You can update multiple attributes in a single mutation by adding more fields to `data`.
+
+</TabItem>
+</Tabs>
+
+## Verify the change propagated
+
+<Tabs groupId="method" queryString>
+<TabItem value="web" label="Web interface">
+
+1. Navigate to the object list for your node kind
+2. Open any object assigned to this Profile
+
+:::success
+The attribute value updates automatically across all assigned objects.
+:::
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
+
+Query objects that use the Profile and confirm the attribute reflects the new value:
+
+```graphql
+query {
+  <Kind> {
+    edges {
+      node {
+        display_label
+        <attribute> {
+          value
+          is_from_profile
+        }
+      }
+    }
+  }
+}
+```
+
+Objects with `is_from_profile: true` will show the new value. Objects with `is_from_profile: false` for that attribute have an explicit override and will keep their existing value (see [Override specific Profile values](./override-values.mdx)).
+
+</TabItem>
+</Tabs>
+
+## Next
+
+- [Use multiple Profiles](./use-multiple.mdx)
+- [Priority and inheritance](./priority-and-inheritance.mdx) — understand which Profile wins when multiple define the same attribute

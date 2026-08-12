@@ -41,7 +41,7 @@ test.describe("/proposed-changes checks", () => {
       await expect(checksSummary.getByText("Repository")).toBeVisible();
       await expect(checksSummary.getByText("Schema")).toBeVisible();
       await expect(checksSummary.getByText("User")).toBeVisible();
-      await expect(page.url()).toContain("tab=checks");
+      await expect(page.url()).toContain("/checks");
 
       await page.waitForTimeout(3000); // wait for circle animation to finish
       await saveScreenshotForDocs(page, "topics/proposed_change/pc_tab_checks");

@@ -1,0 +1,97 @@
+---
+title: Remove members from a group
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Remove members from a group
+
+Detach objects from a Standard group without deleting the objects themselves.
+
+:::note
+Applies to **Standard** groups only. Generator and Query groups manage their own membership.
+:::
+
+## How removal works in GraphQL
+
+`CoreStandardGroupUpdate` replaces the entire member list. To remove a member, you pass a list containing every member you want to **keep**.
+
+This means removal is a two-step operation: list the current members, then update with the new list excluding the ones to remove.
+
+## Remove members
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+1. Open the group and go to the **Members** tab.
+2. Select the members to remove.
+3. Click **Remove from Group** and confirm.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+**Step 1 — list current members:**
+
+```graphql
+query {
+  CoreStandardGroup(name__value: "<group-name>") {
+    edges {
+      node {
+        members {
+          edges {
+            node { id display_label }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Step 2 — update with the members you want to keep:**
+
+```graphql
+mutation RemoveMembers {
+  CoreStandardGroupUpdate(
+    data: {
+      hfid: ["<group-name>"],
+      members: [
+        {id: "<member-to-keep-1>"},
+        {id: "<member-to-keep-2>"}
+      ]
+    }
+  ) {
+    ok
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+group = client.get(kind="CoreStandardGroup", name__value="<group-name>")
+target = client.get(kind="<KindOfObject>", id="<object-id>")
+
+group.members.remove(target)
+group.save()
+```
+
+The SDK handles the fetch-and-update internally.
+
+</TabItem>
+</Tabs>
+
+## Troubleshooting
+
+**Called update but nothing changed.** If you sent the full current member list back, no members were removed. Omit the IDs of the members you want to remove.
+
+**The objects disappeared, not just the membership.** They shouldn't — removing members detaches them; it does not delete them. If objects are missing entirely, look for a cascading delete elsewhere (for example, a Generator that owned them).
+
+## Next
+
+- [Delete a group](./delete.mdx)
+- [Query group membership](./query-members.mdx)

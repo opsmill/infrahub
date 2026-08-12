@@ -1,0 +1,126 @@
+---
+title: Modular Generators
+---
+
+A [Generator](generator) reads data from Infrahub and creates new objects based on the result. A single Generator works well when the scope is contained: one input kind, one set of outputs, no intermediate dependencies.
+
+Real-world automation is rarely that contained. A data center fabric has layers: the fabric itself, then pods, then racks, then devices. An enterprise network has sites, buildings, floors, and closets. Each layer depends on objects created by the previous one. Trying to handle all of this in a single Generator leads to a monolithic Python class that is hard to test, impossible to run partially, and painful to maintain. It can also become slow for large datasets.
+
+**Modular Generators** solve this by splitting generation across multiple focused Generators, each responsible for one layer or domain. Later Generators depend on objects created by earlier ones, connected through an event-driven signaling mechanism.
+
+:::info
+For single-Generator fundamentals, see [Generators](generator). For a step-by-step guide on building your first Generator, see [how to create a Generator](../guides/generator).
+:::
+
+## Why split into multiple Generators
+
+### Single responsibility
+
+Each Generator owns exactly one layer. A fabric Generator creates super spine switches and IP pools. A pod Generator creates spine switches and wires them to the super spines. A rack Generator creates leaf switches and connects them to the spines. Each Generator is small enough to understand at a glance.
+
+### Parallelism
+
+Infrahub runs one Generator instance per target object. When you split work across layers, each layer can run its targets in parallel. A fabric with 8 pods doesn't generate them sequentially — all 8 pod Generators run concurrently. Each of those pods might have 32 racks, and all 32 rack Generators run concurrently too. This is only possible because each Generator is scoped to a single target.
+
+### Day-two operations
+
+When a change occurs at one layer — say a pod needs an additional spine switch — only the pod Generator and its downstream dependents need to re-run. The fabric Generator doesn't re-execute. This makes changes faster and reduces the blast radius of updates.
+
+### Testability
+
+Smaller Generators with clear inputs and outputs are easier to develop and debug in isolation. You can run `infrahubctl generator` against a single target to verify one layer without needing the full modular setup to exist.
+
+## When to use modular Generators
+
+**Use modular Generators when:**
+
+- The automation has a natural hierarchy or stages (physical to logical, site to rack to device, fabric to pod to rack).
+- Later stages depend on objects or resources created by earlier stages (for example, IP pools allocated by the fabric Generator are consumed by the pod Generator).
+- You want the ability to re-run a single layer independently for day-two changes, debugging, or partial rebuilds.
+- The number of target objects at each layer is large enough that parallel execution matters.
+
+**A single Generator is fine when:**
+
+- The scope is small and self-contained (for example, creating tags or labels based on object properties).
+- There are no intermediate dependencies and all objects can be created in one pass.
+- The number of targets is small and parallelism isn't a concern.
+
+## The mental model
+
+Modular Generators follow three principles.
+
+### Each Generator owns one layer
+
+A Generator reads from a group of target objects and creates or modifies objects that belong to that layer. It does not reach into other layers. The fabric Generator creates fabric-level resources; it does not create pod-level or rack-level objects.
+
+### Each Generator validates its upstream dependencies
+
+Since there is no central orchestrator, each Generator must be self-protecting. Before doing its work, a Generator checks that the objects it depends on actually exist and are complete. For example, the pod Generator verifies that the expected number of super spine switches are present before creating spine switches and wiring them up. If the upstream layer isn't ready, the Generator fails with a clear error rather than producing incomplete data.
+
+### Each Generator signals its downstream dependents
+
+When a Generator finishes, it needs a way to tell Infrahub that the next layer should run. This is done through a signaling mechanism, typically by updating an attribute on the downstream target objects. Infrahub's event framework detects the change and triggers the next Generator. The Generators never call each other directly. They communicate exclusively through the data they create and modify in Infrahub.
+
+:::info
+The specific mechanism for connecting Generators (the checksum and trigger pattern) is covered in a separate how-to document.
+:::
+
+### Modular Generators in practice
+
+```text
+Generator A (targets: fabrics)
+  → creates fabric-level objects (super spines, IP pools)
+  → signals downstream targets (pods)
+     │
+     ├─ Generator B (targets: pods)  ← runs in parallel per pod
+     │    → validates fabric-level objects exist
+     │    → creates pod-level objects (spines, cabling, IP allocations)
+     │    → signals downstream targets (racks)
+     │       │
+     │       ├─ Generator C (targets: racks)  ← runs in parallel per rack
+     │       │    → validates pod-level objects exist
+     │       │    → creates rack-level objects (leafs, cabling)
+     │       │
+     │       ├─ Generator C (targets: racks)
+     │       │    → ...
+     │       └─ ...
+     │
+     ├─ Generator B (targets: pods)
+     │    → ...
+     └─ ...
+```
+
+Each level fans out. One fabric triggers N pods, each pod triggers M racks. The total parallelism is multiplicative.
+
+## Trade-offs
+
+Modular Generators are not free. Be aware of the costs.
+
+| Benefit                         | Cost                                                                                                        |
+|---------------------------------|-------------------------------------------------------------------------------------------------------------|
+| Each Generator is simpler       | More Generators to define and manage: more `.infrahub.yml` entries, more Python files, more GraphQL queries |
+| Layers can run independently    | Requires a trigger mechanism to connect execution across layers                                             |
+| Changes are scoped to one layer | Debugging spans multiple Generator runs with no single log showing the full execution                       |
+| Parallel execution per target   | You need to design clear boundaries between layers and think about what each layer owns                     |
+
+The right question is not "should I always use modular Generators?" but "does my automation have natural layers where the benefits outweigh the overhead?" If the answer is yes, the pattern pays for itself quickly, especially as the number of targets grows.
+
+## Real-world example: data center fabric generation
+
+The DC-AI solution uses modular Generators to build a 5-stage Clos data center fabric:
+
+1. **FabricGenerator**: targets fabric objects. Allocates the top-level IP supernet, creates prefix and loopback pools, and provisions super spine switches. When complete, it signals the pod objects.
+2. **PodGenerator**: targets pod objects, runs in parallel per pod. Validates that all super spine switches exist, allocates pod-level IP space from the fabric's pool, creates spine switches, and cables them to the super spines. When complete, it signals the rack objects.
+3. **RackGenerator**: targets rack objects, runs in parallel per rack. Validates that all spine switches exist, creates leaf switches using the pod's loopback and prefix pools, and cables them to the spines.
+
+A fabric with 4 pods and 32 racks per pod runs 4 pod Generators concurrently, then 128 rack Generators concurrently. Each Generator is independently testable with `infrahubctl generator` and can be re-run for day-two changes without affecting other layers.
+
+## Connection to other concepts
+
+- [Generators](generator): single-Generator fundamentals, high-level design, and execution methods
+- [How to create a Generator](../guides/generator): step-by-step guide for building a Generator
+- [How to connect modular Generators](../guides/chaining-generators): checksum-based trigger pattern
+- [Best practices for modular Generators](../guides/modular-generator-best-practices): idempotency, pool scoping, debugging, and operational guidance
+- [Groups](groups): Generators use groups to define their targets and track generated objects
+- [GraphQL queries](graphql): each Generator definition includes a query that collects input data
+- [.infrahub.yml](infrahub-yml): configuration file where Generator definitions are declared

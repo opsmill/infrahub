@@ -12,10 +12,9 @@ services:
       RABBITMQ_DEFAULT_PASS: infrahub
     healthcheck:
       test: rabbitmq-diagnostics -q check_port_connectivity
-      interval: 5s
-      timeout: 30s
-      retries: 10
-      start_period: 3s
+      interval: 1s
+      timeout: 1s
+      retries: 50
     ports:
       - ${INFRAHUB_TESTING_MESSAGE_QUEUE_PORT:-0}:15692
 
@@ -24,9 +23,9 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: 1s
+      timeout: 1s
+      retries: 15
 
   infrahub-server-lb:
     image: haproxy:3.1-alpine
@@ -37,10 +36,9 @@ services:
         condition: service_started
     healthcheck:
       test: wget -O /dev/null http://127.0.0.1:8000/api/config || exit 1
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
+      interval: 1s
+      timeout: 1s
+      retries: 100
     ports:
       - ${INFRAHUB_TESTING_SERVER_PORT:-0}:8000
 
@@ -50,7 +48,7 @@ services:
         limits:
           cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT:-0.0}
           memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT:-0}
-    image: ${NEO4J_DOCKER_IMAGE:-neo4j:2025.10.1-community}
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:2026.05.0-community}
     restart: unless-stopped
     environment:
       NEO4J_AUTH: neo4j/admin
@@ -60,16 +58,25 @@ services:
       NEO4J_server_memory_heap_initial__size: ${INFRAHUB_TESTING_DB_HEAP_INITIAL_SIZE}
       NEO4J_server_memory_heap_max__size: ${INFRAHUB_TESTING_DB_HEAP_MAX_SIZE}
       NEO4J_server_memory_pagecache_size: ${INFRAHUB_TESTING_DB_PAGECACHE_SIZE}
+      # Bolt connector worker threads. Neo4j defaults to 400; a wide computed-attribute
+      # fan-out on large datasets can exhaust it (Neo.TransientError.Request.NoThreadsAvailable),
+      # so make it tunable for the heavy perf/dataset runs.
+      NEO4J_server_bolt_thread__pool__max__size: ${INFRAHUB_TESTING_DB_BOLT_THREAD_POOL_MAX_SIZE}
+    ulimits:
+      # Default container soft limit (1024) is far too low for a wide recompute fan-out and
+      # produces "[Errno 24] Too many open files"; raise the file-descriptor ceiling.
+      nofile:
+        soft: 1048576
+        hard: 1048576
     volumes:
       - "database_data:/data"
       - "database_logs:/logs"
       - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
     healthcheck:
       test: wget -O /dev/null http://localhost:7474 || exit 1
-      interval: 2s
-      timeout: 10s
-      retries: 20
-      start_period: 3s
+      interval: 1s
+      timeout: 1s
+      retries: 40
     ports:
       - ${INFRAHUB_TESTING_DATABASE_PORT:-0}:6362
       - ${INFRAHUB_TESTING_DATABASE_BOLT_PORT:-0}:7687
@@ -100,18 +107,14 @@ services:
       PREFECT__SERVER_WEBSERVER_ONLY:
       PREFECT_API_DATABASE_MIGRATE_ON_START:
       PREFECT_API_BLOCKS_REGISTER_ON_START:
-      PREFECT_SERVER_SERVICES_EVENT_LOGGER_ENABLED:
-      PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED:
-      PREFECT_SERVER_SERVICES_TRIGGERS_ENABLED:
-      PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED:
+      PREFECT_SERVER_DOCKET_URL:
 
       WEB_CONCURRENCY: ${INFRAHUB_TESTING_TASKMGR_API_WORKERS:-1}
     healthcheck:
       test: curl -s -f -o /dev/null http://localhost:4200/api/health || exit 1
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
+      interval: 1s
+      timeout: 1s
+      retries: 100
     ports:
       - ${INFRAHUB_TESTING_TASK_MANAGER_PORT:-0}:4200
 
@@ -145,10 +148,7 @@ services:
       PREFECT_REDIS_MESSAGING_CONSUMER_MIN_IDLE_TIME: ${INFRAHUB_TESTING_TASKMGR_CONSUMER_MIN_IDLE_TIME:-5}
       PREFECT_REDIS_MESSAGING_PUBLISHER_BATCH_SIZE: ${INFRAHUB_TESTING_TASKMGR_PUBLISHER_BATCH_SIZE:-5}
 
-      PREFECT_SERVER_SERVICES_EVENT_LOGGER_ENABLED: "true"
-      PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED: "true"
-      PREFECT_SERVER_SERVICES_TRIGGERS_ENABLED: "true"
-      PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED: "true"
+      PREFECT_SERVER_DOCKET_URL: "redis://${INFRAHUB_TESTING_CACHE_ADDRESS:-cache}:6379/2"
 
       PREFECT_SERVER_SERVICES_EVENT_PERSISTER_READ_BATCH_SIZE: ${INFRAHUB_TESTING_TASKMGR_EVENT_PERSISTER_READ_BATCH_SIZE:-1}
       PREFECT_SERVER_SERVICES_EVENT_PERSISTER_BATCH_SIZE: ${INFRAHUB_TESTING_TASKMGR_EVENT_PERSISTER_BATCH_SIZE:-20}
@@ -158,6 +158,8 @@ services:
       PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_READ_BATCH_SIZE: ${INFRAHUB_TESTING_TASKMGR_TASK_RUN_RECORDER_READ_BATCH_SIZE:-1}
       PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_BATCH_SIZE: ${INFRAHUB_TESTING_TASKMGR_TASK_RUN_RECORDER_BATCH_SIZE:-1}
       PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_FLUSH_INTERVAL: ${INFRAHUB_TESTING_TASKMGR_TASK_RUN_RECORDER_FLUSH_INTERVAL:-5}
+
+      PREFECT_SERVER_SERVICES_TRIGGERS_READ_BATCH_SIZE: ${INFRAHUB_TESTING_TASKMGR_TRIGGERS_READ_BATCH_SIZE:-1}
 
   task-manager-db:
     image: "${POSTGRES_DOCKER_IMAGE:-postgres:18-alpine}"
@@ -171,9 +173,9 @@ services:
       - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 1s
+      timeout: 1s
+      retries: 50
 
   infrahub-server:
     deploy:
@@ -181,6 +183,12 @@ services:
       replicas: ${INFRAHUB_TESTING_API_SERVER_COUNT}
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
     command: ${INFRAHUB_TESTING_DOCKER_ENTRYPOINT}
+    ulimits:
+      # Raise the file-descriptor ceiling so a wide recompute fan-out doesn't hit
+      # "[Errno 24] Too many open files" on the API server's outbound connections.
+      nofile:
+        soft: 1048576
+        hard: 1048576
     environment:
       INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}
       INFRAHUB_LOG_LEVEL: ${INFRAHUB_TESTING_LOG_LEVEL:-INFO}
@@ -201,6 +209,7 @@ services:
       INFRAHUB_TRACE_EXPORTER_TYPE: ${INFRAHUB_TRACE_EXPORTER_TYPE:-console}
       INFRAHUB_TRACE_INSECURE: ${INFRAHUB_TRACE_INSECURE:-true}
       INFRAHUB_SCHEMA_STRICT_MODE: ${INFRAHUB_TESTING_SCHEMA_STRICT_MODE}
+      INFRAHUB_MERGE_FAILURE_GRACE_PERIOD_SECONDS: ${INFRAHUB_TESTING_MERGE_FAILURE_GRACE_PERIOD_SECONDS:-1}
       OTEL_RESOURCE_ATTRIBUTES:
     depends_on:
       database:
@@ -216,10 +225,9 @@ services:
     tty: true
     healthcheck:
       test: curl -s -f -o /dev/null http://localhost:8000/api/config || exit 1
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
+      interval: 1s
+      timeout: 1s
+      retries: 100
 
   task-worker:
     deploy:
@@ -227,6 +235,12 @@ services:
       replicas: ${INFRAHUB_TESTING_TASK_WORKER_COUNT}
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
     command: prefect worker start --type ${INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE} --pool infrahub-worker --with-healthcheck
+    ulimits:
+      # The recompute fan-out runs here; the worker opens many concurrent DB/HTTP
+      # connections and hits "[Errno 24] Too many open files" at the default 1024 ceiling.
+      nofile:
+        soft: 1048576
+        hard: 1048576
     environment:
       INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}
       INFRAHUB_LOG_LEVEL: ${INFRAHUB_TESTING_LOG_LEVEL}
@@ -242,6 +256,7 @@ services:
       INFRAHUB_TIMEOUT: ${INFRAHUB_TESTING_TIMEOUT}
       INFRAHUB_PAGINATION_SIZE: ${INFRAHUB_TESTING_PAGINATION_SIZE:-50}
       PREFECT_API_URL: ${INFRAHUB_TESTING_PREFECT_API}
+      PREFECT_API_REQUEST_TIMEOUT: ${INFRAHUB_TESTING_PREFECT_API_REQUEST_TIMEOUT:-120}
       INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX:
       # Tracing
       INFRAHUB_TRACE_ENABLE: ${INFRAHUB_TRACE_ENABLE:-false}
@@ -250,6 +265,7 @@ services:
       INFRAHUB_TRACE_EXPORTER_TYPE: ${INFRAHUB_TRACE_EXPORTER_TYPE:-console}
       INFRAHUB_TRACE_INSECURE: ${INFRAHUB_TRACE_INSECURE:-true}
       INFRAHUB_SCHEMA_STRICT_MODE: ${INFRAHUB_TESTING_SCHEMA_STRICT_MODE}
+      INFRAHUB_MERGE_FAILURE_GRACE_PERIOD_SECONDS: ${INFRAHUB_TESTING_MERGE_FAILURE_GRACE_PERIOD_SECONDS:-1}
       OTEL_RESOURCE_ATTRIBUTES:
     depends_on:
       - infrahub-server
@@ -258,7 +274,7 @@ services:
     tty: true
 
   cadvisor:
-    image: "${CADVISOR_DOCKER_IMAGE:-gcr.io/cadvisor/cadvisor:v0.51.0}"
+    image: "${CADVISOR_DOCKER_IMAGE:-ghcr.io/google/cadvisor:v0.60.5}"
     command:
       - -disable_root_cgroup_stats=true
       - -docker_only=true
@@ -285,10 +301,9 @@ services:
       - ${INFRAHUB_TESTING_SCRAPER_PORT:-0}:8428
     healthcheck:
       test: wget -qO- http://127.0.0.1:8428/-/healthy
-      start_period: 10s
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      interval: 1s
+      timeout: 1s
+      retries: 50
 
 volumes:
   database_data:

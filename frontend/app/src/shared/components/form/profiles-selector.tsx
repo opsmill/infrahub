@@ -1,10 +1,10 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, Spinner } from "@infrahub/ui";
 import { useEffect, useId } from "react";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -14,14 +14,13 @@ import {
 } from "@/shared/components/ui/combobox";
 import Label from "@/shared/components/ui/label";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { ProfileData } from "@/entities/nodes/profiles/types";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import type { ProfileData } from "@/entities/nodes/profiles/domain/model/profile";
 import { useGetProfiles } from "@/entities/nodes/profiles/ui/queries/get-profiles.query";
-import type { NodeSchema } from "@/entities/schema/types";
+import type { NodeSchema } from "@/entities/schema/domain/model/schema";
 
 type ProfilesSelectorProps = {
   schema: NodeSchema;
@@ -92,13 +91,14 @@ export const ProfilesSelector = ({
                   {getNodeLabel(profile)}
 
                   <Button
-                    size="icon"
+                    size="xs"
+                    shape="circle"
                     variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    preventFocusOnPress
+                    onPress={() => {
                       handleRemove(profile);
                     }}
-                    className="h-4 w-4 text-gray-500 hover:text-gray-800"
+                    className="h-4 w-4 text-gray-500 data-hovered:text-gray-800"
                     aria-label="Remove"
                     data-testid="remove-option"
                   >

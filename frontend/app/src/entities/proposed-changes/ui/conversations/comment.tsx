@@ -29,7 +29,6 @@ export const Comment: React.FC<CommentProps> = ({ author, createdAt, content, cl
           </div>
         </div>
       </div>
-
       <MarkdownRender markdownText={content} />
     </div>
   );

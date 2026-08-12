@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub.database import retry_db_transaction
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.loaders.account import AccountDataLoader, AccountLoaderParams
 
@@ -74,6 +75,7 @@ class AccountMetadataResolver:
         return await loader.load(account_id)
 
 
+@retry_db_transaction(name="account_metadata_resolver")
 async def account_metadata_resolver(
     parent: dict[str, Any],
     info: GraphQLResolveInfo,

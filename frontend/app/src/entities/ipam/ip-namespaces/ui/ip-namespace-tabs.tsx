@@ -1,6 +1,6 @@
-import { constructPathForIpam } from "@/entities/ipam/utils";
+import { constructPathForIpam } from "@/entities/ipam/ip-namespaces/ui/routing/ipam-urls";
 import { ObjectDetailsTab } from "@/entities/nodes/object/ui/object-details/object-details-tab";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface IpNamespaceTabsProps {
   objectId: string;
@@ -16,13 +16,13 @@ export function IpNamespaceTabs({ objectId, schema }: IpNamespaceTabsProps) {
   );
 
   return (
-    <div className="flex w-full items-stretch gap-2 border-gray-200 border-b px-2.5 text-sm">
+    <div className="flex w-full items-stretch gap-2 border-b px-2.5 text-sm">
       {relationshipSchemaWithIpPrefix && (
         <ObjectDetailsTab
           parentKind={schema.kind!}
           parentId={objectId}
           relationship={relationshipSchemaWithIpPrefix}
-          href={constructPathForIpam("/ipam")}
+          to={constructPathForIpam("/ipam")}
         />
       )}
 
@@ -31,7 +31,7 @@ export function IpNamespaceTabs({ objectId, schema }: IpNamespaceTabsProps) {
           parentKind={schema.kind!}
           parentId={objectId}
           relationship={relationshipSchemaWithIpAddress}
-          href={constructPathForIpam("/ipam/ip_addresses")}
+          to={constructPathForIpam("/ipam/ip_addresses")}
         />
       )}
     </div>

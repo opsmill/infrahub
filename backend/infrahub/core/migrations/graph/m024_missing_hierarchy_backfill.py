@@ -21,7 +21,7 @@ class BackfillMissingHierarchyQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         # load schemas from database into registry
         initialize_lock()
         await initialization(db=db)
@@ -53,16 +53,17 @@ class BackfillMissingHierarchyQuery(Query):
 
 
 class Migration024(GraphMigration):
-    """
-    A bug in diff merge logic caused the hierarchy information on IS_RELATED edges to be lost when merged into
+    """A bug in diff merge logic caused the hierarchy information on IS_RELATED edges to be lost when merged into.
+
     main. This migration backfills the missing hierarchy data and accounts for the case when the branch that
     created the data has been deleted.
+
     """
 
     name: str = "024_backfill_hierarchy"
+    description: str = "N/A"
     minimum_version: int = 23
     queries: Sequence[type[Query]] = [BackfillMissingHierarchyQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

@@ -1,10 +1,10 @@
-import { gql } from "@apollo/client";
+import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { type FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { Row } from "@/shared/components/container";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
@@ -17,7 +17,6 @@ import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormF
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -26,20 +25,17 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
-import { NUMBER_POOL_OBJECT } from "@/shared/config/constants";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import {
+  NUMBER_POOL_KIND,
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
   NUMBER_POOL_NODE_FIELD,
-} from "@/entities/resource-manager/constants";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+} from "@/entities/resource-manager/domain/model/pool";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 
 interface NumberPoolFormProps {
   currentObject?: ObjectFormProps["currentObject"];
@@ -48,9 +44,8 @@ interface NumberPoolFormProps {
 }
 
 export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoolFormProps) => {
-  const { currentBranch } = useCurrentBranch();
-  const date = useAtomValue(datetimeAtom);
   const createObject = useCreateObjectMutation();
+  const updateObject = useUpdateObjectMutation();
 
   const defaultValues = {
     name: getCurrentFieldValue("name", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
@@ -74,35 +69,30 @@ export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoo
     }
 
     if (currentObject) {
-      try {
-        const result = await graphqlClient.mutate({
-          mutation: gql(
-            updateObjectWithId({
-              kind: NUMBER_POOL_OBJECT,
-              data: stringifyWithoutQuotes({
-                id: currentObject.id,
-                ...newObject,
-              }),
-            })
-          ),
-          context: {
-            branch: currentBranch.name,
-            date,
+      await updateObject.mutateAsync(
+        {
+          objectKind: NUMBER_POOL_KIND,
+          data: {
+            id: currentObject.id,
+            ...newObject,
           },
-        });
-
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message="Number pool updated" />, {
-          toastId: "alert-success-number-pool-update",
-        });
-
-        if (onSuccess) await onSuccess(result?.data?.[`${NUMBER_POOL_OBJECT}Update`]);
-      } catch (error: unknown) {
-        console.error("An error occurred while creating the object: ", error);
-      }
+        },
+        {
+          onSuccess: async (updatedNode) => {
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message="Number pool updated" />, {
+              toastId: "alert-success-number-pool-update",
+            });
+            if (onSuccess) await onSuccess(updatedNode);
+          },
+          onError: (error) => {
+            console.error("An error occurred while creating the object: ", error);
+          },
+        }
+      );
     } else {
       await createObject.mutateAsync(
         {
-          objectKind: NUMBER_POOL_OBJECT,
+          objectKind: NUMBER_POOL_KIND,
           data: newObject,
         },
         {
@@ -122,7 +112,7 @@ export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoo
   }
 
   return (
-    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
+    <div className="flex flex-1 flex-col overflow-auto bg-white">
       <Form form={form} onSubmit={handleSubmit}>
         <InputField name="name" label="Name" rules={{ required: true }} />
         <InputField name="description" label="Description" />
@@ -139,15 +129,15 @@ export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoo
           description="The end range for the pool"
           rules={{ required: true }}
         />
-        <div className="text-right">
+        <Row className="justify-end">
           {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
+            <Button variant="outline" onPress={onCancel}>
               Cancel
             </Button>
           )}
 
           <FormSubmit>Save</FormSubmit>
-        </div>
+        </Row>
       </Form>
     </div>
   );

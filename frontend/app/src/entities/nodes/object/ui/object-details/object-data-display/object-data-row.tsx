@@ -5,7 +5,9 @@ import { Button, DialogTrigger } from "react-aria-components";
 import { Row } from "@/shared/components/container";
 import { classNames } from "@/shared/utils/common";
 
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
+import { getRelationshipLabel } from "@/entities/schema/domain/rules/get-relationship-label";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { SchemaViewerModal } from "@/entities/schema/ui/schema-viewer-modal";
@@ -19,9 +21,12 @@ interface ObjectDataRowProps {
 
 export function ObjectDataRow({ value, className, objectKind, fieldSchema }: ObjectDataRowProps) {
   const { schema } = useSchema(objectKind);
+  const isRelationship = isRelationshipSchema(fieldSchema);
+  const { schema: peerSchema } = useSchema(isRelationship ? fieldSchema.peer : undefined);
 
-  const fieldName = fieldSchema.label ?? fieldSchema.name;
-  const isRelationship = "peer" in fieldSchema;
+  const fieldName = isRelationship
+    ? getRelationshipLabel(fieldSchema, peerSchema)
+    : (fieldSchema.label ?? fieldSchema.name);
   const defaultTab = isRelationship ? "relationships" : "attributes";
 
   return (
@@ -29,7 +34,7 @@ export function ObjectDataRow({ value, className, objectKind, fieldSchema }: Obj
       <dt className="flex h-8 items-center font-medium text-gray-500">
         {schema ? (
           <DialogTrigger>
-            <Button className="group flex cursor-pointer items-center gap-1.5 hover:text-custom-blue-700">
+            <Button className="group flex cursor-pointer items-center gap-1.5 data-hovered:text-custom-blue-700">
               <FieldSchemaIcon fieldSchema={fieldSchema} />
               {fieldName}
               <Icon icon="mdi:code-json" className="hidden group-hover:inline-block" />

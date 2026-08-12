@@ -1,8 +1,8 @@
 import re
 import shutil
-import tarfile
 from pathlib import Path
 from typing import Any, Generator
+from unittest.mock import AsyncMock, patch
 
 import anyio
 import pytest
@@ -11,6 +11,7 @@ from git import Repo
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
 from infrahub_sdk.node import InfrahubNode
+from infrahub_sdk.schema import NodeSchemaAPI
 from infrahub_sdk.schema import SchemaRootAPI as ClientSchemaRoot
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx import HTTPXMock
@@ -34,60 +35,10 @@ def client() -> InfrahubClient:
 
 
 @pytest.fixture
-def branch01() -> BranchData:
-    return BranchData(
-        id="6c915158-d8ef-4169-9b00-59f94716b8c3 ",
-        name="branch01",
-        sync_with_git=False,
-        is_default=False,
-        branched_from="main",
-        is_isolated=False,
-        has_schema_changes=False,
-    )
-
-
-@pytest.fixture
-def branch02() -> BranchData:
-    return BranchData(
-        id="7708dcea-f7b4-4f5a-b5e9-a0605d4c11ba",
-        name="branch02",
-        sync_with_git=False,
-        is_default=False,
-        branched_from="main",
-        is_isolated=False,
-        has_schema_changes=False,
-    )
-
-
-@pytest.fixture
-def branch99() -> BranchData:
-    return BranchData(
-        id="2e933717-086c-47cf-8242-21421dd3c2bb",
-        name="branch99",
-        sync_with_git=False,
-        is_default=False,
-        branched_from="main",
-        is_isolated=False,
-        has_schema_changes=False,
-    )
-
-
-@pytest.fixture
-def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
-    """Git Repository with 4 branches main, branch01, branch02, and clean-branch.
-    There is conflict between branch01 and branch02."""
-
-    name = "infrahub-test-fixture-01"
-    here = Path(__file__).parent.resolve()
-    fixtures_dir = here.parent.parent / "fixtures"
-    fixture_repo = fixtures_dir / "infrahub-test-fixture-01-f165752.tar.gz"
-
-    # Extract the fixture package in the source directory
-
-    with tarfile.open(fixture_repo) as file:
-        file.extractall(git_sources_dir, filter="data")
-
-    return {"name": name, "path": git_sources_dir / name}
+def mock_branch_all() -> Generator[AsyncMock]:
+    """Git sync queries all branches to skip merged/read-only ones; stub the SDK call with no such branches."""
+    with patch("infrahub_sdk.branch.InfrahubBranchManager.all", new_callable=AsyncMock, return_value={}) as mock:
+        yield mock
 
 
 @pytest.fixture
@@ -119,28 +70,11 @@ def git_upstream_repo_03(git_upstream_repo_01: dict[str, str | Path]) -> dict[st
 
 
 @pytest.fixture
-async def git_repo_01(
-    client: InfrahubClient, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
-) -> InfrahubRepository:
-    """Git Repository with git_upstream_repo_01 as remote"""
-
-    repo = await InfrahubRepository.new(
-        id=UUIDT.new(),
-        name=git_upstream_repo_01["name"],
-        location=str(git_upstream_repo_01["path"]),
-        client=InfrahubClient(config=Config(requester=dummy_async_request)),
-    )
-
-    return repo
-
-
-@pytest.fixture
 async def git_repo_01_read_only(
     client: InfrahubClient, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
 ) -> InfrahubReadOnlyRepository:
     """Git Repository with git_upstream_repo_01 as remote"""
-
-    repo = await InfrahubReadOnlyRepository.new(
+    return await InfrahubReadOnlyRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
@@ -149,13 +83,10 @@ async def git_repo_01_read_only(
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
-    return repo
-
 
 @pytest.fixture
 async def git_repo_01_w_client(git_repo_01: InfrahubRepository, client: InfrahubClient) -> InfrahubRepository:
     """Same as fixture git_repo_01 but with a Infrahub client initialized."""
-
     git_repo_01.client = client
     return git_repo_01
 
@@ -163,14 +94,12 @@ async def git_repo_01_w_client(git_repo_01: InfrahubRepository, client: Infrahub
 @pytest.fixture
 async def git_repo_02(git_upstream_repo_02: dict[str, str | Path], git_repos_dir: Path) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_02 as remote"""
-    repo = await InfrahubRepository.new(
+    return await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
-
-    return repo
 
 
 @pytest.fixture
@@ -178,21 +107,17 @@ async def git_repo_03(
     client: InfrahubClient, git_upstream_repo_03: dict[str, str | Path], git_repos_dir: Path
 ) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_03 as remote"""
-
-    repo = await InfrahubRepository.new(
+    return await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_03["name"],
         location=str(git_upstream_repo_03["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
-    return repo
-
 
 @pytest.fixture
 async def git_repo_03_w_client(git_repo_03: InfrahubRepository, client: InfrahubClient) -> InfrahubRepository:
     """Same as fixture git_repo_03 but with a Infrahub client initialized."""
-
     git_repo_03.client = client
     return git_repo_03
 
@@ -201,12 +126,12 @@ async def git_repo_03_w_client(git_repo_03: InfrahubRepository, client: Infrahub
 async def git_repo_04(
     client: InfrahubClient, git_upstream_repo_03: dict[str, str | Path], git_repos_dir: Path, branch01: BranchData
 ) -> InfrahubRepository:
-    """Git Repository with git_upstream_repo_03 as remote
-    The repo has 2 local branches : main and branch01
-    The content of the branch branch01 has been  updated after the repo has been initialized
+    """Git Repository with git_upstream_repo_03 as remote.
+
+    The repo has 2 local branches: main and branch01.
+    The content of the branch branch01 has been updated after the repo has been initialized
     to generate a diff between the local and the remote branch branch01.
     """
-
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_03["name"],
@@ -238,12 +163,12 @@ async def git_repo_04(
 async def git_repo_05(
     client: InfrahubClient, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
 ) -> InfrahubRepository:
-    """Git Repository with git_upstream_repo_01 as remote
-    The repo has 1 local : main
-    The content of the main branch has been  updated after the repo has been initialized
+    """Git Repository with git_upstream_repo_01 as remote.
+
+    The repo has 1 local: main.
+    The content of the main branch has been updated after the repo has been initialized
     to generate a diff between the local and the remote branch main.
     """
-
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
@@ -269,12 +194,13 @@ async def git_repo_05(
 async def git_repo_06(
     client: InfrahubClient, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path, branch01: BranchData
 ) -> InfrahubRepository:
-    """Git Repository with git_upstream_repo_01 as remote
-    The repo has 2 local branches : main and branch01
-    The content of the branch branch01 has been  updated both locally and in the remote after the repo has been initialized
-    to generate a conflict between the local and the remote branch branch01.
-    """
+    """Git Repository with git_upstream_repo_01 as remote.
 
+    The repo has 2 local branches: main and branch01.
+    The content of the branch branch01 has been updated both locally and in the remote
+    after the repo has been initialized to generate a conflict between the local and the
+    remote branch branch01.
+    """
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
@@ -313,17 +239,85 @@ async def git_repo_06(
 
 
 @pytest.fixture
+async def git_repo_07(
+    client: InfrahubClient,
+    git_upstream_repo_03: dict[str, str | Path],
+    git_repos_dir: Path,
+    branch01: BranchData,
+    branch02: BranchData,
+) -> InfrahubRepository:
+    """Git Repository with git_upstream_repo_03 as remote.
+
+    The repo has 3 local branches: main, branch01 and branch02.
+    After the repo has been initialized:
+    - branch01 has been updated both locally and in the remote with different changes to the
+      same file, so pulling branch01 fails with a conflict.
+    - branch02 has been updated in the remote only, so pulling branch02 is a clean fast-forward.
+    """
+    upstream = Repo(git_upstream_repo_03["path"])
+
+    # Create branch02 in the remote with a dedicated file so it cannot conflict with main
+    upstream.git.checkout("-b", "branch02", "main")
+    branch02_file = Path(git_upstream_repo_03["path"]) / "branch02-file.txt"
+    branch02_file.write_text("initial content\n", encoding="utf-8")
+    upstream.index.add([str(branch02_file)])
+    upstream.index.commit("Add branch02 file")
+    upstream.git.checkout("main")
+
+    repo = await InfrahubRepository.new(
+        id=UUIDT.new(),
+        name=git_upstream_repo_03["name"],
+        location=str(git_upstream_repo_03["path"]),
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
+    await repo.create_branch_in_git(branch_name=branch02.name, branch_id=branch02.id)
+
+    # Update the first file of branch01 in the remote
+    upstream.git.checkout(branch01.name)
+    first_file = find_first_file_in_directory(Path(git_upstream_repo_03["path"]))
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
+        await file.write("remote line\n")
+    upstream.index.add([first_file])
+    upstream.index.commit("Change first file in the remote")
+    upstream.git.checkout("main")
+
+    # Update the same file of branch01 locally with a different change to create a conflict on pull
+    branch_wt = repo.get_worktree(identifier=branch01.name)
+    branch_repo = Repo(branch_wt.directory)
+    local_first_file = find_first_file_in_directory(branch_wt.directory)
+    assert local_first_file
+    async with await anyio.open_file(local_first_file, mode="a", encoding="utf-8") as file:
+        await file.write("local line\n")
+    branch_repo.index.add([local_first_file])
+    branch_repo.index.commit("Change first file locally")
+
+    # Advance branch02 in the remote with a fast-forward commit
+    upstream.git.checkout("branch02")
+    async with await anyio.open_file(branch02_file, mode="a", encoding="utf-8") as file:
+        await file.write("new line\n")
+    upstream.index.add([str(branch02_file)])
+    upstream.index.commit("Change branch02 file")
+    upstream.git.checkout("main")
+
+    await repo.fetch()
+
+    return repo
+
+
+@pytest.fixture
 async def git_repo_jinja(
     client: InfrahubClient, git_upstream_repo_02: dict[str, str | Path], git_repos_dir: Path, branch01: BranchData
 ) -> InfrahubRepository:
-    """Git Repository with git_upstream_repo_02 as remote
-    The repo has 2 local branches : main and branch01
+    """Git Repository with git_upstream_repo_02 as remote.
+
+    The repo has 2 local branches: main and branch01.
     The main branch contains 2 jinja templates, 1 valid and 1 not valid.
-    The content of the first (valid) template, has been modified in the branch branch01
+    The content of the first (valid) template has been modified in the branch branch01.
 
     TODO At some point if would be good to include all these changes in the base repository
     """
-
     upstream = Repo(git_upstream_repo_02["path"])
 
     files_to_add = [
@@ -391,12 +385,12 @@ async def git_repo_jinja_w_client(git_repo_jinja: InfrahubRepository, client: In
 async def git_repo_checks(
     client: InfrahubClient, git_upstream_repo_02: dict[str, str | Path], git_repos_dir: Path
 ) -> InfrahubRepository:
-    """Git Repository with git_upstream_repo_02 as remote
-    The repo has 1 local branch : main
+    """Git Repository with git_upstream_repo_02 as remote.
+
+    The repo has 1 local branch: main.
     The main branch contains 2 checks: check01 and check02.
     Check01 always return False and check02 is not valid.
     """
-
     checks_fixture_dir = get_fixtures_dir() / "checks"
     upstream = Repo(git_upstream_repo_02["path"])
 
@@ -408,25 +402,24 @@ async def git_repo_checks(
 
     upstream.index.commit("Add 2 checks files")
 
-    repo = await InfrahubRepository.new(
+    return await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
-    return repo
 
 
 @pytest.fixture
 async def git_repo_transforms(
     client: InfrahubClient, git_upstream_repo_02: dict[str, str | Path], git_repos_dir: Path
 ) -> InfrahubRepository:
-    """Git Repository with git_upstream_repo_02 as remote
-    The repo has 1 local branch : main
+    """Git Repository with git_upstream_repo_02 as remote.
+
+    The repo has 1 local branch: main.
     The main branch contains 2 transforms: transform01 and transform02.
     Transform01 will change to uppercase the keys in the data dict always and Transform02 is not valid.
     """
-
     checks_fixture_dir = get_fixtures_dir() / "transforms"
     upstream = Repo(git_upstream_repo_02["path"])
 
@@ -438,13 +431,12 @@ async def git_repo_transforms(
 
     upstream.index.commit("Add 2 Transforms files")
 
-    repo = await InfrahubRepository.new(
+    return await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
-    return repo
 
 
 @pytest.fixture
@@ -570,7 +562,7 @@ async def mock_gql_query_my_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def gql_query_data_01() -> dict:
-    data = {
+    return {
         "node": {
             "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
             "display_label": "MyQuery",
@@ -584,12 +576,11 @@ async def gql_query_data_01() -> dict:
             },
         }
     }
-    return data
 
 
 @pytest.fixture
 async def gql_query_data_02() -> dict:
-    data = {
+    return {
         "node": {
             "id": "mmmmmmmm-nnnn-bbbb-vvvv-cccccccccccc",
             "display_label": "MyOtherQuery",
@@ -603,7 +594,6 @@ async def gql_query_data_02() -> dict:
             },
         }
     }
-    return data
 
 
 @pytest.fixture
@@ -644,7 +634,7 @@ async def mock_check_create(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTPXM
 
 @pytest.fixture
 async def check_definition_data_01() -> dict:
-    data = {
+    return {
         "node": {
             "id": "d32f30f8-1d1e-4dfb-96d9-91234a9ffbe1",
             "display_label": "Check01",
@@ -731,8 +721,6 @@ async def check_definition_data_01() -> dict:
         },
     }
 
-    return data
-
 
 @pytest.fixture
 async def gql_query_data_03() -> dict[str, Any]:
@@ -760,7 +748,7 @@ async def gql_query_data_03() -> dict[str, Any]:
     }
     """
 
-    data = {
+    return {
         "id": "42665742-002b-4f98-b2e0-1ae716c1efbe",
         "type": InfrahubKind.GRAPHQLQUERY,
         "name": {
@@ -789,7 +777,6 @@ async def gql_query_data_03() -> dict[str, Any]:
         "__typename": InfrahubKind.GRAPHQLQUERY,
         "display_label": "query01",
     }
-    return data
 
 
 @pytest.fixture
@@ -801,9 +788,9 @@ async def schema_02(client: InfrahubClient, helper: TestHelper, car_data_01: dic
 
 @pytest.fixture
 async def gql_query_node_03(client: InfrahubClient, gql_query_data_03: dict[str, Any]) -> InfrahubNode:
-    schema = [model for model in SchemaRoot(**core_models).nodes if model.kind == InfrahubKind.GRAPHQLQUERY][0]
-    node = InfrahubNode(client=client, schema=schema, data=gql_query_data_03)
-    return node
+    backend_schema = [model for model in SchemaRoot(**core_models).nodes if model.kind == InfrahubKind.GRAPHQLQUERY][0]
+    schema = NodeSchemaAPI(**backend_schema.model_dump())
+    return InfrahubNode(client=client, schema=schema, data=gql_query_data_03)
 
 
 @pytest.fixture
@@ -835,7 +822,7 @@ async def mock_upload_content(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def artifact_definition_data_01() -> dict[str, Any]:
-    data = {
+    return {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": InfrahubKind.ARTIFACTDEFINITION,
         "name": {
@@ -865,7 +852,6 @@ async def artifact_definition_data_01() -> dict[str, Any]:
         "__typename": InfrahubKind.ARTIFACTDEFINITION,
         "display_label": "artifactdef01",
     }
-    return data
 
 
 @pytest.fixture
@@ -873,13 +859,12 @@ async def artifact_definition_node_01(
     client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_definition_data_01: dict[str, Any]
 ) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION][0]
-    node = InfrahubNode(client=client, schema=schema, data=artifact_definition_data_01)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=artifact_definition_data_01)
 
 
 @pytest.fixture
 async def artifact_definition_data_02() -> dict[str, Any]:
-    data = {
+    return {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": InfrahubKind.ARTIFACTDEFINITION,
         "name": {
@@ -909,7 +894,6 @@ async def artifact_definition_data_02() -> dict[str, Any]:
         "__typename": InfrahubKind.ARTIFACTDEFINITION,
         "display_label": "artifactdef02",
     }
-    return data
 
 
 @pytest.fixture
@@ -917,13 +901,12 @@ async def artifact_definition_node_02(
     client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_definition_data_02: dict[str, Any]
 ) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION][0]
-    node = InfrahubNode(client=client, schema=schema, data=artifact_definition_data_02)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=artifact_definition_data_02)
 
 
 @pytest.fixture
 async def artifact_data_01() -> dict[str, Any]:
-    data = {
+    return {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": "CoreArtifact",
         "name": {
@@ -944,7 +927,6 @@ async def artifact_data_01() -> dict[str, Any]:
         "__typename": InfrahubKind.ARTIFACT,
         "display_label": "artifact01",
     }
-    return data
 
 
 @pytest.fixture
@@ -952,13 +934,12 @@ async def artifact_node_01(
     client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_data_01: dict[str, Any]
 ) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT][0]
-    node = InfrahubNode(client=client, schema=schema, data=artifact_data_01)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=artifact_data_01)
 
 
 @pytest.fixture
 async def artifact_data_02() -> dict[str, Any]:
-    data = {
+    return {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": InfrahubKind.ARTIFACT,
         "name": {
@@ -981,7 +962,6 @@ async def artifact_data_02() -> dict[str, Any]:
         "__typename": InfrahubKind.ARTIFACT,
         "display_label": "artifact01",
     }
-    return data
 
 
 @pytest.fixture
@@ -989,13 +969,12 @@ async def artifact_node_02(
     client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_data_02: dict[str, Any]
 ) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT][0]
-    node = InfrahubNode(client=client, schema=schema, data=artifact_data_02)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=artifact_data_02)
 
 
 @pytest.fixture
 async def transformation_data_01() -> dict:
-    data = {
+    return {
         "id": "a0d4c22a-5f60-4bf9-a53f-f9a335420492",
         "type": "CoreTransformPython",
         "file_path": {
@@ -1064,7 +1043,6 @@ async def transformation_data_01() -> dict:
         "__typename": "CoreTransformPython",
         "display_label": "transform01",
     }
-    return data
 
 
 @pytest.fixture
@@ -1072,13 +1050,12 @@ async def transformation_node_01(
     client: InfrahubClient, schema_02: ClientSchemaRoot, transformation_data_01: dict
 ) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == "CoreTransformPython"][0]
-    node = InfrahubNode(client=client, schema=schema, data=transformation_data_01)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=transformation_data_01)
 
 
 @pytest.fixture
 async def transformation_data_02() -> dict:
-    data = {
+    return {
         "id": "70a58c98-6185-4004-b4bf-713baccfdc87",
         "display_label": "device_startup",
         "template_path": {"value": "template01.tpl.j2", "__typename": "TextAttribute"},
@@ -1104,7 +1081,6 @@ async def transformation_data_02() -> dict:
         },
         "__typename": InfrahubKind.TRANSFORMJINJA2,
     }
-    return data
 
 
 @pytest.fixture
@@ -1112,13 +1088,12 @@ async def transformation_node_02(
     client: InfrahubClient, schema_02: ClientSchemaRoot, transformation_data_02: dict
 ) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.TRANSFORMJINJA2][0]
-    node = InfrahubNode(client=client, schema=schema, data=transformation_data_02)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=transformation_data_02)
 
 
 @pytest.fixture
 async def car_data_01() -> dict:
-    data = {
+    return {
         "id": "b663d7a4-5f95-48dd-b04d-e03169e7fcf3",
         "type": "TestElectricCar",
         "nbr_engine": {
@@ -1156,14 +1131,12 @@ async def car_data_01() -> dict:
         "__typename": "TestElectricCar",
         "display_label": "TestElectricCar(ID: b663d7a4-5f95-48dd-b04d-e03169e7fcf3)",
     }
-    return data
 
 
 @pytest.fixture
 async def car_node_01(client: InfrahubClient, schema_02: ClientSchemaRoot, car_data_01: dict) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.name == "ElectricCar"][0]
-    node = InfrahubNode(client=client, schema=schema, data=car_data_01)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=car_data_01)
 
 
 @pytest.fixture

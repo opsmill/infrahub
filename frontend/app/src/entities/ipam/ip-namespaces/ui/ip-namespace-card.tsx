@@ -6,9 +6,9 @@ import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
-import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/use-cases/get-ip-namespace-list";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
 export interface IpNamespaceCardProps {
   ipNamespace: IpNamespace;
@@ -16,7 +16,7 @@ export interface IpNamespaceCardProps {
 
 const CARD_STYLES = {
   container: classNames(
-    "bg-white rounded-lg border border-gray-200 p-4 flex flex-col gap-2",
+    "bg-white rounded-lg border p-4 flex flex-col gap-2",
     "transition-all hover:border-custom-blue-600 hover:shadow-sm",
     focusVisibleStyle
   ),

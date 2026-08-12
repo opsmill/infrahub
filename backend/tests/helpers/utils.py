@@ -6,21 +6,27 @@ import pytest
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
-from tests.helpers.constants import INFRAHUB_USE_TEST_CONTAINERS, PORT_BOLT_NEO4J, PORT_HTTP_NEO4J, PORT_PREFECT
+from tests.helpers.constants import (
+    INFRAHUB_USE_TEST_CONTAINERS,
+    PORT_BOLT_NEO4J,
+    PORT_HTTP_NEO4J,
+    PORT_PREFECT,
+    PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
+)
 
 
 def get_exposed_port(container: DockerContainer, port: int) -> int:
-    """
-    Use this method instead of DockerContainer.get_exposed_port as it is decorated with wait_container_is_ready
+    """Use this method instead of DockerContainer.get_exposed_port as it is decorated with wait_container_is_ready.
+
     which we do not want to use as it does not perform a real healthcheck. DockerContainer.get_exposed_port
     also introduces extra "Waiting for container" logs as we might call it multiple times for containers exposing
     multiple ports such as rabbitmq.
-    """
 
+    """
     return int(container.get_docker_client().port(container.get_wrapped_container().id, port))
 
 
-def start_neo4j_container(neo4j_image: str) -> DockerContainer:
+def start_neo4j_container(neo4j_image: str, extra_env: dict[str, str] | None = None) -> DockerContainer:
     container = (
         DockerContainer(image=neo4j_image)
         .with_env("NEO4J_AUTH", "neo4j/admin")
@@ -30,6 +36,9 @@ def start_neo4j_container(neo4j_image: str) -> DockerContainer:
         .with_exposed_ports(PORT_BOLT_NEO4J)
         .with_exposed_ports(PORT_HTTP_NEO4J)
     )
+
+    for key, value in (extra_env or {}).items():
+        container = container.with_env(key, value)
 
     container.start()
     wait_for_logs(container, "Started.")  # wait_container_is_ready does not seem to be enough
@@ -44,12 +53,15 @@ def start_prefect_server_container(
 
     prefect_base = Path(Path(__file__).parent.resolve() / "./../../infrahub/prefect_server")
     container = (
-        DockerContainer(image="prefecthq/prefect:3.6.13-python3.13")
+        DockerContainer(image="prefecthq/prefect:3.7.5-python3.13")
         .with_command("uvicorn --host 0.0.0.0 --port 4200 --factory prefect_server.app:create_infrahub_prefect")
         .with_exposed_ports(PORT_PREFECT)
         .with_volume_mapping(host=str(prefect_base), container="/opt/prefect/prefect_server", mode="ro")
         .with_env(key="PREFECT_SERVER_SERVICES_EVENT_PERSISTER_FLUSH_INTERVAL", value="1")
+        .with_env(key="PREFECT_SERVER_API_MAX_PARAMETER_SIZE", value="0")
     )
+    for key, value in PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS.items():
+        container = container.with_env(key=key, value=value)
 
     def cleanup() -> None:
         container.stop()

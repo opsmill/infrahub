@@ -1,7 +1,9 @@
 from infrahub.core.constants import (
     InfrahubKind,
     RelationshipCardinality,
+    RelationshipKind,
 )
+from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.schema import (
     AttributeSchema,
     NodeSchema,
@@ -128,3 +130,53 @@ async def test_manage_object_templates_with_resource_pool_relationships() -> Non
     assert ip_prefix_pool_rel.peer == InfrahubKind.IPPREFIXPOOL
     assert ip_prefix_pool_rel.cardinality == RelationshipCardinality.ONE
     assert ip_prefix_pool_rel.optional is True
+
+
+async def test_number_attribute_generates_pool_relationship() -> None:
+    """Test that Number attributes on templates get _from_resource_pool relationships to CoreNumberPool."""
+    schema_branch = SchemaBranch(cache={}, name="test")
+
+    test_schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Device",
+                namespace="Infra",
+                generate_template=True,
+                attributes=[
+                    AttributeSchema(name="name", kind="Text", unique=True),
+                    AttributeSchema(name="vlan_id", kind="Number"),
+                    AttributeSchema(name="asn", kind="Number"),
+                    AttributeSchema(name="unique_number", kind="Number", unique=True),
+                    AttributeSchema(name="read_only_number", kind="Number", read_only=True),
+                    AttributeSchema(name="description", kind="Text"),
+                    AttributeSchema(name="active", kind="Boolean"),
+                ],
+            ),
+        ]
+    )
+
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=test_schema))
+    schema_branch.generate_identifiers()
+    schema_branch.process_inheritance()
+    schema_branch.manage_object_template_schemas()
+    schema_branch.manage_object_template_relationships()
+
+    device_template = schema_branch.get_template("TemplateInfraDevice", duplicate=False)
+
+    resource_pool_rel_names = {
+        r_name for r_name in device_template.relationship_names if r_name.endswith(RESOURCE_POOL_REL_SUFFIX)
+    }
+    assert resource_pool_rel_names == {f"vlan_id{RESOURCE_POOL_REL_SUFFIX}", f"asn{RESOURCE_POOL_REL_SUFFIX}"}
+
+    # Verify pool relationships exist for both Number attributes
+    vlan_pool_rel = device_template.get_relationship("vlan_id_from_resource_pool")
+    assert vlan_pool_rel.peer == InfrahubKind.NUMBERPOOL
+    assert vlan_pool_rel.cardinality == RelationshipCardinality.ONE
+    assert vlan_pool_rel.optional is True
+    assert vlan_pool_rel.kind == RelationshipKind.GENERIC
+
+    asn_pool_rel = device_template.get_relationship("asn_from_resource_pool")
+    assert asn_pool_rel.peer == InfrahubKind.NUMBERPOOL
+    assert asn_pool_rel.cardinality == RelationshipCardinality.ONE
+    assert asn_pool_rel.optional is True
+    assert asn_pool_rel.kind == RelationshipKind.GENERIC

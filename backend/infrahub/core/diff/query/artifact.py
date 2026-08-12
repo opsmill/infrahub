@@ -138,9 +138,10 @@ CALL (target_node, definition_node){
     // get the corresponding artifact on the target branch, if it exists
     // -----------------------
     CALL (target_node, definition_node) {
-        OPTIONAL MATCH path = (target_node)-[trel1:IS_RELATED]-(trel_node:Relationship)-[trel2:IS_RELATED]-
+        OPTIONAL MATCH path = (tn_target:Node)-[trel1:IS_RELATED]-(trel_node:Relationship)-[trel2:IS_RELATED]-
         (target_artifact:%(artifact_kind)s)-[drel1:IS_RELATED]-(drel_node:Relationship)-[drel2:IS_RELATED]-(definition_node)
-        WHERE trel_node.name = $target_rel_identifier
+        WHERE tn_target.uuid = target_node.uuid
+        AND trel_node.name = $target_rel_identifier
         AND drel_node.name = $definition_rel_identifier
         AND all(
             r IN relationships(path)

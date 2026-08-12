@@ -1,6 +1,5 @@
+import { Button } from "@infrahub/ui";
 import { ListBox } from "react-aria-components";
-
-import { Button } from "@/shared/components/ui/button";
 
 import {
   GroupPanelBody,
@@ -8,7 +7,7 @@ import {
   GroupPanelHeader,
 } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/group-panel";
 import { SelectedGroupItem } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/selected-group-item";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 
 export interface SelectedGroupsPanelProps {
   selectedGroups: RelationshipNode[];
@@ -23,7 +22,7 @@ export function SelectedGroupsPanel({
 }: SelectedGroupsPanelProps) {
   return (
     <div
-      className="flex max-h-[12rem] min-w-[15rem] max-w-sm flex-col border-gray-200 border-l"
+      className="flex max-h-[12rem] min-w-[15rem] max-w-sm flex-col border-l"
       data-testid="selected-groups-panel"
     >
       <GroupPanelHeader>Selected groups</GroupPanelHeader>
@@ -39,7 +38,7 @@ export function SelectedGroupsPanel({
       </GroupPanelBody>
 
       <GroupPanelFooter>
-        <Button size="xs" onClick={onValidate}>
+        <Button size="xs" onPress={onValidate}>
           Validate
         </Button>
       </GroupPanelFooter>

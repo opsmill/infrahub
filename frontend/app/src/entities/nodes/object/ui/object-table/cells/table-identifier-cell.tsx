@@ -1,11 +1,11 @@
+import { Checkbox, LinkButton } from "@infrahub/ui";
 import type { PressEvent } from "react-aria-components";
 
-import { Checkbox } from "@/shared/components/aria/checkbox";
-import { LinkButton } from "@/shared/components/ui/button";
+import type { overrideQueryParams } from "@/shared/api/rest/fetch";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
 export interface TableIdentifierCellProps {
   objectKind: string;
@@ -13,6 +13,7 @@ export interface TableIdentifierCellProps {
   label: React.ReactNode;
   isSelected?: boolean;
   onClickCheckbox?: (e: PressEvent) => void;
+  overrideParams?: overrideQueryParams[];
 }
 
 export function TableIdentifierCell({
@@ -21,22 +22,18 @@ export function TableIdentifierCell({
   label,
   isSelected,
   onClickCheckbox,
+  overrideParams,
 }: TableIdentifierCellProps) {
   const { isAuthenticated } = useAuth();
+
   return (
     <StickyLeftCell data-testid="identifier-cell">
-      {isAuthenticated && (
-        <Checkbox
-          isSelected={isSelected}
-          onPress={onClickCheckbox}
-          data-testid="identifier-checkbox-cell"
-        />
-      )}
+      {isAuthenticated && <Checkbox isSelected={isSelected} onPress={onClickCheckbox} />}
 
       <LinkButton
         variant="ghost"
         size="sm"
-        to={getObjectDetailsUrl(objectKind, objectId)}
+        href={getObjectDetailsUrl(objectKind, objectId, overrideParams)}
         className="-mx-1 truncate rounded-xl px-2 text-custom-blue-700 hover:underline"
       >
         {label}

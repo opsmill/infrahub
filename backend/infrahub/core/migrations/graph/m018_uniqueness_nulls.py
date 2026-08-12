@@ -22,12 +22,10 @@ log = get_logger()
 
 
 async def validate_nulls_in_uniqueness_constraints(db: InfrahubDatabase) -> MigrationResult:
-    """
-    Validate any schema that include optional attributes in the uniqueness constraints
+    """Validate any schema that include optional attributes in the uniqueness constraints.
 
     An update to uniqueness constraint validation now handles NULL values as unique instead of ignoring them
     """
-
     default_branch = registry.get_branch_from_registry()
     build_component_registry()
     component_registry = get_component_registry()
@@ -58,7 +56,9 @@ async def validate_nulls_in_uniqueness_constraints(db: InfrahubDatabase) -> Migr
         if not includes_optional_attr:
             continue
 
-        non_unique_nodes = await uniqueness_checker.check_one_schema(schema=schema)
+        non_unique_nodes = await uniqueness_checker.check_one_schema(
+            schema=schema, branch=default_branch, schema_branch=schema_branch
+        )
         if non_unique_nodes:
             non_unique_nodes_by_kind[schema_kind] = non_unique_nodes
 
@@ -89,6 +89,7 @@ async def validate_nulls_in_uniqueness_constraints(db: InfrahubDatabase) -> Migr
 
 class Migration018(InternalSchemaMigration):
     name: str = "018_validate_nulls_in_uniqueness_constraints"
+    description: str = "N/A"
     minimum_version: int = 17
     migrations: Sequence[SchemaMigration] = []
 

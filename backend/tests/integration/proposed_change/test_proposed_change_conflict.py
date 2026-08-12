@@ -18,7 +18,7 @@ from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_account, create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.merge import BranchMerger
+from infrahub.core.merge.graph_merger import GraphMerger
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.protocols import CoreValidator
@@ -26,6 +26,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.utils import get_fixtures_dir
 from tests.constants import TestKind
+from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -36,29 +37,24 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.branch import Branch
-    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
 
 
-class ErroringBranchMerger(BranchMerger):
-    async def merge(
-        self,
-        at: str | Timestamp | None = None,
-    ) -> EnrichedDiffRoot:
+class ErroringGraphMerger(GraphMerger):
+    async def merge(self, at: Timestamp) -> None:
         raise ValueError("This will always fail")
 
 
 class TestProposedChangePipelineConflict(TestInfrahubApp):
     @pytest.fixture(scope="class")
     def car_dealership_copy(self) -> Generator[tuple[Path, str]]:
-        """
-        Copies car-dealership local repository to a temporary folder, with a new name.
+        """Copies car-dealership local repository to a temporary folder, with a new name.
+
         This is needed for this test as using car-dealership folder leads to issues most probably
         related to https://github.com/opsmill/infrahub/issues/4296 as some other tests use this same repository.
         """
-
         source_folder = Path(get_fixtures_dir(), "repos", "car-dealership")
         new_folder_name = "car-dealership-copy"
 
@@ -112,7 +108,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def happy_data_branch(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> str:
         branch_name = f"conflict_free-{uuid4()}"
-        branch1 = await client.branch.create(branch_name=branch_name)
+        branch1 = await client.branch.create(branch_name=branch_name, sync_with_git=True)
         richard = await Node.init(schema=TestKind.PERSON, db=db, branch=branch1.name)
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
@@ -299,7 +295,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         assert proposed_change_after.state.updated_by.id == proposed_change_user.id
         assert proposed_change_after.state.updated_by.display_label == "Jimmy-Change-User"
 
-        for _ in range(10):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             merge_event = await client.execute_graphql(
                 query=QUERY_EVENT,
                 variables={
@@ -312,14 +308,14 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         assert merge_event["InfrahubEvent"]["count"] == 1
         merge_event_id = merge_event["InfrahubEvent"]["edges"][0]["node"]["id"]
-        assert len(merge_event["InfrahubEvent"]["edges"][0]["node"]["related_nodes"]) == 1
-        assert merge_event["InfrahubEvent"]["edges"][0]["node"]["related_nodes"][0]["id"] == proposed_change.id
+        assert merge_event["InfrahubEvent"]["edges"][0]["node"]["primary_node"] is not None
+        assert merge_event["InfrahubEvent"]["edges"][0]["node"]["primary_node"]["id"] == proposed_change.id
 
         john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="Johnny", kind=TestKind.PERSON)
         richard = await NodeManager.get_one_by_id_or_default_filter(db=db, id="Richard", kind=TestKind.PERSON)
 
         # Use this sleep mechanism to wait for the events being fired
-        for _ in range(10):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             secondary_events = await client.execute_graphql(
                 query=QUERY_EVENT, variables={"parent__ids": merge_event_id}
             )
@@ -435,13 +431,13 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         # Merge the proposed change and ensure everything looks good
         # -------------------------------------------------
         proposed_change_create.state.value = ProposedChangeState.MERGED.value
-        with patch("infrahub.core.branch.tasks.BranchMerger", new=ErroringBranchMerger):
+        with patch("infrahub.core.merge.builder.GraphMerger", new=ErroringGraphMerger):
             with pytest.raises(GraphQLError) as exc:
                 await proposed_change_create.save()
                 assert "Failed to merge branch 'failing_branch'" in exc.value.message
 
     async def test_connectivity(self, db: InfrahubDatabase, initial_dataset: str, client: InfrahubClient) -> None:
-        """Validate that the request to check connectivity to the remote repository is successful"""
+        """Validate that the request to check connectivity to the remote repository is successful."""
         query = """
         mutation InfrahubRepositoryConnectivity($id: String!) {
             InfrahubRepositoryConnectivity(data: {id: $id}) {

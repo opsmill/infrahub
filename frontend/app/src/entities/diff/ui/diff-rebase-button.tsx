@@ -1,7 +1,7 @@
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
 
 import { useRebaseBranch } from "@/entities/branches/ui/queries/rebase-branch.mutation";
 import { useUpdateDiffMutation } from "@/entities/diff/ui/queries/update-diff.mutation";
@@ -30,9 +30,9 @@ export function DiffRebaseButton({ branchName, ...props }: DiffRebaseButtonProps
     <Button
       size="sm"
       variant="primary-outline"
-      onClick={handleRebase}
-      isLoading={rebaseBranchMutation.isPending}
-      disabled={rebaseBranchMutation.isPending}
+      onPress={handleRebase}
+      isPending={rebaseBranchMutation.isPending}
+      isDisabled={rebaseBranchMutation.isPending}
       {...props}
     >
       Rebase

@@ -42,6 +42,7 @@ class SchemaNumberPoolUpserter:
     Args:
         db: Database connection.
         schema_manager: Schema manager for looking up schemas.
+
     """
 
     def __init__(
@@ -72,6 +73,7 @@ class SchemaNumberPoolUpserter:
 
         Returns:
             The pool ID if found, None otherwise.
+
         """
         # If pool_id is already set on the attribute, return it
         if isinstance(attribute.parameters, NumberPoolParameters) and attribute.parameters.number_pool_id:
@@ -118,6 +120,7 @@ class SchemaNumberPoolUpserter:
 
         Raises:
             ValueError: If the attribute is not a NumberPool type.
+
         """
         if not isinstance(attribute.parameters, NumberPoolParameters):
             raise ValueError(f"Attribute {attribute.name} on {schema_node.kind} is not a NumberPool type")
@@ -194,6 +197,7 @@ class SchemaNumberPoolUpserter:
         Returns:
             InheritedPoolInfo if the generic is found, None otherwise.
             The pool_id may be None if the generic hasn't been assigned a pool yet.
+
         """
         if not isinstance(node_schema, NodeSchema):
             return None
@@ -244,6 +248,7 @@ class SchemaNumberPoolUpserter:
 
         Raises:
             NodeNotFoundError: If pool not found.
+
         """
         if pool_id in self._cache:
             return self._cache[pool_id]

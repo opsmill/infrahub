@@ -3,8 +3,8 @@ import { composeRenderProps, ListBoxItem, type ListBoxItemProps } from "react-ar
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { classNames } from "@/shared/utils/common";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 
 export interface GroupItemProps extends ListBoxItemProps {
   group: RelationshipNode;
@@ -18,7 +18,7 @@ export function GroupItem({ group, children, className, ...props }: GroupItemPro
       className={classNames(
         focusVisibleStyle,
         "inline-flex max-w-full items-center overflow-hidden rounded-full bg-stone-100 px-1 py-0.5 text-sm",
-        "border border-stone-100 transition-all",
+        "border transition-all",
         className
       )}
       textValue={label}

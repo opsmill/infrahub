@@ -1,14 +1,26 @@
 import bcrypt
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GlobalPermissions, PermissionAction, PermissionDecision
+from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
+from infrahub.core.preferences.models import Preference
+from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
+
+CORE_ACCOUNT_DELETE = """
+mutation CoreAccountDelete($id: String!) {
+    CoreAccountDelete(data: {id: $id}) {
+        ok
+    }
+}
+"""
 
 
 async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch: Branch, first_account: Node) -> None:
@@ -44,6 +56,97 @@ async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch
     updated_account = await NodeManager.get_one(db=db, id=first_account.id, branch=default_branch)
     assert bcrypt.checkpw(new_password.encode("UTF-8"), updated_account.password.value.encode("UTF-8"))
     assert updated_account.description.value == new_description
+
+
+async def _attach_external_identity(db: InfrahubDatabase, account: Node) -> Node:
+    identity = await Node.init(db=db, schema=InfrahubKind.EXTERNALIDENTITY)
+    await identity.new(
+        db=db,
+        account=account,
+        sub=f"sub-for-{account.id}",
+        provider_name="ldap",
+        protocol="ldap",
+    )
+    await identity.save(db=db)
+    return identity
+
+
+async def test_externally_authenticated_account_cannot_update_password(
+    db: InfrahubDatabase, default_branch: Branch, first_account: Node
+) -> None:
+    await _attach_external_identity(db=db, account=first_account)
+    rejected_password = "should-be-rejected"
+
+    query = """
+    mutation UpdateSelf($password: String!) {
+        InfrahubAccountSelfUpdate(data: {password: $password}) {
+            ok
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=AccountSession(authenticated=True, account_id=first_account.id, auth_type=AuthType.JWT),
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"password": rejected_password},
+    )
+
+    assert result.errors is not None
+    assert len(result.errors) == 1
+    assert result.errors[0].message == (
+        "Password cannot be changed on accounts authenticated through an external "
+        "directory; manage credentials in the provider."
+    )
+
+    untouched_account = await NodeManager.get_one(db=db, id=first_account.id, branch=default_branch)
+    assert not bcrypt.checkpw(
+        rejected_password.encode("UTF-8"), str(untouched_account.password.value or "").encode("UTF-8")
+    )
+
+
+async def test_externally_authenticated_account_can_still_update_description(
+    db: InfrahubDatabase, default_branch: Branch, first_account: Node
+) -> None:
+    await _attach_external_identity(db=db, account=first_account)
+
+    query = """
+    mutation {
+        InfrahubAccountSelfUpdate(data: {description: "managed-by-external-directory"}) {
+            ok
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=AccountSession(authenticated=True, account_id=first_account.id, auth_type=AuthType.JWT),
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubAccountSelfUpdate"]["ok"] is True
+
+    updated_account = await NodeManager.get_one(db=db, id=first_account.id, branch=default_branch)
+    assert updated_account.description.value == "managed-by-external-directory"
 
 
 async def test_permissions(
@@ -138,3 +241,71 @@ async def test_permissions(
     assert result.errors is None
     assert result.data
     assert not result.data["InfrahubPermissions"]["global_permissions"]["edges"]
+
+
+async def test_admin_cannot_delete_own_account(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    authentication_base: None,
+    session_admin: AccountSession,
+    create_test_admin: Node,
+) -> None:
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CORE_ACCOUNT_DELETE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": create_test_admin.id},
+    )
+
+    assert result.errors
+    assert str(result.errors[0].message) == "Cannot delete your own account"
+
+
+async def test_account_delete_also_deletes_its_preference_row(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    authentication_base: None,
+    session_admin: AccountSession,
+    first_account: Node,
+) -> None:
+    repository = PreferenceRepository(db=db)
+    await repository.save(Preference(owner_id=first_account.id, timezone="Europe/Paris"))
+    await repository.save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
+    # Guard against a silently failing save: the delete assertion below is only meaningful if the
+    # row actually existed before the mutation.
+    assert await repository.get_for_owner(owner_id=first_account.id) is not None
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CORE_ACCOUNT_DELETE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": first_account.id},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["CoreAccountDelete"]["ok"] is True
+
+    # The deleted account's row is gone; the global row is untouched.
+    assert await repository.get_for_owner(owner_id=first_account.id) is None
+    global_row = await repository.get_for_owner(owner_id=GLOBAL_OWNER_ID)
+    assert global_row is not None
+    assert global_row.timezone == "UTC"

@@ -1,0 +1,14 @@
+---
+queries:
+  - name: GetJinjaDevice
+    file_path: "queries/device_jinja.gql"
+  - name: GetPythonDevice
+    file_path: "queries/device_python.gql"
+jinja2_transforms:
+  - name: render-jinja
+    query: "GetJinjaDevice"
+    template_path: "templates/device.j2"
+python_transforms:
+  - name: render-python
+    class_name: Foo
+    file_path: "transforms/foo/foo.py"

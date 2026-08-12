@@ -56,6 +56,7 @@ class FileUploadProcessor:
 
         Returns:
             A human-readable string like "1.5 MB" or "256 KB".
+
         """
         value = float(size_bytes)
         for unit in ("B", "KB", "MB", "GB", "TB"):
@@ -75,6 +76,7 @@ class FileUploadProcessor:
 
         Returns:
             True if the content looks like text, False otherwise.
+
         """
         if b"\x00" in content:
             return False
@@ -97,6 +99,7 @@ class FileUploadProcessor:
 
         Returns:
             The detected MIME type string.
+
         """
         with contextlib.suppress(puremagic.PureError):
             results = puremagic.magic_string(content, filename=filename)
@@ -120,6 +123,7 @@ class FileUploadProcessor:
 
         Raises:
             RuntimeError: If metadata has not been extracted yet.
+
         """
         if not self._metadata:
             raise RuntimeError("File metadata has not been extracted yet.")
@@ -131,6 +135,7 @@ class FileUploadProcessor:
 
         Returns:
             The file size in bytes.
+
         """
         # Access underlying file object which supports seek with whence parameter
         # Starlette's UploadFile.seek() only accepts offset, not whence
@@ -146,6 +151,7 @@ class FileUploadProcessor:
 
         Returns:
             The checksum as a hex string.
+
         """
         await self.file.seek(0)
         hasher = hashlib.sha1(usedforsecurity=False)
@@ -160,6 +166,7 @@ class FileUploadProcessor:
 
         Raises:
             ValidationError: If the file exceeds the maximum allowed size.
+
         """
         if self._metadata:
             return
@@ -189,6 +196,7 @@ class FileUploadProcessor:
 
         Returns:
             True if the file should be stored, False if storage can be skipped.
+
         """
         # Skip storage only if node exists, is a FileObject, and checksums match
         return not (
@@ -202,6 +210,7 @@ class FileUploadProcessor:
 
         Returns:
             FileUploadResult containing all file metadata including storage_id.
+
         """
         self.storage_id = str(UUIDT())
         # Update file_name to use storage_id if original was unnamed
@@ -227,6 +236,7 @@ class FileUploadProcessor:
 
         Raises:
             ValidationError: If the file exceeds the maximum allowed size.
+
         """
         await self._extract_metadata()
 
