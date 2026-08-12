@@ -13,14 +13,14 @@ How you create objects depends on how many you are creating and where their defi
 
 ## Create objects directly
 
-Four interfaces create objects. All four produce the same object and enforce the same schema constraints, so pick the one that matches how you are already working.
+Four interfaces create objects, and all four produce the same result: the same object, validated against the same schema constraints, on the branch you are working in. What differs is where you are working — a browser, a terminal, a Python program, or any GraphQL client.
 
 The example below creates a device named `atl1-edge1` at site `atl1`. On `InfraDevice`, `name` and `type` are required and `site` is a relationship.
 
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-Use the web interface for one-off objects, and when you are working with a schema you have not used before. The form is built from the schema, so it shows every field the kind defines, marks which ones are required, and validates values as you type.
+Use the web interface for a single object, and for the first object of a kind you have not created before. The form is built from the schema, so it shows every field the kind defines, marks which ones are required, and validates values as you type — which also tells you what a script will need to supply later.
 
 1. Open the Device list from the left menu.
 2. Select **Add Device**. The **Create Device** panel opens.
@@ -74,7 +74,7 @@ See the [Python SDK]($(base_url)python-sdk/introduction) documentation.
 
   <TabItem value="graphql" label="GraphQL">
 
-Use the GraphQL API when the client is not Python, or when you are already querying Infrahub over GraphQL and want to create objects through the same interface.
+Use the GraphQL API to create objects from any language or tool that can send an HTTP request — Go, TypeScript, or a shell script using `curl`. It is also where to write from when you are already reading data over GraphQL and want both in the same place.
 
 ```graphql
 mutation {
@@ -103,7 +103,9 @@ See [Queries & mutations](../development-resources/graphql/queries-and-mutations
 
 ## Create objects from a file
 
-Use object files for data that changes rarely and needs review before it changes, or as a starting dataset for a new instance. The file is YAML in a Git repository, so a change to your data goes through the same review as a change to your code.
+An object file declares a set of objects in YAML: which kind they are and what values they carry. Keeping that file in a Git repository makes the data reproducible — you can rebuild an instance from it, promote the same dataset from development to production, and review a change to your data in a pull request before it reaches Infrahub.
+
+Use object files for the reference data your instance is built on and that rarely changes afterwards — sites, roles, platforms, device types, standard tags — and for the dataset that populates a new instance.
 
 ```yaml
 ---
@@ -126,7 +128,9 @@ There are two ways to load a file, and they differ in what happens afterwards. `
 
 ## Create objects from a workflow
 
-Both run from a configuration you set up, rather than from a command you type each time. A Generator works from data already in Infrahub. Infrahub Sync works from data in another system.
+Both create objects from a configuration you set up once, rather than from a command you type each time, and both keep the result correct as the source data changes. That is what suits them to data no one should be maintaining manually — the objects that ought to exist because something else is true.
+
+A Generator works from data already in Infrahub. Infrahub Sync works from data in another system.
 
 ### Generators
 
