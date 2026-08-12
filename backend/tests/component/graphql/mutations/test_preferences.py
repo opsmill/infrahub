@@ -209,6 +209,7 @@ async def test_user_rejects_non_iana_timezone(
     )
     assert result.errors is not None
     assert len(result.errors) == 1
+    assert result.errors[0].message == "'Not/AZone' is not a valid IANA timezone"
     assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
