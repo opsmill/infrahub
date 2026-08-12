@@ -25,6 +25,7 @@ from infrahub.errors.payloads import (
     SchemaNotFoundData,
     TokenExpiredData,
     UndefinedErrorData,
+    UniquenessViolationData,
 )
 from infrahub.errors.validation import MultiFieldValidationError
 from infrahub.exceptions import (
@@ -37,6 +38,7 @@ from infrahub.exceptions import (
     MergeRecoveryRequiredError,
     NodeNotFoundError,
     SchemaNotFoundError,
+    UniquenessViolationError,
 )
 from infrahub.log import get_logger
 
@@ -83,6 +85,8 @@ def _build_payload(exc: BaseException | None, code: str) -> dict[str, Any]:
                 constraint=exc.constraint,
                 detail=exc.detail,
             )
+        case "UNIQUENESS_VIOLATION" if isinstance(exc, UniquenessViolationError):
+            payload = UniquenessViolationData(node_kind=exc.node_kind, fields=exc.fields)
         case "BRANCH_NOT_FOUND" if isinstance(exc, BranchNotFoundError):
             payload = BranchNotFoundData(branch_name=exc.identifier)
         case "BRANCH_ALREADY_MERGED" if isinstance(exc, BranchAlreadyMergedError):

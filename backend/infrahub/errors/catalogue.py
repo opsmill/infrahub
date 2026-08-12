@@ -13,6 +13,7 @@ from infrahub.exceptions import (
     NodeNotFoundError,
     PermissionDeniedError,
     SchemaNotFoundError,
+    UniquenessViolationError,
 )
 
 from .exceptions import (
@@ -35,6 +36,7 @@ from .payloads import (
     SchemaNotFoundData,
     TokenExpiredData,
     UndefinedErrorData,
+    UniquenessViolationData,
 )
 
 
@@ -118,6 +120,19 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
                 http_status=422,
                 payload_model=AttributeConstraintViolationData,
                 exception_class=AttributeConstraintViolationError,
+            ),
+        ),
+        (
+            "UNIQUENESS_VIOLATION",
+            CatalogueEntry(
+                description=(
+                    "The submitted values collide with an existing node on a uniqueness constraint. "
+                    "The constraint members may be relationships as well as attributes."
+                ),
+                stability="evolving",
+                http_status=422,
+                payload_model=UniquenessViolationData,
+                exception_class=UniquenessViolationError,
             ),
         ),
         (

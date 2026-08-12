@@ -12,12 +12,13 @@
 //
 // Why hand-rolled instead of `json-schema-to-typescript`?
 //   The catalogue's JSON Schema uses a narrow vocabulary today: primitive
-//   types, nullable wrappers via `anyOf [..., {type: "null"}]`, and flat
-//   objects with `required` lists. Hand-rolling that conversion is ~30
-//   lines and avoids a ~10 MB devDep + a TS runner. If the backend ever
-//   introduces nested objects, `$ref`s, arrays, or other constructs, this
-//   script throws an `Unsupported schema` error with the offending blob —
-//   that's the right time to reach for a fuller library, not before.
+//   types, nullable wrappers via `anyOf [..., {type: "null"}]`, arrays of
+//   those, and flat objects with `required` lists. Hand-rolling that
+//   conversion is ~30 lines and avoids a ~10 MB devDep + a TS runner. If
+//   the backend ever introduces nested objects, `$ref`s, or other
+//   constructs, this script throws an `Unsupported schema` error with the
+//   offending blob. That's the right time to reach for a fuller library,
+//   not before.
 //
 // The output is committed; we don't generate at install time. That keeps
 // the CI graph simple and makes catalogue drift visible in PR diffs.
@@ -63,6 +64,9 @@ function mapType(schema) {
     return schema.anyOf.map(mapType).join(" | ");
   }
   switch (schema.type) {
+    case "array":
+      assert(schema.items, `Array schema without \`items\`: ${JSON.stringify(schema)}`);
+      return `${mapType(schema.items)}[]`;
     case "string":
       return "string";
     case "integer":
