@@ -18,7 +18,7 @@ from infrahub.core.migrations.schema.tasks import (
 )
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 
@@ -32,21 +32,12 @@ VERTEX_DUPLICATING_MIGRATION_NAMES = sorted(
 
 LOGGER_NAME = "tests.core.migrations.schema.applier"
 
+NAMESPACE = "Test"
+APPLIER_NODE_NAMES = ["Alpha", "Beta", "Gamma"]
+
 ALPHA_KIND = "TestAlpha"
 BETA_KIND = "TestBeta"
 GAMMA_KIND = "TestGamma"
-
-APPLIER_SCHEMA = {
-    "version": "1.0",
-    "nodes": [
-        {
-            "name": name,
-            "namespace": "Test",
-            "attributes": [{"name": "name", "kind": "Text", "unique": True}],
-        }
-        for name in ["Alpha", "Beta", "Gamma"]
-    ],
-}
 
 
 def _migration_info(migration_name: str) -> SchemaUpdateMigrationInfo:
@@ -180,8 +171,21 @@ def _labels(work: list[tuple[str, str]]) -> list[str]:
 
 
 def _build_schema() -> SchemaBranch:
+    # built per call because load_schema takes ownership of the nodes it is handed
     schema = SchemaBranch(cache={}, name="test")
-    schema.load_schema(schema=SchemaRoot(**APPLIER_SCHEMA))
+    schema.load_schema(
+        schema=SchemaRoot(
+            version="1.0",
+            nodes=[
+                NodeSchema(
+                    name=node_name,
+                    namespace=NAMESPACE,
+                    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                )
+                for node_name in APPLIER_NODE_NAMES
+            ],
+        )
+    )
     schema.process()
     return schema
 
