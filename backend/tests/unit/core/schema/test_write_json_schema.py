@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk.schema.generated.contract import READ_ONLY_FIELDS
@@ -10,6 +10,9 @@ from jsonschema import Draft202012Validator
 
 from infrahub.api.schema import SchemaLoadAPI
 from infrahub.core.schema.write_json_schema import ROOT_CLASS_NAME, build_write_json_schema
+
+if TYPE_CHECKING:
+    from jsonschema.protocols import Validator
 
 
 @dataclass
@@ -92,7 +95,7 @@ def write_json_schema() -> dict[str, Any]:
 
 
 @pytest.fixture(scope="module")
-def validator(write_json_schema: dict[str, Any]) -> Draft202012Validator:
+def validator(write_json_schema: dict[str, Any]) -> Validator:
     Draft202012Validator.check_schema(write_json_schema)
     return Draft202012Validator(write_json_schema)
 
@@ -137,7 +140,7 @@ def test_display_labels_is_deprecated(write_json_schema: dict[str, Any]) -> None
 
 
 @pytest.mark.parametrize("case", [pytest.param(tc, id=tc.name) for tc in WRITE_JSON_SCHEMA_CASES])
-def test_published_schema_verdict(validator: Draft202012Validator, case: WriteJsonSchemaCase) -> None:
+def test_published_schema_verdict(validator: Validator, case: WriteJsonSchemaCase) -> None:
     errors = [error.message for error in validator.iter_errors(case.payload)]
 
     assert (not errors) is case.accepted, errors
