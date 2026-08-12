@@ -125,6 +125,62 @@ def build_profile_schema_dict() -> dict:
     }
 
 
+TRANSFORM_NAMESPACE = "Testing"
+TRANSFORM_OWNER_KIND = "TestingTShirt"
+TRANSFORM_PEER_KIND = "TestingColor"
+TRANSFORM_REPO_NAME = "computed-attributes-functional"
+
+
+def build_transform_schema_dict() -> dict:
+    """A Python-transform computed attribute that reads a peer across a relationship.
+
+    The kind, attribute and transform names match the transform fixture repository, whose
+    query reads the owner's name plus the peer's name and description. Editing a peer is
+    therefore the cross-node change that drives the owner's recompute.
+
+    Carries no display label and no human-friendly id, so the Python attribute is the only
+    derived value on these kinds and the measured recompute is attributable to that family
+    alone.
+    """
+    return {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Color",
+                "namespace": TRANSFORM_NAMESPACE,
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "optional": False, "unique": True},
+                    {"name": "description", "kind": "Text", "optional": False},
+                ],
+            },
+            {
+                "name": "TShirt",
+                "namespace": TRANSFORM_NAMESPACE,
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "optional": False},
+                    {
+                        "name": "pitch",
+                        "kind": "Text",
+                        "optional": True,
+                        "read_only": True,
+                        "computed_attribute": {"kind": "TransformPython", "transform": "TShirtPitch"},
+                    },
+                ],
+                "relationships": [
+                    {
+                        "name": "color",
+                        "peer": TRANSFORM_PEER_KIND,
+                        "optional": False,
+                        "cardinality": "one",
+                    }
+                ],
+            },
+        ],
+    }
+
+
 CHAIN_NAMESPACE = "Testing"
 
 
