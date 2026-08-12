@@ -64,9 +64,13 @@ function mapType(schema) {
     return schema.anyOf.map(mapType).join(" | ");
   }
   switch (schema.type) {
-    case "array":
+    case "array": {
       assert(schema.items, `Array schema without \`items\`: ${JSON.stringify(schema)}`);
-      return `${mapType(schema.items)}[]`;
+      const item = mapType(schema.items);
+      // `string | null` must become `(string | null)[]`, not `string | null[]`,
+      // which TypeScript parses as `string | (null[])`.
+      return item.includes(" | ") ? `(${item})[]` : `${item}[]`;
+    }
     case "string":
       return "string";
     case "integer":
