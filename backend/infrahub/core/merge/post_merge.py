@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from infrahub.core.changelog.models import NodeChangelog
     from infrahub.core.constants import DiffAction
     from infrahub.core.diff.ipam_diff_parser import IpamNodeDetails
+    from infrahub.core.merge.python_target_resolution import PythonTargetResolver
     from infrahub.core.models import SchemaDiff
     from infrahub.log import InfrahubLogger
     from infrahub.services.adapters.event import InfrahubEventService
@@ -55,6 +56,7 @@ class PostMergeDispatcher:
         event_service: InfrahubEventService,
         default_branch: Branch,
         global_branch: Branch,
+        python_target_resolver: PythonTargetResolver,
         logger: InfrahubLogger | None = None,
     ) -> None:
         self.repository_merge_dispatcher = repository_merge_dispatcher
@@ -62,6 +64,7 @@ class PostMergeDispatcher:
         self.event_service = event_service
         self.default_branch = default_branch
         self.global_branch = global_branch
+        self.python_target_resolver = python_target_resolver
         self.log = logger or get_logger()
 
     async def run_follow_ups(
@@ -177,6 +180,7 @@ class PostMergeDispatcher:
             coordinator = MergeRecomputeCoordinator(
                 builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
                 submitter=CoalescedRecomputeSubmitter(workflow=self.workflow),
+                resolver=self.python_target_resolver,
             )
             await coordinator.run(changes=changes, branch=self.default_branch.name, context=event_context)
 

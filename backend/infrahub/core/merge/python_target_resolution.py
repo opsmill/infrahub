@@ -121,6 +121,25 @@ def selects_change(change: MergeChange, read_set: TransformReadSet) -> bool:
     return bool(change.changed_fields & read_set.read_fields.get(change.kind, frozenset()))
 
 
+class DroppingPythonTargetResolver:
+    """Removes every Python target, leaving the per-node automations as the only path.
+
+    What the feature switch selects when it is turned off. Dropping the targets here rather
+    than skipping the resolution step keeps the rule that a target never reaches submission
+    without ids.
+    """
+
+    async def resolve(
+        self,
+        *,
+        coalesced: CoalescedRecompute,
+        changes: Sequence[MergeChange],  # noqa: ARG002  part of the protocol
+        branch: str,  # noqa: ARG002  part of the protocol
+        deleted_at: Timestamp | None,  # noqa: ARG002  part of the protocol
+    ) -> CoalescedRecompute:
+        return replace_python_targets(coalesced, [])
+
+
 class NarrowingPythonTargetResolver:
     """Narrows each Python target to the nodes the per-node path would have refreshed.
 

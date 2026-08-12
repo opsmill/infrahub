@@ -8,6 +8,7 @@ from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge.post_merge import PostMergeDispatcher
+from infrahub.core.merge.python_target_resolution import DroppingPythonTargetResolver
 from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispatcher
 from infrahub.core.registry import registry
 from infrahub.events.branch_action import BranchMergedEvent
@@ -45,6 +46,8 @@ class TestPostMergeSchemaEvent:
             event_service=event_service,
             default_branch=destination_branch,
             global_branch=registry.get_global_branch(),
+            # This schema carries no Python computed attribute, so the family has nothing to resolve.
+            python_target_resolver=DroppingPythonTargetResolver(),
         )
 
     def _context(self, default_branch: Branch) -> InfrahubContext:

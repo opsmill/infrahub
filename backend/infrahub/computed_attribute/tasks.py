@@ -51,6 +51,7 @@ from .scoping import (
 from .transform_recompute import TransformRecomputeSubmitter
 
 if TYPE_CHECKING:
+    from infrahub.core.schema import NodeSchema
     from infrahub.core.schema.computed_attribute import ComputedAttribute
     from infrahub.database import InfrahubDatabase
     from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
@@ -163,28 +164,50 @@ def _partition_transform_results(
     return writes, skipped
 
 
+def _python_transform_attribute(*, node_schema: NodeSchema, name: str) -> ComputedAttribute | None:
+    """The named Python computed attribute of a kind, or ``None`` when the kind has no such attribute.
+
+    A missing attribute is a stale submission rather than an error: the schema can change between
+    the moment the work is scheduled and the moment it runs.
+    """
+    for attribute in node_schema.attributes:
+        if (
+            attribute.name == name
+            and attribute.computed_attribute
+            and attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON
+        ):
+            return attribute.computed_attribute
+    return None
+
+
 @flow(
     name="computed_attribute_process_transform",
     flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
 )
 async def process_transform(
     branch_name: str,
-    node_kind: str,
-    computed_attribute_name: str,  # noqa: ARG001
-    computed_attribute_kind: str,  # noqa: ARG001
+    node_kind: str,  # noqa: ARG001  part of the flow contract; the nodes to recompute are the target kind's
+    computed_attribute_name: str,
+    computed_attribute_kind: str,
     context: EventContext,
     object_id: str | None = None,
     object_ids: list[str] | None = None,
     updated_fields: list[str] | None = None,  # noqa: ARG001
+    coalesced: bool = False,
+    recompute_depth: int = 0,
 ) -> None:
-    """Recompute Python computed attributes for a batch of nodes.
+    """Recompute one Python computed attribute for a batch of nodes.
 
     One repository init and one bulk write per batch; unchanged values emit no events
     and fan out no further recompute; a failing node keeps its previous value without
     blocking its siblings.
 
+    ``coalesced`` is stated by the caller and never inferred from the arguments: three callers
+    pass a list of ids and only the merge and rebase pass is coalesced. It decides the origin
+    stamped on the write, and so who continues the chain.
+
     Raises:
-        ValueError: if a computed attribute has no transform configured or the transform cannot be fetched.
+        ValueError: if the computed attribute has no transform configured or the transform cannot be fetched.
 
     """
     log = get_run_logger()
@@ -196,76 +219,72 @@ async def process_transform(
     client.request_context = context.to_request_context()
 
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
-    node_schema = schema_branch.get_node(name=node_kind, duplicate=False)
-    transform_attributes: dict[str, ComputedAttribute] = {}
-    for attribute in node_schema.attributes:
-        if attribute.computed_attribute and attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON:
-            transform_attributes[attribute.name] = attribute.computed_attribute
-
-    if not transform_attributes:
+    node_schema = schema_branch.get_node(name=computed_attribute_kind, duplicate=False)
+    transform_attribute = _python_transform_attribute(node_schema=node_schema, name=computed_attribute_name)
+    if transform_attribute is None:
         return
 
-    for attribute_name, transform_attribute in transform_attributes.items():
-        if not transform_attribute.transform:
-            raise ValueError(f"No transform configured for computed attribute '{attribute_name}'")
-        transform_query = ComputedAttributeTransformQuery(transform_id=transform_attribute.transform)
-        transform_response = await client.execute_graphql(
-            query=transform_query.render_query(),
-            variables=transform_query.get_variables(),
-            branch_name=branch_name,
+    if not transform_attribute.transform:
+        raise ValueError(f"No transform configured for computed attribute '{computed_attribute_name}'")
+    transform_query = ComputedAttributeTransformQuery(transform_id=transform_attribute.transform)
+    transform_response = await client.execute_graphql(
+        query=transform_query.render_query(),
+        variables=transform_query.get_variables(),
+        branch_name=branch_name,
+    )
+    transform = transform_query.parse_response(response=transform_response)
+
+    if not transform:
+        raise ValueError(
+            f"Unable to fetch transform '{transform_attribute.transform}' "
+            f"for computed attribute '{computed_attribute_name}'"
         )
-        transform = transform_query.parse_response(response=transform_response)
 
-        if not transform:
-            raise ValueError(
-                f"Unable to fetch transform '{transform_attribute.transform}' for computed attribute '{attribute_name}'"
-            )
+    repo = await get_initialized_repo(
+        client=client,
+        repository_id=transform.repository_id,
+        name=transform.repository_name,
+        repository_kind=transform.repository_typename,
+        commit=transform.repository_commit,
+    )
 
-        repo = await get_initialized_repo(
-            client=client,
-            repository_id=transform.repository_id,
-            name=transform.repository_name,
-            repository_kind=transform.repository_typename,
+    # One failing node must not abort the batch and drop its siblings' writes.
+    batch = await client.create_batch(return_exceptions=True)
+    for oid in all_ids:
+        batch.add(
+            task=_transform_value_for_node,
+            node=oid,
+            branch_name=branch_name,
+            object_id=oid,
+            attribute_name=computed_attribute_name,
+            query_id=transform.query_name,
+            transform_timeout=transform.timeout,
             commit=transform.repository_commit,
-        )
-
-        # One failing node must not abort the batch and drop its siblings' writes.
-        batch = await client.create_batch(return_exceptions=True)
-        for oid in all_ids:
-            batch.add(
-                task=_transform_value_for_node,
-                node=oid,
-                branch_name=branch_name,
-                object_id=oid,
-                attribute_name=attribute_name,
-                query_id=transform.query_name,
-                transform_timeout=transform.timeout,
-                commit=transform.repository_commit,
-                file_path=transform.file_path,
-                class_name=transform.class_name,
-                convert_query_response=transform.convert_query_response,
-                context=context,
-                repo=repo,
-            )
-        results: list[tuple[str, AttributeValueWrite | Exception]] = [
-            (oid, result) async for oid, result in batch.execute()
-        ]
-        writes, skipped = _partition_transform_results(results)
-        for skipped_id, reason in skipped:
-            log.warning(f"Skipping recompute of '{attribute_name}' for node {skipped_id}: {reason}")
-
-        dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
-        await dispatcher.dispatch(
-            writes=writes,
-            branch_name=branch_name,
+            file_path=transform.file_path,
+            class_name=transform.class_name,
+            convert_query_response=transform.convert_query_response,
             context=context,
-            coalesced=False,
-            recompute_depth=0,
+            repo=repo,
         )
-        log.info(
-            f"Recompute of '{attribute_name}' complete: submitted={len(results)} "
-            f"written={len(writes)} skipped={len(skipped)}"
-        )
+    results: list[tuple[str, AttributeValueWrite | Exception]] = [
+        (oid, result) async for oid, result in batch.execute()
+    ]
+    writes, skipped = _partition_transform_results(results)
+    for skipped_id, reason in skipped:
+        log.warning(f"Skipping recompute of '{computed_attribute_name}' for node {skipped_id}: {reason}")
+
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
+    await dispatcher.dispatch(
+        writes=writes,
+        branch_name=branch_name,
+        context=context,
+        coalesced=coalesced,
+        recompute_depth=recompute_depth,
+    )
+    log.info(
+        f"Recompute of '{computed_attribute_name}' complete: submitted={len(results)} "
+        f"written={len(writes)} skipped={len(skipped)}"
+    )
 
 
 @flow(
@@ -277,7 +296,14 @@ async def trigger_update_python_computed_attributes(
     computed_attribute_name: str,
     computed_attribute_kind: str,
     context: EventContext,
+    coalesced: bool = False,
+    recompute_depth: int = 0,
 ) -> None:
+    """Recompute one Python computed attribute across every node of its kind.
+
+    Both the schema-driven refresh and the coalesced pass's widened fallback land here, so the
+    mode has to be carried through rather than assumed.
+    """
     await add_tags(branches=[branch_name])
 
     client = get_client()
@@ -300,6 +326,8 @@ async def trigger_update_python_computed_attributes(
                 "computed_attribute_name": computed_attribute_name,
                 "computed_attribute_kind": computed_attribute_kind,
                 "context": context,
+                "coalesced": coalesced,
+                "recompute_depth": recompute_depth,
             },
             # Must be a creation tag: in-flow tag updates drop tags added mid-run.
             tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],

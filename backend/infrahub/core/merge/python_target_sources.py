@@ -10,6 +10,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.computed_attribute.gather import gather_python_transform_attributes
+from infrahub.core.merge.python_target_resolution import (
+    DroppingPythonTargetResolver,
+    NarrowingPythonTargetResolver,
+)
 from infrahub.core.query_group.subscribers import fetch_subscriber_refs
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events.limits import get_submission_chunk_size
@@ -19,10 +23,18 @@ from infrahub.utilities.chunks import chunked
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
 
+    from infrahub.core.merge.python_target_resolution import PythonTargetResolver
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
+
+LOOKUP_TIMEOUT_SECONDS = 30
+"""Bound on one subscriber lookup.
+
+The merge path holds the global merge lock while this runs, so a lookup that hangs must fail
+fast and widen rather than block every other merge on the instance.
+"""
 
 
 class DatabaseReadFieldIndex:
@@ -76,3 +88,20 @@ class ClientSubscriberLookup:
             for ref in refs:
                 readers.setdefault(ref.kind, set()).add(ref.id)
         return {kind: frozenset(ids) for kind, ids in readers.items()}
+
+
+def build_python_target_resolver(
+    *, db: InfrahubDatabase, client: InfrahubClient, enabled: bool, lookup_timeout: int = LOOKUP_TIMEOUT_SECONDS
+) -> PythonTargetResolver:
+    """Pick the resolver the coalesced pass runs with.
+
+    ``enabled`` comes from the feature switch. Turning it off selects the resolver that drops
+    the family, which is what restores the per-node behaviour without any other code path
+    having to know the switch exists.
+    """
+    if not enabled:
+        return DroppingPythonTargetResolver()
+    return NarrowingPythonTargetResolver(
+        read_field_index=DatabaseReadFieldIndex(db=db),
+        subscriber_lookup=ClientSubscriberLookup(client=client, lookup_timeout=lookup_timeout),
+    )

@@ -7,11 +7,13 @@ from typing import TYPE_CHECKING
 from prefect import flow
 
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge.python_target_resolution import DroppingPythonTargetResolver
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
     RECOMPUTE_CHAIN_DEPTH_FLOOR,
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
+    MergeRecomputeCoordinator,
     RecomputeChainSubmitter,
     max_recompute_chain_depth,
 )
@@ -52,6 +54,18 @@ def _event_context() -> EventContext:
     return EventContext(branch=EventBranchContext(name="main"), account_id="")
 
 
+def _chain(*, schema_branch: SchemaBranch, workflow: InfrahubWorkflow) -> RecomputeChainSubmitter:
+    """The chain submitter with the Python family switched off, as these schemas carry none."""
+    return RecomputeChainSubmitter(
+        coordinator=MergeRecomputeCoordinator(
+            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+            submitter=CoalescedRecomputeSubmitter(workflow=workflow),
+            resolver=DroppingPythonTargetResolver(),
+        ),
+        max_depth=max_recompute_chain_depth(schema_branch),
+    )
+
+
 def _dispatcher(
     db: InfrahubDatabase,
     event_service: InfrahubEventService,
@@ -61,10 +75,7 @@ def _dispatcher(
     return BulkRecomputeDispatcher(
         db=db,
         writer=BulkRecomputeWriter(db=db, event_service=event_service),
-        chain=RecomputeChainSubmitter(
-            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-            submitter=CoalescedRecomputeSubmitter(workflow=workflow),
-        ),
+        chain=_chain(schema_branch=schema_branch, workflow=workflow),
     )
 
 
@@ -401,10 +412,7 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
     depth = 0
     while depth < bound:
         recorder = WorkflowRecorder()
-        submissions = await RecomputeChainSubmitter(
-            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-            submitter=CoalescedRecomputeSubmitter(workflow=recorder),
-        ).submit(
+        submissions = await _chain(schema_branch=schema_branch, workflow=recorder).submit(
             written=written,
             branch=default_branch.name,
             context=_event_context(),
@@ -422,10 +430,7 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
 
     # At the bound the next level would exceed it, so the same cyclic input now yields nothing.
     recorder = WorkflowRecorder()
-    submissions = await RecomputeChainSubmitter(
-        builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-        submitter=CoalescedRecomputeSubmitter(workflow=recorder),
-    ).submit(
+    submissions = await _chain(schema_branch=schema_branch, workflow=recorder).submit(
         written=written,
         branch=default_branch.name,
         context=_event_context(),
@@ -447,10 +452,7 @@ async def test_chain_coalesces_the_next_level_into_one_submission(
     recorder = WorkflowRecorder()
     written = [WrittenNode(node_id="l2-node", kind=chain_kind(2), fields=("summary",))]
 
-    submissions = await RecomputeChainSubmitter(
-        builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-        submitter=CoalescedRecomputeSubmitter(workflow=recorder),
-    ).submit(
+    submissions = await _chain(schema_branch=schema_branch, workflow=recorder).submit(
         written=written,
         branch=default_branch.name,
         context=_event_context(),
@@ -477,10 +479,7 @@ async def test_chain_dispatches_nothing_when_no_values_were_written(
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
     recorder = WorkflowRecorder()
-    submissions = await RecomputeChainSubmitter(
-        builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-        submitter=CoalescedRecomputeSubmitter(workflow=recorder),
-    ).submit(
+    submissions = await _chain(schema_branch=schema_branch, workflow=recorder).submit(
         written=[],
         branch=default_branch.name,
         context=_event_context(),
@@ -505,10 +504,7 @@ async def test_chain_stops_at_the_depth_bound(
 
     # Starting at the bound, the next level would exceed it, so a cyclic schema cannot chain without end.
     bound = max_recompute_chain_depth(schema_branch)
-    submissions = await RecomputeChainSubmitter(
-        builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-        submitter=CoalescedRecomputeSubmitter(workflow=recorder),
-    ).submit(
+    submissions = await _chain(schema_branch=schema_branch, workflow=recorder).submit(
         written=written,
         branch=default_branch.name,
         context=_event_context(),
@@ -533,10 +529,7 @@ async def test_chain_bound_scales_with_the_schema_so_deep_chains_are_not_truncat
     recorder = WorkflowRecorder()
     written = [WrittenNode(node_id="l2-node", kind=chain_kind(2), fields=("summary",))]
     # Level 3 reads level 2's summary; at the floor depth the derived bound still dispatches it.
-    submissions = await RecomputeChainSubmitter(
-        builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-        submitter=CoalescedRecomputeSubmitter(workflow=recorder),
-    ).submit(
+    submissions = await _chain(schema_branch=schema_branch, workflow=recorder).submit(
         written=written,
         branch=default_branch.name,
         context=_event_context(),

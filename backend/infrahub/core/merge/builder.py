@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub import config
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
@@ -16,12 +17,13 @@ from infrahub.core.validators.constraint_merge import build_constraint_info_merg
 from infrahub.core.validators.determiner import build_constraint_validator_determiner
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.workers.dependencies import get_cache, get_event_service, get_workflow
+from infrahub.workers.dependencies import get_cache, get_client, get_event_service, get_workflow
 
 from .constraints import MergeConstraintValidator
 from .graph_merger import GraphMerger
 from .orchestrator import BranchMergeOrchestrator
 from .post_merge import PostMergeDispatcher
+from .python_target_sources import build_python_target_resolver
 from .repository_merge_dispatcher import RepositoryMergeDispatcher
 from .rollback_handler import MergeRollbackHandler
 from .schema_analyzer import MergeSchemaAnalyzer
@@ -114,6 +116,11 @@ async def build_branch_merge_orchestrator(
         event_service=event_service,
         default_branch=destination_branch,
         global_branch=registry.get_global_branch(),
+        python_target_resolver=build_python_target_resolver(
+            db=db,
+            client=get_client(),
+            enabled=config.SETTINGS.main.coalesce_python_recompute_after_merge,
+        ),
         logger=logger,
     )
 

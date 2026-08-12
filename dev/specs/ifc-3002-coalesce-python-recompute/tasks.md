@@ -89,17 +89,17 @@
 
 ### Wiring
 
-- [ ] T028 [US1] Inject the resolver into `MergeRecomputeCoordinator` and add a `recompute_depth` parameter to its entry method in `backend/infrahub/core/merge/recompute_coalescing.py`
-- [ ] T029 [US1] Make `RecomputeChainSubmitter` hold the coordinator instead of the builder and submitter pair, and pass the depth bound in explicitly rather than reaching through the builder
-- [ ] T030 [US1] Construct the resolver in `backend/infrahub/core/merge/builder.py` and inject it into `PostMergeDispatcher`, which today has neither a database handle nor a client
-- [ ] T031 [US1] Wire the resolver into the rebase path in `backend/infrahub/core/branch/tasks.py`
-- [ ] T032 [US1] Follow the coordinator change through `build_bulk_recompute_dispatcher` in `backend/infrahub/core/recompute/dispatch.py`
+- [x] T028 [US1] Inject the resolver into `MergeRecomputeCoordinator` and add a `recompute_depth` parameter to its entry method in `backend/infrahub/core/merge/recompute_coalescing.py`
+- [x] T029 [US1] Make `RecomputeChainSubmitter` hold the coordinator instead of the builder and submitter pair, and pass the depth bound in explicitly rather than reaching through the builder
+- [x] T030 [US1] Construct the resolver in `backend/infrahub/core/merge/builder.py` and inject it into `PostMergeDispatcher`, which today has neither a database handle nor a client
+- [x] T031 [US1] Wire the resolver into the rebase path in `backend/infrahub/core/branch/tasks.py`
+- [x] T032 [US1] Follow the coordinator change through `build_bulk_recompute_dispatcher` in `backend/infrahub/core/recompute/dispatch.py`
 
 ### Flow plumbing
 
-- [ ] T033 [US1] Add `recompute_depth` and an explicit `coalesced` flag to `process_transform` in `backend/infrahub/computed_attribute/tasks.py`, and make it honour the target kind and attribute it is given rather than rederiving from the node kind
-- [ ] T034 [US1] Thread the same two parameters through `query_transform_targets` and `trigger_update_python_computed_attributes` in the same file, defaulting to the live behaviour
-- [ ] T035 [P] [US1] Unit-test the origin stamped by each of the three callers in `backend/tests/unit/computed_attribute/test_tasks.py` — only the coalesced merge path may stamp the recompute origin
+- [x] T033 [US1] Add `recompute_depth` and an explicit `coalesced` flag to `process_transform` in `backend/infrahub/computed_attribute/tasks.py`, and make it honour the target kind and attribute it is given rather than rederiving from the node kind
+- [x] T034 [US1] Thread the same two parameters through `query_transform_targets` and `trigger_update_python_computed_attributes` in the same file, defaulting to the live behaviour. Done for `trigger_update_python_computed_attributes`, which the widened fallback calls. Left out of `query_transform_targets`: the origin filter from T037 keeps it on live events only, so both parameters would be dead and a Prefect deployment carries its parameter schema
+- [x] T035 [P] [US1] Unit-test the origin stamped by each of the three callers in `backend/tests/unit/computed_attribute/test_tasks.py` — only the coalesced merge path may stamp the recompute origin
 
 ### Convergence and suppression
 

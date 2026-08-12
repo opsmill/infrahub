@@ -4,16 +4,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub import config
+from infrahub.core.merge.python_target_sources import build_python_target_resolver
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
+    MergeRecomputeCoordinator,
     RecomputeChainSubmitter,
+    max_recompute_chain_depth,
 )
 from infrahub.core.recompute.bulk_write import BulkRecomputeWriter
 from infrahub.core.registry import registry
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.exceptions import BranchNotFoundError
-from infrahub.workers.dependencies import get_database, get_event_service, get_workflow
+from infrahub.workers.dependencies import get_client, get_database, get_event_service, get_workflow
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
@@ -73,8 +77,14 @@ async def build_bulk_recompute_dispatcher(schema_branch: SchemaBranch) -> BulkRe
     """Wire a bulk recompute dispatcher from the flow-level dependencies."""
     db = await get_database()
     writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())
-    chain = RecomputeChainSubmitter(
+    coordinator = MergeRecomputeCoordinator(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
+        resolver=build_python_target_resolver(
+            db=db,
+            client=get_client(),
+            enabled=config.SETTINGS.main.coalesce_python_recompute_after_merge,
+        ),
     )
+    chain = RecomputeChainSubmitter(coordinator=coordinator, max_depth=max_recompute_chain_depth(schema_branch))
     return BulkRecomputeDispatcher(db=db, writer=writer, chain=chain)

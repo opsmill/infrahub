@@ -21,8 +21,9 @@ from infrahub.workflows.catalogue import (
 log = get_logger()
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Iterable, Iterator, Sequence
 
+    from infrahub.core.merge.python_target_resolution import PythonTargetResolver
     from infrahub.core.recompute.bulk_write import WrittenNode
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.events.models import EventContext
@@ -552,21 +553,29 @@ class CoalescedRecomputeSubmitter:
 
 
 class MergeRecomputeCoordinator:
-    """Build the coalesced recompute for a merge or rebase change set and submit it.
+    """Build the coalesced recompute for a merge or rebase change set, resolve it, and submit it.
 
-    Build and submit are always run together, so this holds one of each and hands the builder's
-    output to the submitter.
+    The three steps always run together, and resolution sits between the other two rather than
+    beside a single caller: a chained level re-enters here, and one that skipped resolution would
+    submit Python targets with no nodes.
     """
 
-    def __init__(self, builder: CoalescedRecomputeBuilder, submitter: CoalescedRecomputeSubmitter) -> None:
+    def __init__(
+        self,
+        builder: CoalescedRecomputeBuilder,
+        submitter: CoalescedRecomputeSubmitter,
+        resolver: PythonTargetResolver,
+    ) -> None:
         self.builder = builder
         self.submitter = submitter
+        self.resolver = resolver
 
     async def run(
-        self, *, changes: Iterable[MergeChange], branch: str, context: EventContext
+        self, *, changes: Sequence[MergeChange], branch: str, context: EventContext, recompute_depth: int = 0
     ) -> list[CoalescedSubmission]:
         coalesced = self.builder.build(changes=changes, branch=branch)
-        return await self.submitter.submit(coalesced=coalesced, context=context)
+        coalesced = await self.resolver.resolve(coalesced=coalesced, changes=changes, branch=branch, deleted_at=None)
+        return await self.submitter.submit(coalesced=coalesced, context=context, recompute_depth=recompute_depth)
 
 
 def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
@@ -588,34 +597,27 @@ def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
 class RecomputeChainSubmitter:
     """Dispatch the next recompute level for a set of derived-value writes, as one coalesced pass."""
 
-    def __init__(self, builder: CoalescedRecomputeBuilder, submitter: CoalescedRecomputeSubmitter) -> None:
-        self.builder = builder
-        self.submitter = submitter
+    def __init__(self, coordinator: MergeRecomputeCoordinator, max_depth: int) -> None:
+        self.coordinator = coordinator
+        self.max_depth = max_depth
 
     async def submit(
-        self,
-        *,
-        written: list[WrittenNode],
-        branch: str,
-        context: EventContext,
-        depth: int,
-        max_depth: int | None = None,
+        self, *, written: list[WrittenNode], branch: str, context: EventContext, depth: int
     ) -> list[CoalescedSubmission]:
         """Build and submit the next coalesced level, or stop the chain.
 
-        The writes are treated like a merge or rebase change set. An empty write set stops the chain;
-        the schema-derived depth bound is the backstop for a cyclic schema.
+        The writes are treated like a merge or rebase change set, so a chained level goes through
+        the same derivation and resolution as the merge that started it. An empty write set stops
+        the chain; the depth bound is the backstop for a cyclic schema.
         """
         if not written:
             return []
-        if max_depth is None:
-            max_depth = max_recompute_chain_depth(self.builder.schema_branch)
         next_depth = depth + 1
-        if next_depth > max_depth:
+        if next_depth > self.max_depth:
             log.warning(
                 "Recompute chain exceeded its bound (%s) on branch %s; the derived-value dependency graph "
                 "is likely cyclic. Leaving %s node(s) unrecomputed: %s",
-                max_depth,
+                self.max_depth,
                 branch,
                 len(written),
                 sorted({f"{node.kind}:{node.node_id}" for node in written}),
@@ -625,5 +627,4 @@ class RecomputeChainSubmitter:
             MergeChange(node_id=node.node_id, kind=node.kind, action=UPDATED, changed_fields=frozenset(node.fields))
             for node in written
         ]
-        coalesced = self.builder.build(changes=changes, branch=branch)
-        return await self.submitter.submit(coalesced=coalesced, context=context, recompute_depth=next_depth)
+        return await self.coordinator.run(changes=changes, branch=branch, context=context, recompute_depth=next_depth)
