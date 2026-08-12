@@ -597,21 +597,21 @@ class NumberPoolGetTaken(Query):
         self.params["attribute_name"] = self.pool.node_attribute.value
 
         query = """
-        MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]->(attr:Attribute { name: $attribute_name })-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
+        MATCH (n:%(node)s)-[:HAS_ATTRIBUTE]->(attr:Attribute { name: $attribute_name })-[:HAS_VALUE]->(av:AttributeValueIndexed)
         WHERE av.value >= $start_range and av.value <= $end_range
-        WITH DISTINCT n, attr, av
-        CALL (n, attr, av) {
-            MATCH (n)-[ha:HAS_ATTRIBUTE]->(attr)-[hv:HAS_VALUE]->(av)
+        WITH DISTINCT n, attr
+        CALL (n, attr) {
+            MATCH (n)-[ha:HAS_ATTRIBUTE]->(attr)-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
             WHERE all(r in [ha, hv] WHERE (%(branch_filter)s))
             ORDER BY ha.branch_level DESC, hv.branch_level DESC,
                 ha.from DESC, hv.from DESC,
                 ha.status ASC, hv.status ASC
-            RETURN (ha.status = "active" AND hv.status = "active") AS is_active
+            RETURN av.value AS value, (ha.status = "active" AND hv.status = "active") AS is_active
             LIMIT 1
         }
-        WITH av, is_active
-        WHERE is_active = True
-        WITH DISTINCT av.value AS value
+        WITH value, is_active
+        WHERE is_active = True AND value >= $start_range AND value <= $end_range
+        WITH DISTINCT value
         """ % {
             "branch_filter": branch_filter,
             "node": self.pool.node.value,
