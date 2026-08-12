@@ -38,13 +38,13 @@ backend Python, including:
 - Async-first patterns
 - Pydantic models
 - Docstring conventions
-
-Exception handling lives in `dev/guidelines/backend/exceptions.md` — load it when writing a
-`try`/`except` or suppressing ruff's blind-except rule.
 - Naming conventions
 - Query patterns
 - Type hints
-- Exception handling (catch the narrowest types the call path actually raises)
+
+Exception handling lives in `dev/guidelines/backend/exceptions.md` — load it when writing a
+`try`/`except` or suppressing ruff's blind-except rule (catch the narrowest types the call path
+actually raises).
 
 When planning or implementing a backend feature, also walk
 `dev/guidelines/backend/checklist.md` — migrations, query efficiency (set-based, no N+1),

@@ -5,7 +5,7 @@ description: >-
 argument-hint: <PR number (#1234), branch name, or empty for the current branch's PR>
 compatibility: Requires the Infrahub repository checked out and the `gh` CLI authenticated for PR/review access.
 metadata:
-  version: 0.7.0
+  version: 0.8.0
   author: OpsMill
 ---
 
@@ -44,7 +44,11 @@ this skill removes a single line, so it has to be you, on every lesson you apply
 
 1. **Measure before appending.** `wc -l` the target file and compare it against its size range in
    `dev/guidelines/repository-organization.md` (guidelines: 100-400 lines; knowledge: 200-400). A file
-   at or over its range gets **compressed or split, never extended**.
+   at or over its range gets **compressed or split, never extended**. A split or move repoints every
+   inbound reference in the same edit — grep the old path and section anchors across `dev/`, `docs/`,
+   the `AGENTS.md` files, **and `.agents/skills`/`.agents/commands`**: skills and commands route by
+   file path too, and a stale route sends every future agent to a file that no longer carries the
+   content.
 2. **Cut what the new rule supersedes.** Weaker, stale, or now-duplicated prose in that file goes in
    the same edit. Rewrite the section around the new rule instead of bolting it on the end.
 3. **Report added/removed line counts** when you finish. Zero deletions means you accreted rather than
@@ -192,7 +196,11 @@ A reviewer flagged this, so the verdicts are not a pass/fail of the docs — the
   someone fixes it, and nothing revisits it. Phrase it as a forward-looking convention that stays true
   regardless of whether this exact instance ever gets fixed ("when adding a value generated this way,
   derive the fields rather than hand-listing them"), or drop it and suggest filing a GitHub issue
-  instead of writing it into `dev/knowledge`/`dev/guidelines`.
+  instead of writing it into `dev/knowledge`/`dev/guidelines`. The same test applies when the root
+  cause is a fragile *pattern* rather than a defect: if the honest fix is to stop writing the pattern
+  (a `str | Sequence[str]` union and its `isinstance` dispatch, for one), the lesson is the one-line
+  rule steering to the plain alternative — not a section teaching authors to survive the pattern. A
+  survival guide entrenches what it documents.
 - **Covered but ineffective** — the rule *is* written, yet a reviewer still had to flag it. **This is a
   finding, not a relief** — there is deliberately no "covered and fine" verdict, because a documented
   rule a reviewer still had to raise is evidence the coverage is too weak, not proof it works. Report it
@@ -239,7 +247,10 @@ Routing rule of thumb: **most-specific existing home wins; edit before create; s
 duplicate; fix the load-trigger before relocating; `.agents/rules` only for a true `always/never` that
 must fire while coding.** Confirm the target file exists (`ls`/grep it, match sibling naming) before you
 route a lesson there — never invent a plausible-looking path. Also check the topic still lives in `dev/`
-at all: changelog conventions, for one, moved out to the `creating-changelog-entries` skill.
+at all: changelog conventions, for one, moved out to the `creating-changelog-entries` skill. When an
+existing skill or command already owns the workflow a lesson touches (`creating-changelog-entries`,
+`pre-ci`, the org-level `pruning-residues`), route the edit into that skill and leave at most a pointer
+in `dev/` — the same rule stated in two homes drifts apart.
 
 ### 5. Sweep for rot (prune before you add)
 
@@ -278,21 +289,13 @@ Two entries saying almost the same thing at different generality levels is worse
 right, because a future reader can no longer tell which one is current.
 
 **c. Fix every hit now — a punch list is not pruning.** Each hit from (a) is a one-line mechanical
-edit: drop the citation and keep the prose, or delete a defect note once you've confirmed the code
-fixed it. There is no good reason to report one without also fixing it in the same PR — a "found but
-left in place" list costs the same context as the rot it describes, plus the list itself, and nobody
-comes back for it (the July-29 precedent explicitly deferred one file's cleanup "if the team wants
-it"; nobody did, and it was still there weeks later). Fix every hit the grep turns up. While you're at
-the line anyway, check the claim the citation was attached to still holds against current code — a
-dead citation is often riding alongside a drifted method name or line reference, not just an inert
-number (this is what caught `templates.md` citing a method, `_apply_template()`, that had been
-renamed to `handle_object_template()` out from under the doc). This step audits the specific
-anti-patterns already codified as rules, not the entire doc tree's open-ended judgment calls — it is
-not a second `audit-docs` run, so don't go looking for unrelated issues while you're in a file. The
-only thing that belongs in "Pruned or consolidated" as unresolved is a genuine call for the user (spin
-up a GitHub issue for a real unfixed defect, or a section that needs a fuller rewrite than a sweep
-should attempt inline) — never a hit you could have fixed with an edit but skipped because there were
-several.
+edit: drop the citation and keep the prose, or delete a defect note once the code confirms the fix.
+A "found but left in place" list costs the same context as the rot it describes, and nobody comes
+back for it. While at the line, check that the claim the citation was attached to still holds — a
+dead citation often rides alongside a renamed method or a drifted line reference. Stay on the
+codified anti-patterns; this is not a second `audit-docs` run. The only unresolved entries "Pruned
+or consolidated" may carry are genuine calls for the user: file a GitHub issue for a real unfixed
+defect, or flag a section needing a fuller rewrite than a sweep should attempt inline.
 
 ### 6. Report
 
@@ -306,8 +309,10 @@ existing section before adding one; keep `.agents/rules` lean) and the §5 pruni
 
 **Now apply *Refine, don't accrete* (top of this file)** — measure the file against its size range, cut
 what the new rule supersedes, report the line counts. The investigation trail, the reviewer quotes, and
-the ticket and PR numbers belong in this report and in the commit message, never in the doc text. A
-lesson that needs three paragraphs to state has not been narrowed enough — go back to §3d. Match any
+the ticket and PR numbers belong in this report and in the commit message, never in the doc text —
+sweeping exactly that residue out of an artifact is what the org-level `pruning-residues` skill does,
+so run it over the final diff when available. A lesson that needs three paragraphs to state has not
+been narrowed enough — go back to §3d. Match any
 example code to `.agents/rules/code-doc-style.md` (no ticket/issue IDs, no naming specific callers).
 **Never resolve review threads** — reply if useful, but resolution is the human reviewer's call. After
 applying, run:
@@ -356,12 +361,9 @@ For each:
      is invented, and promoting every comment to a rule is as useless as missing the real ones. -->
 
 ### Pruned or consolidated (from the §5 sweep)
-<!-- Debt from earlier runs found this time: stale citations dropped, defect-snapshot notes deleted or
-     reframed, narrower entries merged into a newer, more general one. For each: exact file:line, what
-     was there, what changed and why (fixed in code / superseded by a newer rule / citation rot) — every
-     one of these is already fixed in this PR's diff, not proposed. This section is a changelog of what
-     got removed, not a to-do list of what to remove later — a hit reported here with no accompanying
-     edit is a bug in this run, not an acceptable outcome. The only exception is a genuine call for the
-     user (file a GitHub issue / a section needing a fuller rewrite); label those "Needs a decision", not
-     mixed in with the rest. Say "none found" rather than omitting the section when the sweep is clean. -->
+<!-- Debt from earlier runs, already fixed in this PR's diff — a hit reported without an edit is a bug
+     in this run: stale citations dropped, defect notes deleted or reframed, narrow entries merged into
+     the general one. For each: file:line, what was there, why it changed. Label the rare genuine user
+     call (file an issue / fuller rewrite needed) "Needs a decision". Say "none found" when the sweep
+     is clean. -->
 ```

@@ -99,10 +99,9 @@ cd frontend/app && pnpm biome:fix     # Format/lint frontend
 uv run invoke docs.lint               # Lint documentation
 ```
 
-`invoke lint`/`invoke backend.lint` run `ruff check --diff`, which reports only auto-fixable issues
-and exits 0 on an unfixable violation (e.g. an unsuppressed `BLE001`) that CI's plain `ruff check`
-still fails on. Run `uv run ruff check <path>` directly to see the full picture before trusting a
-clean local run.
+`invoke lint`/`invoke backend.lint` run `ruff check --diff`, which exits 0 on violations that have
+no auto-fix (e.g. an unsuppressed `BLE001`) while CI's plain `ruff check` still fails. `/pre-ci`
+includes the CI-parity check; or run `uv run ruff check <path>` directly.
 
 ### Build
 
