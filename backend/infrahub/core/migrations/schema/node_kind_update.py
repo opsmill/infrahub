@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.path import SchemaPath
 
+from ..enum import MigrationIdentifier
 from ..query import MigrationQuery
 from ..query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
 from ..shared import MigrationInput, MigrationResult, SchemaMigration
@@ -46,8 +47,32 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):
 
 
 class NodeKindUpdateMigration(SchemaMigration):
+    """Duplicates a kind's node vertices under a new label set.
+
+    Usable on its own to relabel a kind. The registered migrations below subclass it, so this name
+    is a placeholder they each replace — it is deliberately not one of the registered identifiers.
+    """
+
     name: str = "node.kind.update"
     queries: Sequence[type[MigrationQuery]] = [NodeKindUpdateMigrationQuery01]  # type: ignore[assignment]
+
+
+class NodeNameUpdateMigration(NodeKindUpdateMigration):
+    name: str = MigrationIdentifier.NODE_NAME_UPDATE.value
+
+
+class NodeNamespaceUpdateMigration(NodeKindUpdateMigration):
+    name: str = MigrationIdentifier.NODE_NAMESPACE_UPDATE.value
+
+
+class NodeInheritFromUpdateMigration(NodeKindUpdateMigration):
+    """Relabels the vertices and creates the attributes the kind gained from its new generics.
+
+    A rename relabels vertices too but brings in no attributes, so only this migration creates the
+    rows that pre-existing instances would otherwise be missing.
+    """
+
+    name: str = MigrationIdentifier.NODE_INHERIT_FROM_UPDATE.value
 
     async def execute(
         self,

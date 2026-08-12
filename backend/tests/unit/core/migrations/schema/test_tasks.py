@@ -11,6 +11,7 @@ from infrahub.core.migrations import MIGRATION_MAP
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData, SchemaMigrationPathResponseData
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.schema.tasks import (
+    KIND_UPDATE_MIGRATION_NAMES,
     SchemaMigrationRequest,
     SchemaMigrationsApplier,
     split_migrations_by_phase,
@@ -21,8 +22,12 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 
-KIND_UPDATE_MIGRATION_NAMES = sorted(
-    name for name, migration_class in MIGRATION_MAP.items() if migration_class is NodeKindUpdateMigration
+# derived from the class hierarchy rather than reusing the declared name set, so a kind-update
+# migration registered without being declared is a failure rather than a matching pair of omissions
+VERTEX_DUPLICATING_MIGRATION_NAMES = sorted(
+    name
+    for name, migration_class in MIGRATION_MAP.items()
+    if migration_class is not None and issubclass(migration_class, NodeKindUpdateMigration)
 )
 
 LOGGER_NAME = "tests.core.migrations.schema.applier"
@@ -104,14 +109,19 @@ def test_split_migrations_by_phase(test_case: SplitMigrationsTestCase) -> None:
 
 
 def test_split_covers_every_kind_update_backed_migration() -> None:
+    """Every migration whose class duplicates vertices must land in phase one, declared or not."""
     migrations = [_migration_info(migration_name=name) for name in sorted(MIGRATION_MAP)]
 
     phase_1, phase_2 = split_migrations_by_phase(migrations=migrations)
 
-    assert [migration.migration_name for migration in phase_1] == KIND_UPDATE_MIGRATION_NAMES
+    assert [migration.migration_name for migration in phase_1] == VERTEX_DUPLICATING_MIGRATION_NAMES
     assert sorted(migration.migration_name for migration in phase_2) == sorted(
-        set(MIGRATION_MAP) - set(KIND_UPDATE_MIGRATION_NAMES)
+        set(MIGRATION_MAP) - set(VERTEX_DUPLICATING_MIGRATION_NAMES)
     )
+
+
+def test_declared_kind_update_names_match_the_vertex_duplicating_migrations() -> None:
+    assert sorted(KIND_UPDATE_MIGRATION_NAMES) == VERTEX_DUPLICATING_MIGRATION_NAMES
 
 
 @dataclass

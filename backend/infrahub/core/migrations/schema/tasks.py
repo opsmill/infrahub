@@ -11,7 +11,7 @@ from prefect.logging import get_run_logger
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations import MIGRATION_MAP
-from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.enum import MigrationIdentifier
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.timestamp import Timestamp
@@ -32,6 +32,16 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+# migrations that duplicate node vertices
+KIND_UPDATE_MIGRATION_NAMES = frozenset(
+    {
+        MigrationIdentifier.NODE_INHERIT_FROM_UPDATE.value,
+        MigrationIdentifier.NODE_NAME_UPDATE.value,
+        MigrationIdentifier.NODE_NAMESPACE_UPDATE.value,
+    }
+)
+
+
 def split_migrations_by_phase(
     migrations: Sequence[SchemaUpdateMigrationInfo],
 ) -> tuple[list[SchemaUpdateMigrationInfo], list[SchemaUpdateMigrationInfo]]:
@@ -41,15 +51,10 @@ def split_migrations_by_phase(
     must only see the duplicated vertices, so the first group has to complete before the second
     group starts.
     """
-    kind_update_names = {
-        migration_name
-        for migration_name, migration_class in MIGRATION_MAP.items()
-        if migration_class is NodeKindUpdateMigration
-    }
     kind_update_migrations: list[SchemaUpdateMigrationInfo] = []
     other_migrations: list[SchemaUpdateMigrationInfo] = []
     for migration in migrations:
-        if migration.migration_name in kind_update_names:
+        if migration.migration_name in KIND_UPDATE_MIGRATION_NAMES:
             kind_update_migrations.append(migration)
         else:
             other_migrations.append(migration)

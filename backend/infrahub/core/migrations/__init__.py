@@ -1,9 +1,14 @@
+from .enum import MigrationIdentifier
 from .schema.attribute_kind_update import AttributeKindUpdateMigration
 from .schema.attribute_name_update import AttributeNameUpdateMigration
 from .schema.attribute_supports_generated_schema import AttributeSupportsGeneratedSchemaMigration
 from .schema.node_attribute_add import NodeAttributeAddMigration
 from .schema.node_attribute_remove import NodeAttributeRemoveMigration
-from .schema.node_kind_update import NodeKindUpdateMigration
+from .schema.node_kind_update import (
+    NodeInheritFromUpdateMigration,
+    NodeNamespaceUpdateMigration,
+    NodeNameUpdateMigration,
+)
 from .schema.node_remove import NodeRemoveMigration
 from .schema.node_uniqueness_constraints_update import NodeUniquenessConstraintsUpdateMigration
 from .schema.placeholder_dummy import PlaceholderDummyMigration
@@ -14,9 +19,9 @@ MIGRATION_MAP: dict[str, type[SchemaMigration] | None] = {
     "node.branch.update": None,
     "node.attribute.add": NodeAttributeAddMigration,
     "node.attribute.remove": NodeAttributeRemoveMigration,
-    "node.inherit_from.update": NodeKindUpdateMigration,
-    "node.name.update": NodeKindUpdateMigration,
-    "node.namespace.update": NodeKindUpdateMigration,
+    MigrationIdentifier.NODE_INHERIT_FROM_UPDATE.value: NodeInheritFromUpdateMigration,
+    MigrationIdentifier.NODE_NAME_UPDATE.value: NodeNameUpdateMigration,
+    MigrationIdentifier.NODE_NAMESPACE_UPDATE.value: NodeNamespaceUpdateMigration,
     "node.relationship.remove": PlaceholderDummyMigration,
     "node.uniqueness_constraints.update": NodeUniquenessConstraintsUpdateMigration,
     "attribute.name.update": AttributeNameUpdateMigration,

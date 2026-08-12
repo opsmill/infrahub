@@ -16,7 +16,12 @@ from infrahub.core.constants import (
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
-from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration, NodeKindUpdateMigrationQuery01
+from infrahub.core.migrations.schema.node_kind_update import (
+    NodeInheritFromUpdateMigration,
+    NodeKindUpdateMigrationQuery01,
+    NodeNamespaceUpdateMigration,
+    NodeNameUpdateMigration,
+)
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -53,7 +58,7 @@ async def test_query_default_branch(
 
     count_rels = await count_relationships(db=db)
 
-    migration = NodeKindUpdateMigration(
+    migration = NodeNamespaceUpdateMigration(
         previous_node_schema=schema.get(name="TestCar"),
         new_node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
@@ -105,7 +110,7 @@ async def test_migration_aware_relationship(
     count_rels = await count_relationships(db=db)
 
     # 4. Execute migration
-    migration = NodeKindUpdateMigration(
+    migration = NodeNamespaceUpdateMigration(
         previous_node_schema=schema.get(name="TestCar"),
         new_node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="namespace"),
@@ -153,7 +158,7 @@ async def test_migration_agnostic_relationship(
     assert await count_nodes(db=db, label="TestCar") == 1
     assert await count_nodes(db=db, label="Test2NewCar") == 0
 
-    migration = NodeKindUpdateMigration(
+    migration = NodeNamespaceUpdateMigration(
         previous_node_schema=schema.get(name="TestCar"),
         new_node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="namespace"),
@@ -193,7 +198,7 @@ async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch)
     assert await count_nodes(db=db, label=TestKind.CONTINENT) == 1
     assert await count_nodes(db=db, label="Test2NewContinent") == 0
 
-    migration = NodeKindUpdateMigration(
+    migration = NodeNamespaceUpdateMigration(
         previous_node_schema=schema.get(name=TestKind.CONTINENT),
         new_node_schema=continent_schema,
         schema_path=SchemaPath(
@@ -240,10 +245,10 @@ async def test_inheritance_migration_on_branch_and_main(
     car_schema.inherit_from = ["GenericThing"]
     candidate_schema.set(name="TestCar", schema=car_schema)
 
-    migration = NodeKindUpdateMigration(
+    migration = NodeInheritFromUpdateMigration(
         previous_node_schema=schema.get(name="TestCar"),
         new_node_schema=car_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from"),
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
     )
 
     execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
@@ -252,10 +257,10 @@ async def test_inheritance_migration_on_branch_and_main(
 
     # 3. Run the same NodeKindUpdateMigration on the default_branch
     schema_default = registry.schema.get_schema_branch(name=default_branch.name)
-    migration_default = NodeKindUpdateMigration(
+    migration_default = NodeInheritFromUpdateMigration(
         previous_node_schema=schema_default.get(name="TestCar"),
         new_node_schema=car_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from"),
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
     )
 
     execution_result_default = await migration_default.execute(
@@ -280,7 +285,7 @@ async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, b
     test_user_id = "test-metadata-user"
     migration_time = Timestamp()
 
-    migration = NodeKindUpdateMigration(
+    migration = NodeNamespaceUpdateMigration(
         previous_node_schema=schema.get(name="TestCar"),
         new_node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
@@ -427,10 +432,10 @@ async def test_migration_newly_inherited_attributes(
     )
     previous_schema, new_schema = _make_kind_inherit_generic(branch=default_branch, generic=generic, kind="TestCar")
 
-    migration = NodeKindUpdateMigration(
+    migration = NodeInheritFromUpdateMigration(
         previous_node_schema=previous_schema,
         new_node_schema=new_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from"),
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
     )
     execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
 
@@ -511,10 +516,10 @@ async def test_migration_newly_inherited_numberpool(
     )
     previous_schema, new_schema = _make_kind_inherit_generic(branch=default_branch, generic=generic, kind="TestServer")
 
-    migration = NodeKindUpdateMigration(
+    migration = NodeInheritFromUpdateMigration(
         previous_node_schema=previous_schema,
         new_node_schema=new_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestServer", field_name="inherit_from"),
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestServer"),
     )
     execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not execution_result.errors
@@ -553,7 +558,7 @@ async def test_migration_name_update_creates_no_attributes(
 
     count_attrs = await count_nodes(db=db, label="Attribute")
 
-    migration = NodeKindUpdateMigration(
+    migration = NodeNamespaceUpdateMigration(
         previous_node_schema=schema.get(name="TestCar"),
         new_node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
@@ -563,6 +568,49 @@ async def test_migration_name_update_creates_no_attributes(
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 2
     assert await count_nodes(db=db, label="Attribute") == count_attrs
+
+    await verify_graph(db=db)
+
+
+async def test_migration_rename_skips_newly_inherited_attributes(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
+    """A rename that coincides with an inheritance change must leave the attribute rows to the inheritance path."""
+    generic = GenericSchema(
+        name="Asset",
+        namespace="Test",
+        branch=BranchSupportType.AWARE,
+        attributes=[AttributeSchema(name="status", kind="Text", default_value="active", optional=True)],
+    )
+    previous_schema, new_schema = _make_kind_inherit_generic(branch=default_branch, generic=generic, kind="TestCar")
+
+    for migration_class, field_name in [
+        (NodeNameUpdateMigration, "name"),
+        (NodeNamespaceUpdateMigration, "namespace"),
+    ]:
+        migration = migration_class(
+            previous_node_schema=previous_schema,
+            new_node_schema=new_schema,
+            schema_path=SchemaPath(
+                path_type=SchemaPathType.NODE, schema_kind="TestCar", field_name=field_name, property_name=field_name
+            ),
+        )
+
+        execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+        assert not execution_result.errors
+        assert await _count_attribute_vertices(db=db, node_label="TestCar", attribute_name="status") == 0
+
+    # the same schema pair through the inherit_from migration does create the rows
+    inheritance_migration = NodeInheritFromUpdateMigration(
+        previous_node_schema=previous_schema,
+        new_node_schema=new_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
+    )
+    inheritance_result = await inheritance_migration.execute(
+        migration_input=MigrationInput(db=db), branch=default_branch
+    )
+    assert not inheritance_result.errors
+    assert await _count_attribute_vertices(db=db, node_label="TestCar", attribute_name="status") == 2
 
     await verify_graph(db=db)
 
@@ -578,10 +626,10 @@ async def test_migration_partial_failure_rerun_converges(
     )
     previous_schema, new_schema = _make_kind_inherit_generic(branch=default_branch, generic=generic, kind="TestCar")
 
-    migration = NodeKindUpdateMigration(
+    migration = NodeInheritFromUpdateMigration(
         previous_node_schema=previous_schema,
         new_node_schema=new_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from"),
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
     )
 
     # Simulate a failure after vertex duplication but before the attribute rows are created
@@ -630,11 +678,11 @@ async def test_migration_previous_schema_already_carrying_the_attributes_creates
     )
     _, new_schema = _make_kind_inherit_generic(branch=default_branch, generic=generic, kind="TestCar")
 
-    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from")
+    schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar")
 
     # previous_schema already carries audit_state, exactly as the rebase supplies it when the
     # inheritance arrives from the base branch rather than from the branch's own schema.
-    migration = NodeKindUpdateMigration(
+    migration = NodeInheritFromUpdateMigration(
         previous_node_schema=new_schema,
         new_node_schema=new_schema,
         schema_path=schema_path,
@@ -656,7 +704,7 @@ async def test_migration_previous_schema_already_carrying_the_attributes_creates
     previous_without_generic.attributes = [
         attribute for attribute in previous_without_generic.attributes if attribute.name != "audit_state"
     ]
-    repairing_migration = NodeKindUpdateMigration(
+    repairing_migration = NodeInheritFromUpdateMigration(
         previous_node_schema=previous_without_generic,
         new_node_schema=new_schema,
         schema_path=schema_path,
