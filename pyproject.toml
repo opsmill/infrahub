@@ -114,6 +114,9 @@ dev = [
     "semver>=3.0.2,<4",
     "ruamel-yaml==0.18.6",
     "pytest-httpx>=0.33",
+    # No upper bound, so a prefect upgrade is never blocked by this pin. The floor is the version
+    # whose validation messages the schema tests assert verbatim.
+    "jsonschema>=4.26",
     "docker==7.1.0",
     "psutil==6.1.0",
     "jwcrypto==1.5.7",

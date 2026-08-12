@@ -13,6 +13,7 @@ read back from Infrahub into a file full of errors. JSON Schema has no warning l
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any
 
 from infrahub_sdk.schema.generated.contract import READ_ONLY_FIELDS
@@ -60,13 +61,14 @@ def build_write_json_schema(schema: dict[str, Any]) -> dict[str, Any]:
     """Close every object in a generated write JSON Schema, keeping read-only fields accepted.
 
     Args:
-        schema: The document generated for the write root.
+        schema: The document generated for the write root. It is not modified.
 
     Returns:
-        The document, mutated in place and returned for convenience.
+        A new document with every object closed and each read-only field declared as deprecated.
 
     """
-    _harden_definition(definition=schema, class_name=ROOT_CLASS_NAME)
-    for class_name, definition in schema.get("$defs", {}).items():
+    hardened = deepcopy(schema)
+    _harden_definition(definition=hardened, class_name=ROOT_CLASS_NAME)
+    for class_name, definition in hardened.get("$defs", {}).items():
         _harden_definition(definition=definition, class_name=class_name)
-    return schema
+    return hardened

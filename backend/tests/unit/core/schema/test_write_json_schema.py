@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -173,6 +174,17 @@ def _flatten(error: ValidationError) -> Iterator[ValidationError]:
     yield error
     for nested in error.context or []:
         yield from _flatten(error=nested)
+
+
+def test_source_document_is_left_untouched() -> None:
+    """Callers keep using the document they passed in, so hardening must not reach back into it."""
+    source = SchemaLoadAPI.model_json_schema()
+    before = json.dumps(source, sort_keys=True)
+
+    hardened = build_write_json_schema(schema=source)
+
+    assert json.dumps(source, sort_keys=True) == before
+    assert hardened != source
 
 
 def test_every_object_schema_is_addressable(write_json_schema: dict[str, Any]) -> None:
