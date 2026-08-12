@@ -110,10 +110,10 @@
 ### Tests
 
 - [x] T039 [P] [US1] Unit-test the trigger shape including the origin filter in `backend/tests/unit/computed_attribute/test_models.py`
-- [ ] T040 [US1] Component-test the end-to-end submission shape in `backend/tests/component/merge_recompute_coalescing/test_merge_submits_coalesced.py`
+- [x] T040 [US1] Component-test the end-to-end submission shape in `backend/tests/component/merge_recompute_coalescing/test_merge_submits_coalesced.py`
 - [ ] T041 [US1] Add a flow-run count assertion to `backend/tests/integration_docker/test_merge_recompute.py`, parametrised over **merge and rebase**: across an operation touching about twenty nodes, no Python run carries a single object id, and the count per pair follows the chunk limit. The rebase arm covers FR-003 and US1 AS3, which the wiring in T031 would otherwise leave untested
 - [ ] T042 [US1] Add `backend/tests/integration_docker/test_merge_recompute_chain.py` covering the cross-family chain in both directions, template-based to Python and Python to template-based
-- [ ] T043 [US1] Component-test that a stale worker registry does not drop the pass, in `backend/tests/component/computed_attribute/test_python_schema_convergence.py`, reusing the `_base.py` and `conftest.py` already in that package
+- [x] T043 [US1] Component-test that a stale worker registry does not drop the pass, in `backend/tests/component/computed_attribute/test_python_schema_convergence.py`, reusing the `_base.py` and `conftest.py` already in that package
 - [ ] T044 [US1] Verify parity in `backend/tests/integration_docker/test_merge_recompute_parity.py`: run the same merge with the feature switch off and on, at 100 and 1000 changed nodes, and assert the set of written node ids and their final stored values are identical between the two runs. Compare the sets themselves, not their sizes
 
 **Checkpoint**: US1 is independently shippable. The flood is fixed and measurable.

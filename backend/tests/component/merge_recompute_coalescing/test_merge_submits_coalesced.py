@@ -21,6 +21,7 @@ from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     DISPLAY_LABELS_PROCESS_JINJA2,
     HFID_PROCESS,
+    TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
 from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
@@ -28,6 +29,7 @@ from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.merge_recompute.dataset import (
     PROFILE_NODE_KIND,
     PROFILE_PEER_KIND,
+    PROFILE_PYTHON_ATTRIBUTE,
     build_profile_schema,
     load_profile_schema,
     seed_branch,
@@ -214,3 +216,58 @@ async def test_merge_delete_peer_coalesces_reader_recompute_by_own_id(
         ]
         assert len(own_id_submissions) == 1, f"{workflow.name} fanned out instead of coalescing the readers"
         assert sorted(own_id_submissions[0]["parameters"]["object_ids"]) == sorted(reader_ids)
+
+
+async def test_merge_dispatches_a_widened_python_target(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    dependency_provider: Provider,
+) -> None:
+    """A Python target the pass cannot narrow is still dispatched, over the whole kind.
+
+    The transform's query is not in the database here, so its read set cannot be derived and the
+    pass has to widen. Widening that produced no submission would be a silent skip, which is the
+    failure this asserts against.
+    """
+    lock.initialize_lock(local_only=True)
+    await load_schema(db=db, schema=build_profile_schema(python_attribute=True), update_db=True)
+
+    seeded = await seed_branch(
+        db=db,
+        default_branch=default_branch,
+        branch_name="coalesced_python",
+        changed_nodes=4,
+        mutate_target="branch",
+        mutate_kind="peer",
+    )
+
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=seeded.branch)
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=seeded.branch)
+
+    workflow_recorder = WorkflowRecorder()
+    event_recorder = MemoryInfrahubEvent()
+    cache = MemoryCache()
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+
+    with (
+        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
+        dependency_provider.scope(build_event_service, lambda: event_recorder),
+        dependency_provider.scope(build_workflow, lambda: workflow_recorder),
+        dependency_provider.scope(build_cache, lambda: cache),
+    ):
+        await merge_branch(branch=seeded.branch_name, context=context)
+
+    widened = workflow_recorder.get_submit_calls_for(TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES)
+
+    assert len(widened) == 1
+    parameters = widened[0]["parameters"]
+    assert parameters["computed_attribute_kind"] == PROFILE_NODE_KIND
+    assert parameters["computed_attribute_name"] == PROFILE_PYTHON_ATTRIBUTE
+    assert parameters["branch_name"] == default_branch.name
+    # The widened pass owns the write, so it must stamp the recompute origin and drive the chain.
+    assert parameters["coalesced"] is True
