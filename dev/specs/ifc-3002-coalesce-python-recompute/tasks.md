@@ -143,10 +143,10 @@
 
 **Independent Test**: Merge a branch with both a schema change and data changes. Count refreshes per pair, and confirm untouched nodes still refresh.
 
-- [ ] T051 [US3] Add a pure function to `backend/infrahub/computed_attribute/scoping.py` returning the attribute-and-kind pairs a schema change is expected to cover, implementing only the two selection rules that need no read sets
-- [ ] T052 [US3] Subtract those pairs from the coalesced targets in `backend/infrahub/core/merge/post_merge.py`, inside the existing schema-diff guard and only after a successful notification send
-- [ ] T053 [US3] Add a per-item guard and a `finally` to the submit loop in `computed_attribute_setup_python` in `backend/infrahub/computed_attribute/tasks.py`, so a partial failure cannot skip the automation reconcile
-- [ ] T054 [P] [US3] Unit-test the coverage function in `backend/tests/unit/computed_attribute/test_scoping.py`, including that it under-reports rather than over-reports
+- [x] T051 [US3] Add a pure function to `backend/infrahub/computed_attribute/scoping.py` returning the attribute-and-kind pairs a schema change is expected to cover, implementing only the two selection rules that need no read sets
+- [x] T052 [US3] Subtract those pairs from the coalesced targets in `backend/infrahub/core/merge/post_merge.py`, inside the existing schema-diff guard and only after a successful notification send
+- [x] T053 [US3] Add a per-item guard and a `finally` to the submit loop in `computed_attribute_setup_python` in `backend/infrahub/computed_attribute/tasks.py`, so a partial failure cannot skip the automation reconcile
+- [x] T054 [P] [US3] Unit-test the coverage function in `backend/tests/unit/computed_attribute/test_scoping.py`, including that it under-reports rather than over-reports
 - [ ] T055 [US3] Component-test the no-double-refresh case and that untouched nodes are still refreshed, in `backend/tests/component/merge_recompute_coalescing/test_python_schema_merge_overlap.py`
 - [ ] T056 [US3] Component-test the failure path in `backend/tests/component/merge_recompute_coalescing/test_python_schema_merge_overlap.py`: with the schema-driven refresh made to fail after the notification is sent, assert the coalesced pass still covers every node the merge touched
 

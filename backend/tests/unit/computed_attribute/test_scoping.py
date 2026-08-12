@@ -10,6 +10,7 @@ from infrahub.computed_attribute.scoping import (
     ComputedAttributeRef,
     DependencySet,
     RecomputeScoper,
+    pairs_covered_by_schema_change,
 )
 from infrahub.core.constants import ComputedAttributeKind
 
@@ -265,3 +266,47 @@ def test_selected_and_skipped_disjoint_and_complete() -> None:
     assert selected_refs | skipped_refs == set(candidates)
     assert len(report.selected) + len(report.skipped) == len(candidates)
     assert all(skipped.reason for skipped in report.skipped)
+
+
+OWNER = "TestingTShirt"
+PEER = "TestingColor"
+PAIRS = [(OWNER, "pitch"), (PEER, "blurb")]
+
+
+def test_a_pair_whose_kind_the_schema_added_or_removed_is_covered() -> None:
+    """The schema pass refreshes an added or removed kind across every node of it."""
+    covered = pairs_covered_by_schema_change(
+        pairs=PAIRS, changed_elements=ChangedElementSet(added_kinds=frozenset({OWNER}))
+    )
+
+    assert covered == frozenset({(OWNER, "pitch")})
+
+
+def test_a_pair_whose_own_definition_changed_is_covered() -> None:
+    covered = pairs_covered_by_schema_change(
+        pairs=PAIRS, changed_elements=ChangedElementSet(changed_fields={PEER: frozenset({"blurb"})})
+    )
+
+    assert covered == frozenset({(PEER, "blurb")})
+
+
+def test_a_pair_that_only_reads_a_changed_field_is_not_covered() -> None:
+    """Under-reporting is the safe direction, so the rules needing a read set are left out.
+
+    Whether this transform reads the changed field lives in its stored query, not in the schema.
+    Claiming coverage on a guess would subtract work nothing else does, and the value would stay
+    stale; leaving it out only refreshes it twice.
+    """
+    covered = pairs_covered_by_schema_change(
+        pairs=PAIRS, changed_elements=ChangedElementSet(changed_fields={PEER: frozenset({"description"})})
+    )
+
+    assert covered == frozenset()
+
+
+def test_an_unrelated_schema_change_covers_nothing() -> None:
+    covered = pairs_covered_by_schema_change(
+        pairs=PAIRS, changed_elements=ChangedElementSet(added_kinds=frozenset({"TestingUnrelated"}))
+    )
+
+    assert covered == frozenset()

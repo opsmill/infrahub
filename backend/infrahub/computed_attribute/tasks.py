@@ -653,18 +653,26 @@ async def computed_attribute_setup_python(
         for skipped in report.skipped:
             log.debug(f"Skipping {skipped.ref.kind}.{skipped.ref.attribute_name} on {branch_name}: {skipped.reason}")
 
-        for ref in report.selected:
-            await get_workflow().submit_workflow(
-                workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
-                context=context,
-                parameters={
-                    "branch_name": branch_name,
-                    "computed_attribute_name": ref.attribute_name,
-                    "computed_attribute_kind": ref.kind,
-                },
-            )
-
-        await _reconcile_python_computed_attribute_automations(db=db)
+        try:
+            for ref in report.selected:
+                # One attribute that cannot be submitted must not cost the others their refresh.
+                try:
+                    await get_workflow().submit_workflow(
+                        workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+                        context=context,
+                        parameters={
+                            "branch_name": branch_name,
+                            "computed_attribute_name": ref.attribute_name,
+                            "computed_attribute_kind": ref.kind,
+                        },
+                    )
+                except Exception:
+                    log.exception(f"Failed to submit the recompute of {ref.kind}.{ref.attribute_name} on {branch_name}")
+        finally:
+            # The automations must be reconciled even when the recompute above failed. Skipping it
+            # leaves a removed transform's automation in place and a new one missing, and with the
+            # merge-origin filter on there is no second path to catch up.
+            await _reconcile_python_computed_attribute_automations(db=db)
 
 
 @flow(

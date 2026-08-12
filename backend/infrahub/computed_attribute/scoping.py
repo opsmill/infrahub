@@ -20,7 +20,7 @@ from infrahub.core.constants import ComputedAttributeKind
 from infrahub.core.schema.schema_branch_computed.python_transform import IMPRECISE_READ_FIELDS
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Iterable, Mapping, Sequence
 
     from infrahub.core.schema.schema_branch_computed import ComputedAttributeTriggerNode, TransformReadSet
     from infrahub.events.schema_action import ChangedElementsPayload
@@ -291,3 +291,27 @@ class Jinja2DependencyDeriver:
             read_fields=read_fields,
             depends_on_everything=False,
         )
+
+
+def pairs_covered_by_schema_change(
+    *, pairs: Iterable[tuple[str, str]], changed_elements: ChangedElementSet
+) -> frozenset[tuple[str, str]]:
+    """Which attribute-and-kind pairs a schema-driven refresh is expected to cover across the whole kind.
+
+    Only the two selection rules that need no read set are applied: the owning kind was added or
+    removed, or the attribute's own definition changed. Every other rule the scoper uses depends
+    on a transform's read set, which is database data and deliberately not reachable from here.
+
+    Note *expected*, not *certain*. A transform named by the schema but absent from the database
+    never becomes a candidate for the schema pass, so no set computed from the schema alone can
+    promise the refresh happened.
+
+    Under-reporting is the safe direction: the result is subtracted from the coalesced targets, so
+    a pair left out is refreshed twice, while a pair wrongly included is not refreshed at all.
+    """
+    affected_kinds = changed_elements.added_kinds | changed_elements.removed_kinds
+    return frozenset(
+        (kind, attribute_name)
+        for kind, attribute_name in pairs
+        if kind in affected_kinds or attribute_name in changed_elements.changed_fields.get(kind, frozenset())
+    )

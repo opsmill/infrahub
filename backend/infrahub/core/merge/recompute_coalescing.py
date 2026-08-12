@@ -542,6 +542,20 @@ class CoalescedRecomputeSubmitter:
         return submitted
 
 
+def _drop_schema_covered(*, coalesced: CoalescedRecompute, covered: frozenset[tuple[str, str]]) -> CoalescedRecompute:
+    """Remove the Python targets a wider schema-driven refresh already covers.
+
+    Only the Python family: the other three are not refreshed by that pass in the same way, so
+    dropping one of them would leave it stale.
+    """
+    kept = frozenset(
+        target
+        for target in coalesced.targets
+        if target.family != PYTHON_ATTRIBUTE or (target.target_kind, target.attribute_name or "") not in covered
+    )
+    return CoalescedRecompute(branch=coalesced.branch, targets=kept)
+
+
 class MergeRecomputeCoordinator:
     """Build the coalesced recompute for a merge or rebase change set, resolve it, and submit it.
 
@@ -568,12 +582,20 @@ class MergeRecomputeCoordinator:
         context: EventContext,
         recompute_depth: int = 0,
         deleted_at: Timestamp | None = None,
+        schema_covered_pairs: frozenset[tuple[str, str]] = frozenset(),
     ) -> list[CoalescedSubmission]:
         """``deleted_at`` is the point in time the readers of a deleted node are resolved at.
 
         A chained level passes none: its change set is the values it just wrote, never a delete.
+
+        ``schema_covered_pairs`` are the ``(kind, attribute)`` pairs a schema-driven refresh on the
+        same merge already covers across the whole kind. Dropping them here is the whole point of
+        the subtraction: that pass is the wider of the two, so keeping both refreshes the
+        overlapping nodes twice.
         """
         coalesced = self.builder.build(changes=changes, branch=branch)
+        if schema_covered_pairs:
+            coalesced = _drop_schema_covered(coalesced=coalesced, covered=schema_covered_pairs)
         coalesced = await self.resolver.resolve(
             coalesced=coalesced, changes=changes, branch=branch, deleted_at=deleted_at
         )

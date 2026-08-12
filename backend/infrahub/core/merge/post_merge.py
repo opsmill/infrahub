@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub import config
+from infrahub.computed_attribute.scoping import ChangedElementSet, pairs_covered_by_schema_change
 from infrahub.core import registry
 from infrahub.core.constants import MutationAction
 from infrahub.core.merge.python_target_resolution import just_before
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
     from infrahub.core.diff.ipam_diff_parser import IpamNodeDetails
     from infrahub.core.merge.python_target_resolution import PythonTargetResolver
     from infrahub.core.models import SchemaDiff
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
     from infrahub.log import InfrahubLogger
     from infrahub.services.adapters.event import InfrahubEventService
@@ -140,17 +142,17 @@ class PostMergeDispatcher:
         )
 
         events: list[InfrahubEvent] = [merge_event]
+        schema_event: SchemaUpdatedEvent | None = None
         if schema_diff is not None and schema_hash is not None:
             # Drive the display-label, HFID and computed-attribute backfills for destination-only nodes,
             # scoped to the elements the merge changed so the recompute stays narrow.
-            events.append(
-                SchemaUpdatedEvent(
-                    branch_name=self.default_branch.name,
-                    schema_hash=schema_hash,
-                    changed_elements=build_changed_elements_payload(schema_diff),
-                    meta=EventMeta.from_parent(parent=merge_event, branch=self.default_branch),
-                )
+            schema_event = SchemaUpdatedEvent(
+                branch_name=self.default_branch.name,
+                schema_hash=schema_hash,
+                changed_elements=build_changed_elements_payload(schema_diff),
+                meta=EventMeta.from_parent(parent=merge_event, branch=self.default_branch),
             )
+            events.append(schema_event)
         changes: list[MergeChange] = []
         for action, node_changelog in node_events:
             mutation_action = MutationAction.from_diff_action(diff_action=action)
@@ -174,9 +176,13 @@ class PostMergeDispatcher:
                 )
             )
 
+        schema_refresh_notified = False
         for event in events:
             with log_exception_guard(self.log, f"Failed to send post-merge event '{type(event).__name__}'"):
                 await self.event_service.send(event=event)
+                # Only a notification that actually went out will drive the schema-wide refresh, and
+                # only then may this pass subtract the work that refresh covers.
+                schema_refresh_notified = schema_refresh_notified or event is schema_event
 
         with log_exception_guard(self.log, "Failed to submit the coalesced post-merge recompute"):
             schema_branch = registry.schema.get_schema_branch(name=self.default_branch.name)
@@ -190,7 +196,31 @@ class PostMergeDispatcher:
                 branch=self.default_branch.name,
                 context=event_context,
                 deleted_at=just_before(merge_at),
+                schema_covered_pairs=self._schema_covered_pairs(
+                    schema_branch=schema_branch,
+                    schema_event=schema_event if schema_refresh_notified else None,
+                ),
             )
+
+    @staticmethod
+    def _schema_covered_pairs(
+        *, schema_branch: SchemaBranch, schema_event: SchemaUpdatedEvent | None
+    ) -> frozenset[tuple[str, str]]:
+        """The Python pairs the schema-driven refresh on this same merge is expected to cover.
+
+        Empty when the merge carried no schema change, or when the notification that drives that
+        refresh failed to send: subtracting work nothing else will do leaves the values stale.
+        """
+        if schema_event is None or schema_event.changed_elements is None:
+            return frozenset()
+        pairs = [
+            (kind, attribute.name)
+            for kind, attributes in schema_branch.computed_attributes.get_python_attributes_per_node().items()
+            for attribute in attributes
+        ]
+        return pairs_covered_by_schema_change(
+            pairs=pairs, changed_elements=ChangedElementSet.from_payload(schema_event.changed_elements)
+        )
 
     async def _submit_workflow(
         self,
