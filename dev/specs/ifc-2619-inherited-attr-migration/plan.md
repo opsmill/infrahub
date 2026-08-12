@@ -69,7 +69,7 @@ No `contracts/` directory: the feature exposes no external interface (no GraphQL
 
 ```text
 backend/infrahub/core/
-├── graph/__init__.py                                  # GRAPH_VERSION 74 → 75 (PR 2)
+├── graph/__init__.py                                  # GRAPH_VERSION 75 → 76 (PR 2)
 ├── migrations/
 │   ├── schema/
 │   │   ├── node_kind_update.py                        # PR 1: execute() override + _newly_inherited_attributes()
@@ -87,8 +87,8 @@ backend/tests/
 │   ├── schema/test_node_kind_update.py                # PR 1: inherited-attr creation, profiles/templates, gating, NumberPool, name-update no-op
 │   ├── schema/test_node_attribute_add.py              # PR 1: force_inherited bypass; default guard intact
 │   ├── schema/test_all_migrations_rollback.py         # PR 1: run unchanged
-│   ├── graph/test_m076_heal_missing_attribute_rows.py # PR 2: damaged default branch, branch-scoped, tombstone, NumberPool (incl. rebase-time branch pass), healthy no-op, idempotent rerun, self-validation
-│   └── graph/test_m075_attribute_heal_detection.py    # PR 2: detection completeness + timestamp derivation
+│   └── graph/m076_heal_missing_attribute_rows/       # PR 2: test_default_branch.py, test_branches.py,
+│                                                      #       test_number_pool.py, test_detection.py
 └── integration/schema_lifecycle/
     └── test_schema_add_inherited_generic.py           # PR 1: end-to-end #9284 repro
 
@@ -113,11 +113,11 @@ changelog/
 
 ### PR 2 — Healing migration
 
-4. **Discovery + damage detection** (inlined in the m076 module — single-consumer queries, repo convention): discovery walks the persisted schema graph — `InheritedAttributeDiscoveryQuery` pairs every SchemaNode whose latest active `inherit_from` names a generic with that generic's SchemaAttribute vertices (a `branch_scoped` variant restricts to kinds whose `inherit_from` carries a branch-level update); attribute/node properties are hydrated via `NodeManager.get_many` on the schema-vertex UUIDs, with only the in-memory internal schema + core models registered — **no `SchemaBranch` load anywhere**. `AttributeHealDetectionQuery` is batched per kind (FR-011) and returns (node uuid, attribute name) for every active node lacking an active row — treating tombstone-only as damaged, clamping timestamps to not predate tombstones (FR-005, FR-006; research R8, R9); a `branch_scoped` variant considers only damage involving branch-level data changes (FR-009).
+4. **Discovery + damage detection** (inlined in the m076 module — single-consumer queries, repo convention): discovery walks the persisted schema graph — `InheritedAttributeDiscoveryQuery` pairs every SchemaNode whose latest active `inherit_from` names a generic with that generic's SchemaAttribute vertices (a `branch_scoped` variant restricts to kinds whose `inherit_from` carries a branch-level update); attribute/node properties are hydrated via `NodeManager.get_many` on the schema-vertex UUIDs, with only the in-memory internal schema + core models registered — **no `SchemaBranch` load anywhere**. `AttributeHealDetectionQuery` is batched per kind (FR-011) and returns (node uuid, attribute name) for every active node lacking an active row — treating tombstone-only as damaged (FR-005); a `branch_scoped` variant considers only damage involving branch-level data changes (FR-009).
 
-   **Duplicated schema vertices (critique E2)**: schema name/namespace/inheritance updates create same-UUID *copies* of schema nodes, so "when did the kind begin inheriting" is not readable off a single vertex's edges. Timestamp derivation resolves the edge timeline across the full same-UUID vertex set of the schema node and its attribute vertices; the heal timestamp is the **later** of the generic→attribute linkage time and the kind's inherit-began time (the heal floor). Component tests include a kind renamed after gaining inheritance.
+   **Duplicated schema vertices (critique E2)**: schema name/namespace/inheritance updates create same-UUID *copies* of schema nodes, so a kind's inheritance is not readable off a single vertex's edges — discovery resolves the edge timeline across the full same-UUID vertex set. *(The timestamp derivation this originally fed is superseded: rows are created at run time — research R8.)* Component tests include a kind renamed after gaining inheritance.
 
-5. **`m076_heal_missing_attribute_rows`** (`MigrationRequiringRebase`; `GRAPH_VERSION` → 75; research R7):
+5. **`m076_heal_missing_attribute_rows`** (`MigrationRequiringRebase`; `minimum_version` 75; `GRAPH_VERSION` → 76; research R7):
    - **`execute()` (upgrade time)**: default branch first — per discovered kind, detect → repair. Default-backed attributes: batched `AttributeAddQuery` calls with explicit `uuids`, written at run time. NumberPool attributes: per-node run-time allocation via the reservation-aware `CoreNumberPool.get_resource`, row written by the inline `PoolAttributeRowAddQuery` (runtime row shape: `is_default: false` value vertex + `HAS_SOURCE` to the pool); a missing pool fails the migration loudly (FR-007; research R10). Every other branch is repaired by its own post-upgrade rebase rather than during the upgrade (FR-009).
    - **`execute_against_branch()` (rebase time)**: run during each branch's post-upgrade rebase (the upgrade marks stale branches for rebase); pool-only branch-scoped discovery → per-node run-time allocation, so branch allocations follow the default branch's; re-validates its own pool scope before returning.
    - **Branch-agnostic attributes**: `AttributeAddQuery` and `PoolAttributeRowAddQuery` write AGNOSTIC-support attribute edges on the global branch (this also fixes the forward path, which shares `AttributeAddQuery`).

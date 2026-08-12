@@ -672,7 +672,7 @@ async def migrate_database(
                     migration_console.log(f"    Error: {error}")
             if not verbose:
                 migration_console.log(
-                    f"    Hint: Use --verbose for detailed output, or re-run with: infrahub db migrate --migration-number {migration_num} --verbose"
+                    f"    Hint: re-run with internal logs enabled: infrahub db migrate --migration-number {migration_num} --verbose"
                 )
             return False
 

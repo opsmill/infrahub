@@ -359,7 +359,8 @@ async def get_attribute_row_edge_placements(
     query = """
     MATCH (n:Node { uuid: $uuid })-[ha:HAS_ATTRIBUTE { status: "active" }]->(a:Attribute { name: $attr_name })
     WHERE ha.to IS NULL
-    MATCH (a)-[r:HAS_ATTRIBUTE|HAS_VALUE|IS_PROTECTED]-()
+    MATCH (a)-[r:HAS_ATTRIBUTE|HAS_VALUE|IS_PROTECTED { status: "active" }]-()
+    WHERE r.to IS NULL
     RETURN DISTINCT type(r) AS rel_type, r.branch AS branch, r.branch_level AS branch_level
     """
     results = await db.execute_query(query=query, params={"uuid": node_uuid, "attr_name": attribute_name})

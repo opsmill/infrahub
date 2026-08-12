@@ -447,8 +447,8 @@ class Migration076(MigrationRequiringRebase):
                     uuids=list(uuid_batch),
                 )
                 await query.execute(db=dbt)
-                repaired += query.num_of_results
 
+                # Counted per allocated node rather than from the rows the query created.
                 nodes = await NodeManager.get_many(db=dbt, branch=branch, ids=list(uuid_batch))
                 for node_uuid in sorted(nodes):
                     node = nodes[node_uuid]
@@ -459,6 +459,7 @@ class Migration076(MigrationRequiringRebase):
                     node_attribute.value = number
                     node_attribute.set_source(number_pool.get_id())
                     await node.save(db=dbt, fields=[attribute.name], at=migration_input.at)
+                    repaired += 1
             if multiple_batches:
                 console.log(
                     f"    {node_schema.kind}.{attribute.name}: allocated {repaired}/{len(node_uuids)} pool value(s)"

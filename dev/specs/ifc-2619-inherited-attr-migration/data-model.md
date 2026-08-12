@@ -78,17 +78,16 @@ A pair whose latest schema linkage is **not** active carries no derivable timest
 ## Migration Records (existing framework)
 
 - **Schema migrations** (PR 1): no new migration names; `node.inherit_from.update` / `node.name.update` / `node.namespace.update` (backed by `NodeKindUpdateMigration`) gain sub-migration behavior; `node.attribute.add` gains the `force_inherited` field (in-memory model only — not persisted).
-- **Graph migration** (PR 2): `m076_heal_missing_attribute_rows`, a `MigrationRequiringRebase` with `minimum_version: 74`; `execute()` runs at upgrade time (default branch + branch-scoped default-backed passes), `execute_against_branch()` runs during each branch's rebase (deferred pool-backed damage). `GRAPH_VERSION` bumps 74 → 75 on the `Root` vertex after successful upgrade, which is what makes the healing one-shot.
+- **Graph migration** (PR 2): `m076_heal_missing_attribute_rows`, a `MigrationRequiringRebase` with `minimum_version: 75`; `execute()` runs at upgrade time against the default branch, `execute_against_branch()` runs during each branch's rebase. `GRAPH_VERSION` bumps 75 → 76 on the `Root` vertex after successful upgrade, which is what makes the healing one-shot.
 
 ## State Transitions
 
 ```text
 Damaged install (missing rows)
-  --[upgrade: m076 pass 1]--> default branch satisfies invariant (defaults + pools)
-  --[upgrade: m076 pass 2]--> each branch satisfies invariant for branch-changed
-                              default-backed data; pool pairs deferred to rebase
-  --[m076 self-validation]--> PASS: GRAPH_VERSION=75 recorded | FAIL: upgrade aborts with per-kind errors
-  --[branch rebase: m076 execute_against_branch]--> branch pool pairs allocated + re-validated
+  --[upgrade: m076 execute]--> default branch satisfies invariant (defaults + pools)
+  --[m076 self-validation]--> PASS: GRAPH_VERSION=76 recorded | FAIL: upgrade aborts with per-kind errors
+  --[branch rebase: m076 execute_against_branch]--> branch satisfies invariant
+                              (defaults + pools) + re-validated
 Healthy install
   --[upgrade: m076]--> zero writes, validation passes trivially
 Post-fix schema load (kind gains generic)

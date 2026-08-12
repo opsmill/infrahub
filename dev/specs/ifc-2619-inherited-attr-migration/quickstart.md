@@ -42,10 +42,10 @@ uv run invoke backend.test-integration  # includes backend/tests/integration/sch
 # Healing migration suite: damaged default branch, branch-scoped repair, tombstone,
 # NumberPool (incl. missing-pool failure, runtime row shape, rebase-time branch pass),
 # healthy no-op, idempotent rerun, self-validation failure path, deleted-attribute pins
-uv run pytest -x -v backend/tests/component/core/migrations/graph/test_m076_heal_missing_attribute_rows.py
+uv run pytest -x -v backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/
 
 # Discovery/detection queries: completeness, tombstone clamp, heal floor, duplicated schema vertices
-uv run pytest -x -v backend/tests/component/core/migrations/graph/test_m075_attribute_heal_detection.py
+uv run pytest -x -v backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/test_detection.py
 ```
 
 **Expected**: all pass. No-op cases assert **zero writes** via full-graph snapshot equality (before/after `DbSnapshotter` snapshots compare equal — strictly stronger than driver write-counter deltas); rerun cases assert second run writes nothing the same way; the seeded-damage cases assert every (active node, generic-inherited attribute) pair reads back with a non-null attribute `id` afterward. Branch-level pool damage is untouched by `execute()` and healed by `execute_against_branch()` (the rebase-time pass), with allocations following the default branch's.
