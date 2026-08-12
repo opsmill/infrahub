@@ -163,13 +163,13 @@ See [Infrahub Sync]($(base_url)sync) for adapters, mapping rules, and configurat
 
 A new object exists on the branch it was created on. On a branch other than the default, it remains isolated until that branch merges through a [proposed change](../proposed-changes/overview.mdx).
 
-Every attribute records how its value was set, which you can read back through [metadata and lineage](./metadata.mdx). You either entered the value while creating the object, or you set it up in advance so that you do not fill it in each time:
+Every attribute records how its value was set, which you can read back through [metadata and lineage](./metadata.mdx). You either entered the value while creating the object, or you set it up in advance so the object receives it on creation:
 
 - Choose an [Object Template](../object-templates/overview.mdx) to start the object with a set of components already in place.
 - Assign a [Profile](../profiles/overview.mdx) to give the object attribute values it inherits, and override any of them on the object itself.
 - Allocate from a [Resource Manager](../resource-manager/overview.mdx) pool to take the next free IP address or VLAN ID.
 
-All three work whichever method created the object.
+Templates, Profiles, and pools apply whichever of the three ways you used to create the object — directly, from a file, or from a workflow.
 
 ## Related
 
