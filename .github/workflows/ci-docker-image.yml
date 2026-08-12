@@ -199,9 +199,27 @@ jobs:
           password: ${{ secrets.HARBOR_PASSWORD }}
 
       - name: Sign manifest
+        env:
+          IMAGE: ${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}
         run: |
-          cosign sign --yes --recursive --new-bundle-format=false --use-signing-config=false \
-            "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}"
+          # cosign gives up after two internal attempts when a Sigstore transparency
+          # log write fails, so a brief rekor.sigstore.dev blip is enough to fail a
+          # release. Retry the whole command with exponential backoff instead.
+          for attempt in 1 2 3 4 5; do
+            if cosign sign --yes --recursive \
+              --new-bundle-format=false --use-signing-config=false \
+              "${IMAGE}"; then
+              exit 0
+            fi
+            if [ "${attempt}" -eq 5 ]; then
+              break
+            fi
+            delay=$((15 * 2 ** (attempt - 1)))
+            echo "::warning::cosign sign failed (attempt ${attempt}/5), retrying in ${delay}s"
+            sleep "${delay}"
+          done
+          echo "::error::cosign sign failed after 5 attempts"
+          exit 1
 
   sbom:
     needs: merge
@@ -233,20 +251,9 @@ jobs:
             "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}" \
             --output cyclonedx-json=infrahub-sbom.cdx.json
 
-      - name: Attest SBOM (SPDX)
-        run: |
-          cosign attest --yes \
-            --type spdxjson \
-            --predicate infrahub-sbom.spdx.json \
-            "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}"
-
-      - name: Attest SBOM (CycloneDX)
-        run: |
-          cosign attest --yes \
-            --type cyclonedx \
-            --predicate infrahub-sbom.cdx.json \
-            "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}"
-
+      # Uploaded before the attestations so that a transparency-log outage cannot cost
+      # us the SBOMs themselves: v1.10.7 shipped without any because the attest step
+      # failed first and skipped this one.
       - name: Upload SBOM artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -255,3 +262,32 @@ jobs:
             infrahub-sbom.spdx.json
             infrahub-sbom.cdx.json
           retention-days: 90
+
+      - name: Attest SBOMs
+        env:
+          IMAGE: ${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}
+        run: |
+          # Same transparency-log flakiness the sign job guards against; retry both
+          # predicates rather than losing the release to a single failed Rekor write.
+          attest_with_retry() {
+            local predicate_type="$1" predicate_file="$2" attempt delay
+            for attempt in 1 2 3 4 5; do
+              if cosign attest --yes \
+                --type "${predicate_type}" \
+                --predicate "${predicate_file}" \
+                "${IMAGE}"; then
+                return 0
+              fi
+              if [ "${attempt}" -eq 5 ]; then
+                break
+              fi
+              delay=$((15 * 2 ** (attempt - 1)))
+              echo "::warning::cosign attest ${predicate_type} failed (attempt ${attempt}/5), retrying in ${delay}s"
+              sleep "${delay}"
+            done
+            echo "::error::cosign attest ${predicate_type} failed after 5 attempts"
+            return 1
+          }
+
+          attest_with_retry spdxjson infrahub-sbom.spdx.json
+          attest_with_retry cyclonedx infrahub-sbom.cdx.json
