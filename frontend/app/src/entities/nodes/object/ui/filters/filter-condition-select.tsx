@@ -92,7 +92,7 @@ export function FilterConditionSelect({ filterType, ...props }: FilterConditionS
     >
       <SelectTrigger className="h-auto min-h-auto border-transparent bg-transparent px-1 py-0" />
 
-      <SelectList items={getFilterConditionOptions(filterType)} matchTriggerWidth={false}>
+      <SelectList items={getFilterConditionOptions(filterType)} width="content">
         {(item) => <SelectItem>{item.label}</SelectItem>}
       </SelectList>
     </Select>

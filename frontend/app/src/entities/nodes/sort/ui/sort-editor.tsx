@@ -191,7 +191,7 @@ function SortDirectionSelect({ value, onChange }: SortDirectionSelectProps) {
     >
       <SelectTrigger size="sm" />
 
-      <SelectList items={DIRECTION_OPTIONS} matchTriggerWidth={false}>
+      <SelectList items={DIRECTION_OPTIONS} width="content">
         {(option) => <SelectItem>{option.label}</SelectItem>}
       </SelectList>
     </Select>
