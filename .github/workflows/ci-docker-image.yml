@@ -56,6 +56,10 @@ concurrency:
 
 env:
   DOCKERFILE: "development/Dockerfile"
+  # Retry budget for cosign's Sigstore transparency-log writes, shared by the sign and
+  # sbom jobs. Delays back off exponentially from the base: 15s, 30s, 60s, 120s.
+  COSIGN_RETRY_ATTEMPTS: "5"
+  COSIGN_RETRY_BASE_DELAY_SECONDS: "15"
 
 jobs:
   prepare-environment:
@@ -205,20 +209,26 @@ jobs:
           # cosign gives up after two internal attempts when a Sigstore transparency
           # log write fails, so a brief rekor.sigstore.dev blip is enough to fail a
           # release. Retry the whole command with exponential backoff instead.
-          for attempt in 1 2 3 4 5; do
+          #
+          # The sbom job repeats this loop. sign and sbom run on separate runners, so a
+          # shell function cannot be shared between them, and reaching a local composite
+          # action would mean adding actions/checkout to two jobs that need no source.
+          # The tunables live in the workflow env block so that only the loop body, not
+          # the retry budget, exists in two places.
+          for attempt in $(seq 1 "${COSIGN_RETRY_ATTEMPTS}"); do
             if cosign sign --yes --recursive \
               --new-bundle-format=false --use-signing-config=false \
               "${IMAGE}"; then
               exit 0
             fi
-            if [ "${attempt}" -eq 5 ]; then
+            if [ "${attempt}" -eq "${COSIGN_RETRY_ATTEMPTS}" ]; then
               break
             fi
-            delay=$((15 * 2 ** (attempt - 1)))
-            echo "::warning::cosign sign failed (attempt ${attempt}/5), retrying in ${delay}s"
+            delay=$((COSIGN_RETRY_BASE_DELAY_SECONDS * 2 ** (attempt - 1)))
+            echo "::warning::cosign sign failed (attempt ${attempt}/${COSIGN_RETRY_ATTEMPTS}), retrying in ${delay}s"
             sleep "${delay}"
           done
-          echo "::error::cosign sign failed after 5 attempts"
+          echo "::error::cosign sign failed after ${COSIGN_RETRY_ATTEMPTS} attempts"
           exit 1
 
   sbom:
@@ -269,23 +279,24 @@ jobs:
         run: |
           # Same transparency-log flakiness the sign job guards against; retry both
           # predicates rather than losing the release to a single failed Rekor write.
+          # The retry budget is shared with that job via the workflow env block.
           attest_with_retry() {
             local predicate_type="$1" predicate_file="$2" attempt delay
-            for attempt in 1 2 3 4 5; do
+            for attempt in $(seq 1 "${COSIGN_RETRY_ATTEMPTS}"); do
               if cosign attest --yes \
                 --type "${predicate_type}" \
                 --predicate "${predicate_file}" \
                 "${IMAGE}"; then
                 return 0
               fi
-              if [ "${attempt}" -eq 5 ]; then
+              if [ "${attempt}" -eq "${COSIGN_RETRY_ATTEMPTS}" ]; then
                 break
               fi
-              delay=$((15 * 2 ** (attempt - 1)))
-              echo "::warning::cosign attest ${predicate_type} failed (attempt ${attempt}/5), retrying in ${delay}s"
+              delay=$((COSIGN_RETRY_BASE_DELAY_SECONDS * 2 ** (attempt - 1)))
+              echo "::warning::cosign attest ${predicate_type} failed (attempt ${attempt}/${COSIGN_RETRY_ATTEMPTS}), retrying in ${delay}s"
               sleep "${delay}"
             done
-            echo "::error::cosign attest ${predicate_type} failed after 5 attempts"
+            echo "::error::cosign attest ${predicate_type} failed after ${COSIGN_RETRY_ATTEMPTS} attempts"
             return 1
           }
 
