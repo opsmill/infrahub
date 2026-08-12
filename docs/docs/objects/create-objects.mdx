@@ -5,31 +5,31 @@ title: Create objects
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-How you create an object depends on what drives it. Create objects directly through one of Infrahub's interfaces, declare them in a file that lives in Git alongside your schema, or have a workflow create them from data that already exists.
+How you create an object depends on what starts the work. Create objects directly through an Infrahub interface, declare them in a YAML file stored in Git alongside your schema, or configure a workflow that creates them from data you already have.
 
 ## Create objects directly
 
-Infrahub has four interfaces, and all of them produce the same object and enforce the same schema constraints. Pick the one that fits how you are working.
+Four interfaces create objects. All four produce the same object and enforce the same schema constraints, so pick the one that matches how you are already working.
 
 The example below creates a device named `atl1-edge1` at site `atl1`. On `InfraDevice`, `name` and `type` are required and `site` is a relationship.
 
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-Use the web interface for one-off objects, and when you are working with a schema you have not used before. The form is built from the schema, so it shows every field the kind defines, marks which of them are required, and validates values as you type. That makes it the quickest way to learn what a kind actually needs before you script against it.
+Use the web interface for one-off objects, and when you are working with a schema you have not used before. The form is built from the schema, so it shows every field the kind defines, marks which ones are required, and validates values as you type.
 
 1. Open the Device list from the left menu.
 2. Select **Add Device**. The **Create Device** panel opens.
 3. Fill in the name and type.
 4. Select a site, then save.
 
-The form is also the only place where Object Templates, Profiles, and resource pools appear as selectable controls. The other interfaces accept the same values as fields.
+In the web form you can also pick an Object Template, assign Profiles, and allocate from a resource pool while filling in the object. The other interfaces accept the same values as fields.
 
 </TabItem>
 
   <TabItem value="infrahubctl" label="infrahubctl">
 
-Use `infrahubctl` for interactive work and for scripting one object at a time. It fits the point where you already know the kind and the values and want the object created without leaving the terminal — onboarding a device during a maintenance window, or a shell script that creates a few objects as one step in a longer task.
+Use `infrahubctl` for interactive work and for scripting one object at a time — onboarding a device during a maintenance window, or a shell script that creates a few objects as one step in a longer task.
 
 ```bash
 infrahubctl object create InfraDevice \
@@ -46,7 +46,7 @@ Relationship values resolve by name, so `site=atl1` looks up the site and links 
 
   <TabItem value="sdk" label="Python SDK">
 
-Use the Python SDK for custom scripts and integrations — when a program decides what to create rather than a person. The SDK handles authentication, query construction, and serialization, so the script works with objects instead of HTTP calls. Transformations, Generators, and checks run against this same client, so a script you write standalone can later run inside Infrahub's pipeline without changes.
+Use the Python SDK for custom scripts and integrations — when a program decides what to create rather than a person. The SDK handles authentication, query construction, and serialization, so your code works with objects rather than HTTP requests. Transformations, Generators, and checks run against this same client, so a script you write standalone runs unchanged inside Infrahub's pipeline.
 
 ```python
 from infrahub_sdk import InfrahubClientSync
@@ -62,7 +62,7 @@ device = client.create(
 device.save()
 ```
 
-To create many objects in one run, group the calls into a batch with a concurrency limit. The synchronous client suits straightforward scripting; the async client suits work that benefits from concurrent I/O.
+To create many objects in one run, group the calls into a batch with a concurrency limit. Use the synchronous client for scripting, and the async client for work with concurrent I/O.
 
 See the [Python SDK]($(base_url)python-sdk/introduction) documentation.
 
@@ -99,7 +99,7 @@ See [Queries & mutations](../development-resources/graphql/queries-and-mutations
 
 ## Create objects from a file
 
-Use object files for data that changes rarely and should be reviewed before it does, or as a starting dataset for a new instance. The file is YAML in a Git repository, so a change to your data goes through the same review as a change to your code.
+Use object files for data that changes rarely and needs review before it changes, or as a starting dataset for a new instance. The file is YAML in a Git repository, so a change to your data goes through the same review as a change to your code.
 
 ```yaml
 ---
@@ -126,19 +126,26 @@ Generators and Infrahub Sync both run from a configuration you set up, rather th
 
 ### Generators
 
-Use a Generator when the objects you need follow from data Infrahub already holds — an IP address for every new interface, or the circuits a service definition implies. You describe the rule once, and it applies to every target, including ones added later.
+Use a Generator when the objects you need are determined by data Infrahub already holds — an IP address for every new interface, or the circuits required by a service definition. You describe the rule once, and it applies to every target, including targets added later.
 
-A Generator has three parts: a GraphQL query that collects the data, the Python that acts on the results, and a target Group naming the objects it works on. Infrahub creates one run per member of that group, so a Generator targeting a group of ten racks produces ten independent runs, each seeing only its own rack's data.
+A Generator has three parts: a GraphQL query that collects the data, the Python that acts on the results, and a target Group that lists the objects it runs against. Infrahub creates one run per member of that group, so a Generator targeting a group of ten racks produces ten independent runs, each reading only its own rack's data.
 
-Objects are created when a run executes. That happens when you open a Proposed Change affecting the targets and the Generator runs as part of the CI checks, when you run the definition from the UI under **Actions > Generator Definitions**, when an Event rule you configured fires, or when you run it locally with `infrahubctl` while developing. Each run also removes objects it created earlier that the current data no longer requires.
+Objects are created when a run executes. A run starts when you:
+
+- Open a Proposed Change that affects the targets, where the Generator runs as one of the CI checks.
+- Run the definition from the UI under **Actions > Generator Definitions**.
+- Trigger it with an Event rule you configured.
+- Run it locally with `infrahubctl` while developing.
+
+Each run also deletes objects it created earlier that the current data no longer requires.
 
 See [Generators](../generators/overview.mdx).
 
 ### Infrahub Sync
 
-Use Infrahub Sync when another system holds data you need in Infrahub and stays the system of record for it. Sync moves infrastructure data between Infrahub and external systems — NetBox, Nautobot, IP Fabric, Slurp'it, Cisco ACI, Peering Manager, and any system with a REST API. It also runs the other direction, publishing Infrahub data into monitoring, observability, or CMDB systems that need a current view of the infrastructure.
+Use Infrahub Sync when another system holds data you need in Infrahub and stays the system of record for it. Sync moves infrastructure data between Infrahub and external systems — NetBox, Nautobot, IP Fabric, Slurp'it, Cisco ACI, Peering Manager, and any system with a REST API. Sync also runs in the other direction, publishing Infrahub data into monitoring, observability, or CMDB systems.
 
-Define a sync project in YAML that maps the source system's models onto your schema. Three commands drive it: `generate` builds the adapter code from that mapping, `diff` shows what would change without applying it, and `sync` applies the changes. Objects are created in Infrahub on the `sync` run, for every record in the source with no match in Infrahub. Each run calculates a fresh diff and applies only the deltas, so a run that fails partway can be repeated safely.
+Define a sync project in YAML that maps the source system's models onto your schema. Three commands run it: `generate` builds the adapter code from that mapping, `diff` shows what would change without applying it, and `sync` applies the changes. Objects are created in Infrahub on the `sync` run, for every record in the source with no match in Infrahub. Each run calculates a fresh diff and applies only the deltas, so a run that fails partway can be repeated safely.
 
 Sync runs as a CLI, so you schedule it with the tooling you already use — cron, a CI job, or Prefect.
 
@@ -148,11 +155,13 @@ See [Infrahub Sync]($(base_url)sync) for adapters, mapping rules, and configurat
 
 A new object exists on the branch it was created on. On a branch other than the default, it remains isolated until that branch merges through a [proposed change](../proposed-changes/overview.mdx).
 
-Every attribute records how its value was set, which you can read back through [metadata and lineage](./metadata.mdx). A value is either entered directly or supplied by one of three features, each of which applies whichever method created the object:
+Every attribute records how its value was set, which you can read back through [metadata and lineage](./metadata.mdx). You either entered the value while creating the object, or you set it up in advance so that you do not fill it in each time:
 
-- [Object Templates](../object-templates/overview.mdx) supply structure — which components the new object starts with.
-- [Profiles](../profiles/overview.mdx) supply attribute values the object inherits and can override.
-- [Resource Manager](../resource-manager/overview.mdx) allocates a value, such as an IP address or a VLAN ID, from a pool.
+- Pick an [Object Template](../object-templates/overview.mdx) to start the object with a set of components already in place.
+- Assign a [Profile](../profiles/overview.mdx) to give the object attribute values it inherits, and override any of them on the object itself.
+- Allocate from a [Resource Manager](../resource-manager/overview.mdx) pool to take the next free IP address or VLAN ID.
+
+All three work whichever method created the object.
 
 ## Related
 
