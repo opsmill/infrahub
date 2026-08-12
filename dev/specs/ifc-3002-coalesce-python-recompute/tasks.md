@@ -126,7 +126,7 @@
 
 **Independent Test**: Delete such a node both ways and check the readers. Both tests fail before this phase.
 
-- [ ] T045 [US2] Add the delete leg to `ComputedAttrPythonQueryTriggerDefinition` in `backend/infrahub/computed_attribute/models.py`, checking that the field filter still matches a delete's changelog shape
+- [ ] T045 [US2] Add the delete leg to `ComputedAttrPythonQueryTriggerDefinition` in `backend/infrahub/computed_attribute/models.py`, checking that the field filter still matches a delete's changelog shape. See research R5: the filter does match, but the leg is useless without a point-in-time lookup on the live path too, and a kind-level dependency needs a separate leg with no field filter
 - [ ] T046 [US2] Resolve subscribers at a pre-merge point in time for deleted ids only, in `backend/infrahub/core/merge/python_target_resolution.py`, and union with the current-time result for created and updated ids
 - [ ] T047 [US2] Stop dropping deleted changes for the Python family in `backend/infrahub/core/merge/recompute_coalescing.py`
 - [ ] T048 [P] [US2] Unit-test that the reader trigger subscribes to deletes in `backend/tests/unit/computed_attribute/test_models.py`

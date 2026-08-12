@@ -165,3 +165,18 @@ The first draft required every lookup to resolve at a pre-merge timestamp, to se
 ### What survived
 
 The R3 reversal. A reviewer tasked specifically with refuting it confirmed the direction, with two wording corrections now applied: the schema-coverage set is *expected*, not *certain*, and FR-018 must cover the schema flow failing **after** a successful send, not just the send failing. Every code claim in R1 through R4 that was independently checked held up.
+
+## R5 — What US2 actually needs (found while starting T045)
+
+Three findings from reading the delete path. They change the shape of US2, so they are recorded before the work starts.
+
+**The field filter does match a delete.** `Node.delete` builds a changelog and calls `add_attribute` for every attribute it removes, including the display label and the human-friendly id. `NodeMutatedEvent.get_related` therefore emits one `infrahub.node.attribute_update` entry per deleted attribute, each carrying `infrahub.field.name`. Adding `NodeDeletedEvent` to `ComputedAttrPythonQueryTriggerDefinition` is enough for the trigger itself to fire. This was the open question in T045.
+
+**T045 is useless without T046, on the live path too.** The trigger firing only gets as far as `query_transform_targets`, which resolves subscribers at the current time. A deleted node's group edges are already closed, so the lookup finds nothing and the flow does nothing. The live delete leg therefore needs its own point-in-time resolution, not only the merge path that T046 covers. The timestamp has to reach the flow as a trigger parameter (the event's `occurred`), which makes T045 a change to the flow signature as well as to the trigger.
+
+**A kind-level dependency cannot be reached at all today, in either direction.** When a transform reaches a kind but reads no field from it, `update_fields` is empty and the reader trigger still sets `match_related["infrahub.field.name"] = []`. Note the owner-axis builder guards this with `if update_fields:` and the reader-axis one does not. The two directions fail differently:
+
+- *Creation*: unreachable by construction, not by a bug. A new node belongs to no query group until a transform runs for it, so no reverse lookup can find its readers. The coalesced pass has the same limit, which is why the builder keeps the Python reader axis off for a creation.
+- *Deletion*: reachable in principle, since the node was a member, but only with the point-in-time lookup above.
+
+Fixing the empty-filter case is not just deleting the guard: dropping the filter would make the trigger match every update of the kind, and an update on a kind with no read fields must not select (see `selects_change`). The correct shape is a separate trigger leg carrying the delete only, with no field filter. Size US2 with that in mind.
