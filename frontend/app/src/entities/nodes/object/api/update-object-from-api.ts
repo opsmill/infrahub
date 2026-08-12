@@ -9,6 +9,7 @@ import {
 } from "@/shared/components/form/constants";
 
 import { getRelationshipMutation } from "@/entities/nodes/object/utils/get-relationship-mutations";
+import { hoistAttributeValuesToVariables } from "@/entities/nodes/object/utils/hoist-attribute-values-to-variables";
 
 export interface UpdateObjectFromApiParams extends BranchContextParams {
   objectKind: string;
@@ -75,12 +76,21 @@ export function updateObjectFromApi({
     };
   }, {});
 
+  const {
+    data: hoistedObjectData,
+    variableDefinitions,
+    variableValues,
+  } = hoistAttributeValuesToVariables(objectData);
+  const hasVariables = file !== undefined || Object.keys(variableDefinitions).length > 0;
+
   const objectMutation = {
-    ...(file && { __variables: { file: "Upload!" } }),
+    ...(hasVariables && {
+      __variables: { ...(file && { file: "Upload!" }), ...variableDefinitions },
+    }),
     [`${objectKind}Update`]: {
       __args: {
         data: {
-          ...objectData,
+          ...hoistedObjectData,
           ...(profileIds !== undefined
             ? { profiles: profileIds.map((profileId) => ({ id: profileId })) }
             : {}),
@@ -124,7 +134,7 @@ export function updateObjectFromApi({
 
   return graphqlClient.mutate({
     mutation: gql(mutation),
-    variables: file ? { file } : undefined,
+    variables: hasVariables ? { ...(file && { file }), ...variableValues } : undefined,
     context: {
       branch: branchName,
     },

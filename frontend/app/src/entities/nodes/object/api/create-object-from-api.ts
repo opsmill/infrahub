@@ -4,6 +4,8 @@ import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams } from "@/shared/api/types";
 
+import { hoistAttributeValuesToVariables } from "@/entities/nodes/object/utils/hoist-attribute-values-to-variables";
+
 export interface CreateObjectFromApiParams extends BranchContextParams {
   objectKind: string;
   data: Record<string, unknown>;
@@ -18,13 +20,22 @@ export function createObjectFromApi({
   branchName,
   file,
 }: CreateObjectFromApiParams) {
+  const {
+    data: hoistedData,
+    variableDefinitions,
+    variableValues,
+  } = hoistAttributeValuesToVariables(data);
+  const hasVariables = file !== undefined || Object.keys(variableDefinitions).length > 0;
+
   const mutation = jsonToGraphQLQuery({
     mutation: {
-      ...(file && { __variables: { file: "Upload!" } }),
+      ...(hasVariables && {
+        __variables: { ...(file && { file: "Upload!" }), ...variableDefinitions },
+      }),
       [`${objectKind}Create`]: {
         __args: {
           data: {
-            ...data,
+            ...hoistedData,
             ...(profileIds.length && { profiles: profileIds.map((id) => ({ id })) }),
           },
           ...(file && { file: new VariableType("file") }),
@@ -41,7 +52,7 @@ export function createObjectFromApi({
 
   return graphqlClient.mutate({
     mutation: gql(mutation),
-    variables: file ? { file } : undefined,
+    variables: hasVariables ? { ...(file && { file }), ...variableValues } : undefined,
     context: {
       branch: branchName,
     },
