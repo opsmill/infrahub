@@ -8,7 +8,8 @@ from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
 from infrahub import lock
-from infrahub.core.constants import ComputedAttributeKind, InfrahubKind, MutationAction
+from infrahub.core.constants import ComputedAttributeKind, MutationAction
+from infrahub.core.query_group.subscribers import fetch_subscriber_refs
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
 from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
@@ -667,17 +668,8 @@ async def query_transform_targets(
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     client = get_client()
     client.request_context = context.to_request_context()
-    targets = await client.execute_graphql(
-        query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS, variables={"members": [object_id]}, branch_name=branch_name
-    )
-
-    subscribers: list[PythonTransformTarget] = []
-
-    for group in targets[InfrahubKind.GRAPHQLQUERYGROUP]["edges"]:
-        for subscriber in group["node"]["subscribers"]["edges"]:
-            subscribers.append(
-                PythonTransformTarget(object_id=subscriber["node"]["id"], kind=subscriber["node"]["__typename"])
-            )
+    refs = await fetch_subscriber_refs(client=client, node_ids=[object_id], branch=branch_name)
+    subscribers = [PythonTransformTarget(object_id=ref.id, kind=ref.kind) for ref in refs]
 
     nodes_with_computed_attributes = schema_branch.computed_attributes.get_python_attributes_per_node()
 
@@ -706,23 +698,3 @@ async def query_transform_targets(
                 # Must be a creation tag: in-flow tag updates drop tags added mid-run.
                 tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
             )
-
-
-GATHER_GRAPHQL_QUERY_SUBSCRIBERS = """
-query GatherGraphQLQuerySubscribers($members: [ID!]) {
-  CoreGraphQLQueryGroup(members__ids: $members) {
-    edges {
-      node {
-        subscribers {
-          edges {
-            node {
-              id
-              __typename
-            }
-          }
-        }
-      }
-    }
-  }
-}
-"""
