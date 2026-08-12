@@ -115,6 +115,9 @@ def selects_change(change: MergeChange, read_set: TransformReadSet) -> bool:
         return False
     if change.action in (CREATED, DELETED):
         return True
+    if not change.changed_fields:
+        # An update that reports no field may have touched anything the query reads.
+        return True
     return bool(change.changed_fields & read_set.read_fields.get(change.kind, frozenset()))
 
 
@@ -177,8 +180,14 @@ class NarrowingPythonTargetResolver:
         if not selected:
             return None
 
-        owner_ids = {change.node_id for change in selected if change.kind == target.target_kind}
-        source_ids = frozenset(change.node_id for change in selected if change.kind != target.target_kind)
+        # A node that holds the attribute is a target in its own right, which is the only way a
+        # created node is reached: it subscribes to no query group until its transform first runs.
+        # A deleted one is not, and every selected node is still a source, because a transform can
+        # read other nodes of the kind it belongs to.
+        owner_ids = {
+            change.node_id for change in selected if change.kind == target.target_kind and change.action != DELETED
+        }
+        source_ids = frozenset(change.node_id for change in selected)
 
         if source_ids:
             try:
@@ -194,4 +203,4 @@ class NarrowingPythonTargetResolver:
             filter_key=_SELF_FILTER,
             source_node_ids=frozenset(owner_ids),
         )
-        return replace(target, reader_lookups=frozenset({lookup}), precise=True, whole_kind=False)
+        return replace(target, reader_lookups=frozenset({lookup}), whole_kind=False)

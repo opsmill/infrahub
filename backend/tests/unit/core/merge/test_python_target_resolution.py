@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -225,6 +226,51 @@ async def test_no_python_target_does_no_io_at_all() -> None:
 
     assert result.targets == frozenset({jinja})
     assert lookup.calls == []
+
+
+async def test_update_reporting_no_field_selects_and_stays_imprecise() -> None:
+    """An update with no field list may have touched anything the query reads.
+
+    The builder already marks that shape imprecise, and narrowing it must not claim a precision
+    the change set does not have.
+    """
+    resolver, _ = _resolver()
+    imprecise = replace(_python_target(), precise=False)
+    changes = [MergeChange(node_id="shirt-1", kind=OWNER_KIND, action=UPDATED, changed_fields=frozenset())]
+
+    result = await resolver.resolve(coalesced=_coalesced(imprecise), changes=changes, branch="main", deleted_at=None)
+
+    target = _only(result)
+    assert next(iter(target.reader_lookups)).source_node_ids == frozenset({"shirt-1"})
+    assert target.precise is False
+
+
+async def test_deleted_owner_is_not_a_target() -> None:
+    """A deleted node cannot be recomputed, so only the surviving one is scheduled."""
+    resolver, _ = _resolver()
+    changes = [
+        MergeChange(node_id="shirt-gone", kind=OWNER_KIND, action=DELETED),
+        MergeChange(node_id="shirt-1", kind=OWNER_KIND, action=UPDATED, changed_fields=frozenset({"name"})),
+    ]
+
+    result = await resolver.resolve(
+        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None
+    )
+
+    assert next(iter(_only(result).reader_lookups)).source_node_ids == frozenset({"shirt-1"})
+
+
+async def test_a_change_on_the_owning_kind_is_also_a_reader_source() -> None:
+    """A transform can read other nodes of the kind it belongs to, so its own kind is looked up too."""
+    resolver, lookup = _resolver(readers={OWNER_KIND: frozenset({"shirt-2"})})
+    changes = [MergeChange(node_id="shirt-1", kind=OWNER_KIND, action=UPDATED, changed_fields=frozenset({"name"}))]
+
+    result = await resolver.resolve(
+        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None
+    )
+
+    assert next(iter(_only(result).reader_lookups)).source_node_ids == frozenset({"shirt-1", "shirt-2"})
+    assert lookup.calls == [frozenset({"shirt-1"})]
 
 
 @pytest.mark.parametrize(

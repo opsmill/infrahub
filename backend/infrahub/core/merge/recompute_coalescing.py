@@ -129,9 +129,15 @@ class _ResolvedTarget:
     family: RecomputeFamily
     target_kind: str
     attribute_name: str | None
-    filter_key: str
     reads_across_relationship: bool
     precise: bool
+    filter_key: str | None = None
+    """How the changed nodes reach this target, or ``None`` when its ids are resolved downstream.
+
+    The schema says which nodes reach a template-derived value; for a Python transform that
+    lives in the stored query instead, so the builder names the target and leaves its ids to
+    the resolution step.
+    """
 
 
 @dataclass
@@ -144,7 +150,8 @@ class _TargetAccumulator:
     ids_by_lookup: dict[tuple[str, str], set[str]] = field(default_factory=dict)
 
     def add(self, *, resolved: _ResolvedTarget, source_kind: str, source_node_ids: frozenset[str]) -> None:
-        self.ids_by_lookup.setdefault((source_kind, resolved.filter_key), set()).update(source_node_ids)
+        if resolved.filter_key is not None:
+            self.ids_by_lookup.setdefault((source_kind, resolved.filter_key), set()).update(source_node_ids)
         if resolved.reads_across_relationship:
             self.reads_across_relationship = True
         if not resolved.precise:
@@ -237,8 +244,17 @@ class CoalescedRecomputeBuilder:
             )
             return
         if signature.action == DELETED:
+            # The Python family is left out: finding the readers of a node whose edges the delete
+            # has already closed needs a point-in-time lookup that the resolution step does not do
+            # yet. The per-node reader trigger does not fire on a delete either, so this matches
+            # today's behaviour rather than regressing it.
             yield from self._derive_family_targets(
-                kind=signature.kind, fields=None, include_self=False, include_cross=True, precise=True
+                kind=signature.kind,
+                fields=None,
+                include_self=False,
+                include_cross=True,
+                precise=True,
+                include_python=False,
             )
             return
         if signature.action == UPDATED:
@@ -256,6 +272,7 @@ class CoalescedRecomputeBuilder:
                 include_self=False,
                 include_cross=True,
                 precise=True,
+                self_refreshed_inline=True,
             )
             # A relationship change that doesn't save the reader (e.g. a peer deleted on another branch)
             # skips the reader's inline recompute, so refresh its own values here.
@@ -293,7 +310,19 @@ class CoalescedRecomputeBuilder:
         include_self: bool,
         include_cross: bool,
         precise: bool,
+        self_refreshed_inline: bool = False,
+        include_python: bool = True,
     ) -> Iterator[_ResolvedTarget]:
+        if include_python:
+            # A Python transform runs from an automation instead of inline on the node's save, so
+            # the owner axis stays on where the other three families correctly drop it.
+            yield from self._resolve_python_targets(
+                kind=kind,
+                include_self=include_self or self_refreshed_inline,
+                include_cross=include_cross,
+                precise=precise,
+            )
+
         yield from self._resolve_computed_targets(
             kind=kind,
             fields=fields,
@@ -362,6 +391,29 @@ class CoalescedRecomputeBuilder:
                     precise=precise,
                 )
 
+    def _resolve_python_targets(
+        self, *, kind: str, include_self: bool, include_cross: bool, precise: bool
+    ) -> Iterator[_ResolvedTarget]:
+        """Every Python computed attribute a change to ``kind`` may affect, before any narrowing.
+
+        Which kinds a transform reads lives in its stored GraphQL query rather than in the
+        schema, so nothing here can rule an attribute out on the reader axis; every registered
+        attribute is a candidate and the resolution step drops the ones that read nothing the
+        change touched. The owner axis, where the changed node holds the attribute itself, is
+        the one case the schema does decide.
+        """
+        for target_kind, attributes in self.schema_branch.computed_attributes.get_python_attributes_per_node().items():
+            if not include_cross and not (include_self and target_kind == kind):
+                continue
+            for attribute in attributes:
+                yield _ResolvedTarget(
+                    family=PYTHON_ATTRIBUTE,
+                    target_kind=target_kind,
+                    attribute_name=attribute.name,
+                    reads_across_relationship=target_kind != kind,
+                    precise=precise,
+                )
+
 
 class CoalescedRecomputeSubmitter:
     """Submit a coalesced recompute by reusing the existing per-family process flows."""
@@ -410,6 +462,17 @@ class CoalescedRecomputeSubmitter:
             for target in coalesced.targets
             if target.whole_kind
         ]
+        for target in coalesced.targets:
+            if target.family == PYTHON_ATTRIBUTE and not target.whole_kind and not target.reader_lookups:
+                # The builder names Python targets and the resolution step gives them their ids.
+                # Reaching here without either means the resolution step was skipped, which turns
+                # the whole family into a silent no-op.
+                log.error(
+                    "Coalesced recompute reached submission with an unresolved Python target %s.%s on branch %s",
+                    target.target_kind,
+                    target.attribute_name,
+                    coalesced.branch,
+                )
         return sorted(
             submissions,
             key=lambda submission: (
@@ -512,10 +575,12 @@ def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
     A chain can't recompute more targets than the schema has, so this never truncates a real chain
     while still stopping a cyclic schema.
     """
+    python_attributes = schema_branch.computed_attributes.get_python_attributes_per_node()
     target_count = (
         len(schema_branch.computed_attributes.get_jinja2_target_map())
         + len(schema_branch.display_labels.get_template_nodes())
         + len(schema_branch.hfids.get_template_nodes())
+        + sum(len(attributes) for attributes in python_attributes.values())
     )
     return max(RECOMPUTE_CHAIN_DEPTH_FLOOR, target_count)
 

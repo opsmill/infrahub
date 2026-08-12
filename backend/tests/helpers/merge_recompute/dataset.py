@@ -20,13 +20,19 @@ if TYPE_CHECKING:
 PROFILE_NAMESPACE = "Testing"
 PROFILE_NODE_KIND = "TestingProfileNode"
 PROFILE_PEER_KIND = "TestingProfilePeer"
+PROFILE_PYTHON_ATTRIBUTE = "pitch"
+PROFILE_TRANSFORM_NAME = "TestingProfilePitch"
 
 
-def build_profile_schema(cross_relationship_hfid: bool = False) -> SchemaRoot:
+def build_profile_schema(cross_relationship_hfid: bool = False, python_attribute: bool = False) -> SchemaRoot:
     """Two kinds: a peer, and a main node carrying all three derived families.
 
     With ``cross_relationship_hfid`` the node's human-friendly id reads the peer across the
     relationship instead of only its own name, so a peer rename has to refresh the stored HFID.
+
+    ``python_attribute`` adds a fourth family to the main node. It is opt-in because the
+    derivation tests assert the exact set of targets, and a Python attribute adds one to every
+    change shape.
     """
     peer = NodeSchema(
         name="ProfilePeer",
@@ -69,7 +75,51 @@ def build_profile_schema(cross_relationship_hfid: bool = False) -> SchemaRoot:
             ),
         ],
     )
+    if python_attribute:
+        node.attributes.append(
+            AttributeSchema(
+                name=PROFILE_PYTHON_ATTRIBUTE,
+                kind="Text",
+                optional=True,
+                read_only=True,
+                computed_attribute=ComputedAttribute(
+                    kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+                    transform=PROFILE_TRANSFORM_NAME,
+                ),
+            )
+        )
     return SchemaRoot(nodes=[peer, node])
+
+
+def build_python_only_schema(attribute_count: int) -> SchemaRoot:
+    """One kind whose only derived values are Python computed attributes.
+
+    No display label, and the name is not unique so no human-friendly id is derived from it.
+    Nothing but the Python family then contributes to a count taken over the whole schema.
+    """
+    node = NodeSchema(
+        name="PythonOnly",
+        namespace=PROFILE_NAMESPACE,
+        label="Python Only",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", optional=False),
+            *(
+                AttributeSchema(
+                    name=f"{PROFILE_PYTHON_ATTRIBUTE}_{index:02d}",
+                    kind="Text",
+                    optional=True,
+                    read_only=True,
+                    computed_attribute=ComputedAttribute(
+                        kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+                        transform=f"{PROFILE_TRANSFORM_NAME}{index:02d}",
+                    ),
+                )
+                for index in range(attribute_count)
+            ),
+        ],
+    )
+    return SchemaRoot(nodes=[node])
 
 
 async def load_profile_schema(db: InfrahubDatabase, branch_name: str | None = None) -> None:

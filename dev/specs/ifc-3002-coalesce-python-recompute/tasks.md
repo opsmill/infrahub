@@ -81,11 +81,11 @@
 
 ### Builder
 
-- [ ] T023 [US1] Emit unfiltered Python targets for both axes from `CoalescedRecomputeBuilder` in `backend/infrahub/core/merge/recompute_coalescing.py`, keeping the class pure and synchronous
-- [ ] T024 [US1] Make the self and cross derivation per family in the same file, so the Python owner axis emits a self-target on update where the three inline-recomputing families correctly do not
-- [ ] T025 [US1] Add the Python target count to `max_recompute_chain_depth` in the same file
-- [ ] T026 [P] [US1] Unit-test the builder derivation in `backend/tests/unit/core/merge/test_build_coalesced_recompute.py`, keeping the Python fixture opt-in so the existing exact-set assertions do not break
-- [ ] T027 [P] [US1] Unit-test the depth bound with a schema carrying only Python computed attributes in `backend/tests/unit/core/merge/test_build_coalesced_recompute_chain.py`
+- [x] T023 [US1] Emit unfiltered Python targets for both axes from `CoalescedRecomputeBuilder` in `backend/infrahub/core/merge/recompute_coalescing.py`, keeping the class pure and synchronous
+- [x] T024 [US1] Make the self and cross derivation per family in the same file, so the Python owner axis emits a self-target on update where the three inline-recomputing families correctly do not
+- [x] T025 [US1] Add the Python target count to `max_recompute_chain_depth` in the same file
+- [x] T026 [P] [US1] Unit-test the builder derivation in `backend/tests/unit/core/merge/test_build_coalesced_recompute.py`, keeping the Python fixture opt-in so the existing exact-set assertions do not break
+- [x] T027 [P] [US1] Unit-test the depth bound with a schema carrying only Python computed attributes in `backend/tests/unit/core/merge/test_build_coalesced_recompute_chain.py`
 
 ### Wiring
 

@@ -10,18 +10,28 @@ from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
     DISPLAY_LABEL,
     HFID,
+    PYTHON_ATTRIBUTE,
     AffectedTarget,
     CoalescedRecompute,
     CoalescedRecomputeBuilder,
     MergeChange,
 )
 from infrahub.core.schema.schema_branch import SchemaBranch
-from tests.helpers.merge_recompute.dataset import PROFILE_NODE_KIND, PROFILE_PEER_KIND, build_profile_schema
+from tests.helpers.merge_recompute.dataset import (
+    PROFILE_NODE_KIND,
+    PROFILE_PEER_KIND,
+    PROFILE_PYTHON_ATTRIBUTE,
+    build_profile_schema,
+)
+
+PYTHON_TARGET = (PYTHON_ATTRIBUTE, PROFILE_NODE_KIND, PROFILE_PYTHON_ATTRIBUTE)
 
 
-def _profile_schema_branch(cross_relationship_hfid: bool = False) -> SchemaBranch:
+def _profile_schema_branch(cross_relationship_hfid: bool = False, python_attribute: bool = False) -> SchemaBranch:
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=build_profile_schema(cross_relationship_hfid=cross_relationship_hfid))
+    schema_branch.load_schema(
+        schema=build_profile_schema(cross_relationship_hfid=cross_relationship_hfid, python_attribute=python_attribute)
+    )
     schema_branch.process()
     return schema_branch
 
@@ -223,3 +233,80 @@ def test_unscoped_update_is_a_bounded_fallback() -> None:
     assert _lookups(by_identity[DISPLAY_LABEL, PROFILE_NODE_KIND, None]) == own
     assert _lookups(by_identity[HFID, PROFILE_NODE_KIND, None]) == own
     assert node_result.fallback_used is True
+
+
+def test_python_target_is_named_without_ids() -> None:
+    """A peer change names the Python attribute and leaves its nodes to the resolution step.
+
+    Which kinds a transform reads lives in its stored query, so the schema cannot say whether
+    this peer is read, nor by which nodes.
+    """
+    builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch(python_attribute=True))
+    changes = [
+        MergeChange(node_id="peer-0", kind=PROFILE_PEER_KIND, action="updated", changed_fields=frozenset({"name"}))
+    ]
+
+    result = builder.build(changes=changes, branch="main")
+
+    by_identity = _by_identity(result)
+    assert set(by_identity) == {
+        (COMPUTED_ATTRIBUTE, PROFILE_NODE_KIND, "summary"),
+        (DISPLAY_LABEL, PROFILE_NODE_KIND, None),
+        PYTHON_TARGET,
+    }
+    python_target = by_identity[PYTHON_TARGET]
+    assert python_target.reader_lookups == frozenset()
+    assert python_target.whole_kind is False
+    assert python_target.reads_across_relationship is True
+
+
+def test_python_owner_axis_survives_an_update_the_other_families_drop() -> None:
+    """A node's own change adds a Python target where the other three families add none.
+
+    The save recomputes a template-derived value inline; a transform runs from an automation,
+    so the coalesced pass is what has to schedule it.
+    """
+    builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch(python_attribute=True))
+    changes = [
+        MergeChange(node_id="node-0", kind=PROFILE_NODE_KIND, action="updated", changed_fields=frozenset({"name"}))
+    ]
+
+    result = builder.build(changes=changes, branch="main")
+
+    assert set(_by_identity(result)) == {PYTHON_TARGET}
+
+
+def test_python_reader_axis_is_off_for_a_creation() -> None:
+    """A created peer names no Python target: it subscribes to no query group yet, so no reader reads it."""
+    builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch(python_attribute=True))
+    changes = [MergeChange(node_id="peer-new", kind=PROFILE_PEER_KIND, action="created")]
+
+    result = builder.build(changes=changes, branch="main")
+
+    assert set(_by_identity(result)) == {
+        (DISPLAY_LABEL, PROFILE_PEER_KIND, None),
+        (HFID, PROFILE_PEER_KIND, None),
+    }
+
+
+def test_python_owner_axis_covers_a_created_node() -> None:
+    """A created node holding the attribute is the one Python target a creation does name."""
+    builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch(python_attribute=True))
+    changes = [MergeChange(node_id="node-new", kind=PROFILE_NODE_KIND, action="created")]
+
+    result = builder.build(changes=changes, branch="main")
+
+    assert PYTHON_TARGET in set(_by_identity(result))
+
+
+def test_python_family_skips_a_deletion() -> None:
+    """A deleted peer names no Python target, matching the per-node reader trigger that ignores deletes."""
+    builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch(python_attribute=True))
+    changes = [MergeChange(node_id="peer-gone", kind=PROFILE_PEER_KIND, action="deleted")]
+
+    result = builder.build(changes=changes, branch="main")
+
+    assert set(_by_identity(result)) == {
+        (COMPUTED_ATTRIBUTE, PROFILE_NODE_KIND, "summary"),
+        (DISPLAY_LABEL, PROFILE_NODE_KIND, None),
+    }
