@@ -70,8 +70,8 @@
 
 ### Resolver
 
-- [ ] T015 [P] [US1] Define the `PythonTargetResolver` protocol and its request/resolution value objects in a new `backend/infrahub/core/merge/python_target_resolution.py`
-- [ ] T016 [P] [US1] Add the in-memory resolver implementation in `backend/tests/helpers/merge_recompute/resolver.py`, able to return canned mappings and to simulate each failure row
+- [x] T015 [P] [US1] Define the `PythonTargetResolver` protocol and its request/resolution value objects in a new `backend/infrahub/core/merge/python_target_resolution.py`
+- [x] T016 [P] [US1] Add the in-memory resolver implementation in `backend/tests/helpers/merge_recompute/resolver.py`, able to return canned mappings and to simulate each failure row
 - [ ] T017 [US1] Implement read-field index derivation in the client-backed resolver in `backend/infrahub/core/merge/python_target_resolution.py`, one pass per coalesced pass, uncached
 - [ ] T018 [US1] Implement the chunked subscriber lookup in the same file, bounded by the existing submission chunk size, with an explicit timeout
 - [ ] T019 [US1] Handle the kind-level dependency case in the narrowing: a read kind present in `read_kinds` but absent from `read_fields` must react to the kind appearing or disappearing and must not be dropped by the field test
