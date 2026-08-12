@@ -33,6 +33,51 @@
   color: "fbceb1"
 
 # ----------------------------------
+# CATEGORY
+# Functional domain of an issue, orthogonal to group/* (which component owns
+# it). One primary category per issue, a second only when truly cross-cutting.
+# ----------------------------------
+- name: "category/scaling"
+  description: "Bug that appears or worsens with data volume (nodes, relationships, tasks, events)"
+  color: "1d76db"
+
+- name: "category/git-sync"
+  description: "Repository sync/import from Git: read-only repos, objects files, .infrahub.yml"
+  color: "1d76db"
+
+- name: "category/schema-lifecycle"
+  description: "Schema load, import, validation and migration"
+  color: "1d76db"
+
+- name: "category/branching"
+  description: "Branch create/merge/rebase/diff and proposed-change mechanics"
+  color: "1d76db"
+
+- name: "category/tasks"
+  description: "Task manager / Prefect workflow lifecycle and visibility"
+  color: "1d76db"
+
+- name: "category/generators-artifacts"
+  description: "Generator, artifact and transform pipeline"
+  color: "1d76db"
+
+- name: "category/api"
+  description: "GraphQL/REST semantics: queries, filters, mutations, events and webhooks"
+  color: "1d76db"
+
+- name: "category/error-reporting"
+  description: "The defect is the error/message quality (opaque, misleading, over-verbose)"
+  color: "1d76db"
+
+- name: "category/permissions"
+  description: "Authentication and authorization"
+  color: "1d76db"
+
+- name: "category/pools"
+  description: "Resource pools: NumberPool, prefix pools, IPAM allocation"
+  color: "1d76db"
+
+# ----------------------------------
 # TYPE INFRAHUB (default)
 # ----------------------------------
 - name: "type/feature"
