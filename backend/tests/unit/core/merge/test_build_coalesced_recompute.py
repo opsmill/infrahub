@@ -299,8 +299,8 @@ def test_python_owner_axis_covers_a_created_node() -> None:
     assert PYTHON_TARGET in set(_by_identity(result))
 
 
-def test_python_family_skips_a_deletion() -> None:
-    """A deleted peer names no Python target, matching the per-node reader trigger that ignores deletes."""
+def test_python_family_names_a_target_for_a_deletion() -> None:
+    """A deleted peer names the Python target, so the resolution step can find who read it."""
     builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch(python_attribute=True))
     changes = [MergeChange(node_id="peer-gone", kind=PROFILE_PEER_KIND, action="deleted")]
 
@@ -309,4 +309,5 @@ def test_python_family_skips_a_deletion() -> None:
     assert set(_by_identity(result)) == {
         (COMPUTED_ATTRIBUTE, PROFILE_NODE_KIND, "summary"),
         (DISPLAY_LABEL, PROFILE_NODE_KIND, None),
+        PYTHON_TARGET,
     }

@@ -25,6 +25,7 @@ from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
 from infrahub.core.merge.merge_locker import MergeLocker
+from infrahub.core.merge.python_target_resolution import just_before
 from infrahub.core.merge.python_target_sources import build_python_target_resolver
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
@@ -341,7 +342,12 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                     enabled=config.SETTINGS.main.coalesce_python_recompute_after_merge,
                 ),
             )
-            await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
+            await coordinator.run(
+                changes=changes,
+                branch=user_branch.name,
+                context=event_context,
+                deleted_at=just_before(rebase_at),
+            )
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")

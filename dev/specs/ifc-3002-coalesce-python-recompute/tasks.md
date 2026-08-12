@@ -126,12 +126,12 @@
 
 **Independent Test**: Delete such a node both ways and check the readers. Both tests fail before this phase.
 
-- [ ] T045 [US2] Add the delete leg to `ComputedAttrPythonQueryTriggerDefinition` in `backend/infrahub/computed_attribute/models.py`, checking that the field filter still matches a delete's changelog shape. See research R5: the filter does match, but the leg is useless without a point-in-time lookup on the live path too, and a kind-level dependency needs a separate leg with no field filter
-- [ ] T046 [US2] Resolve subscribers at a pre-merge point in time for deleted ids only, in `backend/infrahub/core/merge/python_target_resolution.py`, and union with the current-time result for created and updated ids
-- [ ] T047 [US2] Stop dropping deleted changes for the Python family in `backend/infrahub/core/merge/recompute_coalescing.py`
-- [ ] T048 [P] [US2] Unit-test that the reader trigger subscribes to deletes in `backend/tests/unit/computed_attribute/test_models.py`
+- [ ] T045 [US2] Add the delete leg to `ComputedAttrPythonQueryTriggerDefinition` in `backend/infrahub/computed_attribute/models.py`, checking that the field filter still matches a delete's changelog shape. See research R5: the filter does match, but the leg is useless without a point-in-time lookup on the live path too, and a kind-level dependency needs a separate leg with no field filter. BLOCKED, see research R6: the delete's timestamp reaches neither the changelog nor the event meta, so the trigger has no point in time to resolve the readers at. Needs the mutation timestamp on the event, which is its own ticket
+- [x] T046 [US2] Resolve subscribers at a pre-merge point in time for deleted ids only, in `backend/infrahub/core/merge/python_target_resolution.py`, and union with the current-time result for created and updated ids
+- [x] T047 [US2] Stop dropping deleted changes for the Python family in `backend/infrahub/core/merge/recompute_coalescing.py`
+- [ ] T048 [P] [US2] Unit-test that the reader trigger subscribes to deletes in `backend/tests/unit/computed_attribute/test_models.py`. BLOCKED with T045
 - [ ] T049 [US2] Component-test that a merged delete refreshes the readers, in `backend/tests/component/computed_attribute/test_python_deleted_peer.py`, reusing the `_base.py` and `conftest.py` already in that package
-- [ ] T050 [US2] Component-test that a direct delete refreshes the readers, in the same file
+- [ ] T050 [US2] Component-test that a direct delete refreshes the readers, in the same file. BLOCKED with T045
 
 **Checkpoint**: US2 is independently shippable and improves live behaviour on its own.
 

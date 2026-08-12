@@ -11,6 +11,7 @@ from infrahub.core.merge.post_merge import PostMergeDispatcher
 from infrahub.core.merge.python_target_resolution import DroppingPythonTargetResolver
 from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispatcher
 from infrahub.core.registry import registry
+from infrahub.core.timestamp import Timestamp
 from infrahub.events.branch_action import BranchMergedEvent
 from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -81,6 +82,7 @@ class TestPostMergeSchemaEvent:
             proposed_change_id=None,
             node_events=[],
             context=self._context(default_branch),
+            merge_at=Timestamp(),
             schema_diff=schema_diff,
             schema_hash=candidate.get_hash(),
         )
@@ -109,6 +111,7 @@ class TestPostMergeSchemaEvent:
             proposed_change_id=None,
             node_events=[],
             context=self._context(default_branch),
+            merge_at=Timestamp(),
             schema_diff=None,
         )
 

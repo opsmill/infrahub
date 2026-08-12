@@ -190,6 +190,7 @@ class BranchMergeOrchestrator:
             proposed_change_id=proposed_change_id,
             node_events=node_events,
             context=context,
+            merge_at=merge_at,
             schema_diff=schema_diff,
             schema_hash=schema_updated_hash,
         )

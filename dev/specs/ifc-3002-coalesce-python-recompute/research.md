@@ -180,3 +180,25 @@ Three findings from reading the delete path. They change the shape of US2, so th
 - *Deletion*: reachable in principle, since the node was a member, but only with the point-in-time lookup above.
 
 Fixing the empty-filter case is not just deleting the guard: dropping the filter would make the trigger match every update of the kind, and an update on a kind with no read fields must not select (see `selects_change`). The correct shape is a separate trigger leg carrying the delete only, with no field filter. Size US2 with that in mind.
+
+## R6 — Why the live half of US2 is blocked
+
+The merge half of US2 works because the merge knows exactly when it closed the deleted node's edges: `merge_at`, stamped in the orchestrator under the merge lock. Resolving one microsecond before that instant sees the memberships, and nothing can be written in the gap because the write block is already up.
+
+The live half has no such anchor. `Node.delete` stamps the closing edges at its own `at`, and that value reaches nothing the trigger can read:
+
+- `NodeChangelog` carries the node id, kind, display label, attributes and relationships. No timestamp.
+- `EventMeta` carries the request id, account, initiator and origin. No timestamp.
+- The Prefect event's own `occurred` is when the event was emitted, at or after the delete transaction. Resolving there, or one microsecond earlier, still lands after the edges closed and still finds nothing.
+
+Subtracting a larger, guessed delta is not an option: a membership created inside that window would be missed, and under-recompute is the one failure this feature must not have.
+
+So the live delete leg needs the mutation timestamp carried on the event, which changes an event model and its generated reference documentation. That is outside "no public contract change" as this feature is scoped, and it should be its own ticket. T045, T048 and T050 stay open behind it.
+
+What is implemented and what is not:
+
+| Path | Deleted peer refreshes its readers |
+|---|---|
+| Merge | Yes. `just_before(merge_at)` for the deleted ids, current time for the rest, unioned. |
+| Rebase | Yes, same, from `rebase_at`. |
+| Direct edit | No, unchanged from today. Blocked on the timestamp above. |

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import MutationAction
+from infrahub.core.merge.python_target_resolution import just_before
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
@@ -34,6 +35,7 @@ if TYPE_CHECKING:
     from infrahub.core.diff.ipam_diff_parser import IpamNodeDetails
     from infrahub.core.merge.python_target_resolution import PythonTargetResolver
     from infrahub.core.models import SchemaDiff
+    from infrahub.core.timestamp import Timestamp
     from infrahub.log import InfrahubLogger
     from infrahub.services.adapters.event import InfrahubEventService
     from infrahub.services.adapters.workflow import InfrahubWorkflow
@@ -125,6 +127,7 @@ class PostMergeDispatcher:
         proposed_change_id: str | None,
         node_events: Sequence[tuple[DiffAction, NodeChangelog]],
         context: InfrahubContext,
+        merge_at: Timestamp,
         schema_diff: SchemaDiff | None = None,
         schema_hash: str | None = None,
     ) -> None:
@@ -182,7 +185,12 @@ class PostMergeDispatcher:
                 submitter=CoalescedRecomputeSubmitter(workflow=self.workflow),
                 resolver=self.python_target_resolver,
             )
-            await coordinator.run(changes=changes, branch=self.default_branch.name, context=event_context)
+            await coordinator.run(
+                changes=changes,
+                branch=self.default_branch.name,
+                context=event_context,
+                deleted_at=just_before(merge_at),
+            )
 
     async def _submit_workflow(
         self,

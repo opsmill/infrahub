@@ -35,17 +35,32 @@ class FailingReadFieldIndex:
         raise LookupUnavailableError(f"read-field index unavailable for {branch}")
 
 
+@dataclass(frozen=True)
+class LookupCall:
+    """One subscriber lookup: the ids it ran over, and the point in time it ran at."""
+
+    node_ids: frozenset[str]
+    at: Timestamp | None
+
+
 @dataclass
 class RecordingSubscriberLookup:
-    """Returns canned readers and records every call, so a per-node lookup is visible as such."""
+    """Returns canned readers and records every call, so a per-node lookup is visible as such.
+
+    ``readers_at`` answers the point-in-time half of a lookup, so a test can tell the readers of
+    the surviving nodes apart from the readers a deleted node had before it went.
+    """
 
     readers: dict[str, frozenset[str]] = field(default_factory=dict)
-    calls: list[frozenset[str]] = field(default_factory=list)
+    readers_at: dict[str, frozenset[str]] | None = None
+    calls: list[LookupCall] = field(default_factory=list)
 
     async def readers_of(
         self, *, node_ids: frozenset[str], branch: str, at: Timestamp | None
     ) -> dict[str, frozenset[str]]:
-        self.calls.append(node_ids)
+        self.calls.append(LookupCall(node_ids=node_ids, at=at))
+        if at is not None and self.readers_at is not None:
+            return dict(self.readers_at)
         return dict(self.readers)
 
 
@@ -53,7 +68,7 @@ class RecordingSubscriberLookup:
 class FailingSubscriberLookup:
     """Fails on every call, to prove a lookup failure widens rather than dropping the target."""
 
-    calls: list[frozenset[str]] = field(default_factory=list)
+    calls: list[LookupCall] = field(default_factory=list)
 
     async def readers_of(
         self, *, node_ids: frozenset[str], branch: str, at: Timestamp | None

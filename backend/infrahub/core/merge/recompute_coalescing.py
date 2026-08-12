@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from infrahub.core.merge.python_target_resolution import PythonTargetResolver
     from infrahub.core.recompute.bulk_write import WrittenNode
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.timestamp import Timestamp
     from infrahub.events.models import EventContext
     from infrahub.services.adapters.workflow import InfrahubWorkflow
     from infrahub.workflows.models import WorkflowDefinition
@@ -245,17 +246,8 @@ class CoalescedRecomputeBuilder:
             )
             return
         if signature.action == DELETED:
-            # The Python family is left out: finding the readers of a node whose edges the delete
-            # has already closed needs a point-in-time lookup that the resolution step does not do
-            # yet. The per-node reader trigger does not fire on a delete either, so this matches
-            # today's behaviour rather than regressing it.
             yield from self._derive_family_targets(
-                kind=signature.kind,
-                fields=None,
-                include_self=False,
-                include_cross=True,
-                precise=True,
-                include_python=False,
+                kind=signature.kind, fields=None, include_self=False, include_cross=True, precise=True
             )
             return
         if signature.action == UPDATED:
@@ -312,17 +304,15 @@ class CoalescedRecomputeBuilder:
         include_cross: bool,
         precise: bool,
         self_refreshed_inline: bool = False,
-        include_python: bool = True,
     ) -> Iterator[_ResolvedTarget]:
-        if include_python:
-            # A Python transform runs from an automation instead of inline on the node's save, so
-            # the owner axis stays on where the other three families correctly drop it.
-            yield from self._resolve_python_targets(
-                kind=kind,
-                include_self=include_self or self_refreshed_inline,
-                include_cross=include_cross,
-                precise=precise,
-            )
+        # A Python transform runs from an automation instead of inline on the node's save, so the
+        # owner axis stays on where the other three families correctly drop it.
+        yield from self._resolve_python_targets(
+            kind=kind,
+            include_self=include_self or self_refreshed_inline,
+            include_cross=include_cross,
+            precise=precise,
+        )
 
         yield from self._resolve_computed_targets(
             kind=kind,
@@ -571,10 +561,22 @@ class MergeRecomputeCoordinator:
         self.resolver = resolver
 
     async def run(
-        self, *, changes: Sequence[MergeChange], branch: str, context: EventContext, recompute_depth: int = 0
+        self,
+        *,
+        changes: Sequence[MergeChange],
+        branch: str,
+        context: EventContext,
+        recompute_depth: int = 0,
+        deleted_at: Timestamp | None = None,
     ) -> list[CoalescedSubmission]:
+        """``deleted_at`` is the point in time the readers of a deleted node are resolved at.
+
+        A chained level passes none: its change set is the values it just wrote, never a delete.
+        """
         coalesced = self.builder.build(changes=changes, branch=branch)
-        coalesced = await self.resolver.resolve(coalesced=coalesced, changes=changes, branch=branch, deleted_at=None)
+        coalesced = await self.resolver.resolve(
+            coalesced=coalesced, changes=changes, branch=branch, deleted_at=deleted_at
+        )
         return await self.submitter.submit(coalesced=coalesced, context=context, recompute_depth=recompute_depth)
 
 

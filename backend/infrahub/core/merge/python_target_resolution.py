@@ -22,6 +22,7 @@ from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecompute,
     ReaderLookup,
 )
+from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -29,7 +30,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.merge.recompute_coalescing import MergeChange
     from infrahub.core.schema.schema_branch_computed import TransformReadSet
-    from infrahub.core.timestamp import Timestamp
 
 log = get_logger()
 
@@ -87,6 +87,17 @@ def widen(target: AffectedTarget, *, reason: str) -> AffectedTarget:
         f"kind={target.target_kind} attribute={target.attribute_name} reason={reason}"
     )
     return replace(target, precise=False, whole_kind=True, reader_lookups=frozenset())
+
+
+def just_before(moment: Timestamp) -> Timestamp:
+    """The largest representable instant before ``moment``.
+
+    A merge or rebase closes a deleted node's edges at its own timestamp, and a query at that
+    same timestamp no longer sees them, so the readers have to be resolved one step earlier.
+    One microsecond is enough and cannot skip a real change: the timestamp is stamped under the
+    merge lock with writes already blocked, so nothing can land in the gap.
+    """
+    return Timestamp(moment.get_obj().subtract(microseconds=1))
 
 
 def is_python(target: AffectedTarget) -> bool:
@@ -179,6 +190,31 @@ class NarrowingPythonTargetResolver:
                 resolved.append(resolved_target)
         return replace_python_targets(coalesced, resolved)
 
+    async def _readers_of(
+        self,
+        *,
+        live_ids: frozenset[str],
+        gone_ids: frozenset[str],
+        branch: str,
+        deleted_at: Timestamp | None,
+    ) -> dict[str, frozenset[str]]:
+        """Who reads the changed nodes, taking the deleted ones at a point before they went.
+
+        A deleted node's membership records are already closed, so a current-time lookup finds
+        nothing for it. Resolving the whole set at the earlier time instead would hide a
+        membership the merge itself created, which is its own under-recompute, so the two halves
+        are looked up separately and unioned.
+        """
+        readers: dict[str, set[str]] = {}
+        lookups = [(live_ids, None), (gone_ids, deleted_at)]
+        for node_ids, at in lookups:
+            if not node_ids:
+                continue
+            found = await self.subscriber_lookup.readers_of(node_ids=node_ids, branch=branch, at=at)
+            for kind, ids in found.items():
+                readers.setdefault(kind, set()).update(ids)
+        return {kind: frozenset(ids) for kind, ids in readers.items()}
+
     async def _resolve_one(
         self,
         *,
@@ -190,10 +226,8 @@ class NarrowingPythonTargetResolver:
     ) -> AffectedTarget | None:
         key = (target.target_kind, target.attribute_name or "")
         read_set = index.get(key)
-        if read_set is None:
-            return widen(target, reason="no read set for the attribute")
-        if read_set.depends_on_everything:
-            return widen(target, reason="read set is imprecise")
+        if read_set is None or read_set.depends_on_everything:
+            return widen(target, reason="read set is imprecise" if read_set else "no read set for the attribute")
 
         selected = [change for change in changes if selects_change(change, read_set)]
         if not selected:
@@ -206,11 +240,17 @@ class NarrowingPythonTargetResolver:
         owner_ids = {
             change.node_id for change in selected if change.kind == target.target_kind and change.action != DELETED
         }
-        source_ids = frozenset(change.node_id for change in selected)
+        live_ids = frozenset(change.node_id for change in selected if change.action != DELETED)
+        gone_ids = frozenset(change.node_id for change in selected if change.action == DELETED)
 
-        if source_ids:
+        if gone_ids and deleted_at is None:
+            return widen(target, reason="a deleted node has no point in time to resolve its readers at")
+
+        if live_ids or gone_ids:
             try:
-                readers = await self.subscriber_lookup.readers_of(node_ids=source_ids, branch=branch, at=deleted_at)
+                readers = await self._readers_of(
+                    live_ids=live_ids, gone_ids=gone_ids, branch=branch, deleted_at=deleted_at
+                )
             except Exception as exc:
                 return widen(target, reason=f"subscriber lookup failed: {exc!r}")
             owner_ids |= set(readers.get(target.target_kind, frozenset()))

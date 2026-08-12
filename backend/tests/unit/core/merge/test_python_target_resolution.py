@@ -20,12 +20,16 @@ from infrahub.core.merge.recompute_coalescing import (
     ReaderLookup,
 )
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
+from infrahub.core.timestamp import Timestamp
 from tests.helpers.merge_recompute.resolver import (
     FailingReadFieldIndex,
     FailingSubscriberLookup,
+    LookupCall,
     RecordingReadFieldIndex,
     RecordingSubscriberLookup,
 )
+
+DELETED_AT = Timestamp("2026-01-01T00:00:00Z")
 
 OWNER_KIND = "TestingTShirt"
 PEER_KIND = "TestingColor"
@@ -62,13 +66,18 @@ def _resolver(
     *,
     index: dict[tuple[str, str], TransformReadSet] | object = _DEFAULT,
     readers: dict[str, frozenset[str]] | None = None,
+    readers_at: dict[str, frozenset[str]] | None = None,
     failing_index: bool = False,
     failing_lookup: bool = False,
 ) -> tuple[NarrowingPythonTargetResolver, RecordingSubscriberLookup | FailingSubscriberLookup]:
     # An empty index is a meaningful case, so it must not be conflated with "not supplied".
     resolved_index = {KEY: _read_set()} if index is _DEFAULT else index
     read_field_index = FailingReadFieldIndex() if failing_index else RecordingReadFieldIndex(index=resolved_index)
-    lookup = FailingSubscriberLookup() if failing_lookup else RecordingSubscriberLookup(readers=readers or {})
+    lookup = (
+        FailingSubscriberLookup()
+        if failing_lookup
+        else RecordingSubscriberLookup(readers=readers or {}, readers_at=readers_at)
+    )
     return NarrowingPythonTargetResolver(read_field_index=read_field_index, subscriber_lookup=lookup), lookup
 
 
@@ -125,7 +134,9 @@ async def test_peer_change_resolves_its_readers_in_one_lookup() -> None:
 
     target = _only(result)
     assert next(iter(target.reader_lookups)).source_node_ids == frozenset({"shirt-1", "shirt-2"})
-    assert lookup.calls == [frozenset({"color-0", "color-1", "color-2"})], "one lookup over the union, not one per node"
+    assert lookup.calls == [LookupCall(node_ids=frozenset({"color-0", "color-1", "color-2"}), at=None)], (
+        "one lookup over the union, not one per node"
+    )
 
 
 async def test_lookup_that_finds_nothing_drops_the_target() -> None:
@@ -254,10 +265,48 @@ async def test_deleted_owner_is_not_a_target() -> None:
     ]
 
     result = await resolver.resolve(
-        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None
+        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=DELETED_AT
     )
 
     assert next(iter(_only(result).reader_lookups)).source_node_ids == frozenset({"shirt-1"})
+
+
+async def test_a_deleted_peer_is_looked_up_before_it_went() -> None:
+    """A deleted node's memberships are already closed, so its readers need the earlier time.
+
+    Taking the whole set at that time instead would hide a membership the merge itself created,
+    so the two halves are looked up separately and unioned.
+    """
+    resolver, lookup = _resolver(
+        readers={OWNER_KIND: frozenset({"shirt-live"})},
+        readers_at={OWNER_KIND: frozenset({"shirt-gone-reader"})},
+    )
+    changes = [
+        MergeChange(node_id="color-1", kind=PEER_KIND, action=UPDATED, changed_fields=frozenset({"description"})),
+        MergeChange(node_id="color-gone", kind=PEER_KIND, action=DELETED),
+    ]
+
+    result = await resolver.resolve(
+        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=DELETED_AT
+    )
+
+    assert next(iter(_only(result).reader_lookups)).source_node_ids == frozenset({"shirt-live", "shirt-gone-reader"})
+    assert lookup.calls == [
+        LookupCall(node_ids=frozenset({"color-1"}), at=None),
+        LookupCall(node_ids=frozenset({"color-gone"}), at=DELETED_AT),
+    ]
+
+
+async def test_a_deletion_with_no_point_in_time_widens() -> None:
+    """Without a time to look at, the readers of a deleted node cannot be found at all."""
+    resolver, _ = _resolver(readers={OWNER_KIND: frozenset({"shirt-1"})})
+    changes = [MergeChange(node_id="color-gone", kind=PEER_KIND, action=DELETED)]
+
+    result = await resolver.resolve(
+        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None
+    )
+
+    assert _only(result).whole_kind is True
 
 
 async def test_a_change_on_the_owning_kind_is_also_a_reader_source() -> None:
@@ -270,7 +319,7 @@ async def test_a_change_on_the_owning_kind_is_also_a_reader_source() -> None:
     )
 
     assert next(iter(_only(result).reader_lookups)).source_node_ids == frozenset({"shirt-1", "shirt-2"})
-    assert lookup.calls == [frozenset({"shirt-1"})]
+    assert lookup.calls == [LookupCall(node_ids=frozenset({"shirt-1"}), at=None)]
 
 
 @pytest.mark.parametrize(
