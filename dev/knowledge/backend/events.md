@@ -38,6 +38,19 @@ with a very large cardinality-many relationship therefore keeps its event, but
 not every peer is represented in `related`; the full peer list remains
 available in the event payload's changelog.
 
+Group mutation events (`member_added` / `member_removed`) follow the same rule.
+Each member and each ancestor is a single related resource carrying its own
+role (`infrahub.group.member` / `infrahub.group.ancestor`) rather than a
+role-plus-duplicate pair, so the list grows by one per member instead of two.
+The fixed group-scoped entries come first and members/ancestors come last, so
+the same ordered truncation keeps the event within the maximum. Group
+automations match the primary group resource and read the changed members from
+the payload, so truncating overflow members only trims the event-query display;
+the event is always recorded and automations always fire. The event query
+API treats members and ancestors as related nodes (matching all three roles and
+deduplicating by id), which keeps its output stable across the consolidated
+format and any older events still carrying the duplicate related-node role.
+
 ## Event Types
 
 Events are organized by domain in `backend/infrahub/events/`:

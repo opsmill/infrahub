@@ -653,11 +653,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     async def create_branch_in_graph(self, branch_name: str) -> BranchData:
         """Create a new branch in the graph.
 
+        The branch originates from a git repository, so it must sync with git: merging it, running
+        its repository checks and generating its artifacts are all gated on that flag. It is passed
+        explicitly rather than left to the client default, which does not sync with git.
+
         NOTE We need to validate that we are not gonna end up with a race condition
         since a call to the GraphQL API will trigger a new RPC call to add a branch in this repo.
         """
         # TODO need to handle the exception properly
-        branch = await self.sdk.branch.create(branch_name=branch_name)
+        branch = await self.sdk.branch.create(branch_name=branch_name, sync_with_git=True)
 
         log.debug(f"Branch {branch_name} created in the Graph", repository=self.name, branch=branch_name)
         return branch

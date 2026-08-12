@@ -86,6 +86,7 @@ class SchemaUpdateCoordinator:
         *,
         branch: Branch,
         origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None = ...,
@@ -105,6 +106,7 @@ class SchemaUpdateCoordinator:
         *,
         branch: Branch,
         origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None = ...,
@@ -124,6 +126,7 @@ class SchemaUpdateCoordinator:
         *,
         branch: Branch,
         origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None = ...,
@@ -142,6 +145,7 @@ class SchemaUpdateCoordinator:
         *,
         branch: Branch,
         origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None = None,
@@ -158,7 +162,11 @@ class SchemaUpdateCoordinator:
 
         Args:
             branch: Branch being updated
-            origin_schema: Original schema before the update (for rollback)
+            origin_schema: Schema the migrations compare the candidate against
+            rollback_schema: Schema restored into the registry when the update fails. This is the
+                schema the branch itself had before the update, which is not the migration baseline
+                whenever the branch carries changes of its own: a rebase compares against the common
+                ancestor but must restore the schema the branch itself had.
             candidate_schema: New schema to apply
             at: Timestamp for all operations (enables atomic rollback)
             context: Infrahub context (required for the WORKFLOW executor)
@@ -212,7 +220,7 @@ class SchemaUpdateCoordinator:
                 if manage_rollback:
                     await self._handle_failure_and_rollback(
                         branch=branch,
-                        origin_schema=origin_schema,
+                        rollback_schema=rollback_schema,
                         origin_schema_changed_at=origin_schema_changed_at,
                         origin_schema_hash=origin_schema_hash,
                         at=at,
@@ -241,7 +249,7 @@ class SchemaUpdateCoordinator:
             if manage_rollback:
                 await self._handle_failure_and_rollback(
                     branch=branch,
-                    origin_schema=origin_schema,
+                    rollback_schema=rollback_schema,
                     origin_schema_changed_at=origin_schema_changed_at,
                     origin_schema_hash=origin_schema_hash,
                     at=at,
@@ -387,12 +395,12 @@ class SchemaUpdateCoordinator:
     async def _restore_registry_state(
         self,
         branch: Branch,
-        origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
         origin_schema_changed_at: str | None,
         origin_schema_hash: SchemaBranchHash | None,
     ) -> None:
         """Restore original schema in registry and reset the branch hash to its pre-update value."""
-        self.schema_manager.set_schema_branch(name=branch.name, schema=origin_schema)
+        self.schema_manager.set_schema_branch(name=branch.name, schema=rollback_schema)
         branch.schema_hash = origin_schema_hash
         branch.schema_changed_at = origin_schema_changed_at
         await branch.save(db=self.db)
@@ -400,7 +408,7 @@ class SchemaUpdateCoordinator:
     async def _handle_failure_and_rollback(
         self,
         branch: Branch,
-        origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
         origin_schema_changed_at: str | None,
         origin_schema_hash: SchemaBranchHash | None,
         at: Timestamp,
@@ -433,7 +441,7 @@ class SchemaUpdateCoordinator:
         await self._rollback(branch=branch, at=at)
         await self._restore_registry_state(
             branch=branch,
-            origin_schema=origin_schema,
+            rollback_schema=rollback_schema,
             origin_schema_changed_at=origin_schema_changed_at,
             origin_schema_hash=origin_schema_hash,
         )

@@ -130,6 +130,7 @@ class BranchMergeOrchestrator:
                 await self.schema_update_coordinator.execute(
                     branch=self.destination_branch,
                     origin_schema=pre_merge_state.destination_schema,
+                    rollback_schema=pre_merge_state.destination_schema,
                     candidate_schema=candidate_schema,
                     at=merge_at,
                     context=context,
