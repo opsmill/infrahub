@@ -54,7 +54,7 @@ All unknowns from Technical Context were resolved against the codebase (file:lin
 
 ## R7. Healing migration vehicle
 
-**Decision**: One new numbered graph migration, `m075` (next free slot; `GRAPH_VERSION` 74 → 75 in `backend/infrahub/core/graph/__init__.py:1`), built on `ArbitraryMigration` (`migrations/shared.py:284-286`) for free-form orchestration: repair default branch, then iterate existing branches with branch-scoped detection, then self-validate.
+**Decision**: One new numbered graph migration, `m076` (next free slot; `GRAPH_VERSION` 74 → 75 in `backend/infrahub/core/graph/__init__.py:1`), built on `ArbitraryMigration` (`migrations/shared.py:284-286`) for free-form orchestration: repair default branch, then iterate existing branches with branch-scoped detection, then self-validate.
 
 **Rationale**: `GraphMigration` runs a fixed query list in a single transaction — too rigid for per-kind batching + per-branch passes + run-time NumberPool allocation. `ArbitraryMigration` is the established escape hatch (precedents: m015, m016, m028, m029, m032). `MigrationRequiringRebase` is explicitly wrong: the PRD requires repair **without** rebase.
 
@@ -80,8 +80,22 @@ All unknowns from Technical Context were resolved against the codebase (file:lin
 
 **Rationale**: A retroactively-timestamped allocation could collide with a reservation made between the retroactive time and now; run-time allocation with the reservation-aware path cannot. This is the resolved form of the PRD's first open question (spec Assumptions).
 
+**Verification (T012, 2026-08-03)**: `CoreNumberPool.get_resource` scoping is correct for migration-run-time allocation on the default branch — no fix or wrapper needed. Evidence:
+
+1. **Idempotency check is correctly branch-scoped.** `NumberPoolGetReserved` (keyed on identifier) uses the branch-aware filter; for the default branch that filter set is `{-global-, <default>}` (`Branch.get_branches_and_times_to_query_global`, `backend/infrahub/core/branch/models.py:269-270`), and reservations are always written on the global branch (`NumberPoolSetReserved` builds `rel_prop` from `registry.get_global_branch()`). A prior reservation for the same identifier is therefore always visible, so a re-run of the migration returns the previously allocated number instead of allocating a new one.
+2. **Uniqueness check is correctly branch- and time-scoped.** The free-number search (`NumberPoolGetFree`, also `NumberPoolGetUsed`) runs `branch_agnostic=True`: the filter is `r.from < $at AND (r.to IS NULL OR r.to > $at)` with no branch predicate (`models.py:391-396`), and `at` defaults to query-construction time (`Timestamp(None)` = now) — `get_resource` never forwards a caller-supplied `at` into the read queries. The check therefore sees active reservations from **every** branch as of migration run-time, closing the collision window between the retroactive timestamp and now by construction.
+3. **The reservation write is visible everywhere immediately.** `NumberPoolSetReserved` creates the `IS_RESERVED` edge on the global branch with `from = at`; with the migration-run `at`, all branches see it from that moment.
+
+Implementation obligations for m076 (T018), both already demonstrated by the precedent in `backend/infrahub/core/migrations/schema/node_attribute_add.py:109-124`:
+
+- **Initialize the lock registry first.** `get_resource` acquires the pool lock from `lock.registry`, which is not initialized in the CLI migration context — call `initialize_lock()` in the migration, as m031/m038/m039 do.
+- **Interleave allocate → write per node inside one transaction.** `NumberPoolGetFree` only counts a value as used when the reserving node's active `HAS_VALUE`/`HAS_ATTRIBUTE` path exists (`n.uuid = res.identifier`); a reserved-but-not-yet-written value looks free to the next allocation. The precedent saves each node inside the same transaction before the next `get_resource` call, so reads observe the transaction's own writes; batching all allocations before any node writes would produce duplicates.
+- **Pass the migration-run `at`, not the retroactive timestamp** (FR-007 requires pool-backed rows created at migration-run time). A backdated `at` would only affect the reservation edge's `from` (the uniqueness read still runs at now), but it would fabricate reservation history for time-travel reads.
+
+Pre-existing limitation, out of scope: values inside the pool range set manually (no pool source, hence no `IS_RESERVED` edge) are invisible to `NumberPoolGetFree`. FR-007 only requires non-collision with reservations, and this behavior predates the feature.
+
 ## R11. Packaging and sequencing
 
-**Decision**: Two PRs in one release. PR 1: forward fix (kind-update sub-migrations, `force_inherited` bypass, two-phase batching, unit + component + integration tests). PR 2: healing migration m075 + detection query + component tests, reusing PR 1's machinery for repair application.
+**Decision**: Two PRs in one release. PR 1: forward fix (kind-update sub-migrations, `force_inherited` bypass, two-phase batching, unit + component + integration tests). PR 2: healing migration m076 + detection query + component tests, reusing PR 1's machinery for repair application.
 
 **Rationale**: PRD packaging decision; PR 2 depends on PR 1's `force_inherited` machinery. Same-release requirement keeps any install from experiencing "new damage stopped, old damage present".

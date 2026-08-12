@@ -15,7 +15,7 @@ When an operator evolves their schema so that an existing node kind starts inher
 Two coordinated deliverables ship as two pull requests in the same release:
 
 1. **Forward fix** — loading a schema where a kind newly inherits a generic creates real attribute rows on every pre-existing node of that kind (including its profile and template instances), with NumberPool attributes allocated. Schema-migration execution is also made race-free by ordering kind-update migrations before all others.
-2. **Healing migration** — a one-shot upgrade-time graph migration repairs installs already damaged: every active node missing a row for a schema-defined attribute gets one backfilled, timestamped retroactively so that existing branches see the repaired data without a rebase. Damage that originated from schema changes made on a branch is repaired in the same pass with branch-scoped checks — no rebase or merge is required anywhere.
+2. **Healing migration** — a one-shot upgrade-time graph migration repairs installs already damaged: every active node missing a row for a generic-inherited attribute gets one backfilled, timestamped retroactively so that existing branches see the repaired data without a rebase. Damage that originated from schema changes made on a branch is repaired with branch-scoped checks: default-backed rows in the same upgrade pass, pool-backed values when the branch is rebased after the upgrade (the upgrade already marks stale branches for rebase).
 
 After both land, operators can add generics to existing kinds safely, and previously damaged installs are fully repaired by upgrading.
 
@@ -57,7 +57,7 @@ An administrator upgrades an install damaged before the fix existed, and the upg
 
 ### User Story 3 - Healing: branch-side repair (Priority: P3)
 
-A branch user whose branch introduced the damaging schema change gets repaired data from the same upgrade, without rebasing or merging. The healing migration repairs branch-originated damage on all existing branches during the same upgrade pass, using branch-scoped detection that considers only data changed on the branch.
+A branch user whose branch introduced the damaging schema change gets repaired data from the upgrade. The healing migration repairs branch-originated default-backed damage on all existing branches during the same upgrade pass, using branch-scoped detection that considers only data changed on the branch. Branch-level pool-backed values cannot be backdated and must follow the default branch's allocations, so they are assigned during each branch's post-upgrade rebase — which the upgrade already schedules by marking stale branches for rebase.
 
 **Why this priority**: Branch-originated damage is rarer than default-branch damage but forces the most disruptive manual remediation (organization-wide rebases). Same-pass repair removes that cost.
 
@@ -65,7 +65,8 @@ A branch user whose branch introduced the damaging schema change gets repaired d
 
 **Acceptance Scenarios**:
 
-1. **Given** a non-default branch where a kind gained inheritance on-branch before the fix, **When** the upgrade runs the healing migration, **Then** the branch-scoped pass creates the missing branch-level rows and inherited attributes read back with non-null `id` on the branch.
+1. **Given** a non-default branch where a kind gained inheritance on-branch before the fix, **When** the upgrade runs the healing migration, **Then** the branch-scoped pass creates the missing branch-level default-backed rows and those attributes read back with non-null `id` on the branch.
+2. **Given** a non-default branch carrying pool-backed damage from an on-branch inheritance change, **When** the branch is rebased after the upgrade, **Then** the rebase-time pass allocates fresh pool values that follow the default branch's allocations, and the upgrade-time validation does not fail on the deferred damage.
 
 ---
 
@@ -77,7 +78,9 @@ A branch user whose branch introduced the damaging schema change gets repaired d
 - **Generic changed after inheritance began**: attributes the generic gained after a kind inherited it were already handled by the generic-scoped path; per-attribute timestamp derivation from schema vertices distinguishes these from genuinely missing rows.
 - **Simultaneous new-generic + new-inheritor in one schema load**: phase ordering guarantees the kind update completes before attribute-adds run; idempotency guards make the overlap converge.
 - **Partial failure mid-heal**: all repair queries are idempotent; a rerun (or the retry policy) completes the remainder, and validation gates success.
-- **Concurrent NumberPool usage across branches**: healing allocates at run time via the reservation-aware allocation path; the allocation path's branch- and time-scoping is verified during implementation before run-time allocations are trusted (see Assumptions).
+- **Concurrent NumberPool usage across branches**: healing allocates at run time via the reservation-aware allocation path; the allocation path's branch- and time-scoping is verified during implementation before run-time allocations are trusted (see Assumptions). Branch-level pool damage is deferred to the branch's post-upgrade rebase so every branch allocation follows the default branch's.
+- **Pool-backed attribute whose pool is missing**: the schema change that introduced the attribute provisions the pool, so a missing pool is treated as an unexpected state — the migration fails loudly rather than creating a pool itself.
+- **Attribute removed from the generic's schema**: rows tombstoned by the removal are final — the healing migration never re-adds rows for attributes whose schema linkage is no longer active, and does not report them as damage.
 
 ## Requirements *(mandatory)*
 
@@ -87,11 +90,11 @@ A branch user whose branch introduced the damaging schema change gets repaired d
 - **FR-002**: The forward fix MUST preserve the existing protection against duplicate rows when a generic gains an attribute (the generic-scoped migration remains the sole owner of that case).
 - **FR-003**: Schema-migration execution MUST run all kind-update migrations to completion before any other migration starts, and MUST skip the second phase when the first phase reports errors.
 - **FR-004**: Inherited NumberPool attributes MUST receive allocated numbers on pre-existing nodes, drawing from the pool registered against the generic's kind, without creating duplicate pools or duplicate allocations.
-- **FR-005**: The healing migration MUST create an active attribute row for every (active node, schema-defined attribute) pair lacking one, on the default branch, regardless of how the row went missing.
-- **FR-006**: Healed rows (other than NumberPool) MUST carry the schema default value and a retroactive timestamp derived per attribute from the schema graph — the later of "the kind began inheriting the generic" and "the generic gained the attribute" — and MUST never predate an existing tombstone for the same attribute.
-- **FR-007**: Healed NumberPool attribute rows MUST be created at migration-run time with a pool allocation that cannot collide with any existing reservation.
+- **FR-005**: The healing migration MUST create an active attribute row for every (active node, generic-inherited attribute) pair lacking one, on the default branch, regardless of how the row went missing. The audit scope is the attributes a kind inherits from its generics — the only rows this damage shape can affect — discovered from the persisted schema graph.
+- **FR-006**: Healed rows (other than NumberPool) MUST carry the schema default value and a retroactive timestamp derived per attribute from the schema graph — the later of the `from` time of the latest active schema linkage between the generic's schema vertex and the attribute's schema vertex and the time the audited kind began inheriting the generic, resolved across all same-UUID copies of those vertices — and MUST never predate an existing tombstone for the same attribute.
+- **FR-007**: Healed NumberPool attribute rows MUST be created at run time with a pool allocation that cannot collide with any existing reservation — at upgrade time on the default branch, and during each branch's post-upgrade rebase for branch-level damage (allocations cannot be backdated). The pool MUST already exist; a missing pool fails the migration loudly.
 - **FR-008**: The healing migration MUST be idempotent and a strict no-op on healthy data.
-- **FR-009**: The healing migration MUST repair branch-originated damage on all existing branches during the same upgrade pass, using branch-scoped detection that considers only data changed on the branch.
+- **FR-009**: The healing migration MUST repair branch-originated default-backed damage on all existing branches during the same upgrade pass, using branch-scoped detection that considers only data changed on the branch; branch-originated pool-backed damage MUST be repaired during each branch's post-upgrade rebase, and upgrade-time validation MUST NOT fail on that deferred damage.
 - **FR-010**: The healing migration MUST validate the repaired invariant after execution and fail the upgrade with actionable errors when validation does not pass.
 - **FR-011**: Detection and repair MUST operate as batched per-kind queries; per-node iteration is permitted only for NumberPool allocation.
 - **FR-012**: The migration ordering rule (kind updates before everything else) MUST be expressed as a pure, unit-testable function, so that the two-phase behavior cannot regress unnoticed.
@@ -102,19 +105,19 @@ A branch user whose branch introduced the damaging schema change gets repaired d
 - **Node kind / Generic (schema)**: the trigger — a kind's `inherit_from` gaining a generic. The schema's own graph representation (the generic's schema node and its attribute vertices) becomes the source of truth for retroactive timestamps.
 - **Attribute row (graph vertex)**: the missing artifact; the invariant restored is "every active node has an active attribute row for every attribute its schema defines."
 - **Schema migration**: the forward-fix surface — the kind-update migration gains responsibility for newly-inherited attributes; the attribute-add migration gains a controlled bypass of its inherited-attribute guard; the migration batch gains two-phase ordering.
-- **Graph migration** *(new instance, existing framework)*: the healing migration — a one-shot upgrade-time migration with free-form orchestration that repairs the default branch and every existing branch in a single pass — flagged for governance review as a database migration.
+- **Graph migration** *(new instance, existing framework)*: the healing migration — an upgrade-time migration that repairs the default branch and every existing branch's default-backed damage in a single pass, plus a per-branch rebase-time pass for deferred pool-backed damage — flagged for governance review as a database migration.
 - **NumberPool**: pool-backed inherited attributes require allocation, not defaults; healing allocates at run time to protect pool uniqueness.
 - **Profile / Template instances**: concrete instances that must gain the same rows, gated by the same support predicates the schema generator uses.
-- **Branch**: retroactive timestamps make default-branch repairs visible to pre-existing branches; branch-originated damage is repaired by the same upgrade pass via branch-scoped checks — no rebase or merge required.
+- **Branch**: retroactive timestamps make default-branch repairs visible to pre-existing branches; branch-originated default-backed damage is repaired by the same upgrade pass via branch-scoped checks, while branch-level pool-backed values are allocated at the branch's post-upgrade rebase.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: After upgrade, an audit of the default branch finds zero active (node, schema-defined attribute) pairs without an active attribute row — enforced automatically as the healing migration's self-validation.
+- **SC-001**: After upgrade, an audit of the default branch finds zero active (node, generic-inherited attribute) pairs without an active attribute row — enforced automatically as the healing migration's self-validation.
 - **SC-002**: The #9284 reproduction (the issue's two schema files) passes end-to-end on a fresh install after PR 1, and on a pre-damaged install upgraded through PR 2: reads return non-null `id`, updates persist, filters match.
 - **SC-003**: Running the healing migration twice produces zero writes on the second run; running it on an undamaged install produces zero writes on the first run.
-- **SC-004**: A pre-existing branch (branched before upgrade) reads healed default-backed attributes correctly without being rebased.
+- **SC-004**: A pre-existing branch (branched before upgrade) reads healed default-backed attributes correctly without being rebased. Branch-originated pool-backed values materialize when the branch is rebased after the upgrade — the upgrade already marks stale branches for rebase, so no extra operator action is introduced.
 
 ## Assumptions
 
@@ -131,6 +134,7 @@ A branch user whose branch introduced the damaging schema change gets repaired d
 - Stale template-generic labels on existing template vertices — a pre-existing gap distinct from #9284 (follow-up issue).
 - Consolidating the Cypher graph-validation helpers used by tests (`verify_no_duplicate_relationships`, `verify_no_edges_added_after_node_delete` in `infrahub.database.validation`; `validate_no_duplicate_attributes` in `tests.helpers.db_validation`) into a single `verify_graph()` entry point with an optional kind filter, adopted everywhere the individual checks are called today (follow-up issue).
 - Continuous or scheduled invariant repair — healing is a one-shot upgrade migration; the forward fix prevents recurrence.
+- **~~Optional performance follow-up — restrict detection to kinds with inheritance changes~~ — superseded (2026-08-04)**: implemented by the m076 redesign. Discovery now reads the persisted schema graph directly — inheriting kinds on the default branch, and only kinds whose `inherit_from` carries a branch-level update on user branches — so no other kinds are audited (see followup-issues.md Issue 4).
 - API/interface surface: no GraphQL, REST, or SDK changes; no frontend changes; no CLI changes (the existing upgrade command picks up the new migration).
 
 ## Governance Gates
