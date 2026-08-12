@@ -79,7 +79,7 @@ class InfrahubWorkerAsync(BaseWorker):
         self,
         client: InfrahubClient | None = None,
         metric_port: int | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         logging.getLogger("websockets").setLevel(logging.ERROR)
         logging.getLogger("httpx").setLevel(logging.ERROR)

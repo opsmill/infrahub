@@ -99,7 +99,7 @@ const ChoicesRow = ({
                 {choice.label || choice.name} <span>{choice.color}</span>
               </div>
             }
-            className="grow divide-y divide-gray-600 rounded-md px-1.5 py-0.5"
+            className="grow divide-y rounded-md px-1.5 py-0.5"
             style={{ backgroundColor: color ?? undefined }}
           >
             <PropertyRow title="Name" value={choice.name} />

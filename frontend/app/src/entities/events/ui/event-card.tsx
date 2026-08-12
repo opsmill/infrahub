@@ -85,7 +85,7 @@ export const EventCard = (props: EventType) => {
     <div className="flex gap-2">
       <TimelineBorder />
 
-      <div className="flex min-w-0 grow flex-col gap-3 rounded-md border border-gray-200 bg-white p-2 text-sm shadow-xs">
+      <div className="flex min-w-0 grow flex-col gap-3 rounded-md border bg-white p-2 text-sm shadow-xs">
         <EventContent {...props} />
 
         <div className="flex justify-between text-gray-500">

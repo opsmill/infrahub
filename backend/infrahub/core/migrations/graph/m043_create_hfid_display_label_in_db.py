@@ -28,7 +28,7 @@ class GetAddedNodesByKindForBranchQuery(Query):
     type = QueryType.READ
     insert_return = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["branch"] = self.branch.name
         query = """
 MATCH (n:Node)-[e:IS_PART_OF {branch: $branch, status: "active"}]->(:Root)

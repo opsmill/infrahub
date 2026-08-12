@@ -44,6 +44,6 @@ Cheaper still — just emit FR-015 and rely on log queries. Rejected because aud
 
 ## Implementation Notes
 
-- Spec: [`specs/infp-556-auto-create-groups/spec.md`](../../specs/infp-556-auto-create-groups/spec.md), specifically FR-012, FR-013, FR-014, FR-021, and Session 2026-05-13 in Clarifications.
+- Spec: [`specs/archive/infp-556-auto-create-groups/spec.md`](../../specs/archive/infp-556-auto-create-groups/spec.md), specifically FR-012, FR-013, FR-014, FR-021, and Session 2026-05-13 in Clarifications.
 - Schema migration: definition-only (adds the attribute); does **not** run any data migration to populate values on existing rows.
 - Read-only enforcement applies even when a user reveals the attribute via the `display: extra` toggle — the UI must still treat it as non-editable.

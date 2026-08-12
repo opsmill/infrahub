@@ -110,7 +110,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         data: dict | str | AttributeFromDB | None = None,
         is_default: bool = False,
         is_from_profile: bool = False,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         self.id = id
         self.db_id = db_id
@@ -190,7 +190,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         return self.branch
 
     @classmethod
-    def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         registry.attribute[cls.__name__] = cls
 

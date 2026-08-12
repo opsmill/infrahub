@@ -77,7 +77,7 @@ export function ObjectDataDisplay({
   const fields = showExtra ? allFields : allFields.filter((field) => field.display !== "extra");
 
   return (
-    <div className="divide-y divide-gray-200">
+    <div className="divide-y">
       {fields.map((field) => {
         const fieldName = field.name;
         const fieldData = objectData[fieldName];

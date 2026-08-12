@@ -72,7 +72,7 @@ export const MarkdownEditor = ({
 
       <div
         className={classNames(
-          "rounded-md border border-gray-300 bg-white shadow-xs",
+          "rounded-md border border-border-strong bg-white shadow-xs",
           focusWithinStyle,
           className
         )}

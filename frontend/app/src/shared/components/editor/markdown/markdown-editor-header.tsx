@@ -54,7 +54,7 @@ export const MarkdownEditorHeader: FC<EditorHeaderProps> = ({
   editLabel,
   previewLabel,
 }) => (
-  <Row className="justify-between overflow-auto border-gray-200 border-b pr-2">
+  <Row className="justify-between overflow-auto border-b pr-2">
     <Button
       onClick={onPreviewToggle}
       className="rounded-tl-md bg-white px-2 py-1.5 font-semibold text-sm data-hovered:bg-gray-100"

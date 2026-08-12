@@ -71,7 +71,7 @@ export function BranchSelector() {
         <ChevronsUpDownIcon className="ml-0.5" />
       </Button>
 
-      <Popover placement="bottom start">
+      <Popover placement="bottom start" width="min-trigger">
         <PopoverDialog>
           {({ close }) =>
             isCreating ? (

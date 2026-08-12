@@ -61,10 +61,7 @@ const RecursiveObjectMenuItem: React.FC<{
         )}
       </DropdownMenuAccordionTrigger>
 
-      <DropdownMenuAccordionContent
-        style={{ marginLeft: (level + 1) * 18 }}
-        className="border-neutral-200 border-l"
-      >
+      <DropdownMenuAccordionContent style={{ marginLeft: (level + 1) * 18 }} className="border-l">
         {item.children.map((child) => (
           <RecursiveObjectMenuItem key={child.identifier} item={child} level={level + 1} />
         ))}

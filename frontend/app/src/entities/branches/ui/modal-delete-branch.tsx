@@ -114,7 +114,7 @@ export function ModalDeleteBranch({
             value={DELETE_BRANCH_SCOPE.LOCAL}
             className={classNames(
               "rounded-lg border p-3",
-              scope === DELETE_BRANCH_SCOPE.LOCAL ? "border-custom-blue-600" : "border-gray-200"
+              scope === DELETE_BRANCH_SCOPE.LOCAL ? "border-custom-blue-600" : "border-border"
             )}
           >
             <div>
@@ -130,7 +130,7 @@ export function ModalDeleteBranch({
               "rounded-lg border p-3",
               scope === DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE
                 ? "border-custom-blue-600"
-                : "border-gray-200"
+                : "border-border"
             )}
           >
             <div>

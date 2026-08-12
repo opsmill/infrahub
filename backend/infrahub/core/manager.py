@@ -1169,8 +1169,7 @@ class NodeManager:
             # Attributes
             # --------------------------------------------------------
             if node_id in node_attributes:
-                for attr_name, attr in node_attributes[node_id].attrs.items():
-                    new_node_data[attr_name] = attr
+                new_node_data.update(node_attributes[node_id].attrs)
 
             node_class = identify_node_class(node=node)
             node_branch = await registry.get_branch(db=db, branch=node.branch)
@@ -1389,7 +1388,7 @@ def _get_cardinality_one_identifiers_by_kind(
         if node_schema.kind in cardinality_one_fields_by_kind:
             continue
         cardinality_one_rel_identifiers_in_fields = {
-            rel_schema.identifier: rel_schema.direction
+            rel_schema.get_identifier(): rel_schema.direction
             for rel_schema in node_schema.relationships
             if rel_schema.cardinality is RelationshipCardinality.ONE and rel_schema.name in field_names_set
         }

@@ -43,7 +43,7 @@ export function ObjectAttributeRow({
             isProtected={attributeData.is_protected}
             header={
               !attributeSchema.read_only && (
-                <div className="flex items-center justify-between border-neutral-300 border-b p-1 pl-2">
+                <div className="flex items-center justify-between border-border-strong border-b p-1 pl-2">
                   <div className="font-semibold text-sm">{attributeLabel}</div>
                   {onClickMetadata && (
                     <Tooltip message={permission.update.message}>

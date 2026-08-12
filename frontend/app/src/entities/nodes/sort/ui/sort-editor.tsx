@@ -68,7 +68,7 @@ function SortListContainer({ schema, children }: SortListContainerProps) {
 
   if (isDefaultOrder) {
     return (
-      <div className="inset-shadow-[0_1px_2px_rgb(255,255,255),0_1px_4px_rgba(0,0,0,0.1)] rounded-lg border border-stone-200 bg-stone-200/50 shadow-[0_1px_1px_rgba(0,0,0,0.02)]">
+      <div className="inset-shadow-[0_1px_2px_rgb(255,255,255),0_1px_4px_rgba(0,0,0,0.1)] rounded-lg border bg-stone-200/50 shadow-[0_1px_1px_rgba(0,0,0,0.02)]">
         <Row className="h-6 pl-2 font-medium text-stone-500 text-xs">
           <CheckIcon className="size-3.5 text-cyan-600" />
           Default order · applied now
@@ -191,7 +191,7 @@ function SortDirectionSelect({ value, onChange }: SortDirectionSelectProps) {
     >
       <SelectTrigger size="sm" />
 
-      <SelectList items={DIRECTION_OPTIONS} matchTriggerWidth={false}>
+      <SelectList items={DIRECTION_OPTIONS} width="content">
         {(option) => <SelectItem>{option.label}</SelectItem>}
       </SelectList>
     </Select>

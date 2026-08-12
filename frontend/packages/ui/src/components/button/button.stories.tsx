@@ -39,7 +39,7 @@ function ColumnLabel({ children }: { children: React.ReactNode }) {
 }
 
 function Divider() {
-  return <div className="h-9 w-px self-center bg-neutral-200" />;
+  return <div className="h-9 w-px self-center bg-border" />;
 }
 
 export const AllVariants: Story = {

@@ -205,7 +205,7 @@ Each class carries a clean message and a remediation hint. `webhook_send` classi
 
 A `TLS` failure reaches this layer wrapped by httpx as a generic transport error, so the HTTP adapter's `SSLErrorExtractor` walks the exception chain to recognize the certificate problem and raise a TLS-specific error rather than a generic connection error.
 
-The `transient` flag on `ClassifiedFailure` records whether a class could plausibly succeed on a retry. `webhook_send` currently retries every failure (three retries, four attempts in total, with a fixed 120s delay); the flag is reserved for a future transient-only retry policy. The run is silent for the duration of each retry wait, so the zombie-detection window is sized above this backoff to avoid crashing a waiting delivery; see [Liveness and zombie detection](async-tasks.md#liveness-and-zombie-detection).
+`webhook_send` retries every failure uniformly (three retries, four attempts in total, with a fixed 120s delay), regardless of failure class. Transient-only gating (retrying only timeout, connection, and 5xx while failing 4xx and configuration errors immediately) was evaluated and rejected: it requires attempt-level retry-condition machinery whose complexity outweighs the cost of the bounded extra attempts. The classified reason and its per-class remediation hint, not a retry gate, are what tell the operator whether waiting on the cycle can help. The run is silent for the duration of each retry wait, so the zombie-detection window is sized above this backoff to avoid crashing a waiting delivery; see [Liveness and zombie detection](async-tasks.md#liveness-and-zombie-detection).
 
 ## Delivery operability
 
@@ -316,4 +316,4 @@ Two built-in triggers in `triggers.py` react to webhook-related node lifecycle e
 
 - [Events System](events.md) — How events are emitted and dispatched to Prefect
 - [Async Tasks](async-tasks.md) — Prefect workflow and task infrastructure
-- [Webhook Headers Spec](../../specs/infp-445-webhook-headers/spec.md) — Feature spec for webhook HMAC signing
+- [Webhook Headers Spec](../../specs/archive/infp-445-webhook-headers/spec.md) — Feature spec for custom HTTP headers on webhooks

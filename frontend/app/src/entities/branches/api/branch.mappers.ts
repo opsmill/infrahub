@@ -41,7 +41,7 @@ export function mapToBranchListItem({
     status: node.status.value,
     sync_with_git: node.sync_with_git?.value,
     is_default: node.is_default?.value,
-    has_schema_changes: node.has_schema_changes?.value,
+    schema_differs_from_default_branch: node.schema_differs_from_default_branch?.value,
 
     created_at: node_metadata?.created_at,
     updated_at: node_metadata?.updated_at,
@@ -62,7 +62,7 @@ export function mapToBranchDetail(
     status: node.status.value,
     sync_with_git: node.sync_with_git?.value,
     is_default: node.is_default?.value,
-    has_schema_changes: node.has_schema_changes?.value,
+    schema_differs_from_default_branch: node.schema_differs_from_default_branch?.value,
     created_at: node.created_at,
   };
 }

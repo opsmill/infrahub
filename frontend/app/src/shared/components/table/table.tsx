@@ -30,11 +30,11 @@ export const Table = ({ columns, rows, className }: TableProps) => {
     <>
       <table
         className={classNames(
-          "w-full table-auto border-spacing-0 rounded-md border border-gray-300",
+          "w-full table-auto border-spacing-0 rounded-md border border-border-strong",
           className
         )}
       >
-        <thead className="rounded-md border-gray-300 border-b bg-gray-50 text-left">
+        <thead className="rounded-md border-border-strong border-b bg-gray-50 text-left">
           <tr>
             {columns.map((column) => (
               <th key={column.name} scope="col" className="p-2 font-semibold text-gray-900 text-xs">
@@ -49,7 +49,7 @@ export const Table = ({ columns, rows, className }: TableProps) => {
             <tr
               key={index}
               className={classNames(
-                "h-9 border-gray-200 border-b",
+                "h-9 border-b",
                 row.link ? "cursor-pointer hover:bg-gray-50" : ""
               )}
             >

@@ -19,7 +19,7 @@ export function FilterTag({ label, value, condition, ref, ...props }: FilterTagP
       ref={ref}
       className={classNames(
         focusVisibleStyle,
-        "inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-stone-300 bg-neutral-100 pr-1 pl-2 text-sm text-stone-800",
+        "inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-strong bg-neutral-100 pr-1 pl-2 text-sm text-stone-800",
         "data-hovered:border-custom-blue-700 data-hovered:bg-stone-100",
         "data-selected:border-custom-blue-700 data-selected:bg-custom-blue-50"
       )}
@@ -29,13 +29,13 @@ export function FilterTag({ label, value, condition, ref, ...props }: FilterTagP
       <span>{label}</span>
       {condition && (
         <>
-          <Separator orientation="vertical" className="h-6 bg-stone-300" />
+          <Separator orientation="vertical" className="h-6" />
           <span>{condition}</span>
         </>
       )}
       {(value || value === 0 || value === false) && (
         <>
-          <Separator orientation="vertical" className="h-6 bg-stone-300" />
+          <Separator orientation="vertical" className="h-6" />
           <span className="max-w-xs truncate font-medium text-custom-blue-700">
             {typeof value === "boolean" ? String(value) : value}
           </span>

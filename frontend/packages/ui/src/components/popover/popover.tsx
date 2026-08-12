@@ -5,7 +5,7 @@ import {
   Popover as AriaPopover,
   type PopoverProps as AriaPopoverProps,
 } from "react-aria-components";
-import { tv } from "tailwind-variants";
+import { tv, type VariantProps } from "tailwind-variants";
 
 import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 
@@ -13,7 +13,7 @@ export const PopoverTrigger = AriaDialogTrigger;
 
 const popoverStyles = tv({
   base: [
-    "z-50 rounded-xl border border-neutral-300 bg-stone-100/70 shadow-md outline-hidden backdrop-blur-lg duration-100",
+    "z-50 rounded-xl border border-border-strong bg-stone-100/70 shadow-md outline-hidden backdrop-blur-lg duration-100",
     "data-[placement=bottom]:slide-in-from-top-10 data-[placement=left]:slide-in-from-right-2 data-[placement=right]:slide-in-from-left-2 data-[placement=top]:slide-in-from-bottom-2",
   ],
   variants: {
@@ -23,8 +23,10 @@ const popoverStyles = tv({
     isExiting: {
       true: "animate-out fade-out-0 zoom-out-95",
     },
-    matchTriggerWidth: {
-      true: "w-(--trigger-width)",
+    width: {
+      trigger: "w-(--trigger-width)",
+      "min-trigger": "min-w-(--trigger-width)",
+      content: "",
     },
   },
 });
@@ -33,16 +35,15 @@ const popoverDialogStyles = tv({
   base: "outline-hidden",
 });
 
-export interface PopoverProps extends AriaPopoverProps {
-  matchTriggerWidth?: boolean;
-}
+export interface PopoverProps
+  extends AriaPopoverProps, Pick<VariantProps<typeof popoverStyles>, "width"> {}
 
-export function Popover({ className, matchTriggerWidth, ...props }: PopoverProps) {
+export function Popover({ className, width = "content", ...props }: PopoverProps) {
   return (
     <AriaPopover
       offset={4}
       className={composeAriaClassName(className, (renderProps) =>
-        popoverStyles({ ...renderProps, matchTriggerWidth }),
+        popoverStyles({ ...renderProps, width }),
       )}
       {...props}
     />

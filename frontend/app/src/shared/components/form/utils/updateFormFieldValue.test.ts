@@ -1,0 +1,113 @@
+import { describe, expect, it } from "vitest";
+
+import type { FormAttributeValue, FormRelationshipValue } from "@/shared/components/form/type";
+import {
+  updateAttributeFieldValue,
+  updateRelationshipFieldValue,
+} from "@/shared/components/form/utils/updateFormFieldValue";
+
+describe("updateRelationshipFieldValue - from-pool", () => {
+  const original: FormRelationshipValue = {
+    source: { type: "pool", id: "loopbacks", kind: "CoreIPAddressPool", label: "Loopbacks pool" },
+    value: { id: "addr-id", display_label: "10.0.0.31/24", __typename: "IpamIPAddress" },
+  };
+
+  it("restores the existing allocation when the original pool is re-selected, ignoring a new prefixLength", () => {
+    // Allocation is idempotent: re-selecting the field's original pool cannot change
+    // its mask, so the resolved value is restored rather than a pending allocation.
+    const result = updateRelationshipFieldValue(
+      {
+        from_pool: {
+          id: "loopbacks",
+          name: "Loopbacks pool",
+          kind: "CoreIPAddressPool",
+          prefixLength: 28,
+        },
+      },
+      original
+    );
+
+    expect(result).toBe(original);
+  });
+
+  it("creates a pending allocation when a different pool is selected, carrying its prefixLength", () => {
+    const result = updateRelationshipFieldValue(
+      {
+        from_pool: {
+          id: "management",
+          name: "Management addresses pool",
+          kind: "CoreIPAddressPool",
+          prefixLength: 16,
+          defaultPrefixLength: 8,
+        },
+      },
+      original
+    );
+
+    // The pool default is kept on the source (for the placeholder) but never in the
+    // value, which carries only what the mutation sends (id + the typed prefixLength).
+    expect(result).toEqual({
+      source: {
+        type: "pool",
+        id: "management",
+        kind: "CoreIPAddressPool",
+        label: "Management addresses pool",
+        defaultPrefixLength: 8,
+      },
+      value: { from_pool: { id: "management", prefixLength: 16 } },
+    });
+  });
+});
+
+describe("updateAttributeFieldValue - from-pool", () => {
+  // An attribute allocated from a pool carries a `from_pool` value (attributes are not
+  // nodes); re-selecting the same pool restores it unchanged.
+  const original: FormAttributeValue = {
+    source: { type: "pool", id: "loopbacks", kind: "CoreIPAddressPool", label: "Loopbacks pool" },
+    value: { from_pool: { id: "loopbacks", prefixLength: 24 } },
+  };
+
+  it("restores the existing allocation when the original pool is re-selected, ignoring a new prefixLength", () => {
+    const result = updateAttributeFieldValue(
+      {
+        from_pool: {
+          id: "loopbacks",
+          name: "Loopbacks pool",
+          kind: "CoreIPAddressPool",
+          prefixLength: 28,
+        },
+      },
+      original
+    );
+
+    expect(result).toBe(original);
+  });
+
+  it("creates a pending allocation when a different pool is selected, carrying its prefixLength", () => {
+    const result = updateAttributeFieldValue(
+      {
+        from_pool: {
+          id: "management",
+          name: "Management addresses pool",
+          kind: "CoreIPAddressPool",
+          prefixLength: 16,
+          defaultPrefixLength: 8,
+        },
+      },
+      original
+    );
+
+    // The pool default is kept on the source (for the placeholder) but never in the
+    // value, which carries only what the mutation sends (id + the typed prefixLength).
+    expect(result).toEqual({
+      source: {
+        type: "pool",
+        id: "management",
+        kind: "CoreIPAddressPool",
+        label: "Management addresses pool",
+        defaultPrefixLength: 8,
+      },
+      value: { from_pool: { id: "management", prefixLength: 16 } },
+    });
+  });
+});

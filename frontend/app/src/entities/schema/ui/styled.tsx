@@ -49,9 +49,7 @@ export const AccordionStyled = ({
     className="rounded-sm bg-white p-3 shadow-sm"
     {...props}
   >
-    <article className="mt-3 divide-y divide-gray-200 rounded-sm bg-gray-100 px-2">
-      {children}
-    </article>
+    <article className="mt-3 divide-y rounded-sm bg-gray-100 px-2">{children}</article>
   </Accordion>
 );
 

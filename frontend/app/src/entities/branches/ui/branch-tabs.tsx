@@ -9,7 +9,7 @@ export function BranchTabs() {
 
   return (
     <nav aria-label="Tabs">
-      <Row className="border-gray-200 border-b">
+      <Row className="border-b">
         <LinkTab to={getBranchDetailsUrl(branchName)}>Details</LinkTab>
         <LinkTab to={getBranchDetailsUrl(branchName, "data")}>Data</LinkTab>
         <LinkTab to={getBranchDetailsUrl(branchName, "files")}>Files</LinkTab>

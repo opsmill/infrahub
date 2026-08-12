@@ -19,7 +19,7 @@ class DeleteDuplicateHasValueEdgesQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // -------------------
 // find Attribute nodes with multiple identical edges to AttributeValue nodes with the same value
@@ -80,7 +80,7 @@ class DeleteDuplicateBooleanEdgesQuery(Query):
     insert_return = False
     edge_type: DatabaseEdgeType | None = None
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         if not self.edge_type:
             raise RuntimeError("edge_type is required for this query")
         query = """

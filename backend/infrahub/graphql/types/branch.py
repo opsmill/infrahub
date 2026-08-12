@@ -17,6 +17,11 @@ if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
 
 
+HAS_SCHEMA_CHANGES_DEPRECATION_REASON = (
+    "Use schema_differs_from_default_branch instead. has_schema_changes is scheduled for removal in Infrahub 1.14.0."
+)
+
+
 class BranchType(InfrahubObjectType):
     id = String(required=True)
     name = String(required=True)
@@ -29,7 +34,8 @@ class BranchType(InfrahubObjectType):
     sync_with_git = Boolean(required=False)
     is_default = Boolean(required=False)
     is_isolated = Field(Boolean(required=False), deprecation_reason="non isolated mode is not supported anymore")
-    has_schema_changes = Boolean(required=False)
+    has_schema_changes = Field(Boolean(required=False), deprecation_reason=HAS_SCHEMA_CHANGES_DEPRECATION_REASON)
+    schema_differs_from_default_branch = Boolean(required=False)
 
     class Meta:
         description = "Branch"
@@ -80,7 +86,10 @@ class InfrahubBranch(BranchType):
     is_isolated = Field(
         NonRequiredBooleanValueField, required=False, deprecation_reason="non isolated mode is not supported anymore"
     )
-    has_schema_changes = Field(NonRequiredBooleanValueField, required=False)
+    has_schema_changes = Field(
+        NonRequiredBooleanValueField, required=False, deprecation_reason=HAS_SCHEMA_CHANGES_DEPRECATION_REASON
+    )
+    schema_differs_from_default_branch = Field(NonRequiredBooleanValueField, required=False)
 
     @classmethod
     async def get_list(

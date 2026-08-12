@@ -47,7 +47,7 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
         </Row>
       </AriaButton>
 
-      <Popover placement="bottom start" className="w-(--trigger-width) bg-white">
+      <Popover placement="bottom start" width="min-trigger" className="bg-white">
         <IpNamespaceComboboxList
           onNamespaceSelection={(value) => {
             setCurrentIpNamespace(value);
@@ -55,7 +55,7 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
           }}
         />
 
-        <Col className="border-neutral-200 border-t p-2">
+        <Col className="border-t p-2">
           <LinkButton
             href={constructPath("/ipam/namespaces")}
             variant="ghost"

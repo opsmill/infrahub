@@ -244,7 +244,6 @@ class TestConvertRepository(TestInfrahubApp):
             client=service.client,
             ref=read_only_repo.ref.value,
             infrahub_branch_name=default_branch.name,
-            service=service,
         )
         repo_intern.validate_local_directories()
 
@@ -554,7 +553,6 @@ class TestConvertRepository(TestInfrahubApp):
             client=service.client,
             default_branch_name=branch.name,
             infrahub_branch_name=branch.name,
-            service=service,
         )
         repo_intern.validate_local_directories()
 

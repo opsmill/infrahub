@@ -15,7 +15,7 @@ class Migration002Query01(Query):
     name = "migration_002_01"
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH (a:AttributeValue)
         WHERE a.is_default IS NULL

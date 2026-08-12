@@ -38,7 +38,7 @@ dependencies = [
     "deepdiff==8.6.2",
     "httpx>=0.28.1",
     # Dependencies specific to the API Server
-    "fastapi==0.136.3",
+    "fastapi==0.141.1",
     "fastapi-storages>=0.3,<0.4",
     "graphene>=3.4,<3.5",
     "gunicorn>=23.0.0,<24",
@@ -50,10 +50,10 @@ dependencies = [
     "bcrypt>=4.1,<4.2", # Used to hash and validate password
     "pyjwt==2.12.1", # Used to manage JWT tokens
     "uvicorn[standard]>=0.32,<0.33",
-    "opentelemetry-instrumentation-aio-pika==0.60b0",
-    "opentelemetry-instrumentation-fastapi==0.60b0",
-    "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
-    "opentelemetry-exporter-otlp-proto-http==1.39.0",
+    "opentelemetry-instrumentation-aio-pika==0.65b0",
+    "opentelemetry-instrumentation-fastapi==0.65b0",
+    "opentelemetry-exporter-otlp-proto-grpc==1.44.0",
+    "opentelemetry-exporter-otlp-proto-http==1.44.0",
     "nats-py==2.15.0",
     "netaddr==1.3.0",
     "authlib==1.6.12",
@@ -94,7 +94,7 @@ dev = [
     "pytest-asyncio>=1.3,<1.4",
     "pytest-clarity>=1.0,<1.1",
     "pytest-cov==7.1.0",
-    "pytest-xdist>=3.4,<3.5",
+    "pytest-xdist>=3.8,<3.9",
     "types-python-slugify>=8.0.0.3,<9",
     "types-ujson",
     "types-pyyaml",
@@ -117,7 +117,7 @@ dev = [
     "docker==7.1.0",
     "psutil==6.1.0",
     "jwcrypto==1.5.7",
-    "ty==0.0.32",
+    "ty==0.0.69",
     "prek>=0.3.0",
     "coverage==7.14.1",
     "pytest-playwright-asyncio>=0.8.0",
@@ -223,7 +223,6 @@ disable_error_code = [
     "attr-defined",
     "misc",
     "operator",
-    "return",
     "union-attr",
 ]
 
@@ -232,8 +231,6 @@ module = "infrahub.core.manager"
 disable_error_code = [
     "assignment",
     "attr-defined",
-    "index",
-    "no-untyped-def",
     "return-value",
     "union-attr",
 ]
@@ -244,18 +241,9 @@ disable_error_code = [
     "arg-type",
     "assignment",
     "attr-defined",
-    "list-item",
-    "no-redef",
     "override",
-    "return",
     "union-attr",
     "var-annotated",
-]
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.node.base"
-disable_error_code = [
-    "no-untyped-def",
 ]
 
 [[tool.mypy.overrides]]
@@ -271,13 +259,6 @@ module = "infrahub.core.query.diff"
 disable_error_code = [
     "assignment",
     "call-overload",
-    "no-untyped-def",
-]
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.query.ipam"
-disable_error_code = [
-    "no-untyped-def",
 ]
 
 [[tool.mypy.overrides]]
@@ -285,7 +266,6 @@ module = "infrahub.core.query.node"
 disable_error_code = [
     "arg-type",
     "assignment",
-    "no-untyped-def",
     "union-attr",
 ]
 
@@ -294,7 +274,6 @@ module = "infrahub.core.query.relationship"
 disable_error_code = [
     "arg-type",
     "assignment",
-    "no-untyped-def",
     "union-attr",
     "valid-type",
 ]
@@ -431,7 +410,6 @@ module = "infrahub.graphql.resolvers.resolver"
 disable_error_code = [
     "arg-type",
     "attr-defined",
-    "no-untyped-def",
     "union-attr",
     "var-annotated",
 ]
@@ -441,7 +419,6 @@ module = "infrahub.graphql.types.standard_node"
 disable_error_code = [
     "attr-defined",
     "call-arg",
-    "no-untyped-def",
 ]
 
 [[tool.mypy.overrides]]
@@ -577,7 +554,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "ANN003",   # Missing type annotation for `**kwargs`
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
     "ASYNC240", # Async functions should not use pathlib.Path methods
     "ERA001",   # Found commented-out code
@@ -588,7 +564,6 @@ allow-dunder-method-names = [
     "N801",     # Class name should use CapWords convention
     "N806",     # Variable in function should be lowercase
     "PERF401",  # Use a list comprehension to create a transformed list
-    "PERF403",  # Use a dictionary comprehension instead of a for-loop
     "PGH003",   # Use specific rule codes when ignoring type issues
     "PGH004",   # Use specific rule codes when using `noqa`
     "PLC0415",  # `import` should be at the top-level of a file
@@ -1362,7 +1337,6 @@ include = [
     "backend/infrahub/core/*.py",
     "backend/infrahub/core/convert_object_type/**",
     "backend/infrahub/core/merge/**",
-    "backend/infrahub/core/migrations/**",
     "backend/infrahub/core/node/**",
     "backend/infrahub/core/query/__init__.py",
     "backend/infrahub/core/query/diff.py",
@@ -1411,6 +1385,7 @@ include = [
     "backend/infrahub/core/query/__init__.py",
     "backend/infrahub/core/query/ipam.py",
     "backend/infrahub/core/query/relationship.py",
+    "backend/infrahub/core/schema/basenode_schema.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -1424,16 +1399,6 @@ include = [
 
 [tool.ty.overrides.rules]
 no-matching-overload = "ignore"
-
-[[tool.ty.overrides]]
-include = [
-    "backend/infrahub/core/query/diff.py",
-    "backend/infrahub/core/query/relationship.py",
-    "backend/infrahub/core/query/subquery.py",
-]
-
-[tool.ty.overrides.rules]
-invalid-parameter-default = "ignore"
 
 [[tool.ty.overrides]]
 include = [
@@ -1524,6 +1489,7 @@ include = [
     "backend/infrahub/graphql/mutations/schema.py",
     "backend/infrahub/graphql/queries/path.py",
     "backend/infrahub/graphql/queries/reachable.py",
+    "backend/infrahub/graphql/resolvers/resolver.py",
     "backend/infrahub/graphql/subscription/graphql_query.py",
 ]
 
@@ -1597,6 +1563,7 @@ include = [
     "backend/infrahub/graphql/mutations/proposed_change.py",
     "backend/infrahub/graphql/mutations/repository.py",
     "backend/infrahub/graphql/queries/diff/tree.py",
+    "backend/infrahub/graphql/utils.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -1611,6 +1578,7 @@ include = [
     "backend/infrahub/graphql/mutations/node_getter/by_hfid.py",
     "backend/infrahub/graphql/mutations/node_getter/by_id.py",
     "backend/infrahub/graphql/mutations/profile.py",
+    "backend/infrahub/graphql/mutations/schema.py",
     "backend/infrahub/graphql/resolvers/ipam.py",
 ]
 
@@ -1643,6 +1611,7 @@ redundant-cast = "ignore"
 [[tool.ty.overrides]]
 include = [
     "backend/infrahub/graphql/manager.py",
+    "backend/infrahub/graphql/mutations/schema.py",
     "backend/infrahub/graphql/utils.py",
 ]
 
@@ -1703,7 +1672,6 @@ unresolved-attribute = "ignore"
 
 [[tool.ty.overrides]]
 include = [
-    "backend/infrahub/git/base.py",
     "backend/infrahub/git/integrator.py",
     "backend/infrahub/git/repository.py",
     "backend/infrahub/git/tasks.py",
@@ -1880,6 +1848,17 @@ call-top-callable = "ignore"
 invalid-await = "ignore"
 no-matching-overload = "ignore"
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/message_bus/operations/__init__.py"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# COMMAND_MAP is a heterogeneous dispatch table: each handler takes a specific InfrahubMessage   #
+# subtype, but the dispatch site only has the base type. Scoped to this file so the rest of      #
+# message_bus/ stays enforced.                                                                    #
+##################################################################################################
+invalid-argument-type = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/artifacts/tasks.py"]

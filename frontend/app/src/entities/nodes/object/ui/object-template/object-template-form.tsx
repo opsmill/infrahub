@@ -22,7 +22,7 @@ interface StartButtonProps extends ButtonProps {
 const StartButton = ({ icon, title, description, className, ...props }: StartButtonProps) => (
   <Button
     className={classNames(
-      "flex items-center gap-2 rounded-lg border border-gray-400 border-dashed p-4 hover:bg-gray-50",
+      "flex items-center gap-2 rounded-lg border border-border-strong border-dashed p-4 hover:bg-gray-50",
       className
     )}
     {...props}
@@ -51,7 +51,7 @@ const StartFromTemplateButton = ({
         description="Pick a premade object and customize it"
       />
 
-      <Popover placement="bottom start" className="w-(--trigger-width) bg-white">
+      <Popover placement="bottom start" width="trigger" className="bg-white">
         <Dialog>
           <ObjectTemplateAutocomplete
             autoFocus

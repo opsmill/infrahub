@@ -91,7 +91,7 @@ const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => (
 );
 
 const AppInfoFooter = () => (
-  <div className="border-stone-300 border-t px-2.5 py-1">
+  <div className="border-border-strong border-t px-2.5 py-1">
     <AppInfo />
   </div>
 );

@@ -54,6 +54,18 @@ query {
 }
 """
 
+QUERY_REPOS_HFID = """
+query {
+  CoreRepository {
+    edges {
+      node {
+        hfid
+      }
+    }
+  }
+}
+"""
+
 QUERY_GRAPHQL = """
 query {
   CoreGraphQLQuery {
@@ -321,6 +333,39 @@ class TestObjectPermissions:
         schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=QUERY_REPOS,
+            schema=gql_params.schema,
+            branch=permissions_helper.default_branch,
+            schema_branch=schema_branch,
+        )
+
+        with pytest.raises(PermissionDeniedError, match=r":Repository:view:"):
+            await checker.check(
+                db=db,
+                account_session=session,
+                analyzed_query=analyzed_query,
+                branch=permissions_helper.default_branch,
+                query_parameters=gql_params,
+            )
+
+    async def test_first_account_repos_hfid_only(
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
+    ) -> None:
+        """Reading only the hfid of a kind needs the same view permission as any other read.
+
+        The hfid is built from the object's own data, so handing it out without a view
+        permission leaks the attributes that permission protects.
+        """
+        checker = ObjectPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
+        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=QUERY_REPOS_HFID,
             schema=gql_params.schema,
             branch=permissions_helper.default_branch,
             schema_branch=schema_branch,

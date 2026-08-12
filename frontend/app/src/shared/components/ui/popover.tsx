@@ -32,7 +32,7 @@ export const PopoverContent = ({
         align={align}
         sideOffset={sideOffset}
         className={classNames(
-          "z-10 max-w-[100vw] rounded-md border border-gray-200 bg-white p-2 text-sm shadow-xl outline-hidden",
+          "z-10 max-w-[100vw] rounded-md border bg-white p-2 text-sm shadow-xl outline-hidden",
           "data-[state=open]:fade-in-0 data-[state=open]:animate-in",
           "data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
@@ -52,7 +52,7 @@ export const PopoverTabsList = ({ className, ref, ...props }: PopoverTabsListPro
   <TabsPrimitive.List
     ref={ref}
     className={classNames(
-      "inline-flex w-full items-center justify-center border-gray-200 border-b px-2",
+      "inline-flex w-full items-center justify-center border-b px-2",
       className
     )}
     {...props}
@@ -68,7 +68,7 @@ export const PopoverTabsTrigger = ({ className, ref, ...props }: PopoverTabsTrig
       "inline-flex items-center justify-center whitespace-nowrap rounded-t-md bg-white px-3 py-1.5 font-medium text-sm transition-all",
       "outline-hidden",
       "disabled:pointer-events-none disabled:opacity-50",
-      "border-gray-200 data-[state=active]:-mb-px data-[state=active]:border-x data-[state=active]:border-t",
+      "data-[state=active]:-mb-px data-[state=active]:border-x data-[state=active]:border-t",
       className
     )}
     {...props}

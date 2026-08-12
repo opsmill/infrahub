@@ -105,8 +105,10 @@ def test_display_label_read_marks_depends_on_everything() -> None:
 
 
 def test_hfid_read_marks_depends_on_everything() -> None:
+    # A trigger node names it after the schema attribute, not the hfid query spelling.
     deriver = _deriver(
-        "remote_label", [ComputedAttributeTriggerNode(kind=PEER_KIND, attributes=["hfid"], relationships=["owner"])]
+        "remote_label",
+        [ComputedAttributeTriggerNode(kind=PEER_KIND, attributes=["human_friendly_id"], relationships=["owner"])],
     )
 
     dependencies = deriver.derive(computed_attribute=_ref("remote_label"))

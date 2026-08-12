@@ -23,7 +23,7 @@ class Migration055Query01(Query):
     name = "migration_055_01"
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["at"] = self.at.to_string()
         self.params["null_value"] = NULL_VALUE
 

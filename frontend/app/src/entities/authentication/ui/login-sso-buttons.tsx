@@ -50,7 +50,7 @@ export const ProviderButton = ({
 
   return (
     <a
-      className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md border border-gray-200 bg-white px-4 py-2 font-medium text-sm shadow-xs hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md border bg-white px-4 py-2 font-medium text-sm shadow-xs hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
       href={authorizeUrl}
     >
       <Icon icon={provider.icon} />

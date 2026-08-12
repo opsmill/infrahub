@@ -14,7 +14,7 @@ const BRANCH_REBASE = graphql(`
         status
         sync_with_git
         is_default
-        has_schema_changes
+        schema_differs_from_default_branch
       }
       task {
         id

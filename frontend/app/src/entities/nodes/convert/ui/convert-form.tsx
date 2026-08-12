@@ -99,7 +99,7 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
   };
 
   return (
-    <Form onSubmit={handleSubmit} className="divide-y divide-gray-300">
+    <Form onSubmit={handleSubmit} className="divide-y divide-border-strong">
       {fields.map((field) => {
         return (
           <ConvertFormField
@@ -112,7 +112,7 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
         );
       })}
 
-      <div className="sticky -bottom-2 border-gray-200 border-t bg-white p-2 text-right">
+      <div className="sticky -bottom-2 border-t bg-white p-2 text-right">
         <FormSubmit>Convert</FormSubmit>
       </div>
     </Form>

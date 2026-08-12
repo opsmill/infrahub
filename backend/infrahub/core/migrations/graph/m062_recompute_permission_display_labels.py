@@ -56,7 +56,7 @@ class GetGlobalPermissionAttributesQuery(Query):
     type = QueryType.READ
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {"branch_names": [GLOBAL_BRANCH_NAME]}
 
         query = """
@@ -106,7 +106,7 @@ class GetObjectPermissionAttributesQuery(Query):
     type = QueryType.READ
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {"branch_names": [registry.default_branch]}
 
         query = """
@@ -174,7 +174,7 @@ class GetObjectPermissionAttributesBranchQuery(Query):
     type = QueryType.READ
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter_r, branch_filter_params_r = self.branch.get_query_filter_path(
             at=self.at, variable_name="r", params_prefix="r_"
         )

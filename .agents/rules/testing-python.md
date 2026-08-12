@@ -28,6 +28,8 @@ Use adapter/protocol patterns instead. The message bus demonstrates this:
 
 Both implement `InfrahubMessageBus`. Tests inject the test adapter — no patching.
 
+Two doubles are worth writing for an injected collaborator: a `Recording*` one that keeps the calls in order (assert the exact sequence and values, not "was called"), and — where the code claims to survive that collaborator failing — a `Failing*` one that raises, to prove the claim.
+
 Acceptable exceptions only:
 
 - External HTTP APIs with no test mode: use `httpx_mock` or `responses`

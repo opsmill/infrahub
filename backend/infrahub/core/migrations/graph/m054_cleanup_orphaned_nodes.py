@@ -22,7 +22,7 @@ class CleanupOrphanedNodesQuery(Query):
     insert_return = False
     raise_error_if_empty = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // Delete attributes of orphaned nodes
 MATCH (n:Node)

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
     name = "relationship_constraints_peer_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         peer_schema = db.schema.get(name=self.relationship_schema.peer, branch=self.branch, duplicate=False)
         allowed_peer_kinds = [peer_schema.kind]
         if isinstance(peer_schema, GenericSchema):
@@ -143,7 +143,7 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
         self.parent_relationship = parent_relationship
         self.peer_parent_relationship = peer_parent_relationship
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
         self.params["peer_relationship_id"] = self.relationship.identifier

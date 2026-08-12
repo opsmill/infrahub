@@ -87,6 +87,10 @@ When `branch=None`, the branch support is resolved from both peers' settings. If
 
 All `AttributeSchema` entries must include a `description` field. This is enforced by `backend/tests/component/core/schema/test_schema_documentation.py`. Omitting `description` will cause a test failure.
 
+## Read-only Attributes
+
+`read_only=True` marks a field system-managed. Read-only attributes and relationships are excluded from the generated GraphQL `Create` / `Update` input types, so a mutation that supplies one fails at GraphQL **parse time** (`Field '<name>' is not defined by type '<Kind>UpdateInput'`) rather than at runtime; read-only relationships are additionally rejected at the relationship-mutation layer. A read-only field is therefore writable only by server-side code that constructs the node directly, never through GraphQL, REST, or a schema load. Pair it with `allow_override=AllowOverrideType.NONE` to stop an inheriting node from dropping the flag. Input-generation enforcement lives in `backend/infrahub/graphql/manager.py`; the relationship-mutation guard in `backend/infrahub/graphql/mutations/relationship.py`. `CoreAccountGroup.origin` is defined this way, combining `read_only=True` with `allow_override=AllowOverrideType.NONE`; it also sets `display=extra`, a frontend-only concern (see [the extra-field tier](../frontend/entities-structure.md#schema-driven-rendering-the-extra-field-tier)).
+
 ## Constraint Count Test
 
 `backend/tests/component/message_bus/operations/requests/test_proposed_change.py::test_get_proposed_change_schema_integrity_constraints` contains hardcoded constraint counts. These counts change whenever schemas are added or removed because `ConstraintValidatorDeterminer` iterates all schemas in the registry and generates one `SchemaUpdateConstraintInfo` per validatable property. After schema changes, run the test to get actual counts and update the assertions.

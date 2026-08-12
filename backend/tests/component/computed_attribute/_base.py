@@ -156,7 +156,7 @@ class ScopedRecomputeTestBase(TestInfrahubAppBase):
 
     @staticmethod
     def _context(admin_account: CoreAccount, branch: Branch) -> EventContext:
-        account = AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=admin_account.id, role="admin")
+        account = AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=admin_account.id)
         return InfrahubContext.init(branch=branch, account=account).to_event_context()
 
     def _submitted_attribute_names(self, recorder: WorkflowRecorder) -> set[str]:

@@ -142,7 +142,7 @@ class NodeQuery(Query):
         node_db_id: int | None = None,
         id: str | None = None,
         branch: Branch | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.node = node
         self.node_id = node_id or id
@@ -165,7 +165,7 @@ class NodeCreateAllQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002, PLR0915
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002, PLR0915
         at = self.at or self.node._at
         self.params["user_id"] = self.user_id
         self.params["uuid"] = self.node.id
@@ -604,7 +604,7 @@ class NodeDeleteQuery(NodeQuery):
     insert_return = False
     raise_error_if_empty = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["user_id"] = self.user_id
         self.params["uuid"] = self.node_id
         self.params["branch"] = self.branch.name
@@ -659,7 +659,7 @@ class NodeUpdateMetadataQuery(NodeQuery):
     insert_return = False
     raise_error_if_empty = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         if not self.branch.is_default and not self.branch.is_global:
             raise ValueError("NodeUpdateMetadataQuery can only be used on the default or global branch")
         self.params["uuid"] = self.node_id
@@ -687,12 +687,12 @@ class NodeCheckIDQuery(Query):
     def __init__(
         self,
         node_id: str,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.node_id = node_id
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["uuid"] = self.node_id
 
         query = """
@@ -719,7 +719,7 @@ class NodeListGetAttributeQuery(Query):
         ids: list[str],
         fields: dict | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.ids = ids
         self.fields = fields
@@ -841,7 +841,7 @@ CALL (a) {
         self.add_to_query(last_updated_query)
         self.return_labels.extend(["updated_at", "updated_by"])
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
         self.params["profile_node_relationship_name"] = PROFILE_NODE_RELATIONSHIP_IDENTIFIER
         self.params["profile_template_relationship_name"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
@@ -1071,7 +1071,7 @@ class NodeListGetRelationshipsQuery(Query):
         inbound_identifiers: list[str] | None = None,
         bidirectional_identifiers: list[str] | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.ids = ids
         self.outbound_identifiers = outbound_identifiers
@@ -1190,7 +1190,7 @@ CALL (rel) {
             return
         self._add_node_property_query(node_prop="source", branch_filter=branch_filter)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
         self.params["outbound_identifiers"] = self.outbound_identifiers
         self.params["inbound_identifiers"] = self.inbound_identifiers

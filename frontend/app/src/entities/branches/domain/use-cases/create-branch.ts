@@ -28,7 +28,7 @@ export const createBranch = async (params: CreateBranchParams): Promise<BranchLi
     status: BranchStatus.OPEN,
     sync_with_git: branch.sync_with_git,
     is_default: branch.is_default,
-    has_schema_changes: false,
+    schema_differs_from_default_branch: false,
     created_at: branch.created_at ?? now,
     updated_at: now,
     created_by: null,

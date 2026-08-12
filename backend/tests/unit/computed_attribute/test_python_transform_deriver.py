@@ -129,7 +129,8 @@ def test_display_label_read_marks_imprecise() -> None:
 
 
 def test_hfid_read_marks_imprecise() -> None:
-    read_set = TransformReadSet.from_read_fields({OWNER_KIND: {"hfid"}})
+    # The analyzer reports the schema name, not the hfid query spelling.
+    read_set = TransformReadSet.from_read_fields({OWNER_KIND: {"human_friendly_id"}})
 
     assert read_set.depends_on_everything is True
 
@@ -146,9 +147,8 @@ def test_from_read_fields_precise() -> None:
 
 
 def test_kind_with_no_mapped_fields_marks_imprecise() -> None:
-    # The query analyzer drops reads it cannot map to a concrete schema element (such as a
-    # human-friendly id read), leaving a traversed kind with an empty field set. That read
-    # cannot be scoped, so the whole set must be imprecise rather than a precise read of nothing.
+    # A kind the query reaches but reads no field from. Whether that should mark the whole
+    # set imprecise is unsettled; this pins the current behaviour.
     read_set = TransformReadSet.from_read_fields({OWNER_KIND: set()})
 
     assert read_set.depends_on_everything is True

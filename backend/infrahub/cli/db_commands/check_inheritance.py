@@ -37,7 +37,7 @@ class GetSchemaWithUpdatedInheritance(Query):
     type = QueryType.READ
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // find inherit_from attributes that have been updated
 MATCH p = (schema_node:SchemaNode)-[has_attr_e:HAS_ATTRIBUTE {status: "active"}]->(a:Attribute {name: "inherit_from"})
@@ -133,7 +133,7 @@ class GetAllKindsAndLabels(Query):
         super().__init__(**kwargs)
         self.kinds = kinds
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["branch_name"] = self.branch.name
         self.params["branched_from"] = self.branch.get_branched_from()
         self.params["branch_level"] = self.branch.hierarchy_level

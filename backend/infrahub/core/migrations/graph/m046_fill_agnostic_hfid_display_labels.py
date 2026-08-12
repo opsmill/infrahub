@@ -34,7 +34,7 @@ class DeleteBranchAwareAttrsForBranchAgnosticNodesQuery(Query):
     insert_return = False
     raise_error_if_empty = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (n:Node {branch_support: "agnostic"})
 MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute)

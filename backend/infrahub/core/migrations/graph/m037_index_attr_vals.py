@@ -43,7 +43,7 @@ class GetLargeAttributeTypesQuery(Query):
     type = QueryType.READ
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (branch:Branch)
 // --------------
@@ -215,7 +215,7 @@ class DeIndexLargeAttributeValuesQuery(Query):
         self.max_value_size = max_value_size
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["max_value_size"] = self.max_value_size
         query = """
 MATCH (av:AttributeValueIndexed)
@@ -238,7 +238,7 @@ class CreateNonIndexedAttributeValueQuery(Query):
         super().__init__(**kwargs)
         self.schema_attribute_timeframe = schema_attribute_timeframe
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(
             {
                 "attribute_name": self.schema_attribute_timeframe.attr_name,
@@ -331,7 +331,7 @@ class RevertNonIndexOnBranchQuery(Query):
         super().__init__(**kwargs)
         self.schema_attribute_timeframe = schema_attribute_timeframe
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(
             {
                 "attribute_name": self.schema_attribute_timeframe.attr_name,
@@ -416,7 +416,7 @@ class SetAttributeValueIndexedQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (av:AttributeValue)
 SET av:AttributeValueIndexed
@@ -429,7 +429,7 @@ class FinalizeAttributeValueNonIndexedQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (av_no_index:AttributeValueNonIndexed)
 SET av_no_index:AttributeValue

@@ -40,6 +40,32 @@ except Exception as exc:
     raise
 ```
 
+## Best-effort side effects degrade to a safe fallback
+
+A second broad-catch case is a best-effort side effect whose failure must not abort a primary
+operation that has already succeeded: a cache write for an optimization, an observability emit, a
+capture step feeding later work. Here the broad `except Exception` deliberately does not re-raise,
+because propagating would undo committed, correct work. This is not silencing, and it is legitimate
+only when all of the following hold:
+
+- The failure is logged.
+- It is converted into an explicit, documented fallback that is at least as safe as the side effect
+  never having run, never a silently narrower result. When the side effect feeds a later selection
+  or dispatch, the fallback must over-execute, not under-execute.
+- It is positioned so the failure cannot corrupt the primary operation's committed result (do the
+  best-effort work either fully before the point of no return or fully after it, never straddling
+  it).
+
+```python
+# ✅ Good - a best-effort capture that must never fail the committed operation
+try:
+    summary = serialize_diff(branch_diff)
+    cache.set(key, summary)          # only after the operation has committed
+except Exception as exc:
+    log.warning("Merge diff capture failed; falling back to full regeneration", error=str(exc))
+    key = None                        # explicit, safe (over-executing) fallback signal
+```
+
 ## `# noqa: BLE001`
 
 Narrowing is the default answer when ruff flags a broad `except Exception` — most call sites raise a
@@ -48,7 +74,8 @@ name which case it is in the comment above it:
 
 - a top-level boundary (worker loop, request handler) that must not let one failure take down the process
 - a loop that turns a per-item failure into a reported result instead of aborting the whole run
-- a side effect that must not fail the primary operation — after checking the catch is needed at all
+- a best-effort side effect that must not fail the primary operation (see above) — after checking the
+  catch is needed at all
 
 All three still log or record the failure; none discards it.
 

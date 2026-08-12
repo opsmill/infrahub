@@ -85,7 +85,7 @@ export function InfraNode({ data }: NodeProps) {
       <Handle type="source" position={sourcePosition} className="!bg-gray-400" />
 
       {showTooltip && (
-        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-gray-200 bg-white px-3 py-2 text-left shadow-lg">
+        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border bg-white px-3 py-2 text-left shadow-lg">
           <div className="font-medium text-sm">{nodeData.label}</div>
           <div className="text-gray-500 text-xs">{nodeData.kind}</div>
           <div className="mt-1 font-mono text-[10px] text-gray-400">{nodeData.nodeId}</div>

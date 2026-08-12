@@ -22,7 +22,10 @@ from infrahub.database import InfrahubDatabase
 async def gqlquery01(db: InfrahubDatabase, register_core_models_schema: SchemaBranch, default_branch: Branch) -> Node:
     query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY, branch=default_branch)
     await query.new(
-        db=db, name="query01", query="query { TestCar { name { value } } }", models=["TestCar", "TestPerson"]
+        db=db,
+        name="query01",
+        query="query { TestCar { edges { node { name { value } } } } }",
+        models=["TestCar", "TestPerson"],
     )
     await query.save(db=db)
     return query
