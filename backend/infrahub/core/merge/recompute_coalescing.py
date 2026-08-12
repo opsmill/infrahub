@@ -12,8 +12,10 @@ from infrahub.log import get_logger
 from infrahub.utilities.chunks import chunked
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     DISPLAY_LABELS_PROCESS_JINJA2,
     HFID_PROCESS,
+    TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
 
 log = get_logger()
@@ -27,11 +29,12 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.workflow import InfrahubWorkflow
     from infrahub.workflows.models import WorkflowDefinition
 
-RecomputeFamily = Literal["computed_attribute", "display_label", "hfid"]
+RecomputeFamily = Literal["computed_attribute", "display_label", "hfid", "python_attribute"]
 
 COMPUTED_ATTRIBUTE: RecomputeFamily = "computed_attribute"
 DISPLAY_LABEL: RecomputeFamily = "display_label"
 HFID: RecomputeFamily = "hfid"
+PYTHON_ATTRIBUTE: RecomputeFamily = "python_attribute"
 
 CREATED = "created"
 UPDATED = "updated"
@@ -95,6 +98,13 @@ class AffectedTarget:
     reads_across_relationship: bool
     reader_lookups: frozenset[ReaderLookup]
     precise: bool = True
+    whole_kind: bool = False
+    """Recompute every node of ``target_kind`` instead of the ids in ``reader_lookups``.
+
+    A widened target carries no node ids, and an empty id set chunks into no submissions at
+    all, so the widening has to be stated rather than left implicit or it silently becomes a
+    skip. Set together with ``precise=False``.
+    """
 
 
 @dataclass(frozen=True)
@@ -172,6 +182,7 @@ class CoalescedSubmission:
     filter_key: str
     branch: str
     node_ids: tuple[str, ...]
+    whole_kind: bool = False
 
 
 class CoalescedRecomputeBuilder:
@@ -379,8 +390,25 @@ class CoalescedRecomputeSubmitter:
                 node_ids=chunk,
             )
             for target in coalesced.targets
+            if not target.whole_kind
             for lookup in target.reader_lookups
             for chunk in chunked(tuple(sorted(lookup.source_node_ids)), chunk_size)
+        ]
+        # A widened target carries no ids to chunk over, so it needs its own submission or the
+        # chunking above drops it entirely and the fallback becomes a skip.
+        submissions += [
+            CoalescedSubmission(
+                family=target.family,
+                source_kind=target.target_kind,
+                target_kind=target.target_kind,
+                attribute_name=target.attribute_name,
+                filter_key=_SELF_FILTER,
+                branch=coalesced.branch,
+                node_ids=(),
+                whole_kind=True,
+            )
+            for target in coalesced.targets
+            if target.whole_kind
         ]
         return sorted(
             submissions,
@@ -416,6 +444,17 @@ class CoalescedRecomputeSubmitter:
             case "hfid":
                 parameters["target_kind"] = submission.target_kind
                 return HFID_PROCESS, parameters
+            case "python_attribute":
+                parameters["computed_attribute_name"] = submission.attribute_name
+                parameters["computed_attribute_kind"] = submission.target_kind
+                parameters["coalesced"] = True
+                if submission.whole_kind:
+                    # The all-of-kind flow resolves its own node set, so the id list it would
+                    # otherwise receive is meaningless here.
+                    del parameters["object_ids"]
+                    del parameters["node_kind"]
+                    return TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES, parameters
+                return COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM, parameters
             case _:
                 assert_never(submission.family)
 

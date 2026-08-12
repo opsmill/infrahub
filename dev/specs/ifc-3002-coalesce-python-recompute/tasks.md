@@ -54,9 +54,9 @@
 ### Shared pieces
 
 - [x] T011 [P] Extract `GATHER_GRAPHQL_QUERY_SUBSCRIBERS` and its response parser into a new dependency-free `backend/infrahub/core/query_group/subscribers.py`, and repoint its two existing copies in `backend/infrahub/core/regeneration/impact.py` and `backend/infrahub/computed_attribute/tasks.py`
-- [ ] T012 [P] Add the feature switch to `backend/infrahub/config.py`, defaulting to on, following the shape of `selective_execution_after_merge`
-- [ ] T013 Add the fourth `RecomputeFamily` literal for Python transform computed attributes in `backend/infrahub/core/merge/recompute_coalescing.py` and resolve every exhaustive match the compiler flags
-- [ ] T014 Add an explicit whole-kind marker to `AffectedTarget` in `backend/infrahub/core/merge/recompute_coalescing.py`, and a submission branch that routes such a target to the all-of-kind refresh instead of chunking an empty id set
+- [x] T012 [P] Add the feature switch to `backend/infrahub/config.py`, defaulting to on, following the shape of `selective_execution_after_merge`
+- [x] T013 Add the fourth `RecomputeFamily` literal for Python transform computed attributes in `backend/infrahub/core/merge/recompute_coalescing.py` and resolve every exhaustive match the compiler flags
+- [x] T014 Add an explicit whole-kind marker to `AffectedTarget` in `backend/infrahub/core/merge/recompute_coalescing.py`, and a submission branch that routes such a target to the all-of-kind refresh instead of chunking an empty id set
 
 **Checkpoint**: baseline recorded, gate passed, shared types in place.
 

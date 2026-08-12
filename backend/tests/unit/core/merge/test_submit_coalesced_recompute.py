@@ -8,6 +8,7 @@ from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
     DISPLAY_LABEL,
     HFID,
+    PYTHON_ATTRIBUTE,
     AffectedTarget,
     CoalescedRecompute,
     CoalescedRecomputeSubmitter,
@@ -17,8 +18,10 @@ from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     DISPLAY_LABELS_PROCESS_JINJA2,
     HFID_PROCESS,
+    TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
 from tests.adapters.workflow import WorkflowRecorder
 
@@ -150,3 +153,65 @@ async def test_submit_skips_a_failing_submission_and_keeps_the_rest() -> None:
     # The first submission failed; the other two were still dispatched and returned.
     assert len(recorder.submit_calls) == 2
     assert len(submitted) == 2
+
+
+def _widened_target() -> AffectedTarget:
+    return AffectedTarget(
+        family=PYTHON_ATTRIBUTE,
+        target_kind=TARGET_KIND,
+        attribute_name="pitch",
+        reads_across_relationship=True,
+        reader_lookups=frozenset(),
+        precise=False,
+        whole_kind=True,
+    )
+
+
+def test_plan_emits_one_submission_for_a_widened_target() -> None:
+    """A widened target carries no ids, and chunking an empty set yields nothing at all."""
+    coalesced = CoalescedRecompute(branch="main", targets=frozenset({_widened_target()}))
+
+    submissions = CoalescedRecomputeSubmitter.plan(coalesced)
+
+    assert len(submissions) == 1
+    assert submissions[0].whole_kind is True
+    assert submissions[0].node_ids == ()
+    assert submissions[0].target_kind == TARGET_KIND
+    assert submissions[0].attribute_name == "pitch"
+
+
+def test_widened_target_routes_to_the_all_of_kind_flow() -> None:
+    coalesced = CoalescedRecompute(branch="main", targets=frozenset({_widened_target()}))
+    submission = CoalescedRecomputeSubmitter.plan(coalesced)[0]
+
+    workflow, parameters = CoalescedRecomputeSubmitter._submission_workflow(
+        submission=submission, context=_event_context()
+    )
+
+    assert workflow == TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
+    assert parameters["computed_attribute_kind"] == TARGET_KIND
+    assert parameters["computed_attribute_name"] == "pitch"
+    assert parameters["coalesced"] is True
+    assert "object_ids" not in parameters
+
+
+def test_narrow_python_target_routes_to_the_batch_flow() -> None:
+    target = AffectedTarget(
+        family=PYTHON_ATTRIBUTE,
+        target_kind=TARGET_KIND,
+        attribute_name="pitch",
+        reads_across_relationship=True,
+        reader_lookups=frozenset(
+            {ReaderLookup(source_kind=SOURCE_KIND, filter_key="ids", source_node_ids=frozenset({"n1", "n2"}))}
+        ),
+    )
+    coalesced = CoalescedRecompute(branch="main", targets=frozenset({target}))
+    submission = CoalescedRecomputeSubmitter.plan(coalesced)[0]
+
+    workflow, parameters = CoalescedRecomputeSubmitter._submission_workflow(
+        submission=submission, context=_event_context()
+    )
+
+    assert workflow == COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM
+    assert parameters["object_ids"] == ["n1", "n2"]
+    assert parameters["coalesced"] is True
