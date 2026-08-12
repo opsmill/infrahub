@@ -568,6 +568,15 @@ async def get_db(retry: int = 0) -> AsyncDriver:
     return driver
 
 
+def is_retriable_db_error(exc: BaseException) -> bool:
+    """Whether a database error can be replayed on a fresh transaction rather than failed."""
+    if isinstance(exc, TransientError):
+        return True
+    if isinstance(exc, ClientError):
+        return exc.code == "Neo.ClientError.Statement.EntityNotFound"
+    return False
+
+
 def retry_db_transaction(
     name: str,
 ) -> Callable[[Callable[..., Coroutine[Any, Any, R]]], Callable[..., Coroutine[Any, Any, R]]]:
@@ -579,9 +588,8 @@ def retry_db_transaction(
                 try:
                     return await func(*args, **kwargs)
                 except (TransientError, ClientError) as exc:
-                    if isinstance(exc, ClientError):
-                        if exc.code != "Neo.ClientError.Statement.EntityNotFound":
-                            raise exc
+                    if not is_retriable_db_error(exc):
+                        raise
                     base_delay = config.SETTINGS.database.retry_base_delay
                     max_delay = config.SETTINGS.database.retry_max_delay
                     jitter = random.uniform(0, config.SETTINGS.database.retry_jitter_max)

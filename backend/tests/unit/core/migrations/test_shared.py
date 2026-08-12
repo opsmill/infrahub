@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import pytest
-from neo4j.exceptions import TransientError
+from neo4j.exceptions import ClientError, TransientError
 from typing_extensions import Self
 
 from infrahub import config
@@ -74,6 +74,32 @@ class AlwaysDeadlockMigrationQuery(MigrationQuery):
         raise TransientError("deadlock detected")
 
 
+def _entity_not_found_error() -> ClientError:
+    error = ClientError("entity not found")
+    error._neo4j_code = "Neo.ClientError.Statement.EntityNotFound"
+    return error
+
+
+class EntityNotFoundOnceMigrationQuery(MigrationQuery):
+    name = "test_entity_not_found_once_migration"
+    type: QueryType = QueryType.WRITE
+    insert_return = False
+
+    calls: ClassVar[int] = 0
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.add_to_query("RETURN 1 AS num")
+
+    async def execute(self, db: InfrahubDatabase, timeout_seconds: float | None = None) -> Self:
+        type(self).calls += 1
+        if type(self).calls == 1:
+            raise _entity_not_found_error()
+        return await super().execute(db=db, timeout_seconds=timeout_seconds)
+
+    def get_nbr_migrations_executed(self) -> int:
+        return 1
+
+
 class DeadlockOnceGraphQuery(Query):
     name = "test_deadlock_once_graph"
     type: QueryType = QueryType.WRITE
@@ -120,6 +146,7 @@ class TestMigrationTransientErrorRetry:
     def _reset_query_call_counts(self) -> None:
         DeadlockOnceMigrationQuery.calls = 0
         AlwaysDeadlockMigrationQuery.calls = 0
+        EntityNotFoundOnceMigrationQuery.calls = 0
         DeadlockOnceGraphQuery.calls = 0
         AlwaysDeadlockGraphQuery.calls = 0
 
@@ -132,6 +159,18 @@ class TestMigrationTransientErrorRetry:
         assert result.success
         assert result.nbr_migrations_executed == 1
         assert DeadlockOnceMigrationQuery.calls == 2
+
+    async def test_schema_migration_retries_entity_not_found(
+        self, db: InfrahubDatabase, default_branch: Branch
+    ) -> None:
+        migration = _make_schema_migration(queries=[EntityNotFoundOnceMigrationQuery])
+
+        result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+
+        assert result.errors == []
+        assert result.success
+        assert result.nbr_migrations_executed == 1
+        assert EntityNotFoundOnceMigrationQuery.calls == 2
 
     async def test_schema_migration_raises_after_retries_exhausted(
         self, db: InfrahubDatabase, default_branch: Branch

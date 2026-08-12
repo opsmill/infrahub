@@ -5,7 +5,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Iterator, Sequence
 
-from neo4j.exceptions import TransientError
 from pydantic import BaseModel, ConfigDict, Field
 from rich.console import Console
 from typing_extensions import Self
@@ -16,7 +15,7 @@ from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema, SchemaRoot, internal_schema
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import retry_db_transaction
+from infrahub.database import is_retriable_db_error, retry_db_transaction
 
 from .query import MigrationBaseQuery  # noqa: TC001
 
@@ -111,6 +110,16 @@ class MigrationInput:
     console: Console = field(default_factory=get_migration_console)
 
 
+def _should_propagate(db: InfrahubDatabase, exc: BaseException) -> bool:
+    """Whether a query error must bubble out to be retried rather than recorded as a failure.
+
+    A replayable error inside a transaction must reach the transaction owner: recording it would
+    leave the commit to fail with a non-retryable TransactionError and the replay would never happen.
+    Outside a transaction there is no owner, so the error is recorded as a migration failure instead.
+    """
+    return db.is_transaction and is_retriable_db_error(exc)
+
+
 class SchemaMigration(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., description="Name of the migration")
@@ -156,17 +165,9 @@ class SchemaMigration(BaseModel):
                 )
                 await query.execute(db=migration_input.db)
                 result.nbr_migrations_executed += query.get_nbr_migrations_executed()
-            except TransientError as exc:
-                if migration_input.db.is_transaction:
-                    # A transient error aborts the enclosing transaction server-side: recording it here
-                    # would leave the commit to fail with a non-retryable TransactionError, so it must
-                    # propagate to the transaction owner to be replayed on a fresh transaction.
-                    raise
-                # Running outside a transaction there is nothing to abort and no owner to replay it,
-                # so keep the failed-result contract instead of surfacing an unhandled error.
-                result.errors.append(str(exc))
-                return result
             except Exception as exc:
+                if _should_propagate(db=migration_input.db, exc=exc):
+                    raise
                 result.errors.append(str(exc))
                 return result
 
@@ -256,15 +257,9 @@ class GraphMigration(BaseMigration):
             try:
                 query = await migration_query.init(db=migration_input.db, at=migration_input.at)
                 await query.execute(db=migration_input.db)
-            except TransientError as exc:
-                if migration_input.db.is_transaction:
-                    # Must reach the transaction owner to be replayed on a fresh transaction.
-                    raise
-                # Running outside a transaction there is no owner to replay the error, so keep the
-                # failed-result contract instead of surfacing an unhandled error.
-                result.errors.append(str(exc))
-                return result
             except Exception as exc:
+                if _should_propagate(db=migration_input.db, exc=exc):
+                    raise
                 result.errors.append(str(exc))
                 return result
 
