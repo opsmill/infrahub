@@ -5,38 +5,25 @@ title: Create objects
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-There are several ways to create or add objects in Infrahub:
+How you create an object depends on what drives it. Create objects directly through one of Infrahub's interfaces, declare them in a file that lives in Git alongside your schema, or have a workflow create them from data that already exists.
 
-| Method | Use when |
-|---|---|
-| Web interface | One-off objects, exploring a new schema |
-| `infrahubctl` | Interactive work and scripting one object at a time |
-| Python SDK | Custom scripts and integrations |
-| GraphQL API | Mutations from any GraphQL client |
-| Object files | Data that changes rarely, tracked in Git, or a starting dataset loaded on demand |
+## Create objects directly
 
-Every method produces the same objects and enforces the same schema constraints, so the choice is about workflow.
-
-Objects can also be created from workflows, using Generators or Infrahub Sync:
-
-- **Generators** create objects from data already in Infrahub — allocate an IP address for every new interface, or build the circuits a service definition implies.
-- **Infrahub Sync** creates objects from data in another system, such as NetBox or Nautobot, and keeps the two in sync as that data changes.
-
-## Create an object
+Infrahub has four interfaces, and all of them produce the same object and enforce the same schema constraints. Pick the one that fits how you are working.
 
 The example below creates a device named `atl1-edge1` at site `atl1`. On `InfraDevice`, `name` and `type` are required and `site` is a relationship.
 
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-Use the web interface for one-off objects, and when you are working with a schema you have not used before. The form is built from the schema, so it shows every field the kind defines, marks which of them are required, and validates values as you type — which makes it the quickest way to see what a kind actually needs before you script against it.
+Use the web interface for one-off objects, and when you are working with a schema you have not used before. The form is built from the schema, so it shows every field the kind defines, marks which of them are required, and validates values as you type. That makes it the quickest way to learn what a kind actually needs before you script against it.
 
 1. Open the Device list from the left menu.
 2. Select **Add Device**. The **Create Device** panel opens.
 3. Fill in the name and type.
 4. Select a site, then save.
 
-This is also the only method that offers Object Templates, Profiles, and resource pools as selectable controls. The other methods accept the same values, but you supply them yourself.
+The form is also the only place where Object Templates, Profiles, and resource pools appear as selectable controls. The other interfaces accept the same values as fields.
 
 </TabItem>
 
@@ -51,13 +38,15 @@ infrahubctl object create InfraDevice \
   --set site=atl1
 ```
 
-Relationship values resolve by name, so `site=atl1` looks up the site and links it. [Manage objects with infrahubctl](./manage-from-cli.mdx) covers querying, updating, and deleting.
+Relationship values resolve by name, so `site=atl1` looks up the site and links it.
+
+[Manage objects with infrahubctl](./manage-from-cli.mdx) covers querying, updating, and deleting.
 
 </TabItem>
 
   <TabItem value="sdk" label="Python SDK">
 
-Use the Python SDK for custom scripts and integrations — when a program decides what to create rather than a person. The SDK handles authentication, query construction, and serialization, so the script works with objects instead of HTTP calls.
+Use the Python SDK for custom scripts and integrations — when a program decides what to create rather than a person. The SDK handles authentication, query construction, and serialization, so the script works with objects instead of HTTP calls. Transformations, Generators, and checks run against this same client, so a script you write standalone can later run inside Infrahub's pipeline without changes.
 
 ```python
 from infrahub_sdk import InfrahubClientSync
@@ -73,7 +62,9 @@ device = client.create(
 device.save()
 ```
 
-Transformations, Generators, and checks run against this same client, so a script you write here can run inside Infrahub's pipeline without changes. To create many objects in one run, group the calls into a batch with a concurrency limit. The synchronous client suits straightforward scripting; the async client suits work that benefits from concurrent I/O. See the [Python SDK]($(base_url)python-sdk/introduction) documentation.
+To create many objects in one run, group the calls into a batch with a concurrency limit. The synchronous client suits straightforward scripting; the async client suits work that benefits from concurrent I/O.
+
+See the [Python SDK]($(base_url)python-sdk/introduction) documentation.
 
 </TabItem>
 
@@ -99,12 +90,14 @@ mutation {
 }
 ```
 
-Infrahub generates four mutations for every model in your schema, named from its namespace and name — `InfraDeviceCreate`, `InfraDeviceUpdate`, `InfraDeviceUpsert`, and `InfraDeviceDelete`. Use `Upsert` when the object may already exist and you want one call to cover both cases. To create the object on a branch, post to `/graphql/<branch_name>`. See [Queries & mutations](../development-resources/graphql/queries-and-mutations.mdx).
+Infrahub generates four mutations for every model in your schema, named from its namespace and name — `InfraDeviceCreate`, `InfraDeviceUpdate`, `InfraDeviceUpsert`, and `InfraDeviceDelete`. Use `Upsert` when the object may already exist and you want one call to cover both cases. To create the object on a branch, post to `/graphql/<branch_name>`.
+
+See [Queries & mutations](../development-resources/graphql/queries-and-mutations.mdx).
 
 </TabItem>
 </Tabs>
 
-## Load objects from a file
+## Create objects from a file
 
 Use object files for data that changes rarely and should be reviewed before it does, or as a starting dataset for a new instance. The file is YAML in a Git repository, so a change to your data goes through the same review as a change to your code.
 
@@ -127,9 +120,9 @@ There are two ways to load a file, and they differ in what happens afterwards. `
 
 [Load data using YAML file](./load-from-yaml.mdx) covers the file format, nested objects, and load order.
 
-## Generate and import objects
+## Create objects from a workflow
 
-Both of these run from a configuration you set up, rather than from a command you type each time.
+Generators and Infrahub Sync both run from a configuration you set up, rather than from a command you type each time.
 
 ### Generators
 
@@ -151,19 +144,15 @@ Sync runs as a CLI, so you schedule it with the tooling you already use — cron
 
 See [Infrahub Sync]($(base_url)sync) for adapters, mapping rules, and configuration.
 
-## Templates, Profiles, and resource pools
+## After an object is created
 
-Creating many objects of the same kind usually means repeating the same structure and the same values. Three features cover that, whichever method you use:
+A new object exists on the branch it was created on. On a branch other than the default, it remains isolated until that branch merges through a [proposed change](../proposed-changes/overview.mdx).
+
+Every attribute records how its value was set, which you can read back through [metadata and lineage](./metadata.mdx). A value is either entered directly or supplied by one of three features, each of which applies whichever method created the object:
 
 - [Object Templates](../object-templates/overview.mdx) supply structure — which components the new object starts with.
 - [Profiles](../profiles/overview.mdx) supply attribute values the object inherits and can override.
-- [Resource Manager](../resource-manager/overview.mdx) allocates a value, such as an IP address or a VLAN ID, from a pool at create time.
-
-The web form offers these as selectable controls. The other methods accept the same values as fields.
-
-## After an object is created
-
-A new object exists on the branch it was created on. On a branch other than the default, it remains isolated until that branch merges through a [proposed change](../proposed-changes/overview.mdx). Every attribute records how its value was set — entered directly, inherited from a Profile, or allocated from a pool — which you can read back through [metadata and lineage](./metadata.mdx).
+- [Resource Manager](../resource-manager/overview.mdx) allocates a value, such as an IP address or a VLAN ID, from a pool.
 
 ## Related
 
