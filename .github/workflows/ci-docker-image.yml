@@ -264,6 +264,13 @@ jobs:
       # Uploaded before the attestations so that a transparency-log outage cannot cost
       # us the SBOMs themselves: v1.10.7 shipped without any because the attest step
       # failed first and skipped this one.
+      #
+      # overwrite is required precisely because this now runs before a step that can
+      # fail. Artifacts are scoped to the run rather than the attempt, so on a re-run
+      # this name already exists from the earlier attempt and the default overwrite:
+      # false would fail the upload, breaking the recovery path this ordering exists to
+      # protect. Every caller passes a version unique to its invocation, so the only
+      # artifact this can replace is the same SBOM from a previous attempt.
       - name: Upload SBOM artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -272,6 +279,7 @@ jobs:
             infrahub-sbom.spdx.json
             infrahub-sbom.cdx.json
           retention-days: 90
+          overwrite: true
 
       - name: Attest SBOMs
         env:
