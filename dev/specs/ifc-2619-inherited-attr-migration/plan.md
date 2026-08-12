@@ -9,7 +9,7 @@
 When a node kind newly inherits a generic, pre-existing nodes never get attribute rows for the inherited attributes (#9284). Two deliverables, two PRs, one release:
 
 1. **PR 1 — forward fix**: `NodeKindUpdateMigration` runs a `NodeAttributeAddMigration` (with a new `force_inherited=True` opt-in) per newly-inherited attribute after vertex duplication commits; schema-migration execution becomes two-phase (kind-updates first, everything else second, phase 2 skipped on phase-1 errors) via a pure `split_migrations_by_phase` helper.
-2. **PR 2 — healing migration**: new numbered graph migration `m075` (`ArbitraryMigration`, free-form) detects and backfills every missing (active node, schema-defined attribute) row — default branch plus branch-scoped passes over all existing branches — with retroactive timestamps derived from the schema graph, run-time NumberPool allocation, strict idempotency, and self-validation that fails the upgrade loudly.
+2. **PR 2 — healing migration**: new numbered graph migration `m076` (`MigrationRequiringRebase`) detects and backfills every missing (active node, generic-inherited attribute) row — the default branch at upgrade time, every other branch during its post-upgrade rebase — with rows created at run time, run-time NumberPool allocation, strict idempotency, and self-validation that fails the upgrade loudly. *(Redesigned 2026-08-04 — tasks.md Phase 7: schema-graph-driven discovery replaced `SchemaBranch` loads, direct `AttributeAddQuery`/inline pool-row query replaced `NodeAttributeAddMigration` reuse, and the branch pool pass moved to rebase time.)*
 
 Both PRs reference IFC-2619 and MUST land in the same release (spec assumption); PR 2's merge checklist includes verifying PR 1 is in the same release milestone.
 
@@ -29,16 +29,16 @@ Both PRs reference IFC-2619 and MUST land in the same release (spec assumption);
 
 **Performance Goals**: Detection and repair batched per kind (FR-011); per-node iteration only for NumberPool allocation; query plans reviewed with `EXPLAIN` during development.
 
-**Constraints**: Healed rows must be branch-visible without rebase (retroactive timestamps); healing must be idempotent and a strict no-op on healthy data; migration must self-validate and fail the upgrade on violation; two PRs must land in the same release.
+**Constraints**: Healing must be idempotent and a strict no-op on healthy data; migration must self-validate and fail the upgrade on violation; two PRs must land in the same release.
 
-**Scale/Scope**: Healing walks every kind on every branch of an install; batching per kind bounds memory and round-trips. Forward fix touches 3 existing modules + tests; healing adds 1 migration + 1 query module + tests.
+**Scale/Scope**: Healing audits only the kinds the schema graph shows as inheriting from generics (on user branches, only kinds whose `inherit_from` changed on the branch); batching per kind bounds memory and round-trips. Forward fix touches 3 existing modules + tests; healing adds 1 migration module (discovery, detection, and pool-row queries inlined) + tests.
 
 ## Constitution Check
 
 *GATE evaluated against Constitution v1.0.0 — pre-Phase-0 and re-checked post-design: PASS (no violations; one governance flag).*
 
 - **I. Schema-Driven Integrity** — PASS. The feature *restores* the schema-as-source-of-truth invariant ("every active node has an active attribute row for every schema-defined attribute"). Migration preserves constraints; no generated files hand-edited.
-- **II. Branch-Safe by Default** — PASS. Branch/temporal filters in all queries; retroactive timestamps and branch-scoped healing passes designed and tested explicitly; merge behavior covered by the post-upgrade-merge backstop assumption and existing rollback suite; soft-delete semantics respected (tombstone clamp).
+- **II. Branch-Safe by Default** — PASS. Branch/temporal filters in all queries; branch-scoped healing passes designed and tested explicitly; merge behavior covered by the post-upgrade-merge backstop assumption and existing rollback suite; soft-delete semantics respected (tombstone clamp).
 - **III. Type Safety & Explicit Contracts** — PASS. Typed Pydantic migration models; query results via structured `get_data()` patterns; no untyped dicts.
 - **IV. Test Discipline** — PASS. Unit test for the one pure function; component tests for all migration behavior against the test DB; integration schema-lifecycle test for the #9284 repro; no mocks of graph behavior.
 - **V. Query Performance & Efficiency** — PASS. Parameterized Cypher only; batched per-kind queries; `EXPLAIN` review during development; no N+1 outside the sanctioned NumberPool loop.
@@ -69,17 +69,17 @@ No `contracts/` directory: the feature exposes no external interface (no GraphQL
 
 ```text
 backend/infrahub/core/
-├── graph/__init__.py                                  # GRAPH_VERSION 74 → 75 (PR 2)
+├── graph/__init__.py                                  # GRAPH_VERSION 75 → 76 (PR 2)
 ├── migrations/
 │   ├── schema/
 │   │   ├── node_kind_update.py                        # PR 1: execute() override + _newly_inherited_attributes()
 │   │   ├── node_attribute_add.py                      # PR 1: force_inherited field + guard change
 │   │   └── tasks.py                                   # PR 1: two-phase batching + split_migrations_by_phase()
 │   ├── graph/
-│   │   ├── __init__.py                                # PR 2: register m075
-│   │   └── m075_heal_missing_attribute_rows.py        # PR 2: ArbitraryMigration — orchestration + self-validation
+│   │   └── m076_heal_missing_attribute_rows.py        # PR 2: MigrationRequiringRebase — discovery + detection +
+│   │                                                  #       pool-row queries inlined, orchestration, self-validation
 │   └── query/
-│       └── attribute_heal.py                          # PR 2: damage-detection (+ timestamp derivation) query module
+│       └── attribute_add.py                           # PR 2: uuids parameter + agnostic global-branch edges
 
 backend/tests/
 ├── unit/core/migrations/schema/test_tasks.py          # PR 1: split_migrations_by_phase (pure)
@@ -87,7 +87,8 @@ backend/tests/
 │   ├── schema/test_node_kind_update.py                # PR 1: inherited-attr creation, profiles/templates, gating, NumberPool, name-update no-op
 │   ├── schema/test_node_attribute_add.py              # PR 1: force_inherited bypass; default guard intact
 │   ├── schema/test_all_migrations_rollback.py         # PR 1: run unchanged
-│   └── graph/test_m075_heal_missing_attribute_rows.py # PR 2: damaged default branch, branch-scoped, tombstone, NumberPool, healthy no-op, idempotent rerun, self-validation
+│   └── graph/m076_heal_missing_attribute_rows/       # PR 2: test_default_branch.py, test_branches.py,
+│                                                      #       test_number_pool.py, test_detection.py
 └── integration/schema_lifecycle/
     └── test_schema_add_inherited_generic.py           # PR 1: end-to-end #9284 repro
 
@@ -112,16 +113,16 @@ changelog/
 
 ### PR 2 — Healing migration
 
-4. **Damage-detection query** (`migrations/query/attribute_heal.py`, the deep module): batched per-kind (FR-011); for (kind, [schema attributes]) returns (node uuid, attribute name, derived retroactive timestamp) for every active node lacking an active attribute row — treating tombstone-only as damaged, clamping timestamps to not predate tombstones (FR-005, FR-006 timestamp rule; research R8, R9). A branch-scoped variant considers only data changed on the branch (FR-009).
+4. **Discovery + damage detection** (inlined in the m076 module — single-consumer queries, repo convention): discovery walks the persisted schema graph — `InheritedAttributeDiscoveryQuery` pairs every SchemaNode whose latest active `inherit_from` names a generic with that generic's SchemaAttribute vertices (a `branch_scoped` variant restricts to kinds whose `inherit_from` carries a branch-level update); attribute/node properties are hydrated via `NodeManager.get_many` on the schema-vertex UUIDs, with only the in-memory internal schema + core models registered — **no `SchemaBranch` load anywhere**. `AttributeHealDetectionQuery` is batched per kind (FR-011) and returns (node uuid, attribute name) for every active node lacking an active row — treating tombstone-only as damaged (FR-005); a `branch_scoped` variant considers only damage involving branch-level data changes (FR-009).
 
-   **Duplicated schema vertices (critique E2)**: schema name/namespace/inheritance updates create same-UUID *copies* of schema nodes, so "when did the kind begin inheriting" is not readable off a single vertex's edges. Timestamp derivation MUST resolve the edge timeline across the full same-UUID vertex set of the schema node and its attribute vertices (UUID for identity; internal vertex id only within one copy's edge set), taking the earliest active `inherit_from`/attribute edge. Component tests include a kind renamed after gaining inheritance.
+   **Duplicated schema vertices (critique E2)**: schema name/namespace/inheritance updates create same-UUID *copies* of schema nodes, so a kind's inheritance is not readable off a single vertex's edges — discovery resolves the edge timeline across the full same-UUID vertex set. *(The timestamp derivation this originally fed is superseded: rows are created at run time — research R8.)* Component tests include a kind renamed after gaining inheritance.
 
-5. **`m075_heal_missing_attribute_rows`** (`ArbitraryMigration`; `GRAPH_VERSION` → 75; research R7):
-   - **Schema acquisition (critique E1)**: schemas are loaded from the database at migration time and passed to the detection query as schema objects (never registry state): the default branch's schema for pass 1; each branch's own schema for pass 2, with fallback-to-default semantics when a branch has no schema changes of its own (a branch-schema load can return an empty schema branch — known gotcha).
-   - **Pass 1 (default branch)**: per kind, detect → repair. Default-backed attributes: batched creation of attribute rows at the derived retroactive timestamps, reusing PR 1's attribute-add machinery/queries (research R11). NumberPool attributes: per-node allocation at run time via the reservation-aware path (FR-007; research R10).
-   - **Pass 2 (branches)**: iterate existing branches, branch-scoped detect → repair at branch level (FR-009).
-   - **Self-validation**: re-run detection across the repaired scope; any remaining pair fails the migration with per-kind actionable errors, failing the upgrade (FR-010, SC-001). All repair queries idempotent → rerun-safe, strict no-op on healthy data (FR-008, SC-003).
-   - **Audit trail (critique P1)**: on success, the migration logs per-kind repaired-row counts (default branch and per branch) so administrators have a record of what was repaired; zero-count output on healthy installs doubles as the no-op proof.
+5. **`m076_heal_missing_attribute_rows`** (`MigrationRequiringRebase`; `minimum_version` 75; `GRAPH_VERSION` → 76; research R7):
+   - **`execute()` (upgrade time)**: default branch first — per discovered kind, detect → repair. Default-backed attributes: batched `AttributeAddQuery` calls with explicit `uuids`, written at run time. NumberPool attributes: per-node run-time allocation via the reservation-aware `CoreNumberPool.get_resource`, row written by the inline `PoolAttributeRowAddQuery` (runtime row shape: `is_default: false` value vertex + `HAS_SOURCE` to the pool); a missing pool fails the migration loudly (FR-007; research R10). Every other branch is repaired by its own post-upgrade rebase rather than during the upgrade (FR-009).
+   - **`execute_against_branch()` (rebase time)**: run during each branch's post-upgrade rebase (the upgrade marks stale branches for rebase); pool-only branch-scoped discovery → per-node run-time allocation, so branch allocations follow the default branch's; re-validates its own pool scope before returning.
+   - **Branch-agnostic attributes**: `AttributeAddQuery` and `PoolAttributeRowAddQuery` write AGNOSTIC-support attribute edges on the global branch (this also fixes the forward path, which shares `AttributeAddQuery`).
+   - **Self-validation**: re-run discovery + detection across the upgrade-time scope, excluding deferred branch pool pairs; any remaining pair fails the migration with per-kind actionable errors, failing the upgrade (FR-010, SC-001). All repair queries idempotent → rerun-safe, strict no-op on healthy data (FR-008, SC-003).
+   - **Audit trail (critique P1)**: on success, the migration logs per-kind repaired-row counts (default branch and per branch) plus deferred-pool counts; zero-count output on healthy installs doubles as the no-op proof.
 
 6. **Implementation-time verification gate (from spec Assumptions)**: before trusting run-time NumberPool allocations, verify `CoreNumberPool.get_resource`'s uniqueness check is correctly branch- and time-scoped; fix or wrap if not.
 
@@ -136,7 +137,7 @@ changelog/
 Per spec Testing Decisions and Constitution IV — assert on user-observable graph behavior, never on which migration produced rows:
 
 - **Unit**: `split_migrations_by_phase` only (the one pure function).
-- **Component**: kind-update suite (inherited-attr creation incl. profiles/templates, unique/read-only gating, NumberPool allocation + single-pool assertion, name-update no-op, partial-failure rerun converges); attribute-add guard/bypass; m075 suite (damaged default branch, branch-scoped damage, tombstone case, NumberPool case, healthy no-op, idempotent rerun, self-validation failure path, branch predating the damage window correctly sees no attribute); detection-query suite (completeness + timestamp derivation incl. a kind renamed after gaining inheritance). "Zero writes" assertions (SC-003) measure objectively via the driver's write-counter deltas, not implementation internals.
+- **Component**: kind-update suite (inherited-attr creation incl. profiles/templates, unique/read-only gating, NumberPool allocation + single-pool assertion, name-update no-op, partial-failure rerun converges); attribute-add guard/bypass; m076 suite (damaged default branch, branch-scoped damage, tombstone case, NumberPool case, healthy no-op, idempotent rerun, self-validation failure path, branch predating the damage window correctly sees no attribute); detection-query suite (completeness + timestamp derivation incl. a kind renamed after gaining inheritance). "Zero writes" assertions (SC-003) measure objectively via full-graph snapshot equality — before/after snapshots of every vertex and edge compare equal (strictly stronger than driver write-counter deltas), not implementation internals.
 - **Integration**: `test_schema_add_inherited_generic.py` — #9284 end-to-end through the public API (load v1 → create node → load v2 → read non-null `id`, update persists with `is_default: false`, filter matches); existing rollback suite unchanged.
 - **E2E (manual/CI)**: quickstart.md walks the issue's two schema files against a live stack, and a damaged-install upgrade.
 

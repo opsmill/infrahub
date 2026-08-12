@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, NULL_VALUE, BranchSupportType, RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeValueIndexedNode, GraphAttributeValueNode
 from infrahub.core.query import Query, QueryType
-from infrahub.core.timestamp import Timestamp
 from infrahub.types import is_large_attribute_type
 
 if TYPE_CHECKING:
@@ -15,10 +14,7 @@ if TYPE_CHECKING:
 class AttributeAddQuery(Query):
     """Create missing attribute rows on the nodes of the given kinds.
 
-    ``uuids`` optionally restricts the write to specific nodes. ``write_at``
-    optionally backdates the created rows: node selection still happens at the
-    query's regular ``at`` time, while the new edges carry ``write_at`` as their
-    ``from``.
+    ``uuids`` optionally restricts the write to specific nodes.
 
     Created edges live on the query's branch, except when ``branch_support`` is
     agnostic: those rows belong to the global branch, visible from every branch.
@@ -35,7 +31,6 @@ class AttributeAddQuery(Query):
         branch_support: str,
         default_value: Any | None = None,
         uuids: list[str] | None = None,
-        write_at: Timestamp | str | None = None,
         **kwargs: Any,
     ) -> None:
         self.node_kinds = node_kinds
@@ -44,20 +39,18 @@ class AttributeAddQuery(Query):
         self.branch_support = branch_support
         self.default_value = default_value
         self.uuids = uuids
-        self.write_at = Timestamp(write_at) if write_at else None
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        write_time = (self.write_at or self.at).to_string()
+        write_time = self.at.to_string()
 
         self.params["node_kinds"] = self.node_kinds
         self.params["node_uuids"] = self.uuids
         self.params["attr_name"] = self.attribute_name
         self.params["branch_support"] = self.branch_support
-        # TODO: current_time is a misleading name. it sounds like the timestamp is for ~this instant. from_time or write_tie is better
         self.params["current_time"] = write_time
 
         if self.default_value is not None:
@@ -125,7 +118,8 @@ class AttributeAddQuery(Query):
             WHERE %(branch_filter)s
             WITH is_part_of_e, r AS has_attr_e
             RETURN is_part_of_e, has_attr_e
-            ORDER BY has_attr_e.branch_level DESC, has_attr_e.from ASC, is_part_of_e.branch_level DESC, is_part_of_e.from ASC
+            ORDER BY has_attr_e.branch_level DESC, has_attr_e.from DESC, has_attr_e.status ASC,
+                is_part_of_e.branch_level DESC, is_part_of_e.from DESC, is_part_of_e.status ASC
             LIMIT 1
         }
         WITH n, is_part_of_e, has_attr_e, av, is_protected_value
@@ -143,9 +137,6 @@ class AttributeAddQuery(Query):
             SET a.created_at = $current_time, a.created_by = $user_id, a.updated_at = $current_time, a.updated_by = $user_id
             SET n.updated_at = $current_time, n.updated_by = $user_id
         }
-        FOREACH (i in CASE WHEN has_attr_e.status = "deleted" THEN [1] ELSE [] END |
-            SET has_attr_e.to = $current_time, has_attr_e.to_user_id = $user_id
-        )
         """ % {
             "match_query": match_query,
             "branch_filter": branch_filter,

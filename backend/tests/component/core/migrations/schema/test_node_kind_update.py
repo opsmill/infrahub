@@ -603,3 +603,70 @@ async def test_migration_partial_failure_rerun_converges(
     assert await _count_attribute_vertices(db=db, node_label="TestCar", attribute_name="status") == 2
 
     await verify_graph(db=db)
+
+
+async def test_migration_previous_schema_already_carrying_the_attributes_creates_no_rows(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    """An already-migrated previous_schema makes the sub-migrations create nothing.
+
+    The newly-inherited set is computed against previous_schema, so a caller that supplies a
+    previous_schema already carrying the attributes gets a silent no-op — no error, just
+    instances left without rows. Callers must pass a baseline that predates the inheritance.
+    """
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="John", height=180)
+    await person.save(db=db)
+
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="accord", nbr_seats=5, is_electric=True, owner=person)
+    await car.save(db=db)
+
+    generic = GenericSchema(
+        name="Audited",
+        namespace="Test",
+        branch=BranchSupportType.AWARE,
+        attributes=[AttributeSchema(name="audit_state", kind="Text", default_value="unreviewed", optional=True)],
+    )
+    _, new_schema = _make_kind_inherit_generic(branch=default_branch, generic=generic, kind="TestCar")
+
+    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="inherit_from")
+
+    # previous_schema already carries audit_state, exactly as the rebase supplies it when the
+    # inheritance arrives from the base branch rather than from the branch's own schema.
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=new_schema,
+        new_node_schema=new_schema,
+        schema_path=schema_path,
+    )
+    assert migration._newly_inherited_attributes() == []
+
+    result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not result.errors
+    assert await _count_attribute_vertices(db=db, node_label="TestCar", attribute_name="audit_state") == 0
+
+    accord = await NodeManager.get_one(db=db, branch=default_branch, id=car.id)
+    assert accord.get_attribute(name="audit_state").id is None
+
+    # With a previous_schema that predates the inheritance, the same migration repairs the node.
+    previous_without_generic = new_schema.duplicate()
+    previous_without_generic.inherit_from = [
+        kind for kind in previous_without_generic.inherit_from if kind != generic.kind
+    ]
+    previous_without_generic.attributes = [
+        attribute for attribute in previous_without_generic.attributes if attribute.name != "audit_state"
+    ]
+    repairing_migration = NodeKindUpdateMigration(
+        previous_node_schema=previous_without_generic,
+        new_node_schema=new_schema,
+        schema_path=schema_path,
+    )
+    assert [attribute.name for attribute in repairing_migration._newly_inherited_attributes()] == ["audit_state"]
+
+    repair_result = await repairing_migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not repair_result.errors
+    assert await _count_attribute_vertices(db=db, node_label="TestCar", attribute_name="audit_state") == 1
+
+    accord_repaired = await NodeManager.get_one(db=db, branch=default_branch, id=car.id)
+    assert accord_repaired.get_attribute(name="audit_state").id is not None
+    assert accord_repaired.get_attribute(name="audit_state").value == "unreviewed"

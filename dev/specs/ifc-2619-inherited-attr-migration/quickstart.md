@@ -40,11 +40,15 @@ uv run invoke backend.test-integration  # includes backend/tests/integration/sch
 
 ```bash
 # Healing migration suite: damaged default branch, branch-scoped repair, tombstone,
-# NumberPool, healthy no-op, idempotent rerun, self-validation failure path
-uv run pytest -x -v backend/tests/component/core/migrations/graph/test_m075_heal_missing_attribute_rows.py
+# NumberPool (incl. missing-pool failure, runtime row shape, rebase-time branch pass),
+# healthy no-op, idempotent rerun, self-validation failure path, deleted-attribute pins
+uv run pytest -x -v backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/
+
+# Discovery/detection queries: completeness, tombstone clamp, heal floor, duplicated schema vertices
+uv run pytest -x -v backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/test_detection.py
 ```
 
-**Expected**: all pass. No-op cases assert **zero writes**; rerun cases assert second run writes nothing; the seeded-damage cases assert every (active node, schema attribute) pair reads back with a non-null attribute `id` afterward.
+**Expected**: all pass. No-op cases assert **zero writes** via full-graph snapshot equality (before/after `DbSnapshotter` snapshots compare equal — strictly stronger than driver write-counter deltas); rerun cases assert second run writes nothing the same way; the seeded-damage cases assert every (active node, generic-inherited attribute) pair reads back with a non-null attribute `id` afterward. Branch-level pool damage is untouched by `execute()` and healed by `execute_against_branch()` (the rebase-time pass), with allocations following the default branch's.
 
 ## Manual end-to-end (dev stack)
 
@@ -60,9 +64,10 @@ uv run pytest -x -v backend/tests/component/core/migrations/graph/test_m075_heal
 ### Healing (SC-001/002/003/004, damaged install)
 
 1. On a pre-fix version: load v1, create nodes, load v2 (damage occurs); create a branch **after** the damage.
-2. Upgrade to the fixed version and run `infrahub upgrade` (picks up m075 automatically; migration logs per-kind repair counts).
-3. Verify the same three GraphQL operations succeed on the previously-broken nodes — on the default branch **and** on the pre-existing branch without rebasing it.
-4. Re-run `infrahub upgrade` → healing reports zero writes (idempotency).
+2. Upgrade to the fixed version and run `infrahub upgrade` (picks up m076 automatically; migration logs per-kind repair counts and any pool rows deferred to branch rebases; the upgrade marks stale branches for rebase).
+3. Verify the same three GraphQL operations succeed on the previously-broken nodes — on the default branch **and**, for default-backed attributes, on the pre-existing branch without rebasing it.
+4. If the branch carried its own pool-backed damage (inheritance change made on the branch): rebase the branch (already scheduled by the upgrade) and verify the pool attribute reads back with a non-null `id` and a value that does not collide with default-branch allocations.
+5. Re-run `infrahub upgrade` → healing reports zero writes (idempotency).
 
 ## Pre-push gates
 
