@@ -5,7 +5,7 @@ title: Create objects
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-How you create objects depends on how many you are creating and where their definition comes from. There are three ways:
+There are three ways to add objects to Infrahub. Which one you need depends on how many objects you are creating and where their definition comes from:
 
 - **[Directly](#create-objects-directly)** — create objects one at a time through the web interface, `infrahubctl`, the Python SDK, or GraphQL. Use this for a single device, a few prefixes, or any change small enough to enter manually or in a short script.
 - **[From a file](#create-objects-from-a-file)** — declare many objects in a YAML file kept in Git, then load them together. Use this to populate a new instance, or for data that someone should review before it changes.
@@ -13,7 +13,7 @@ How you create objects depends on how many you are creating and where their defi
 
 ## Create objects directly
 
-Four interfaces create objects, and all four produce the same result: the same object, validated against the same schema constraints, on the branch you are working in. What differs is where you are working — a browser, a terminal, a Python program, or any GraphQL client.
+There are four ways to create an object one at a time, and all four produce the same result: the same object, validated against the same schema constraints, on the branch you are working in. Choose based on where you are already working — a browser, a terminal, a Python program, or a GraphQL client.
 
 The example below creates a device named `atl1-edge1` at site `atl1`. On `InfraDevice`, `name` and `type` are required and `site` is a relationship.
 
@@ -27,7 +27,7 @@ Use the web interface for a single object, and for the first object of a kind yo
 3. Fill in the name and type.
 4. Select a site, then save.
 
-In the web form you can also pick an Object Template, assign Profiles, and allocate from a resource pool while filling in the object. The other interfaces accept the same values as fields.
+In the web form you can also choose an Object Template, assign Profiles, and allocate from a resource pool while filling in the object. The other three accept the same values as fields.
 
 </TabItem>
 
@@ -128,9 +128,9 @@ There are two ways to load a file, and they differ in what happens afterwards. `
 
 ## Create objects from a workflow
 
-Both create objects from a configuration you set up once, rather than from a command you type each time, and both keep the result correct as the source data changes. That is what suits them to data no one should be maintaining manually — the objects that ought to exist because something else is true.
+Some objects exist because other data does, and they have to stay correct as that data changes. Maintaining them manually means repeating the same work every time something upstream changes.
 
-A Generator works from data already in Infrahub. Infrahub Sync works from data in another system.
+Configure a Generator or an Infrahub Sync project once, and it creates those objects and updates them when the source data changes. A Generator works from data already in Infrahub. Infrahub Sync works from data in another system.
 
 ### Generators
 
@@ -165,7 +165,7 @@ A new object exists on the branch it was created on. On a branch other than the 
 
 Every attribute records how its value was set, which you can read back through [metadata and lineage](./metadata.mdx). You either entered the value while creating the object, or you set it up in advance so that you do not fill it in each time:
 
-- Pick an [Object Template](../object-templates/overview.mdx) to start the object with a set of components already in place.
+- Choose an [Object Template](../object-templates/overview.mdx) to start the object with a set of components already in place.
 - Assign a [Profile](../profiles/overview.mdx) to give the object attribute values it inherits, and override any of them on the object itself.
 - Allocate from a [Resource Manager](../resource-manager/overview.mdx) pool to take the next free IP address or VLAN ID.
 
