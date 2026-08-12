@@ -91,6 +91,21 @@ class DeadlockOnceGraphQuery(Query):
         return await super().execute(db=db, timeout_seconds=timeout_seconds)
 
 
+class AlwaysDeadlockGraphQuery(Query):
+    name = "test_always_deadlock_graph"
+    type: QueryType = QueryType.WRITE
+    insert_return = False
+
+    calls: ClassVar[int] = 0
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.add_to_query("RETURN 1 AS num")
+
+    async def execute(self, db: InfrahubDatabase, timeout_seconds: float | None = None) -> Self:
+        type(self).calls += 1
+        raise TransientError("deadlock detected")
+
+
 def _make_schema_migration(queries: Sequence[type[MigrationBaseQuery]]) -> SchemaMigration:
     return SchemaMigration(
         name="test.migration",
@@ -101,8 +116,14 @@ def _make_schema_migration(queries: Sequence[type[MigrationBaseQuery]]) -> Schem
 
 @pytest.mark.usefixtures("_fast_retry")
 class TestMigrationTransientErrorRetry:
-    async def test_schema_migration_retries_transient_error(self, db: InfrahubDatabase, default_branch: Branch) -> None:
+    @pytest.fixture(autouse=True)
+    def _reset_query_call_counts(self) -> None:
         DeadlockOnceMigrationQuery.calls = 0
+        AlwaysDeadlockMigrationQuery.calls = 0
+        DeadlockOnceGraphQuery.calls = 0
+        AlwaysDeadlockGraphQuery.calls = 0
+
+    async def test_schema_migration_retries_transient_error(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         migration = _make_schema_migration(queries=[DeadlockOnceMigrationQuery])
 
         result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
@@ -115,7 +136,6 @@ class TestMigrationTransientErrorRetry:
     async def test_schema_migration_raises_after_retries_exhausted(
         self, db: InfrahubDatabase, default_branch: Branch
     ) -> None:
-        AlwaysDeadlockMigrationQuery.calls = 0
         migration = _make_schema_migration(queries=[AlwaysDeadlockMigrationQuery])
 
         with pytest.raises(TransientError, match=r"deadlock detected"):
@@ -124,7 +144,6 @@ class TestMigrationTransientErrorRetry:
         assert AlwaysDeadlockMigrationQuery.calls == config.SETTINGS.database.retry_limit
 
     async def test_graph_migration_retries_transient_error(self, db: InfrahubDatabase) -> None:
-        DeadlockOnceGraphQuery.calls = 0
         migration = GraphMigration(
             name="test-graph-migration",
             description="Test graph migration retry",
@@ -137,3 +156,17 @@ class TestMigrationTransientErrorRetry:
         assert result.errors == []
         assert result.success
         assert DeadlockOnceGraphQuery.calls == 2
+
+    async def test_graph_migration_outside_transaction_records_transient_error(self, db: InfrahubDatabase) -> None:
+        migration = GraphMigration(
+            name="test-graph-migration",
+            description="Test graph migration outside a transaction",
+            minimum_version=0,
+            queries=[AlwaysDeadlockGraphQuery],
+        )
+
+        result = await migration.do_execute(migration_input=MigrationInput(db=db))
+
+        assert not result.success
+        assert result.errors == ["deadlock detected"]
+        assert AlwaysDeadlockGraphQuery.calls == 1

@@ -156,11 +156,16 @@ class SchemaMigration(BaseModel):
                 )
                 await query.execute(db=migration_input.db)
                 result.nbr_migrations_executed += query.get_nbr_migrations_executed()
-            except TransientError:
-                # A transient error aborts the enclosing transaction server-side: recording it here
-                # would leave the commit to fail with a non-retryable TransactionError, so it must
-                # propagate to the transaction owner to be replayed on a fresh transaction.
-                raise
+            except TransientError as exc:
+                if migration_input.db.is_transaction:
+                    # A transient error aborts the enclosing transaction server-side: recording it here
+                    # would leave the commit to fail with a non-retryable TransactionError, so it must
+                    # propagate to the transaction owner to be replayed on a fresh transaction.
+                    raise
+                # Running outside a transaction there is nothing to abort and no owner to replay it,
+                # so keep the failed-result contract instead of surfacing an unhandled error.
+                result.errors.append(str(exc))
+                return result
             except Exception as exc:
                 result.errors.append(str(exc))
                 return result
@@ -251,9 +256,14 @@ class GraphMigration(BaseMigration):
             try:
                 query = await migration_query.init(db=migration_input.db, at=migration_input.at)
                 await query.execute(db=migration_input.db)
-            except TransientError:
-                # Must reach the transaction owner to be replayed on a fresh transaction.
-                raise
+            except TransientError as exc:
+                if migration_input.db.is_transaction:
+                    # Must reach the transaction owner to be replayed on a fresh transaction.
+                    raise
+                # Running outside a transaction there is no owner to replay the error, so keep the
+                # failed-result contract instead of surfacing an unhandled error.
+                result.errors.append(str(exc))
+                return result
             except Exception as exc:
                 result.errors.append(str(exc))
                 return result
