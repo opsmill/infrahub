@@ -41,7 +41,13 @@ Before proceeding, verify:
    ```bash
    git branch --show-current
    ```
-   Inform the user which branch they're on.
+   Inform the user which branch they're on. The release commits must go on a
+   dedicated branch that is PR'd into `stable` (never commit them to `stable` or
+   `develop` directly). Do NOT name that branch `release-<version>` or anything
+   matching `release-*`: GitHub branch protection on `release-*` blocks
+   follow-up pushes, which patch releases often need when extra commits are
+   added after the first. Prefer a non-matching name such as
+   `chore/release-<version>`.
 
 3. **Preview towncrier output**:
    ```bash
@@ -180,11 +186,17 @@ Present a summary of changes made:
 
 Suggest next steps (DO NOT execute these automatically):
 1. Review the changes: `git diff`
-2. Stage and commit: `git add -A && git commit -m "chore: release <version>"`
-3. Push the branch: `git push -u origin <branch_name>`
-4. Open a PR targeting `stable`
-5. Merge the PR
-6. Create a GitHub release at https://github.com/opsmill/infrahub/releases/new with tag `infrahub-v<version>`
+2. Create a dedicated release branch off the current base. Do NOT name it
+   `release-<version>` or anything matching `release-*`: GitHub branch
+   protection on `release-*` blocks follow-up pushes, which is a problem for
+   patch releases where you may need to add commits after the first one. Use a
+   non-matching name such as `chore/release-<version>`:
+   `git switch -c chore/release-<version>`
+3. Stage and commit: `git add -A && git commit -m "chore: release <version>"`
+4. Push the branch: `git push -u origin chore/release-<version>`
+5. Open a PR targeting `stable`
+6. Merge the PR
+7. Create a GitHub release at https://github.com/opsmill/infrahub/releases/new with tag `infrahub-v<version>`
 
 **IMPORTANT: Do NOT automatically commit or push. Let the user review and execute these steps manually.**
 
