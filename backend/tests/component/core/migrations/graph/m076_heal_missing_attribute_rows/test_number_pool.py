@@ -124,6 +124,8 @@ class TestNumberPoolHeal:
         assert set(rack_units) == {*seeded.damaged_uuids, seeded.runtime_server_uuid}
         assert all(isinstance(value, int) and 1 <= value <= 100 for value in rack_units.values())
         assert len(set(rack_units.values())) == 4
+        assert rack_units[seeded.runtime_server_uuid] == 1
+        assert {rack_units[uuid] for uuid in seeded.damaged_uuids} == {2, 3, 4}
         for node in nodes.values():
             assert node.get_attribute(name="rack_unit").source_id == seeded.pool_uuid
 
