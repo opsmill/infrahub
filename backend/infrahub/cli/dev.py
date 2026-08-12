@@ -19,6 +19,7 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema.write_json_schema import build_write_json_schema
 from infrahub.core.utils import delete_all_nodes
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.schema_sort import sort_schema_ast
@@ -79,7 +80,7 @@ async def export_node_schema(
 ) -> None:
     """Export the repository configuration to a file."""
     config.load_and_exit(config_file_name=config_file)
-    schema = SchemaLoadAPI.model_json_schema()
+    schema = build_write_json_schema(schema=SchemaLoadAPI.model_json_schema())
     schema["title"] = "InfrahubSchema"
     content = json.dumps(schema, indent=4)
     out.parent.mkdir(parents=True, exist_ok=True)
