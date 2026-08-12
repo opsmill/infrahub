@@ -3,6 +3,7 @@ from typing import Any
 
 import pytest
 from infrahub_sdk import InfrahubClient
+from infrahub_sdk.schema import SchemaLoadResponse
 
 from infrahub.core.branch.models import Branch
 from infrahub.core.manager import NodeManager
@@ -136,22 +137,29 @@ class TestSchemaAddInheritedGeneric(TestSchemaLifecycleBase):
 
         return {"server1": server1.id, "server2": server2.id}
 
+    @pytest.fixture(scope="class")
+    async def step02_response(
+        self,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step02: dict[str, Any],
+    ) -> SchemaLoadResponse:
+        """Load the schema where the server kind starts inheriting the generic.
+
+        A fixture rather than a step test so every step-02 assertion declares the load it needs and
+        can run on its own.
+        """
+        return await client.schema.load(schemas=[schema_step02])
+
     async def test_step01_baseline(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         servers = await NodeManager.query(db=db, schema=SERVER_KIND)
         assert len(servers) == 2
 
-    async def test_step02_load_inherited_generic(
-        self,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
-        initial_dataset: dict[str, str],
-        schema_step02: dict[str, Any],
-    ) -> None:
-        response = await client.schema.load(schemas=[schema_step02])
-        assert not response.errors
+    async def test_step02_load_inherited_generic(self, step02_response: SchemaLoadResponse) -> None:
+        assert not step02_response.errors
 
     async def test_step02_read_returns_real_attribute(
-        self, db: InfrahubDatabase, initial_dataset: dict[str, str]
+        self, db: InfrahubDatabase, step02_response: SchemaLoadResponse
     ) -> None:
         servers = await NodeManager.query(db=db, schema=SERVER_KIND, filters={"name__value": "server-1"})
         assert len(servers) == 1
@@ -160,7 +168,7 @@ class TestSchemaAddInheritedGeneric(TestSchemaLifecycleBase):
         assert status_attr.value == "active"
         assert status_attr.is_default is True
 
-    async def test_step02_update_persists(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
+    async def test_step02_update_persists(self, db: InfrahubDatabase, step02_response: SchemaLoadResponse) -> None:
         servers = await NodeManager.query(db=db, schema=SERVER_KIND, filters={"name__value": "server-1"})
         assert len(servers) == 1
         server = servers[0]
@@ -173,8 +181,16 @@ class TestSchemaAddInheritedGeneric(TestSchemaLifecycleBase):
         assert status_attr.value == "planned"
         assert status_attr.is_default is False
 
-    async def test_step02_filter_matches(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
-        # server-2 was never explicitly updated and must match on the inherited default
+    async def test_step02_filter_matches(
+        self, db: InfrahubDatabase, initial_dataset: dict[str, str], step02_response: SchemaLoadResponse
+    ) -> None:
+        # move server-1 off the default rather than inheriting that state from a sibling test, so
+        # server-2 is the only node left matching on the inherited default
+        servers = await NodeManager.query(db=db, schema=SERVER_KIND, filters={"name__value": "server-1"})
+        assert len(servers) == 1
+        servers[0].get_attribute(name="status").value = "planned"
+        await servers[0].save(db=db)
+
         matches = await NodeManager.query(db=db, schema=SERVER_KIND, filters={"status__value": "active"})
         assert [node.id for node in matches] == [initial_dataset["server2"]]
 
