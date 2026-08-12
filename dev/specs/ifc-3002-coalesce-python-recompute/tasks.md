@@ -173,9 +173,9 @@
 
 - [ ] T061 Re-run the harness at 100, 1000 and 2000 and record the after numbers in `specs/ifc-3002-coalesce-python-recompute/baseline.md`, including the transform-execution count
 - [ ] T062 Evaluate SC-007 against those numbers. If transform executions exceed the baseline, or the window improves by less than 50%, revert T037 and T038 and reopen the design
-- [ ] T063 [P] Update `dev/knowledge/backend/merge-recompute.md`, which currently states Python transforms are not part of the coalesced pass
-- [ ] T064 [P] Update `dev/knowledge/backend/computed-attributes.md` with the new family, the switch and the deleted-peer behaviour
-- [ ] T065 [P] Add a changelog fragment at `changelog/+ifc3002.fixed.md`
+- [x] T063 [P] Update `dev/knowledge/backend/merge-recompute.md`, which currently states Python transforms are not part of the coalesced pass
+- [x] T064 [P] Update `dev/knowledge/backend/computed-attributes.md` with the new family, the switch and the deleted-peer behaviour
+- [x] T065 [P] Add a changelog fragment at `changelog/+ifc3002.fixed.md`
 - [ ] T066 Run `uv run invoke format`, `uv run invoke lint` and `uv run ruff format --check backend/`
 - [ ] T067 Run `uv run invoke backend.generate` and `uv run invoke docs.validate` and confirm no diff
 - [ ] T068 Run `/pre-ci` before pushing

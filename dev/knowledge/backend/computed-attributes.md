@@ -39,7 +39,7 @@ These changes are handled by Prefect background tasks triggered by `NodeCreatedE
 
 **When**: A branch merge or rebase changes nodes that feed computed attributes.
 
-A merge or rebase does not emit one event and one flow per changed node. It runs a single coalesced recompute for the whole change set, writes the results in bulk, and chains any value that reads them. The three families (computed attributes, display labels, human-friendly ids) share this path, and the per-node triggers are suppressed for merge/rebase/recompute-origin events so the change is processed once. See [merge-recompute.md](merge-recompute.md).
+A merge or rebase does not emit one event and one flow per changed node. It runs a single coalesced recompute for the whole change set, writes the results in bulk, and chains any value that reads them. The four families (Jinja2 computed attributes, display labels, human-friendly ids, Python transform computed attributes) share this path, and the per-node triggers are suppressed for merge/rebase/recompute-origin events so the change is processed once. See [merge-recompute.md](merge-recompute.md).
 
 ## Self-Targeting Filter (`targets_self`)
 
@@ -102,7 +102,9 @@ The `ComputedAttributes` facade builds `python_attributes_by_transform`, a `dict
 
 ### Recompute Drivers
 
-Two independent paths recompute these attributes:
+Three independent paths recompute these attributes:
+
+- **Merge or rebase** — the coalesced pass covers this family, so a merge no longer starts one recompute per changed node. The pass names the affected attributes from the schema, then resolves which nodes actually read a change; when it cannot resolve them it recomputes the whole kind. Behind `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE`; turning it off returns to the per-node path. See [merge-recompute.md](merge-recompute.md).
 
 - **Schema change** — a `SchemaUpdatedEvent` runs `computed_attribute_setup_python`, which reconciles the automations and, via `RecomputeScoper`, submits a recompute only for the attributes whose backing fields changed.
 - **Git change** — importing a repository writes each transform's `fingerprint`. That write emits a `CoreTransformPython` node lifecycle event, matched by three builtin triggers:
@@ -123,7 +125,7 @@ Besides the transform-lifecycle triggers, each `(kind, attribute)` has a data-pa
 
 ### Batch Execution
 
-`process_transform` processes its node ids as one batch per attribute, not one task per node:
+`process_transform` recomputes the one attribute it is named, for its node ids, as a single batch rather than one task per node:
 
 - The transform's git repository is initialized once for the whole batch and shared across the per-node executions. Transform execution must not mutate the shared checkout.
 - Each node's read still runs individually with `update_group=True`, keeping the node subscribed to the transform's query group (the reverse index that routes future source changes to affected readers).
@@ -135,7 +137,9 @@ Besides the transform-lifecycle triggers, each `(kind, attribute)` has a data-pa
 ### Invariants
 
 - **Over-recompute is acceptable, under-recompute is not.** Any fallback or error path recomputes rather than risk a stale value.
-- **The `origin=live` filter** keeps merge and rebase replays out; those are handled by the coalesced merge/rebase recompute path, so the lifecycle triggers do not fire a second time.
+- **The `origin=live` filter** keeps merge and rebase replays out; those are handled by the coalesced merge/rebase recompute path, so neither the lifecycle triggers nor the node-input automations fire a second time.
+- **A recompute is coalesced only when its caller says so.** Three callers pass `process_transform` a list of node ids and only the merge and rebase pass is coalesced, so the mode is a parameter and never inferred from the arguments. It decides the origin stamped on the write, and therefore who continues the chain.
+- **A schema the worker has not loaded yet is not an answer.** Before concluding a branch has no such attribute to refresh, `process_transform` waits for the workers to agree on the schema and looks again. With the automations suppressed there is no second chance.
 - **The recompute write targets the attribute's own node kind, not `CoreTransformPython`,** so it never re-fires the lifecycle triggers (no loop).
 - **A null fingerprint** (a pre-upgrade node) is treated as unknown: the first import stamps a value and recomputes once, then self-heals.
 - **No `watch` declaration** folds the commit id into the fingerprint, so such a transform recomputes on every commit, but still only its own attributes.
