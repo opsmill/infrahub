@@ -6,6 +6,7 @@ from dataclasses import replace
 from typing import Any
 
 import pytest
+from structlog.testing import capture_logs
 
 from infrahub.core.merge.python_target_resolution import NarrowingPythonTargetResolver
 from infrahub.core.merge.recompute_coalescing import (
@@ -341,3 +342,41 @@ async def test_kind_level_dependency_selects_on_appearance_not_on_field_edits(ac
     )
 
     assert (result.targets != frozenset()) is expected
+
+
+async def test_the_selection_is_logged_with_a_node_count_per_pair() -> None:
+    """A merge that recomputed too much has to be readable from the logs afterwards."""
+    resolver, _ = _resolver(readers={OWNER_KIND: frozenset({"shirt-1", "shirt-2"})})
+    changes = [
+        MergeChange(node_id="color-1", kind=PEER_KIND, action=UPDATED, changed_fields=frozenset({"description"}))
+    ]
+
+    with capture_logs() as records:
+        await resolver.resolve(coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None)
+
+    selection = next(record for record in records if record["event"] == "COALESCED_PYTHON selected targets")
+    assert selection["branch"] == "main"
+    assert selection["considered"] == 1
+    assert selection["selected"] == 1
+    assert selection["widened"] == 0
+    assert selection["targets"] == [f"{OWNER_KIND}.{ATTRIBUTE}=2"]
+
+
+async def test_a_widening_is_logged_with_its_pair_and_reason() -> None:
+    """FR-020 is checked against this: the pair and the why must both survive into the logs."""
+    resolver, _ = _resolver(failing_lookup=True)
+    changes = [
+        MergeChange(node_id="color-1", kind=PEER_KIND, action=UPDATED, changed_fields=frozenset({"description"}))
+    ]
+
+    with capture_logs() as records:
+        await resolver.resolve(coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None)
+
+    widening = next(record for record in records if record["event"] == "COALESCED_PYTHON widened to whole kind")
+    assert widening["kind"] == OWNER_KIND
+    assert widening["attribute"] == ATTRIBUTE
+    assert "subscriber lookup failed" in widening["reason"]
+
+    selection = next(record for record in records if record["event"] == "COALESCED_PYTHON selected targets")
+    assert selection["widened"] == 1
+    assert selection["targets"] == [f"{OWNER_KIND}.{ATTRIBUTE}=whole-kind"]

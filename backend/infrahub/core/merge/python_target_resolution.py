@@ -83,10 +83,16 @@ def widen(target: AffectedTarget, *, reason: str) -> AffectedTarget:
     never widens a different attribute, and never escalates to the whole branch.
     """
     log.debug(
-        "COALESCED_PYTHON widening to whole kind: "
-        f"kind={target.target_kind} attribute={target.attribute_name} reason={reason}"
+        "COALESCED_PYTHON widened to whole kind",
+        kind=target.target_kind,
+        attribute=target.attribute_name,
+        reason=reason,
     )
     return replace(target, precise=False, whole_kind=True, reader_lookups=frozenset())
+
+
+def _node_count(target: AffectedTarget) -> int:
+    return len({node_id for lookup in target.reader_lookups for node_id in lookup.source_node_ids})
 
 
 def just_before(moment: Timestamp) -> Timestamp:
@@ -188,7 +194,28 @@ class NarrowingPythonTargetResolver:
             )
             if resolved_target is not None:
                 resolved.append(resolved_target)
+        self._log_selection(resolved=resolved, considered=len(python_targets), branch=branch)
         return replace_python_targets(coalesced, resolved)
+
+    @staticmethod
+    def _log_selection(*, resolved: list[AffectedTarget], considered: int, branch: str) -> None:
+        """Say what the pass chose, so a merge that recomputed too much can be read from the logs.
+
+        A whole-kind target has no node count to report; it is named as such instead.
+        """
+        selected = [
+            f"{target.target_kind}.{target.attribute_name}="
+            + ("whole-kind" if target.whole_kind else str(_node_count(target)))
+            for target in sorted(resolved, key=lambda item: (item.target_kind, item.attribute_name or ""))
+        ]
+        log.info(
+            "COALESCED_PYTHON selected targets",
+            branch=branch,
+            considered=considered,
+            selected=len(resolved),
+            widened=sum(1 for target in resolved if target.whole_kind),
+            targets=selected,
+        )
 
     async def _readers_of(
         self,

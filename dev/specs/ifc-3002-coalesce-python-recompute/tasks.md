@@ -160,9 +160,9 @@
 
 **Independent Test**: Run a merge mixing a narrow attribute with a widened one, read the logs, then turn the switch off and confirm the previous behaviour returns.
 
-- [ ] T057 [US4] Log the selected attribute-and-kind pairs and their node counts at info level, in `backend/infrahub/core/merge/python_target_resolution.py`
-- [ ] T058 [US4] Log every widening with the affected pair and the reason at debug level, in the same file
-- [ ] T059 [P] [US4] Assert on both log records in `backend/tests/component/merge_recompute_coalescing/test_python_scoping_logs.py`
+- [x] T057 [US4] Log the selected attribute-and-kind pairs and their node counts at info level, in `backend/infrahub/core/merge/python_target_resolution.py`
+- [x] T058 [US4] Log every widening with the affected pair and the reason at debug level, in the same file
+- [x] T059 [P] [US4] Assert on both log records. Done as a unit test in `backend/tests/unit/core/merge/test_python_target_resolution.py` rather than a component one: `structlog.testing.capture_logs` reads the records directly, so the database tier buys nothing
 - [ ] T060 [US4] Integration-test that turning the switch off restores today's per-node behaviour exactly, in `backend/tests/integration_docker/test_merge_recompute.py`
 
 **Checkpoint**: all four stories complete.
