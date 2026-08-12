@@ -1,0 +1,22 @@
+---
+title: Create objects
+---
+
+Infrahub supports several ways to create objects. Pick the one that matches how the data reaches you — a one-off change in the web interface, a batch of records tracked in Git, or a script driving an API.
+
+| Method | Best for | Where to go |
+|---|---|---|
+| Web interface | One-off objects, exploring a new schema | Open the kind's list from the left-hand menu and select **Create \<Kind\>** |
+| `infrahubctl` (CLI) | Interactive work and scripting one object at a time | [Manage objects with infrahubctl](./manage-from-cli.mdx) |
+| YAML object files | Data that changes rarely, tracked in Git, or a bootstrap dataset loaded on demand with `infrahubctl object` | [Load data using YAML file](./load-from-yaml.mdx) |
+| Python SDK | Custom scripts and integrations | [Python SDK]($(base_url)python-sdk/introduction) |
+| GraphQL API | Mutations from any GraphQL client | [Queries & mutations](../development-resources/graphql/queries-and-mutations.mdx) |
+| Generators | New objects generated automatically from existing data | [Generators](../generators/overview.mdx) |
+| Infrahub Sync | Import from an external system such as NetBox or Nautobot | [Infrahub Sync]($(base_url)sync) |
+
+Which method fits best often depends on where you are with a given dataset: importing an existing inventory favors YAML files or Infrahub Sync, while day-to-day changes to an established dataset favor the web interface, the CLI, or the SDK.
+
+## Related
+
+- [Convert object kind](./convert-object-kind.mdx)
+- [Metadata & lineage](./metadata.mdx)
