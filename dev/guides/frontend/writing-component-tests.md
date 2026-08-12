@@ -283,7 +283,7 @@ const initialNodeSchemas = store.get(nodeSchemasAtom);
 beforeAll(() => store.set(nodeSchemasAtom, [generateNodeSchema()]));
 afterAll(() => store.set(nodeSchemasAtom, initialNodeSchemas));
 afterEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks(); // clearAllMocks only clears call history; reset also drops mockReturnValue/mockImplementation overrides
   window.history.replaceState(null, "", window.location.pathname);
 });
 ```

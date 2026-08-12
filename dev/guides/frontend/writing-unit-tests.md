@@ -214,7 +214,7 @@ describe("TaskStatus", () => {
 });
 ```
 
-### Testing module-level singletons
+## Testing Module-Level Singletons
 
 If the module under test lazily memoizes a resource at module scope (a `Map`/cache of clients,
 connections, or other stateful handles keyed by some input), the cached instance's internal state

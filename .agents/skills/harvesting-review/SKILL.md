@@ -249,7 +249,8 @@ must fire while coding.** Confirm the target file exists (`ls`/grep it, match si
 route a lesson there — never invent a plausible-looking path. Also check the topic still lives in `dev/`
 at all: changelog conventions, for one, moved out to the `creating-changelog-entries` skill. When an
 existing skill or command already owns the workflow a lesson touches (`creating-changelog-entries`,
-`pre-ci`, the org-level `pruning-residues`), route the edit into that skill and leave at most a pointer
+`pre-ci`, or `pruning-residues` from the org skills plugin — not vendored in this repo but available to
+agents running with it), route the edit into that skill and leave at most a pointer
 in `dev/` — the same rule stated in two homes drifts apart.
 
 ### 5. Sweep for rot (prune before you add)
@@ -266,10 +267,10 @@ docs already forbid — a rule existing but nobody enforcing it against older co
 "covered but ineffective" failure mode, aimed backward instead of at this PR:
 
 ```bash
-grep -rnoE '(PR #[0-9]+|#[0-9]{4,6}\b)' dev/guidelines dev/knowledge dev/guides AGENTS.md */AGENTS.md
-grep -rnoE '[A-Za-z0-9_/-]+\.(py|ts|tsx):[0-9]+(-[0-9]+)?' dev/guidelines dev/knowledge dev/guides
+grep -rnoE '(PR #[0-9]+|#[0-9]{4,6}\b)' dev/guidelines dev/knowledge dev/guides .agents/rules AGENTS.md */AGENTS.md
+grep -rnoE '[A-Za-z0-9_/-]+\.(py|ts|tsx):[0-9]+(-[0-9]+)?' dev/guidelines dev/knowledge dev/guides .agents/rules
 grep -rniE '(known gap|currently (broken|hand-duplicated|unfixed)|not yet fixed|for now,? (this|it))' \
-  dev/guidelines dev/knowledge dev/guides
+  dev/guidelines dev/knowledge dev/guides .agents/rules
 ```
 
 A hit outside this run's own new edits is debt from an earlier run (or from a doc written outside
@@ -310,8 +311,8 @@ existing section before adding one; keep `.agents/rules` lean) and the §5 pruni
 **Now apply *Refine, don't accrete* (top of this file)** — measure the file against its size range, cut
 what the new rule supersedes, report the line counts. The investigation trail, the reviewer quotes, and
 the ticket and PR numbers belong in this report and in the commit message, never in the doc text —
-sweeping exactly that residue out of an artifact is what the org-level `pruning-residues` skill does,
-so run it over the final diff when available. A lesson that needs three paragraphs to state has not
+sweeping exactly that residue out of an artifact is what `pruning-residues` (org skills plugin, not
+vendored here) does, so run it over the final diff when the plugin is loaded. A lesson that needs three paragraphs to state has not
 been narrowed enough — go back to §3d. Match any
 example code to `.agents/rules/code-doc-style.md` (no ticket/issue IDs, no naming specific callers).
 **Never resolve review threads** — reply if useful, but resolution is the human reviewer's call. After

@@ -272,11 +272,15 @@ class StaleEntryCleaner:
 
 # ✅ Good - no return; the test asserts against the fake store it wrote to
 class StaleEntryCleaner:
+    def __init__(self, cache: MemoryCache) -> None:
+        self._cache = cache
+
     async def clear_expired(self) -> None:
         async for key in self._sweep():
             ...
 
 async def test_clears_expired_entries(cache: MemoryCache) -> None:
+    cleaner = StaleEntryCleaner(cache=cache)
     await cleaner.clear_expired()
     assert cache.storage == {}
 ```

@@ -9,4 +9,6 @@ Rules for editing the bundled dashboards under `provisioning/dashboards/`.
   drill-down/data links and legend URLs carry `var-<name>=` references that break silently.
 - These files are bind-mounted into `docker-compose-observability.yml`, and the standalone variant
   embeds them inline. After editing anything under `provisioning/`, regenerate
-  `docker-compose-observability-standalone.yml` with `python development/convert_compose_standalone.py`.
+  `docker-compose-observability-standalone.yml` by running `python convert_compose_standalone.py`
+  from `development/` (the script resolves its default input/output paths against the working
+  directory).

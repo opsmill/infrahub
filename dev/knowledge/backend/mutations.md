@@ -85,7 +85,8 @@ mutate_upsert()
 ## Transaction Retry
 
 `retry_db_transaction` (in `backend/infrahub/database/__init__.py`) replays the *entire* wrapped
-function when Neo4j raises a `TransientError`. Its placement is therefore semantics-bearing, not
+function when Neo4j raises a `TransientError` — or a `ClientError` coded
+`Neo.ClientError.Statement.EntityNotFound`. Its placement is therefore semantics-bearing, not
 decoration:
 
 - Wrap only a scope whose writes are fully contained in a transaction the retry can roll back. The
