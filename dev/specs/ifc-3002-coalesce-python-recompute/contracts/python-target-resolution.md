@@ -26,12 +26,15 @@ The protocol is `PythonTargetResolver`, with a single entry point:
 ```text
 PythonTargetResolver.resolve(
     coalesced: CoalescedRecompute,
+    changes: Sequence[MergeChange],
     branch: str,
     deleted_at: Timestamp | None,
 ) -> CoalescedRecompute
 ```
 
 Same type in, same type out. Every consumer downstream is unaffected.
+
+`changes` is the merge or rebase change set. The read-field test needs each changed node's changed fields, and the target does not carry them because the builder groups them away when it deduplicates. It is transient work data rather than a collaborator, so it is passed to the method rather than injected. Added during implementation; the first draft of this contract omitted it and the narrowing could not have been written against that signature.
 
 `deleted_at` is the merge's own timestamp, and is `None` on a path with no deletes. Guarantee 8 below is the only thing that reads it.
 
