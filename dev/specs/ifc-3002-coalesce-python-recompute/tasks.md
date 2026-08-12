@@ -74,10 +74,10 @@
 - [x] T016 [P] [US1] Add the in-memory resolver implementation in `backend/tests/helpers/merge_recompute/resolver.py`, able to return canned mappings and to simulate each failure row
 - [x] T017 [US1] Implement read-field index derivation, one pass per coalesced pass, uncached. Landed in `backend/infrahub/core/merge/python_target_sources.py`: the database-backed sources are split from the narrowing so the decision logic stays testable without a database
 - [x] T018 [US1] Implement the chunked subscriber lookup in `python_target_sources.py`, bounded by the existing submission chunk size, with an explicit request timeout. The shared subscriber helper gained `at` and `request_timeout` passthroughs
-- [ ] T019 [US1] Handle the kind-level dependency case in the narrowing: a read kind present in `read_kinds` but absent from `read_fields` must react to the kind appearing or disappearing and must not be dropped by the field test
-- [ ] T020 [US1] Implement the widen-on-failure policy in the resolver: catch internally, widen the affected pair only, log the reason, never propagate
-- [ ] T021 [P] [US1] Unit-test every row of the failure table in `backend/tests/unit/core/merge/test_python_target_resolution.py`, including that "looked, found none" drops the target, "could not look" widens it, and a widened target produces exactly one submission
-- [ ] T022 [P] [US1] Unit-test the kind-level dependency case in the same file: a changed field on a kind with no read fields does not select, adding or removing that kind does
+- [x] T019 [US1] Handle the kind-level dependency case in the narrowing: a read kind present in `read_kinds` but absent from `read_fields` must react to the kind appearing or disappearing and must not be dropped by the field test
+- [x] T020 [US1] Implement the widen-on-failure policy in the resolver: catch internally, widen the affected pair only, log the reason, never propagate
+- [x] T021 [P] [US1] Unit-test every row of the failure table in `backend/tests/unit/core/merge/test_python_target_resolution.py`, including that "looked, found none" drops the target, "could not look" widens it, and a widened target produces exactly one submission
+- [x] T022 [P] [US1] Unit-test the kind-level dependency case in the same file: a changed field on a kind with no read fields does not select, adding or removing that kind does
 
 ### Builder
 
