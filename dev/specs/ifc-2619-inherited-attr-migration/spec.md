@@ -72,10 +72,10 @@ A branch user whose branch introduced the damaging schema change gets repaired d
 
 ### Edge Cases
 
-- **Tombstoned attribute edges**: a node whose only row for a schema-defined attribute is deleted (the remove-then-re-add-`inherit_from` shape) counts as damaged; the healed row's timestamp must not resurrect history before the tombstone.
+- **Tombstoned attribute edges**: a node whose only row for a schema-defined attribute is deleted (the remove-then-re-add-`inherit_from` shape) counts as damaged. The healed row is a new active row created at the time the repair runs, so it always postdates the tombstone and cannot resurrect history before it.
 - **Deleted nodes**: skipped entirely — only nodes active at migration time are examined.
 - **Mandatory attribute with no default gained via inheritance**: healed (and forward-migrated) as a null-valued row — visible and user-fixable rather than absent. No special-casing.
-- **Generic changed after inheritance began**: attributes the generic gained after a kind inherited it were already handled by the generic-scoped path; per-attribute timestamp derivation from schema vertices distinguishes these from genuinely missing rows.
+- **Generic changed after inheritance began**: attributes the generic gained after a kind inherited it were already handled by the generic-scoped path. Detection asks only whether an active row exists at audit time, so rows that path already created are never reported as damage — no timestamp derivation is involved.
 - **Simultaneous new-generic + new-inheritor in one schema load**: phase ordering guarantees the kind update completes before attribute-adds run; idempotency guards make the overlap converge.
 - **Partial failure mid-heal**: all repair queries are idempotent; a rerun (or the retry policy) completes the remainder, and validation gates success.
 - **Concurrent NumberPool usage across branches**: healing allocates at run time via the reservation-aware allocation path; the allocation path's branch- and time-scoping is verified during implementation before run-time allocations are trusted (see Assumptions). Branch-level pool damage is deferred to the branch's post-upgrade rebase so every branch allocation follows the default branch's.
