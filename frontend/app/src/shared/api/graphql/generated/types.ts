@@ -17946,6 +17946,23 @@ export type HttpResponse = {
   status_code: Maybe<Scalars['Int']['output']>;
 };
 
+/** Attribute of type IPAddress */
+export type IpAddress = AttributeInterface & {
+  __typename: 'IPAddress';
+  id: Maybe<Scalars['String']['output']>;
+  is_default: Maybe<Scalars['Boolean']['output']>;
+  is_from_profile: Maybe<Scalars['Boolean']['output']>;
+  is_protected: Maybe<Scalars['Boolean']['output']>;
+  owner: Maybe<LineageOwner>;
+  permissions: Maybe<PermissionType>;
+  source: Maybe<LineageSource>;
+  /** Date/Time when the attribute was last modified by a user or a system task */
+  updated_at: Maybe<Scalars['DateTime']['output']>;
+  updated_by: Maybe<CoreGenericAccount>;
+  value: Maybe<Scalars['String']['output']>;
+  version: Maybe<Scalars['Int']['output']>;
+};
+
 export type IpAddressGetNextAvailable = {
   __typename: 'IPAddressGetNextAvailable';
   address: Scalars['String']['output'];

@@ -1,9 +1,9 @@
 import type React from "react";
-import type { TreeProps as AriaTreeProps } from "react-aria-components";
 
 import { ChevronRightIcon } from "lucide-react";
 import {
   Tree as AriaTree,
+  type TreeProps as AriaTreeProps,
   TreeItem as AriaTreeItem,
   TreeItemContent as AriaTreeItemContent,
   type TreeItemContentProps as AriaTreeItemContentProps,
