@@ -201,7 +201,7 @@ export const ProposedChangeDetails = ({
 
                 <DateDisplay
                   date={proposedChangeData.description.updated_at}
-                  className="ml-auto font-normal text-gray-600 text-xs"
+                  className="ml-auto font-normal text-foreground-muted text-xs"
                 />
               </CardHeader>
 

@@ -32,19 +32,19 @@ const getClassName = (type?: CIRCLE_BADGE_TYPES, onClick?: Function) => {
     }
     case CIRCLE_BADGE_TYPES.WARNING: {
       return `
-        bg-yellow-200 text-gray-800
+        bg-yellow-200 text-foreground
         ${onClick ? "cursor-pointer hover:bg-yellow-100" : ""}
       `;
     }
     case CIRCLE_BADGE_TYPES.LIGHT: {
       return `
-        bg-white text-gray-800
+        bg-white text-foreground
         ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
       `;
     }
     case CIRCLE_BADGE_TYPES.GHOST: {
       return `
-        text-gray-800
+        text-foreground
         ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
       `;
     }

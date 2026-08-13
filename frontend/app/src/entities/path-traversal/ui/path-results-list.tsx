@@ -120,7 +120,7 @@ export function PathResultsList({
                       <span
                         className={classNames(
                           "truncate font-medium text-xs",
-                          isExpanded ? v.selectedTitle : "text-gray-600"
+                          isExpanded ? v.selectedTitle : "text-foreground-muted"
                         )}
                       >
                         {getItemTitle(path, index)}

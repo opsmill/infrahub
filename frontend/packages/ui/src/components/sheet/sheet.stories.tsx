@@ -32,7 +32,7 @@ function NestedSheet({ depth = ROOT_DEPTH }: { depth?: number }) {
       <Sheet isOpen={isOpen} onOpenChange={setIsOpen} aria-label={`Sheet level ${level}`}>
         <div className="flex flex-col gap-3">
           <h2 className="text-base font-medium text-stone-900">Level {level}</h2>
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-foreground-muted">
             Each open sheet pushes the previous ones to the left. Press Escape or click outside to
             close the topmost sheet.
           </p>
@@ -68,7 +68,7 @@ function DismissGuardContent({ close }: { close: () => void }) {
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-base font-medium text-stone-900">Edit description</h2>
-      <p className="text-sm text-neutral-600">
+      <p className="text-sm text-foreground-muted">
         Type something below, then press Escape or click outside: the sheet refuses to close while
         the text is unsaved. Clear the text to make it dismissable again.
       </p>
@@ -123,7 +123,7 @@ export const Playground: Story = {
     <Sheet {...args}>
       <div className="flex flex-col gap-3">
         <h2 className="text-base font-medium text-stone-900">Sheet</h2>
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-foreground-muted">
           A side panel anchored to the right edge of the viewport. Toggle the isOpen control to open
           and close it.
         </p>

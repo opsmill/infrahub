@@ -18,7 +18,7 @@ export function DiffBranchNotFound({ branchName }: DiffBranchNotFoundProps) {
       </div>
 
       <h1 className="font-semibold text-lg">Branch not available</h1>
-      <p className="text-center text-gray-600">
+      <p className="text-center text-foreground-muted">
         The branch <span className="font-semibold">{branchName}</span> has been deleted and its diff
         data is no longer available.
       </p>

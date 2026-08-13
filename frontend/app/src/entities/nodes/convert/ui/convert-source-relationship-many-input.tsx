@@ -92,7 +92,7 @@ export const ConvertSourceRelationshipManyInput = ({
             )}
           </div>
 
-          <button type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
+          <button type="button" className="h-3.5 w-3.5 text-foreground-muted outline-hidden">
             <Icon icon="mdi:unfold-more-horizontal" />
           </button>
         </div>

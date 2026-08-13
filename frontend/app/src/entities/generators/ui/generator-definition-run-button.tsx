@@ -101,7 +101,7 @@ export function GeneratorDefinitionRunButton({
               <Text slot="label" className="font-semibold">
                 All targets
               </Text>
-              <Text slot="description" className="text-gray-600 text-xs">
+              <Text slot="description" className="text-foreground-muted text-xs">
                 Generate for all members in the target group
               </Text>
             </MenuItem>
@@ -112,7 +112,7 @@ export function GeneratorDefinitionRunButton({
               <Text slot="label" className="font-semibold">
                 Selected targets
               </Text>
-              <Text slot="description" className="text-gray-600 text-xs">
+              <Text slot="description" className="text-foreground-muted text-xs">
                 Choose specific members of target group
               </Text>
             </MenuItem>

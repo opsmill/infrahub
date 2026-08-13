@@ -39,7 +39,7 @@ function ParallelModePlugin() {
       <div className="graphiql-doc-explorer-title mb-4 flex items-center gap-2 font-semibold text-lg">
         Parallel Mode Settings
       </div>
-      <p className="mb-4 text-gray-600 text-sm">
+      <p className="mb-4 text-foreground-muted text-sm">
         When enabled, queries without <code>offset</code> or <code>limit</code> arguments will be
         automatically paginated and executed in parallel for better performance on large datasets.
       </p>
@@ -144,7 +144,7 @@ function ParallelModePlugin() {
 
       <div className="border-t pt-4">
         <div className="font-medium text-gray-700 text-sm">How it works:</div>
-        <ol className="mt-2 list-inside list-decimal space-y-1 text-gray-600 text-xs">
+        <ol className="mt-2 list-inside list-decimal space-y-1 text-foreground-muted text-xs">
           <li>Executes a count query to determine total items</li>
           <li>Splits into multiple paginated queries</li>
           <li>Executes queries in parallel batches</li>

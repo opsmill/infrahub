@@ -155,7 +155,9 @@ export function SchemaSelector({ className }: SchemaSelectorProps) {
                         </Badge>
                       </h2>
 
-                      <p className="mt-1 pl-1 text-gray-600 text-xs">{schema.description}</p>
+                      <p className="mt-1 pl-1 text-foreground-muted text-xs">
+                        {schema.description}
+                      </p>
                     </div>
                   </div>
                 );

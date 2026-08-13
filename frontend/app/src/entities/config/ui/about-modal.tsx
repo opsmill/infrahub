@@ -59,13 +59,13 @@ function InfoRow({
 }) {
   return (
     <Row className="justify-between">
-      <span className="text-sm text-stone-600">{label}</span>
+      <span className="text-foreground-muted text-sm">{label}</span>
       <Row>
         {isLoading ? (
           <Skeleton className="h-7 w-20" />
         ) : (
           <>
-            <span className="text-sm text-stone-800">{value}</span>
+            <span className="text-foreground text-sm">{value}</span>
             {value && value !== "N/A" && (
               <CopyToClipboardButton data={value} aria-label={`Copy ${label}`} />
             )}

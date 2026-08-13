@@ -81,7 +81,7 @@ export function KindMultiSelect({
                       variant="ghost"
                       preventFocusOnPress
                       onPress={() => toggle(kind)}
-                      className="size-4 text-gray-500 data-hovered:text-gray-800"
+                      className="size-4 text-gray-500 data-hovered:text-foreground"
                       aria-label="Remove"
                       data-testid="remove-option"
                     >
@@ -95,7 +95,7 @@ export function KindMultiSelect({
             <button
               id={id}
               type="button"
-              className="h-3.5 w-3.5 text-gray-600 outline-hidden"
+              className="h-3.5 w-3.5 text-foreground-muted outline-hidden"
               onClick={() => setOpen(!open)}
             >
               <Icon icon="mdi:unfold-more-horizontal" />

@@ -22,7 +22,7 @@ export function CommandInput({ className, ref, ...props }: CommandInputProps) {
   return (
     <div
       className={classNames(
-        "flex h-10 shrink-0 items-center border-b text-neutral-800 outline-hidden",
+        "flex h-10 shrink-0 items-center border-b text-foreground outline-hidden",
         className
       )}
     >

@@ -46,7 +46,7 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
           {branch.schema_differs_from_default_branch && <BranchSchemaChangesBadge />}
         </Row>
 
-        <p className="truncate text-gray-600 text-xs">{branch.description}</p>
+        <p className="truncate text-foreground-muted text-xs">{branch.description}</p>
       </Col>
 
       <div className="min-w-8">{branch.sync_with_git && <BranchGitSyncBadge />}</div>

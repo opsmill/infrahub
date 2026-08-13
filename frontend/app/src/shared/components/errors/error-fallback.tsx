@@ -84,7 +84,7 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
               </p>
             </Col>
 
-            <p className="text-gray-600 text-xs">
+            <p className="text-foreground-muted text-xs">
               If this was unexpected, please reach out to us on{" "}
               <a
                 className="underline"
@@ -109,7 +109,7 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
       </Card>
 
       {error?.stack && (
-        <Accordion className="text-gray-600 text-sm" title="View error stack">
+        <Accordion className="text-foreground-muted text-sm" title="View error stack">
           <pre className="rounded-sm bg-red-50 p-2 text-red-800">{error.stack}</pre>
         </Accordion>
       )}

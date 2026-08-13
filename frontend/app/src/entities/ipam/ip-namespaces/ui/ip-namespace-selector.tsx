@@ -40,10 +40,10 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
           className
         )}
       >
-        <Row className="truncate text-gray-600 text-xs">IP Namespace</Row>
+        <Row className="truncate text-foreground-muted text-xs">IP Namespace</Row>
         <Row className="gap-1.5 text-sm leading-3.5">
           <span className="truncate">{getNodeLabel(currentIpNamespace)}</span>
-          <ChevronsUpDownIcon className="ml-auto size-3.5 shrink-0 text-gray-600" />
+          <ChevronsUpDownIcon className="ml-auto size-3.5 shrink-0 text-foreground-muted" />
         </Row>
       </AriaButton>
 

@@ -75,7 +75,7 @@ const EventContent = (props: EventType) => {
     return <AccountLoggedOutEventTitle {...props} />;
   }
 
-  return <span className="text-gray-600 text-sm">{props.event}</span>;
+  return <span className="text-foreground-muted text-sm">{props.event}</span>;
 };
 
 export const EventCard = (props: EventType) => {

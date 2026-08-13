@@ -106,7 +106,7 @@ const ListItems = ({
                 shape="circle"
                 variant="ghost"
                 onPress={() => onDelete(item)}
-                className="h-4 w-4 text-gray-500 data-hovered:text-gray-800"
+                className="h-4 w-4 text-gray-500 data-hovered:text-foreground"
                 aria-label={`Remove ${item}`}
               >
                 &times;

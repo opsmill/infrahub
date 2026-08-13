@@ -38,7 +38,7 @@ const ArtifactTitleContent = (props: ArtifactEvent) => {
 export const ARTIFACT_EVENTS_MAPPING: Record<string, (props: ArtifactEvent) => ReactNode> = {
   "infrahub.artifact.created": (props) => {
     return (
-      <div className="flex min-w-0 items-center gap-1 overflow-hidden text-gray-600">
+      <div className="flex min-w-0 items-center gap-1 overflow-hidden text-foreground-muted">
         <span className="whitespace-nowrap">created the artifact</span>
         <ArtifactTitleContent {...props} />
       </div>
@@ -46,7 +46,7 @@ export const ARTIFACT_EVENTS_MAPPING: Record<string, (props: ArtifactEvent) => R
   },
   "infrahub.artifact.updated": (props) => {
     return (
-      <div className="flex min-w-0 items-center gap-1 overflow-hidden text-gray-600">
+      <div className="flex min-w-0 items-center gap-1 overflow-hidden text-foreground-muted">
         <span className="whitespace-nowrap">updated the artifact</span>
         <ArtifactTitleContent {...props} />
       </div>

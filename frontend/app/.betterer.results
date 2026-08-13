@@ -101,7 +101,7 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object/ui/object-relationship-list.tsx:629247395": [
       [38, 54, 5, "tsc: Property \'items\' does not exist on type \'NodeObject[]\'.", "179721187"]
     ],
-    "src/entities/nodes/object/ui/object-template/object-template-form.tsx:291373955": [
+    "src/entities/nodes/object/ui/object-template/object-template-form.tsx:3479770126": [
       [86, 44, 5, "tsc: Property \'edges\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'edges\' does not exist on type \'string\'.", "165200885"]
     ],
     "src/entities/nodes/relationships/ui/queries/get-default-parent.query.ts:1805247483": [
@@ -245,7 +245,7 @@ exports[`fix ts error`] = {
     "src/pages/resource-manager/resource-pool-details.tsx:1673813627": [
       [157, 72, 4, "tsc: Property \'node\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
-    "src/shared/components/display/badge-circle.tsx:698452183": [
+    "src/shared/components/display/badge-circle.tsx:1960503252": [
       [6, 12, 18, "tsc: This syntax is not allowed when \'erasableSyntaxOnly\' is enabled.", "460855417"]
     ],
     "src/shared/components/editor/json/json-editor.tsx:1579157109": [
@@ -332,7 +332,7 @@ exports[`fix ts error`] = {
       [63, 40, 23, "tsc: Argument of type \'number | string | tRowValue | undefined\' is not assignable to parameter of type \'number | string | tRowValue\'.\\n  Type \'undefined\' is not assignable to type \'number | string | tRowValue\'.", "1426455104"],
       [69, 40, 23, "tsc: Argument of type \'number | string | tRowValue | undefined\' is not assignable to parameter of type \'number | string | tRowValue\'.\\n  Type \'undefined\' is not assignable to type \'number | string | tRowValue\'.", "1426455104"]
     ],
-    "src/shared/components/ui/alert.tsx:757342485": [
+    "src/shared/components/ui/alert.tsx:1109450805": [
       [15, 12, 11, "tsc: This syntax is not allowed when \'erasableSyntaxOnly\' is enabled.", "2602525471"]
     ]
   }`

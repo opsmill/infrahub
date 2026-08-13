@@ -13,7 +13,7 @@ export interface AccountTokenItemProps {
 export function AccountTokenItem({ token }: AccountTokenItemProps) {
   return (
     <Row className="gap-3 p-3 text-sm" data-testid={`account-token-${token.name}`}>
-      <KeySquareIcon className="size-5 text-stone-600" />
+      <KeySquareIcon className="size-5 text-foreground-muted" />
 
       <div className="min-w-0">
         <div className="truncate font-medium">{token.name}</div>

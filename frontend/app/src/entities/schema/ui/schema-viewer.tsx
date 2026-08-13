@@ -100,7 +100,7 @@ export const SchemaViewer = ({
           <span className="text-xs">{schema.id}</span>
         </div>
 
-        <div className="flex items-center gap-2 text-gray-600">
+        <div className="flex items-center gap-2 text-foreground-muted">
           {schema.kind && (
             <Tooltip message="View in graph">
               <LinkButton
@@ -153,7 +153,7 @@ const SchemaViewerTitle = ({ schema }: { schema: ModelSchema }) => {
 
       <div>
         <h1 className="font-semibold">{schema.label}</h1>
-        <p className="text-gray-600 text-sm">{schema.description}</p>
+        <p className="text-foreground-muted text-sm">{schema.description}</p>
       </div>
     </header>
   );

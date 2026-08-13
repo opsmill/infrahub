@@ -68,7 +68,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                   to={getObjectDetailsUrl(node.kind, node.uuid, [
                     { name: QSP.BRANCH, value: destinationBranch },
                   ])}
-                  className="px-2 py-1 font-medium text-gray-800 hover:text-custom-blue-800 hover:underline"
+                  className="px-2 py-1 font-medium text-foreground hover:text-custom-blue-800 hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {node.label}

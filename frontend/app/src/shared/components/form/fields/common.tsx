@@ -23,7 +23,7 @@ import { classNames } from "@/shared/utils/common";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
 export const InputUniqueTips = ({ className }: { className?: string }) => (
-  <span className={classNames("text-gray-600 text-xs italic leading-3", className)}>
+  <span className={classNames("text-foreground-muted text-xs italic leading-3", className)}>
     must be unique
   </span>
 );
@@ -156,7 +156,7 @@ export const ResetAction = ({ field, defaultValue }: ResetActionProps) => {
           }
           return field.onChange(defaultValue);
         }}
-        className="font-normal text-gray-600 text-xs"
+        className="font-normal text-foreground-muted text-xs"
       >
         Set empty
       </Checkbox>

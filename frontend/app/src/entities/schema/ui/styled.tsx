@@ -43,7 +43,7 @@ export const AccordionStyled = ({
           </div>
         </div>
 
-        {description && <p className="font-normal text-gray-600 text-xs">{description}</p>}
+        {description && <p className="font-normal text-foreground-muted text-xs">{description}</p>}
       </h4>
     }
     className="rounded-sm bg-white p-3 shadow-sm"

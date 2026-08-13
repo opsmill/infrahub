@@ -66,7 +66,7 @@ export function ObjectAttributeRow({
             }
           />
 
-          {attributeData.is_protected && <LockIcon className="size-3.5 text-gray-600" />}
+          {attributeData.is_protected && <LockIcon className="size-3.5 text-foreground-muted" />}
 
           {attributeSchema.display === "extra" && <ExtraFieldIndicator className="ml-auto" />}
         </>

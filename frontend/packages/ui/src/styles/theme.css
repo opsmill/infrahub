@@ -3,6 +3,7 @@
 :root {
   --background: var(--color-stone-100);
   --foreground: var(--color-stone-800);
+  --foreground-muted: var(--color-stone-600);
 
   --border: var(--color-neutral-200);
   --border-strong: var(--color-neutral-300);
@@ -29,6 +30,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
 
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);

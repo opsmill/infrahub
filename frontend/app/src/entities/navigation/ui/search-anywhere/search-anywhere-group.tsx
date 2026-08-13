@@ -11,7 +11,7 @@ export function SearchAnywhereGroup({
     <Command.Group
       className={classNames(
         "rounded-lg border bg-white p-2",
-        "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-neutral-600 [&_[cmdk-group-heading]]:text-xs",
+        "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-foreground-muted [&_[cmdk-group-heading]]:text-xs",
         className
       )}
       {...props}

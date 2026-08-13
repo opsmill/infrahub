@@ -109,7 +109,7 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
         routerOptions={{ state: { from: location } }}
       >
         <div className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-stone-200">
-          <Icon icon="mdi:user" className="relative top-1 text-3xl text-stone-600" />
+          <Icon icon="mdi:user" className="relative top-1 text-3xl text-foreground-muted" />
         </div>
 
         <div className="overflow-hidden group-data-[state=collapsed]:hidden">

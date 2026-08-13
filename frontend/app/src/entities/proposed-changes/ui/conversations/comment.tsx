@@ -24,7 +24,7 @@ export const Comment: React.FC<CommentProps> = ({ author, createdAt, content, cl
             {author}
           </div>
 
-          <div className="text-gray-600 text-sm">
+          <div className="text-foreground-muted text-sm">
             <DateDisplay date={createdAt} />
           </div>
         </div>

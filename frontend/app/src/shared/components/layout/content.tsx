@@ -80,7 +80,7 @@ export const ContentCardTitle = ({
             {reload && <Retry isLoading={isReloadLoading} onClick={reload} />}
           </div>
         )}
-        {description && <div className="truncate text-neutral-600 text-sm">{description}</div>}
+        {description && <div className="truncate text-foreground-muted text-sm">{description}</div>}
       </div>
       {end}
     </header>

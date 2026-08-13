@@ -56,7 +56,7 @@ export function ExportMenu({ onExport, label = "Export diagram" }: ExportMenuPro
           aria-controls={open ? menuId : undefined}
           onPress={() => setOpen(!open)}
           className={cn(
-            open ? "bg-indigo-500 text-white data-hovered:bg-indigo-600" : "text-gray-600",
+            open ? "bg-indigo-500 text-white data-hovered:bg-indigo-600" : "text-foreground-muted",
           )}
         >
           <Icon icon="mdi:download" className="text-lg" />

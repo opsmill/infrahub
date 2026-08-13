@@ -5,7 +5,7 @@ import { AppSidebar } from "@/entities/navigation/ui/sidebar/app-sidebar";
 
 function AppLayout() {
   return (
-    <div className="h-screen w-screen bg-background p-0.5 text-stone-800">
+    <div className="h-screen w-screen bg-background p-0.5 text-foreground">
       <div className="flex h-full w-full gap-0.5">
         <AppSidebar />
 

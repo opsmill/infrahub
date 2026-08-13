@@ -45,7 +45,7 @@ export function Breadcrumb({ children, className, ...props }: BreadcrumbProps) {
 const breadcrumbItemVariants = tv({
   base: [
     focusVisibleStyle,
-    "inline-flex items-center truncate rounded-lg border border-transparent px-2 py-0.5 text-stone-800",
+    "inline-flex items-center truncate rounded-lg border border-transparent px-2 py-0.5 text-foreground",
   ],
   variants: {
     isPressed: {
