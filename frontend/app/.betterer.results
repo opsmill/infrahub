@@ -38,9 +38,9 @@ exports[`fix ts error`] = {
       [354, 22, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
       [356, 32, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
     ],
-    "src/entities/diff/ui/node-diff/index.tsx:1183151977": [
+    "src/entities/diff/ui/node-diff/index.tsx:2502395448": [
       [88, 8, 15, "tsc: Type \'unknown\' is not assignable to type \'Date\'.", "140489382"],
-      [122, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
+      [134, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
     ],
     "src/entities/diff/ui/node-diff/node-property.tsx:3639994513": [
       [27, 22, 17, "tsc: Property \'base_branch_label\' does not exist on type \'DiffConflict\'. Did you mean \'base_branch_value\'?", "1959743778"],
