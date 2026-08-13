@@ -157,7 +157,7 @@ python_transforms:
       files: []
 ```
 
-Because imports are never analyzed, Infrahub cannot distinguish a Python source with no further dependencies from one whose dependencies it has no way to see. Until `watch` is present it assumes the latter, and treats every commit to the repository as a possible change to the definition. The empty list is your statement that the auto-detected closure is complete, and it is what makes regeneration precise. The key has to carry the `files` list: a bare `watch:` with nothing under it reads as no declaration at all.
+Because imports are never analyzed, Infrahub cannot distinguish a Python source with no further dependencies from one whose dependencies it has no way to see. Until `watch` is present it assumes the latter, and ties the definition's fingerprint to the repository's current commit, so every commit is treated as a possible change to it. The empty list is your statement that the auto-detected closure already names everything, which is what unties the fingerprint from the commit and makes regeneration precise. The key has to carry the `files` list: a bare `watch:` with nothing under it reads as no declaration at all.
 
 A Jinja2 Transformation needs no such declaration. Its detection parses the template and follows every reference it declares, and any reference it cannot follow already marks the closure incomplete, so a complete Jinja2 closure is trusted on its own.
 

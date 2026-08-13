@@ -89,16 +89,18 @@ Definition device-config (17e9c3b2-...): file templates/partials/header.j2 chang
 
 When nothing regenerated for a definition the log says so as well, so you can confirm a quiet pipeline was intentional rather than a missed dependency.
 
-#### When a Transformation's dependencies are incomplete
+#### When a Transformation regenerates on every change
 
-Infrahub cannot always detect every file a Transformation depends on. A Jinja2 template that pulls in a partial through a runtime variable (`{% include some_variable %}`) leaves the auto-detected closure **incomplete**, recorded as `dependencies_complete = false` on the Transformation. A Python Transformation is in the same position for a different reason: its imports are never analyzed, so until it declares `watch` - with an empty `files` list if it needs no extra files - Infrahub has to assume there is a dependency it cannot see.
+Infrahub cannot always detect every file a Transformation depends on, and it says so in two different ways.
 
-While a Transformation's closure is incomplete, Infrahub cannot tell which file changes are relevant, so it conservatively regenerates that Transformation's artifacts on **any** file change in the repository: safe, but the noisy behavior the precise gate is meant to avoid. The task log explains each such fallback and names the Transformation, and the repository import log records every reference auto-detection could not resolve, naming the template and the location of the unresolved include.
+A Jinja2 template that pulls in a partial through a runtime variable (`{% include some_variable %}`) leaves the auto-detected closure **incomplete**, recorded as `dependencies_complete = false` on the Transformation. While a closure is incomplete Infrahub cannot tell which file changes are relevant, so it conservatively regenerates that Transformation's artifacts on **any** file change in the repository. The task log explains each such fallback and names the Transformation, and the repository import log records every reference auto-detection could not resolve, naming the template and the location of the unresolved include.
 
-To restore precise regeneration, do one of the following, then commit so the closure recomputes on the next import:
+A Python Transformation arrives at the same outcome by a different route. Its closure is always complete, because there is only ever the one file to detect, but imports are never analyzed, so a closure carrying no `watch` declaration cannot be trusted to name everything. Infrahub therefore ties such a Transformation's fingerprint to the repository's current commit: the fingerprint moves on every commit, and the artifacts regenerate. This is not the incomplete-closure fallback above, and `dependencies_complete` stays `true` throughout.
+
+Either route produces the noisy behavior the precise gate is meant to avoid. To restore precise regeneration, do one of the following, then commit so the closure recomputes on the next import:
 
 - **Rewrite the dynamic reference with a literal name** so auto-detection can follow it, for example replacing `{% include partial_name %}` with `{% include "partials/header.j2" %}`.
-- **Declare the missing files with `watch.files`** on the Transformation entry in `.infrahub.yml`. Listing the files, or the directory that contains them, both adds them to the closure and marks the closure complete. On a Python Transformation, declare the key even with an empty `files` list when there is nothing to add. See [declaring extra dependencies](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch).
+- **Declare the missing files with `watch.files`** on the Transformation entry in `.infrahub.yml`. Listing the files, or the directory that contains them, both adds them to the closure and marks the closure complete. On a Python Transformation, declare the key even with an empty `files` list when there is nothing to add: the declaration itself is what unties the fingerprint from the commit. See [declaring extra dependencies](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch).
 
 ### Generator integration
 
