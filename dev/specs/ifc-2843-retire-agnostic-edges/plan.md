@@ -151,7 +151,7 @@ precedent. No new top-level directory, no frontend or SDK path touched.
 ### The invariant, restated as an implementation contract
 
 ```text
-open(global property edges of V)  ⟺  ∃ branch B :  reachable(V, B)
+open(all global edges of V, owning edge included)  ⟺  ∃ branch B :  reachable(V, B)
 
 where, for V an Attribute vertex:
     reachable(V, B) ≡ ∃ node n :  live(n, B) ∧ active(HAS_ATTRIBUTE(n → V), B)
@@ -167,6 +167,21 @@ and  live(n, B) ≡ n has an active IS_PART_OF edge under B's own branch-and-tim
 
 `live` is evaluated **per node vertex**, not per UUID — same-UUID copies produced by kind and
 inheritance changes are distinct vertices and must be treated as such (see `data-model.md`).
+
+### Prior art: the validated production remediation
+
+The hand-written Cypher that unblocked the reported deployment (recorded on the ticket) is the
+closest thing to a reference implementation, and this design deliberately reproduces its shape:
+
+- closes the owning `HAS_ATTRIBUTE` edge **and** the property edges, each only where still open,
+  using a subquery per group so a half-closed vertex is handled correctly;
+- computes the owner's latest deletion time across every branch on which it was created or
+  merged, and stamps that (matching FR-015);
+- requires that **no** branch leaves the object still active before closing anything;
+- batches with `IN TRANSACTIONS` explicitly to avoid exhausting the transaction memory pool.
+
+It generalises that script in three ways: label-anchored rather than per-kind and
+per-attribute-name, relationships as well as attributes, and the two-peer retention form.
 
 ### Component decomposition
 
@@ -195,9 +210,10 @@ Three units, each with a single reason to change:
    in the unit tests is its second implementation.
 
 3. **`RetireAgnosticPropertyEdgesQuery`** (`core/query/agnostic_retirement.py`) — one Cypher
-   body, three candidate bounds (node ids / fork point / unbounded). Candidate traversal, the
-   retaining-branch predicate including the two-peer relationship form, and the time-close in a
-   single pass.
+   body, three candidate bounds (node ids / fork point / unbounded) and two anchor modes
+   (open-edge for runtime, widened for the migration). Candidate traversal, the retaining-branch
+   predicate including the two-peer relationship form, and the time-close of both the owning edge
+   and the property edges in a single pass.
 
 The six enforcement points are the retirement component's only callers. They contribute a
 candidate set and a timestamp; none of them contains predicate logic.
@@ -224,14 +240,28 @@ determination reads them.
 
 ### Two decisions that are correctness dependencies, not preferences
 
-**Candidate traversal starts from open, active global `HAS_ATTRIBUTE` / `IS_RELATED` edges**
-(FR-011). Kind and inheritance migrations leave several node vertices sharing one UUID, each
-with its own global edge to the *same* field vertex, the superseded one closed as it is
-duplicated. Anchoring on open edges excludes superseded copies for free. Traversing by
-reachability instead would close a shared vertex's value edges and strip a live object's value —
-and the failure would only surface after pre-migration branches were cleaned up, i.e. long after
-the change shipped. This is why kind/inheritance migrations are deliberately *not* enforcement
-points.
+**Candidate traversal starts from open, active global `HAS_ATTRIBUTE` / `IS_RELATED` edges at the
+runtime enforcement points** (FR-011). Kind and inheritance migrations leave several node vertices
+sharing one UUID, each with its own global edge to the *same* field vertex, the superseded one
+closed as it is duplicated. Anchoring on open edges excludes superseded copies for free.
+Traversing by reachability instead, while evaluating retention only from the node you arrived
+from, would close a shared vertex's value edges and strip a live object's value — and the failure
+would only surface after pre-migration branches were cleaned up, i.e. long after the change
+shipped. This is why kind/inheritance migrations are deliberately *not* enforcement points.
+
+**The repair migration widens that anchor, and moves the protection into the predicate**
+(FR-011a). Pre-existing *half-closed* vertices — owning edge closed, property edges still open, or
+the reverse — are unreachable from an open-edge anchor, and they exist in the reported data. The
+migration therefore anchors on `status: "active"` regardless of `to`, and recovers same-UUID
+protection from the predicate: a vertex is retained when **any** linked node vertex is live with an
+active owning edge, which is what the invariant literally says. Safe there, and only there,
+because the migration is batched and off every hot path.
+
+**Retirement closes the owning edge too, not only the four property edges.** Two independent
+reasons: the owning edge is part of what keeps the value looking live, and it is also the
+candidate anchor — leaving it open would keep the vertex a candidate on every future pass
+forever. The owning edge and the property edges are closed **independently**, each only where
+still open (FR-002a), because existing data contains both mismatched states.
 
 **Retirement is a best-effort side effect at every runtime enforcement point.** It runs after a
 delete, merge, rebase or branch deletion has already committed. If it propagated, a graph hiccup

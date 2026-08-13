@@ -49,6 +49,19 @@ RETURN count(DISTINCT e) AS count
 `count = 0` after an unretained delete is the pass condition for SC-004. `count = 1` is the
 pre-fix behaviour and is what the existing test currently asserts as the documented leak.
 
+**The owning edge counts too.** SC-004 covers every open global edge of the vertex, not only the
+value edge, so the probe above is incomplete on its own — pair it with:
+
+```cypher
+MATCH (n:Node {uuid: $node_id})-[e:HAS_ATTRIBUTE {branch: $global_branch, status: "active"}]->
+      (:Attribute {name: $attribute_name})
+WHERE e.to IS NULL
+RETURN count(DISTINCT e) AS count
+```
+
+Leaving `HAS_ATTRIBUTE` open would also keep the vertex a candidate on every future pass, so a
+second retirement run reporting a non-zero count is the symptom of having missed it.
+
 ## Run the tests
 
 ```bash
@@ -105,6 +118,8 @@ Four further checks exist to catch specific silent failures:
 | 2 | `Attribute` / `Relationship` vertex with no linked node vertex at all | Vertex hard-deleted; count reported |
 | 3 | Two attributes sharing one `AttributeValue`, one orphaned | Orphan detached; surviving attribute keeps its value |
 | 4 | State the migration cannot repair | Reported; **upgrade completes** |
+| 5 | Half-closed: owning edge closed, property edges open (and the reverse) | Each fully closed and counted — reachable only via the widened anchor |
+| 6 | Kind renamed, then the migration run with the widened anchor | Surviving vertex keeps its value — same-UUID protection now comes from the predicate, not the anchor |
 
 Run the migration directly against hand-built fixtures rather than through a full upgrade — the
 orphan shapes cannot be produced by the current code paths (that is the point of the migration),

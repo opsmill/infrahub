@@ -25,10 +25,23 @@ The owner of a branch-agnostic field.
 | Aspect | Detail |
 |---|---|
 | Label | `:Attribute` |
-| Owner edge | `(:Node)-[:HAS_ATTRIBUTE {branch: <global>}]->(:Attribute)` |
-| Property edges (subject of the invariant) | `HAS_VALUE`, `IS_PROTECTED`, `HAS_SOURCE`, `HAS_OWNER` — all on the global branch |
+| Owner edge | `(:Node)-[:HAS_ATTRIBUTE {branch: <global>}]->(:Attribute)` — **also closed by retirement** |
+| Property edges | `HAS_VALUE`, `IS_PROTECTED`, `HAS_SOURCE`, `HAS_OWNER` — all on the global branch |
+| Subject of the invariant | **Every** open global edge of the vertex, owning edge included — not only the four property edges |
 | Open state | `status: "active"` **and** `to IS NULL` |
 | Retired state | `to` set to a timestamp; `status` unchanged (FR-013) |
+
+The owning edge is closed for two reasons, not one. It is part of what keeps the value looking
+live, and — because it is also the candidate anchor (FR-011) — leaving it open would keep the
+vertex a candidate on every subsequent pass forever.
+
+**Half-closed vertices.** The owning edge and the property edges can be closed independently in
+existing data: either closed while the other stays open. Retirement therefore closes each only
+where it is still open, rather than assuming the two move together (FR-002a). Once this feature
+ships no *new* half-closed state can arise, since both are closed in one pass — but the
+pre-existing ones are unreachable from an open-edge anchor, which is why the repair migration
+widens its anchor to `status: "active"` regardless of `to` (FR-011a) and recovers same-UUID
+protection from the predicate instead.
 
 ### `Relationship` with `branch_support: "agnostic"`
 
@@ -145,12 +158,25 @@ retire(V) when ¬∃ B ∈ open_branches : retains(B, V)
 
 Applied as `SET e.to = $at` on every open global property edge of `V`.
 
-### Candidate traversal constraint (FR-011)
+### Candidate traversal constraint (FR-011 / FR-011a)
 
-Traversal **must** start from open, active global `HAS_ATTRIBUTE` / `IS_RELATED` edges. It must
-never start from node reachability. This is both the correctness constraint (excludes superseded
-same-UUID copies) and the selectivity anchor (such edges exist only for branch-agnostic fields,
-so a deployment with none matches zero rows).
+Two anchors, because the runtime paths and the repair migration have different jobs.
+
+| | Runtime enforcement points | Repair migration |
+|---|---|---|
+| Anchor | Global owning edges that are **open and active** | Global owning edges with `status: "active"`, **open or closed** |
+| Same-UUID protection from | The anchor (superseded copies have closed edges) | The **predicate** — a vertex is retained if *any* linked node vertex is live with an active owning edge |
+| Reaches half-closed vertices | No — and does not need to (FR-002a) | Yes — that backlog is its responsibility |
+| Cost | Selective; on the node-delete hot path | Wider; batched and off every hot path |
+
+Neither anchor may start from node reachability alone. The open-edge anchor is also the
+selectivity anchor: global owning edges exist only for branch-agnostic fields, so a deployment
+with none matches zero rows.
+
+The migration's widened anchor is safe precisely because the predicate — not the anchor — carries
+the same-UUID protection there. Evaluating retention across *all* node vertices linked to the
+field vertex is what the invariant literally says, so a vertex shared with a live copy is still
+never retired.
 
 ### Same-UUID copies
 
@@ -176,14 +202,16 @@ must follow.
 
 | # | Shape | Origin | Repair | Reported as |
 |---|---|---|---|---|
-| 1 | Node vertex present, open global property edges, **no active existence edge on any branch** | Node deletion and schema removal, which tombstone at branch level and leave global edges open | **Close** — `SET e.to = <migration run time>` | edges closed |
-| 2 | `Attribute` / `Relationship` vertex with **no linked node vertex at all** | Branch deletions predating the existing agnostic-peer cleanup, which hard-deleted the existence edge and left the global edges pointing at nothing. **The dominant shape in the reported incident.** | **Hard-delete** the vertex | vertices removed |
+| 1 | Node vertex present, open global edges, **no active existence edge on any branch** | Node deletion and schema removal, which tombstone at branch level and leave global edges open. **Confirmed at scale in the reported dataset** (~6,400 effectively-deleted nodes still holding an active global value). | **Close** — `SET e.to = <migration run time>` | edges closed |
+| 1b | As above, but **half-closed**: owning edge closed and property edges open, or the reverse | Present in the reported data. Unreachable from an open-edge anchor, which is why FR-011a widens the migration's anchor. | **Close whichever edge is still open** | edges closed |
+| 2 | `Attribute` / `Relationship` vertex with **no linked node vertex at all** | Branch deletions predating the existing agnostic-peer cleanup, which hard-deleted the existence edge and left the global edges pointing at nothing. Known to exist; **unquantified** — the measurement above is anchored on `(:Node)-[:HAS_ATTRIBUTE]->` and structurally cannot see this shape. | **Hard-delete** the vertex | vertices removed |
 | 3 | Two attributes sharing one `AttributeValue`, one orphaned | Value de-duplication | Detach the orphan only; the surviving attribute keeps its value | (counted under 1 or 2) |
 | 4 | Anything else the predicate cannot resolve | Pre-existing data oddities | **Report, do not raise** — the upgrade completes (FR-016) | errors list |
 
 Shape 2 is why the migration hard-deletes rather than closes: such a vertex cannot be reached,
 diffed, or time-travelled to, so a time-close would leave permanent garbage with no reader and
-no future path to removal.
+no future path to removal. Note that its prevalence is *not* established — the migration handles
+all shapes and must not be sequenced or justified on the assumption that any one dominates.
 
 ## In-memory types (new)
 

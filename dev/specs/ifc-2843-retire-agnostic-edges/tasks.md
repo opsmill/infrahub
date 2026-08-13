@@ -64,12 +64,16 @@ enforcement points, US2 through the query's unbounded form.
 
 ### The query
 
-- [ ] T009 Write component tests for the retirement query in `backend/tests/component/query/test_agnostic_retirement_query.py`, asserting graph shape directly (edge presence, `status`, `to`): unretained attribute closes; retained attribute stays open; relationship closes when either peer becomes unreachable; relationship stays open only while **both** peers are live with **both** `IS_RELATED` edges active on the same branch.
-- [ ] T010 Implement `RetireAgnosticPropertyEdgesQuery` in `backend/infrahub/core/query/agnostic_retirement.py`. Candidate traversal MUST start from open, active global `HAS_ATTRIBUTE`/`IS_RELATED` edges (FR-011); anchor on the `:Node`/`:Attribute`/`:Relationship` labels, never on schema kinds; close `HAS_VALUE`, `IS_PROTECTED`, `HAS_SOURCE`, `HAS_OWNER` by `SET e.to = $at` (FR-013 — never a `deleted`-status edge); parameterise every value; expose `get_data() -> RetirementResult`.
+- [ ] T009 Write component tests for the retirement query in `backend/tests/component/query/test_agnostic_retirement_query.py`, asserting graph shape directly (edge presence, `status`, `to`): unretained attribute closes **every** open global edge including `HAS_ATTRIBUTE`; retained attribute stays open; relationship closes its property edges **and both `IS_RELATED` edges** when either peer becomes unreachable; relationship stays open only while **both** peers are live with **both** `IS_RELATED` edges active on the same branch.
+- [ ] T009a [P] Write component tests for the two half-closed shapes in the same file: owning edge closed with property edges open, and the reverse — each must end fully closed (FR-002a)
+- [ ] T010 Implement `RetireAgnosticPropertyEdgesQuery` in `backend/infrahub/core/query/agnostic_retirement.py`. Candidate traversal MUST start from open, active global `HAS_ATTRIBUTE`/`IS_RELATED` edges (FR-011); anchor on the `:Node`/`:Attribute`/`:Relationship` labels, never on schema kinds; close **every open global edge** of the vertex — the four property edges **and** the owning `HAS_ATTRIBUTE`/`IS_RELATED` edge(s) — by `SET e.to = $at` (FR-001, FR-002, FR-013: never a `deleted`-status edge); parameterise every value; expose `get_data() -> RetirementResult`. Model the edge-group subqueries on the validated production Cypher recorded on the ticket.
+- [ ] T010a Make the owning-edge and property-edge closures **independent** in `backend/infrahub/core/query/agnostic_retirement.py`, each guarded by its own `WHERE e.to IS NULL` inside a subquery, so a half-closed vertex is fully closed rather than left half-closed (FR-002a)
 - [ ] T011 Extend `RetireAgnosticPropertyEdgesQuery` to read the branch set from `(:Branch)` vertices in the same pass and compute the fork-window collapse in Cypher, so no stale branch list can reach the predicate. Verify the in-query collapse against `AgnosticBranchWindowBuilder` (T008) on the same inputs. **Never** source branches from `registry.branch` — it is per-worker, lazily filled and only ever pruned, so a branch created by another worker would be treated as non-retaining.
 - [ ] T012 Add the three candidate bounds to `RetireAgnosticPropertyEdgesQuery` (explicit node ids, fork-point timestamp, unbounded) as swappable `MATCH` prefixes over one shared predicate body, with batching (`IN TRANSACTIONS OF n ROWS`) for the unbounded form
+- [ ] T012a Add the two anchor modes to `RetireAgnosticPropertyEdgesQuery`: **open-edge** (runtime, selective, same-UUID protection from the anchor) and **widened** (`status: "active"` regardless of `to`, migration-only, same-UUID protection from the predicate — retained if *any* linked node vertex is live with an active owning edge) per FR-011a
+- [ ] T012b [P] Add a component test in `backend/tests/component/query/test_agnostic_retirement_query.py` proving the widened anchor still protects same-UUID copies: rename a kind, run the widened form, assert the surviving vertex keeps its value. This is the test that would catch the widened anchor silently stripping live data.
 - [ ] T013 [P] Add a component test in `backend/tests/component/query/test_agnostic_retirement_query.py` asserting an `AttributeValue` shared by two attributes is never deleted while any attribute still references it (FR-017)
-- [ ] T014 Run `EXPLAIN` on the candidate traversal under all three bounds and record the plans in `specs/ifc-2843-retire-agnostic-edges/research.md` under a new "Query plans" section (Principle V)
+- [ ] T014 Run `EXPLAIN` on the candidate traversal under all three bounds **and both anchor modes** and record the plans in `specs/ifc-2843-retire-agnostic-edges/research.md` under a new "Query plans" section (Principle V). The widened anchor is expected to be materially less selective — confirm it is acceptable for a batched migration and unacceptable for the runtime paths, which is the reason for the split.
 
 ### The component
 
@@ -118,6 +122,7 @@ passed.
 ### Cross-cutting correctness tests for US1
 
 - [ ] T031 [P] [US1] Write a regression test in `backend/tests/component/core/test_agnostic_retirement.py`: rename a kind, then run every enforcement point → the surviving vertex keeps its value (FR-011, scenario 10). Confirms same-UUID copies are excluded by the open-edge anchor rather than by luck.
+- [ ] T031a [P] [US1] Assert in the same file that a retired vertex is no longer a candidate on a second pass — re-run retirement over the same candidates and confirm it closes nothing and reports zero (the property that closing the owning edge buys)
 - [ ] T032 [P] [US1] Write a component test asserting retirement registers no change on a branch that forked before it — diff the pre-existing branch after a default-branch delete and assert no attribute or relationship change is reported for that node (FR-014)
 - [ ] T033 [P] [US1] Replace the `_close_global_property_edges` stub in `backend/tests/component/core/test_agnostic_attribute_fork_window.py` with the real delete path and update the pre-fix assertion (`"expected to leave the global value edge open today"`). Both fork-window expectations must hold unchanged — that is the proof the time-close hedge of FR-013 works.
 - [ ] T034 [P] [US1] Write the pool re-allocation test in `backend/tests/component/core/test_agnostic_retirement.py`: allocate, delete, retire, allocate again → the same value is returned (SC-007, scenario 12). Guards the three-edge `IS_RESERVED`/`HAS_VALUE`/`HAS_ATTRIBUTE` dependency documented in data-model.md.
@@ -144,8 +149,9 @@ enforcement present — this is what unblocks a customer stuck today.
 - [ ] T038 [P] [US2] Write component tests in `backend/tests/component/migrations/test_m076_retire_agnostic_property_edges.py` for the **close** shape: a node with open global `HAS_VALUE` edges and no active existence edge on any branch → edges carry `to`, count reported (scenario 1). Build the fixture with raw Cypher — current code paths cannot produce it, which is the point of the migration.
 - [ ] T039 [P] [US2] Write component tests for the **hard-delete** shape: an `Attribute` or `Relationship` vertex with no linked node vertex at all → vertex removed, count reported (scenario 2)
 - [ ] T040 [P] [US2] Write component tests for the **shared-value** shape: two attributes sharing one `AttributeValue`, one orphaned → orphan detached, surviving attribute keeps its value (scenario 3); and for unrepairable state → reported, migration completes without raising (scenario 4)
+- [ ] T040a [P] [US2] Write component tests for the **half-closed** shapes reached only by the widened anchor: an owning edge already closed with property edges still open, and the reverse → each fully closed and counted (FR-002a, FR-011a). Build both with raw Cypher.
 - [ ] T041 [P] [US2] Write a component test asserting `m076` is safe to re-run: a second run reports zero, so an interrupted upgrade is resumable
-- [ ] T042 [US2] Implement `Migration076` in `backend/infrahub/core/migrations/graph/m076_retire_agnostic_property_edges.py` as an `ArbitraryMigration` with `minimum_version: int = 75`, modelled on `m075_finish_deleting_branches.py`: run the query's unbounded form, batch at the existing `MAX_AGNOSTIC_PEER_BATCH_SIZE` (500) cap, report **both** counts via `get_migration_console()`, and return `MigrationResult(errors=[...])` without raising (FR-016)
+- [ ] T042 [US2] Implement `Migration076` in `backend/infrahub/core/migrations/graph/m076_retire_agnostic_property_edges.py` as an `ArbitraryMigration` with `minimum_version: int = 75`, modelled on `m075_finish_deleting_branches.py`: run the query's unbounded form **with the widened anchor** (T012a), batch at the existing `MAX_AGNOSTIC_PEER_BATCH_SIZE` (500) cap, report **both** counts via `get_migration_console()`, and return `MigrationResult(errors=[...])` without raising (FR-016)
 - [ ] T043 [US2] Log the irreversibility of the hard-delete to the console before the migration begins, in `backend/infrahub/core/migrations/graph/m076_retire_agnostic_property_edges.py`, so an operator's pre-upgrade backup is an informed decision. No rollback is built — for vertices with no linked node there is nothing to roll back to.
 - [ ] T044 [US2] Register `Migration076` in `backend/infrahub/core/migrations/graph/__init__.py` and bump `GRAPH_VERSION` from 75 to 76 in `backend/infrahub/core/graph/__init__.py`
 - [ ] T045 [US2] Verify SC-001 and SC-002 on a dataset carrying the pre-fix orphan shapes, adding the checks to `backend/tests/component/migrations/test_m076_retire_agnostic_property_edges.py`: a data-only proposed change validates clean, and a schema update adding a uniqueness constraint on a previously-orphaned branch-agnostic attribute loads successfully
@@ -209,9 +215,10 @@ bound narrows and re-measures before T023 onward proceed.
 ### Within Phase 2
 
 - T006 blocks T008, T010, T016 (they consume the dataclasses)
-- T010 → T011 → T012 are strictly sequential (same file, layered behaviour)
-- T007 before T008; T009 before T010; T015 before T016 (tests first)
-- T014 (`EXPLAIN`) after T012, before T019
+- T010 → T010a → T011 → T012 → T012a are strictly sequential (same file, layered behaviour)
+- T007 before T008; T009 and T009a before T010; T015 before T016 (tests first)
+- T012b after T012a (it tests the widened anchor)
+- T014 (`EXPLAIN`) after T012a — it must cover both anchor modes — and before T019
 
 ### Within User Story 1
 
@@ -223,7 +230,7 @@ bound narrows and re-measures before T023 onward proceed.
 ### Parallel Opportunities
 
 - **Phase 1**: T002, T003 in parallel
-- **Phase 2**: T006 and T007 in parallel; T013 and T015 in parallel once T012 lands
+- **Phase 2**: T006 and T007 in parallel; T009a alongside T009; T013, T012b and T015 in parallel once T012a lands
 - **Phase 3**: T021, T022, T025, T027, T029 (all test-authoring, different concerns) in parallel; T031 – T036 all in parallel
 - **Phase 4**: T038 – T041 all in parallel (all test-authoring in one new file — coordinate or split by class)
 - **Phases 3 and 4 in parallel** once Phase 2 completes — the two P1 stories share no source file

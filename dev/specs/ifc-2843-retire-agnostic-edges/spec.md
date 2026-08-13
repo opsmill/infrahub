@@ -123,14 +123,22 @@ each operation.
 ### User Story 2 - Existing damage is repaired on upgrade (Priority: P1)
 
 Upgrading retires the global property edges of every branch-agnostic field that no branch
-retains, including the orphans left behind by branch deletions that predate the existing
-agnostic-peer cleanup, which are the dominant shape in the reported incident.
+retains, covering both the still-linked orphans left by node deletion and schema removal and
+the fully detached ones left by branch deletions that predate the existing agnostic-peer
+cleanup.
 
-**Why this priority**: This is what unblocks a customer who is stuck today. The reported
-dataset accumulated its orphans mainly through branch deletion before that cleanup existed
-— a node created on a branch keeps its property edges on the global branch, and deleting
-the branch hard-deleted its existence edge while leaving those global edges with nothing
-pointing at them. No enforcement change can clear an existing backlog.
+**Why this priority**: This is what unblocks a customer who is stuck today. No enforcement
+change can clear an existing backlog.
+
+**Evidence on shape distribution**: the reported dataset was quantified at ~512
+effectively-live nodes against **~6,400 effectively-deleted nodes still holding an active
+global value**, and 13,378 active global value edges across 6,949 node objects for only
+1,139 distinct values — one value attached to 32 distinct, mostly deleted node objects. That
+measurement was taken with a query anchored on `(:Node)-[:HAS_ATTRIBUTE]->(:Attribute)`, so
+it counts **only** the still-linked shape and structurally cannot see the fully detached one.
+The still-linked shape is therefore confirmed at scale; the detached shape is known to exist
+but is **unquantified**. The migration must handle both and must not be sequenced on the
+assumption that either dominates.
 
 **Independent Test**: Build the orphan shapes as fixtures, run the migration, assert the
 edges are closed or the vertices removed and the reported counts are correct. Delivers
@@ -184,6 +192,10 @@ each is independently developable, testable, and demonstrable.
 
 ### Edge Cases
 
+- **A half-closed field vertex** — its global owning edge closed but its property edges still
+  open, or the reverse. Present in the reported data, and the reason FR-002a closes the two
+  independently rather than assuming they move together. The repair migration's widened anchor
+  (FR-011a) is what makes the pre-existing ones reachable at all.
 - **A retaining branch that is never touched again** holds its value reserved
   indefinitely. Accepted: it follows from the reservation semantics, and the existing
   backlog is cleared by the migration rather than by the enforcement points.
@@ -225,13 +237,24 @@ each is independently developable, testable, and demonstrable.
 ### Functional Requirements
 
 - **FR-001**: The system MUST close an `Attribute` vertex's global property edges —
-  `HAS_VALUE`, `IS_PROTECTED`, `HAS_SOURCE`, `HAS_OWNER` — when no branch retains it.
-  *Verify: delete on the default branch with no branch forked during the object's
-  lifetime; assert no open global edge remains.*
-- **FR-002**: The system MUST close a `Relationship` vertex's global property edges when
-  no branch has both of its peers live with both `IS_RELATED` edges active — including
-  when one peer survives. *Verify: delete one peer of a branch-agnostic relationship;
-  assert closure.*
+  `HAS_VALUE`, `IS_PROTECTED`, `HAS_SOURCE`, `HAS_OWNER` — **and its own global
+  `HAS_ATTRIBUTE` edge** when no branch retains it. Closure MUST cover every open global
+  edge of the vertex, not only the four property edges named here. *Verify: delete on the
+  default branch with no branch forked during the object's lifetime; assert no open global
+  edge remains, including `HAS_ATTRIBUTE`.*
+- **FR-002**: The system MUST close a `Relationship` vertex's global property edges — and
+  **both of its global `IS_RELATED` edges** — when no branch has both of its peers live
+  with both `IS_RELATED` edges active, including when one peer survives. *Verify: delete
+  one peer of a branch-agnostic relationship; assert closure of the property edges and both
+  `IS_RELATED` edges.*
+- **FR-002a**: The system MUST close the owning edge (`HAS_ATTRIBUTE` / `IS_RELATED`) and
+  the property edges **independently**, so a vertex whose owning edge is already closed but
+  whose property edges are still open — or the reverse — is fully closed rather than
+  half-closed. Both mismatched states exist in the reported data. Because FR-001 and FR-002
+  close both in a single pass, no *new* half-closed state can arise after this feature
+  ships; the pre-existing backlog is the repair migration's responsibility (FR-016).
+  *Verify: build each half-closed shape as a fixture and assert the migration closes the
+  remaining open edge.*
 - **FR-003**: The system MUST NOT close them while a retaining branch exists. *Verify:
   node created on a branch, merged, deleted on the default branch while that branch is
   open — edges stay open and the object is still readable there.*
@@ -261,10 +284,19 @@ each is independently developable, testable, and demonstrable.
   the predicate for the field they remove. *Verify: remove a branch-agnostic attribute and
   a branch-agnostic relationship from the schema; assert closure when unretained and
   deferral when a branch forked beforehand.*
-- **FR-011**: Candidate traversal MUST start from open, active global `HAS_ATTRIBUTE` /
-  `IS_RELATED` edges, so a vertex shared with a live node copy is never reached. *Verify:
-  rename a kind, then run every enforcement point and the migration; the surviving vertex
-  keeps its value.*
+- **FR-011**: At the runtime enforcement points, candidate traversal MUST start from open,
+  active global `HAS_ATTRIBUTE` / `IS_RELATED` edges, so a vertex shared with a live node
+  copy is never reached. Because FR-001 and FR-002 close that same edge, a retired vertex
+  stops being a candidate on subsequent passes. *Verify: rename a kind, then run every
+  enforcement point; the surviving vertex keeps its value.*
+- **FR-011a**: The repair migration MUST widen the anchor to global `HAS_ATTRIBUTE` /
+  `IS_RELATED` edges with `status: "active"` regardless of whether they are open, so the
+  pre-existing half-closed shapes of FR-002a are reachable. Same-UUID protection MUST then
+  come from the predicate rather than the anchor: a vertex is retained when **any** node
+  vertex linked to it is live with an active owning edge on some branch, so a vertex shared
+  with a live copy is still never retired. This widening is confined to the migration, which
+  is batched and off every hot path. *Verify: rename a kind, then run the migration; the
+  surviving vertex keeps its value. Then re-run the migration and assert it reports zero.*
 - **FR-012**: The predicate MUST evaluate each branch under its own branch and time filter
   with isolation applied, and MUST NOT use an isolation-ignoring filter. *Verify: an object
   retained only through a fork window is not retired.*
@@ -278,9 +310,10 @@ each is independently developable, testable, and demonstrable.
 - **FR-015**: Retirement MUST be stamped with the owner's latest deletion time where one
   survives, and the migration run time only where none does. *Verify: assert the stamped
   timestamp in both cases.*
-- **FR-016**: The repair migration MUST close the global property edges of vertices that no
-  branch retains, and MUST hard-delete `Attribute` and `Relationship` vertices that have no
-  linked node vertex at all. It MUST anchor on graph labels rather than enumerating schema
+- **FR-016**: The repair migration MUST close the global property edges **and the owning
+  `HAS_ATTRIBUTE` / `IS_RELATED` edges** of vertices that no branch retains, including the
+  half-closed shapes of FR-002a via the widened anchor of FR-011a, and MUST hard-delete
+  `Attribute` and `Relationship` vertices that have no linked node vertex at all. It MUST anchor on graph labels rather than enumerating schema
   kinds, MUST cover attributes and relationships alike, MUST batch its writes, and MUST
   report both counts. It MUST NOT fail the upgrade on a state it cannot repair. *Verify:
   hand-built fixtures for both orphan shapes, asserting the reported counts.*
@@ -331,7 +364,10 @@ sets remove any need for a marker or worklist.
 - **SC-003**: The upgrade reports the number of edges closed and vertices removed, and
   completes without failing on unrepairable state.
 - **SC-004**: After a create/delete cycle at any enforcement point with no retaining branch,
-  zero global property edges remain open for that field.
+  zero global edges remain open for that field — property edges and the owning
+  `HAS_ATTRIBUTE` / `IS_RELATED` edge alike.
+- **SC-004a**: Re-running the repair migration on an already-repaired database reports zero
+  edges closed and zero vertices removed.
 - **SC-005**: With a retaining branch present, the object stays readable there and the value
   stays reserved; retirement occurs as soon as the retaining set is empty, by whichever
   event empties it.
@@ -371,6 +407,13 @@ sets remove any need for a marker or worklist.
   re-allocated afterwards would surface as a conflict at merge rather than at allocation.
   Blocking re-allocation while any branch could still reach the owner would require pool
   allocation to scan every open branch.
+- The hand-written Cypher that unblocked the reported deployment is the closest thing to a
+  validated reference implementation, and the retirement mechanism is expected to reproduce its
+  shape: close the owning `HAS_ATTRIBUTE` edge and the property edges independently (each only
+  where still open), stamp both with the owner's latest deletion time computed across every
+  branch on which it was created or merged, and require that no branch leaves it still active.
+  It differs in being label-anchored rather than per-kind and per-attribute-name, and in
+  covering relationships as well as attributes.
 - `release-1.11` is the right target: it carries the graph version this builds on, the
   existing agnostic-peer cleanup this extends, and the relationship-removal migration this
   depends on, and it reaches the development branch through the normal release merge.
@@ -411,7 +454,17 @@ sets remove any need for a marker or worklist.
 - Post-filtering uniqueness violations by node existence. An open global edge means the
   value is retained somewhere, so the violation is legitimate; one naming an unretained
   value is a bug in the invariant.
-- Adding node-existence filtering inside the uniqueness queries themselves.
+- Adding node-existence filtering inside the uniqueness queries themselves. **Note**: the
+  originating bug report lists this as one of two Expected Behavior items —
+  *"uniqueness-constraint validation (and schema-migration constraint checks) should not scan
+  attribute values belonging to nodes that are effectively deleted in the relevant branch
+  view."* It is declined deliberately and with argument: every property edge of a
+  branch-agnostic field is written on the global branch regardless of creating branch, so a
+  branch-agnostic value is *already* reserved across every branch, which is the correct
+  semantics for a cross-branch reservation. Fixing the lifecycle removes the symptom the
+  reporter observed without weakening the validator, and leaving the validator unfiltered means
+  a future leak fails loudly instead of being swallowed. This is a divergence from the filed
+  issue that a reviewer should confirm they accept.
 - Deferring retirement until no branch could ever see the object again by any path, rather
   than until no branch retains its field.
 - A support-facing detector query as a separate deliverable; the migration's own predicate

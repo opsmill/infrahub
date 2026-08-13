@@ -71,8 +71,11 @@ retire(candidates: RetirementCandidates, at: Timestamp) -> RetirementResult
 
 - Evaluates the predicate against **all** open branches, each under its own filter with
   isolation applied.
-- Closes the global property edges (`HAS_VALUE`, `IS_PROTECTED`, `HAS_SOURCE`, `HAS_OWNER`) of
-  every candidate field vertex no branch retains.
+- Closes **every open global edge** of each candidate field vertex no branch retains: the
+  property edges (`HAS_VALUE`, `IS_PROTECTED`, `HAS_SOURCE`, `HAS_OWNER`) **and** the owning
+  `HAS_ATTRIBUTE` / `IS_RELATED` edge (both `IS_RELATED` edges, for a relationship).
+- Closes the owning edge and the property edges **independently**, each only where still open, so
+  a half-closed vertex is fully closed rather than left half-closed (FR-002a).
 - Closes **nothing** while any branch retains the vertex.
 - Never creates a `deleted`-status edge on the global branch (FR-013).
 - Never deletes an `AttributeValue` still referenced by another attribute (FR-017).
@@ -112,8 +115,12 @@ get_data() -> RetirementResult
 
 **Guarantees**
 
-- Candidate traversal starts from **open, active** global `HAS_ATTRIBUTE` / `IS_RELATED` edges
-  (FR-011) — never from node reachability.
+- Candidate traversal has two anchor modes. **Runtime** (FR-011): global `HAS_ATTRIBUTE` /
+  `IS_RELATED` edges that are open and active — selective, and excludes superseded same-UUID
+  copies via the anchor itself. **Migration** (FR-011a): the same edges with `status: "active"`
+  regardless of `to`, so pre-existing half-closed vertices are reachable, with same-UUID
+  protection carried by the predicate (retained if *any* linked node vertex is live with an active
+  owning edge) rather than by the anchor. Neither mode starts from node reachability alone.
 - Anchors on the `:Node`, `:Attribute`, `:Relationship` labels; never enumerates schema kinds
   (so profiles and templates are covered without being listed).
 - Evaluates the relationship two-peer form: both peers live **and** both `IS_RELATED` edges
@@ -166,7 +173,8 @@ GRAPH_VERSION    : 75 -> 76
 
 **Guarantees**
 
-- Closes global property edges of vertices no branch retains; hard-deletes `Attribute` /
+- Closes the global property edges **and the owning edges** of vertices no branch retains,
+  including pre-existing half-closed shapes via the widened anchor; hard-deletes `Attribute` /
   `Relationship` vertices with no linked node vertex at all.
 - Batches its writes.
 - Reports **both** counts (edges closed, vertices removed) to the upgrade log via
