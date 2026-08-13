@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .predicates import relevant_node_changes
 
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
+
+    from infrahub.graphql.analyzer import ReachedPath
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,7 +30,27 @@ class ChangedNodes:
     node_ids: list[str]
 
 
-type ImpactAssessment = EveryTarget | ChangedNodes
+@dataclass(frozen=True, slots=True)
+class ReachedChange:
+    """Changed nodes of one related kind, paired with the chain that resolves them to owning roots."""
+
+    node_ids: list[str]
+    path: ReachedPath
+
+
+@dataclass(frozen=True, slots=True)
+class RelationshipReachedChanges:
+    """Changes that narrow to members, split by how each is mapped back to a group member.
+
+    ``direct_member_node_ids`` already are group members; ``reached`` still needs its relationship
+    chain walked back to the owning members. The two resolve independently and their members union.
+    """
+
+    direct_member_node_ids: list[str]
+    reached: list[ReachedChange]
+
+
+type ImpactAssessment = EveryTarget | ChangedNodes | RelationshipReachedChanges
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -54,24 +76,38 @@ class QueryImpactClassifier:
     only_has_unique_targets: bool
     traversed_kinds: set[str]
     readable_fields_by_kind: dict[str, set[str]]
+    reached_paths: dict[str, ReachedPath] = field(default_factory=dict)
 
     def assess(self, diff_summary: list[NodeDiff]) -> ImpactAssessment:
-        changed_node_ids = self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
-        if self._must_widen(diff_summary=diff_summary, changed_node_ids=changed_node_ids):
-            return EveryTarget()
-
-        return ChangedNodes(node_ids=changed_node_ids)
-
-    def _must_widen(self, *, diff_summary: list[NodeDiff], changed_node_ids: list[str]) -> bool:
         if not self.only_has_unique_targets:
             # Any number of objects can answer the query, so a changed node cannot be traced back to
             # the targets reading it.
-            return bool(changed_node_ids)
+            any_relevant_change = self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
+            return EveryTarget() if any_relevant_change else ChangedNodes(node_ids=[])
 
-        traversed_fields_by_kind = {
-            kind: fields for kind, fields in self.readable_fields_by_kind.items() if kind in self.traversed_kinds
+        root_fields_by_kind = {
+            kind: fields for kind, fields in self.readable_fields_by_kind.items() if kind not in self.traversed_kinds
         }
-        return bool(self._changed_node_ids(diff_summary=diff_summary, kinds=traversed_fields_by_kind))
+        member_node_ids = self._changed_node_ids(diff_summary=diff_summary, kinds=root_fields_by_kind)
+
+        reached: list[ReachedChange] = []
+        for kind in sorted(self.traversed_kinds):
+            fields = self.readable_fields_by_kind.get(kind)
+            if not fields:
+                continue
+            changed_ids = self._changed_node_ids(diff_summary=diff_summary, kinds={kind: fields})
+            if not changed_ids:
+                continue
+            path = self.reached_paths.get(kind)
+            if path is None:
+                # A change on this related kind cannot be mapped back to specific members, so every
+                # target has to run rather than risk leaving one stale.
+                return EveryTarget()
+            reached.append(ReachedChange(node_ids=changed_ids, path=path))
+
+        if reached:
+            return RelationshipReachedChanges(direct_member_node_ids=member_node_ids, reached=reached)
+        return ChangedNodes(node_ids=member_node_ids)
 
     def _changed_node_ids(self, *, diff_summary: list[NodeDiff], kinds: dict[str, set[str]]) -> list[str]:
         return relevant_node_changes(

@@ -5,12 +5,16 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.core.constants import RelationshipDirection
 from infrahub.core.regeneration.impact_classifier import (
     ChangedNodes,
     EveryTarget,
     ImpactAssessment,
     QueryImpactClassifier,
+    ReachedChange,
+    RelationshipReachedChanges,
 )
+from infrahub.graphql.analyzer import ReachedPath, RelationshipHop
 from tests.helpers.diff_summary import node_diff
 
 if TYPE_CHECKING:
@@ -24,6 +28,34 @@ BRANCH = "feature/regen"
 TRAVERSED_KINDS = {"TestInterface"}
 READABLE_FIELDS = {"TestDevice": {"name", "interfaces"}, "TestInterface": {"description"}}
 
+# The interface is reached from the device by traversing the ``interfaces`` relationship, so a change
+# to an interface resolves back to its owning device through this single hop.
+INTERFACE_PATH = ReachedPath(
+    hops=(
+        RelationshipHop(
+            node_kind="TestDevice",
+            relationship_identifier="device__interface",
+            relationship_direction=RelationshipDirection.OUTBOUND,
+        ),
+    )
+)
+# A two-hop path: an interface's ip is reached device -> interface -> ip, so a change to the ip walks
+# back to the interface and then to the owning device.
+IP_PATH = ReachedPath(
+    hops=(
+        RelationshipHop(
+            node_kind="TestInterface",
+            relationship_identifier="interface__ip",
+            relationship_direction=RelationshipDirection.OUTBOUND,
+        ),
+        RelationshipHop(
+            node_kind="TestDevice",
+            relationship_identifier="device__interface",
+            relationship_direction=RelationshipDirection.OUTBOUND,
+        ),
+    )
+)
+
 
 @dataclass(frozen=True, kw_only=True)
 class AssessCase:
@@ -33,6 +65,7 @@ class AssessCase:
     expected: ImpactAssessment
     traversed_kinds: set[str] = field(default_factory=lambda: set(TRAVERSED_KINDS))
     readable_fields_by_kind: dict[str, set[str]] = field(default_factory=lambda: dict(READABLE_FIELDS))
+    reached_paths: dict[str, ReachedPath] = field(default_factory=dict)
 
 
 ASSESS_CASES = [
@@ -111,6 +144,60 @@ ASSESS_CASES = [
         ],
         expected=ChangedNodes(node_ids=[]),
     ),
+    AssessCase(
+        name="related_change_with_a_resolvable_path_narrows_to_the_reached_change",
+        only_has_unique_targets=True,
+        diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"])],
+        reached_paths={"TestInterface": INTERFACE_PATH},
+        expected=RelationshipReachedChanges(
+            direct_member_node_ids=[],
+            reached=[ReachedChange(node_ids=["intf1"], path=INTERFACE_PATH)],
+        ),
+    ),
+    AssessCase(
+        name="root_and_related_change_with_a_path_narrows_to_both",
+        only_has_unique_targets=True,
+        diff_summary=[
+            node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["name"]),
+            node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"]),
+        ],
+        reached_paths={"TestInterface": INTERFACE_PATH},
+        expected=RelationshipReachedChanges(
+            direct_member_node_ids=["dev1"],
+            reached=[ReachedChange(node_ids=["intf1"], path=INTERFACE_PATH)],
+        ),
+    ),
+    AssessCase(
+        name="multi_hop_related_change_narrows_with_the_full_chain",
+        only_has_unique_targets=True,
+        diff_summary=[node_diff(node_id="ip1", kind="TestIP", branch=BRANCH, field_names=["address"])],
+        traversed_kinds={"TestIP"},
+        readable_fields_by_kind={"TestDevice": {"name"}, "TestIP": {"address"}},
+        reached_paths={"TestIP": IP_PATH},
+        expected=RelationshipReachedChanges(
+            direct_member_node_ids=[],
+            reached=[ReachedChange(node_ids=["ip1"], path=IP_PATH)],
+        ),
+    ),
+    AssessCase(
+        name="related_change_without_a_path_widens",
+        only_has_unique_targets=True,
+        diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"])],
+        reached_paths={},
+        expected=EveryTarget(),
+    ),
+    AssessCase(
+        name="one_reached_kind_without_a_path_widens_the_whole_assessment",
+        only_has_unique_targets=True,
+        diff_summary=[
+            node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"]),
+            node_diff(node_id="ip1", kind="TestIP", branch=BRANCH, field_names=["address"]),
+        ],
+        traversed_kinds={"TestInterface", "TestIP"},
+        readable_fields_by_kind={"TestDevice": {"name"}, "TestInterface": {"description"}, "TestIP": {"address"}},
+        reached_paths={"TestInterface": INTERFACE_PATH},
+        expected=EveryTarget(),
+    ),
 ]
 
 
@@ -121,6 +208,7 @@ def test_assess(case: AssessCase) -> None:
         only_has_unique_targets=case.only_has_unique_targets,
         traversed_kinds=case.traversed_kinds,
         readable_fields_by_kind=case.readable_fields_by_kind,
+        reached_paths=case.reached_paths,
     )
 
     assessment = classifier.assess(diff_summary=case.diff_summary)
