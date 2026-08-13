@@ -18,7 +18,7 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
-from tests.helpers.db_validation import verify_no_duplicate_paths
+from infrahub.database.validation import verify_graph
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -297,4 +297,4 @@ class TestMigration059(TestInfrahubApp):
         assert fixed_branch_dl1 == "device1 spine"
         assert fixed_branch_dl2 == "device2 spine"
 
-        await verify_no_duplicate_paths(db=db)
+        await verify_graph(db=db)

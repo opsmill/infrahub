@@ -16,7 +16,7 @@ from infrahub.core.protocols import CoreAccount
 from infrahub.core.query.node import MetadataOptions
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 from infrahub.exceptions import InitializationError, SchemaNotFoundError
 from tests.integration.profiles.validation import assert_no_virtual_schema_relationships_in_db
 
@@ -600,6 +600,5 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert blue_metadata.updated_by == admin_account.id
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)
         await assert_no_virtual_schema_relationships_in_db(db=db)

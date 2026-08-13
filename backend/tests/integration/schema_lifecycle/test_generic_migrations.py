@@ -14,8 +14,7 @@ from infrahub.core.relationship.model import RelationshipManager
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
-from tests.helpers.db_validation import validate_no_duplicate_attributes
+from infrahub.database.validation import collect_graph_violations, verify_graph
 
 from ..shared import load_schema
 from .shared import TestSchemaLifecycleBase
@@ -1688,8 +1687,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert not errors
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)
 
 
 class TestSchemaLifecycleGenericUpdates(SchemaLifecycleGenericBase):
@@ -1699,7 +1697,7 @@ class TestSchemaLifecycleGenericUpdates(SchemaLifecycleGenericBase):
         errors = await self._validate_inherited_schema_fields(
             db=db, branch=branch, inheriting_schemas=inheriting_schemas
         )
-        errors.extend(await validate_no_duplicate_attributes(db=db, branch=branch))
+        errors.extend(str(violation) for violation in await collect_graph_violations(db=db))
         return errors
 
     async def _validate_inherited_schema_fields(

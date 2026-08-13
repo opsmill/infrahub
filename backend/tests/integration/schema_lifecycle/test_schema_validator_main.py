@@ -9,7 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.profile_schema import ProfileSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 
 from ..shared import load_schema
 from .shared import (
@@ -539,5 +539,4 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert "Node-level 'generate_profile' constraint violation" in err_msg
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)

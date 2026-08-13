@@ -387,6 +387,30 @@ The exact-match principle above is not limited to error messages — it applies 
 - **Pin literal expected values — don't derive them with the code's own dependencies.** Computing the expectation with the same serializer/formatter the implementation calls (`ujson.dumps`, `yaml.dump`, the function under test itself) makes the assertion a tautology: it passes even when the library's output changes. Write the raw expected string into the test.
 - **A "does not raise" test still needs an assertion.** When the contract is that an exception is swallowed, also assert a side effect that only the guarded path produces (state set before the raiser was called). With no assertion, a regression that returns early before the guard passes identically.
 
+## Graph integrity assertions
+
+Tests that write to the graph — migrations, merges, deletes, rebases — should assert that the graph is
+still structurally sound afterwards. `infrahub.database.validation` exposes a single entry point for that:
+
+```python
+from infrahub.database.validation import collect_graph_violations, verify_graph
+
+await verify_graph(db=db)                      # raises GraphValidationError listing every violation found
+await verify_graph(db=db, kinds=["TestCar"])   # only vertices carrying one of these labels
+```
+
+It runs every graph-integrity check (duplicate paths, duplicate relationships, duplicate attributes, edges
+added after a node delete, orphaned active edges under a deleted parent, relationship edge counts) and
+reports all violations together rather than stopping at the first failing check. Do not call the individual
+checks — a suite that picks a subset silently stops covering the rest.
+
+Use `kinds` to scope large-graph runs to the kinds a suite actually touches. Checks anchored on an
+`Attribute` or `Relationship` vertex resolve the label through the `Node` the vertex hangs off.
+
+When a test asserts that a damaged state *exists* (a migration's "before" state, for example), use
+`collect_graph_violations(...)`, which returns the violations instead of raising, and assert on the exact
+checks reported.
+
 ## See Also
 
 - [Python Standards](python.md) - General Python coding standards
