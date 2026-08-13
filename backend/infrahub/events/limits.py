@@ -1,6 +1,7 @@
 import os
 
 _DEFAULT_MAX_RELATED_RESOURCES = 500
+_MIN_RUN_CONTEXT_HEADROOM = 20
 
 
 def get_prefect_max_related_resources() -> int:
@@ -17,6 +18,20 @@ def get_prefect_max_related_resources() -> int:
     if max_related_resources <= 0:
         return _DEFAULT_MAX_RELATED_RESOURCES
     return max_related_resources
+
+
+def get_related_resource_budget() -> int:
+    """Return the number of related resources an event may still carry when it leaves Infrahub.
+
+    Prefect's events worker appends run-context resources to an event after it has been handed
+    over - flow run, task run, flow, deployment, work queue, work pool, and one per flow-run tag -
+    by extending the list in place, which does not re-run the client-side validation. An event
+    that leaves on the maximum therefore arrives above it, and the Prefect API answers by closing
+    the event stream rather than by dropping the single event. The budget stays below the maximum
+    so the enlarged event is still accepted.
+    """
+    maximum = get_prefect_max_related_resources()
+    return max(1, maximum - max(_MIN_RUN_CONTEXT_HEADROOM, maximum // 10))
 
 
 def get_submission_chunk_size() -> int:
