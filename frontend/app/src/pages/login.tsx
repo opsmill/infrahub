@@ -20,7 +20,7 @@ function LoginPage() {
   const errors = location?.state?.errors as RestErrorItem[] | undefined;
 
   return (
-    <div className="h-screen w-screen overflow-auto bg-stone-100 py-[25vh]">
+    <div className="h-screen w-screen overflow-auto bg-background py-[25vh]">
       <div className="m-auto flex w-full max-w-sm flex-col items-center gap-6">
         <InfrahubLogo className="h-12" />
 
