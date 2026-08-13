@@ -40,7 +40,7 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
   };
 
   return (
-    <Col className="h-screen items-center justify-center bg-background">
+    <Col className="h-screen items-center justify-center bg-background text-foreground">
       <Card className="mb-4">
         <CardContent>
           <Col className="items-center gap-4">
