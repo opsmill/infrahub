@@ -32,6 +32,7 @@ Ceph
 changelog
 conftest
 Conftest
+cron
 check_color_tags_name
 check_definitions
 class_name
@@ -173,6 +174,7 @@ Observium
 OIDC
 Okta
 Onboarding
+onboarding
 OpenAPI
 order_by
 order_weight
