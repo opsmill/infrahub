@@ -41,7 +41,7 @@ Every IP prefix exposes a read-only `utilization` attribute, computed on read fr
 - **`prefix` mode** — utilization is the address space of the child prefixes, divided by the address space of the prefix itself. For example, `192.0.2.0/24` with one `192.0.2.0/26` child reports 25%.
 - **`address` mode** — utilization is the number of IP addresses assigned to the prefix, divided by the number of usable addresses in the prefix. For example, `192.0.2.0/26` holds up to 62 usable addresses (excluding network and broadcast); with 20 addresses assigned, it reports 32%.
 
-Network and broadcast addresses count toward the usable total when `is_pool` is `true`, for IPv4 prefixes with a `/31` length (per [RFC 3021](https://datatracker.ietf.org/doc/html/rfc3021)), and for `/32` prefixes.
+Network and broadcast addresses count toward the usable total when `is_pool` is `true`, when an IPv4 prefix is `/31` or longer (per [RFC 3021](https://datatracker.ietf.org/doc/html/rfc3021)), and for every IPv6 prefix.
 
 ## Namespaces
 
