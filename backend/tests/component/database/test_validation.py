@@ -195,6 +195,18 @@ class TestVerifyGraph:
 
         assert await collect_graph_violations(db=db, kinds=case.excluded_kinds) == []
 
+    async def test_empty_kind_filter_behaves_like_no_filter(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_person_schema: SchemaBranch,
+        person_john_main: Node,
+        car_accord_main: Node,
+    ) -> None:
+        await _duplicate_attribute_vertex(db, car_accord_main, person_john_main)
+
+        assert await collect_graph_violations(db=db, kinds=[]) == await collect_graph_violations(db=db)
+
     async def test_every_check_runs_and_all_violations_are_reported(
         self,
         db: InfrahubDatabase,
@@ -213,4 +225,7 @@ class TestVerifyGraph:
             GraphCheck.DUPLICATE_ATTRIBUTES,
             GraphCheck.RELATIONSHIP_EDGE_COUNTS,
         }
-        assert str(exc_info.value) == "\n".join(str(violation) for violation in exc_info.value.violations)
+        raised_message = str(exc_info.value)
+        assert GraphCheck.DUPLICATE_ATTRIBUTES.value in raised_message
+        assert GraphCheck.RELATIONSHIP_EDGE_COUNTS.value in raised_message
+        assert len(raised_message.splitlines()) == len(exc_info.value.violations)

@@ -42,7 +42,7 @@ def _node_labels(kinds: list[str] | None) -> str:
 
     Kind labels only ever sit on Node vertices, so matching on them alone already implies the Node label.
     """
-    if kinds is None:
+    if not kinds:
         return "Node"
     return "|".join(kinds)
 
@@ -60,7 +60,7 @@ def _near_kind_filter(*variables: str, kinds: list[str] | None) -> str:
 
     Returns ``true`` when no filter is requested, so it can be interpolated unconditionally.
     """
-    if kinds is None:
+    if not kinds:
         return "true"
     labels = "|".join(kinds)
     predicates = [f"({variable}:{labels} OR EXISTS {{ MATCH ({variable})--(:{labels}) }})" for variable in variables]
@@ -129,7 +129,9 @@ END AS delete_time
 MATCH (n)-[added_e]-(peer)
 WHERE added_e.from > delete_time
 AND type(added_e) <> "IS_PART_OF"
+// ------------
 // if the node was deleted on a branch (delete_branch_level > 1), and then updated on main/global (added_e.branch_level = 1), we can ignore it
+// ------------
 AND added_e.branch_level >= delete_branch_level
 AND (added_e.branch = delete_branch OR delete_branch_level = 1)
 WITH DISTINCT n, delete_branch, delete_time, added_e, peer AS added_peer
@@ -148,8 +150,15 @@ CALL (added_e) {
 //    - illegal
 // ------------
 WITH n, delete_branch, delete_time, added_e, added_peer
+// case 1: update on branch after delete on branch
 WHERE delete_branch = added_e.branch
-OR delete_time < added_e_branched_from
+// case 2: update on branch after delete on main and branch forked after delete on main
+OR (
+    delete_branch <> added_e.branch
+    AND delete_time <= added_e_branched_from
+    // > instead of >= here allows for edges updated during a rebase
+    AND added_e.from > added_e_branched_from
+)
 RETURN n.uuid AS n_uuid, delete_branch, delete_time, added_e, added_peer
     """ % {"node_labels": _node_labels(kinds)}
     results = await db.execute_query(query=query)
@@ -225,8 +234,7 @@ async def _check_orphaned_active_edges(db: InfrahubDatabase, kinds: list[str] | 
 // ----------------
 MATCH (n:%(node_labels)s)-[r1:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
 WHERE r1.status = "deleted" OR (r1.status = "active" AND r1.to IS NOT NULL)
-WITH n, field, r1,
-    CASE WHEN r1.status = "deleted" THEN r1.from ELSE r1.to END AS r1_deleted_at
+WITH n, field, r1
 // ----------------
 // Exclude cases where another active first-level edge to this field exists on the same branch
 // (e.g. migrated-kind nodes where old vertex HAS_ATTRIBUTE is deleted but new vertex's is active)
@@ -239,10 +247,10 @@ WHERE NOT EXISTS {
 // Find all second-level peers of this field, then get the latest edge to each
 // visible from the deleted first-level edge's branch
 // ----------------
-WITH n, field, r1, r1_deleted_at
+WITH n, field, r1
 MATCH (field)-[prop_edge:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE|IS_RELATED]-(peer)
 WHERE peer <> n
-WITH DISTINCT n, field, r1, r1_deleted_at, type(prop_edge) AS prop_edge_type, peer
+WITH DISTINCT n, field, r1, type(prop_edge) AS prop_edge_type, peer
 // ----------------
 // Get the branched_from time if r1.branch is a user branch
 // ----------------
@@ -250,7 +258,7 @@ OPTIONAL MATCH (r1_br:Branch {name: r1.branch})
 // ----------------
 // branched_from is the fork point a branch reads the default branch through
 // ----------------
-WITH n, field, r1, r1_deleted_at, prop_edge_type, peer, r1_br.branched_from AS r1_branch_branched_from
+WITH n, field, r1, prop_edge_type, peer, r1_br.branched_from AS r1_branch_branched_from
 // ----------------
 // Get the latest edge to this peer visible from the first-level edge's branch
 // ----------------
@@ -265,8 +273,13 @@ CALL (field, r1, r1_branch_branched_from, prop_edge_type, peer) {
 // ----------------
 // Flag if the latest visible edge is active — it should have been deleted/closed
 // ----------------
-WITH field, r1, r2
-WHERE r2.status = "active" AND r2.to IS NULL
+WITH field, r1, r2, r1_branch_branched_from
+WHERE r2.status = "active"
+AND (
+    r2.to IS NULL
+    // a default-branch edge closed after the fork is still active from the branch's point of view
+    OR (r1.branch <> $default_branch AND r2.branch = $default_branch AND r2.to > r1_branch_branched_from)
+)
 RETURN DISTINCT
     field.name AS field_name,
     r1.branch AS branch,
@@ -302,7 +315,7 @@ async def _check_relationship_edge_counts(db: InfrahubDatabase, kinds: list[str]
     """
     # The kind filter selects which Relationship vertices are reported on; the peer count itself always
     # spans every peer, otherwise filtering out one side of a relationship would report a false violation.
-    kind_scope = "true" if kinds is None else f"""EXISTS {{ MATCH (rel)-[:IS_RELATED]-(:{"|".join(kinds)}) }}"""
+    kind_scope = "true" if not kinds else f"""EXISTS {{ MATCH (rel)-[:IS_RELATED]-(:{"|".join(kinds)}) }}"""
     query = """
 MATCH (rel:Relationship)
 WHERE %(kind_scope)s
@@ -412,8 +425,13 @@ CALL (n, field, branch, branch_branched_from) {
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
 }
-WITH n, branch, field_name, r
-WHERE r.status = "active" AND r.to IS NULL
+WITH n, branch, field_name, r, branch_branched_from
+WHERE r.status = "active"
+AND (
+    r.to IS NULL
+    // a default-branch edge closed after the fork is still active from the branch's point of view
+    OR (branch <> $default_branch AND r.branch = $default_branch AND r.to > branch_branched_from)
+)
 WITH n, branch, field_name, count(*) AS num_fields
 WHERE num_fields > 1
 RETURN n.uuid AS node_id, branch, field_name, num_fields
