@@ -20,7 +20,7 @@ const checkboxIndicatorVariants = tv({
   base: [
     "flex size-4.5 shrink-0 items-center justify-center rounded-md border border-border-strong bg-white text-white transition-all duration-200",
     "group-data-pressed/checkbox:scale-90",
-    "group-data-focus-visible/checkbox:border-cyan-700 group-data-focus-visible/checkbox:ring-2 group-data-focus-visible/checkbox:ring-cyan-700/25 group-data-focus-visible/checkbox:outline-hidden",
+    "group-data-focus-visible/checkbox:border-ring group-data-focus-visible/checkbox:ring-2 group-data-focus-visible/checkbox:ring-ring-halo group-data-focus-visible/checkbox:outline-hidden",
   ],
   variants: {
     isActive: {
