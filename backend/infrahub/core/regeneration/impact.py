@@ -81,21 +81,17 @@ async def get_field_level_impacted_subscribers(
         case EveryTarget():
             return TargetSelection(ids=every_target, widened=True)
         case ChangedNodes(node_ids=node_ids):
-            subscribers = await _get_subscribers_for_nodes(node_ids=node_ids, branch=query_branch, client=client)
-            ids = [subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == subscriber_kind]
-            log.debug(f"SELECTIVE_REGEN field-impact resolved subscribers: {len(ids)}")
-            return TargetSelection(ids=ids, widened=False)
+            member_ids = node_ids
         case RelationshipReachedChanges():
             resolver = UniquenessDependentResolver(db=db, branch=query_branch_obj)
-            member_ids = await _resolve_reached_members(changes=assessment, resolver=resolver)
-            subscribers = await _get_subscribers_for_nodes(
-                node_ids=sorted(member_ids), branch=query_branch, client=client
-            )
-            ids = [subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == subscriber_kind]
-            log.debug(f"SELECTIVE_REGEN field-impact resolved subscribers: {len(ids)}")
-            return TargetSelection(ids=ids, widened=False)
+            member_ids = sorted(await _resolve_reached_members(changes=assessment, resolver=resolver))
         case _ as unreachable:
             assert_never(unreachable)
+
+    subscribers = await _get_subscribers_for_nodes(node_ids=member_ids, branch=query_branch, client=client)
+    ids = [subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == subscriber_kind]
+    log.debug(f"SELECTIVE_REGEN field-impact resolved subscribers: {len(ids)}")
+    return TargetSelection(ids=ids, widened=False)
 
 
 async def _resolve_reached_members(
