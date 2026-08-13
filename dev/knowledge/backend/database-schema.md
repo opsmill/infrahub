@@ -372,7 +372,7 @@ Backoff is configured under the `database` settings (`INFRAHUB_DB_RETRY_*` envir
 
 **The retry must run at the transaction owner.** A method decorated with `retry_db_transaction` opens the transaction it retries. Code running *inside* that transaction (a query loop, a nested helper) must let a retriable error propagate to the owner rather than catching it and returning a failed result: a caught error still leaves the transaction poisoned, so the commit fails with a non-retryable `TransactionError` and the replay never happens. Only paths that run outside any transaction (they skip the transaction wrapper and have no owner to replay them) record the error as a failure instead. Gate that choice on `db.is_transaction`.
 
-This transaction-layer retry is distinct from Prefect task retry (see [Async Tasks — Failure handling](async-tasks.md#failure-handling)): task retry replays an entire workflow with no per-transaction backoff, so concurrent writers that deadlock re-run in lockstep. Transient database errors belong to the transaction-layer retry, which spaces replays with jitter.
+This transaction-layer retry is distinct from Prefect task retry (see [Async Tasks — Failure handling](async-tasks.md#failure-handling)): a task retry re-runs the failed task with no delay between attempts, so a batch of concurrent tasks that deadlock on the same nodes retry at the same time and deadlock again. Transient database errors belong to the transaction-layer retry, which spaces replays with backoff and jitter so contending writers separate.
 
 ## See Also
 
