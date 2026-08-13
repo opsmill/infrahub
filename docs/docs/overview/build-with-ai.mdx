@@ -3,7 +3,11 @@ title: Build with AI
 description: Use AI coding assistants and the Infrahub MCP server to build schemas, objects, checks, generators, and transforms, and to query live infrastructure data.
 ---
 
-Skills give an AI coding assistant Infrahub-specific knowledge — schema conventions, `.infrahub.yml` registration, GraphQL patterns — so it produces working Infrahub resources from a plain-language description instead of a generic guess. Skills operate on your local files. The [Infrahub MCP server](https://docs.infrahub.app/mcp) is the live connection: it lets an assistant query and change data on a running Infrahub instance directly, through the same session-branch and Proposed Change workflow a person uses.
+[Infrahub Skills](https://docs.infrahub.app/skills) give an AI coding assistant Infrahub-specific knowledge — schema conventions, `.infrahub.yml` registration, GraphQL patterns — so it writes a working Infrahub resource from a plain-language description instead of a generic guess. They operate on your local files: schema YAML, object files, checks, generators, transforms, menus. Installing them is enough for most of what's on this page.
+
+The [Infrahub MCP server](https://docs.infrahub.app/mcp) is the live connection to a running instance. It lets an assistant read and write your actual data and schema directly — through the same session-branch and Proposed Change workflow a person uses — rather than only producing a file for you to load yourself.
+
+The two are independent. Most skills don't need MCP at all: they write a file, and `infrahubctl` loads it, the same as if you'd written it by hand. MCP adds two things a local file can't: checking a skill's output against your actual live schema instead of a static export, and pages like [Analyze your data](../schema/analyze-your-data) that have no file to write at all — the point there is asking a question about data that already exists.
 
 AI assists the person building with Infrahub — it writes schema, objects, checks, generators, transforms, and menus, and answers questions about your live data. There's no in-product chatbot; the assistant is the coding tool you already use (Claude Code, Cursor, GitHub Copilot, and others), extended with Infrahub-specific knowledge.
 
@@ -12,6 +16,8 @@ This is also not about modeling AI infrastructure — GPU clusters, training pip
 ## Why it's safe
 
 Every write an AI agent makes through the MCP server lands on an automatically created session branch (`mcp/session-YYYYMMDD-<hex>`), never on the default branch directly. `mutate_graphql` rejects branch- and schema-management mutations outright, regardless of how the mutation is written, and `query_graphql` rejects any mutation at all — it's read-only. A change reaches `main` only through a Proposed Change, opened by the `propose_changes` tool and reviewed and merged by a person, the same path as a change made through the web interface or the SDK. No MCP tool merges a branch.
+
+On top of that, the MCP server authenticates with an [API token](../deploy-manage/user-management/managing-api-tokens) tied to a specific account, so [Infrahub's roles and permissions](../deploy-manage/user-management/permissions-roles/overview) apply to an AI agent exactly as they would to a person. Scope the token's account to a role with only the permissions the assistant needs, and every MCP action — read or write — is bound by the same global and object-level permission checks Infrahub already enforces everywhere else.
 
 This is enforced in the server's code, not left to convention — see the [MCP methods reference](https://docs.infrahub.app/mcp/references/methods) if you want to verify it yourself, or read [Branches](../branches/overview) and [Proposed Changes](../proposed-changes/overview) for how the workflow looks on the receiving end.
 
@@ -41,7 +47,7 @@ See the [MCP server docs](https://docs.infrahub.app/mcp) for Docker deployment, 
 
 ## Two ways of working
 
-Depending on how well-scoped the change is, work with the skills in one of two modes.
+Depending on the size and complexity of the change — not just how clearly you can describe it — work with the skills in one of two modes.
 
 ### Direct — describe, then go
 
@@ -51,7 +57,7 @@ For targeted changes, describe what you want and the assistant handles it with t
 - *"Create a check that validates every device has a primary IP"* — the assistant uses `infrahub-managing-checks`, writes the Python class and GraphQL query, and registers it in `.infrahub.yml`.
 - *"Import this `inventory.csv` into Infrahub"* — the assistant uses `infrahub-importing-data`, checks the columns against your live schema, and loads the result on a fresh branch.
 
-This is the fastest path for well-scoped work — adding an attribute, writing a check, populating objects. Most people start here and move to spec-driven mode once a change grows beyond one prompt.
+This is the fastest path for small, self-contained changes — adding an attribute, writing a check, populating objects. Most people start here and move to spec-driven mode once a change grows in size or complexity, regardless of how short the prompt describing it would be.
 
 ### Spec-driven — plan, then build
 
