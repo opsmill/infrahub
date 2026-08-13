@@ -216,7 +216,7 @@ export const ProposedChangeDetails = ({
           <CardHeader className="flex items-center justify-between">
             <div
               onClick={() => navigate(path)}
-              className="cursor-pointer font-semibold text-base text-gray-900 leading-6 hover:underline"
+              className="cursor-pointer font-semibold text-base text-foreground leading-6 hover:underline"
             >
               Proposed change
             </div>

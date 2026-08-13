@@ -175,7 +175,7 @@ export function GeneratorTargetSelectionForm({
                     onClick={() => handleRemoveTarget(node.id)}
                     className={classNames(
                       focusVisibleStyle,
-                      "flex size-3.5 items-center justify-center rounded-full border border-transparent text-xs hover:text-gray-900"
+                      "flex size-3.5 items-center justify-center rounded-full border border-transparent text-xs hover:text-foreground"
                     )}
                     aria-label={`Remove ${label}`}
                   >

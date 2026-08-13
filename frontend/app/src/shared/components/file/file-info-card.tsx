@@ -28,7 +28,7 @@ export function FileInfoCard({
     <Row className="overflow-hidden">
       <FileIconComponent className="size-5 shrink-0 text-gray-500" />
       <div className="min-w-0 flex-1 truncate">
-        <p className="truncate font-medium text-gray-900 text-sm">{fileName}</p>
+        <p className="truncate font-medium text-foreground text-sm">{fileName}</p>
         {(fileSize !== undefined || contentType) && (
           <p className="mt-0.5 text-gray-500 text-xs">
             {[fileSize !== undefined && formatFileSize(fileSize), contentType]

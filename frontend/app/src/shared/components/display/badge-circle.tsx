@@ -50,7 +50,7 @@ const getClassName = (type?: CIRCLE_BADGE_TYPES, onClick?: Function) => {
     }
     default: {
       return `
-        bg-gray-100 text-gray-900
+        bg-gray-100 text-foreground
         ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
       `;
     }

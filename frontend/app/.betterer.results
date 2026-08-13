@@ -245,7 +245,7 @@ exports[`fix ts error`] = {
     "src/pages/resource-manager/resource-pool-details.tsx:1673813627": [
       [157, 72, 4, "tsc: Property \'node\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
-    "src/shared/components/display/badge-circle.tsx:1960503252": [
+    "src/shared/components/display/badge-circle.tsx:3997426422": [
       [6, 12, 18, "tsc: This syntax is not allowed when \'erasableSyntaxOnly\' is enabled.", "460855417"]
     ],
     "src/shared/components/editor/json/json-editor.tsx:1579157109": [
@@ -328,9 +328,9 @@ exports[`fix ts error`] = {
       [102, 54, 2, "tsc: Property \'id\' does not exist on type \'Node | PoolValue\'.\\n  Property \'id\' does not exist on type \'PoolValue\'.", "5861160"],
       [150, 23, 5, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'Node | PoolValue | null\'.\\n  Type \'NodeCore\' is not assignable to type \'Node\'.\\n    Types of property \'display_label\' are incompatible.\\n      Type \'null | string | undefined\' is not assignable to type \'string\'.\\n        Type \'undefined\' is not assignable to type \'string\'.", "189936718"]
     ],
-    "src/shared/components/table/table.tsx:180882032": [
-      [63, 40, 23, "tsc: Argument of type \'number | string | tRowValue | undefined\' is not assignable to parameter of type \'number | string | tRowValue\'.\\n  Type \'undefined\' is not assignable to type \'number | string | tRowValue\'.", "1426455104"],
-      [69, 40, 23, "tsc: Argument of type \'number | string | tRowValue | undefined\' is not assignable to parameter of type \'number | string | tRowValue\'.\\n  Type \'undefined\' is not assignable to type \'number | string | tRowValue\'.", "1426455104"]
+    "src/shared/components/table/table.tsx:3721991410": [
+      [67, 40, 23, "tsc: Argument of type \'number | string | tRowValue | undefined\' is not assignable to parameter of type \'number | string | tRowValue\'.\\n  Type \'undefined\' is not assignable to type \'number | string | tRowValue\'.", "1426455104"],
+      [73, 40, 23, "tsc: Argument of type \'number | string | tRowValue | undefined\' is not assignable to parameter of type \'number | string | tRowValue\'.\\n  Type \'undefined\' is not assignable to type \'number | string | tRowValue\'.", "1426455104"]
     ],
     "src/shared/components/ui/alert.tsx:1109450805": [
       [15, 12, 11, "tsc: This syntax is not allowed when \'erasableSyntaxOnly\' is enabled.", "2602525471"]

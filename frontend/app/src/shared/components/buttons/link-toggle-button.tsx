@@ -16,7 +16,9 @@ export const LinkToggleButton = ({ className, to, matchPath, ...props }: LinkTog
       to={to}
       className={classNames(
         "flex cursor-pointer items-center gap-1.5 rounded-sm px-3 py-1.5 font-medium text-sm outline-hidden transition-colors",
-        isActive ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-700",
+        isActive
+          ? "bg-white text-foreground shadow-xs"
+          : "text-gray-500 hover:text-foreground-muted",
         typeof className === "string" ? className : undefined
       )}
       {...props}

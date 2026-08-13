@@ -144,7 +144,7 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
 
       <div className="m-4 overflow-hidden rounded-md bg-white p-2">
         <div className="mb-2 flex">
-          <h2 className="m-2 ml-0 flex-1 font-semibold text-gray-900">Task Logs ({count})</h2>
+          <h2 className="m-2 ml-0 flex-1 font-semibold text-foreground">Task Logs ({count})</h2>
 
           <div className="flex flex-1 justify-end">
             <SearchInput

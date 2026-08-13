@@ -8,15 +8,15 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        white: "border-transparent bg-white text-gray-900",
-        gray: "border-transparent bg-gray-100 text-gray-900",
-        "dark-gray": "border-transparent bg-gray-300 text-gray-900",
+        white: "border-transparent bg-white text-foreground",
+        gray: "border-transparent bg-gray-100 text-foreground",
+        "dark-gray": "border-transparent bg-gray-300 text-foreground",
         green: "border-transparent bg-green-700/10 text-green-900",
         red: "border-transparent bg-red-100 text-red-900",
         blue: "border-transparent bg-custom-blue-700/10 text-custom-blue-700",
         yellow: "border-transparent bg-yellow-100 text-yellow-900",
         purple: "border-transparent bg-purple-100 text-purple-800",
-        "gray-outline": "border-border-strong bg-white text-gray-700",
+        "gray-outline": "border-border-strong bg-white text-foreground-muted",
         "lightgray-outline": "bg-white text-gray-500",
         "blue-outline": "border-custom-blue-700 bg-white text-custom-blue-700",
         "yellow-outline": "border-yellow-100 bg-white text-yellow-900",
