@@ -12,7 +12,7 @@ from infrahub.core.preferences.constants import DateFormat as DateFormatEnum
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.permissions import MANAGE_GLOBAL_PREFERENCES_PERMISSION
 from infrahub.core.preferences.repository import PreferenceRepository
-from infrahub.core.preferences.validation import normalize_timezone
+from infrahub.core.preferences.validation import validate_timezone
 from infrahub.database import retry_db_transaction
 from infrahub.graphql.types.preferences import DateFormat, PreferenceWriteScope, PreferenceWriteScopeType
 
@@ -79,7 +79,7 @@ class InfrahubSetPreferences(Mutation):
             owner_id = account_id
 
         if timezone is not _UNSET:
-            timezone = normalize_timezone(timezone)
+            timezone = validate_timezone(timezone)
 
         return await cls._set(
             graphql_context, owner_id=owner_id, actor_id=account_id, date_format=date_format, timezone=timezone

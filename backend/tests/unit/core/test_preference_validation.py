@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.core.preferences.validation import normalize_timezone
+from infrahub.core.preferences.validation import validate_timezone
 from infrahub.exceptions import ValidationError
 
 
@@ -27,8 +27,8 @@ NORMALIZE_CASES = [
 
 
 @pytest.mark.parametrize("case", NORMALIZE_CASES, ids=lambda case: case.name)
-def test_normalize_timezone_accepts_and_normalizes(case: NormalizeCase) -> None:
-    assert normalize_timezone(case.value) == case.expected
+def test_validate_timezone_accepts_and_normalizes(case: NormalizeCase) -> None:
+    assert validate_timezone(case.value) == case.expected
 
 
 @dataclass
@@ -50,7 +50,7 @@ REJECT_CASES = [
 
 
 @pytest.mark.parametrize("case", REJECT_CASES, ids=lambda case: case.name)
-def test_normalize_timezone_rejects_non_iana(case: RejectCase) -> None:
+def test_validate_timezone_rejects_non_iana(case: RejectCase) -> None:
     expected = f"'{case.value}' is not a valid IANA timezone"
     with pytest.raises(ValidationError, match=rf"^{re.escape(expected)}$"):
-        normalize_timezone(case.value)
+        validate_timezone(case.value)

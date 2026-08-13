@@ -10,14 +10,14 @@ _REJECTED_KEYS = frozenset({"localtime", "posixrules"})
 _REJECTED_PREFIXES = ("posix/", "right/")
 
 
-def normalize_timezone(value: str | None) -> str | None:
-    """Return a stored-ready timezone, rejecting anything a client should not store.
+def validate_timezone(value: str | None) -> str | None:
+    """Validate a timezone for storage; empty becomes None, a valid value is returned unchanged.
 
-    An empty value is normalized to None (nothing stored) so the write reply agrees with every
-    later read, which treats a falsy timezone as unset. A non-empty value must resolve against the
-    runtime's zone database and not be an implementation-defined entry; validating by construction
-    (rather than an enumerated allowlist) keeps the check independent of an enumeration that varies
-    by runtime and avoids a filesystem walk.
+    A non-empty value must resolve against the runtime's zone database and not be an
+    implementation-defined key. It is checked by construction rather than an allowlist, so
+    backward-compatibility aliases are accepted and stored as given. The accepted set follows the
+    interpreter's own tzdata, so confirm new accept/reject behavior against a running instance,
+    not by unit test alone.
 
     Raises:
         ValidationError: the value is non-empty but is not a storable IANA timezone.
