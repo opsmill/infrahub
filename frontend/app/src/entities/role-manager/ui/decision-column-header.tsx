@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { classNames } from "@/shared/utils/common";

@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Icon } from "@/shared/components/display/icon";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
 import type { GroupData } from "@/entities/groups/domain/model/group";

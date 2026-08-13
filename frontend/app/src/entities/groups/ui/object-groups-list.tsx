@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";

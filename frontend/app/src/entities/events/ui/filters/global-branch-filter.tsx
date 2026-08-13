@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import type { TagProps } from "react-aria-components";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 
 import { branchesState } from "@/entities/branches/stores";

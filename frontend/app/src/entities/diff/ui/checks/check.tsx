@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Popover, PopoverTrigger, Tooltip } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 
 import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
+import { Icon } from "@/shared/components/display/icon";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";

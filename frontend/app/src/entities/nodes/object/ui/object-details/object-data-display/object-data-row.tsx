@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import type React from "react";
 import { Button, DialogTrigger } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";

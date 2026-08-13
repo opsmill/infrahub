@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Popover, PopoverTrigger, Tooltip } from "@infrahub/ui";
 
 import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { DurationDisplay } from "@/shared/components/display/duration-display";
+import { Icon } from "@/shared/components/display/icon";
 import { List } from "@/shared/components/table/list";
 import { Link } from "@/shared/components/ui/link";
 

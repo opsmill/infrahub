@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import {
   Autocomplete,
   Button,
@@ -18,6 +17,7 @@ import { type ButtonProps as AriaButtonProps, Collection } from "react-aria-comp
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Separator } from "@/shared/components/aria/separator";
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";

@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import type React from "react";
 import type { FC } from "react";
 import { Button } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import {
   boldCommand,
   type EditorCommand,

@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Modal } from "@infrahub/ui";
 import { useState } from "react";
 import { Heading } from "react-aria-components";
 
 import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
 import { Col, Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { classNames } from "@/shared/utils/common";
 

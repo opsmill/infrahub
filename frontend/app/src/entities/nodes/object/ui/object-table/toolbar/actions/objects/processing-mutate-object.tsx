@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { Card, CardContent } from "@infrahub/ui";
 import { CheckIcon, RefreshCwIcon } from "lucide-react";
 import React from "react";
 
 import { Col, Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";

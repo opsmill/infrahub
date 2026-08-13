@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import {
   Button as AriaButton,
   type ButtonProps as AriaButtonProps,
@@ -11,6 +10,7 @@ import {
   composeRenderProps,
 } from "react-aria-components";
 
+import { Icon } from "@/shared/components/display/icon";
 import { focusWithinStyle, inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 

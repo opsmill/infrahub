@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { LinkButton, type LinkButtonProps } from "@infrahub/ui";
 import { BookOpen, ExternalLink } from "lucide-react";
 import type React from "react";
 import type { ReactNode } from "react";
 
 import { Separator } from "@/shared/components/aria/separator";
+import { Icon } from "@/shared/components/display/icon";
 
 import { HomeCard } from "@/entities/homepage/ui/home-card";
 

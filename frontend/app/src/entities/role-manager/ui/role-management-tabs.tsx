@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { ScrollArea, Spinner } from "@infrahub/ui";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
 

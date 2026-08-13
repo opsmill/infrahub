@@ -1,5 +1,4 @@
 import { Transition } from "@headlessui/react";
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
 import { isPast } from "date-fns";
 import { useAtom } from "jotai";
@@ -7,6 +6,7 @@ import { parseAsIsoDateTime, useQueryState } from "nuqs";
 import React from "react";
 import DateTimePicker from "react-datepicker";
 
+import { Icon } from "@/shared/components/display/icon";
 import { QSP } from "@/shared/config/qsp";
 import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { datetimeAtom } from "@/shared/stores/time.atom";

@@ -1,7 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 import { useParams } from "react-router";
+
+import { Icon } from "@/shared/components/display/icon";
 
 import { getThreadLabel, getThreadTitle } from "@/entities/diff/ui/diff-utils";
 import { useGetDiffThread } from "@/entities/diff/ui/queries/get-diff-thread.query";

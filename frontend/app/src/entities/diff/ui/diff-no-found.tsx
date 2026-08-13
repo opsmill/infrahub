@@ -1,4 +1,4 @@
-import { Icon } from "@iconify-icon/react";
+import { Icon } from "@/shared/components/display/icon";
 
 import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
 

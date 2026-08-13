@@ -1,4 +1,4 @@
-import { Icon } from "@iconify-icon/react";
+import { Icon } from "@/shared/components/display/icon";
 
 const BRANCH_NOT_FOUND_REGEX = /^Branch: .+ not found\.$/;
 

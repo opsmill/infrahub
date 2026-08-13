@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { Tooltip } from "@infrahub/ui";
 
 import { DateDisplay } from "@/shared/components/display/date-display";
+import { Icon } from "@/shared/components/display/icon";
 import { Link } from "@/shared/components/ui/link";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 

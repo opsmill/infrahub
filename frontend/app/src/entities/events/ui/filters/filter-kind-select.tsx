@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";

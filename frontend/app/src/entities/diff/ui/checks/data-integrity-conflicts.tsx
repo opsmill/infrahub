@@ -1,6 +1,5 @@
-import { Icon } from "@iconify-icon/react";
-
 import type { CoreDataCheck } from "@/shared/api/graphql/generated/types";
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 
 import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";

@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@infrahub/ui";
 import { Collection } from "react-aria-components";
 
+import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";

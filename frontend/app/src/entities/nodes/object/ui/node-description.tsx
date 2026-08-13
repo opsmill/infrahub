@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import type { InputHTMLAttributes } from "react";
 import { Link } from "react-router";
 
+import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";

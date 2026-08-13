@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
+import { Icon } from "@/shared/components/display/icon";
 import { useRequiredParams } from "@/shared/hooks/use-required-params";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";

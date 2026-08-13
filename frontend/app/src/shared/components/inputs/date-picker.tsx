@@ -1,6 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import type React from "react";
 import DateTimePicker from "react-datepicker";
+
+import { Icon } from "@/shared/components/display/icon";
 import "react-datepicker/dist/react-datepicker.css";
 
 import { Button } from "@infrahub/ui";
