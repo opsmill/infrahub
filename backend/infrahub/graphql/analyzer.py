@@ -147,8 +147,7 @@ class RelationshipHop:
     """One relationship step, expressed from the owner object that carries the relationship.
 
     ``node_kind`` owns ``relationship_identifier``; ``relationship_direction`` is that relationship's
-    direction on the owner. Traversing it from a set of peer uuids yields the owner nodes referencing
-    them, so a chain of hops resolves a changed related object back to the root objects reading it.
+    direction on the owner.
     """
 
     node_kind: str
@@ -158,11 +157,7 @@ class RelationshipHop:
 
 @dataclass(frozen=True, slots=True)
 class ReachedPath:
-    """The relationship chain a query follows from a root object down to a related kind.
-
-    ``hops`` is ordered deepest-first: the first hop resolves the changed related object's immediate
-    owner, and each subsequent hop resolves that owner's owner, ending at the root object.
-    """
+    """The relationship chain a query follows from a root object down to a related kind."""
 
     hops: tuple[RelationshipHop, ...]
 
