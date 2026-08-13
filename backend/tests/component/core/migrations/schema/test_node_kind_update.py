@@ -545,9 +545,10 @@ async def test_migration_newly_inherited_numberpool(
         assert 1 <= value <= 100
 
 
-async def test_migration_name_update_creates_no_attributes(
+async def test_migration_namespace_update_creates_no_attributes(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
 ) -> None:
+    """Duplicating a kind's vertices re-points the existing attribute rows instead of creating new ones."""
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")

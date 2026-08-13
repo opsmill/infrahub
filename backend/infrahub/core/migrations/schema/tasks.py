@@ -185,6 +185,9 @@ class SchemaMigrationsApplier:
 async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str]:
     await add_branch_tag(branch_name=message.branch.name)
 
+    if not message.migrations:
+        return []
+
     applier = SchemaMigrationsApplier(
         executor=TaskSchemaMigrationExecutor(database=await get_database()), log=get_run_logger()
     )
