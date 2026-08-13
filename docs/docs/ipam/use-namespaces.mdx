@@ -47,15 +47,13 @@ Deleting a namespace deletes every IP prefix and IP address it contains. The `de
 
 ## Practical example
 
-Consider an Internet Service Provider (ISP) that provides managed network services to three customers. Each customer uses the 10.0.0.0/8 private address range internally.
+An Internet Service Provider runs managed network services for three customers, and each customer uses `10.0.0.0/8` internally. A single IPAM without namespaces cannot hold three copies of the same range. With one namespace per customer, each range is tracked independently:
 
-Without namespaces, the ISP could not track these overlapping ranges in a single IPAM system. With namespaces, the ISP creates three namespaces (one per customer) and manages each customer's IP space independently:
+- **customer-a** — Customer A's `10.0.0.0/8` and its subnets
+- **customer-b** — Customer B's `10.0.0.0/8` and its subnets
+- **customer-c** — Customer C's `10.0.0.0/8` and its subnets
 
-- **customer-a** namespace: Contains Customer A's 10.0.0.0/8 and its subnets
-- **customer-b** namespace: Contains Customer B's 10.0.0.0/8 and its subnets
-- **customer-c** namespace: Contains Customer C's 10.0.0.0/8 and its subnets
-
-Each namespace maintains its own hierarchy, utilization calculations, and address assignments. The ISP can query, report on, and manage each customer's IP space without any overlap or confusion.
+Each namespace has its own hierarchy, utilization figures, and address assignments, so a query scoped to one customer never returns another customer's addresses.
 
 ## Switch the active namespace
 
