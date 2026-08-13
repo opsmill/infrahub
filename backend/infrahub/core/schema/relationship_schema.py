@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub import config
 from infrahub.core.constants import RelationshipDirection, RelationshipKind
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
-from infrahub.core.relationship import Relationship
 from infrahub.exceptions import InitializationError
 
 from .generated.relationship_schema import GeneratedRelationshipSchema
@@ -44,9 +44,6 @@ class RelationshipSchema(GeneratedRelationshipSchema):
             if isinstance(value, Enum):
                 data[field_name] = value.value
         return data
-
-    def get_class(self) -> type[Relationship]:
-        return Relationship
 
     def get_peer_schema(self, db: InfrahubDatabase, branch: Branch | str | None = None) -> MainSchemaTypes:
         return db.schema.get(name=self.peer, branch=branch, duplicate=False)
@@ -93,7 +90,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
 
         query_params[f"{prefix}_rel_name"] = self.identifier
 
-        rel_type = self.get_class().rel_type
+        rel_type = DatabaseEdgeType.IS_RELATED.value
         peer_schema = self.get_peer_schema(db=db, branch=branch)
 
         if include_match:

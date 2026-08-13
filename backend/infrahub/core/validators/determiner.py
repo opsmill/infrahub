@@ -6,11 +6,11 @@ from infrahub.core.constants import RelationshipKind, SchemaPathType
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.path import SchemaPath
+from infrahub.core.relationship.dependent_resolver import DependentNodeResolver
 from infrahub.core.schema.attribute_parameters import AttributeParameters
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.core.validators.node_diff_index import NodeDiffIndex
-from infrahub.core.validators.uniqueness.dependent_resolver import UniquenessDependentResolver
 from infrahub.core.validators.uniqueness.scope import UniquenessConstraintScoper
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.log import get_logger
@@ -283,7 +283,7 @@ def build_constraint_validator_determiner(
     """Wire a determiner with its node-diff index and uniqueness scoper for a single operation."""
     node_diff_index = NodeDiffIndex()
     uniqueness_scoper = UniquenessConstraintScoper(
-        dependent_resolver=UniquenessDependentResolver(db=db, branch=branch, at=at),
+        dependent_resolver=DependentNodeResolver(db=db, branch=branch, at=at),
         node_diff_index=node_diff_index,
     )
     return ConstraintValidatorDeterminer(node_diff_index=node_diff_index, uniqueness_scoper=uniqueness_scoper)

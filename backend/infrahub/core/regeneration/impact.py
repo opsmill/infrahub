@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, assert_never
 
 from infrahub.core import registry
 from infrahub.core.query_group.subscribers import fetch_subscriber_refs
-from infrahub.core.validators.uniqueness.dependent_resolver import UniquenessDependentResolver
+from infrahub.core.relationship.dependent_resolver import DependentNodeResolver
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
-    from infrahub.core.validators.uniqueness.dependent_resolver import UniquenessDependentResolverInterface
+    from infrahub.core.relationship.dependent_resolver import DependentNodeResolverInterface
 
 
 async def get_field_level_impacted_subscribers(
@@ -69,7 +69,7 @@ async def get_field_level_impacted_subscribers(
         case ChangedNodes(node_ids=node_ids):
             member_ids = node_ids
         case RelationshipReachedChanges():
-            dependent_resolver = UniquenessDependentResolver(db=db, branch=query_branch_obj)
+            dependent_resolver = DependentNodeResolver(db=db, branch=query_branch_obj)
             member_ids = sorted(await ReachedMemberResolver(resolver=dependent_resolver).resolve(assessment))
         case _ as unreachable:
             assert_never(unreachable)
@@ -87,7 +87,7 @@ class ReachedMemberResolver:
     resolved member set is a superset too.
     """
 
-    def __init__(self, *, resolver: UniquenessDependentResolverInterface) -> None:
+    def __init__(self, *, resolver: DependentNodeResolverInterface) -> None:
         self.resolver = resolver
 
     async def resolve(self, changes: RelationshipReachedChanges) -> set[str]:
