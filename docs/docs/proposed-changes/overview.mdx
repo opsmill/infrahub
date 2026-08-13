@@ -91,16 +91,15 @@ When nothing regenerated for a definition the log says so as well, so you can co
 
 #### When a Transformation regenerates on every change
 
-Infrahub cannot always detect every file a Transformation depends on, and it says so in two different ways.
+Two situations leave Infrahub unable to attribute a change, so it falls back to regenerating a Transformation's artifacts on any commit to the repository:
 
-A Jinja2 template that pulls in a partial through a runtime variable (`{% include some_variable %}`) leaves the auto-detected closure **incomplete**, recorded as `dependencies_complete = false` on the Transformation. While a closure is incomplete Infrahub cannot tell which file changes are relevant, so it conservatively regenerates that Transformation's artifacts on **any** file change in the repository. The task log explains each such fallback and names the Transformation, and the repository import log records every reference auto-detection could not resolve, naming the template and the location of the unresolved include.
+- **A Jinja2 template reference it cannot follow**, such as a partial pulled in through a runtime variable (`{% include some_variable %}`). Auto-detection records the closure as incomplete (`dependencies_complete = false` on the Transformation), and the repository import log names the template and the location of the unresolved reference.
+- **A Python Transformation with no `watch` declaration.** Its imports are never analyzed, so with nothing declared there is no basis for ruling any file out.
 
-A Python Transformation arrives at the same outcome by a different route. Its closure is always complete, because there is only ever the one file to detect, but imports are never analyzed, so a closure carrying no `watch` declaration cannot be trusted to name everything. Infrahub therefore ties such a Transformation's fingerprint to the repository's current commit: the fingerprint moves on every commit, and the artifacts regenerate. This is not the incomplete-closure fallback above, and `dependencies_complete` stays `true` throughout.
-
-Either route produces the noisy behavior the precise gate is meant to avoid. To restore precise regeneration, do one of the following, then commit so the closure recomputes on the next import:
+The task log explains each fallback and names the Transformation, so a broad regeneration can be told apart from a precise one. To get precise regeneration back, do one of the following, then commit so the closure recomputes on the next import:
 
 - **Rewrite the dynamic reference with a literal name** so auto-detection can follow it, for example replacing `{% include partial_name %}` with `{% include "partials/header.j2" %}`.
-- **Declare the missing files with `watch.files`** on the Transformation entry in `.infrahub.yml`. Listing the files, or the directory that contains them, both adds them to the closure and marks the closure complete. On a Python Transformation, declare the key even with an empty `files` list when there is nothing to add: the declaration itself is what unties the fingerprint from the commit. See [declaring extra dependencies](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch).
+- **Declare the dependencies with `watch.files`** on the Transformation entry in `.infrahub.yml`, listing the files or the directory that contains them. On a Python Transformation, declare the key even with an empty `files` list when there is nothing to add. See [declaring extra dependencies](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch).
 
 ### Generator integration
 

@@ -142,7 +142,7 @@ generator_definitions:
         - common/constants.py
 ```
 
-Declaring any `watch.files` entry also marks the definition's dependency closure as complete, which suppresses the conservative regenerate-on-any-change fallback that an incomplete auto-detection would otherwise trigger. See [the proposed changes overview](../proposed-changes/overview#understanding-artifact-regeneration) for what an incomplete closure means and how to resolve it.
+Declaring any `watch.files` entry also marks the definition's dependency closure as complete, which suppresses the conservative regenerate-on-any-change fallback that an incomplete Jinja2 auto-detection would otherwise trigger. On a Python Transformation or Generator, where auto-detection has no references to fail on, the declaration earns its precision the way described in the next section instead. See [the proposed changes overview](../proposed-changes/overview#understanding-artifact-regeneration) for what an incomplete closure means and how to resolve it.
 
 #### Declaring `watch` with no extra files
 
