@@ -31,6 +31,16 @@ class AttributeRenameQuery(Query):
         self.new_attr = new_attr
         super().__init__(**kwargs)
 
+    def render_match(self) -> str:
+        """Select the nodes to rename the attribute on. Subclasses narrow this to add their own guards."""
+        return """
+        // --------------
+        // Find all possible nodes
+        // --------------
+        MATCH (node:%(node_kind)s|Profile%(node_kind)s|Template%(node_kind)s)
+        WHERE exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))
+        """ % {"node_kind": self.previous_attr.node_kind}
+
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
@@ -62,16 +72,7 @@ class AttributeRenameQuery(Query):
         # Set metadata for vertex properties on default/global branch
         self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
-        self.add_to_query(
-            """
-        // --------------
-        // Find all possible nodes
-        // --------------
-        MATCH (node:%(node_kind)s|Profile%(node_kind)s|Template%(node_kind)s)
-        WHERE exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))
-        """
-            % {"node_kind": self.previous_attr.node_kind}
-        )
+        self.add_to_query(self.render_match())
 
         add_uuid = db.render_uuid_generation(node_label="new_attr", node_attr="uuid")
         query = """

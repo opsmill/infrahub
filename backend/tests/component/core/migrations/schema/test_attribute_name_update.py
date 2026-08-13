@@ -174,6 +174,24 @@ async def test_query_branch1_node_created_on_branch(
     ]
     await verify_graph(db=db)
 
+    count_attr_node_after = await count_nodes(db=db, label="Attribute")
+    count_rels_after = await count_relationships(db=db)
+
+    # Re-execute the query once to ensure that it won't change anything
+    query = await AttributeNameUpdateMigrationQuery01.init(db=db, branch=branch1, migration=migration)
+    await query.execute(db=db)
+    assert query.get_nbr_migrations_executed() == 0
+
+    assert await count_nodes(db=db, label="Attribute") == count_attr_node_after
+    assert await count_relationships(db=db) == count_rels_after
+    assert await _get_has_attribute_edges(db=db, node_uuid=car.id, attr_name="color", branch_name=branch1.name) == [
+        ("active", True)
+    ]
+    assert await _get_has_attribute_edges(db=db, node_uuid=car.id, attr_name="new-color", branch_name=branch1.name) == [
+        ("active", False)
+    ]
+    await verify_graph(db=db)
+
 
 async def test_migration(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node, car_profile1_main: Node
