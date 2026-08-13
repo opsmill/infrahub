@@ -1,0 +1,59 @@
+---
+title: Analyze your data
+description: Ask an AI assistant questions about live Infrahub data through the MCP server, without writing GraphQL.
+---
+
+# Analyze your data
+
+Ask an AI assistant questions about your live infrastructure data in plain language. The assistant queries your running instance through the [Infrahub MCP server](https://docs.infrahub.app/mcp) and answers directly.
+
+:::info Prerequisite
+
+Requires the Infrahub MCP server connected to a running instance. See [Install](../overview/build-with-ai#install) on the Build with AI hub.
+
+:::
+
+The assistant reaches your data through the MCP server's tools directly: `get_nodes` and `search_nodes` for straightforward reads, `query_graphql` for anything relationship-heavy, and `find_paths` / `find_reachable` for graph traversal.
+
+## Querying
+
+Ask single questions — find, list, count:
+
+```text
+List devices without a primary IP address.
+```
+
+```text
+Which prefixes in this pool are unallocated?
+```
+
+Ask relationship questions the same way:
+
+```text
+How are these two devices connected?
+```
+
+For the manual equivalent of relationship questions, see [Analyze dependencies](../graph-traversal/analyze-dependencies) and [Query traversal with GraphQL](../graph-traversal/query-with-graphql).
+
+## Analysis
+
+These six categories span multiple domains and have no manual equivalent today:
+
+- **Compliance** — "Which devices break our naming standard?"
+- **Service impact** — "Which services depend on this circuit?"
+- **Maintenance windows** — "What is affected if this device goes down Saturday?"
+- **Drift detection** — "Where does the realized state differ from the design?"
+- **Capacity planning** — "Which resource pools are near their limits?"
+- **Inventory gaps** — "Which devices are missing a platform or location?"
+
+## When this is the wrong tool
+
+These are one-off questions, asked when you need an answer once. A rule that should run on every Proposed Change belongs in a check instead — see [Checks & Validation](../checks/overview).
+
+## Related
+
+- [Analyze dependencies](../graph-traversal/analyze-dependencies) — the manual equivalent for dependency and impact analysis
+- [Query traversal with GraphQL](../graph-traversal/query-with-graphql) — the manual equivalent for programmatic queries
+- [Checks & Validation](../checks/overview) — enforce a rule on every Proposed Change instead of asking once
+- [Build with AI](../overview/build-with-ai) — install the MCP server
+- [Data Analyzer skill reference](https://docs.infrahub.app/skills/skills-reference/analyzing-data) — full tool and prompt reference
