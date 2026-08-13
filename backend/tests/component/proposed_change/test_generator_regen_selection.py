@@ -67,9 +67,9 @@ query GetSourceOnlyDevice($ids: [ID!]!) {
 """
 
 # Each closure is the set of repo-relative paths the integrator would persist at import time:
-# the package-directory floor (every sibling under the generator's directory) plus the
-# repository manifest, which is part of every closure. The floors are disjoint so a file edit
-# selects exactly one generator.
+# the generator's own source file, whatever it declares through `watch.files` (here its
+# containing directory), plus the repository manifest, which is part of every closure. The
+# closures are disjoint so a file edit selects exactly one generator.
 DEPENDENCIES_A = [".infrahub.yml", "generators/a/__init__.py", "generators/a/a.py", "generators/a/helpers.py"]
 DEPENDENCIES_A2 = [".infrahub.yml", "generators/a2/__init__.py", "generators/a2/a2.py"]
 DEPENDENCIES_B = [".infrahub.yml", "generators/b/__init__.py", "generators/b/b.py"]
@@ -239,8 +239,8 @@ class GeneratorRegenTestBase(TestInfrahubAppBase):
 class TestGeneratorRegenSelection(GeneratorRegenTestBase):
     """The selection gate submits a per-definition check only for the generators a change affects.
 
-    Drives the ``run_generators`` flow against four generator definitions backed by distinct
-    package-directory closures over a single repository, two of which share a query. Each scenario
+    Drives the ``run_generators`` flow against four generator definitions backed by disjoint
+    closures over a single repository, two of which share a query. Each scenario
     asserts the exact set of definitions dispatched, proving unrelated edits and sibling generators
     are left untouched while data changes, query edits and definition additions still select.
     """
@@ -463,7 +463,7 @@ class TestGeneratorRegenSelection(GeneratorRegenTestBase):
         )
         assert selected == ["device-gen-a"]
 
-    async def test_sibling_helper_edit_selects_via_package_floor(
+    async def test_watched_sibling_helper_edit_selects_generator(
         self,
         dataset: dict[str, Any],
         default_branch: Branch,
@@ -471,10 +471,10 @@ class TestGeneratorRegenSelection(GeneratorRegenTestBase):
         memory_cache: MemoryCache,
         workflow_recorder: WorkflowRecorder,
     ) -> None:
-        """A sibling file in the generator's package directory selects the owning generator.
+        """A sibling helper that the generator declared through `watch.files` selects the owning generator.
 
-        The package-directory floor includes every sibling under the generator's directory, so a
-        helper edit the source file never imports still drives a re-run.
+        Auto-detection claims the generator's own file only, so a helper beside it drives a
+        re-run exactly when the author put it in the closure.
         """
         selected = await self._selected_definitions(
             dataset=dataset,

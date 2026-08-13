@@ -113,9 +113,9 @@ When a Transformation feeds an [artifact](../artifacts/overview), Infrahub regen
 Infrahub builds the closure differently per language:
 
 - **Jinja2**: the template itself, plus every template it reaches through static `{% include %}`, `{% import %}`, or `{% extends %}`, resolved transitively. See [Write a Jinja2 Transformation](./jinja2#dependency-tracking).
-- **Python**: every Git-tracked file in the directory that contains the transform's `file_path`. See [Write a Python Transformation](./python#dependency-tracking).
+- **Python**: the file named by the transform's `file_path`. Imports are not analyzed, so helper modules are declared rather than detected. See [Write a Python Transformation](./python#dependency-tracking).
 
-A change to a file outside a Transformation's closure no longer regenerates its artifacts. When automatic detection can't follow a dependency — a template name resolved at runtime, or a module imported from another package — declare the extra files with the [`watch` key](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch) in `.infrahub.yml`.
+A change to a file outside a Transformation's closure no longer regenerates its artifacts. When automatic detection can't follow a dependency - a template name resolved at runtime, or any module a Python Transformation imports - declare the extra files with the [`watch` key](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch) in `.infrahub.yml`. A Python Transformation or Generator should declare `watch` even when it needs no extra files, using an empty `files` list, so that Infrahub can stop treating every commit as a possible change to it.
 
 For how these decisions surface during a proposed change, see [Understanding artifact regeneration](../proposed-changes/overview#understanding-artifact-regeneration).
 

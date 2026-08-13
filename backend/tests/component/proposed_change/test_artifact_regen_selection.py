@@ -41,8 +41,8 @@ query GetPythonDevice($ids: [ID!]!) {
 
 # The closure the integrator would store at import time for each transform. The Jinja2
 # closure carries a transitively-included partial; the Python closure carries a sibling
-# helper picked up by the package-directory floor. The repository manifest is part of
-# every closure.
+# helper, which only reaches the closure because the transform declares its directory in
+# `watch.files`. The repository manifest is part of every closure.
 JINJA_DEPENDENCIES = [".infrahub.yml", "partials/header.j2", "templates/device.j2"]
 PYTHON_DEPENDENCIES = [
     ".infrahub.yml",
@@ -242,7 +242,7 @@ class TestArtifactRegenSelection(ArtifactRegenTestBase):
         )
         assert selected == ["artifact-python"]
 
-    async def test_sibling_helper_edit_selects_via_package_floor(
+    async def test_watched_sibling_helper_edit_selects_definition(
         self,
         dataset: dict[str, Any],
         default_branch: Branch,
@@ -250,10 +250,10 @@ class TestArtifactRegenSelection(ArtifactRegenTestBase):
         memory_cache: MemoryCache,
         workflow_recorder: WorkflowRecorder,
     ) -> None:
-        """A sibling file in the transform's package directory selects the owning definition.
+        """A sibling helper that the transform declared through `watch.files` selects the owning definition.
 
-        The Python closure includes every sibling under the transform's directory, so a
-        helper edit that the source file never imports still drives regeneration.
+        Auto-detection claims the transform's own file only, so a helper beside it drives
+        regeneration exactly when the author put it in the closure.
         """
         selected = await self._selected_definitions(
             dataset=dataset,

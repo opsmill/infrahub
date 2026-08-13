@@ -72,7 +72,7 @@ Learn more about [Transformations](../transformations/overview) and [Artifacts](
 
 ### Understanding artifact regeneration
 
-When a proposed change includes commits to a linked Git repository, Infrahub regenerates only the artifacts whose Transformation actually depends on a changed file. Each Transformation's dependency closure - the templates it includes for a Jinja2 Transformation, or the files in its package directory for a Python Transformation - is computed when the repository is imported and stored on the Transformation. A file change regenerates a definition's artifacts only when the changed file is in that definition's closure. A change to a GraphQL query the definition uses, or to the artifact definition itself, also triggers regeneration.
+When a proposed change includes commits to a linked Git repository, Infrahub regenerates only the artifacts whose Transformation actually depends on a changed file. Each Transformation's dependency closure - the templates it includes for a Jinja2 Transformation, or its own source file for a Python Transformation - is computed when the repository is imported and stored on the Transformation. A file change regenerates a definition's artifacts only when the changed file is in that definition's closure. A change to a GraphQL query the definition uses, or to the artifact definition itself, also triggers regeneration.
 
 Two repository-level rules also apply:
 
@@ -91,18 +91,18 @@ When nothing regenerated for a definition the log says so as well, so you can co
 
 #### When a Transformation's dependencies are incomplete
 
-Infrahub cannot always detect every file a Transformation depends on. A Jinja2 template that pulls in a partial through a runtime variable (`{% include some_variable %}`), or a Python Transformation that imports a helper at runtime, leaves the auto-detected closure **incomplete**. Infrahub records this as `dependencies_complete = false` on the Transformation.
+Infrahub cannot always detect every file a Transformation depends on. A Jinja2 template that pulls in a partial through a runtime variable (`{% include some_variable %}`) leaves the auto-detected closure **incomplete**, recorded as `dependencies_complete = false` on the Transformation. A Python Transformation is in the same position for a different reason: its imports are never analyzed, so until it declares `watch` - with an empty `files` list if it needs no extra files - Infrahub has to assume there is a dependency it cannot see.
 
 While a Transformation's closure is incomplete, Infrahub cannot tell which file changes are relevant, so it conservatively regenerates that Transformation's artifacts on **any** file change in the repository: safe, but the noisy behavior the precise gate is meant to avoid. The task log explains each such fallback and names the Transformation, and the repository import log records every reference auto-detection could not resolve, naming the template and the location of the unresolved include.
 
 To restore precise regeneration, do one of the following, then commit so the closure recomputes on the next import:
 
 - **Rewrite the dynamic reference with a literal name** so auto-detection can follow it, for example replacing `{% include partial_name %}` with `{% include "partials/header.j2" %}`.
-- **Declare the missing files with `watch.files`** on the Transformation entry in `.infrahub.yml`. Listing the files, or the directory that contains them, both adds them to the closure and marks the closure complete. See [declaring extra dependencies](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch).
+- **Declare the missing files with `watch.files`** on the Transformation entry in `.infrahub.yml`. Listing the files, or the directory that contains them, both adds them to the closure and marks the closure complete. On a Python Transformation, declare the key even with an empty `files` list when there is nothing to add. See [declaring extra dependencies](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch).
 
 ### Generator integration
 
-Infrahub automatically runs Generators as part of the proposed change workflow, and applies the same precise regeneration that artifacts use. Each Generator's dependency closure - the files in its package directory, plus any extra paths you declare with `watch.files` - is computed when the repository is imported and stored on the Generator definition. A file change re-runs a Generator's instances only when the changed file is in that Generator's closure. A change to the GraphQL query the Generator uses, or to the Generator definition itself, also triggers a re-run, and a data change on a node the query reads continues to run the Generator exactly as before.
+Infrahub automatically runs Generators as part of the proposed change workflow, and applies the same precise regeneration that artifacts use. Each Generator's dependency closure - its own source file, plus any extra paths you declare with `watch.files` - is computed when the repository is imported and stored on the Generator definition. A file change re-runs a Generator's instances only when the changed file is in that Generator's closure. A change to the GraphQL query the Generator uses, or to the Generator definition itself, also triggers a re-run, and a data change on a node the query reads continues to run the Generator exactly as before.
 
 The two repository-level rules above apply to Generators as well: editing a repository's `.infrahub.yml` re-runs every Generator in that repository, and read-only repositories participate on the same terms - bumping a `CoreReadOnlyRepository` to a new pinned commit re-runs the Generators affected by that commit, even on branches where `sync_with_git` is disabled.
 
@@ -112,7 +112,7 @@ The why trail covers Generators too. Each run or skip decision is recorded in th
 Definition device-tags (17e9c3b2-...): file generators/tags/tags.py changed and is in this generator source's dependency closure - all instances will run.
 ```
 
-Generators are Python-only, so auto-detection cannot follow a helper imported from a sibling top-level package. When a Generator depends on files outside its own package directory, declare them with `watch.files` on the Generator entry in `.infrahub.yml`, exactly as you would for a Python Transformation. See [declaring extra dependencies](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch). A Generator imported before precise triggering shipped has no stored closure and falls back to re-running on any file change with no error; it self-heals to precise triggering the next time the repository is imported.
+Generators are Python-only, and Infrahub does not analyze imports, so auto-detection never follows a helper module - whether it sits beside the Generator or in another package. Declare every such file with `watch.files` on the Generator entry in `.infrahub.yml`, and declare the key with an empty `files` list when there is nothing to add, exactly as you would for a Python Transformation. See [declaring extra dependencies](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch). A Generator imported before precise triggering shipped has no stored closure and falls back to re-running on any file change with no error; it self-heals to precise triggering the next time the repository is imported.
 
 Learn more about [Generators](../generators/overview).
 
