@@ -29,7 +29,7 @@ export const ComboboxTrigger = ({ children, className, ref, ...props }: Combobox
         role="combobox"
         className={classNames(
           inputStyle,
-          "focus:border-custom-blue-600 focus:outline-hidden focus:ring-2 focus:ring-custom-blue-600/25",
+          "focus:border-ring focus:outline-hidden focus:ring-2 focus:ring-ring-halo",
           className
         )}
       >
