@@ -38,7 +38,7 @@ exports[`fix ts error`] = {
       [354, 22, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
       [356, 32, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
     ],
-    "src/entities/diff/ui/node-diff/index.tsx:123254081": [
+    "src/entities/diff/ui/node-diff/index.tsx:2908665840": [
       [87, 8, 15, "tsc: Type \'unknown\' is not assignable to type \'Date\'.", "140489382"],
       [121, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
     ],
