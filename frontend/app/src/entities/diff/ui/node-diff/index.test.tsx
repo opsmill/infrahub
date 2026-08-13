@@ -4,7 +4,7 @@ import { store } from "@/shared/stores";
 
 import { getDiffTreeFromApi } from "@/entities/diff/api/get-diff-tree-from-api";
 import { getDiffTreeSummaryFromApi } from "@/entities/diff/api/get-diff-tree-summary-from-api";
-import { DIFF_TREE_PER_PAGE } from "@/entities/diff/domain/get-diff-tree";
+import { DIFF_TREE_PER_PAGE } from "@/entities/diff/domain/use-cases/get-diff-tree";
 import { NodeDiff } from "@/entities/diff/ui/node-diff";
 import type { DiffNode } from "@/entities/diff/ui/node-diff/types";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
