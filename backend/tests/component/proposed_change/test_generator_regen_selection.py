@@ -66,10 +66,11 @@ query GetSourceOnlyDevice($ids: [ID!]!) {
 }
 """
 
-# Each closure is the set of repo-relative paths the integrator would persist at import time:
-# the generator's own source file, whatever it declares through `watch.files` (here its
-# containing directory), plus the repository manifest, which is part of every closure. The
-# closures are disjoint so a file edit selects exactly one generator.
+# Each closure is set by hand rather than built by an import: these scenarios drive the
+# selection gate, and the closure builder has its own tests. The shape matches what an import
+# persists for a generator that declared its containing directory in `watch.files` - its own
+# source file plus that directory's contents - together with the repository manifest, which is
+# part of every closure. The closures are disjoint so a file edit selects exactly one generator.
 DEPENDENCIES_A = [".infrahub.yml", "generators/a/__init__.py", "generators/a/a.py", "generators/a/helpers.py"]
 DEPENDENCIES_A2 = [".infrahub.yml", "generators/a2/__init__.py", "generators/a2/a2.py"]
 DEPENDENCIES_B = [".infrahub.yml", "generators/b/__init__.py", "generators/b/b.py"]
@@ -463,7 +464,7 @@ class TestGeneratorRegenSelection(GeneratorRegenTestBase):
         )
         assert selected == ["device-gen-a"]
 
-    async def test_watched_sibling_helper_edit_selects_generator(
+    async def test_helper_in_stored_closure_selects_generator(
         self,
         dataset: dict[str, Any],
         default_branch: Branch,
@@ -471,10 +472,11 @@ class TestGeneratorRegenSelection(GeneratorRegenTestBase):
         memory_cache: MemoryCache,
         workflow_recorder: WorkflowRecorder,
     ) -> None:
-        """A sibling helper that the generator declared through `watch.files` selects the owning generator.
+        """A closure member that is not the generator's own source file selects the owning generator.
 
-        Auto-detection claims the generator's own file only, so a helper beside it drives a
-        re-run exactly when the author put it in the closure.
+        The gate treats every path in the stored closure alike, so a helper beside the source
+        drives a re-run once it is in there. Whether it gets in there is the closure builder's
+        decision, covered by its own tests.
         """
         selected = await self._selected_definitions(
             dataset=dataset,
