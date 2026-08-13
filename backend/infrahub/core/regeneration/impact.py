@@ -32,19 +32,16 @@ async def get_field_level_impacted_subscribers(
     every_target: list[str],
     client: InfrahubClient,
 ) -> TargetSelection:
-    """Map data changes on a branch to the subscribers a GraphQL query actually depends on.
+    """Map data changes on `query_branch` to the subscribers a GraphQL query depends on.
 
-    A change is relevant only when at least one field that was modified is also read by the
-    query. This lets us skip regeneration when, for example, only a `description` field changed
-    but the query only reads `name` and `color`. The query analysis, the diff-summary branch tag,
-    and the subscriber lookup all run against `query_branch`, so the caller passes the branch on
-    which the changed data lives (the source branch for a proposed change, the merge target branch
-    for a merge follow-up).
+    A change matters only when a modified field is one the query reads. The query analysis,
+    the diff-summary tag and the subscriber lookup all run on `query_branch`, so the caller
+    passes the branch the changed data lives on (a proposed change's source branch, a merge's
+    target branch).
 
-    `every_target` is what the caller must fall back to when a change cannot be traced to specific
-    subscribers. Taking it as an argument keeps that fallback out of the return type: the caller
-    always receives one authoritative list and never has to resolve a "process everything" case.
-    Only the narrowed outcome costs a subscriber lookup.
+    `every_target` is the fallback when a change cannot be traced to specific subscribers;
+    taking it as an argument keeps "process everything" out of the return type, so the caller
+    always gets one authoritative list.
     """
     db = await get_database()
     query_schema_branch = registry.schema.get_schema_branch(name=query_branch)
