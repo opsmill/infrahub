@@ -5,17 +5,13 @@ from prefect.events.schemas.events import Event, RelatedResource, Resource
 from prefect.settings import PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES, temporary_settings
 
 from infrahub.events.limits import (
+    MAX_RUN_CONTEXT_RESOURCES,
     get_prefect_max_related_resources,
     get_related_resource_budget,
     get_submission_chunk_size,
 )
 
 ENV_VAR = "PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES"
-
-# Prefect's events worker appends a flow run, task run, flow, deployment, work queue and work
-# pool, plus one entry per flow-run tag. Infrahub renders at most four tag kinds today; the rest
-# of the allowance absorbs tags added later without another round of dropped events.
-WORST_CASE_RUN_CONTEXT_RESOURCES = 6 + 10
 
 
 @dataclass
@@ -61,15 +57,32 @@ def test_related_resource_budget_reserves_headroom(case: BudgetCase, monkeypatch
     assert get_related_resource_budget() == case.expected
 
 
-def test_event_on_the_budget_survives_the_prefect_run_context_append(monkeypatch: pytest.MonkeyPatch) -> None:
+@dataclass
+class SurvivalCase:
+    name: str
+    configured_max: int
+
+
+SURVIVAL_CASES = [
+    SurvivalCase(name="tenth_reservation", configured_max=500),  # a tenth exceeds the append
+    SurvivalCase(name="reservations_meet", configured_max=200),  # a tenth equals the append
+    SurvivalCase(name="floor_reservation", configured_max=100),  # the append exceeds a tenth
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in SURVIVAL_CASES])
+def test_event_on_the_budget_survives_the_prefect_run_context_append(
+    case: SurvivalCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """An event emitted on the budget must still be accepted once Prefect has enlarged it.
 
     Prefect's events worker extends the related list in place, which skips the client-side
     validation, so the enlarged event is only ever checked by the Prefect API. Emitting on the
-    maximum rather than under it therefore produces an event the API refuses.
+    maximum rather than under it therefore produces an event the API refuses. The cases span both
+    sides of the reservation, so the floor is covered as well as the proportional part.
     """
-    monkeypatch.setenv(ENV_VAR, "500")
-    with temporary_settings({PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES: 500}):
+    monkeypatch.setenv(ENV_VAR, str(case.configured_max))
+    with temporary_settings({PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES: case.configured_max}):
         event = Event(
             event="infrahub.node.updated",
             resource=Resource({"prefect.resource.id": "infrahub.node.abc"}),
@@ -82,7 +95,7 @@ def test_event_on_the_budget_survives_the_prefect_run_context_append(monkeypatch
         )
         event.related += [
             RelatedResource({"prefect.resource.id": f"prefect.tag.{index}", "prefect.resource.role": "tag"})
-            for index in range(WORST_CASE_RUN_CONTEXT_RESOURCES)
+            for index in range(MAX_RUN_CONTEXT_RESOURCES)
         ]
 
         assert len(event.related) <= get_prefect_max_related_resources()
