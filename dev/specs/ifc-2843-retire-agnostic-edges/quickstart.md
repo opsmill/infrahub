@@ -88,6 +88,15 @@ Scenarios **4, 6, 9 and 10 are the negative cases** — they are what a naive im
 breaks, in the opposite direction from the positive ones. Treat a run in which only the positive
 cases pass as a failed run.
 
+Four further checks exist to catch specific silent failures:
+
+| Check | Expected |
+|---|---|
+| Allocate → delete → retire → allocate again | The same value is returned (SC-007). Guards a three-edge pool dependency that no other test covers. |
+| Create a branch *after* candidate selection | Object stays readable on the late branch — the bounded race window, and the property that makes the time-close choice load-bearing |
+| Delete a truly branch-agnostic *node* | Edges closed exactly once; retirement is a no-op. Pins the out-of-scope boundary |
+| Run `m076` twice | Second run reports zero; an interrupted upgrade is resumable |
+
 ### Repair migration (User Story 2)
 
 | # | Fixture | Expected |
@@ -101,6 +110,11 @@ Run the migration directly against hand-built fixtures rather than through a ful
 orphan shapes cannot be produced by the current code paths (that is the point of the migration),
 so they must be built with raw Cypher.
 
+⚠️ **`m076` is irreversible.** It hard-deletes `Attribute` / `Relationship` vertices that have no
+linked node vertex, and for those vertices there is nothing to roll back *to*. The migration
+announces this before it begins; operators need a pre-upgrade backup, and that must be an informed
+decision rather than an assumed one.
+
 ## Performance gate (FR-018 / SC-008)
 
 Required before the branch-deletion path is signed off. Report numbers, do not add a committed
@@ -110,18 +124,28 @@ suite.
 uv run pytest backend/tests/query_benchmark -k "delete or merge or rebase"
 ```
 
-Measure the pre-change build and the post-change build on the **same dataset**, and report
-median durations for all four operations:
+Measure the pre-change build and the post-change build on the **same dataset**, at **two
+open-branch counts**, and report median durations for all four operations:
 
-| Operation | Before | After | Δ | Gate |
-|---|---|---|---|---|
-| Node deletion | | | | ≤ +10% |
-| Branch merge | | | | ≤ +10% |
-| Branch rebase | | | | ≤ +10% |
-| Branch deletion | | | | ≤ +10% |
+| Operation | Branches | Before | After | Δ | Gate |
+|---|---|---|---|---|---|
+| Node deletion | 3 | | | | ≤ +10% |
+| Node deletion | ~100 | | | | ≤ +10% |
+| Branch merge | 3 | | | | ≤ +10% |
+| Branch merge | ~100 | | | | ≤ +10% |
+| Branch rebase | 3 | | | | ≤ +10% |
+| Branch rebase | ~100 | | | | ≤ +10% |
+| Branch deletion | 3 | | | | ≤ +10% |
+| Branch deletion | ~100 | | | | ≤ +10% |
 
-Branch deletion is the one at risk — it gains a query the other three do not. Also record the
-`EXPLAIN` plan for the candidate traversal under each of its three bounds (Principle V).
+**Both rows are required.** The predicate's filter grows linearly in open-branch count (two
+`(branch_set, timestamp)` pairs per branch), not in graph size, so a three-branch component
+fixture is not evidence about a deployment with a hundred open branches. A gate passed only at the
+low count has not been passed.
+
+Branch deletion is the operation most at risk — it gains a query the other three do not. Also
+record the `EXPLAIN` plan for the candidate traversal under each of its three bounds
+(Principle V).
 
 ## Pre-push checks
 

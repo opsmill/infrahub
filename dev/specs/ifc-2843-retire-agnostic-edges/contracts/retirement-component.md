@@ -42,6 +42,13 @@ build(branches: Sequence[Branch], at: Timestamp) -> BranchWindowSet
   the escape hatches that exist on `Branch.get_query_filter_path` (`is_isolated=False`,
   `branch_agnostic=True`) are not reproduced here, so no future caller can reach for one.
 
+**Caller obligations**
+
+- The branch list **must** come from the database — either matched in-query as `(:Branch)`
+  vertices (preferred) or via `Branch.get_list(db=db)`. Supplying it from `registry.branch` is
+  forbidden: that cache is per-worker, filled lazily, and only ever pruned, so a branch created by
+  another worker is absent and would be treated as non-retaining.
+
 **Rejects**
 
 - An empty branch list is valid input and yields an empty set; it is not an error.
@@ -71,6 +78,14 @@ retire(candidates: RetirementCandidates, at: Timestamp) -> RetirementResult
 - Never deletes an `AttributeValue` still referenced by another attribute (FR-017).
 - Idempotent: a second call with the same candidates and a later `at` closes nothing further,
   because the edges it would close are no longer open.
+- **Never propagates a failure to its caller at a runtime enforcement point.** Retirement is a
+  best-effort side effect of an operation that has already committed, per
+  `dev/guidelines/backend/python.md` §"Best-effort side effects degrade to a safe fallback": the
+  failure is logged, and the fallback is *leaving the global edges open* — over-reserving, which
+  is today's behaviour and never data loss. Closing on partial information is the unsafe
+  direction and must not happen.
+- Logs what it did: edges closed, and the retaining-branch count when retirement is deferred.
+- Reads its branch list from the database, never from `registry.branch` (see C1).
 
 **Caller obligations**
 
@@ -109,7 +124,11 @@ get_data() -> RetirementResult
   `DeleteBranchAgnosticAttributesQuery`.
 - Returns results through `get_data()` as a frozen dataclass, never raw Neo4j records
   (Principle III).
-- Batches when a batch size is supplied (required for the unbounded form).
+- Batches when a batch size is supplied (required for the unbounded form). The unbounded form caps
+  at 500 rows per transaction (`MAX_AGNOSTIC_PEER_BATCH_SIZE`), because each row can drag an
+  unbounded number of peer vertices into the transaction with it.
+- Reads the branch set from `(:Branch)` vertices in the same pass where practical, so no stale
+  branch list can reach the predicate.
 
 **Verification obligation**
 
@@ -154,6 +173,9 @@ GRAPH_VERSION    : 75 -> 76
   `get_migration_console()`.
 - Returns `MigrationResult(errors=[...])` on unrepairable state. **Never raises**, never fails
   the upgrade (FR-016) — the pattern `m075_finish_deleting_branches` already establishes.
+- Safe to re-run: an interrupted upgrade must be resumable, and a second run reports zero.
+- Announces before it begins that its hard-delete is irreversible, so the operator's pre-upgrade
+  backup is an informed decision.
 
 **Non-guarantee**
 

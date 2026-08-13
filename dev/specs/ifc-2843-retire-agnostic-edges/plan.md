@@ -45,7 +45,9 @@ branch rebase, and branch deletion (FR-018 / SC-008)
 
 **Constraints**: The predicate runs on the node-delete hot path, so it must be bounded by
 candidate id or fork point — never an unbounded sweep outside the migration. Retirement is a
-time-close (`SET e.to = ...`), never a `deleted`-status edge on the global branch (FR-013).
+time-close (`SET e.to = ...`), never a `deleted`-status edge on the global branch (FR-013). The
+predicate's filter grows linearly in the number of **open branches**, not in graph size, so
+branch count is a first-class dimension of the FR-018 measurement.
 
 **Scale/Scope**: ~8 modules touched, 1 new migration, 2 new core components, 1 new query class.
 Target branch `release-1.11`; reaches `develop` through the normal release merge.
@@ -175,6 +177,17 @@ Three units, each with a single reason to change:
    Mirrors `Branch.get_branches_and_times_to_query_global` but for all branches at once. No
    database, no I/O. Unit-tested with hand-picked branch metadata.
 
+   **The branch list is read from the database, never from `registry.branch`.** That registry is a
+   per-worker dict filled lazily on `get_branch` and only ever pruned by
+   `purge_inactive_branches`, so a branch created by another worker is simply absent from it.
+   Using it as the predicate's source would omit a retaining branch and retire a live object's
+   value — an FR-003 violation arriving as a distributed-worker race rather than a logic bug.
+   Preferred shape: the retirement query matches `(:Branch)` vertices itself and computes the
+   fork-window collapse in Cypher, which removes both the staleness window and a round-trip; the
+   builder then serves the unit-testable pure form of that same collapse and the in-query path is
+   verified against it. Fallback if the in-query join proves costly: `Branch.get_list(db=db)`
+   under the enforcement point's existing transaction.
+
 2. **`AgnosticFieldRetirer`** (`core/agnostic/retirement.py`) — the single entry point. Given a
    candidate bound and the retirement timestamp, evaluates the predicate and closes the global
    property edges of everything no branch retains. Takes its query collaborator through the
@@ -220,6 +233,32 @@ and the failure would only surface after pre-migration branches were cleaned up,
 the change shipped. This is why kind/inheritance migrations are deliberately *not* enforcement
 points.
 
+**Retirement is a best-effort side effect at every runtime enforcement point.** It runs after a
+delete, merge, rebase or branch deletion has already committed. If it propagated, a graph hiccup
+would fail user-facing deletes — a correctness regression FR-018 does not cover. If it were
+swallowed bare, leaks would return silently and the feature's own failure would be undetectable.
+
+Follow `dev/guidelines/backend/python.md` §"Best-effort side effects degrade to a safe fallback",
+whose three conditions map directly:
+
+- **Log the failure** — required anyway by the observability decision below.
+- **Fall back safely** — the fallback is *leaving the global edges open*. That over-reserves,
+  which is today's behaviour: a value stays reserved when it could have been freed. The opposite
+  fallback — closing on partial information — is data loss. This is the "must over-execute, not
+  under-execute" rule applied to a reservation.
+- **Position it after the point of no return** — retirement runs fully after the primary
+  operation's own writes, never straddling them.
+
+`m076` keeps its own non-fatal reporting (FR-016): same principle, different mechanism, because a
+migration reports through `MigrationResult` rather than through a log-and-continue.
+
+**Every enforcement point logs what it did** — edges closed, and how many branches retain the
+field when retirement is deferred. Without this, an operator cannot distinguish a correct
+deferral from a fresh leak (they present identically: a value that will not free), and a future
+refactor that breaks retirement would be invisible until a customer is stuck again — the same
+blind spot that let this bug reach production. `BranchDataDeleter._delete_agnostic_peers` already
+logs its edge count and is in one of the files being edited, so the shape is established.
+
 **Retirement is a time-close, never a global status tombstone** (FR-013). Both are equally
 correct when the predicate is right and fail in opposite directions when it is wrong. A missed
 retaining branch under a time-close leaves that branch reading through its fork window —
@@ -235,6 +274,9 @@ file already encodes the degraded-read behaviour it buys.
 2. **Branch deletion (point 4) and its timing measurement.** It is the only point that gains a
    query the others do not, so it carries the entire FR-018 risk. Measuring here first means a
    failed gate surfaces before five other integrations are built on the assumption it passes.
+   Measure at **two open-branch counts** (a low one and a realistic-high one, e.g. 3 and 100),
+   because the predicate's filter grows with branch count and a three-branch fixture is not
+   evidence about a real deployment.
 3. Node deletion, merge, rebase (points 1–3).
 4. Schema-removal migrations (points 5–6).
 5. `m076` + `GRAPH_VERSION` bump.
@@ -250,16 +292,50 @@ already be proven correct, and it is the one step that mutates customer data.
 | **Principle II** — `m076` hard-deletes `Attribute` / `Relationship` vertices with no linked node vertex, where the constitution permits hard-delete only for branch deletion itself | A vertex with no linked node cannot be reached, diffed, or time-travelled to. A time-close would leave permanent garbage with no reader, and would not remove it from any future scan. | Time-closing them instead: leaves unreachable vertices in the graph forever with no path to ever remove them. Mitigating factor: these vertices were *produced by* branch deletions predating the existing agnostic-peer cleanup, and `BranchDataDeleter._delete_agnostic_peers` already `DETACH DELETE`s exactly this shape at branch-deletion time. The migration completes an operation the system already performs — late rather than newly — so this is arguably inside the existing exemption rather than a new one. |
 | **New `core/agnostic/` package** for two components, where Principle VII asks that shared abstractions serve ≥2 callers before extraction | The retirement component has six callers on delivery (five enforcement points plus the migration); the query has three parameterisations. Both clear the bar at the moment they are introduced. | Inlining the predicate at each enforcement point: this is precisely the "six hand-written closure rules that drift apart" outcome the single-invariant design exists to avoid, and the leak being fixed was caused by exactly that drift. |
 
+## Test plan additions
+
+Beyond the tiers assigned in research R10, four tests exist because a reviewer asked what would
+catch a specific silent failure:
+
+- **Pool re-allocation** (component) — allocate, delete, retire, allocate again, assert the same
+  value comes back. SC-007 and acceptance scenario 12 are otherwise unowned by any module in this
+  plan. Verified as satisfiable: `NumberPoolGetUsed` requires `IS_RESERVED`, `HAS_VALUE` and
+  `HAS_ATTRIBUTE` to *all* pass the branch filter, so closing `HAS_VALUE` drops the value from
+  the used set — but by a three-edge interaction with the pool-side `IS_RESERVED` edge left
+  untouched, which is subtle enough to break under an unrelated pool change with nothing to catch
+  it.
+- **Branch created late** (component) — create a branch after candidate selection and assert the
+  object stays readable on it. Bounds the race window that survives even with the branch list
+  read from the database, and locks in the degraded-read property that makes the time-close choice
+  load-bearing rather than stylistic. Without it, a future switch to a status tombstone would pass
+  every other test while silently removing the hedge.
+- **Branch-agnostic node no-op** (component) — deleting a truly branch-agnostic node closes its
+  edges exactly once and retirement is a no-op. `Node.delete` resolves `branch` to the global
+  branch for such nodes, so the enforcement point *will* run against them; this pins the
+  out-of-scope boundary the spec asserts must not regress.
+- **`m076` re-run** (component) — running the migration twice is safe and the second run reports
+  zero. An interrupted upgrade must be resumable, as `m075` is.
+
 ## Deferred decisions
 
 - **Branch-deletion candidate selectivity number** — design is fixed (research R5); the measured
   number on a customer-sized graph is produced during implementation and judged against the
-  FR-018 gate. Fallback if the gate fails: narrow the bound with the existence edge's `from`
-  timestamp against the fork point.
-- **How the base-branch diff is obtained at rebase** — a second `DiffRepository` read under the
-  existing tracking id is the plan of record (research R4). If that proves awkward, widening
-  `DiffCoordinator.update_branch_diff`'s return to expose both diffs is the fallback. This is the
-  only interface change this feature might need, and it is internal.
+  FR-018 gate at both branch counts. Fallback if the gate fails: narrow the bound with the
+  existence edge's `from` timestamp against the fork point.
+
+### Resolved during critique
+
+- **How the base-branch diff is obtained at rebase**: a second `DiffRepository` read under the
+  existing tracking id. Widening `DiffCoordinator.update_branch_diff`'s return type to expose both
+  diffs is the larger change and that method has other callers, so the read wins. No longer open —
+  the rebase task is fully specified.
+- **`m076` batching**: adopt the existing `MAX_AGNOSTIC_PEER_BATCH_SIZE = 500` cap. Each row can
+  drag an unbounded number of peer vertices into the transaction, which is precisely why that cap
+  exists in `data_deleter.py`. The migration must be safe to re-run.
+- **`m076` irreversibility**: it hard-deletes vertices, and for those vertices there is nothing to
+  roll back *to* — no rollback will be built. Instead, state the irreversibility in the upgrade
+  documentation and in the migration's own console output before it begins, so the operator's
+  pre-upgrade backup is an informed decision rather than an assumed one.
 
 ## Phase 1 artifacts
 

@@ -49,9 +49,20 @@ De-duplicated by value across the whole graph. Retirement **detaches** (closes t
 must never delete a vertex any other attribute still references (FR-017). Deleting one left with
 zero references is permitted but not required, and is not a deliverable.
 
+**Pool interaction — do not change without reading this.** A `NumberPool` reserves a value with a
+`(:NumberPool)-[:IS_RESERVED]->(:AttributeValueIndexed)` edge. Retirement deliberately **does not
+touch `IS_RESERVED`**. It does not need to: the used-value query requires `IS_RESERVED`,
+`HAS_VALUE` *and* `HAS_ATTRIBUTE` to all satisfy the branch filter simultaneously, so closing
+`HAS_VALUE` alone is enough to drop the value from the used set and make it allocatable again
+(SC-007). That is a three-edge dependency, and a future change to the pool queries could break
+SC-007 without touching a line of this feature — which is why an explicit allocate/delete/retire/
+reallocate component test exists.
+
 ### `Branch`
 
-Not modified. Read for its metadata only.
+Not modified. Read for its metadata only — **from the graph, never from the `registry.branch`
+in-process cache**, which is per-worker, lazily filled and only ever pruned, so a branch created
+by another worker would be absent and wrongly treated as non-retaining.
 
 | Field | Role in the predicate |
 |---|---|

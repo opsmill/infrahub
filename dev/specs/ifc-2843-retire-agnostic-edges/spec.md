@@ -290,8 +290,11 @@ each is independently developable, testable, and demonstrable.
 - **FR-018**: Node deletion, branch merge, branch rebase, and branch deletion MUST NOT take
   substantially longer than they do today. "Substantially longer" is defined as a median
   duration more than 10% above the pre-change median for the same operation on the same
-  dataset. *Verify: before/after timings on the existing benchmarks for all four
-  operations, reported as numbers.*
+  dataset. The measurement MUST be taken at two open-branch counts — a low one and a
+  realistic-high one — because the retaining-branch check grows with the number of open branches
+  rather than with graph size, so a low-branch-count result is not evidence about a real
+  deployment. *Verify: before/after timings on the existing benchmarks for all four
+  operations at both branch counts, reported as numbers.*
 - **FR-019**: The user-facing documentation MUST state the deletion semantics for
   branch-agnostic attributes and relationships on branch-aware objects, including deferred
   release, what resolves it, and what a branch forked before the deletion sees. *Verify:
@@ -336,7 +339,8 @@ sets remove any need for a marker or worklist.
   unreachable on every branch.
 - **SC-007**: A value freed by retirement becomes allocatable again from its pool.
 - **SC-008**: Node deletion, branch merge, branch rebase, and branch deletion show no median
-  duration increase above 10% against current timings on the same dataset.
+  duration increase above 10% against current timings on the same dataset, at both a low and a
+  realistic-high open-branch count.
 - **SC-009**: An operator can determine from the published documentation what happens to a
   branch-agnostic value when its object is deleted or its field is removed, without reading
   the source.
@@ -381,7 +385,13 @@ sets remove any need for a marker or worklist.
 - **Acceptable timing regression** (resolved from the PRD's open question): a median
   duration increase of no more than 10% for each of node deletion, branch merge, branch
   rebase, and branch deletion, measured against the pre-change build on the same dataset
-  using the existing benchmark harness.
+  using the existing benchmark harness, at two open-branch counts.
+- The number of branches open at once in a real deployment is materially higher than a test
+  fixture's two or three. The retaining-branch check is evaluated against every open branch, so
+  branch count — not graph size — is the dimension its cost grows in.
+- Freed pool values become allocatable again through the existing used-value determination, which
+  already requires an attribute's value edge to be open; no change to pool allocation itself is
+  needed. This is verified by test rather than assumed, because the dependency spans three edges.
 
 ## Governance Gates Crossed
 
