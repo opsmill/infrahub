@@ -11,7 +11,7 @@ from infrahub.core.constants import DiffAction, InfrahubKind, MutationAction
 from infrahub.log import get_logger
 
 from .constants import EVENT_NAMESPACE
-from .limits import get_prefect_max_related_resources
+from .limits import get_related_resource_budget
 from .models import InfrahubEvent
 
 log = get_logger()
@@ -68,9 +68,9 @@ class NodeMutatedEvent(InfrahubEvent):
         )
 
         # The remaining entries grow with the number of relationship peers, so they
-        # come last and the list is capped: the Prefect API rejects any event whose
-        # related resources exceed the configured maximum, and an oversized event
-        # would never be recorded at all. Relationship updates are appended before
+        # come last and the list is capped: an event carrying more related resources
+        # than the Prefect API accepts is rejected outright and never recorded.
+        # Relationship updates are appended before
         # the per-peer related-node entries because automation triggers match on
         # them, while related-node entries only feed event queries.
         for relationship in self.changelog.relationships.values():
@@ -116,17 +116,17 @@ class NodeMutatedEvent(InfrahubEvent):
                 }
             )
 
-        max_related = get_prefect_max_related_resources()
-        if len(related) > max_related:
+        budget = get_related_resource_budget()
+        if len(related) > budget:
             log.warning(
-                "Truncating the related resources of a node mutation event to the Prefect maximum",
+                "Truncating the related resources of a node mutation event to the Prefect budget",
                 event_name=self.event_name,
                 kind=self.kind,
                 node_id=self.node_id,
                 related_resources=len(related),
-                maximum=max_related,
+                budget=budget,
             )
-            related = related[:max_related]
+            related = related[:budget]
 
         return related
 
