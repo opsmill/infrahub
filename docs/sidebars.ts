@@ -49,6 +49,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'overview/next-steps', label: 'Next Steps' },
           ],
         },
+        { type: 'doc', id: 'overview/build-with-ai', label: 'Build with AI' },
         'faq/faq',
       ],
     },
@@ -114,6 +115,7 @@ const sidebars: SidebarsConfig = {
           label: 'Schema operations',
           link: { type: 'generated-index' },
           items: [
+            { type: 'doc', id: 'schema/build-your-schema', label: 'Build your schema' },
             { type: 'doc', id: 'schema/create-and-load', label: 'Create and load schema' },
             { type: 'doc', id: 'schema/migration', label: 'Schema migration' },
             { type: 'doc', id: 'schema/marketplace/index', label: 'Marketplace' },
@@ -151,6 +153,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'objects/convert-object-kind', label: 'Convert object kind' },
             { type: 'doc', id: 'objects/metadata', label: 'Metadata & lineage' },
             { type: 'doc', id: 'objects/load-from-yaml', label: 'Load data in bulk using YAML file' },
+            { type: 'doc', id: 'objects/import-from-csv', label: 'Import data from CSV' },
           ],
         },
         {
@@ -220,6 +223,7 @@ const sidebars: SidebarsConfig = {
             'graph-traversal/query-with-graphql',
           ],
         },
+        { type: 'doc', id: 'schema/analyze-your-data', label: 'Analyze your data' },
       ],
     },
 

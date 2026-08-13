@@ -1,0 +1,68 @@
+---
+title: Import data from CSV
+description: Prompt an AI coding assistant to translate a CSV or TSV export into Infrahub object YAML, then load it the same way as any other object file.
+---
+
+# Import data from CSV
+
+Prompt an AI coding assistant to translate a CSV or TSV export into Infrahub object YAML — the assistant writes the file; you review and load it.
+
+:::info Prerequisite
+
+Requires an AI coding assistant with the [Infrahub skills](../overview/build-with-ai) installed. The skill works from local schema files if the MCP server or `infrahubctl` isn't configured, though it's less accurate about your live schema without one of them.
+
+:::
+
+## What it does
+
+`infrahub-importing-data` takes a CSV or TSV export — one file, a folder, or one large denormalized sheet — and checks its columns against your schema: the MCP server first, then `infrahubctl schema export`, then the REST API, then local schema YAML as a last resort. It splits and translates the rows into the same object YAML format documented on [Load data in bulk using YAML file](./load-from-yaml), then loads that YAML the same way — `infrahubctl object load` — onto a fresh branch.
+
+If a column doesn't map to anything in your schema, the skill stops and asks rather than guessing.
+
+## Worked example
+
+### 1. Provide the file
+
+```text title="Example prompt"
+Import this inventory.csv into Infrahub.
+```
+
+### 2. Review the generated object YAML
+
+The assistant maps each column to a schema attribute or relationship and writes one numbered object file per kind, each carrying a provenance comment:
+
+```yaml title="objects/001-devices.yml"
+# Generated from inventory.csv
+# sha256: 3f2a9c1e...  generated: 2026-08-13T10:04:00Z
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: NetworkDevice
+  data:
+    - name: sw01-svc01
+      site: Stonehenge Visitor Centre
+```
+
+### 3. Load it on a fresh branch
+
+```bash
+infrahubctl branch create csv-import-20260813-1004
+infrahubctl object load objects/ --branch csv-import-20260813-1004
+```
+
+By default, the assistant names the branch `csv-import-YYYYMMDD-HHMM`.
+
+### 4. Review the diff and open a proposed change
+
+Review the loaded objects in the web interface, then open a Proposed Change to merge the branch into `main`. See [Proposed Changes](../proposed-changes/overview) for the review workflow.
+
+## What to watch for
+
+An unmapped column stops the import instead of guessing at a match. Resolve the mismatch — rename the column, or add the attribute to your schema — and re-run, rather than working around it. Check the branch name before merging; `csv-import-YYYYMMDD-HHMM` is only the assistant's default, not a required format.
+
+## Related
+
+- [Load data in bulk using YAML file](./load-from-yaml) — the object YAML format and `infrahubctl object load` command this skill automates: same format, same load command, only the writing is automated
+- [Build with AI](../overview/build-with-ai) — install the skills and the MCP server
+- [Data Importer skill reference](https://docs.infrahub.app/skills/skills-reference/importing-data) — full column-mapping and fallback-order behavior
