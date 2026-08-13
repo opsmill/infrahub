@@ -76,6 +76,10 @@ For enterprise deployments, use these guidelines:
 | Large Data         | 32        | 64GB | SSD and/or >= 5000 IOPS    |
 | Large Action       | 32        | 64GB | SSD and/or >= 5000 IOPS    |
 
+Each RAM figure covers a full deployment — the API servers, the task workers, the task manager, and the database — on hosts of that size. The Docker Compose and Helm [sizing presets](./install/enterprise.mdx#using-curl-and-docker-compose) set the per-component values for a deployment of that size.
+
+The database is the largest allocation in every preset, and the one to check against the machine that runs it. Where Neo4j has a dedicated host or pod, the heap and page cache values in the preset were sized for a different machine than the one they now run on: measure that host instead, with `neo4j-admin server memory-recommendation`. See [Neo4j memory](./performance-tuning.mdx#neo4j-memory) for how the two pools are used, and why an oversized heap consumes memory on an empty database.
+
 For detailed information about enterprise products and their features, see the [OpsMill pricing page](https://opsmill.com/pricing/).
 
 ## Performance benchmark utility

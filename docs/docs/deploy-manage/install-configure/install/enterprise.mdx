@@ -43,6 +43,20 @@ You can also specify a sizing preset in the URL. This will automatically configu
 | large       | 64 GB                 | 4           | 8            | 4                        | 2                              | 31G          | 16G                |
 | large-data  | 64 GB                 | 4           | 2            | 1                        | 1                              | 31G          | 16G                |
 
+The heap and page cache values are defaults for a host of that size, not measured against your data. Override them per environment, and validate them on the machine that runs the database. On a 32 GB host that runs only Neo4j, for example:
+
+```shell title=".env"
+NEO4J_server_memory_heap_initial__size=12G
+NEO4J_server_memory_heap_max__size=12G
+NEO4J_server_memory_pagecache_size=12G
+```
+
+:::warning
+
+Heap is reserved at startup rather than as it is used, so an oversized heap consumes its full size on an empty database and can push the host into swap. Run `neo4j-admin server memory-recommendation` on that host and compare it against the preset before you deploy — in particular when Neo4j runs on its own machine, where the services the preset expects alongside it are no longer there. See [Neo4j memory](../performance-tuning.mdx#neo4j-memory).
+
+:::
+
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)

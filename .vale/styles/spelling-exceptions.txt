@@ -142,6 +142,7 @@ loopback
 Loopback
 Loopbacks
 loopless
+Lucene
 markdownlint
 Markdownlint
 max_concurrent_queries

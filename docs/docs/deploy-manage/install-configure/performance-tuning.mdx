@@ -6,6 +6,8 @@ Infrahub's defaults target a general-purpose deployment. As an instance grows �
 
 Start with the [hardware requirements](./hardware-requirements.mdx): no setting compensates for an undersized machine or slow storage. Then change one setting at a time and measure the result against your own data.
 
+The settings in the table below belong to Infrahub. The database has its own, set on Neo4j rather than on Infrahub, and on a host that is short of memory they matter more than any of them — see [Neo4j memory](#neo4j-memory).
+
 | Symptom | Setting | Default |
 |---|---|---|
 | Merges queue a burst of tasks while several branches are open | `INFRAHUB_DIFF_UPDATE_AFTER_MERGE` | `true` |
@@ -94,6 +96,71 @@ INFRAHUB_WORKFLOW_FLOW_RUN_COUNT_CACHE_THRESHOLD=0
 ```
 
 **What you trade.** A cached count can be up to a minute old, so the total shown alongside a task list lags behind tasks that started or finished within that window.
+
+## Neo4j memory
+
+Neo4j reserves its memory in two pools, and the split between them matters more than the total:
+
+- **Page cache** (`server.memory.pagecache.size`) holds the graph read from disk — nodes, relationships, properties, and native indexes. A page cache large enough for your store keeps queries in memory.
+- **Heap** (`server.memory.heap.initial_size` and `server.memory.heap.max_size`) holds transaction state, query execution, and intermediate results. Infrahub's write transactions — schema loads, imports, branch merges, and diff calculation — are what use it.
+
+What you do not give to either pool goes to the operating system, Lucene indexes, the network layer, and any monitoring agent attached to the JVM. On a 32 GB host Neo4j asks for around 8 GB of that headroom.
+
+Set the values through your deployment method: `NEO4J_server_memory_heap_max__size` and the equivalent variables in Docker Compose, `config:` keys in the Neo4j Helm chart, or `neo4j.conf` on bare metal.
+
+### Heap is reserved at startup, not as it is used
+
+Neo4j's default JVM arguments include `-XX:+AlwaysPreTouch`, which commits and touches the entire heap when the process starts. A 24 GB heap is 24 GB of resident memory within seconds of boot, on an empty database, before a single node exists. Resident memory tells you what the heap is **set to**, not how much of it holds anything, and wiping the database does not change it.
+
+The startup block in `debug.log` reports both, alongside what the host has left:
+
+```text
+server.memory.heap.max_size=24.00GiB
+server.memory.pagecache.size=4.00GiB
+Total Physical memory: 31.30GiB
+Free Physical memory:  238.3MiB
+Total swap 4.000GiB / Free swap 1.170GiB
+G1 Old Gen: committed=22.75GiB, used=0B
+```
+
+`committed=22.75GiB, used=0B` is a heap that reserves 22.75 GB and holds nothing. Read this block after every change to confirm the values Neo4j resolved, rather than the values you set.
+
+### Size the pools for the host
+
+Run Neo4j's own tool on the machine that runs the database:
+
+```shell
+neo4j-admin server memory-recommendation
+```
+
+It prints a heap size, a page cache size, and the memory it leaves for the operating system, calculated from the RAM of that host. It also prints the size of your data and native indexes as a separate figure, as an input to sizing rather than a recommendation.
+
+- **Heap.** Start from the recommended value. Raising it past what your write transactions need buys nothing and costs the same amount of resident memory.
+- **Page cache.** The tool sizes it as a share of RAM, not against your data. Where you can measure the store, roughly 1.2 × (data + indexes) covers it. Where you cannot yet measure it — a new deployment, or an environment whose data is still growing — keep the recommended value.
+- **Headroom.** Keep heap plus page cache below total RAM by the margin the tool reserves. Subtract anything else on the host as well: co-located Infrahub services, and monitoring agents that attach to the JVM with `-agentpath` and allocate outside the heap.
+
+When the two pools plus the operating system exceed physical memory, the host swaps the JVM out. A swapped heap produces stop-the-world pauses that look like garbage collection but report `gcTime=0, gcCount=0` in `debug.log`.
+
+### Bound transaction memory
+
+`dbms.memory.transaction.total.max` and `db.memory.transaction.max` are unlimited by default, so a single expensive transaction can claim the whole heap. Bounding them keeps one import or merge from exhausting the memory every other query needs:
+
+```yaml title="docker-compose.yml"
+NEO4J_dbms_memory_transaction_total_max: "6G"
+NEO4J_db_memory_transaction_max: "2G"
+```
+
+**What you trade.** A large migration or import that exceeds the limit fails with `Transaction memory limit reached` instead of competing for heap. For how to lift the limit for the duration of an upgrade, see [known issues](../maintain-upgrade/upgrade/overview.mdx#migration-failing-because-of-transaction-memory-limit-reached-in-neo4j).
+
+### Symptoms and causes
+
+| Symptom | Cause |
+|---|---|
+| Neo4j uses all host memory on an empty or recently wiped database | Heap is set too large; `AlwaysPreTouch` reserves all of it at startup |
+| Swap in use while the database is idle | Heap plus page cache leaves too little for the operating system and the memory the JVM allocates outside the heap |
+| Long stop-the-world pauses with `gcTime=0, gcCount=0` | The operating system is swapping the JVM out, rather than the JVM collecting garbage |
+| Queries read from disk on a dataset that fits in RAM | Page cache is smaller than the store |
+| Infrahub logs `Database Service unavailable`, or a server replica fails to start | The database is unresponsive or unreachable, which a host with no memory to spare produces under load |
 
 ## Related resources
 

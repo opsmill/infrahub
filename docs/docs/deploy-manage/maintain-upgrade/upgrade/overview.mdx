@@ -182,6 +182,8 @@ For large database/schema migrations, you may encounter a `Transaction memory li
 
 To work around this, you can disable the transaction memory limit by setting the `dbms.memory.transaction.total.max` to `0` in your Neo4j configuration.
 
+Restore the limit once the migration completes. Unlimited transaction memory lets a single transaction claim the whole heap during normal operation, which affects every other query on the instance. See [Neo4j memory](../../install-configure/performance-tuning.mdx#bound-transaction-memory).
+
 :::
 
 We are working on a more robust solution to handle large migrations without hitting this limit in future releases.
