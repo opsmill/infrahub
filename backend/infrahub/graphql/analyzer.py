@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import deque
+from collections import defaultdict, deque
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -39,12 +39,14 @@ from graphql.language.ast import (
 from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from infrahub_sdk.utils import extract_fields
 
-from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
 from infrahub.core.schema import AttributePathParsingError, GenericSchema
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graphql.utils import extract_schema_models
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema import MainSchemaTypes, SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -138,6 +140,31 @@ class ObjectAccess:
     @property
     def fields(self) -> set[str]:
         return self.attributes.union(self.relationships)
+
+
+@dataclass(frozen=True, slots=True)
+class RelationshipHop:
+    """One relationship step, expressed from the owner object that carries the relationship.
+
+    ``node_kind`` owns ``relationship_identifier``; ``relationship_direction`` is that relationship's
+    direction on the owner. Traversing it from a set of peer uuids yields the owner nodes referencing
+    them, so a chain of hops resolves a changed related object back to the root objects reading it.
+    """
+
+    node_kind: str
+    relationship_identifier: str
+    relationship_direction: RelationshipDirection
+
+
+@dataclass(frozen=True, slots=True)
+class ReachedPath:
+    """The relationship chain a query follows from a root object down to a related kind.
+
+    ``hops`` is ordered deepest-first: the first hop resolves the changed related object's immediate
+    owner, and each subsequent hop resolves that owner's owner, ending at the root object.
+    """
+
+    hops: tuple[RelationshipHop, ...]
 
 
 @dataclass
@@ -320,6 +347,85 @@ class GraphQLQueryReport:
                     kinds.add(query_model.model.kind)
 
         return kinds
+
+    @cached_property
+    def relationship_reached_paths(self) -> dict[str, ReachedPath]:
+        """The relationship chain reaching each related kind that can be narrowed to its owning roots.
+
+        A kind appears only when it is reached by exactly one unambiguous relationship chain of
+        concrete objects. A kind reached through a generic peer, through an inline/named fragment,
+        by more than one distinct chain, or also read at a root is deliberately absent, so a change
+        there widens rather than resolving to a subset -- over-executing is acceptable, missing an
+        owner is not.
+        """
+        root_kinds = {
+            query_model.model.kind for query in self.queries for query_model in query.get_models() if query_model.root
+        }
+        chains_by_kind: dict[str, set[ReachedPath]] = defaultdict(set)
+        ambiguous_kinds: set[str] = set()
+        for query in self.queries:
+            for node in self._iter_object_nodes(query):
+                if node.at_root or node.infrahub_model is None:
+                    continue
+                kind = node.infrahub_model.kind
+                chain = self._clean_hop_chain(node)
+                if chain is None:
+                    ambiguous_kinds.add(kind)
+                else:
+                    chains_by_kind[kind].add(chain)
+
+        return {
+            kind: next(iter(chains))
+            for kind, chains in chains_by_kind.items()
+            if len(chains) == 1 and kind not in ambiguous_kinds and kind not in root_kinds
+        }
+
+    def _iter_object_nodes(self, node: GraphQLQueryNode) -> Iterator[GraphQLQueryNode]:
+        """Yield every node in the subtree that stands for an Infrahub object."""
+        if node.infrahub_model is not None:
+            yield node
+        for child in node.children:
+            yield from self._iter_object_nodes(child)
+
+    def _clean_hop_chain(self, node: GraphQLQueryNode) -> ReachedPath | None:
+        """The chain from a related node back to its root, or None when any hop cannot be pinned.
+
+        Returns None -- signalling a widen -- as soon as a hop crosses a generic peer, a generic
+        owner, or a step whose field is not a relationship on its owner (an inline/named fragment
+        refinement), because none of those resolve a changed node to a single reverse relationship.
+        """
+        hops: list[RelationshipHop] = []
+        current = node
+        while not current.at_root:
+            if isinstance(current.infrahub_model, GenericSchema):
+                return None
+            owner = self._nearest_object_ancestor(current)
+            if owner is None or owner.infrahub_model is None or isinstance(owner.infrahub_model, GenericSchema):
+                return None
+            relationship = owner.infrahub_model.get_relationship_or_none(name=current.path)
+            if relationship is None or not relationship.identifier:
+                return None
+            hops.append(
+                RelationshipHop(
+                    node_kind=owner.infrahub_model.kind,
+                    relationship_identifier=relationship.identifier,
+                    relationship_direction=relationship.direction,
+                )
+            )
+            current = owner
+
+        if isinstance(current.infrahub_model, GenericSchema):
+            return None
+        return ReachedPath(hops=tuple(hops))
+
+    def _nearest_object_ancestor(self, node: GraphQLQueryNode) -> GraphQLQueryNode | None:
+        """The closest ancestor that stands for an Infrahub object, skipping structural nodes."""
+        parent = node.parent
+        while parent is not None:
+            if parent.infrahub_model is not None:
+                return parent
+            parent = parent.parent
+        return None
 
     def fields_by_kind(self, kind: str) -> list[str]:
         fields: list[str] = []

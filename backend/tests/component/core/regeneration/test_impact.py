@@ -151,17 +151,17 @@ class TestFieldLevelImpact(TestInfrahubApp):
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
 
-    async def test_related_node_change_selects_subscriber(
+    async def test_related_node_change_narrows_to_the_owning_member(
         self,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
     ) -> None:
-        """A change to a field the query reads on a *related* node still selects the subscriber.
+        """A change to a field the query reads on a *related* node narrows to the members owning it.
 
-        The changed owner is not itself a query-group member, so it cannot be mapped back to a
-        subscriber by membership lookup. Leaving the subscriber unselected would under-execute and ship
-        a stale artifact, so the impact mapping has to widen instead of returning nothing.
+        The changed owner is not itself a query-group member, so the relationship the query traverses
+        to reach it is walked back to the cars pointing at that owner, and only their subscribers are
+        selected -- not every member of the definition.
         """
         resolved = await self._resolve(
             dataset=dataset,
@@ -176,4 +176,30 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=True)
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
+
+    async def test_unread_related_field_change_selects_nothing(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> None:
+        """A change to a related field the query does not read resolves to no subscriber.
+
+        Field-level precision holds through the relationship: only a change to a field the query
+        actually reads off the owner can implicate the cars that read it.
+        """
+        resolved = await self._resolve(
+            dataset=dataset,
+            default_branch=default_branch,
+            client=client,
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["person_id"],
+                    kind=TestKind.PERSON,
+                    branch=default_branch.name,
+                    field_names=["height"],
+                )
+            ],
+        )
+        assert resolved == TargetSelection(ids=[], widened=False)
