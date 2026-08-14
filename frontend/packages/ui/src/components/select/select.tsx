@@ -17,8 +17,8 @@ import { Popover, type PopoverProps } from "../popover/popover";
 export const selectTriggerVariants = tv({
   base: [
     "flex w-full items-center gap-2 rounded-lg border border-border-strong outline-none",
-    "bg-white text-sm placeholder:text-subtle-muted",
-    "disabled:cursor-not-allowed disabled:bg-neutral-100",
+    "bg-input text-sm placeholder:text-subtle-muted",
+    "disabled:cursor-not-allowed disabled:opacity-60",
     focusVisibleStyle,
   ],
   variants: {

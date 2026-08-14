@@ -14,6 +14,10 @@
   --ring: var(--color-cyan-700);
   --ring-halo: --alpha(var(--ring) / 25%);
 
+  --input: var(--color-white);
+  --input-border: var(--border);
+  --input-shadow: 0 2px 4px rgb(0 0 0 / 0.04);
+
   --popover: --alpha(var(--color-stone-100) / 70%);
 
   --card: linear-gradient(to bottom, var(--color-stone-50) 0%, var(--color-white) 10%);
@@ -48,6 +52,10 @@
 
   --ring: var(--color-cyan-700);
   --ring-halo: --alpha(var(--ring) / 25%);
+
+  --input: var(--color-stone-900);
+  --input-border: var(--border-strong);
+  --input-shadow: 0 2px 4px rgb(0 0 0 / 0.35);
 
   --popover: --alpha(var(--color-stone-900) / 70%);
 
@@ -85,6 +93,10 @@
 
   --color-ring: var(--ring);
   --color-ring-halo: var(--ring-halo);
+
+  --color-input: var(--input);
+  --color-input-border: var(--input-border);
+  --shadow-input: var(--input-shadow);
 
   --color-popover: var(--popover);
 
