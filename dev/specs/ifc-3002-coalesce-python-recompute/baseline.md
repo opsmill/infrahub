@@ -305,3 +305,16 @@ would satisfy every other assertion in the suite and fail this one.
 The comparison is keyed on node name because each mode needs its own stack, so the ids differ. It
 compares the mappings rather than their sizes, and the run skips rather than passes when only one
 side has been recorded, so half a run cannot look like a result.
+
+
+## Dispatch shape on merge and rebase (T041)
+
+Twenty changed nodes, both operations, asserted directly rather than inferred from a timing figure:
+fewer transform runs than changed nodes, and all twenty owners refreshed. Both pass.
+
+The rebase arm is the first integration coverage of the rebase wiring. Every other measurement in
+this document goes through merge, so FR-003 and US1 AS3 rested on unit and component tests until
+now.
+
+The assertion is bounded on both sides. An upper bound alone would pass a pass that dispatched
+nothing, which is the failure the widening investigation showed is easy to mistake for success.
