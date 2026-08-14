@@ -99,9 +99,9 @@ cd frontend/app && pnpm biome:fix     # Format/lint frontend
 uv run invoke docs.lint               # Lint documentation
 ```
 
-`invoke lint`/`invoke backend.lint` run `ruff check --diff`, which exits 0 on violations that have
-no auto-fix (e.g. an unsuppressed `BLE001`) while CI's plain `ruff check` still fails. `/pre-ci`
-includes the CI-parity check; or run `uv run ruff check <path>` directly.
+`invoke lint` lints only `tasks`, `models`, `utilities`, `python_testcontainers` and `backend`, while
+CI runs `ruff check . --exclude python_sdk` over the whole repo — so a violation elsewhere passes
+locally and fails in CI. `/pre-ci` includes that whole-repo check.
 
 ### Build
 

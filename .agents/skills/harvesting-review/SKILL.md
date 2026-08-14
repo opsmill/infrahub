@@ -266,7 +266,7 @@ docs already forbid — a rule existing but nobody enforcing it against older co
 "covered but ineffective" failure mode, aimed backward instead of at this PR:
 
 ```bash
-grep -rnoE '(PR #[0-9]+|#[0-9]{4,6}\b)' dev/guidelines dev/knowledge dev/guides .agents/rules AGENTS.md */AGENTS.md
+grep -rnoE '(PR #[0-9]+|#[0-9]{4,6}\b)' dev/guidelines dev/knowledge dev/guides .agents/rules $(git ls-files '*AGENTS.md')
 grep -rnoE '[A-Za-z0-9_/-]+\.(py|ts|tsx):[0-9]+(-[0-9]+)?' dev/guidelines dev/knowledge dev/guides .agents/rules
 grep -rniE '(known gap|currently (broken|hand-duplicated|unfixed)|not yet fixed|for now,? (this|it))' \
   dev/guidelines dev/knowledge dev/guides .agents/rules
@@ -352,7 +352,7 @@ For each:
   intent, (c) scope + the over-scoped reading ruled out
 - **Root cause**: why an agent would have proposed the rejected shape — what writing the rule prevents
 - **Home**: exact file (+ section) to create
-- **Proposed edit**: the concrete text to add, already written in the house style (§6)
+- **Proposed edit**: the concrete text to add, already written in the house style (see *Refine, don't accrete* at the top of this file)
 
 ### Not Lessons (PR-local or demoted after investigation)
 <!-- One-off fixes, bugs, and design calls that do NOT generalize — and candidates the investigation
