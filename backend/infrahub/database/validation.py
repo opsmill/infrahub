@@ -221,73 +221,68 @@ RETURN node_id1, branch, from_time, edge_type, node_id2, num_paths
 
 
 async def _check_orphaned_active_edges(db: InfrahubDatabase, kinds: list[str] | None) -> list[GraphViolation]:
-    """Verify that no active second-level edges exist under deleted first-level edges.
+    """Verify that deleting an attribute or relationship closed the edges hanging off it.
 
-    If a HAS_ATTRIBUTE or IS_RELATED edge is deleted/closed on a branch, then all
-    sub-edges (HAS_VALUE, IS_PROTECTED, HAS_OWNER, HAS_SOURCE, far-side IS_RELATED)
-    hanging off the same Attribute/Relationship vertex on the same branch should also
-    be deleted/closed.
+    When a HAS_ATTRIBUTE or IS_RELATED edge is deleted on a branch, the second-level edges the branch holds
+    for that field (HAS_VALUE, IS_PROTECTED, HAS_OWNER, HAS_SOURCE, far-side IS_RELATED) should be closed at
+    that same moment. An edge left open is orphaned, and one written or closed afterwards is an update to a
+    field that is gone.
+
+    Edges on the branch that did the deleting are checked against it, and so are edges on a branch that
+    forked afterwards, since that branch inherits the delete. A branch that forked before the delete has
+    its own history and is checked against its own delete instead.
     """
     query = """
 // ----------------
-// Find deleted/closed first-level edges (HAS_ATTRIBUTE or IS_RELATED)
+// Group on the uuid rather than the vertex: a kind update copies the node vertex and both copies point at
+// the same field, so an edge left open on either of them means the field is still in use on that branch.
 // ----------------
-MATCH (n:%(node_labels)s)-[r1:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
-WHERE r1.status = "deleted" OR (r1.status = "active" AND r1.to IS NOT NULL)
-WITH n, field, r1
+MATCH (n:%(node_labels)s)-[r:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+WHERE r.status = "deleted" OR r.to IS NOT NULL
+WITH DISTINCT n.uuid AS node_id, field, r.branch AS branch
 // ----------------
-// Exclude cases where another active first-level edge to this field exists on the same branch
-// (e.g. migrated-kind nodes where old vertex HAS_ATTRIBUTE is deleted but new vertex's is active)
+// Then every edge the branch holds between that uuid and the field, deciding whether it deleted it
 // ----------------
-WHERE NOT EXISTS {
-    MATCH (other:Node)-[active_r1:HAS_ATTRIBUTE|IS_RELATED {branch: r1.branch, status: "active"}]-(field)
-    WHERE active_r1.to IS NULL
-}
+MATCH (node_copy:Node {uuid: node_id})-[r:HAS_ATTRIBUTE|IS_RELATED]-(field)
+WHERE r.branch = branch
+WITH node_id, field, branch,
+    count(CASE WHEN r.status = "active" AND r.to IS NULL THEN 1 END) AS open_edges,
+    // The last edge to close is the one that took the field away: a kind migration deletes the old copy's
+    // edge and opens the new copy's at the same moment, so the field lives on until that one closes too
+    max(CASE WHEN r.status = "deleted" THEN r.from ELSE r.to END) AS delete_time
+WHERE open_edges = 0 AND delete_time IS NOT NULL
 // ----------------
-// Find all second-level peers of this field, then get the latest edge to each
-// visible from the deleted first-level edge's branch
+// The delete writes the field's edges at the same instant, so only what is still open, or what carries a
+// later time, is a violation
 // ----------------
-WITH n, field, r1
-MATCH (field)-[prop_edge:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE|IS_RELATED]-(peer)
-WHERE peer <> n
-WITH DISTINCT n, field, r1, type(prop_edge) AS prop_edge_type, peer
+MATCH (field)-[child:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE|IS_RELATED]-(peer)
+WHERE coalesce(peer.uuid, "") <> node_id
 // ----------------
-// Get the branched_from time if r1.branch is a user branch
+// A branch that forked after the delete inherits it, so writing the field there is an update to something
+// already gone. A rebase re-stamps the edges it carries to the fork point, so only what comes after that
+// was written with the delete in view.
 // ----------------
-OPTIONAL MATCH (r1_br:Branch {name: r1.branch})
-// ----------------
-// branched_from is the fork point a branch reads the default branch through
-// ----------------
-WITH n, field, r1, prop_edge_type, peer, r1_br.branched_from AS r1_branch_branched_from
-// ----------------
-// Get the latest edge to this peer visible from the first-level edge's branch
-// ----------------
-CALL (field, r1, r1_branch_branched_from, prop_edge_type, peer) {
-    MATCH (field)-[r2:$(prop_edge_type)]-(peer)
-    WHERE r2.branch = r1.branch
-    OR (r1_branch_branched_from IS NOT NULL AND r2.branch = $default_branch AND r2.from < r1_branch_branched_from)
-    RETURN r2
-    ORDER BY r2.branch_level DESC, r2.from DESC, r2.status ASC
-    LIMIT 1
-}
-// ----------------
-// Flag if the latest visible edge is active — it should have been deleted/closed
-// ----------------
-WITH field, r1, r2, r1_branch_branched_from
-WHERE r2.status = "active"
-AND (
-    r2.to IS NULL
-    // a default-branch edge closed after the fork is still active from the branch's point of view
-    OR (r1.branch <> $default_branch AND r2.branch = $default_branch AND r2.to > r1_branch_branched_from)
-)
+AND CASE
+    // updates on this branch after the delete
+    WHEN child.branch = branch THEN (
+        (child.status = "active" AND child.to IS NULL)
+        OR child.from > delete_time
+        OR child.to > delete_time
+    )
+    // updates on branch forked after the delete
+    ELSE EXISTS {
+        MATCH (child_branch:Branch {name: child.branch})
+        WHERE child_branch.branched_from > delete_time
+        AND child.from > child_branch.branched_from
+    }
+END
 RETURN DISTINCT
     field.name AS field_name,
-    r1.branch AS branch,
+    branch,
     labels(field)[0] AS field_type,
-    type(r2) AS child_type
+    type(child) AS child_type
     """ % {"node_labels": _node_labels(kinds)}
-    params = {"default_branch": registry.default_branch}
-    records = await db.execute_query(query=query, params=params)
+    records = await db.execute_query(query=query)
     violations = []
     for record in records:
         field_name = record.get("field_name")
@@ -425,13 +420,8 @@ CALL (n, field, branch, branch_branched_from) {
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
 }
-WITH n, branch, field_name, r, branch_branched_from
-WHERE r.status = "active"
-AND (
-    r.to IS NULL
-    // a default-branch edge closed after the fork is still active from the branch's point of view
-    OR (branch <> $default_branch AND r.branch = $default_branch AND r.to > branch_branched_from)
-)
+WITH n, branch, field_name, r
+WHERE r.status = "active" AND r.to IS NULL
 WITH n, branch, field_name, count(*) AS num_fields
 WHERE num_fields > 1
 RETURN n.uuid AS node_id, branch, field_name, num_fields

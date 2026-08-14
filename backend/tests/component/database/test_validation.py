@@ -4,6 +4,7 @@ from typing import Awaitable, Callable
 import pytest
 
 from infrahub.core.branch.models import Branch
+from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -92,6 +93,44 @@ WITH n, is_part_of, hae, a LIMIT 1
 CREATE (n)-[:HAS_ATTRIBUTE {branch: hae.branch, branch_level: hae.branch_level, status: "active", from: $at}]->(a)
     """
     await db.execute_query(query=query, params={"node_id": car.id, "at": Timestamp().to_string()})
+
+
+async def _delete_attribute_cleanly(db: InfrahubDatabase, node_uuid: str, attr_name: str, at: str) -> None:
+    """Delete an attribute the way the product does: close every open edge and record a deleted one."""
+    query = """
+MATCH (n:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE {status: "active"}]->(a:Attribute {name: $attr_name})
+WHERE hae.to IS NULL
+WITH n, hae, a LIMIT 1
+SET hae.to = $at
+CREATE (n)-[:HAS_ATTRIBUTE {branch: hae.branch, branch_level: hae.branch_level, status: "deleted", from: $at}]->(a)
+WITH a
+MATCH (a)-[child]->(peer)
+WHERE child.status = "active" AND child.to IS NULL
+SET child.to = $at
+CREATE (a)-[:$(type(child)) {branch: child.branch, branch_level: child.branch_level, status: "deleted", from: $at}]->(peer)
+    """
+    await db.execute_query(query=query, params={"node_id": node_uuid, "attr_name": attr_name, "at": at})
+
+
+async def _write_value_edge_on_branch(
+    db: InfrahubDatabase, node_uuid: str, attr_name: str, branch: Branch, at: str
+) -> None:
+    """Write an active HAS_VALUE edge for the attribute on a branch."""
+    query = """
+MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attr_name})-[:HAS_VALUE]->(v)
+WITH a, v LIMIT 1
+CREATE (a)-[:HAS_VALUE {branch: $branch_name, branch_level: $branch_level, status: "active", from: $at}]->(v)
+    """
+    await db.execute_query(
+        query=query,
+        params={
+            "node_id": node_uuid,
+            "attr_name": attr_name,
+            "branch_name": branch.name,
+            "branch_level": branch.hierarchy_level,
+            "at": at,
+        },
+    )
 
 
 @dataclass
@@ -206,6 +245,28 @@ class TestVerifyGraph:
         await _duplicate_attribute_vertex(db, car_accord_main, person_john_main)
 
         assert await collect_graph_violations(db=db, kinds=[]) == await collect_graph_violations(db=db)
+
+    async def test_branch_forked_after_a_delete_may_not_write_to_the_field(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_person_schema: SchemaBranch,
+        person_john_main: Node,
+        car_accord_main: Node,
+    ) -> None:
+        """A branch inherits a delete it forked after, so writing the field there is an update to nothing."""
+        await _delete_attribute_cleanly(
+            db=db, node_uuid=car_accord_main.id, attr_name="name", at=Timestamp().to_string()
+        )
+        assert await collect_graph_violations(db=db, kinds=["TestCar"]) == []
+
+        branch = await create_branch(db=db, branch_name="forked-after-delete")
+        await _write_value_edge_on_branch(
+            db=db, node_uuid=car_accord_main.id, attr_name="name", branch=branch, at=Timestamp().to_string()
+        )
+
+        violations = await collect_graph_violations(db=db, kinds=["TestCar"])
+        assert [violation.check for violation in violations] == [GraphCheck.ORPHANED_ACTIVE_EDGES]
 
     async def test_every_check_runs_and_all_violations_are_reported(
         self,
