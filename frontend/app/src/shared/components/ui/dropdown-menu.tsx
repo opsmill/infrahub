@@ -47,7 +47,7 @@ export const DropdownMenuItem = ({ className, ref, ...props }: DropdownMenuItemP
       "rounded-lg px-2 py-1.5",
       "text-sm text-subtle",
       "relative flex items-center gap-1.5",
-      "cursor-pointer outline-hidden focus:bg-neutral-100",
+      "cursor-pointer outline-hidden focus:bg-highlight focus:text-highlight-foreground",
       "data-disabled:pointer-events-none data-disabled:opacity-40",
       className
     )}
@@ -69,7 +69,7 @@ export const DropdownMenuSubTrigger = ({
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={classNames(
-      "flex cursor-default select-none items-center gap-1.5 rounded-lg p-2 text-sm outline-hidden focus:bg-neutral-100 data-[state=open]:bg-neutral-100",
+      "flex cursor-default select-none items-center gap-1.5 rounded-lg p-2 text-sm outline-hidden focus:bg-highlight data-[state=open]:bg-highlight",
       className
     )}
     {...props}
@@ -87,17 +87,19 @@ export const DropdownMenuSubContent = ({
   ref,
   ...props
 }: DropdownMenuSubContentProps) => (
-  <DropdownMenuPrimitive.SubContent
-    ref={ref}
-    className={classNames(
-      "min-w-32 space-y-1 overflow-hidden rounded-xl bg-popover p-2 shadow-lg backdrop-blur-lg",
-      "data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:animate-in",
-      "data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out",
-      "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-      className
-    )}
-    {...props}
-  />
+  <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.SubContent
+      ref={ref}
+      className={classNames(
+        "z-50 min-w-32 space-y-1 overflow-hidden rounded-xl bg-popover p-2 shadow-lg backdrop-blur-lg",
+        "data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:animate-in",
+        "data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out",
+        "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        className
+      )}
+      {...props}
+    />
+  </DropdownMenuPrimitive.Portal>
 );
 
 interface DropdownMenuAccordionProps extends React.ComponentProps<typeof AccordionItem> {

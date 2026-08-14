@@ -31,10 +31,12 @@ const menuItemStyles = tv({
   variants: {
     variant: {
       action: [
-        "bg-white shadow-sm transition-colors [&:not(:last-child)]:mb-0.5",
+        "shadow-sm transition-colors [&:not(:last-child)]:mb-0.5",
+        "bg-white dark:bg-stone-800",
         "data-focused:border-sky-200 data-focused:bg-sky-50 data-focused:text-sky-700",
+        "dark:data-focused:border-sky-300/25 dark:data-focused:bg-sky-300/10 dark:data-focused:text-sky-300",
       ],
-      picker: ["rounded-lg", "data-focused:bg-stone-700/10 data-focused:text-foreground"],
+      picker: ["rounded-lg", "data-focused:bg-highlight data-focused:text-highlight-foreground"],
     },
   },
   defaultVariants: { variant: "action" },
@@ -139,7 +141,7 @@ export function MenuSection<T extends object>({
 }: MenuSectionProps<T>) {
   return (
     <AriaMenuSection className={cn("flex flex-col", className)} {...props}>
-      {title && <AriaHeader className="mb-0.5 px-1 text-xs text-subtle-muted">{title}</AriaHeader>}
+      {title && <AriaHeader className="mb-0.5 px-1 text-xs text-subtle/80">{title}</AriaHeader>}
       <Collection items={props.items}>{children}</Collection>
     </AriaMenuSection>
   );
