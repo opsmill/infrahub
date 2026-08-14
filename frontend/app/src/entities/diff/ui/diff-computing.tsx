@@ -1,5 +1,4 @@
-import { Icon } from "@iconify-icon/react";
-
+import { Icon } from "@/shared/components/display/icon";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
 

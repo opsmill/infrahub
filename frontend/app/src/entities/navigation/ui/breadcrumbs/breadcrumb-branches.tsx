@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import {
   Autocomplete,
   Breadcrumb,
@@ -13,6 +12,7 @@ import {
 import { useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Icon } from "@/shared/components/display/icon";
 
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";

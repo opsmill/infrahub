@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Checkbox, Tooltip } from "@infrahub/ui";
 import { FileBoxIcon } from "lucide-react";
 import { Focusable } from "react-aria-components";
 import type { ControllerRenderProps } from "react-hook-form";
 import { Link } from "react-router";
 
+import { Icon } from "@/shared/components/display/icon";
 import { QuestionMark } from "@/shared/components/display/question-mark";
 import type {
   FormAttributeValue,

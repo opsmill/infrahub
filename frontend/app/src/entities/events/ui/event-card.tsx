@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { useLocation } from "react-router";
 
 import { DateDisplay } from "@/shared/components/display/date-display";
+import { Icon } from "@/shared/components/display/icon";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 
 import type { EventType } from "@/entities/events/domain/model/event";

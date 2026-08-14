@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Card, CardHeader } from "@infrahub/ui";
 import { useState } from "react";
 
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";

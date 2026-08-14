@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Outlet } from "react-router";
 
@@ -6,6 +5,7 @@ import {
   LinkToggleButton,
   LinkToggleButtonGroup,
 } from "@/shared/components/buttons/link-toggle-button";
+import { Icon } from "@/shared/components/display/icon";
 import Content from "@/shared/components/layout/content";
 import { useTitle } from "@/shared/hooks/useTitle";
 

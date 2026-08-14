@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Menu, MenuItem, MenuTrigger, Popover, Sheet } from "@infrahub/ui";
 import { PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Icon } from "@/shared/components/display/icon";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";

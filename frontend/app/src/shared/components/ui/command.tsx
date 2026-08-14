@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { Command as CommandPrimitive } from "cmdk";
 import type React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 
 interface CommandProps extends React.ComponentProps<typeof CommandPrimitive> {}

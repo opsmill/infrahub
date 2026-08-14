@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { LinkButton, Spinner } from "@infrahub/ui";
 import { Link } from "react-router";
 
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { QSP } from "@/shared/config/qsp";
 

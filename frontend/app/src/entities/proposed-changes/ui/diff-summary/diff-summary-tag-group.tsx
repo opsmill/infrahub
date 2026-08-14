@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { CircleMinusIcon, CirclePlusIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 import {
@@ -11,6 +10,7 @@ import {
 } from "react-aria-components";
 
 import { disabledStyle, focusVisibleStyle } from "@/shared/components/aria/style-rac";
+import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 
 export interface DiffSummaryProps<T>

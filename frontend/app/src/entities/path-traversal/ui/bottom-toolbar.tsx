@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import {
   type ExportFormat,
   ExportMenu,
@@ -9,6 +8,7 @@ import {
 import { Button, Tooltip } from "@infrahub/ui";
 import { Panel } from "@xyflow/react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 
 import type { EdgeStyle } from "./path-edge";

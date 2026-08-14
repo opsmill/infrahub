@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import type { FormFieldValue } from "@/shared/components/form/type";
 import usePagination from "@/shared/hooks/usePagination";
 

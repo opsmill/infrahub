@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Tooltip } from "@infrahub/ui";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { Slot } from "@radix-ui/react-slot";
 import React from "react";
 
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import type { FormFieldValue } from "@/shared/components/form/type";
 import { ComboboxContent, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { Popover, PopoverTrigger } from "@/shared/components/ui/popover";

@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Modal } from "@infrahub/ui";
 import type { ReactNode } from "react";
 import { Heading } from "react-aria-components";
 
 import { Col, Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 
 interface ModalConfirmProps {
   isOpen: boolean;

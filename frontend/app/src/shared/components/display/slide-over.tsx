@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import type React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";

@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { Tree, TreeItem, TreeItemContent, TreeItemLoader } from "@infrahub/ui";
 import React from "react";
 import { Collection } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";

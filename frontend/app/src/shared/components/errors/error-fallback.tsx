@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Card, CardContent } from "@infrahub/ui";
 import { useEffect, useState } from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";
+import { Icon } from "@/shared/components/display/icon";
 import Kbd from "@/shared/components/ui/kbd";
 
 interface ErrorFallbackProps {

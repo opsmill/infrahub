@@ -1,5 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, type ButtonProps, Tooltip } from "@infrahub/ui";
+
+import { Icon } from "@/shared/components/display/icon";
 
 export interface CollapsedSidebarMenuItemProps extends ButtonProps {
   tooltipContent: string;

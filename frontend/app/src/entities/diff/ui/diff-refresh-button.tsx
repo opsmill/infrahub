@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, type ButtonProps } from "@infrahub/ui";
 import { useMutationState } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
+import { Icon } from "@/shared/components/display/icon";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 

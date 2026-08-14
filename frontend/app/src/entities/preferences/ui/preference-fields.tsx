@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Tooltip } from "@infrahub/ui";
 import React from "react";
 import { useWatch } from "react-hook-form";
 
 import { Row } from "@/shared/components/container";
 import { DetailRow } from "@/shared/components/display/detail-row";
+import { Icon } from "@/shared/components/display/icon";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Combobox, type ComboboxItem } from "@/shared/components/inputs/combobox";

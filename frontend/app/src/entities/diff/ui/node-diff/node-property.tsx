@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 

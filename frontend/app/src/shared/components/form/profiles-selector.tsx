@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Spinner } from "@infrahub/ui";
 import { useEffect, useId } from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";

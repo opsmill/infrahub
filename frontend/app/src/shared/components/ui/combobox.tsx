@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import type React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import {
   Command,
   CommandEmpty,

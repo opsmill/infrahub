@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Autocomplete, ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@infrahub/ui";
 import React from "react";
 import { Collection } from "react-aria-components";
 
+import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { debounce } from "@/shared/utils/common";
 

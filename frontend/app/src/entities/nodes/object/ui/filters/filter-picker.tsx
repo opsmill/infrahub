@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { Autocomplete, Button, ListBox, ListBoxItem, Popover, PopoverTrigger } from "@infrahub/ui";
 import { ChevronRightIcon } from "lucide-react";
 import type React from "react";
@@ -6,6 +5,7 @@ import { useRef, useState } from "react";
 import type { Key } from "react-aria-components";
 
 import { CountBadge } from "@/shared/components/buttons/count-badge";
+import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";

@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Modal, Sheet } from "@infrahub/ui";
 import { useState } from "react";
 import { Heading } from "react-aria-components";
@@ -6,6 +5,7 @@ import { Heading } from "react-aria-components";
 import { queryClient } from "@/shared/api/rest/client";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Col, Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { AccountTokenCreateForm } from "@/entities/user-profile/ui/account-token-create-form";
