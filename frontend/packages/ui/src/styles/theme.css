@@ -27,6 +27,10 @@
 
   --panel: linear-gradient(var(--color-gray-50), var(--color-gray-50));
   --panel-shadow: 0 0 #0000;
+
+  --sheet-frame: --alpha(var(--color-white) / 25%);
+  --sheet-frame-border: var(--border);
+  --sheet-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
 .dark {
@@ -39,6 +43,14 @@
 
   --panel: linear-gradient(180deg, oklch(1 0 0 / 0.06) 0%, oklch(0.4 0 0 / 0.3) 80%);
   --panel-shadow: inset 0 2px 4px 0 oklch(0.8 0 0 / 0.05);
+
+  /* Frosted-glass sheet frame: ivory glass fill with a lit top lip; the
+     dialog inside reuses --secondary. */
+  --sheet-frame: rgb(255 251 246 / 0.14);
+  --sheet-frame-border: rgb(255 255 255 / 0.22);
+  --sheet-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12), 0 28px 70px rgb(0 0 0 / 0.75),
+    0 6px 20px rgb(0 0 0 / 0.5);
 }
 
 @theme inline {
@@ -66,6 +78,10 @@
 
   --background-image-panel: var(--panel);
   --shadow-panel: var(--panel-shadow);
+
+  --color-sheet-frame: var(--sheet-frame);
+  --color-sheet-frame-border: var(--sheet-frame-border);
+  --shadow-sheet: var(--sheet-shadow);
 }
 
 @layer base {
