@@ -118,7 +118,7 @@ class ReachedMemberResolver:
 
     Each hop resolves the current node ids to the owners referencing them, feeding the next hop, so
     a chain ends at the root members. Every hop returns a superset of the truly-related nodes, so the
-    resolved member set is a superset too -- it never omits a member that genuinely needs to run.
+    resolved member set is a superset too.
     """
 
     resolver: UniquenessDependentResolverInterface
