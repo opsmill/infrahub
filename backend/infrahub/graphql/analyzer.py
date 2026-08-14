@@ -294,65 +294,19 @@ class GraphQLQueryNode:
         return models
 
 
-@dataclass
-class GraphQLQueryReport:
+@dataclass(frozen=True)
+class ReachedPathResolver:
+    """Reconstruct, from a query's node tree, the relationship chain reaching each related kind.
+
+    A kind is resolved only when it is reached by exactly one unambiguous relationship chain of
+    concrete objects. A kind reached through a generic peer, through an inline/named fragment, by
+    more than one distinct chain, or also read at a root is deliberately absent, so a change there
+    widens rather than resolving to a subset -- over-executing is acceptable, missing an owner is not.
+    """
+
     queries: list[GraphQLQueryNode]
-    schema_branch: SchemaBranch | None = None
 
-    @property
-    def impacted_models(self) -> list[str]:
-        """Return a list of all Infrahub objects that are impacted by queries within the request."""
-        models: set[str] = set()
-        for query in self.queries:
-            query_models = query.get_models()
-            models.update([query_model.model.kind for query_model in query_models])
-
-        return sorted(models)
-
-    @cached_property
-    def requested_read(self) -> dict[str, ObjectAccess]:
-        """Return Infrahub objects and the fields (attributes and relationships) that this query would attempt to read."""
-        access: dict[str, ObjectAccess] = {}
-        for query in self.queries:
-            query_models = query.get_models()
-            for query_model in query_models:
-                if query_model.model.kind not in access:
-                    access[query_model.model.kind] = ObjectAccess()
-                access[query_model.model.kind].attributes.update(query_model.attributes)
-                access[query_model.model.kind].relationships.update(query_model.relationships)
-
-        return access
-
-    @cached_property
-    def traversed_kinds(self) -> set[str]:
-        """Return the kinds this query reaches by following a relationship.
-
-        A kind is reported here even when a root query also resolves to it. Both read paths share
-        one entry in the requested-read map, so a caller given a changed node of that kind cannot
-        tell which path saw it; reporting the kind as traversed keeps that ambiguity visible rather
-        than resolving it optimistically.
-
-        The concrete kinds standing behind a generic or interface peer are included, because a data
-        change is reported against the concrete kind.
-        """
-        kinds: set[str] = set()
-        for query in self.queries:
-            for query_model in query.get_models():
-                if not query_model.root:
-                    kinds.add(query_model.model.kind)
-
-        return kinds
-
-    @cached_property
-    def relationship_reached_paths(self) -> dict[str, ReachedPath]:
-        """The relationship chain reaching each related kind that can be narrowed to its owning roots.
-
-        A kind appears only when it is reached by exactly one unambiguous relationship chain of
-        concrete objects. A kind reached through a generic peer, through an inline/named fragment,
-        by more than one distinct chain, or also read at a root is deliberately absent, so a change
-        there widens rather than resolving to a subset -- over-executing is acceptable, missing an
-        owner is not.
-        """
+    def resolve(self) -> dict[str, ReachedPath]:
         root_kinds = {
             query_model.model.kind for query in self.queries for query_model in query.get_models() if query_model.root
         }
@@ -421,6 +375,61 @@ class GraphQLQueryReport:
                 return parent
             parent = parent.parent
         return None
+
+
+@dataclass
+class GraphQLQueryReport:
+    queries: list[GraphQLQueryNode]
+    schema_branch: SchemaBranch | None = None
+
+    @property
+    def impacted_models(self) -> list[str]:
+        """Return a list of all Infrahub objects that are impacted by queries within the request."""
+        models: set[str] = set()
+        for query in self.queries:
+            query_models = query.get_models()
+            models.update([query_model.model.kind for query_model in query_models])
+
+        return sorted(models)
+
+    @cached_property
+    def requested_read(self) -> dict[str, ObjectAccess]:
+        """Return Infrahub objects and the fields (attributes and relationships) that this query would attempt to read."""
+        access: dict[str, ObjectAccess] = {}
+        for query in self.queries:
+            query_models = query.get_models()
+            for query_model in query_models:
+                if query_model.model.kind not in access:
+                    access[query_model.model.kind] = ObjectAccess()
+                access[query_model.model.kind].attributes.update(query_model.attributes)
+                access[query_model.model.kind].relationships.update(query_model.relationships)
+
+        return access
+
+    @cached_property
+    def traversed_kinds(self) -> set[str]:
+        """Return the kinds this query reaches by following a relationship.
+
+        A kind is reported here even when a root query also resolves to it. Both read paths share
+        one entry in the requested-read map, so a caller given a changed node of that kind cannot
+        tell which path saw it; reporting the kind as traversed keeps that ambiguity visible rather
+        than resolving it optimistically.
+
+        The concrete kinds standing behind a generic or interface peer are included, because a data
+        change is reported against the concrete kind.
+        """
+        kinds: set[str] = set()
+        for query in self.queries:
+            for query_model in query.get_models():
+                if not query_model.root:
+                    kinds.add(query_model.model.kind)
+
+        return kinds
+
+    @cached_property
+    def relationship_reached_paths(self) -> dict[str, ReachedPath]:
+        """The relationship chain reaching each related kind that can be narrowed to its owning roots."""
+        return ReachedPathResolver(queries=self.queries).resolve()
 
     def fields_by_kind(self, kind: str) -> list[str]:
         fields: list[str] = []
