@@ -22,6 +22,7 @@ from infrahub.errors.payloads import (
     TokenExpiredData,
     UndefinedErrorData,
 )
+from infrahub.errors.validation import MultiFieldValidationError
 from infrahub.exceptions import (
     AuthorizationError,
     BranchNotFoundError,
@@ -149,8 +150,6 @@ def catalogue_error_formatter(error: GraphQLError) -> GraphQLFormattedError:
 
 def format_graphql_errors(errors: list[GraphQLError]) -> list[GraphQLFormattedError]:
     """Format a list of GraphQL errors, expanding any ``MultiFieldValidationError`` fan-outs."""
-    from infrahub.errors.validation import MultiFieldValidationError
-
     out: list[GraphQLFormattedError] = []
     for error in errors:
         original = error.original_error

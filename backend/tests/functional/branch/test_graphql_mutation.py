@@ -91,8 +91,6 @@ class TestBranchMutations(TestInfrahubApp):
         return client_repository.id
 
     async def test_branch_delete_async(self, initial_dataset: str, client: InfrahubClient) -> None:
-        from infrahub.core import registry
-
         branch = await client.branch.create(branch_name="branch_to_delete", sync_with_git=True)
         branch_server_id = registry.branch[branch.name].uuid
 

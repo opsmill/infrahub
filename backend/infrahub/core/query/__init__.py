@@ -13,6 +13,9 @@ from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Path as Neo4jPath
 from neo4j.graph import Relationship as Neo4jRelationship
 from opentelemetry import trace
+from rich import print as rprint
+from rich.console import Console
+from rich.table import Table
 
 from infrahub import config
 from infrahub.core.constants import SYSTEM_USER_ID, PermissionLevel
@@ -719,9 +722,6 @@ class Query:
         return len([result for result in self.results if not result.has_deleted_rels])
 
     def print_table(self) -> None:
-        from rich.console import Console
-        from rich.table import Table
-
         console = Console()
 
         table = Table(title=f"Query {self.name} : params: {self.params}")
@@ -736,8 +736,6 @@ class Query:
         console.print(table)
 
     def print(self, include_var: bool = False) -> None:
-        from rich import print as rprint
-
         print("-------------------------------------------------------")
         print(self.get_query(var=include_var))
         if self.params:
