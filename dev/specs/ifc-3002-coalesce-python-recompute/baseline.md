@@ -116,7 +116,7 @@ The zero is what led to the branch-tag fix: a tag added from inside a run never 
 filter, so the coalesced submissions were invisible to every branch-scoped query. The harness waits
 on exactly that count, which is why it hung rather than finished.
 
-### Run B — a different failure, still unexplained
+### Run B — explained: the harness measured an empty population
 
 Same scale, image rebuilt with the tag fix:
 
@@ -127,7 +127,27 @@ Same scale, image rebuilt with the tag fix:
 | Coalesced submission | `trigger_update_python_computed_attributes`, i.e. **widened** |
 | `query_transform_targets` runs | 20 |
 
-Three things to explain, none of them yet explained:
+**Explained by a third run.** The `COALESCED_PYTHON selected targets` record added for FR-020
+answered it in one line:
+
+```text
+COALESCED_PYTHON selected targets  branch=main considered=1 selected=0 targets=[] widened=0
+```
+
+The pass **dropped** the target; it did not widen. The `trigger_update_python_computed_attributes`
+run that looked like a widening fired before the merge, from the schema-driven pass on schema load.
+
+The cause is a single one, upstream of all three symptoms. Registering the Python automations races
+with the owner creations that follow it. When the automations lose, no owner ever runs its
+transform, so no query group membership is ever created. The merge then changes peers rather than
+owners, which leaves the resolver with no owner-axis hit and a subscriber lookup over groups that do
+not exist. Dropping the target there is correct: the per-node path finds no reader either, so this
+is not under-recompute against the behaviour being replaced.
+
+The harness now asserts the baseline was computed before it measures, so a race turns into an
+immediate failure naming the cause instead of an hour of measuring nothing.
+
+The three symptoms, for the record:
 
 1. **The initial live computation never fired.** Pitch was null before any merge, so the owner-axis
    automation did not run when the owners were created. Run A did compute it. The likely candidate
@@ -139,7 +159,6 @@ Three things to explain, none of them yet explained:
 3. **The widened flow produced nothing.** `trigger_update_python_computed_attributes` completed and
    submitted no `process_transform` at all, though 20 owners exist on the branch it was given.
 
-Do not read run B as evidence the tag fix broke something: it touches only the submission path, and
-none of the three symptoms sit on it. Do not read run A as a measurement either. The next session
-should reproduce run B's shape first, since a widened pass that dispatches nothing is the one
-outcome that would be worse than the behaviour being replaced.
+The tag fix is unrelated to any of this: it touches only the submission path. Run A remains the only
+end-to-end evidence that the collapse happens, and it is not a measurement. What is still needed is
+one clean run, with the baseline guard in place, at 100 and 1000.

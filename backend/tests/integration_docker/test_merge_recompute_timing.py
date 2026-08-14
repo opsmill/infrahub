@@ -227,6 +227,17 @@ class TestPythonMergeRecomputeTiming(TestInfrahubDockerClient):
 
         await _wait_idle(client)
 
+        # The transform has to have run once per owner before the merge, or there is nothing to
+        # measure: no run means no query group membership, so the merge finds no reader to refresh
+        # and the whole measurement silently reports an empty population. Registering the Python
+        # automations races with these creations, so assert the baseline rather than assume it.
+        seeded = await client.all(kind=TRANSFORM_OWNER_KIND, branch="main")
+        computed = sum(1 for owner in seeded if owner.pitch.value)
+        assert computed == changed_nodes, (
+            f"only {computed}/{changed_nodes} owners had a computed value before the merge; "
+            "the recompute automations were probably not registered yet when the owners were created"
+        )
+
         branch = await client.branch.create(branch_name="python-merge-recompute-timing")
         update_batch = await client.create_batch()
         for index, peer in enumerate(peers):
