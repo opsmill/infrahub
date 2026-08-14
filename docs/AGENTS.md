@@ -17,8 +17,8 @@ Infrahub documentation is organized using the [Diataxis framework](https://diata
 
 | Question | Doc Type | See Guide |
 |----------|----------|-----------|
-| Teaching users to complete a specific task? | **Guide** | [guides/AGENTS.md](docs/guides/AGENTS.md) |
-| Explaining concepts or how something works? | **Topic** | [topics/AGENTS.md](docs/topics/AGENTS.md) |
+| Teaching users to complete a specific task? | **Guide** | [writing-a-guide.md](../dev/guides/docs/writing-a-guide.md) |
+| Explaining concepts or how something works? | **Topic** | [writing-a-topic.md](../dev/guides/docs/writing-a-topic.md) |
 | Providing reference information? | **Reference** | Auto-generated |
 | Walking through a complete learning scenario? | **Tutorial** | Diataxis framework |
 
@@ -96,7 +96,7 @@ Capitalize these Infrahub-specific terms when referring to the feature:
 ## Documentation Workflow
 
 1. **Choose documentation type** using the table above (if not specified)
-2. **Follow specialized guide** (guides/AGENTS.md or topics/AGENTS.md)
+2. **Follow specialized guide** (`dev/guides/docs/writing-a-guide.md` or `writing-a-topic.md`)
 3. **Create the .mdx file** in the appropriate directory
 4. **Add to navigation** by editing `sidebars.ts` in the appropriate section
 5. **Lint before committing**: `uv run invoke docs.lint`
@@ -124,7 +124,7 @@ The `migrate-feature-page` skill documents the full workflow.
 - Choose the appropriate documentation type (guide vs. topic)
 - Define technical terms on first use
 - Verify factual claims (attribute kinds, GraphQL fields, defaults) against the code on the branch the PR targets — docs PRs frequently target a release branch whose features differ from the development branch; this applies doubly before acting on a bot review claim that something "does not exist"
-- When documenting marketplace items, verify each item resolves in the live catalog (`GET /api/v1/schemas/infrahub/<item>` on the marketplace); if an item is planned but unpublished, get an explicit decision on release timing before referencing it
+- When documenting marketplace items, verify each item actually resolves in the live catalog at <https://marketplace.infrahub.app>; if an item is planned but unpublished, get an explicit decision on release timing before referencing it
 - Prefer plain Markdown/MDX over custom React components in doc pages; before adding anything to `docs/src/components/`, check the existing components for reuse, and give a genuinely new component typed props (the docs package typechecks with `tsc`)
 
 ### Ask First

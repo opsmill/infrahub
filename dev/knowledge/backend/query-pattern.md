@@ -176,7 +176,7 @@ Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`. For que
 
 Example: `NodeGetListByAttributeValueQuery` and `NodeGetByHFIDQuery` chain three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value for the requested branch/time.
 
-Anchor the outer `MATCH` with anonymous edges (`-[:HAS_ATTRIBUTE]->`) — binding an edge variable you never use multiplies rows once per branch-versioned edge, and the `CALL` subquery then runs once per duplicate row. Add `WITH DISTINCT <keys>` before the `CALL`, and group at the natural cardinality: an Attribute has exactly one active AttributeValue per branch/time, so group by `(n, attr)` and re-apply value predicates after the subquery. See [Database Schema — Key Points](database-schema.md#key-points).
+The outer `MATCH` returns one row per matching edge, and the graph keeps one `HAS_ATTRIBUTE` edge per branch that touched the attribute — so an attribute edited on three branches yields three rows, and the `CALL` subquery then runs three times to elect the same winning edge. Add `WITH DISTINCT <keys>` before the `CALL` and group at the natural cardinality: an Attribute has exactly one active AttributeValue per branch/time, so group by `(n, attr)` and re-apply value predicates after the subquery. Keep the outer edge anonymous (`-[:HAS_ATTRIBUTE]->`) while you are there — binding a variable you never read does not change the row count, but it does collide with the subquery's own edge variable (see below). See [Database Schema — Key Points](database-schema.md#key-points).
 
 ### Query performance
 

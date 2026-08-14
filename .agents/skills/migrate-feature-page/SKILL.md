@@ -299,7 +299,7 @@ Pattern: <single-page merge / hub + spokes / tutorial extraction / split / secti
 
 Most of this PR is preserved content with cross-link updates. The actual NEW prose to review is small:
 
-- **`<file>:<lines>` — <one-line description of new section/prose>.** <Brief rationale or where it came from — e.g. "Sourced from the Confluence net-new content draft" or "Standard spoke 'Related' closer matching Generators/Transformations precedent.">
+- **`<file>:<lines>` — <one-line description of new section/prose>.** <Brief rationale or where it came from — e.g. "Sourced from the Confluence net-new content draft" or "Standard spoke `## Next` closer matching Generators/Transformations precedent.">
 
 Everything else (~XX% of the lines changed) is verbatim from the source legacy files with only cross-link path updates — safe to skim.
 
