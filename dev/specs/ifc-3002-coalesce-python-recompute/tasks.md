@@ -14,14 +14,31 @@
 
 ## Base branch
 
-> ⚠️ **This work is based on `release-1.11`, not `develop`.**
+> **This work is based on `develop`.** It was built on `release-1.11` and rebased onto `develop`
+> afterwards, by decision.
 >
-> FR-004 depends on `TransformReadSet.from_read_fields` treating a read kind with no read
-> fields as a kind-level dependency rather than as imprecise. That change (`3993523b9`, #10189)
-> is on `release-1.11` and **not** on `develop`. The #10213 sync was partial: it also left
-> `m075` and the `GRAPH_VERSION` bump behind, and `release-1.11` is still 33 commits ahead.
-> Building the read-field narrowing on `develop` means building against the old semantics and
-> conflicting at the next sync.
+> The consequence is worth knowing. FR-004 wants `TransformReadSet.from_read_fields` to treat a
+> read kind with no read fields as a kind-level dependency. That change (`3993523b9`, #10189) is
+> on `release-1.11` and is still **not** on `develop`, where such a kind instead makes the whole
+> read set imprecise:
+>
+> ```python
+> if not fields or fields & IMPRECISE_READ_FIELDS:
+>     return cls.imprecise()
+> ```
+>
+> So on this base, a transform whose query traverses to a kind without reading a field of it
+> widens to its whole kind instead of narrowing. That is safe, because widening over-recomputes
+> and never under-recomputes, but it is the feature's own mechanism degrading: those attributes
+> get a whole-kind refresh rather than a scoped one. A transform that reads at least one field on
+> every kind it touches, which includes the test fixture and the measured runs, narrows normally.
+>
+> The measurements in `baseline.md` were taken on `release-1.11` and therefore under the better
+> semantics. They are not invalidated, but they are the optimistic end of what this base delivers.
+> When #10189 reaches `develop`, the gap closes on its own with no change here.
+>
+> `develop` also enforces `BLE001`, which `release-1.11` did not. The resolver's two deliberate
+> blind catches carry an explicit exemption naming the reason.
 
 ---
 

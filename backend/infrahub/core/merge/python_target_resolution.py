@@ -183,7 +183,7 @@ class NarrowingPythonTargetResolver:
 
         try:
             index = await self.read_field_index.for_branch(branch=branch)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001  the resolver must never raise; widening is the answer to any failure
             widened = [widen(target, reason=f"read-field index unavailable: {exc!r}") for target in python_targets]
             return replace_python_targets(coalesced, widened)
 
@@ -278,7 +278,7 @@ class NarrowingPythonTargetResolver:
                 readers = await self._readers_of(
                     live_ids=live_ids, gone_ids=gone_ids, branch=branch, deleted_at=deleted_at
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001  as above: an escaping error would skip all four families
                 return widen(target, reason=f"subscriber lookup failed: {exc!r}")
             owner_ids |= set(readers.get(target.target_kind, frozenset()))
 
