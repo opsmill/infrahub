@@ -26,9 +26,7 @@ Infrahub documentation is organized using the [Diataxis framework](https://diata
 
 - `docs/` – MDX content
   - `guides/` – How-to guides (task-oriented)
-    - `AGENTS.md` – **Specialized instructions for writing guides**
   - `topics/` – Explanations (understanding-oriented)
-    - `AGENTS.md` – **Specialized instructions for writing topics**
   - `reference/` – API/configuration reference
   - `tutorials/` – Learning tutorials
   - `media/` – Images and screenshots
@@ -96,7 +94,7 @@ Capitalize these Infrahub-specific terms when referring to the feature:
 ## Documentation Workflow
 
 1. **Choose documentation type** using the table above (if not specified)
-2. **Follow specialized guide** (`dev/guides/docs/writing-a-guide.md` or `writing-a-topic.md`)
+2. **Follow specialized guide** (`dev/guides/docs/writing-a-guide.md` or `dev/guides/docs/writing-a-topic.md`)
 3. **Create the .mdx file** in the appropriate directory
 4. **Add to navigation** by editing `sidebars.ts` in the appropriate section
 5. **Lint before committing**: `uv run invoke docs.lint`
