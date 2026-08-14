@@ -1,7 +1,5 @@
 import { Link } from "react-router";
 
-import InfrahubWithTextLogo from "@/assets/Infrahub-SVG-hori.svg";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import {
   Sidebar,
@@ -11,6 +9,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/shared/components/layout/sidebar";
+import { InfrahubLogo } from "@/shared/components/ui/infrahub-logo";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
@@ -52,7 +51,7 @@ function AppSidebarHeader() {
           "group-data-[state=collapsed]:left-1.75 group-data-[state=collapsed]:max-w-8"
         )}
       >
-        <img src={InfrahubWithTextLogo} alt="Infrahub" className="h-8 max-w-none" />
+        <InfrahubLogo aria-hidden className="h-8 max-w-none" />
       </Link>
 
       <SidebarTrigger className="absolute top-0 right-0 transition-[right] duration-200 ease-linear group-data-[state=collapsed]:right-0.75" />

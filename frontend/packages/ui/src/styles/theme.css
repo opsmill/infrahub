@@ -1,3 +1,5 @@
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: var(--color-stone-100);
   --foreground: var(--color-stone-800);

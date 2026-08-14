@@ -1,12 +1,11 @@
 import { Button, Modal } from "@infrahub/ui";
 import { XIcon } from "lucide-react";
 
-import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
-
 import { Separator } from "@/shared/components/aria/separator";
 import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipboard-button";
 import { Col, Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
+import { InfrahubLogo } from "@/shared/components/ui/infrahub-logo";
 
 import { useConfig } from "@/entities/config/ui/config-provider";
 import { useGetAppInfo } from "@/entities/config/ui/queries/get-app-info.query";
