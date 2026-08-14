@@ -24,7 +24,7 @@ export const GitRepositoryItem = ({ repository }: { repository: GitRepositoryDat
         focusVisibleStyle,
         "flex items-center justify-between p-4 text-sm",
         "border border-transparent",
-        "hover:bg-neutral-100"
+        "hover:bg-highlight"
       )}
       textValue={display_label ?? id}
     >

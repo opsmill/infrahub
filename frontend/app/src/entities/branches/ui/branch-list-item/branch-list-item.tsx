@@ -28,7 +28,7 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
         "grid grid-cols-[minmax(200px,1fr)_auto_1fr] items-center gap-4 px-6 py-4",
         "border border-transparent not-last:border-b-border",
         "first:rounded-t-lg last:rounded-b-lg",
-        "hover:bg-neutral-100",
+        "hover:bg-highlight",
         className
       )}
       {...props}
