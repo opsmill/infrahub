@@ -17,8 +17,8 @@ Infrahub documentation is organized using the [Diataxis framework](https://diata
 
 | Question | Doc Type | See Guide |
 |----------|----------|-----------|
-| Teaching users to complete a specific task? | **Guide** | [guides/AGENTS.md](docs/guides/AGENTS.md) |
-| Explaining concepts or how something works? | **Topic** | [topics/AGENTS.md](docs/topics/AGENTS.md) |
+| Teaching users to complete a specific task? | **Guide** | [writing-a-guide.md](../dev/guides/docs/writing-a-guide.md) |
+| Explaining concepts or how something works? | **Topic** | [writing-a-topic.md](../dev/guides/docs/writing-a-topic.md) |
 | Providing reference information? | **Reference** | Auto-generated |
 | Walking through a complete learning scenario? | **Tutorial** | Diataxis framework |
 
@@ -26,9 +26,7 @@ Infrahub documentation is organized using the [Diataxis framework](https://diata
 
 - `docs/` – MDX content
   - `guides/` – How-to guides (task-oriented)
-    - `AGENTS.md` – **Specialized instructions for writing guides**
   - `topics/` – Explanations (understanding-oriented)
-    - `AGENTS.md` – **Specialized instructions for writing topics**
   - `reference/` – API/configuration reference
   - `tutorials/` – Learning tutorials
   - `media/` – Images and screenshots. Export diagrams (Excalidraw) with an opaque white
@@ -97,7 +95,7 @@ Capitalize these Infrahub-specific terms when referring to the feature:
 ## Documentation Workflow
 
 1. **Choose documentation type** using the table above (if not specified)
-2. **Follow specialized guide** (guides/AGENTS.md or topics/AGENTS.md)
+2. **Follow specialized guide** (`dev/guides/docs/writing-a-guide.md` or `writing-a-topic.md`)
 3. **Create the .mdx file** in the appropriate directory
 4. **Add to navigation** by editing `sidebars.ts` in the appropriate section
 5. **Lint before committing**: `uv run invoke docs.lint`
