@@ -28,6 +28,7 @@ export default defineConfig({
     "eslint/no-ternary": "off",
     "eslint/no-undefined": "off",
     "eslint/no-use-before-define": "off",
+    "eslint/one-var": "off",
     "eslint/sort-imports": "off",
     "eslint/sort-keys": "off",
     "jsx-a11y/no-autofocus": "off",

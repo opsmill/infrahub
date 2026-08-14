@@ -207,6 +207,31 @@ class ObjectImportPlan:
     artifact_definitions: dict[str, InfrahubRepositoryArtifactDefinitionConfig]
 
 
+def serialize_artifact_content(
+    content: Any, content_type: str, repository_name: str, commit: str, location: str
+) -> str:
+    """Convert the payload returned by a transform into the content stored for an artifact.
+
+    Raises:
+        TransformError: When the transform returned no payload.
+
+    """
+    if content is None:
+        raise TransformError(
+            repository_name=repository_name,
+            commit=commit,
+            location=location,
+            message=f"The transform at {location} did not return a payload",
+        )
+
+    if content_type == ContentType.APPLICATION_JSON.value and isinstance(content, dict):
+        return ujson.dumps(content, indent=2)
+    if content_type == ContentType.APPLICATION_YAML.value and isinstance(content, dict):
+        return yaml.dump(content, indent=2)
+
+    return str(content)
+
+
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     """This class provides interfaces to read and process information from .infrahub.yml files and can perform.
 
@@ -2007,9 +2032,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         )
 
         if transformation.typename == InfrahubKind.TRANSFORMJINJA2:
+            transformation_location = transformation.template_path.value
             artifact_content = await self.render_jinja2_template.with_options(
                 timeout_seconds=transformation.timeout.value
-            )(commit=commit, location=transformation.template_path.value, data=response)  # type: ignore[call-overload]
+            )(commit=commit, location=transformation_location, data=response)  # type: ignore[call-overload]
         elif transformation.typename == InfrahubKind.TRANSFORMPYTHON:
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
             artifact_content = await self.execute_python_transform.with_options(
@@ -2023,12 +2049,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 convert_query_response=transformation.convert_query_response.value,
             )  # type: ignore[call-overload]
 
-        if definition.content_type.value == ContentType.APPLICATION_JSON.value and isinstance(artifact_content, dict):
-            artifact_content_str = ujson.dumps(artifact_content, indent=2)
-        elif definition.content_type.value == ContentType.APPLICATION_YAML.value and isinstance(artifact_content, dict):
-            artifact_content_str = yaml.dump(artifact_content, indent=2)
-        else:
-            artifact_content_str = str(artifact_content)
+        artifact_content_str = serialize_artifact_content(
+            content=artifact_content,
+            content_type=definition.content_type.value,
+            repository_name=self.name,
+            commit=commit,
+            location=transformation_location,
+        )
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 
@@ -2083,12 +2110,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 convert_query_response=message.convert_query_response,
             )  # type: ignore[call-overload]
 
-        if message.content_type == ContentType.APPLICATION_JSON.value and isinstance(artifact_content, dict):
-            artifact_content_str = ujson.dumps(artifact_content, indent=2)
-        elif message.content_type == ContentType.APPLICATION_YAML.value and isinstance(artifact_content, dict):
-            artifact_content_str = yaml.dump(artifact_content, indent=2)
-        else:
-            artifact_content_str = str(artifact_content)
+        artifact_content_str = serialize_artifact_content(
+            content=artifact_content,
+            content_type=message.content_type,
+            repository_name=self.name,
+            commit=message.commit,
+            location=message.transform_location,
+        )
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 

@@ -20,9 +20,15 @@ DEFINITION_ID = "22222222-2222-2222-2222-222222222222"
 OTHER_ID = "33333333-3333-3333-3333-333333333333"
 REPOSITORY_ID = "44444444-4444-4444-4444-444444444444"
 
-# The package-directory floor a generator's closure carries: every sibling under its directory plus
-# the repository manifest. A file edit anywhere in the floor must select the generator.
-PACKAGE_FLOOR = [
+# What a generator's closure holds when nothing is declared: its own source file plus the
+# repository manifest. Files sitting beside the source are not in it.
+AUTO_DETECTED_CLOSURE = [
+    ".infrahub.yml",
+    "generators/a/a.py",
+]
+
+# What the closure grows to once the author declares the containing directory in `watch.files`.
+WATCHED_DIRECTORY_CLOSURE = [
     ".infrahub.yml",
     "generators/a/__init__.py",
     "generators/a/a.py",
@@ -143,21 +149,28 @@ def test_definition_changed_generator_variant(case: DiffCase) -> None:
 TRANSFORM_CHANGED_CASES: list[TransformChangedCase] = [
     TransformChangedCase(
         name="complete_closure_unrelated_file_is_false",
-        dependencies=PACKAGE_FLOOR,
+        dependencies=WATCHED_DIRECTORY_CLOSURE,
         dependencies_complete=True,
         files_changed=["generators/b/b.py"],
         expected=False,
     ),
     TransformChangedCase(
-        name="source_file_inside_floor_is_true",
-        dependencies=PACKAGE_FLOOR,
+        name="source_file_is_true",
+        dependencies=AUTO_DETECTED_CLOSURE,
         dependencies_complete=True,
         files_changed=["generators/a/a.py"],
         expected=True,
     ),
     TransformChangedCase(
-        name="sibling_module_in_same_package_is_true",
-        dependencies=PACKAGE_FLOOR,
+        name="undeclared_sibling_module_is_false",
+        dependencies=AUTO_DETECTED_CLOSURE,
+        dependencies_complete=True,
+        files_changed=["generators/a/helpers.py"],
+        expected=False,
+    ),
+    TransformChangedCase(
+        name="sibling_module_in_watched_directory_is_true",
+        dependencies=WATCHED_DIRECTORY_CLOSURE,
         dependencies_complete=True,
         files_changed=["generators/a/helpers.py"],
         expected=True,
@@ -171,7 +184,7 @@ TRANSFORM_CHANGED_CASES: list[TransformChangedCase] = [
     ),
     TransformChangedCase(
         name="incomplete_closure_falls_back_to_any_file_change",
-        dependencies=PACKAGE_FLOOR,
+        dependencies=WATCHED_DIRECTORY_CLOSURE,
         dependencies_complete=False,
         files_changed=["unrelated/file.md"],
         expected=True,
@@ -184,7 +197,7 @@ TRANSFORM_CHANGED_CASES: list[TransformChangedCase] = [
     ),
     TransformChangedCase(
         name="incomplete_closure_with_no_modifications_is_false",
-        dependencies=PACKAGE_FLOOR,
+        dependencies=WATCHED_DIRECTORY_CLOSURE,
         dependencies_complete=False,
         expected=False,
     ),
@@ -193,12 +206,13 @@ TRANSFORM_CHANGED_CASES: list[TransformChangedCase] = [
 
 @pytest.mark.parametrize("case", [pytest.param(c, id=c.name) for c in TRANSFORM_CHANGED_CASES])
 def test_transform_changed_generator_variant(case: TransformChangedCase) -> None:
-    """The closure predicate intersects a generator's package floor with the repo diff.
+    """The closure predicate intersects a generator's stored closure with the repo diff.
 
-    A file edit anywhere in the package-directory floor - the source module or a sibling it never
-    imports - selects the generator, while an unrelated file does not. The legacy (``dependencies=null``)
-    and incomplete (``dependencies_complete=False``) states fall back to regenerate-on-any-file-change so
-    a generator is never under-run.
+    An edit to the generator's own source file selects it; an edit to a sibling module selects it
+    only once that sibling is in the closure, which is what declaring the directory in
+    ``watch.files`` achieves. The legacy (``dependencies=null``) and incomplete
+    (``dependencies_complete=False``) states fall back to regenerate-on-any-file-change so a
+    generator is never under-run.
     """
     definition = _build_definition(
         dependencies=case.dependencies,

@@ -844,6 +844,7 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
         await coordinator.execute(
             branch=default_branch,
             origin_schema=origin_schema,
+            rollback_schema=origin_schema,
             candidate_schema=candidate_schema,
             at=Timestamp(),
             migration_executor=MigrationExecutor.DIRECT,

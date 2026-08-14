@@ -15,7 +15,7 @@ export interface FormatDateOptions {
 // A zone valid on the preference setter's machine may be absent on the viewer's browser;
 // `@date-fns/tz` builds a `TZDate` for an unknown zone without complaint and only throws lazily
 // on use, so we validate up front with `Intl`, which rejects an unknown zone synchronously.
-function supportedTimezone(timezone?: string | null): string | undefined {
+export function supportedTimezone(timezone?: string | null): string | undefined {
   if (!timezone) {
     return;
   }

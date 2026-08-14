@@ -50,24 +50,6 @@ class AttributeSchema(GeneratedAttributeSchema):
     def source_attribute_id(self, value: str | None) -> None:
         self._source_attribute_id = value
 
-    @classmethod
-    def model_json_schema(cls, *args: Any, **kwargs: Any) -> dict[str, Any]:
-        schema = super().model_json_schema(*args, **kwargs)
-
-        # Build conditional schema based on attribute_schema_class_by_kind mapping
-        # This override allows people using the Yaml language server to get the correct mappings
-        # for the parameters when selecting the appropriate kind
-        schema["allOf"] = []
-        for kind, schema_class in attribute_schema_class_by_kind.items():
-            schema["allOf"].append(
-                {
-                    "if": {"properties": {"kind": {"const": kind}}},
-                    "then": {"properties": {"parameters": {"$ref": f"#/definitions/{schema_class.__name__}"}}},
-                }
-            )
-
-        return schema
-
     @property
     def is_attribute(self) -> bool:
         return True

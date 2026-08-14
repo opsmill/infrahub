@@ -86,9 +86,9 @@ This dependency management ensures that all resources have what they need when t
 
 ### Declaring extra dependencies with `watch`
 
-Infrahub automatically detects the files a Transformation or Generator reads: a Python Transformation's or a Generator's package directory, and the templates a Jinja2 Transformation statically includes, imports, or extends. When a file in that detected set changes in a proposed change, only the artifacts of the affected Transformation regenerate, or the instances of the affected Generator re-run.
+Infrahub automatically detects the files a Transformation or Generator reads: a Python Transformation's or a Generator's own source file, and the templates a Jinja2 Transformation statically includes, imports, or extends. When a file in that detected set changes in a proposed change, only the artifacts of the affected Transformation regenerate, or the instances of the affected Generator re-run. A file that merely sits in the same directory as a Python source is not a detected dependency of it.
 
-Some dependencies cannot be detected automatically, such as a template pulled in through a dynamic `{% include some_variable %}` or a helper module imported at runtime from another package. Declare these with the optional `watch` key on a `jinja2_transforms`, `python_transforms`, or `generator_definitions` entry. Watched files are added to the definition's auto-detected dependencies; they never replace them.
+Some dependencies cannot be detected automatically, such as a template pulled in through a dynamic `{% include some_variable %}`, or any module a Python Transformation or Generator imports - Infrahub does not analyze imports. Declare these with the optional `watch` key on a `jinja2_transforms`, `python_transforms`, or `generator_definitions` entry. Watched files are added to the definition's auto-detected dependencies; they never replace them.
 
 `watch` is a strict object. Today it accepts a single key, `files`:
 
@@ -113,7 +113,7 @@ jinja2_transforms:
         - templates/partials/
 ```
 
-Python example, where a Transformation imports helpers from a sibling top-level package:
+Python example, where a Transformation imports helpers from a sibling top-level package and from a module next to it:
 
 ```yaml
 python_transforms:
@@ -124,6 +124,7 @@ python_transforms:
       files:
         - utils/
         - shared/helpers.py
+        - transforms/device_name_helpers.py
 ```
 
 Generator example, where a Generator imports helpers from a sibling top-level package. The `watch` key behaves identically on a `generator_definitions` entry:
@@ -141,7 +142,24 @@ generator_definitions:
         - common/constants.py
 ```
 
-Declaring any `watch.files` entry also marks the definition's dependency closure as complete, which suppresses the conservative regenerate-on-any-change fallback that an incomplete auto-detection would otherwise trigger. See [the proposed changes overview](../proposed-changes/overview#understanding-artifact-regeneration) for what an incomplete closure means and how to resolve it.
+Declaring any `watch.files` entry also marks the definition's dependency closure as complete, which suppresses the conservative regenerate-on-any-change fallback that an incomplete Jinja2 auto-detection would otherwise trigger. On a Python Transformation or Generator, where auto-detection has no references to fail on, the declaration earns its precision the way described in the next section instead. See [the proposed changes overview](../proposed-changes/overview#understanding-artifact-regeneration) for what an incomplete closure means and how to resolve it.
+
+#### Declaring `watch` with no extra files
+
+On a Python Transformation or a Generator, declare `watch` with an empty list when the source depends on nothing but its own file:
+
+```yaml
+python_transforms:
+  - name: DeviceNameAttribute
+    class_name: DeviceNameAttribute
+    file_path: transforms/device_name_attribute.py
+    watch:
+      files: []
+```
+
+Because imports are never analyzed, Infrahub cannot distinguish a Python source with no further dependencies from one whose dependencies it has no way to see. Until `watch` is present it assumes the latter, and ties the definition's fingerprint to the repository's current commit, so every commit is treated as a possible change to it. The empty list is your statement that the auto-detected closure already names everything, which is what unties the fingerprint from the commit and makes regeneration precise. The key has to carry the `files` list: a bare `watch:` with nothing under it reads as no declaration at all.
+
+A Jinja2 Transformation needs no such declaration. Its detection parses the template and follows every reference it declares, and any reference it cannot follow already marks the closure incomplete, so a complete Jinja2 closure is trusted on its own.
 
 ## Group targeting
 
