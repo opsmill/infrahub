@@ -143,12 +143,14 @@ When the two pools plus the operating system exceed physical memory, the host sw
 
 ### Bound transaction memory
 
-`dbms.memory.transaction.total.max` and `db.memory.transaction.max` are unlimited by default, so a single expensive transaction can claim the whole heap. Bounding them keeps one import or merge from exhausting the memory every other query needs:
+`dbms.memory.transaction.total.max` bounds what every running transaction holds together, and defaults to 70% of the heap. `db.memory.transaction.max` bounds a single transaction and is unlimited by default, so one import or merge can claim that entire 70% share on its own and leave nothing for the queries running beside it. Setting both keeps that from happening:
 
 ```yaml title="docker-compose.yml"
 NEO4J_dbms_memory_transaction_total_max: "6G"
 NEO4J_db_memory_transaction_max: "2G"
 ```
+
+Those values suit a 12 GB heap. An explicit `dbms.memory.transaction.total.max` only tightens the default share, so it has to be revisited whenever the heap changes — raising the heap without raising this value leaves the total where you pinned it.
 
 **What you trade.** A large migration or import that exceeds the limit fails with `Transaction memory limit reached` instead of competing for heap. For how to lift the limit for the duration of an upgrade, see [known issues](../maintain-upgrade/upgrade/overview.mdx#migration-failing-because-of-transaction-memory-limit-reached-in-neo4j).
 
