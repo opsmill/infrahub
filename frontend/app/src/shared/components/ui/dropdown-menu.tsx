@@ -26,7 +26,7 @@ export const DropdownMenuContent = ({ className, ref, ...props }: DropdownMenuCo
         sideOffset={4}
         ref={ref}
         className={classNames(
-          "z-50 min-w-32 space-y-1 overflow-hidden rounded-xl bg-white p-2 shadow-lg",
+          "z-50 min-w-32 space-y-1 overflow-hidden rounded-xl bg-popover p-2 shadow-lg backdrop-blur-lg",
           "data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:animate-in",
           "data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
@@ -90,7 +90,7 @@ export const DropdownMenuSubContent = ({
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={classNames(
-      "min-w-32 space-y-1 overflow-hidden rounded-xl bg-white p-2 shadow-lg",
+      "min-w-32 space-y-1 overflow-hidden rounded-xl bg-popover p-2 shadow-lg backdrop-blur-lg",
       "data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:animate-in",
       "data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out",
       "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
