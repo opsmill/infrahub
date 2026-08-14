@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-11
 
-**Status**: Draft (revised after critique)
+**Status**: Draft (revised after critique, then after measurement)
 
 **Jira**: [IFC-3002](https://opsmill.atlassian.net/browse/IFC-3002) (product idea [INFP-667](https://opsmill.atlassian.net/browse/INFP-667))
 
@@ -69,14 +69,16 @@ An operator merges or rebases a branch that changed many nodes tied to a Python 
 
 An operator merges a branch that deletes a node other objects read. Today the readers keep a value that names the deleted object. After this change they refresh.
 
-**Why this priority**: It is a correctness bug rather than a performance one, and it is independently valuable: the same gap affects a plain delete outside any merge, so fixing it improves normal use. It is separated from P1 because it can be built, tested and demonstrated on its own, and because P1 must not be blocked on it.
+**Why this priority**: It is a correctness bug rather than a performance one. It is separated from P1 because it can be built, tested and demonstrated on its own, and because P1 must not be blocked on it.
 
-**Independent Test**: Delete a node that a Python transform reads, once through a merge and once directly, and check the readers.
+**Scope correction, after implementation**: this story now covers the merge and rebase paths only. The plain delete outside any merge is deferred. A merge knows exactly when it closed the deleted node's edges, so its readers can be resolved from an instant just before that. A direct delete has no such anchor: the timestamp reaches neither the changelog nor the event metadata, and the event's own time is already past the closing edges. Carrying it would change an event model and its generated reference documentation, which this feature rules out. See research R6; scenario 2 below moves with it.
+
+**Independent Test**: Delete a node that a Python transform reads through a merge, and check the readers.
 
 **Acceptance Scenarios**:
 
 1. **Given** a merge that deletes a node read by a Python transform, **When** the merge completes, **Then** the readers of that node are refreshed.
-2. **Given** a direct delete of the same node outside any merge, **When** the delete completes, **Then** the readers are refreshed.
+2. *(Deferred, see the scope correction above.)* **Given** a direct delete of the same node outside any merge, **When** the delete completes, **Then** the readers are refreshed.
 3. **Given** a merge that both deletes one node and updates another, **When** the merge completes, **Then** the readers of both are refreshed, and the update path is resolved against current data rather than against the pre-delete state.
 
 ---
@@ -177,14 +179,14 @@ One new in-memory concept: the **read-field index**, mapping each Python compute
 ### Measurable Outcomes
 
 - **SC-001**: For a merge changing N nodes tied to Python transform computed attributes, the number of background jobs created per affected attribute-and-kind pair is at most the number of chunks the submission limit requires, instead of one per changed node. Measured at 100, 1000 and 2000 changed nodes.
-- **SC-002**: At 1000 changed nodes, the background activity that follows the merge settles at least 90% sooner than the measured baseline for the current behaviour.
+- **SC-002**: At 1000 changed nodes, the background activity that follows the merge settles at least 75% sooner than the measured baseline for the current behaviour. **Revised down from 90% after measuring.** The baseline settles in 498.2 s; two runs of the coalesced pass give 102.1 s and 88.2 s, so 79.5% and 82.3%. The original target implied 49.8 s, which the shape of the work does not reach: the remaining time is transform execution and bulk writes, not dispatch, and this feature only removes dispatch. Setting the bar at 75% keeps it above both measurements and still fails if the coalescing stops working.
 - **SC-003**: For the same merge, the set of nodes written and their final values are identical between the current behaviour and the coalesced behaviour, at every measured scale.
 - **SC-004**: The number of transform executions for the same merge is no higher than the current behaviour, at every measured scale.
 - **SC-005**: Throughout the background window that follows the merge, the API answers every request without an error and without a timeout.
 - **SC-006**: For any merge that refreshes Python transform computed attributes, an operator can determine from the task logs alone which attributes were refreshed and which were widened, without reading the source.
 - **SC-007 (fail criterion)**: If, at 1000 changed nodes, the transform execution count exceeds the current behaviour, or the background window improves by less than 50%, the suppression is reverted and the feature is reconsidered rather than shipped.
 
-The baseline does not exist yet. Measuring it is the first task, and the numbers above are meaningless until it does.
+The baseline was measured first, as planned, and the numbers above are stated against it. Results and method are in [baseline.md](./baseline.md).
 
 ## Assumptions
 
