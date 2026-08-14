@@ -144,4 +144,4 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
                 ),
             )
         )
-        assert result == {kind: (chain,) for kind in interface_generic.used_by}
+        assert result == dict.fromkeys(interface_generic.used_by, (chain,))
