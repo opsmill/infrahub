@@ -248,6 +248,8 @@ Outbound on `n1`, inbound on `n2`.
 - **Same branch**: Set `to` property to deletion time
 - **User branch deleting default branch data**: Add `status="deleted"` edge with `from` = deletion time
 
+These two mechanisms are exclusive. A `status="deleted"` edge is terminal: it always keeps `to: NULL`, never receives a `to` timestamp, and is never re-opened. `to` is only ever set to close a `status="active"` edge.
+
 ### Branch Deletion
 
 Hard-deletes all edges on the branch and the `Branch` vertex.
@@ -355,6 +357,8 @@ CALL (peer, rl) {
 - **DISTINCT first**: When multiple vertices may match, get DISTINCT nodes first, then validate each
 - **Order then filter**: Always `ORDER BY ... LIMIT 1` first, then `WHERE status = "active"` to handle the case where the latest edge is a deletion
 - **No `to` timestamp**: `to IS NULL` ensures the edge is currently valid (not expired)
+
+These filters apply to *any* query whose contract mentions "active" or "current" state — detection/audit queries and test helpers included; an unfiltered edge match silently counts tombstoned rows as live.
 
 ## Transaction Retry
 

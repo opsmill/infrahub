@@ -34,6 +34,8 @@ def __init__(self, node_id: str, **kwargs):
 | `add_subquery(str, alias)` | Wrap in `CALL (alias) { }` block |
 | `update_return_labels(list)` | Add labels to RETURN clause |
 
+Constructors take primitives (ids, names, ranges, kinds) — not domain objects like a `Node` subclass. A query that reads fields off a node instance creates a two-way dependency between the query layer and the node layer; compute the primitive values at the call site and pass them in. Some legacy queries (e.g. the number-pool family) still take node objects — follow this rule for new queries rather than the sibling precedent.
+
 ### Execution
 
 ```python
@@ -173,6 +175,12 @@ Each subquery:
 Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`. For queries filtering multiple edges with different variable names, use `variable_name="r_custom"` to generate a filter bound to a specific variable.
 
 Example: `NodeGetListByAttributeValueQuery` and `NodeGetByHFIDQuery` chain three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value for the requested branch/time.
+
+Anchor the outer `MATCH` with anonymous edges (`-[:HAS_ATTRIBUTE]->`) — binding an edge variable you never use multiplies rows once per branch-versioned edge, and the `CALL` subquery then runs once per duplicate row. Add `WITH DISTINCT <keys>` before the `CALL`, and group at the natural cardinality: an Attribute has exactly one active AttributeValue per branch/time, so group by `(n, attr)` and re-apply value predicates after the subquery. See [Database Schema — Key Points](database-schema.md#key-points).
+
+### Query performance
+
+`AttributeValueIndexed` values are stored natively typed (a number attribute's `av.value` is an integer). Compare `av.value` directly in `WHERE` predicates — wrapping it in a function (`toInteger(av.value) >= $x`) makes the predicate non-sargable and forces a scan of the kind instead of an index range seek.
 
 ### Cypher Variable Shadowing (Neo4j 5+)
 

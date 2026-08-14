@@ -169,7 +169,7 @@ When in doubt, ask: *would this sentence read better with the qualifier removed?
 **Hub + spokes** (Groups / Profiles precedent):
 
 - Hub at `docs/docs/<feature>/index.mdx` — topic content only. **Do NOT add a "Common tasks" or "Deeper concepts" link list** — the spokes already appear in the sidebar when the user is on the hub, so a body link list is redundant clutter. A "Learn by doing" body link to an Academy tutorial is OK because the tutorial lives in a different sidebar section.
-- Spokes at `docs/docs/<feature>/<task>.mdx` — one per task. Each spoke should have a brief "Next" or "Related" section at the bottom pointing to adjacent spokes.
+- Spokes at `docs/docs/<feature>/<task>.mdx` — one per task. Each spoke ends with a brief `## Next` section pointing to adjacent spokes (always `Next`, not `Related` — mixed heading names across a spoke set is a recurring review comment).
 - Optional concept spoke at `docs/docs/<feature>/<concept>.mdx` for substantial deep-dive content (e.g. priority and inheritance) when it's a frequently-referenced topic and would otherwise bloat the hub.
 - Optional Academy tutorial at `docs/docs/academy/tutorials/<feature>.mdx`
 
