@@ -8,20 +8,32 @@ export default mergeConfig(
   defineConfig({
     // Deps discovered mid-run trigger a re-optimization reload that resets vi.mock and
     // flakes the browser tests, so anything not seen by Vite's initial scan must be
-    // pre-bundled here. Two groups below:
-    // - deps of @infrahub/ui and @infrahub/graph, which are workspace packages consumed
-    //   as SOURCE (live symlinks), so Vite treats their imports as app source;
-    // - the app's own lazily-imported deps (React.lazy / dynamic import), which the
-    //   initial scan cannot see and CI's cold cache discovers mid-run.
+    // pre-bundled here.
+    //
+    // Every entry is resolved from this config's root (frontend/app). An entry that does
+    // not resolve is dropped with a "Failed to resolve dependency: <x>, present in client
+    // 'optimizeDeps.include'" warning and protects nothing, so a dep owned by a workspace
+    // package rather than by the app must use Vite's nested `<owner> > <dep>` form —
+    // pnpm's isolated node_modules gives each workspace member its own copy, and versions
+    // can differ between members (hence two entries for tailwind-variants).
     optimizeDeps: {
       include: [
+        // Deps of @infrahub/ui, @infrahub/graph and infrahub-schema-visualizer, workspace
+        // packages consumed as SOURCE (live symlinks), so Vite treats their imports as
+        // app source but resolves them from the owning package.
+        "@infrahub/ui > @radix-ui/react-scroll-area",
+        "@infrahub/ui > react-resizable-panels",
+        "@infrahub/ui > tailwind-variants",
+        "@infrahub/graph > tailwind-variants",
+        "infrahub-schema-visualizer > @dagrejs/dagre",
+        "infrahub-schema-visualizer > html-to-image",
+        // The app's own deps that no test file reaches statically (lazily imported, or
+        // only used by pages that are not under test), which the initial scan cannot see
+        // and CI's cold cache discovers mid-run.
         "@date-fns/tz",
         "react-aria-components",
         "lucide-react",
-        "tailwind-variants",
         "tailwind-merge",
-        "@radix-ui/react-scroll-area",
-        "react-resizable-panels",
         "@graphiql/plugin-explorer",
         "@tanstack/react-query-devtools",
         "graphiql",
@@ -31,10 +43,9 @@ export default mergeConfig(
         "react-error-boundary",
         "react-scan",
         "@headlessui/react",
-        "@dagrejs/dagre",
         "dagre",
+        "@radix-ui/react-dropdown-menu",
         "@radix-ui/react-progress",
-        "html-to-image",
         "react-paginate",
         "react-diff-view",
         "recharts",
