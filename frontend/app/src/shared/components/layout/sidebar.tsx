@@ -48,6 +48,7 @@ export function Sidebar({ className, children, ...props }: React.ComponentProps<
 
   return (
     <Card
+      variant="secondary"
       className={classNames(
         "group w-64 shrink-0 overflow-hidden transition-[width] duration-200 ease-linear data-[state=collapsed]:w-14",
         className
