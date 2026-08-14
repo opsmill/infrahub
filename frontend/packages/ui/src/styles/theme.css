@@ -43,8 +43,8 @@
   --subtle: var(--color-stone-400);
   --subtle-muted: var(--color-stone-600);
 
-  --border: #262322;
-  --border-strong: #403a37;
+  --border: var(--color-stone-800);
+  --border-strong: var(--color-stone-700);
 
   --ring: var(--color-cyan-700);
   --ring-halo: --alpha(var(--ring) / 25%);
