@@ -31,7 +31,7 @@ export function Breadcrumb({ children, className, ...props }: BreadcrumbProps) {
           <span
             role="presentation"
             aria-hidden="true"
-            className="text-lg font-medium text-neutral-300 select-none"
+            className="text-lg font-medium text-border-strong select-none"
           >
             /
           </span>

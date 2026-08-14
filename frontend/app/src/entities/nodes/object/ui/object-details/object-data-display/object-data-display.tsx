@@ -147,7 +147,7 @@ export function ObjectDataDisplay({
               <div className="ml-1.5 pb-1">{currentBranch.name}</div>
             </div>
           </div>
-          <div className="text-gray-500">Metadata</div>
+          <div className="text-foreground-muted">Metadata</div>
         </div>
         <FieldMetadataForm
           onCancel={() => setShowMetaEditModal(false)}

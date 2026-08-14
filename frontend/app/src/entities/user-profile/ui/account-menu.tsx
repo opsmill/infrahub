@@ -108,13 +108,13 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
         href="/login"
         routerOptions={{ state: { from: location } }}
       >
-        <div className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-stone-200">
+        <div className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-border">
           <Icon icon="mdi:user" className="relative top-1 text-3xl text-foreground-muted" />
         </div>
 
         <div className="overflow-hidden group-data-[state=collapsed]:hidden">
           <div className="truncate font-medium leading-4">Log in</div>
-          <div className="truncate text-stone-500 text-xs">anonymous</div>
+          <div className="truncate text-foreground-muted text-xs">anonymous</div>
         </div>
       </LinkButton>
 

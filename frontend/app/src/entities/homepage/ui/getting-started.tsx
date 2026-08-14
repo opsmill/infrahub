@@ -22,8 +22,8 @@ export const GettingStarted = ({ className }: { className?: string }) => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <BookOpen className="size-4 text-gray-400" /> Documentation
-            <ExternalLink className="size-4 text-gray-400" />
+            <BookOpen className="size-4 text-foreground-muted" /> Documentation
+            <ExternalLink className="size-4 text-foreground-muted" />
           </LinkButton>
         </div>
       </HomeCard.Title>
@@ -177,7 +177,7 @@ const GettingStartedContentItemLink = ({
       {...props}
     >
       {children}
-      {!hideExternal && <ExternalLink className="size-4 text-gray-400" />}
+      {!hideExternal && <ExternalLink className="size-4 text-foreground-muted" />}
     </LinkButton>
   );
 };
