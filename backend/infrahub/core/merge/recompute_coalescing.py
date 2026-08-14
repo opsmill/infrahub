@@ -17,6 +17,7 @@ from infrahub.workflows.catalogue import (
     HFID_PROCESS,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
+from infrahub.workflows.constants import WorkflowTag
 
 log = get_logger()
 
@@ -529,7 +530,12 @@ class CoalescedRecomputeSubmitter:
             )
             try:
                 await self.workflow.submit_workflow(
-                    workflow=workflow_definition, context=context, parameters=parameters
+                    workflow=workflow_definition,
+                    context=context,
+                    parameters=parameters,
+                    # Must be a creation tag: tags added from inside a run do not reach the filter,
+                    # so without this the run is invisible to every branch-scoped task query.
+                    tags=[WorkflowTag.BRANCH.render(identifier=submission.branch)],
                 )
             except Exception:
                 log.exception(

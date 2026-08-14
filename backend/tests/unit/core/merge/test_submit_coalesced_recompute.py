@@ -23,6 +23,7 @@ from infrahub.workflows.catalogue import (
     HFID_PROCESS,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
+from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.workflow import WorkflowRecorder
 
 if TYPE_CHECKING:
@@ -215,3 +216,19 @@ def test_narrow_python_target_routes_to_the_batch_flow() -> None:
     assert workflow == COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM
     assert parameters["object_ids"] == ["n1", "n2"]
     assert parameters["coalesced"] is True
+
+
+async def test_every_submission_carries_the_branch_tag() -> None:
+    """Without it the run is invisible to every branch-scoped task query.
+
+    A tag added from inside a run does not reach the filter, so it has to be set at creation.
+    An untagged recompute still does its work, which is why this went unnoticed until a
+    branch-filtered count came back zero while the values had plainly been refreshed.
+    """
+    recorder = WorkflowRecorder()
+
+    await CoalescedRecomputeSubmitter(workflow=recorder).submit(coalesced=_coalesced(), context=_event_context())
+
+    assert recorder.submit_calls, "expected the coalesced pass to submit something"
+    for call in recorder.submit_calls:
+        assert call["tags"] == [WorkflowTag.BRANCH.render(identifier="main")], call["workflow"].name
