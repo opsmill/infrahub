@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, assert_never
 
 from infrahub.core import registry
@@ -100,8 +101,8 @@ async def get_field_level_impacted_subscribers(
         case ChangedNodes(node_ids=node_ids):
             member_ids = node_ids
         case RelationshipReachedChanges():
-            resolver = UniquenessDependentResolver(db=db, branch=query_branch_obj)
-            member_ids = sorted(await _resolve_reached_members(changes=assessment, resolver=resolver))
+            dependent_resolver = UniquenessDependentResolver(db=db, branch=query_branch_obj)
+            member_ids = sorted(await ReachedMemberResolver(resolver=dependent_resolver).resolve(assessment))
         case _ as unreachable:
             assert_never(unreachable)
 
@@ -111,29 +112,32 @@ async def get_field_level_impacted_subscribers(
     return TargetSelection(ids=ids, widened=False)
 
 
-async def _resolve_reached_members(
-    changes: RelationshipReachedChanges, resolver: UniquenessDependentResolverInterface
-) -> set[str]:
-    """Walk each change's relationship chain back to the group members that read it.
+@dataclass(frozen=True)
+class ReachedMemberResolver:
+    """Walk each relationship-reached change back to the group members that read it.
 
     Each hop resolves the current node ids to the owners referencing them, feeding the next hop, so
     a chain ends at the root members. Every hop returns a superset of the truly-related nodes, so the
     resolved member set is a superset too -- it never omits a member that genuinely needs to run.
     """
-    members: set[str] = set(changes.direct_member_node_ids)
-    for change in changes.reached:
-        peer_uuids = set(change.node_ids)
-        for hop in change.path.hops:
-            if not peer_uuids:
-                break
-            peer_uuids = await resolver.resolve(
-                node_kind=hop.node_kind,
-                relationship_identifier=hop.relationship_identifier,
-                relationship_direction=hop.relationship_direction,
-                peer_uuids=sorted(peer_uuids),
-            )
-        members |= peer_uuids
-    return members
+
+    resolver: UniquenessDependentResolverInterface
+
+    async def resolve(self, changes: RelationshipReachedChanges) -> set[str]:
+        members: set[str] = set(changes.direct_member_node_ids)
+        for change in changes.reached:
+            peer_uuids = set(change.node_ids)
+            for hop in change.path.hops:
+                if not peer_uuids:
+                    break
+                peer_uuids = await self.resolver.resolve(
+                    node_kind=hop.node_kind,
+                    relationship_identifier=hop.relationship_identifier,
+                    relationship_direction=hop.relationship_direction,
+                    peer_uuids=sorted(peer_uuids),
+                )
+            members |= peer_uuids
+        return members
 
 
 async def _get_subscribers_for_nodes(
