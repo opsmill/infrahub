@@ -57,7 +57,7 @@ function Kbd({ children, keys, keyClassName, className, ref }: KbdProps) {
     <kbd
       ref={ref}
       className={classNames(
-        "rounded-sm bg-stone-100 px-1.5 py-0.5 font-sans text-subtle text-xs",
+        "rounded-sm bg-background px-1.5 py-0.5 font-sans text-subtle text-xs",
         className
       )}
     >
