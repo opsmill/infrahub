@@ -27,7 +27,7 @@ See [Infrahub Marketplace](../schema/marketplace/index.mdx) for the full fetch-a
 
 ## Define your own IPAM nodes
 
-The Marketplace collection just speeds this up by giving you a working schema to start from — building it yourself means inheriting directly from the built-in generics. Inheriting from `BuiltinIPPrefix` and `BuiltinIPAddress` gets you hierarchy, utilization, and the other generic behavior for free:
+The Marketplace collection speeds this up by giving you a working schema to start from — building it yourself means inheriting directly from the built-in generics. Inheriting from `BuiltinIPPrefix` and `BuiltinIPAddress` gets you hierarchy, utilization, and the other generic behavior for free:
 
 ```yaml title="schemas/ipam/prefix-and-address.yml"
 nodes:
