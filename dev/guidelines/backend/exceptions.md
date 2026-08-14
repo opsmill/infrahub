@@ -105,6 +105,32 @@ except Exception as exc:  # noqa: BLE001
 If a suppression exposes a pre-existing bug, file it separately; see
 [Pull Requests](../git-workflow.md#pull-requests).
 
+## `log.exception` vs `log.error`
+
+Inside an `except` block, default to `log.exception` so the traceback reaches whoever debugs the
+failure later. Keep `log.error` only when the traceback would be actively harmful or worthless, and
+say which in a comment next to the suppression:
+
+- **Worthless** — the exception is a routine, expected condition (a client disconnecting mid-request,
+  a cancellation), so the traceback shows only plumbing and adds no diagnostic value.
+- **Harmful** — logging the exception object feeds machinery that reacts to its type, e.g. a
+  registered exception type a log filter uses to drop or redact the record; attaching it changes
+  *what* gets logged, not just how much (see `dev/knowledge/backend/webhooks.md` for a concrete
+  filter that does this).
+
+```python
+# ❌ Bad - a client aborting mid-request is routine; the traceback is non-actionable noise
+except ClientDisconnect as exc:
+    log.exception("Exception ClientDisconnect in handler")
+
+# ✅ Good - the worthless traceback is named, not just suppressed
+except ClientDisconnect as exc:
+    # A client aborting mid-request is routine; its traceback is non-actionable noise.
+    log.error("Exception ClientDisconnect in handler")  # noqa: TRY400
+```
+
+Being inside an `except` block is not by itself a reason to suppress — justify each site on its own.
+
 ## See Also
 
 - [Python Standards](python.md) - Typing, imports, data structures, call style

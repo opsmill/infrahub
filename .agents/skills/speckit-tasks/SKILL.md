@@ -176,6 +176,10 @@ Every task MUST strictly follow this format:
 - ❌ WRONG: `- [ ] [US1] Create User model` (missing Task ID)
 - ❌ WRONG: `- [ ] T001 [US1] Create model` (missing file path)
 
+**Citing a site inside a file**: name the enclosing function/symbol, never a line number —
+implementation shifts lines as it goes, and tasks.md merges as the archived record. See
+`dev/guidelines/documentation.md`.
+
 ### Task Organization
 
 1. **From User Stories (spec.md)** - PRIMARY ORGANIZATION:

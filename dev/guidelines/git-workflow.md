@@ -11,6 +11,10 @@ Git workflow and commit conventions for the project.
 - **Bug fixes:** target the oldest branch that needs the fix — `stable` when the bug is in released
   code and the fix should ship in a patch release, `develop` when the code only exists there or the
   fix can wait for the next minor
+- **Repo-tooling/lint/CI-config changes:** target `develop` if the diff also edits runtime source —
+  converting call sites, changing behavior a new lint rule now gates — since what the code emits at
+  runtime changed regardless of how enabling it was triggered. Target `stable` only when the diff has
+  no source-code changes at all (pure config, docs, CI).
 - **Verify the base before cutting:** check that the code the ticket references actually exists on
   the chosen base (`git ls-tree <base> -- <path>`); follow-up tickets often reference modules that
   are only on `develop`
