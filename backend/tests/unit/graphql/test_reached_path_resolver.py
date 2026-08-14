@@ -43,6 +43,16 @@ DEVICE_TWO_OWNERS = _node(
     _rel("backup_owner", "TestingPerson", "device__backup"),
 )
 DEVICE_WITH_OWNER = _node("Device", _rel("owner", "TestingPerson", "device__owner"))
+DEVICE_TWO_GENERIC_RELS = _node(
+    "Device",
+    _rel("interfaces", "TestingEndpoint", "device__interface"),
+    _rel("mgmt_interfaces", "TestingEndpoint", "device__mgmt"),
+)
+DEVICE_GENERIC_AND_CONCRETE = _node(
+    "Device",
+    _rel("endpoints", "TestingEndpoint", "device__endpoint"),
+    _rel("physical_ports", "TestingPhysical", "device__physical_port"),
+)
 
 DEVICE_HOP = RelationshipHop(
     node_kind="TestingDevice", relationship_identifier="device__interface", relationship_direction=OUT
@@ -139,3 +149,58 @@ def test_a_query_without_traversal_resolves_nothing() -> None:
     result = ReachedPathResolver(queries=[tree]).resolve()
 
     assert result == {}
+
+
+def test_generic_peer_reached_by_two_relationships_keeps_both_chains_per_implementation() -> None:
+    interfaces = _tree("interfaces", ENDPOINT)
+    interfaces.infrahub_node_models = [PHYSICAL, VIRTUAL]
+    mgmt_interfaces = _tree("mgmt_interfaces", ENDPOINT)
+    mgmt_interfaces.infrahub_node_models = [PHYSICAL, VIRTUAL]
+    tree = _tree("TestingDevice", DEVICE_TWO_GENERIC_RELS, interfaces, mgmt_interfaces)
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    interface_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__interface", relationship_direction=OUT
+    )
+    mgmt_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__mgmt", relationship_direction=OUT
+    )
+    both = (ReachedPath(hops=(interface_hop,)), ReachedPath(hops=(mgmt_hop,)))
+    assert result == {"TestingPhysical": both, "TestingVirtual": both}
+
+
+def test_a_kind_reached_via_a_generic_peer_and_a_concrete_relationship_unions_the_chains() -> None:
+    endpoints = _tree("endpoints", ENDPOINT)
+    endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
+    physical_ports = _tree("physical_ports", PHYSICAL)
+    tree = _tree("TestingDevice", DEVICE_GENERIC_AND_CONCRETE, endpoints, physical_ports)
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    endpoint_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__endpoint", relationship_direction=OUT
+    )
+    port_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__physical_port", relationship_direction=OUT
+    )
+    assert result == {
+        "TestingPhysical": (ReachedPath(hops=(endpoint_hop,)), ReachedPath(hops=(port_hop,))),
+        "TestingVirtual": (ReachedPath(hops=(endpoint_hop,)),),
+    }
+
+
+def test_an_implementation_also_reached_un_pinnably_widens_while_its_siblings_narrow() -> None:
+    endpoints = _tree("endpoints", ENDPOINT)
+    endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
+    # PHYSICAL is also reached by a node whose path is not a relationship on the device (a fragment
+    # refinement), which cannot be pinned -- so PHYSICAL widens even though the generic peer resolves it.
+    refinement = _tree("TestingPhysical", PHYSICAL)
+    tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, endpoints, refinement)
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    endpoint_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__endpoint", relationship_direction=OUT
+    )
+    assert result == {"TestingVirtual": (ReachedPath(hops=(endpoint_hop,)),)}
