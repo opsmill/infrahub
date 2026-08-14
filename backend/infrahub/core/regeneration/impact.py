@@ -126,17 +126,18 @@ class ReachedMemberResolver:
     async def resolve(self, changes: RelationshipReachedChanges) -> set[str]:
         members: set[str] = set(changes.direct_member_node_ids)
         for change in changes.reached:
-            peer_uuids = set(change.node_ids)
-            for hop in change.path.hops:
-                if not peer_uuids:
-                    break
-                peer_uuids = await self.resolver.resolve(
-                    node_kind=hop.node_kind,
-                    relationship_identifier=hop.relationship_identifier,
-                    relationship_direction=hop.relationship_direction,
-                    peer_uuids=sorted(peer_uuids),
-                )
-            members |= peer_uuids
+            for path in change.paths:
+                peer_uuids = set(change.node_ids)
+                for hop in path.hops:
+                    if not peer_uuids:
+                        break
+                    peer_uuids = await self.resolver.resolve(
+                        node_kind=hop.node_kind,
+                        relationship_identifier=hop.relationship_identifier,
+                        relationship_direction=hop.relationship_direction,
+                        peer_uuids=sorted(peer_uuids),
+                    )
+                members |= peer_uuids
         return members
 
 

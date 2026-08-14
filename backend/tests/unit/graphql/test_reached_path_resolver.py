@@ -63,7 +63,7 @@ def test_single_hop_narrows_to_the_owning_root() -> None:
 
     result = ReachedPathResolver(queries=[tree]).resolve()
 
-    assert result == {"TestingInterface": ReachedPath(hops=(DEVICE_HOP,))}
+    assert result == {"TestingInterface": (ReachedPath(hops=(DEVICE_HOP,)),)}
 
 
 def test_multi_hop_records_the_full_chain_deepest_first() -> None:
@@ -72,8 +72,8 @@ def test_multi_hop_records_the_full_chain_deepest_first() -> None:
     result = ReachedPathResolver(queries=[tree]).resolve()
 
     assert result == {
-        "TestingInterface": ReachedPath(hops=(DEVICE_HOP,)),
-        "TestingAddress": ReachedPath(hops=(INTERFACE_HOP, DEVICE_HOP)),
+        "TestingInterface": (ReachedPath(hops=(DEVICE_HOP,)),),
+        "TestingAddress": (ReachedPath(hops=(INTERFACE_HOP, DEVICE_HOP)),),
     }
 
 
@@ -95,7 +95,7 @@ def test_field_that_is_not_a_relationship_on_its_owner_widens() -> None:
     assert result == {}
 
 
-def test_kind_reached_by_more_than_one_chain_widens() -> None:
+def test_kind_reached_by_more_than_one_chain_keeps_every_chain() -> None:
     tree = _tree(
         "TestingDevice",
         DEVICE_TWO_OWNERS,
@@ -105,7 +105,13 @@ def test_kind_reached_by_more_than_one_chain_widens() -> None:
 
     result = ReachedPathResolver(queries=[tree]).resolve()
 
-    assert result == {}
+    backup_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__backup", relationship_direction=OUT
+    )
+    primary_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__primary", relationship_direction=OUT
+    )
+    assert result == {"TestingPerson": (ReachedPath(hops=(backup_hop,)), ReachedPath(hops=(primary_hop,)))}
 
 
 def test_kind_read_at_a_root_and_through_a_relationship_widens() -> None:
