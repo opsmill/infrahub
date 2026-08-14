@@ -192,10 +192,12 @@ def test_a_kind_reached_via_a_generic_peer_and_a_concrete_relationship_unions_th
 
 
 def test_a_kind_owned_by_a_generic_widens_while_the_generic_peer_narrows() -> None:
-    # A kind reached through a relationship on a generic owner cannot be pinned to a concrete
-    # node_kind for the reverse traversal (matching the generic label would miss instances created
-    # before the generic was added to the kind's inheritance -- schema changes do not relabel), so it
-    # widens. The generic peer's own implementations still narrow, since they are matched by uuid.
+    # A kind reached through a relationship on a generic owner cannot currently be pinned to a
+    # concrete node_kind for the reverse traversal (matching the generic label would miss instances
+    # created before the generic was added to the kind's inheritance -- schema changes do not
+    # relabel), so it widens for now. The generic peer's own implementations still narrow, since they
+    # are matched by uuid. This widen is a liftable limitation, not a hard rule: fanning the reverse
+    # traversal out per concrete implementation would narrow it, and this expectation would change then.
     things = _tree("things", THING)
     endpoints = _tree("endpoints", ENDPOINT, things)
     endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
