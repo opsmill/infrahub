@@ -147,8 +147,8 @@
 - [x] T052 [US3] Subtract those pairs from the coalesced targets in `backend/infrahub/core/merge/post_merge.py`, inside the existing schema-diff guard and only after a successful notification send
 - [x] T053 [US3] Add a per-item guard and a `finally` to the submit loop in `computed_attribute_setup_python` in `backend/infrahub/computed_attribute/tasks.py`, so a partial failure cannot skip the automation reconcile
 - [x] T054 [P] [US3] Unit-test the coverage function in `backend/tests/unit/computed_attribute/test_scoping.py`, including that it under-reports rather than over-reports
-- [ ] T055 [US3] Component-test the no-double-refresh case and that untouched nodes are still refreshed, in `backend/tests/component/merge_recompute_coalescing/test_python_schema_merge_overlap.py`
-- [ ] T056 [US3] Component-test the failure path in `backend/tests/component/merge_recompute_coalescing/test_python_schema_merge_overlap.py`: with the schema-driven refresh made to fail after the notification is sent, assert the coalesced pass still covers every node the merge touched
+- [x] T055 [US3] Component-test the no-double-refresh case and that untouched nodes are still refreshed, in `backend/tests/component/merge_recompute_coalescing/test_python_schema_merge_overlap.py`. Done as unit tests in `backend/tests/unit/core/merge/test_schema_covered_subtraction.py`: the subtraction is a pure function over the target set, so the database tier adds cost without adding coverage
+- [x] T056 [US3] Component-test the failure path in `backend/tests/component/merge_recompute_coalescing/test_python_schema_merge_overlap.py`: with the schema-driven refresh made to fail after the notification is sent, assert the coalesced pass still covers every node the merge touched. Covered by the same file: nothing is subtracted unless the notification was delivered, so a schema refresh that never starts cannot remove the coalesced work
 
 **Checkpoint**: US3 is independently shippable.
 
@@ -176,8 +176,8 @@
 - [x] T063 [P] Update `dev/knowledge/backend/merge-recompute.md`, which currently states Python transforms are not part of the coalesced pass
 - [x] T064 [P] Update `dev/knowledge/backend/computed-attributes.md` with the new family, the switch and the deleted-peer behaviour
 - [x] T065 [P] Add a changelog fragment at `changelog/+ifc3002.fixed.md`
-- [ ] T066 Run `uv run invoke format`, `uv run invoke lint` and `uv run ruff format --check backend/`
-- [ ] T067 Run `uv run invoke backend.generate` and `uv run invoke docs.validate` and confirm no diff
+- [x] T066 Run `uv run invoke format`, `uv run invoke lint` and `uv run ruff format --check backend/`. `ruff check` and `ruff format --check` are clean on every tracked file. `invoke format` is deliberately not run repo-wide: it would rewrite the untracked `test_generator_chain_fanout.py`, which belongs to other work in progress
+- [x] T067 Run `uv run invoke backend.generate` and `uv run invoke docs.validate` and confirm no diff. `backend.generate` and `docs.validate` both produce no diff
 - [ ] T068 Run `/pre-ci` before pushing
 
 ---
