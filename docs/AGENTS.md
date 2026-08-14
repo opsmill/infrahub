@@ -95,7 +95,7 @@ Capitalize these Infrahub-specific terms when referring to the feature:
 ## Documentation Workflow
 
 1. **Choose documentation type** using the table above (if not specified)
-2. **Follow specialized guide** (`dev/guides/docs/writing-a-guide.md` or `writing-a-topic.md`)
+2. **Follow specialized guide** (`dev/guides/docs/writing-a-guide.md` or `dev/guides/docs/writing-a-topic.md`)
 3. **Create the .mdx file** in the appropriate directory
 4. **Add to navigation** by editing `sidebars.ts` in the appropriate section
 5. **Lint before committing**: `uv run invoke docs.lint`

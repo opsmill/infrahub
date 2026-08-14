@@ -197,10 +197,9 @@ A reviewer flagged this, so the verdicts are not a pass/fail of the docs — the
   regardless of whether this exact instance ever gets fixed ("when adding a value generated this way,
   derive the fields rather than hand-listing them"), or drop it and suggest filing a GitHub issue
   instead of writing it into `dev/knowledge`/`dev/guidelines`. The same test applies when the root
-  cause is a fragile *pattern* rather than a defect: if the honest fix is to stop writing the pattern
-  (a `str | Sequence[str]` union and its `isinstance` dispatch, for one), the lesson is the one-line
-  rule steering to the plain alternative — not a section teaching authors to survive the pattern. A
-  survival guide entrenches what it documents.
+  cause is a fragile *pattern* rather than a defect: if the honest fix is to stop writing the pattern,
+  the lesson is the rule steering to the plain alternative, not a section teaching authors to survive
+  it. A survival guide entrenches what it documents.
 - **Covered but ineffective** — the rule *is* written, yet a reviewer still had to flag it. **This is a
   finding, not a relief** — there is deliberately no "covered and fine" verdict, because a documented
   rule a reviewer still had to raise is evidence the coverage is too weak, not proof it works. Report it

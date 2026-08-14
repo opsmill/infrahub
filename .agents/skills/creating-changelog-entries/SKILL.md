@@ -84,12 +84,14 @@ uv run towncrier create -c "Migrated the frontend build to pnpm workspaces" +pnp
 
 ## Common Mistakes
 
-- **Omitting the `+` orphan prefix.** When there's no issue ID, the filename must start with `+`
-  (e.g. `+pnpm-workspaces.housekeeping.md`). Without it, Towncrier reads the name as an issue
-  reference and either skips the fragment or renders a bogus issue link instead of an orphan entry.
+- **Getting the filename shape wrong.** It is `<issue-or-+slug>.<type>.md`; the type segment is
+  required, and a file without one is not picked up. Everything before it is either a GitHub issue
+  number or a `+`-prefixed slug, because `issue_format` turns a bare name straight into a GitHub
+  issue URL: `IFC-2747.fixed.md` ships a link to an issue that does not exist. The `+` marks the
+  entry as an orphan and suppresses the link, so `+ifc-2546-lorem-ipsum.changed.md` is valid — but
+  the ticket ID never appears in the output, so spend the slug on a description instead.
 - **Hand-writing the fragment file.** Use `towncrier create` so the name and location are correct.
 - **Placing it in a sub-package directory** (e.g. `backend/changelog/`) instead of the configured fragments directory.
-- **Naming the fragment after an internal tracker ID** (Jira, Linear, etc.) instead of the GitHub issue number or `+`. Towncrier's `issue_format` turns the fragment name straight into a GitHub issue URL — an internal ticket ID renders a broken link in the shipped changelog.
 - **Describing the implementation.** "Refactored the auth-token cache layer" → instead say what the user sees: "Fixed users being unexpectedly logged out".
 - **Wrong tense or multiple sentences.** One past-tense sentence.
 
