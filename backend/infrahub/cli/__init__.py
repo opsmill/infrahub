@@ -45,20 +45,22 @@ async def _init_shell(config_file: str) -> None:
 @app.command()
 def shell() -> None:
     """Start a python shell within Infrahub context (requires IPython)."""
-    from infrahub_sdk import InfrahubClient
-    from IPython import start_ipython
-    from traitlets.config import Config
+    # Imported lazily: IPython/traitlets are optional dependencies, and this keeps the
+    # heavy Infrahub imports off every other CLI invocation.
+    from infrahub_sdk import InfrahubClient  # noqa: PLC0415
+    from IPython import start_ipython  # noqa: PLC0415
+    from traitlets.config import Config  # noqa: PLC0415
 
-    from infrahub import config
-    from infrahub.components import ComponentType
-    from infrahub.core.branch import Branch
-    from infrahub.core.initialization import initialization
-    from infrahub.core.manager import NodeManager
-    from infrahub.core.registry import registry
-    from infrahub.dependencies.registry import build_component_registry
-    from infrahub.lock import initialize_lock
-    from infrahub.services import InfrahubServices
-    from infrahub.workers.dependencies import (
+    from infrahub import config  # noqa: PLC0415
+    from infrahub.components import ComponentType  # noqa: PLC0415
+    from infrahub.core.branch import Branch  # noqa: PLC0415
+    from infrahub.core.initialization import initialization  # noqa: PLC0415
+    from infrahub.core.manager import NodeManager  # noqa: PLC0415
+    from infrahub.core.registry import registry  # noqa: PLC0415
+    from infrahub.dependencies.registry import build_component_registry  # noqa: PLC0415
+    from infrahub.lock import initialize_lock  # noqa: PLC0415
+    from infrahub.services import InfrahubServices  # noqa: PLC0415
+    from infrahub.workers.dependencies import (  # noqa: PLC0415
         get_cache,
         get_component,
         get_database,

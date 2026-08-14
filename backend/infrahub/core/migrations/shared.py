@@ -272,7 +272,7 @@ class InternalSchemaMigration(BaseMigration):
 
     @staticmethod
     def get_internal_schema() -> SchemaBranch:
-        from infrahub.core.schema.schema_branch import SchemaBranch
+        from infrahub.core.schema.schema_branch import SchemaBranch  # noqa: PLC0415  # avoid circular import
 
         # load the internal schema from
         schema = SchemaRoot(**internal_schema)
