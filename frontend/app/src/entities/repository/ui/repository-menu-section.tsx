@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { MenuItem, MenuSection } from "@infrahub/ui";
 import { ArrowUpRightIcon } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Icon } from "@/shared/components/display/icon";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
 

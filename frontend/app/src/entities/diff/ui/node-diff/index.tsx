@@ -134,7 +134,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
           <DiffTree nodes={nodes} className="w-full" />
         </nav>
 
-        <main className="col-start-2 col-end-5 space-y-4 overflow-auto bg-stone-100 p-4">
+        <main className="col-start-2 col-end-5 space-y-4 overflow-auto bg-background p-4">
           {changedNodes.length ? (
             changedNodes.map((node) => (
               <DiffNode

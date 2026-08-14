@@ -1,5 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { LinkButton } from "@infrahub/ui";
+
+import { Icon } from "@/shared/components/display/icon";
 
 import type {
   NodeCore,

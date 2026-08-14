@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import {
   Button,
   LinkButton,
@@ -24,6 +23,7 @@ import { useLocation } from "react-router";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Avatar } from "@/shared/components/display/avatar";
+import { Icon } from "@/shared/components/display/icon";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import {
   INFRAHUB_DISCORD_URL,

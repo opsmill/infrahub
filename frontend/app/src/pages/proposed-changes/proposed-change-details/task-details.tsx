@@ -1,5 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
+
+import { Icon } from "@/shared/components/display/icon";
 
 import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/ui/routing/proposed-change-urls";
 import { useProposedChangeOutlet } from "@/entities/proposed-changes/ui/routing/use-proposed-change-outlet";

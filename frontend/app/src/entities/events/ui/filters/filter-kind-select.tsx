@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
@@ -25,7 +25,7 @@ export function FilterKindSelect({
         <div
           className={classNames(
             inputStyle,
-            "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
+            "has-[>:last-child:focus]:border-ring has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-ring-halo",
             "min-w-[132px] max-w-[300px] cursor-pointer"
           )}
         >

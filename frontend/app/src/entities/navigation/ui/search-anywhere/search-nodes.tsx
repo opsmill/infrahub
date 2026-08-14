@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Command, useCommandState } from "cmdk";
 import { useAtomValue } from "jotai";
 import type { ReactElement } from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
 import { useFormatDate } from "@/shared/context/date-preferences-context";

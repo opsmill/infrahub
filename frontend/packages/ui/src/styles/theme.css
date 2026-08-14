@@ -1,8 +1,12 @@
 :root {
+  --background: var(--color-stone-100);
   --foreground: var(--color-stone-800);
 
   --border: var(--color-neutral-200);
   --border-strong: var(--color-neutral-300);
+
+  --ring: var(--color-cyan-700);
+  --ring-halo: --alpha(var(--ring) / 25%);
 
   --card: linear-gradient(to bottom, var(--color-stone-50) 0%, var(--color-white) 10%);
   --card-header: linear-gradient(to bottom, var(--color-white) 0%, var(--color-neutral-50) 100%);
@@ -15,10 +19,14 @@
 }
 
 @theme inline {
+  --color-background: var(--background);
   --color-foreground: var(--foreground);
 
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+
+  --color-ring: var(--ring);
+  --color-ring-halo: var(--ring-halo);
 
   --background-image-card: var(--card);
   --background-image-card-header: var(--card-header);

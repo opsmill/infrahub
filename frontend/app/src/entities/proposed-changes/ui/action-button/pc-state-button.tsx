@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { classNames } from "@/shared/utils/common";

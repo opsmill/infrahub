@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Tooltip } from "@infrahub/ui";
 import { LockIcon } from "lucide-react";
 
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import { Link } from "@/shared/components/ui/link";
 

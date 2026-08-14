@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import type React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import {
   Command,
   CommandEmpty,
@@ -29,7 +29,7 @@ export const ComboboxTrigger = ({ children, className, ref, ...props }: Combobox
         role="combobox"
         className={classNames(
           inputStyle,
-          "focus:border-custom-blue-600 focus:outline-hidden focus:ring-2 focus:ring-custom-blue-600/25",
+          "focus:border-ring focus:outline-hidden focus:ring-2 focus:ring-ring-halo",
           className
         )}
       >

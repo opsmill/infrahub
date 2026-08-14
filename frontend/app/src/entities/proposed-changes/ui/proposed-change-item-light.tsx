@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Tooltip } from "@infrahub/ui";
 import { ListBoxItem } from "react-aria-components";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 

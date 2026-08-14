@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import {
   Combobox,
   ComboboxContent,
@@ -71,7 +71,7 @@ export const ConvertSourceRelationshipManyInput = ({
         <div
           className={classNames(
             inputStyle,
-            "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
+            "has-[>:last-child:focus]:border-ring has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-ring-halo",
             "w-full cursor-pointer",
             "flex justify-between",
             className

@@ -69,7 +69,7 @@ class TestBranchDetailsNonDefaultBranch:
 
         # Header
         await expect(admin_page.get_by_role("heading", name=NON_DEFAULT_BRANCH)).to_be_visible()
-        await expect(admin_page.get_by_text("default")).not_to_be_visible()
+        await expect(admin_page.get_by_text("default", exact=True)).not_to_be_visible()
         await expect(admin_page.get_by_role("button", name="View node metadata")).to_be_visible()
 
         # Branch attributes

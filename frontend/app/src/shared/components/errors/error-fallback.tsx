@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Card, CardContent } from "@infrahub/ui";
 import { useEffect, useState } from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";
+import { Icon } from "@/shared/components/display/icon";
 import Kbd from "@/shared/components/ui/kbd";
 
 interface ErrorFallbackProps {
@@ -40,7 +40,7 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
   };
 
   return (
-    <Col className="h-screen items-center justify-center bg-gray-100">
+    <Col className="h-screen items-center justify-center bg-background">
       <Card className="mb-4">
         <CardContent>
           <Col className="items-center gap-4">

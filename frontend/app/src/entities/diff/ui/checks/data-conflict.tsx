@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Link } from "react-router";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
 import { classNames } from "@/shared/utils/common";

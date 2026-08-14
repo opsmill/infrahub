@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
 import { useState } from "react";
 
 import { Col, Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { SearchInput } from "@/shared/components/inputs/search-input";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";

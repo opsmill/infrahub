@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { Card, CardContent } from "@infrahub/ui";
 import { useEffect, useRef } from "react";
 import { Link, useLocation, useParams } from "react-router";
 
 import Accordion from "@/shared/components/display/accordion";
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
@@ -42,7 +42,12 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
     <Card
       ref={diffNodeRef}
       id={node.uuid}
-      className={classNames(isSelectedOnNavigation && "ring-2 ring-custom-blue-500")}
+      // content-visibility skips layout/paint for offscreen cards; the intrinsic
+      // size (collapsed card height) keeps scrollbar and anchor positions stable
+      className={classNames(
+        "[contain-intrinsic-size:auto_68px] [content-visibility:auto]",
+        isSelectedOnNavigation && "ring-2 ring-custom-blue-500"
+      )}
     >
       {(!!node.attributes?.length || !!node.relationships?.length) && (
         <CardContent>

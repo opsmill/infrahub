@@ -1,7 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Tree, TreeItem, TreeItemContent, type TreeProps } from "@infrahub/ui";
 import { Collection } from "react-aria-components";
 import { useLocation } from "react-router";
+
+import { Icon } from "@/shared/components/display/icon";
 
 import { buildDiffTreeItems, type DiffTreeItem } from "@/entities/diff/ui/build-diff-tree-items";
 import type { DiffNode } from "@/entities/diff/ui/node-diff/types";

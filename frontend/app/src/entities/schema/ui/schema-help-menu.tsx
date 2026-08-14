@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
 
+import { Icon } from "@/shared/components/display/icon";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 
 import { MENU_EXCLUDELIST } from "@/entities/navigation/domain/model/menu";

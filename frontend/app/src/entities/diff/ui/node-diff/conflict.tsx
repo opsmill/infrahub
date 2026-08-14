@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Checkbox, Spinner } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
 import type { ConflictSelection } from "@/shared/api/graphql/generated/types";
 import { queryClient } from "@/shared/api/rest/client";
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 

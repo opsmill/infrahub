@@ -129,7 +129,7 @@ export const TabPanelStyled = ({ className, ...props }: TabPanelProps) => {
   return (
     <TabPanel
       className={classNames(
-        "min-h-0 grow space-y-2 overflow-auto bg-gray-100 p-2 outline-hidden",
+        "min-h-0 grow space-y-2 overflow-auto bg-background p-2 outline-hidden",
         focusVisibleStyle,
         className
       )}

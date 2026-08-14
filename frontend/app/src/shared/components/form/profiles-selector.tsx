@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Spinner } from "@infrahub/ui";
 import { useEffect, useId } from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
@@ -81,7 +81,7 @@ export const ProfilesSelector = ({
           <div
             className={classNames(
               inputStyle,
-              "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
+              "has-[>:last-child:focus]:border-ring has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-ring-halo",
               "cursor-pointer"
             )}
           >

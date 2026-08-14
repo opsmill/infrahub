@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { Card, CardContent, CardHeader, Tooltip } from "@infrahub/ui";
 import type { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -7,6 +6,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
 import { Avatar } from "@/shared/components/display/avatar";
 import { DateDisplay } from "@/shared/components/display/date-display";
+import { Icon } from "@/shared/components/display/icon";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";

@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Tooltip } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { ListChevronsDownUpIcon, ListChevronsUpDown } from "lucide-react";
@@ -8,6 +7,7 @@ import * as R from "remeda";
 
 import { Col, Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";
+import { Icon } from "@/shared/components/display/icon";
 import { SearchInput } from "@/shared/components/inputs/search-input";
 import { Badge } from "@/shared/components/ui/badge";
 import { QSP } from "@/shared/config/qsp";

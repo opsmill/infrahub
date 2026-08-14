@@ -1,5 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
+
+import { Icon } from "@/shared/components/display/icon";
 
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 

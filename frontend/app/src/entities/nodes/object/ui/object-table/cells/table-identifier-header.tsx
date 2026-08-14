@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { Checkbox, type CheckboxProps } from "@infrahub/ui";
 
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames } from "@/shared/utils/common";
 

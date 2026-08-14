@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { useLocation, useSearchParams } from "react-router";
 
+import { Icon } from "@/shared/components/display/icon";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { classNames } from "@/shared/utils/common";
 

@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Tooltip } from "@infrahub/ui";
 import { useNavigate } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";

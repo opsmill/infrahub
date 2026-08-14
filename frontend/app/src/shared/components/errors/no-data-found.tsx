@@ -1,5 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import type { ReactElement, ReactNode } from "react";
+
+import { Icon } from "@/shared/components/display/icon";
 
 type tNoData = {
   message?: ReactNode;

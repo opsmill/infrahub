@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Card, CardHeader, Sheet } from "@infrahub/ui";
 import { ChevronDownIcon, ChevronUpIcon, PenLineIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -6,6 +5,7 @@ import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Col, Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { Badge } from "@/shared/components/ui/badge";

@@ -48,7 +48,7 @@ export function LinkTab({ to, className, scrollIntoViewOnActive, ...props }: Lin
       end
       className={({ isActive }) =>
         classNames(
-          "transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-custom-blue-600/25",
+          "transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring-halo",
           "inline-flex h-11 scroll-m-10 items-center gap-2 truncate border-transparent border-b-2 px-3 py-2 font-medium text-sm",
           isActive
             ? "border-custom-blue-600 text-custom-blue-600"

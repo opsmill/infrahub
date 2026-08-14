@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Tooltip } from "@infrahub/ui";
 
+import { Icon } from "@/shared/components/display/icon";
 import { useFormatDate } from "@/shared/context/date-preferences-context";
 
 import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";

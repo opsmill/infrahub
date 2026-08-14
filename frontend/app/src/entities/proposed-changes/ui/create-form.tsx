@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { Card, CardContent, LinkButton, Spinner } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
@@ -8,6 +7,7 @@ import { toast } from "react-toastify";
 
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Icon } from "@/shared/components/display/icon";
 import { MarkdownEditor } from "@/shared/components/editor/markdown";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";

@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { LinkButton } from "@infrahub/ui";
 import { BookTextIcon } from "lucide-react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Icon } from "@/shared/components/display/icon";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 
 import { HeaderContainer } from "@/entities/nodes/object/ui/object-details/object-details-header";

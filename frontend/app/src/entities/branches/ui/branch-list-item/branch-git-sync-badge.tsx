@@ -1,5 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Tooltip } from "@infrahub/ui";
+
+import { Icon } from "@/shared/components/display/icon";
 
 export function BranchGitSyncBadge() {
   return (

@@ -70,7 +70,7 @@ export const RelationshipInput = ({
         {...props}
         className={classNames(
           inputStyle,
-          "has-[>:last-child:focus-visible]:outline-hidden has-[>:last-child:focus-visible]:ring-2 has-[>:last-child:focus-visible]:ring-custom-blue-500 has-[>:last-child:focus-visible]:ring-offset-2",
+          "has-[>:last-child:focus-visible]:outline-hidden has-[>:last-child:focus-visible]:ring-2 has-[>:last-child:focus-visible]:ring-ring has-[>:last-child:focus-visible]:ring-offset-2",
           "cursor-pointer",
           className
         )}

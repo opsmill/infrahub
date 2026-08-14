@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import type React from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Icon } from "@/shared/components/display/icon";
 import { useSidebar } from "@/shared/components/layout/sidebar";
 import {
   DropdownMenu,

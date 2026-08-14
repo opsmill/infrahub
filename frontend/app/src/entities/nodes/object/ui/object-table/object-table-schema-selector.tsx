@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { parseAsJson, parseAsString, useQueryStates } from "nuqs";
 import React from "react";
 
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,

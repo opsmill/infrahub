@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { Sheet } from "@infrahub/ui";
 import { useState } from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 

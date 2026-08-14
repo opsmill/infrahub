@@ -1,5 +1,4 @@
-import { Icon } from "@iconify-icon/react";
-
+import { Icon } from "@/shared/components/display/icon";
 import { Badge, type BadgeProps } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 

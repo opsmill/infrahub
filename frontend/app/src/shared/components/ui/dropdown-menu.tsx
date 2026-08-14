@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import type React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import {
   Accordion,
   AccordionContent,
