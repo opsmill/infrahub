@@ -133,13 +133,6 @@ When you select a format, the interface shows a live example next to the field.
 
 The timezone is an IANA name, such as `Europe/Paris` or `UTC`. The picker lists the timezones your browser supports. A field left unset uses your browser's own timezone.
 
-## Known limitations
-
-- [DateTime attributes on object details drop the time from your chosen format](https://github.com/opsmill/infrahub/issues/10172); list views render it correctly.
-- [Future-dated timestamps always render as relative time](https://github.com/opsmill/infrahub/issues/10173), so the date format preference does not apply to them yet.
-- [The timezone field accepts any string](https://github.com/opsmill/infrahub/issues/10174); an invalid value is not rejected until it fails to render.
-- [The date-format example preview ignores your timezone](https://github.com/opsmill/infrahub/issues/10175) and can show the wrong day.
-
 ## Best practices
 
 - **Set an organisation default for the timezone when your teams work in one region.** Everyone then reads timestamps in the same zone until they choose their own.
