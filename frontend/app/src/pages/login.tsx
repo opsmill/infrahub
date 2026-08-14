@@ -1,8 +1,7 @@
 import { Navigate, useLocation, useSearchParams } from "react-router";
 
-import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
-
 import type { RestErrorItem } from "@/shared/api/rest/fetch";
+import { InfrahubLogo } from "@/shared/components/ui/infrahub-logo";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { LoginMethodPicker } from "@/entities/authentication/ui/login-method-picker";
