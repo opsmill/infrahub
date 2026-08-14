@@ -219,11 +219,41 @@ improves by less than 50%.
 The gate passes, so the suppression stays. The 90% target stated in SC-007 is not met: that needed
 49.8 s and the run gives 102.1 s.
 
+## A second run, and the retraction it forced
+
+The 1000-node run was repeated with no change at all, to check the critical-path figure before
+acting on it.
+
+| Run, feature on | Merge critical path | Recompute window | Flow runs | Nodes written |
+|---|---|---|---|---|
+| First | 121.0 s | 102.1 s | 4 | 1000 |
+| Second | 62.9 s | 88.2 s | 4 | 1000 |
+| Recorded baseline | 73.3 s | 498.2 s | ~2000 | 1000 |
+
+**The critical-path regression was not real.** Two identical configurations differ by a factor of
+two, and the second run sits below the baseline it was supposed to have regressed against. The
+metric carries at least +/-50% variance at this scale on this hardware, so a single sample compared
+against a number measured in another session says nothing. The first write-up of this called it a
+65% regression, proposed moving the resolution step off the locked path, and was wrong to do either
+on one measurement.
+
+**The window improvement is real.** 102.1 s and 88.2 s against 498.2 s, reproduced, with the flow
+runs and the node count identical each time. That is a 4.9x to 5.6x improvement on the measure the
+success criterion is about, and the effect dwarfs the variance rather than hiding inside it.
+
+What this says about the numbers generally: treat the window and the flow-run count as sound, and
+treat any single critical-path figure as indicative only. A claim about the critical path needs
+repeated runs, ideally with the switch toggled on the same machine in the same session.
+
 ## The regression this exposed
 
-The merge critical path rose from 73.3 s to 121.0 s. That is the part of the merge that runs while
-the global merge lock is held, so it delays every other merge on the instance, and `plan.md` carries
-an explicit constraint against unbounded work in that window.
+**Retracted; kept for the reasoning, not the conclusion.** The paragraphs below were written from
+the first run alone and the second run disproved them. They are left here because the mechanism they
+describe is still worth knowing about, not because the effect was observed.
+
+The merge critical path appeared to rise from 73.3 s to 121.0 s. That is the part of the merge that
+runs while the global merge lock is held, so it delays every other merge on the instance, and
+`plan.md` carries an explicit constraint against unbounded work in that window.
 
 The likely cause is the resolution step. Both of its lookups, deriving the read-field index and the
 chunked subscriber query, run inside `dispatch_events`, which the orchestrator calls from inside
@@ -232,6 +262,7 @@ chunked subscriber query, run inside `dispatch_events`, which the orchestrator c
 End to end the feature is still far ahead: 571.5 s of total settle time before, 223.1 s after. But
 the trade is not free, and it was not the trade the plan described.
 
-Before acting on this, confirm it. One run is one sample and 65% could carry noise; repeat the
-1000-node run and compare. If it holds, the fix is to move resolution off the locked path rather
-than to make the lookups faster: the pass does not need the lock, only the change set.
+This was confirmed, and it did not hold. The resolution step does still run under the lock, so the
+mechanism is real even though the cost was not measurable here; if the critical path ever does become
+a problem, moving that step off the locked path is the fix, since the pass needs the change set and
+not the lock.
