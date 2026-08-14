@@ -40,7 +40,8 @@ query {
 }
 """
 
-# The device reaches its interfaces through a relationship whose peer is a generic.
+# The device reaches its interfaces through a relationship whose peer is a generic, so the change is
+# resolved to each concrete interface kind.
 GENERIC_PEER = """
 query { TestingDevice { edges { node { interfaces { edges { node { name { value } } } } } } } }
 """
@@ -125,7 +126,22 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
     async def device_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         await load_schema(db=db, schema=DEVICE_SCHEMA, update_db=True)
 
-    async def test_generic_peer_widens(self, db: InfrahubDatabase, default_branch: Branch, device_schema: None) -> None:
+    async def test_generic_peer_resolves_to_its_concrete_implementations(
+        self, db: InfrahubDatabase, default_branch: Branch, device_schema: None
+    ) -> None:
+        device = registry.schema.get(name=TestKind.DEVICE, branch=default_branch)
+        interfaces = device.get_relationship("interfaces")
+        interface_generic = registry.schema.get(name=TestKind.INTERFACE, branch=default_branch)
+
         result = await _reached_paths(db, default_branch, GENERIC_PEER)
 
-        assert result == {}
+        chain = ReachedPath(
+            hops=(
+                RelationshipHop(
+                    node_kind=TestKind.DEVICE,
+                    relationship_identifier=interfaces.identifier,
+                    relationship_direction=interfaces.direction,
+                ),
+            )
+        )
+        assert result == {kind: (chain,) for kind in interface_generic.used_by}

@@ -302,9 +302,11 @@ def _reached_path_sort_key(path: ReachedPath) -> tuple[tuple[str, str, str], ...
 class ReachedPathResolver:
     """Reconstruct, from a query's node tree, the relationship chains reaching each related kind.
 
-    A kind maps to every unambiguous chain of concrete objects that reaches it. A kind is absent --
-    so a change there widens -- when any way it is reached cannot be pinned: it crosses a generic
-    object, an inline/named fragment refinement, or the kind is also read at a root.
+    A kind maps to every relationship chain of concrete owners that reaches it; a kind reached as a
+    generic peer is resolved to the generic's concrete implementations, since a data change reports
+    the concrete kind. A kind is absent -- so a change there widens -- when a way it is reached cannot
+    be pinned: an owner along the chain is generic, a step is an inline/named fragment refinement, or
+    the kind is also read at a root.
     """
 
     queries: list[GraphQLQueryNode]
@@ -319,18 +321,27 @@ class ReachedPathResolver:
             for node in self._iter_object_nodes(query):
                 if node.at_root or node.infrahub_model is None:
                     continue
-                kind = node.infrahub_model.kind
                 chain = self._clean_hop_chain(node)
-                if chain is None:
-                    ambiguous_kinds.add(kind)
-                else:
-                    chains_by_kind[kind].add(chain)
+                for kind in self._reached_kinds(node):
+                    if chain is None:
+                        ambiguous_kinds.add(kind)
+                    else:
+                        chains_by_kind[kind].add(chain)
 
         return {
             kind: tuple(sorted(chains, key=_reached_path_sort_key))
             for kind, chains in chains_by_kind.items()
             if kind not in ambiguous_kinds and kind not in root_kinds
         }
+
+    def _reached_kinds(self, node: GraphQLQueryNode) -> list[str]:
+        """The concrete kinds a related node stands for: a generic's implementations, else its own."""
+        model = node.infrahub_model
+        if model is None:
+            return []
+        if isinstance(model, GenericSchema):
+            return [implementation.kind for implementation in node.infrahub_node_models]
+        return [model.kind]
 
     def _iter_object_nodes(self, node: GraphQLQueryNode) -> Iterator[GraphQLQueryNode]:
         """Yield every node in the subtree that stands for an Infrahub object."""
@@ -340,16 +351,16 @@ class ReachedPathResolver:
             yield from self._iter_object_nodes(child)
 
     def _clean_hop_chain(self, node: GraphQLQueryNode) -> ReachedPath | None:
-        """The chain from a related node back to its root, or None when any hop cannot be pinned.
+        """The chain from a related node back to its root, or None when a hop cannot be pinned.
 
-        Returns None as soon as a hop crosses a generic peer, a generic owner, or a step whose field is not
-        a relationship on its owner, because none of those resolve a changed node to a single reverse relationship.
+        Returns None as soon as an owner along the chain is generic, or a step's field is not a
+        relationship on its owner (an inline/named fragment refinement), because neither resolves a
+        changed node to a single concrete reverse relationship. The related node's own kind may be a
+        generic; the caller resolves it to its concrete implementations.
         """
         hops: list[RelationshipHop] = []
         current = node
         while not current.at_root:
-            if isinstance(current.infrahub_model, GenericSchema):
-                return None
             owner = self._nearest_object_ancestor(current)
             if owner is None or owner.infrahub_model is None or isinstance(owner.infrahub_model, GenericSchema):
                 return None
@@ -365,8 +376,6 @@ class ReachedPathResolver:
             )
             current = owner
 
-        if isinstance(current.infrahub_model, GenericSchema):
-            return None
         return ReachedPath(hops=tuple(hops))
 
     def _nearest_object_ancestor(self, node: GraphQLQueryNode) -> GraphQLQueryNode | None:

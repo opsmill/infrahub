@@ -33,6 +33,8 @@ DEVICE = _node("Device", _rel("interfaces", "TestingInterface", "device__interfa
 INTERFACE = _node("Interface", _rel("addresses", "TestingAddress", "interface__address"))
 ADDRESS = _node("Address")
 PERSON = _node("Person")
+PHYSICAL = _node("Physical")
+VIRTUAL = _node("Virtual")
 ENDPOINT = GenericSchema(name="Endpoint", namespace="Testing")
 DEVICE_WITH_GENERIC = _node("Device", _rel("endpoints", "TestingEndpoint", "device__endpoint"))
 DEVICE_TWO_OWNERS = _node(
@@ -77,12 +79,20 @@ def test_multi_hop_records_the_full_chain_deepest_first() -> None:
     }
 
 
-def test_generic_peer_widens() -> None:
-    tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, _tree("endpoints", ENDPOINT))
+def test_generic_peer_resolves_to_its_concrete_implementations() -> None:
+    endpoints = _tree("endpoints", ENDPOINT)
+    endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
+    tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, endpoints)
 
     result = ReachedPathResolver(queries=[tree]).resolve()
 
-    assert result == {}
+    endpoint_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__endpoint", relationship_direction=OUT
+    )
+    assert result == {
+        "TestingPhysical": (ReachedPath(hops=(endpoint_hop,)),),
+        "TestingVirtual": (ReachedPath(hops=(endpoint_hop,)),),
+    }
 
 
 def test_field_that_is_not_a_relationship_on_its_owner_widens() -> None:
