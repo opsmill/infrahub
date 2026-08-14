@@ -57,8 +57,8 @@ const buttonVariants = tv({
       ],
       outline: [
         "bg-gradient-to-b from-stone-100 to-white text-foreground inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
-        "dark:border-stone-700 dark:from-stone-700 dark:to-stone-800/70 dark:inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
-        "data-hovered:from-neutral-100 dark:data-hovered:from-stone-600",
+        "dark:border-stone-700 dark:from-stone-700/70 dark:to-stone-900 dark:inset-shadow-[0_1px_0_rgba(255,255,255,0.07)]",
+        "data-hovered:from-neutral-100 dark:data-hovered:from-stone-700",
       ],
       ghost: [
         "border-transparent text-foreground shadow-none",
