@@ -339,7 +339,7 @@ class ReachedPathResolver:
     def _clean_hop_chain(self, node: GraphQLQueryNode) -> ReachedPath | None:
         """The chain from a related node back to its root, or None when any hop cannot be pinned.
 
-        Returns None -- signalling a widen -- as soon as a hop crosses a generic peer, a generic
+        Returns None as soon as a hop crosses a generic peer, a generic
         owner, or a step whose field is not a relationship on its owner (an inline/named fragment
         refinement), because none of those resolve a changed node to a single reverse relationship.
         """
