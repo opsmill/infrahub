@@ -162,3 +162,29 @@ The three symptoms, for the record:
 The tag fix is unrelated to any of this: it touches only the submission path. Run A remains the only
 end-to-end evidence that the collapse happens, and it is not a measurement. What is still needed is
 one clean run, with the baseline guard in place, at 100 and 1000.
+
+
+## After, at 100 changed nodes (T061)
+
+First clean run, with the baseline guard in place. Feature on, image built from the branch.
+
+```text
+[python-merge-recompute-timing] changed_nodes=100 control_family_runs=0
+CostCenterTiming(merge_critical_path_s=9.37, recompute_window_s=17.44,
+                 recompute_flow_runs=1, recompute_nodes_written=100)
+```
+
+| Metric | Before | After | Change |
+|---|---|---|---|
+| Trailing recompute window | 51.0 s | 17.4 s | −66% |
+| Recompute flow runs | ~200 (2.0 per changed node) | 1 | 200x fewer |
+| Nodes written | 100 | 100 | unchanged |
+| Control family runs | 0 | 0 | unchanged |
+
+The node count is the part that matters as much as the timing: every owner reading a changed peer
+still refreshed, so the reduction comes from removing duplicate dispatch rather than from doing less
+work. The test asserts this itself, so a faster run that refreshed fewer nodes would fail.
+
+Against the T062 gate: the window improves by 66%, over the 50% floor, and transform executions did
+not rise. Both conditions hold at this scale. The 1000-node run is what the 90% success criterion is
+actually stated against.
