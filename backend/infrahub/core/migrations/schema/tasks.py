@@ -10,8 +10,9 @@ from prefect.logging import get_run_logger
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations import MIGRATION_MAP
-from infrahub.core.migrations.shared import MigrationInput
+from infrahub.core.migrations.shared import DerivedSchemaPair, MigrationInput
 from infrahub.core.path import SchemaPath  # noqa: TC001
+from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
 from infrahub.core.timestamp import Timestamp
 from infrahub.workers.dependencies import get_database
 from infrahub.workflows.utils import add_branch_tag
@@ -20,8 +21,40 @@ from .models import SchemaApplyMigrationData, SchemaMigrationPathResponseData
 
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+
+
+def get_derived_schema_pairs(
+    previous_schema_branch: SchemaBranch,
+    new_schema_branch: SchemaBranch,
+    previous_node_schema: MainSchemaTypes,
+    new_node_schema: MainSchemaTypes | None,
+) -> list[DerivedSchemaPair]:
+    """Pair up the Profile/Template schemas generated from a node across a schema update."""
+    if new_node_schema is None:
+        return []
+
+    def pair_up(previous_kind: str, new_kind: str) -> DerivedSchemaPair | None:
+        if not previous_schema_branch.has(name=previous_kind) or not new_schema_branch.has(name=new_kind):
+            return None
+        return DerivedSchemaPair(
+            previous=previous_schema_branch.get(name=previous_kind, duplicate=False),
+            new=new_schema_branch.get(name=new_kind, duplicate=False),
+        )
+
+    pairs = [
+        pair_up(
+            previous_kind=get_profile_kind(node_kind=previous_node_schema.kind),
+            new_kind=get_profile_kind(node_kind=new_node_schema.kind),
+        ),
+        pair_up(
+            previous_kind=get_object_template_kind(node_kind=previous_node_schema.kind),
+            new_kind=get_object_template_kind(node_kind=new_node_schema.kind),
+        ),
+    ]
+    return [pair for pair in pairs if pair is not None]
 
 
 @flow(name="schema_apply_migrations", flow_run_name="Apply schema migrations", persist_result=True)
@@ -59,6 +92,12 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
             migration_name=migration.migration_name,
             new_node_schema=new_node_schema,
             previous_node_schema=previous_node_schema,
+            derived_schemas=get_derived_schema_pairs(
+                previous_schema_branch=message.previous_schema,
+                new_schema_branch=message.new_schema,
+                previous_node_schema=previous_node_schema,
+                new_node_schema=new_node_schema,
+            ),
             schema_path=migration.path,
             database=await get_database(),
             user_id=message.user_id,
@@ -86,6 +125,7 @@ async def schema_path_migrate(
     at: Timestamp,
     new_node_schema: MainSchemaTypes | None = None,
     previous_node_schema: MainSchemaTypes | None = None,
+    derived_schemas: list[DerivedSchemaPair] | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> SchemaMigrationPathResponseData:
     log = get_run_logger()
@@ -107,6 +147,7 @@ async def schema_path_migrate(
         migration = migration_class(  # type: ignore[call-arg]
             new_node_schema=new_node_schema,  # type: ignore[arg-type]
             previous_node_schema=previous_node_schema,  # type: ignore[arg-type]
+            derived_schemas=derived_schemas or [],
             schema_path=schema_path,
         )
         execution_result = await migration.execute(
