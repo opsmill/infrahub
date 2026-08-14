@@ -8,7 +8,7 @@
 
 Enable ruff's TRY400 (`error-instead-of-exception`) repo-wide via `extend-select`, leaving the
 rest of the suppressed `TRY` family — TRY004 included — untouched, then resolve all 36 flagged
-sites: **28 converted** to `log.exception`, **6 kept as `log.error` with a justified
+sites: **27 converted** to `log.exception`, **7 kept as `log.error` with a justified
 `# noqa: TRY400`**, and **2 suppressed by file** because they live in
 `backend/infrahub/auth/auth.py`, which this pipeline may not edit. Per-site decisions and their
 reasoning are in [research.md](./research.md) §R4.
@@ -35,7 +35,7 @@ handler actually emits the record.
 control flow. No DB schema/migration, GraphQL/REST contract, auth, dependency, CI, or generated-file
 changes.
 
-**Scale/Scope**: 1 config file + 12 source files; 36 TRY400 sites (28 conversions, 6 in-line
+**Scale/Scope**: 1 config file + 12 source files; 36 TRY400 sites (27 conversions, 7 in-line
 suppressions, 2 file-level suppressions).
 
 ## Constitution Check

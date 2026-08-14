@@ -61,7 +61,11 @@ review.
 All 34 in-scope sites were read at their call site. The rule applied: **convert unless the
 traceback would be actively harmful or worthless.**
 
-### Keep `log.error` + `# noqa: TRY400` (6)
+### Keep `log.error` + `# noqa: TRY400` (7)
+
+> Originally 6. `graphql/app.py` → `_handle_http_request` was added after review: it was converted
+> in the first pass, and that was a misapplication of this section's own criterion. See the last
+> row.
 
 | Site | Reason |
 |------|--------|
@@ -71,8 +75,9 @@ traceback would be actively harmful or worthless.**
 | `git/integrator.py:459` | `log.error(exc.message)` for the SDK `ValidationError` paired with 456's handler; user-config validation feedback, then `continue`. |
 | `git/integrator.py:641` | Same as 459, artifact-definition variant. |
 | `workers/infrahub_async.py:194` | "missing configuration for internal_address" then a clean `typer.Exit(1)`. A pure configuration error — there is nothing in the traceback to diagnose. |
+| `graphql/app.py` → `_handle_http_request` | `ClientDisconnect` is raised whenever a client aborts while its request body is being read — a routine operating event, not an exceptional one. The traceback only shows the body-read path and is non-actionable, so an ERROR-level stack trace per aborted request is pure log noise. **Added after review**; the original decision to convert it contradicted this section's stated criterion. |
 
-### Convert to `log.exception` (28)
+### Convert to `log.exception` (27)
 
 | Site | Handled exception | Note |
 |------|-------------------|------|
@@ -90,7 +95,6 @@ traceback would be actively harmful or worthless.**
 | `git/integrator.py:1968`, `:1975` | `ModuleNotFoundError`, `AttributeError` | loading a user transform → `TransformError` |
 | `git/repository.py:416` | `GitCommandError` | nested ref lookup, then raises |
 | `git/tasks.py:1217` | `CheckError` | check failed to run |
-| `graphql/app.py:195` | `ClientDisconnect` | reports the active exception |
 | `graphql/app.py:535` | `Exception` (non-`GraphQLError`) | see R5 |
 | `services/scheduler.py:91` | `Exception` (keep-alive) | currently logs only `str(exc)`; a failing recurring task was undiagnosable |
 | `workers/infrahub_async.py:202` | `SdkError` | a communication failure — traceback distinguishes refused / timeout / TLS |

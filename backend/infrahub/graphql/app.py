@@ -192,7 +192,9 @@ class InfrahubGraphQLApp:
         except ValueError as exc:
             return JSONResponse({"errors": [exc.args[0]]}, status_code=400)
         except ClientDisconnect as exc:
-            self.logger.exception("Exception ClientDisconnect in _handle_http_request")
+            # A client aborting mid-request is routine, and the traceback only shows the body-read
+            # path, so it would be non-actionable noise on a normal operating event.
+            self.logger.error("Exception ClientDisconnect in _handle_http_request")  # noqa: TRY400
             return JSONResponse({"errors": [str(exc)]}, status_code=400)
 
         if isinstance(operations, list):

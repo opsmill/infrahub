@@ -4,10 +4,13 @@
 
 ## Outcome
 
-TRY400 is enforced repo-wide. All 36 flagged sites resolved: **28 converted** to `log.exception`,
-**6** kept as `log.error` with a justified `# noqa: TRY400`, **2** suppressed by file in
+TRY400 is enforced repo-wide. All 36 flagged sites resolved: **27 converted** to `log.exception`,
+**7** kept as `log.error` with a justified `# noqa: TRY400`, **2** suppressed by file in
 `backend/infrahub/auth/auth.py` (not edited). TRY004 remains suppressed and is handed back to a
 human.
+
+> Counts updated after review: `graphql/app.py` → `_handle_http_request` (`ClientDisconnect`)
+> moved from converted to noqa. See "Post-review changes".
 
 15 files changed, +80 / −45.
 
@@ -122,5 +125,31 @@ ruff stripped **870 directives across 388 files**. Caught immediately on the dif
 with `git checkout -- .` (nothing had been committed), and the whole edit set was re-applied from
 a scripted, assertion-checked list. Final state verified clean by full lint + mypy + ty + 2233
 tests. Lesson: never `--select <rule> --fix` on a whole repo; scope the fix to the specific lines.
+
+## Post-review changes
+
+Applied after the automated review on PR #10220:
+
+1. **`graphql/app.py` → `_handle_http_request` reverted to `log.error` + `# noqa: TRY400`.**
+   The finding was valid and it contradicted research.md §R4's own criterion rather than being a
+   defensible judgement call. Starlette raises `ClientDisconnect` whenever a client aborts while
+   its request body is being read — routine, not exceptional — and the traceback only shows the
+   body-read path. §R4's rule is "convert unless the traceback would be actively harmful or
+   worthless"; this one is worthless, so it belonged with the noqa sites all along. research.md
+   §R4 and plan.md counts updated to 27 convert / 7 noqa.
+
+2. **`tasks.md` site references switched from absolute line numbers to enclosing-function
+   anchors.** The numbers were measured pre-conversion, and the conversions shifted them — e.g.
+   `process.py:204` → `:208`, `infrahub_async.py:194` → `:196`, and `integrator.py:810` no longer
+   pointed at a log site at all. Since the doc merges as the archived record, absolute anchors
+   actively mislead. Change 1 above shifted them again, which is the point. The task list now
+   names functions and tells the reader how to regenerate the set
+   (`ruff check --select TRY400 .` / `grep -n 'noqa: TRY400'`).
+
+3. **Release-vehicle finding (target `stable` rather than `develop`) rebutted and resolved.** The
+   premise — that this is "primarily repo tooling ... which cannot affect a running product" — is
+   factually wrong: the diff changes 27 runtime logging call sites across 12 backend modules, and
+   what production emits is exactly what the webhook record-dropping hazard turned on. Left for a
+   maintainer who owns that policy to overrule if they disagree.
 
 STATUS: DONE | SPEC_DIR: /home/ubuntu/projects/infrahub/dev/specs/005-ruff-try400-tracebacks | REASON: n/a

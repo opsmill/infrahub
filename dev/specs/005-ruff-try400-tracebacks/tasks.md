@@ -32,58 +32,75 @@ Each task: apply research.md §R4, preserve message text and all keyword argumen
 (FR-004), change no control flow (FR-005), and give every `# noqa: TRY400` a one-line reason
 (SC-007, FR-003).
 
+> Sites are identified by **enclosing function**, not line number. The conversions shift line
+> numbers as they are applied, so absolute anchors written at plan time do not survive into the
+> merged tree. To locate the current set at any time:
+> `ruff check --select TRY400 .` before the change, and `grep -n 'noqa: TRY400'` after it.
+
 ### T002 [P] — `backend/infrahub/git/integrator.py` — 9 convert + 4 noqa
 
-- **Convert** lines 810, 825, 947, 1568, 1608, 1896, 1903, 1968, 1975.
-- **noqa** lines 456, 638 (per-error Pydantic validation loop) and 459, 641 (paired SDK
-  `ValidationError` on user config).
+- **Convert**: `get_repository_config` (2 — YAML parse, Pydantic parse),
+  `_build_graphql_query_definitions` (1), `get_check_definition` (1), `get_python_transforms` (1),
+  `execute_python_check` (2), `execute_python_transform` (2).
+- **noqa**: `_build_jinja2_transform_definitions` (2) and `_build_artifact_definitions` (2) — each
+  is a per-error Pydantic validation loop plus the paired SDK `ValidationError` on user config.
 - Largest single file (13 of 36 sites); do it first if serializing.
 
 ### T003 [P] — `utilities/infrahub_load_tester.py` — 8 convert
 
-- Lines 49, 72, 88, 113, 119, 145, 156, 174. Stdlib `logging.Logger`; `.exception` exists.
+- `_create_one` (1), `_delete_branches` (2), `_delete_users` (2), `create_admin_branches` (1),
+  `delete_admin_branches` (2). Stdlib `logging.Logger`; `.exception` exists.
 
-### T004 [P] — `backend/infrahub/graphql/app.py` — 2 convert
+### T004 [P] — `backend/infrahub/graphql/app.py` — 1 convert + 1 noqa
 
-- Line 195 (`ClientDisconnect`) — straight conversion.
-- Line 535 — convert **and remove the now-redundant `exc_info=error`** (research.md §R5).
-  This is the only site where an argument is intentionally not preserved; verify the reassignment
-  at line 536 still happens after the log call (critique E2).
+- **noqa** in `_handle_http_request` (`ClientDisconnect`) — a client aborting mid-request is a
+  routine operating event and the traceback only shows the body-read path, so it is
+  non-actionable noise. *(Converted in the first pass, then reverted after review — it failed
+  research.md §R4's own "worthless traceback" test.)*
+- **Convert** in `_observe_subscription` — **and remove the now-redundant `exc_info=error`**
+  (research.md §R5). This is the only site where an argument is intentionally not preserved;
+  verify the `error` reassignment still happens after the log call (critique E2).
+- Leave the `_log_error` helper alone: it runs outside any `except` block and must keep passing
+  `exc_info` explicitly. Ruff does not flag it.
 - ASGI error handling only — **not** the GraphQL contract surface. Called out in the PR body
-  (T011).
+  (T014).
 
 ### T005 [P] — `backend/infrahub/git/base.py` — 2 convert
 
-- Lines 619, 902 (both `GitCommandError`).
+- `has_conflicting_changes`, `validate_remote_branch` (both `GitCommandError`).
 
 ### T006 [P] — `backend/infrahub/workers/infrahub_async.py` — 1 convert + 1 noqa
 
-- **noqa** line 194 — pure configuration error ("missing configuration for internal_address")
-  followed by a clean `typer.Exit(1)`; nothing in a traceback to diagnose.
-- **Convert** line 202 — `SdkError` communication failure; the traceback distinguishes refused /
-  timeout / TLS.
+Both sites are in `_init_infrahub_client`:
+
+- **noqa** the `InitializationError` handler — a pure configuration error ("missing configuration
+  for internal_address") followed by a clean `typer.Exit(1)`; nothing in a traceback to diagnose.
+- **Convert** the `SdkError` handler — a communication failure; the traceback distinguishes
+  refused / timeout / TLS.
 
 ### T007 [P] — `backend/infrahub/webhook/tasks/process.py` — 1 noqa
 
-- Line 204: keep `log.error`, add `# noqa: TRY400` whose reason states that attaching the
-  exception makes `TracebackSuppressionFilter` drop the whole record, because
-  `WebhookDeliveryError` is registered via `@suppress_traceback_in_logs` and `log` is a Prefect
-  run logger. **Do not convert this one** (research.md §R3 — the highest-consequence decision in
-  the change).
+- In `webhook_send`, the `except WebhookDeliveryError` handler: keep `log.error`, add
+  `# noqa: TRY400` whose reason states that attaching the exception makes
+  `TracebackSuppressionFilter` drop the whole record, because `WebhookDeliveryError` is registered
+  via `@suppress_traceback_in_logs` and `log` is a Prefect run logger. **Do not convert this one**
+  (research.md §R3 — the highest-consequence decision in the change).
 
 ### T008 [P] — `backend/infrahub/core/` — 2 convert
 
-- `branch/tasks.py:119` (`MigrationFailureError`), `merge/orchestrator.py:152` (`BaseException`,
-  rollback path).
+- `branch/tasks.py` → `migrate_branch` (`MigrationFailureError`);
+  `merge/orchestrator.py` → `merge` (`BaseException`, rollback path — note this module has other,
+  pre-existing `log.exception` calls that are not part of this change).
 
 ### T009 [P] — `backend/infrahub/git/` remainder — 2 convert
 
-- `repository.py:416`, `tasks.py:1217`.
+- `repository.py` → `update_latest_commit`; `tasks.py` → `run_user_check` (again, other
+  `log.exception` calls in `tasks.py` are pre-existing).
 
 ### T010 [P] — remaining single sites — 2 convert
 
-- `database/__init__.py:446` (`ServiceUnavailable`), `services/scheduler.py:91` (keep-alive loop
-  — the change's clearest win, critique P4).
+- `database/__init__.py` → `run_query` (`ServiceUnavailable`); `services/scheduler.py` →
+  `run_schedule` (keep-alive loop — the change's clearest win, critique P4).
 
 ### T010b — auth carve-out (config only; `auth/auth.py` MUST NOT be edited)
 
