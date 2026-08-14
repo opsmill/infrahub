@@ -301,7 +301,7 @@ class ReachedPathResolver:
     A kind is resolved only when it is reached by exactly one unambiguous relationship chain of
     concrete objects. A kind reached through a generic peer, through an inline/named fragment, by
     more than one distinct chain, or also read at a root is deliberately absent, so a change there
-    widens rather than resolving to a subset -- over-executing is acceptable, missing an owner is not.
+    widens rather than resolving to a subset.
     """
 
     queries: list[GraphQLQueryNode]
