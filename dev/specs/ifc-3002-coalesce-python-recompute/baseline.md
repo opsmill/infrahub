@@ -318,3 +318,31 @@ now.
 
 The assertion is bounded on both sides. An upper bound alone would pass a pass that dispatched
 nothing, which is the failure the widening investigation showed is easy to mistake for success.
+
+
+## What T042 needs, for whoever picks it up
+
+The cross-family chain test is not a test file on its own. The transform in
+`backend/tests/fixtures/repos/computed-attributes-functional` queries `TestingTShirt.name` and
+`TestingColor.name` and `description`, all of them plain attributes, so nothing in the current
+fixture crosses between the template families and the Python one. The schema has to supply the
+crossing.
+
+**Template to Python.** Make `TestingColor.description` a Jinja2 computed attribute, for example
+`{{ name__value }} shade`. Editing a colour's name then recomputes its description inline on the
+save, the description lands in the write set, and the chain submitter derives the next level, where
+`TestingTShirt.pitch` reads that description through the transform query. No fixture repository
+change is needed, because the query already reads the field; only its provenance changes.
+
+**Python to template.** Two versions, and they exercise different code:
+
+- Same node: add a Jinja2 attribute on `TestingTShirt` reading `{{ pitch__value }}`. The bulk writer
+  loads the whole node and recomputes its own derived values on save, so this settles inline and
+  never reaches the chain submitter. Cheap, and it verifies the writer rather than the chain.
+- Across a relationship: add a third kind holding a Jinja2 attribute that reads the shirt's pitch
+  through a relationship. This is the one that produces a real chained level, and it is the version
+  worth writing, because the depth bound and `RecomputeChainSubmitter` only come into play here.
+
+Both directions want the assertion on the final stored value and on the chain depth reached, not
+only on the value: a chain that settles by accident, because the same-node cascade did the work,
+would pass a value-only assertion while leaving the chained level untested.
