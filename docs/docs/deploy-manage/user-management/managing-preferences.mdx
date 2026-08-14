@@ -6,39 +6,9 @@ import TabItem from '@theme/TabItem';
 
 # Managing preferences
 
-Preferences control how Infrahub renders dates and times in the web interface. Each user sets their own preferences, and administrators set organisation-wide defaults that apply to everyone who has not chosen their own.
+Infrahub stores per-user preferences that control aspects of the web interface and how it displays data. Preferences follow your account to any session or device, and — with the `manage_global_preferences` permission — an administrator can set organisation-wide defaults for users who haven't set their own.
 
-Two preferences are available today: **date format** and **timezone**.
-
-## How preferences resolve
-
-Infrahub resolves each preference field on its own, in this order:
-
-1. **Your value** — the value you set for yourself.
-2. **The organisation default** — the value an administrator set for everyone.
-3. **The browser default** — your browser's locale for date formatting, and your browser's timezone.
-
-Resolution is per field, so you can take the date format from your own value and the timezone from the organisation default at the same time. A field you never set falls through to the next layer; it is not stored until you set it.
-
-## Available preferences
-
-### Date format
-
-The date format is a semantic key, not a rendering pattern. Each preset renders both a date and a time. The web interface renders the following presets:
-
-| Key | Format | Example |
-|---|---|---|
-| `ISO_DATETIME` (default) | `yyyy-MM-dd HH:mm` | `2026-07-01 14:30` |
-| `ISO_DATETIME_SECONDS` | `yyyy-MM-dd HH:mm:ss` | `2026-07-01 14:30:00` |
-| `ISO_8601` | `yyyy-MM-dd'T'HH:mm:ssXXX` | `2026-07-01T14:30:00+02:00` |
-| `EU_DATETIME` | `dd/MM/yyyy HH:mm` | `01/07/2026 14:30` |
-| `US_12H` | `MM/dd/yyyy hh:mm a` | `07/01/2026 02:30 PM` |
-
-When you select a format, the interface shows a live example next to the field.
-
-### Timezone
-
-The timezone is an IANA name, such as `Europe/Paris` or `UTC`. The picker lists the timezones your browser supports. A field left unset uses your browser's own timezone.
+Today that covers **date format** and **timezone**, controlling how Infrahub renders dates and times throughout the interface. Both use the same per-user and organisation-wide model, designed so Infrahub can add more personal settings later without changing how preferences resolve.
 
 ## Set your preferences
 
@@ -132,6 +102,43 @@ query {
 
   </TabItem>
 </Tabs>
+
+## Preference precedence
+
+Infrahub resolves each preference field on its own, in this order:
+
+1. **Your value** — the value you set for yourself.
+2. **The organisation default** — the value an administrator set for everyone.
+3. **The browser default** — your browser's locale for date formatting, and your browser's timezone.
+
+Resolution is per field, so you can take the date format from your own value and the timezone from the organisation default at the same time. A field you never set falls through to the next layer; it is not stored until you set it.
+
+## Available preferences
+
+### Date format
+
+The date format is a semantic key, not a rendering pattern. Each preset renders both a date and a time. The web interface renders the following presets:
+
+| Key | Format | Example |
+|---|---|---|
+| `ISO_DATETIME` (default) | `yyyy-MM-dd HH:mm` | `2026-07-01 14:30` |
+| `ISO_DATETIME_SECONDS` | `yyyy-MM-dd HH:mm:ss` | `2026-07-01 14:30:00` |
+| `ISO_8601` | `yyyy-MM-dd'T'HH:mm:ssXXX` | `2026-07-01T14:30:00+02:00` |
+| `EU_DATETIME` | `dd/MM/yyyy HH:mm` | `01/07/2026 14:30` |
+| `US_12H` | `MM/dd/yyyy hh:mm a` | `07/01/2026 02:30 PM` |
+
+When you select a format, the interface shows a live example next to the field.
+
+### Timezone
+
+The timezone is an IANA name, such as `Europe/Paris` or `UTC`. The picker lists the timezones your browser supports. A field left unset uses your browser's own timezone.
+
+## Known limitations
+
+- [DateTime attributes on object details drop the time from your chosen format](https://github.com/opsmill/infrahub/issues/10172); list views render it correctly.
+- [Future-dated timestamps always render as relative time](https://github.com/opsmill/infrahub/issues/10173), so the date format preference does not apply to them yet.
+- [The timezone field accepts any string](https://github.com/opsmill/infrahub/issues/10174); an invalid value is not rejected until it fails to render.
+- [The date-format example preview ignores your timezone](https://github.com/opsmill/infrahub/issues/10175) and can show the wrong day.
 
 ## Best practices
 
