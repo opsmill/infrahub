@@ -8,13 +8,17 @@ from infrahub.events.limits import (
     MAX_RUN_CONTEXT_RESOURCES,
     get_prefect_max_related_resources,
     get_related_resource_budget,
+<<<<<<< HEAD
     get_submission_chunk_size,
+=======
+>>>>>>> origin/stable
 )
 
 ENV_VAR = "PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES"
 
 
 @dataclass
+<<<<<<< HEAD
 class ChunkSizeCase:
     name: str
     configured_max: str
@@ -36,6 +40,8 @@ def test_submission_chunk_size_is_floored_at_one(case: ChunkSizeCase, monkeypatc
 
 
 @dataclass
+=======
+>>>>>>> origin/stable
 class BudgetCase:
     name: str
     configured_max: str

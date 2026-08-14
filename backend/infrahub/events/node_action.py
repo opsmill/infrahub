@@ -10,7 +10,11 @@ from infrahub.core.changelog.models import (
 from infrahub.core.constants import DiffAction, InfrahubKind, MutationAction
 from infrahub.log import get_logger
 
+<<<<<<< HEAD
 from .constants import EVENT_NAMESPACE, NODE_ORIGIN_LABEL
+=======
+from .constants import EVENT_NAMESPACE
+>>>>>>> origin/stable
 from .limits import get_related_resource_budget
 from .models import InfrahubEvent
 
