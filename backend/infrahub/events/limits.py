@@ -38,7 +38,6 @@ def get_related_resource_budget() -> int:
     """
     maximum = get_prefect_max_related_resources()
     return max(1, maximum - max(MAX_RUN_CONTEXT_RESOURCES, maximum // 10))
-<<<<<<< HEAD
 
 
 def get_submission_chunk_size() -> int:
@@ -49,5 +48,3 @@ def get_submission_chunk_size() -> int:
     submission well under that cap and keeps the reader query it feeds small.
     """
     return max(1, get_prefect_max_related_resources() // 2)
-=======
->>>>>>> origin/stable
