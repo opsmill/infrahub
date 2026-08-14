@@ -61,8 +61,7 @@ const buttonVariants = tv({
         "data-pressed:bg-neutral-200",
       ],
       input: [
-        "bg-white text-foreground",
-        "shadow-[0_2px_4px_rgba(0,0,0,0.04)]",
+        "border-input-border bg-input text-foreground shadow-input",
         "data-pressed:scale-100",
       ],
     },
