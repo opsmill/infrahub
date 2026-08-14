@@ -51,6 +51,6 @@ interconnect_subnet = await client.allocate_next_ip_prefix(
 
 ## Advanced: next-available GraphQL primitives
 
-`InfrahubIPAddressGetNextAvailable` and `InfrahubIPPrefixGetNextAvailable` are read-only GraphQL queries that return the next free address or subnet from a given prefix. Unlike a Resource Pool allocation, they don't create a record, and they don't carry the pool's cross-branch allocation guarantee — two callers on different branches can compute the same "next available" value independently and collide.
+`InfrahubIPAddressGetNextAvailable` and `InfrahubIPPrefixGetNextAvailable` are read-only GraphQL queries that return the next free address or subnet from a given prefix. Unlike a Resource Pool allocation, they don't create a record, and they don't provide the pool's cross-branch allocation guarantee — two callers on different branches can compute the same "next available" value independently and collide.
 
 Use Resource Pool for production workflows. Use these queries only to look up a value without persisting it.
