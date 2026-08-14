@@ -16,7 +16,7 @@ export const PasswordDisplay = (props: tPasswordDisplayProps) => {
 
   const displayButton = (
     <Button variant="ghost" size="xs" shape="circle" onPress={() => setDisplay(!display)}>
-      <Icon icon={display ? "mdi:eye" : "mdi:eye-off"} className="text-gray-600" />
+      <Icon icon={display ? "mdi:eye" : "mdi:eye-off"} className="text-foreground-muted" />
     </Button>
   );
 
@@ -37,7 +37,7 @@ export const PasswordDisplay = (props: tPasswordDisplayProps) => {
   const passwordCircles = Array.from(
     Array(value.length < MAX_PASSWORD_DOTS_DISPLAY ? value.length : MAX_PASSWORD_DOTS_DISPLAY)
   ).map((_, index: number) => (
-    <Icon key={index} icon={"mdi:circle-medium"} className="text-gray-900" />
+    <Icon key={index} icon={"mdi:circle-medium"} className="text-foreground" />
   ));
 
   return (

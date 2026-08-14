@@ -5,7 +5,7 @@ export function BranchDefaultBadge({ className, ...props }: BadgeProps) {
   return (
     <span
       className={classNames(
-        "rounded-full border border-border-strong bg-transparent px-1.5 py-0.5 text-stone-600 text-xs",
+        "rounded-full border border-border-strong bg-transparent px-1.5 py-0.5 text-foreground-muted text-xs",
         className
       )}
       {...props}

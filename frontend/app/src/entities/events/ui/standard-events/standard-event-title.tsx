@@ -37,7 +37,7 @@ export const StandardEventTitle = (props: StandardEvent) => {
     <div className="flex flex-wrap items-center gap-1 text-sm">
       <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />
 
-      <div className="text-gray-600">
+      <div className="text-foreground-muted">
         {STANDARD_EVENTS_MAPPING[event] && STANDARD_EVENTS_MAPPING[event](props)}
 
         {!STANDARD_EVENTS_MAPPING[event] && event}

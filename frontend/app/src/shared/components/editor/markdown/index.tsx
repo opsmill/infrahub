@@ -52,7 +52,7 @@ export const MarkdownEditor = ({
     return (
       <MarkdownRender
         markdownText={codeMirror.view?.state?.doc.toString()}
-        className="min-h-10 w-full cursor-not-allowed rounded-md bg-gray-100 p-2 text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset"
+        className="min-h-10 w-full cursor-not-allowed rounded-md bg-gray-100 p-2 text-foreground shadow-xs ring-1 ring-gray-300 ring-inset"
       />
     );
   }

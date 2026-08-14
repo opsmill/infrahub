@@ -22,8 +22,8 @@ export const GettingStarted = ({ className }: { className?: string }) => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <BookOpen className="size-4 text-gray-400" /> Documentation
-            <ExternalLink className="size-4 text-gray-400" />
+            <BookOpen className="size-4 text-foreground-muted" /> Documentation
+            <ExternalLink className="size-4 text-foreground-muted" />
           </LinkButton>
         </div>
       </HomeCard.Title>
@@ -43,7 +43,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-            <span className="text-gray-500">
+            <span className="text-foreground-muted">
               Explore our hands-on labs for a deep dive into Infrahub's usage and features.
             </span>
           </GettingStartedContentItem>
@@ -61,7 +61,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-            <span className="text-gray-500">
+            <span className="text-foreground-muted">
               Integrate Infrahub with Nornir for automated network device configuration and
               management.
             </span>
@@ -84,7 +84,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-            <span className="text-gray-500">
+            <span className="text-foreground-muted">
               In Infrahub, the schema is at the center of most things.
             </span>
           </GettingStartedContentItem>
@@ -102,7 +102,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-            <span className="text-gray-500">
+            <span className="text-foreground-muted">
               The Infrahub Python SDK greatly simplifies how you can interact with Infrahub
               programmatically.
             </span>
@@ -121,7 +121,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-            <span className="text-gray-500">
+            <span className="text-foreground-muted">
               Offers a collection of schemas designed to streamline and standardize
               infrastructure-related data structures.
             </span>
@@ -140,7 +140,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-            <span className="text-gray-500">Infrahub Collection for Ansible Galaxy.</span>
+            <span className="text-foreground-muted">Infrahub Collection for Ansible Galaxy.</span>
           </GettingStartedContentItem>
         </div>
       </HomeCard.Content>
@@ -173,11 +173,11 @@ const GettingStartedContentItemLink = ({
   return (
     <LinkButton
       variant={"ghost"}
-      className="flex items-center gap-2 px-2 py-1 text-gray-500 underline"
+      className="flex items-center gap-2 px-2 py-1 text-foreground-muted underline"
       {...props}
     >
       {children}
-      {!hideExternal && <ExternalLink className="size-4 text-gray-400" />}
+      {!hideExternal && <ExternalLink className="size-4 text-foreground-muted" />}
     </LinkButton>
   );
 };

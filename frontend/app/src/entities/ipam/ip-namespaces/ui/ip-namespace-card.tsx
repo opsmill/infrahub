@@ -22,7 +22,7 @@ const CARD_STYLES = {
   ),
   title: "text-lg font-semibold truncate",
   badge: "px-3 py-1.5 bg-blue-50 text-blue-700 font-medium rounded-full",
-  description: "text-sm text-gray-600",
+  description: "text-sm text-foreground-muted",
 };
 
 export function IpNamespaceCard({ ipNamespace }: IpNamespaceCardProps) {

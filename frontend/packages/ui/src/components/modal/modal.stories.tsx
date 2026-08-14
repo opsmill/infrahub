@@ -27,8 +27,8 @@ export const Default: Story = {
   render: (args) => (
     <Modal {...args}>
       <div className="flex flex-col gap-3 p-3">
-        <h2 className="text-base font-medium text-stone-900">Confirm action</h2>
-        <p className="text-sm text-neutral-600">
+        <h2 className="text-base font-medium text-foreground">Confirm action</h2>
+        <p className="text-sm text-foreground-muted">
           This is a typical modal body. It can contain any content.
         </p>
         <div className="flex justify-end gap-2">

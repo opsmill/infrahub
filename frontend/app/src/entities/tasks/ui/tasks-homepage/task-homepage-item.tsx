@@ -44,7 +44,7 @@ export const TaskHomepageItem = ({
                 key={node.id}
                 className={classNames(
                   focusVisibleStyle,
-                  "flex items-center gap-1 rounded px-1 py-0.5 text-gray-600 transition-colors hover:bg-gray-100 hover:text-custom-blue-700"
+                  "flex items-center gap-1 rounded px-1 py-0.5 text-foreground-muted transition-colors hover:bg-gray-100 hover:text-custom-blue-700"
                 )}
                 to={getObjectDetailsUrl(node.kind, node.id)}
               >

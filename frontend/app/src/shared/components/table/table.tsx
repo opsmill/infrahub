@@ -37,7 +37,11 @@ export const Table = ({ columns, rows, className }: TableProps) => {
         <thead className="rounded-md border-border-strong border-b bg-gray-50 text-left">
           <tr>
             {columns.map((column) => (
-              <th key={column.name} scope="col" className="p-2 font-semibold text-gray-900 text-xs">
+              <th
+                key={column.name}
+                scope="col"
+                className="p-2 font-semibold text-foreground text-xs"
+              >
                 {column.label}
               </th>
             ))}
@@ -58,7 +62,7 @@ export const Table = ({ columns, rows, className }: TableProps) => {
                   <td key={index} className="p-0">
                     {row.link && (
                       <Link
-                        className="whitespace-wrap flex items-center px-2 py-1 text-gray-900 text-xs"
+                        className="whitespace-wrap flex items-center px-2 py-1 text-foreground text-xs"
                         to={row.link}
                       >
                         {renderRowValue(row.values[column.name])}
@@ -66,7 +70,7 @@ export const Table = ({ columns, rows, className }: TableProps) => {
                     )}
 
                     {!row.link && (
-                      <div className="whitespace-wrap flex items-center px-2 py-1 text-gray-900 text-xs">
+                      <div className="whitespace-wrap flex items-center px-2 py-1 text-foreground text-xs">
                         {renderRowValue(row.values[column.name])}
                       </div>
                     )}

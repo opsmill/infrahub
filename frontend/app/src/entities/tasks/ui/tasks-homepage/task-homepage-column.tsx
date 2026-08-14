@@ -23,7 +23,7 @@ const taskHomepageColumnHeaderVariants = cva(
   {
     variants: {
       variant: {
-        gray: "bg-gray-100 text-gray-900",
+        gray: "bg-gray-100 text-foreground",
         green: "bg-green-700/10 text-green-900",
         red: "bg-red-100 text-red-900",
         blue: "bg-custom-blue-700/10 text-custom-blue-700",

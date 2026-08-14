@@ -28,7 +28,7 @@ export const PropertyRow = ({
 }: PropertyRowProps) => {
   return (
     <tr>
-      <td className={classNames("p-2 text-gray-600", labelClassName)} {...props}>
+      <td className={classNames("p-2 text-foreground-muted", labelClassName)} {...props}>
         {data.name}
       </td>
       <td className={classNames("p-2", valueClassName)} {...props}>

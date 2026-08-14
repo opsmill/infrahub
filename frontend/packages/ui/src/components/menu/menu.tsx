@@ -24,7 +24,7 @@ export const SubmenuTrigger = AriaSubmenuTrigger;
 
 const menuItemStyles = tv({
   base: [
-    "flex min-w-40 cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden select-none",
+    "flex min-w-40 cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-foreground-muted outline-hidden select-none",
     "data-disabled:pointer-events-none data-disabled:opacity-50",
     "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
   ],
@@ -34,7 +34,7 @@ const menuItemStyles = tv({
         "bg-white shadow-sm transition-colors [&:not(:last-child)]:mb-0.5",
         "data-focused:border-sky-200 data-focused:bg-sky-50 data-focused:text-sky-700",
       ],
-      picker: ["rounded-lg", "data-focused:bg-stone-700/10 data-focused:text-stone-800"],
+      picker: ["rounded-lg", "data-focused:bg-stone-700/10 data-focused:text-foreground"],
     },
   },
   defaultVariants: { variant: "action" },
@@ -69,7 +69,7 @@ export function Menu<T extends object>({
         renderEmptyState={
           emptyMessage === undefined
             ? undefined
-            : () => <div className="px-2 py-1 text-sm text-neutral-600">{emptyMessage}</div>
+            : () => <div className="px-2 py-1 text-sm text-foreground-muted">{emptyMessage}</div>
         }
         {...props}
       />

@@ -14,7 +14,7 @@ const AutoCreateLayout = ({ idp, children }: AutoCreateLayoutProps) => {
     <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden text-sm">
       <span className="max-w-50 shrink-0 truncate font-medium text-black">{idp}</span>
 
-      <span className="flex min-w-0 items-center gap-1 whitespace-nowrap text-gray-600">
+      <span className="flex min-w-0 items-center gap-1 whitespace-nowrap text-foreground-muted">
         {children}
       </span>
     </div>
@@ -51,7 +51,11 @@ export const GroupAutoCreateEventTitle = (props: GroupAutoCreateEvent) => {
     }
     default: {
       warnUnexpectedType(props);
-      return <span className="text-gray-600 text-sm">{(props as GroupAutoCreateEvent).event}</span>;
+      return (
+        <span className="text-foreground-muted text-sm">
+          {(props as GroupAutoCreateEvent).event}
+        </span>
+      );
     }
   }
 };

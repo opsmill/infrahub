@@ -101,7 +101,7 @@ export function GeneratorDefinitionRunButton({
               <Text slot="label" className="font-semibold">
                 All targets
               </Text>
-              <Text slot="description" className="text-gray-600 text-xs">
+              <Text slot="description" className="text-foreground-muted text-xs">
                 Generate for all members in the target group
               </Text>
             </MenuItem>
@@ -112,7 +112,7 @@ export function GeneratorDefinitionRunButton({
               <Text slot="label" className="font-semibold">
                 Selected targets
               </Text>
-              <Text slot="description" className="text-gray-600 text-xs">
+              <Text slot="description" className="text-foreground-muted text-xs">
                 Choose specific members of target group
               </Text>
             </MenuItem>
@@ -175,7 +175,7 @@ export function GeneratorTargetSelectionForm({
                     onClick={() => handleRemoveTarget(node.id)}
                     className={classNames(
                       focusVisibleStyle,
-                      "flex size-3.5 items-center justify-center rounded-full border border-transparent text-xs hover:text-gray-900"
+                      "flex size-3.5 items-center justify-center rounded-full border border-transparent text-xs hover:text-foreground"
                     )}
                     aria-label={`Remove ${label}`}
                   >

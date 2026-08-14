@@ -31,7 +31,7 @@ const StartButton = ({ icon, title, description, className, ...props }: StartBut
 
     <div className="flex flex-col items-start gap-1">
       <p className="font-medium text-sm">{title}</p>
-      <p className="text-gray-600 text-xs">{description}</p>
+      <p className="text-foreground-muted text-xs">{description}</p>
     </div>
   </Button>
 );

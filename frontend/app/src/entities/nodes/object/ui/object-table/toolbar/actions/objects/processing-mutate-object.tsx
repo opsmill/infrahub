@@ -76,7 +76,7 @@ export function NodeCard({ node, children }: { node: NodeCore; children?: React.
     <Card className="w-100 text-sm">
       <CardContent>
         <Col className="gap-1">
-          <Row className="justify-between text-gray-600 text-xs">
+          <Row className="justify-between text-foreground-muted text-xs">
             <Row className="gap-1">
               <Icon icon={getSchemaIcon(schema)} />
               <span>{schema?.label}</span>

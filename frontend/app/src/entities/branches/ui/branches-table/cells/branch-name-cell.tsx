@@ -55,7 +55,9 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
         </Row>
 
         {branch.description && (
-          <span className="truncate pl-2.5 text-gray-600 text-xs">{branch.description}</span>
+          <span className="truncate pl-2.5 text-foreground-muted text-xs">
+            {branch.description}
+          </span>
         )}
       </Col>
     </StickyLeftCell>

@@ -121,7 +121,7 @@ export const NodesOptions = ({ node }: NodesOptionsProps) => {
           </div>
         </div>
 
-        <div className="mt-1 flex gap-5 text-gray-600">
+        <div className="mt-1 flex gap-5 text-foreground-muted">
           {displayIpNamespace && (
             <NodeAttribute
               title={"IP Namespace"}
@@ -205,7 +205,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
   return (
     <div className="flex flex-col overflow-hidden whitespace-nowrap text-xxs leading-3">
       <span>{title}</span>
-      <span className="truncate font-medium text-gray-800">{formatValue() || "-"}</span>
+      <span className="truncate font-medium text-foreground">{formatValue() || "-"}</span>
     </div>
   );
 };

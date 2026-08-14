@@ -23,7 +23,7 @@ function LoginPage() {
       <div className="m-auto flex w-full max-w-sm flex-col items-center gap-6">
         <InfrahubLogo className="h-12" />
 
-        <h1 className="font-semibold text-neutral-900 text-xl">Log in to your account</h1>
+        <h1 className="font-semibold text-foreground text-xl">Log in to your account</h1>
 
         <LoginMethodPicker />
 
