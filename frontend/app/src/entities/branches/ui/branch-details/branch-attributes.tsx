@@ -86,7 +86,7 @@ export function BranchAttributeLabel({
   return (
     <div
       className={classNames(
-        "flex items-center gap-1.5 truncate text-sm text-subtle-muted",
+        "flex items-center gap-1.5 truncate text-foreground-muted text-sm",
         className
       )}
       {...props}
