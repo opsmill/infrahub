@@ -76,7 +76,7 @@ export function ObjectPicker({ label, value, onChange }: ObjectPickerProps) {
 
   return (
     <div className="space-y-1.5">
-      <span className="block font-medium text-gray-700 text-sm">{label}</span>
+      <span className="block font-medium text-sm text-subtle">{label}</span>
 
       <NodeKindSelect
         value={selectedKind}

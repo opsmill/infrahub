@@ -58,7 +58,7 @@ function ParallelModePlugin() {
         {config.enabled && (
           <div className="space-y-4 border-l-2 pl-4">
             <div>
-              <label className="mb-1 block font-medium text-gray-700 text-sm">
+              <label className="mb-1 block font-medium text-sm text-subtle">
                 Page Size
                 <input
                   type="number"
@@ -80,11 +80,13 @@ function ParallelModePlugin() {
                   max={10_000}
                 />
               </label>
-              <p className="mt-1 text-gray-500 text-xs">Number of items per page (default: 500)</p>
+              <p className="mt-1 text-foreground-muted text-xs">
+                Number of items per page (default: 500)
+              </p>
             </div>
 
             <div>
-              <label className="mb-1 block font-medium text-gray-700 text-sm">
+              <label className="mb-1 block font-medium text-sm text-subtle">
                 Max Concurrent Requests
                 <input
                   type="number"
@@ -106,13 +108,13 @@ function ParallelModePlugin() {
                   max={50}
                 />
               </label>
-              <p className="mt-1 text-gray-500 text-xs">
+              <p className="mt-1 text-foreground-muted text-xs">
                 Maximum parallel requests (default: 5, max: 50)
               </p>
             </div>
 
             <div>
-              <label className="mb-1 block font-medium text-gray-700 text-sm">
+              <label className="mb-1 block font-medium text-sm text-subtle">
                 Delay Between Queries (ms)
                 <input
                   type="number"
@@ -134,7 +136,7 @@ function ParallelModePlugin() {
                   max={5000}
                 />
               </label>
-              <p className="mt-1 text-gray-500 text-xs">
+              <p className="mt-1 text-foreground-muted text-xs">
                 Delay between each query in milliseconds (default: disabled)
               </p>
             </div>
@@ -143,7 +145,7 @@ function ParallelModePlugin() {
       </div>
 
       <div className="border-t pt-4">
-        <div className="font-medium text-gray-700 text-sm">How it works:</div>
+        <div className="font-medium text-sm text-subtle">How it works:</div>
         <ol className="mt-2 list-inside list-decimal space-y-1 text-foreground-muted text-xs">
           <li>Executes a count query to determine total items</li>
           <li>Splits into multiple paginated queries</li>

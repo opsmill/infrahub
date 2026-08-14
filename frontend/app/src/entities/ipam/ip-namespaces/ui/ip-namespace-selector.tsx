@@ -40,10 +40,10 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
           className
         )}
       >
-        <Row className="truncate text-foreground-muted text-xs">IP Namespace</Row>
+        <Row className="truncate text-subtle-muted text-xs">IP Namespace</Row>
         <Row className="gap-1.5 text-sm leading-3.5">
           <span className="truncate">{getNodeLabel(currentIpNamespace)}</span>
-          <ChevronsUpDownIcon className="ml-auto size-3.5 shrink-0 text-foreground-muted" />
+          <ChevronsUpDownIcon className="ml-auto size-3.5 shrink-0 text-subtle-muted" />
         </Row>
       </AriaButton>
 
@@ -110,7 +110,9 @@ function IpNamespaceComboboxList({ onNamespaceSelection, ...props }: IpNamespace
               >
                 <div className="overflow-hidden">
                   <div className="truncate">{getNodeLabel(namespace)}</div>
-                  <p className="truncate text-gray-500 text-xs">{namespace.description?.value}</p>
+                  <p className="truncate text-subtle-muted text-xs">
+                    {namespace.description?.value}
+                  </p>
                 </div>
               </ComboboxItem>
             ));

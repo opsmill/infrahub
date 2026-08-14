@@ -16,7 +16,7 @@ export function SelectedGroupItem({ group, onRemove }: SelectedGroupItemProps) {
   return (
     <GroupItem group={group}>
       <AriaButton
-        className="cursor-pointer rounded-full p-0.5 text-stone-400 hover:bg-stone-200"
+        className="cursor-pointer rounded-full p-0.5 text-subtle-muted hover:bg-stone-200"
         aria-label={`Remove from group ${label}`}
         onPress={() => onRemove(group)}
       >

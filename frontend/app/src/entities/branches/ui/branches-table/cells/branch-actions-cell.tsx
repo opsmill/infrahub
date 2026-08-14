@@ -34,7 +34,7 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
             variant="ghost"
             data-testid={`branch-actions-cell-${branch.name}`}
           >
-            <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
+            <Icon icon={"mdi:dots-vertical"} className="text-subtle-muted" />
           </Button>
 
           <Popover placement="bottom end">

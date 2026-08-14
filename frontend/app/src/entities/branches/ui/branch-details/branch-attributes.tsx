@@ -45,7 +45,7 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
         <BranchAttributeLabel>
           <RefreshCwIcon className="size-3.5" /> Sync with Git
           <Tooltip message={SYNC_WITH_GIT_DESCRIPTION} className="max-w-xs" nonInteractiveTrigger>
-            <InfoIcon className="size-3.5 shrink-0 text-neutral-400" />
+            <InfoIcon className="size-3.5 shrink-0 text-subtle-muted" />
           </Tooltip>
         </BranchAttributeLabel>
         <BranchAttributeValue>
@@ -86,7 +86,7 @@ export function BranchAttributeLabel({
   return (
     <div
       className={classNames(
-        "flex items-center gap-1.5 truncate text-neutral-500 text-sm",
+        "flex items-center gap-1.5 truncate text-sm text-subtle-muted",
         className
       )}
       {...props}
@@ -98,5 +98,5 @@ export function BranchAttributeValue({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={classNames("text-neutral-700 text-sm", className)} {...props} />;
+  return <div className={classNames("text-foreground text-sm", className)} {...props} />;
 }

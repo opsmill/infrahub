@@ -91,7 +91,7 @@ function RoleManagementTab({ to, icon, label, kind }: RoleManagementTabProps) {
       {label}
       {isPending && <Spinner />}
       {!isPending && count !== undefined && (
-        <Badge className="rounded-full font-medium text-gray-500">{count}</Badge>
+        <Badge className="rounded-full font-medium text-subtle-muted">{count}</Badge>
       )}
     </LinkTab>
   );

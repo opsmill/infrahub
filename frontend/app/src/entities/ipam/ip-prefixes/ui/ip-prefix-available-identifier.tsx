@@ -37,13 +37,13 @@ export function IpPrefixAvailableIdentifier({
           size="sm"
           isDisabledAndFocusable={!isCreationAllowed}
           className={classNames(
-            "gap-2.5 rounded-full px-2.5 pl-1.5 text-neutral-400 hover:underline",
+            "gap-2.5 rounded-full px-2.5 pl-1.5 text-subtle-muted hover:underline",
             className
           )}
           onPress={() => setIsCreateFormOpen(true)}
           {...props}
         >
-          <PlusIcon className="size-4 text-neutral-300" />
+          <PlusIcon className="size-4 text-subtle-muted" />
 
           <Row className="gap-2.5">
             {[...Array(ancestorsCount)].map((_, i) => (

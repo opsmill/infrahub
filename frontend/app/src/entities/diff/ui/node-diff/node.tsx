@@ -58,7 +58,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                 <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
                 <Badge variant="white">
                   {schema?.namespace && (
-                    <span className="text-gray-500">
+                    <span className="text-foreground-muted">
                       {schema.namespace} <span className="mx-2">›</span>
                     </span>
                   )}

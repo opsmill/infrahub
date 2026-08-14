@@ -48,9 +48,9 @@ export function ObjectHierarchyTree({
   if (items.length === 0) {
     return (
       <Col className="items-center justify-center py-8">
-        <ListTreeIcon className="size-4 text-gray-600" />
+        <ListTreeIcon className="size-4 text-subtle-muted" />
         <p className="font-medium text-lg">No {treeSchema.label} found</p>
-        <p className="text-center text-gray-400 text-sm">
+        <p className="text-center text-sm text-subtle-muted">
           Create objects and establish parent-child relationships to build your hierarchy
         </p>
       </Col>
@@ -61,7 +61,7 @@ export function ObjectHierarchyTree({
     <>
       <Link
         to={getObjectDetailsUrl(treeSchema.kind!)}
-        className="block p-2 text-gray-500 text-sm hover:underline"
+        className="block p-2 text-sm text-subtle hover:underline"
       >
         {treeSchema.label}
       </Link>
@@ -69,7 +69,9 @@ export function ObjectHierarchyTree({
       <Tree
         aria-label="Hierarchy tree"
         defaultExpandedKeys={defaultExpandedIds}
-        renderEmptyState={() => <Row className="justify-center py-2 text-gray-600">No item</Row>}
+        renderEmptyState={() => (
+          <Row className="justify-center py-2 text-subtle-muted">No item</Row>
+        )}
       >
         <Collection items={items} dependencies={[currentNodeId]}>
           {(node) => (

@@ -138,7 +138,7 @@ export const TabPanelStyled = ({ className, ...props }: TabPanelProps) => {
   );
 };
 
-export const NullDisplay = () => <div className="text-gray-500 text-xs">null</div>;
+export const NullDisplay = () => <div className="text-subtle-muted text-xs">null</div>;
 
 export const SchemaKindDisplay = ({
   kinds,

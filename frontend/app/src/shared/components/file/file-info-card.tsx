@@ -26,11 +26,11 @@ export function FileInfoCard({
 
   const content = (
     <Row className="overflow-hidden">
-      <FileIconComponent className="size-5 shrink-0 text-gray-500" />
+      <FileIconComponent className="size-5 shrink-0 text-subtle-muted" />
       <div className="min-w-0 flex-1 truncate">
         <p className="truncate font-medium text-foreground text-sm">{fileName}</p>
         {(fileSize !== undefined || contentType) && (
-          <p className="mt-0.5 text-gray-500 text-xs">
+          <p className="mt-0.5 text-foreground-muted text-xs">
             {[fileSize !== undefined && formatFileSize(fileSize), contentType]
               .filter(Boolean)
               .join(" • ")}
@@ -60,7 +60,7 @@ export function FileInfoCard({
           )}
         >
           {content}
-          <UploadIcon className="ml-auto size-4 shrink-0 text-gray-400" />
+          <UploadIcon className="ml-auto size-4 shrink-0 text-subtle-muted" />
         </Button>
       </FileTrigger>
     );

@@ -52,7 +52,7 @@ export function LinkTab({ to, className, scrollIntoViewOnActive, ...props }: Lin
           "inline-flex h-11 scroll-m-10 items-center gap-2 truncate border-transparent border-b-2 px-3 py-2 font-medium text-sm",
           isActive
             ? "border-custom-blue-600 text-custom-blue-600"
-            : "text-gray-500 hover:border-border-strong hover:text-gray-700",
+            : "text-subtle-muted hover:border-border-strong hover:text-subtle",
           className
         )
       }

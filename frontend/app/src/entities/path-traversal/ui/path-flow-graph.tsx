@@ -127,7 +127,7 @@ function NodeContextMenu({
       >
         <div className="border-b px-3 py-1.5">
           <div className="truncate font-medium text-xs">{menu.nodeLabel}</div>
-          <div className="truncate text-[10px] text-gray-400">{menu.nodeKind}</div>
+          <div className="truncate text-[10px] text-subtle-muted">{menu.nodeKind}</div>
         </div>
         <a
           href={detailsUrl}

@@ -6,4 +6,4 @@ export const cellBodyStyle = "bg-gray-50 border-r border-b";
 
 export const cellFooterStyle = "sticky bottom-0 -mt-px h-9 px-2.5 border-t border-r";
 
-export const cellMutedStyle = "bg-gray-50 text-gray-400";
+export const cellMutedStyle = "bg-gray-50 text-subtle-muted";

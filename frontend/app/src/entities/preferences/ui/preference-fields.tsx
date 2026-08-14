@@ -60,7 +60,7 @@ function SourceInfo({ message }: { message: string }) {
         shape="square"
         size="xs"
         aria-label="Where this value comes from"
-        className="shrink-0 text-gray-400"
+        className="shrink-0 text-subtle-muted"
       >
         <Icon icon="mdi:information-outline" />
       </Button>
@@ -115,7 +115,7 @@ export function DateFormatField({
         </div>
         <div className="min-w-0 flex-1 truncate">
           {selected && (
-            <p id={exampleId} className="truncate text-gray-500 text-xs">
+            <p id={exampleId} className="truncate text-foreground-muted text-xs">
               Example: {formatDateFormatExample(selected, now)}
             </p>
           )}

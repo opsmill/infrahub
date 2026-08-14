@@ -121,7 +121,7 @@ export const NodesOptions = ({ node }: NodesOptionsProps) => {
           </div>
         </div>
 
-        <div className="mt-1 flex gap-5 text-foreground-muted">
+        <div className="mt-1 flex gap-5 text-subtle-muted">
           {displayIpNamespace && (
             <NodeAttribute
               title={"IP Namespace"}
@@ -188,7 +188,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           const color = value.color === "" ? "#f1f1f1" : value.color;
           return (
             <div
-              className="truncate rounded-sm border border-transparent px-1.5 text-center font-medium text-gray-700"
+              className="truncate rounded-sm border border-transparent px-1.5 text-center font-medium text-foreground"
               style={{ background: `${color}40` }}
             >
               {value.label}

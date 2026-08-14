@@ -15,7 +15,7 @@ type Story = StoryObj<typeof meta>;
 
 function PanelContent({ label }: { label: string }) {
   return (
-    <div className="flex h-full w-full items-center justify-center bg-stone-100 p-3 text-sm text-stone-700">
+    <div className="flex h-full w-full items-center justify-center bg-stone-100 p-3 text-sm text-subtle">
       {label}
     </div>
   );

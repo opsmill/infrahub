@@ -26,7 +26,7 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
             );
           })}
           {props.related_nodes.slice(GROUP_MEMBERSTO_DISPLAY).length > 0 && (
-            <span className="shrink-0 text-gray-500 italic">
+            <span className="shrink-0 text-foreground-muted italic">
               (+{props.related_nodes.slice(GROUP_MEMBERSTO_DISPLAY).length})
             </span>
           )}
@@ -65,7 +65,7 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
             );
           })}
           {props.related_nodes.slice(6).length > 0 && (
-            <span className="shrink-0 text-gray-500 italic">
+            <span className="shrink-0 text-foreground-muted italic">
               (+{props.related_nodes.slice(6).length})
             </span>
           )}
@@ -102,7 +102,7 @@ export const GroupEventTitle = (props: GroupEvent) => {
         "-"
       )}
 
-      <div className="min-w-0 text-gray-500">
+      <div className="min-w-0 text-foreground-muted">
         {GROUP_EVENTS_MAPPING[event] && GROUP_EVENTS_MAPPING[event](props)}
 
         {!GROUP_EVENTS_MAPPING[event] && event}

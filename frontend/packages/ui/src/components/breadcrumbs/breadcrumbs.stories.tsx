@@ -22,7 +22,7 @@ function AllVariantsRender() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <div className="mb-1 text-xs text-neutral-500">Links</div>
+        <div className="mb-1 text-xs text-subtle-muted">Links</div>
         <Breadcrumbs>
           <BreadcrumbItem href="/">Home</BreadcrumbItem>
           <BreadcrumbItem href="/objects">Objects</BreadcrumbItem>
@@ -31,7 +31,7 @@ function AllVariantsRender() {
       </div>
 
       <div>
-        <div className="mb-1 text-xs text-neutral-500">Buttons</div>
+        <div className="mb-1 text-xs text-subtle-muted">Buttons</div>
         <Breadcrumbs>
           <BreadcrumbItem onPress={() => {}}>Home</BreadcrumbItem>
           <BreadcrumbItem onPress={() => {}}>Objects</BreadcrumbItem>
@@ -40,7 +40,7 @@ function AllVariantsRender() {
       </div>
 
       <div>
-        <div className="mb-1 text-xs text-neutral-500">Mixed (links + button)</div>
+        <div className="mb-1 text-xs text-subtle-muted">Mixed (links + button)</div>
         <Breadcrumbs>
           <BreadcrumbItem href="/">Home</BreadcrumbItem>
           <BreadcrumbItem href="/objects">Objects</BreadcrumbItem>
@@ -49,7 +49,7 @@ function AllVariantsRender() {
       </div>
 
       <div>
-        <div className="mb-1 text-xs text-neutral-500">Loading</div>
+        <div className="mb-1 text-xs text-subtle-muted">Loading</div>
         <Breadcrumbs>
           <BreadcrumbItem href="/">Home</BreadcrumbItem>
           <BreadcrumbItemLoading />
@@ -57,7 +57,7 @@ function AllVariantsRender() {
       </div>
 
       <div>
-        <div className="mb-1 text-xs text-neutral-500">Error</div>
+        <div className="mb-1 text-xs text-subtle-muted">Error</div>
         <Breadcrumbs>
           <BreadcrumbItem href="/">Home</BreadcrumbItem>
           <BreadcrumbItemError error={new Error("Failed to fetch")} />
@@ -65,7 +65,7 @@ function AllVariantsRender() {
       </div>
 
       <div>
-        <div className="mb-1 text-xs text-neutral-500">Long content (truncation)</div>
+        <div className="mb-1 text-xs text-subtle-muted">Long content (truncation)</div>
         <div className="w-96">
           <Breadcrumbs>
             <BreadcrumbItem href="/">Home</BreadcrumbItem>

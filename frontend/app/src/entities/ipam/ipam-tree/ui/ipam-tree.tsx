@@ -68,7 +68,7 @@ export function IpamTree({ className, currentNodeId, search }: IpamTreeProps) {
       aria-label="IPAM tree"
       defaultExpandedKeys={defaultExpandedKeys}
       renderEmptyState={() => (
-        <Row className="justify-center py-2 text-foreground-muted">No ip prefix</Row>
+        <Row className="justify-center py-2 text-subtle-muted">No ip prefix</Row>
       )}
       className={className}
     >

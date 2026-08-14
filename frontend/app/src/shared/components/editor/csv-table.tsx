@@ -32,7 +32,7 @@ export function CsvTable({ content }: CsvTableProps) {
   const rows = parseCSV(content);
 
   if (!rows[0]) {
-    return <div className="text-neutral-400 text-sm">No data available</div>;
+    return <div className="text-foreground-muted text-sm">No data available</div>;
   }
 
   const headers = rows[0];

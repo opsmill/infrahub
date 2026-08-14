@@ -171,7 +171,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
         onPress={closePopover}
       >
         View all branches
-        <ArrowUpRightIcon className="text-stone-500" />
+        <ArrowUpRightIcon className="text-subtle-muted" />
       </LinkButton>
     </>
   );
@@ -191,7 +191,7 @@ export function BranchFormTriggerButton({ ...props }: AriaButtonProps) {
         data-testid="create-branch-button"
         {...props}
       >
-        <PlusIcon className="size-5 text-stone-500" />
+        <PlusIcon className="size-5 text-subtle-muted" />
       </Button>
     </Tooltip>
   );

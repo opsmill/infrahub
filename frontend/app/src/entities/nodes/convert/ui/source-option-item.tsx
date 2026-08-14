@@ -36,7 +36,7 @@ export const SourceOptionValue = ({ optionLabel, sourceFieldName }: SourceOption
   return (
     <Badge className="space-x-1">
       <span>{optionLabel}</span>
-      <span className="font-light text-gray-700">• {sourceFieldName}</span>
+      <span className="font-light text-subtle-muted">• {sourceFieldName}</span>
     </Badge>
   );
 };

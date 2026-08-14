@@ -41,7 +41,7 @@ export const JsonEditor = ({ id, onChange, value, className, ref, ...props }: Js
       preClassName="break-all!"
       textareaClassName="break-all! text-red-100! disabled:cursor-not-allowed disabled:bg-gray-100! mix-blend-multiply" // text-red-100 needed to make highligted text (in browser search) visible
       className={classNames(
-        "w-full rounded-md border border-border-strong bg-white text-sm shadow-xs placeholder:text-gray-400",
+        "w-full rounded-md border border-border-strong bg-white text-sm shadow-xs placeholder:text-subtle-muted",
         focusWithinStyle,
         className
       )}

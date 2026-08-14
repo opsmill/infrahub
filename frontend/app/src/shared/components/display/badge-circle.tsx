@@ -141,7 +141,7 @@ export const BadgeCircle = (props: tBadgeCircleProps) => {
 
       {onDelete && (
         <div className="ml-2 flex flex-col justify-center">
-          <XIcon className="h-4 w-4 text-gray-500" aria-hidden="true" />
+          <XIcon className="h-4 w-4 text-subtle-muted" aria-hidden="true" />
         </div>
       )}
     </span>

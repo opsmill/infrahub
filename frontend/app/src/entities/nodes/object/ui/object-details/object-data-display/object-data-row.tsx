@@ -31,7 +31,7 @@ export function ObjectDataRow({ value, className, objectKind, fieldSchema }: Obj
 
   return (
     <div className={classNames("grid grid-cols-[200px_auto] gap-4 px-3 py-2 text-sm", className)}>
-      <dt className="flex h-8 items-center font-medium text-gray-500">
+      <dt className="flex h-8 items-center font-medium text-subtle-muted">
         {schema ? (
           <DialogTrigger>
             <Button className="group flex cursor-pointer items-center gap-1.5 data-hovered:text-custom-blue-700">

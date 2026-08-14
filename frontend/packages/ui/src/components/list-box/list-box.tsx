@@ -53,7 +53,7 @@ export function ListBox<T extends object>({
         renderEmptyState={
           emptyMessage === undefined
             ? undefined
-            : () => <div className="px-2 py-1 text-sm text-foreground-muted">{emptyMessage}</div>
+            : () => <div className="px-2 py-1 text-sm text-subtle-muted">{emptyMessage}</div>
         }
         {...props}
       />
@@ -80,7 +80,7 @@ export function ListBox<T extends object>({
 
 const listBoxItemStyles = tv({
   base: [
-    "flex min-w-40 cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-foreground-muted outline-hidden select-none",
+    "flex min-w-40 cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-subtle outline-hidden select-none",
     "data-disabled:pointer-events-none data-disabled:opacity-50",
   ],
   variants: {
@@ -126,7 +126,7 @@ export function ListBoxItem<T extends object>({
 
 const listBoxLoadMoreStyles = tv({
   extend: listBoxItemStyles,
-  base: "text-stone-400",
+  base: "text-subtle-muted",
 });
 
 export function ListBoxLoadMoreItem({ className, ...props }: AriaListBoxLoadMoreItemProps) {

@@ -48,7 +48,7 @@ export function FilterTag({ label, value, condition, ref, ...props }: FilterTagP
           "inline-flex cursor-pointer rounded-full border border-transparent"
         )}
       >
-        <CircleXIcon className="size-3.5 text-stone-400 hover:text-custom-blue-700" />
+        <CircleXIcon className="size-3.5 text-subtle-muted hover:text-custom-blue-700" />
       </Button>
     </Tag>
   );
