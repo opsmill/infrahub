@@ -10,14 +10,14 @@ function ScrollBar({ className, orientation = "vertical", ...props }: ScrollBarP
     <ScrollAreaPrimitive.ScrollAreaScrollbar
       orientation={orientation}
       className={cn(
-        "flex touch-none rounded-full bg-neutral-100 transition-colors select-none",
+        "flex touch-none rounded-full bg-background/50 transition-colors select-none",
         orientation === "vertical" && "h-full w-1",
         orientation === "horizontal" && "h-1 flex-col",
         className,
       )}
       {...props}
     >
-      <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-[inherit] bg-neutral-300" />
+      <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-[inherit] bg-border" />
     </ScrollAreaPrimitive.ScrollAreaScrollbar>
   );
 }
