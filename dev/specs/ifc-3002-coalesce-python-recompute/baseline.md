@@ -188,3 +188,50 @@ work. The test asserts this itself, so a faster run that refreshed fewer nodes w
 Against the T062 gate: the window improves by 66%, over the 50% floor, and transform executions did
 not rise. Both conditions hold at this scale. The 1000-node run is what the 90% success criterion is
 actually stated against.
+
+
+## After, at 1000 changed nodes (T061)
+
+```text
+[python-merge-recompute-timing] changed_nodes=1000 control_family_runs=0
+CostCenterTiming(merge_critical_path_s=120.98, recompute_window_s=102.13,
+                 recompute_flow_runs=4, recompute_nodes_written=1000)
+```
+
+| Metric | Before | After | Change |
+|---|---|---|---|
+| Trailing recompute window | 498.2 s | 102.1 s | -79.5% |
+| Recompute flow runs | ~2000 (2.0 per changed node) | 4 | 500x fewer |
+| Nodes written | 1000 | 1000 | unchanged |
+| Merge critical path | 73.3 s | 121.0 s | **+65%, worse** |
+
+Four submissions rather than one, so the chunk limit engages at this scale as intended and no single
+flow-run parameter carries a thousand ids.
+
+## T062 evaluation
+
+The gate reverts the suppression if transform executions exceed the baseline, or if the window
+improves by less than 50%.
+
+- Transform executions: 1000 nodes written, the same as before. **Holds.**
+- Window: 79.5% better. **Holds.**
+
+The gate passes, so the suppression stays. The 90% target stated in SC-007 is not met: that needed
+49.8 s and the run gives 102.1 s.
+
+## The regression this exposed
+
+The merge critical path rose from 73.3 s to 121.0 s. That is the part of the merge that runs while
+the global merge lock is held, so it delays every other merge on the instance, and `plan.md` carries
+an explicit constraint against unbounded work in that window.
+
+The likely cause is the resolution step. Both of its lookups, deriving the read-field index and the
+chunked subscriber query, run inside `dispatch_events`, which the orchestrator calls from inside
+`acquire_global_lock()`. At a thousand changed nodes that is real work in the worst possible place.
+
+End to end the feature is still far ahead: 571.5 s of total settle time before, 223.1 s after. But
+the trade is not free, and it was not the trade the plan described.
+
+Before acting on this, confirm it. One run is one sample and 65% could carry noise; repeat the
+1000-node run and compare. If it holds, the fix is to move resolution off the locked path rather
+than to make the lookups faster: the pass does not need the lock, only the change set.
