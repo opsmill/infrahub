@@ -69,8 +69,17 @@ here, and the only labels you may apply are the ones in the allowed list.
 ## Process
 
 1. Read the issue title, body and existing labels from the GitHub context.
-2. If the issue already carries a `group/*` label, do not add another one. Same for
-   `category/*`. Only fill in what is missing.
-3. If the body is too vague to classify with confidence (for example a one-line report
+2. Decide whether the component axis is yours to fill. Look at the body's `Component`
+   section: if it names exactly one of *Frontend UI*, *API Server / GraphQL*,
+   *Git Integration* or *CI/CD*, the deterministic `issue-component-labeler` workflow
+   is handling it, so **do not add a `group/*` label** even if none is visible yet
+   (that workflow may still be running). Judge this from the dropdown value, never
+   from whether the label has appeared.
+3. Otherwise ("Not Sure", "Python SDK", "infrahubctl CLI", "Documentation & Examples",
+   or no Component section at all), pick the `group/*` label yourself. If one is
+   already present, leave it alone.
+4. Decide the `category/*` label, which is always yours. If one is already present,
+   leave it alone.
+5. If the body is too vague to classify with confidence (for example a one-line report
    with no reproduction and no area named), apply nothing and stop. Do not guess.
-4. Apply the labels you have decided on. Do not post a comment explaining yourself.
+6. Apply the labels you have decided on. Do not post a comment explaining yourself.

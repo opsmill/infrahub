@@ -8,7 +8,24 @@ Apply **at most two** labels per issue: one `group/*` (always) and one
 
 **Never apply a priority label.** Priority is assigned by a human.
 
-## 1. Component — `group/*`, always exactly one
+## What is already handled without you
+
+Two things are decided deterministically by other workflows, so do not spend
+effort on them and do not second-guess them:
+
+- **`type/*`** comes from the issue form (`labels:` in the template). Never add one.
+- **`group/*`** is mapped from the form's Component dropdown by the
+  `issue-component-labeler` workflow, for the four options that map exactly
+  (Frontend UI, API Server / GraphQL, Git Integration, CI/CD).
+
+You therefore only need to supply `group/*` when that mapping could not decide:
+the reporter chose "Not Sure", "Python SDK", "infrahubctl CLI" or
+"Documentation & Examples", or the issue was created without the form (by an
+integration, or by hand). If a `group/*` label is already present, leave it alone.
+
+`category/*` is always yours — no dropdown captures it.
+
+## 1. Component — `group/*`, exactly one, only if missing
 
 Where the fix will most likely land, not where the symptom appears.
 
