@@ -57,6 +57,11 @@
     border-color: var(--color-border);
   }
 
+  body {
+    background: var(--background);
+    color: var(--foreground);
+  }
+
   /* To prevent conflict with Separator component styling */
   hr {
     border-top-width: 0;
