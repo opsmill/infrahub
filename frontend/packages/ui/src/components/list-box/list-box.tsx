@@ -84,7 +84,9 @@ const listBoxItemStyles = tv({
     "data-disabled:pointer-events-none data-disabled:opacity-50",
   ],
   variants: {
-    isFocused: { true: "bg-stone-700/10 text-foreground" },
+    isFocused: {
+      true: "bg-highlight text-highlight-foreground",
+    },
   },
 });
 
@@ -107,7 +109,9 @@ export function ListBoxItem<T extends object>({
       className={composeAriaClassName(className, ({ isFocused, isSelected }) =>
         cn(
           listBoxItemStyles({ isFocused }),
-          isSelected && selectionIndicator === "highlight" && "bg-stone-700/10 text-foreground",
+          isSelected &&
+            selectionIndicator === "highlight" &&
+            "bg-selected text-selected-foreground shadow-selected",
         ),
       )}
       {...props}
