@@ -249,7 +249,16 @@ CALL (n, a, src) {
     WITH a, src
     WHERE src.status = "active"
     AND a.created_at IS NULL
-    SET a.created_at = $at, a.created_by = src.from_user_id
+    // -------------------------
+    // Use the earliest HAS_ATTRIBUTE in case this :Attribute was affected by a node kind migration
+    // -------------------------
+    CALL (a) {
+        MATCH ()-[earliest:HAS_ATTRIBUTE {status: "active"}]->(a)
+        RETURN earliest.from_user_id AS earliest_by
+        ORDER BY earliest.from ASC
+        LIMIT 1
+    }
+    SET a.created_at = $at, a.created_by = COALESCE(earliest_by, src.from_user_id)
 }
         """
         self.add_to_query(query=query)
@@ -435,7 +444,16 @@ CALL (tgt_n, rel, dir, hierarchy, status, from_user_id) {
 // -------------------------
 WITH rel, from_user_id
 WHERE rel.created_at IS NULL
-SET rel.created_at = $at, rel.created_by = from_user_id
+// -------------------------
+// Use the earliest IS_RELATED in case this :Relationship was affected by a node kind migration
+// -------------------------
+CALL (rel) {
+    MATCH ()-[earliest:IS_RELATED {status: "active"}]-(rel)
+    RETURN earliest.from_user_id AS earliest_by
+    ORDER BY earliest.from ASC
+    LIMIT 1
+}
+SET rel.created_at = $at, rel.created_by = COALESCE(earliest_by, from_user_id)
         """
         self.add_to_query(query=query)
 

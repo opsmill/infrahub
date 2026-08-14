@@ -118,15 +118,16 @@ async def test_diff_and_merge_with_migrated_node_kind_and_migrated_inheritance(
 
     # migrate Test2NewElectricCar to inherit from TestVehicle
     schema_branch = registry.schema.get_schema_branch(name=branch2.name)
+    car_schema_before_inherit = schema_branch.get(name="Test2NewElectricCar", duplicate=True)
     car_schema_branch = schema_branch.get(name="Test2NewElectricCar", duplicate=True)
     car_schema_branch.inherit_from += ["TestVehicle"]
-    schema_branch.set(name="Test2ElectricNewCar", schema=car_schema_branch)
+    schema_branch.set(name="Test2NewElectricCar", schema=car_schema_branch)
     schema_branch.process()
     await registry.schema.update_schema_branch(
         db=db, branch=branch2, schema=schema_branch, limit=["Test2NewElectricCar"], update_db=True
     )
     migration = NodeKindUpdateMigration(
-        previous_node_schema=schema_branch.get(name="Test2NewElectricCar"),
+        previous_node_schema=car_schema_before_inherit,
         new_node_schema=car_schema_branch,
         schema_path=SchemaPath(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewElectricCar", field_name="inherit_from"
