@@ -56,7 +56,7 @@ silently stop being reported.
 mode a blind `--fix --unsafe-fixes` run would have introduced, and it is invisible in a diff
 review.
 
-## R4 — Per-site decision: convert (28) vs. justified `# noqa` (6)
+## R4 — Per-site decision: convert (27) vs. justified `# noqa` (7)
 
 All 34 in-scope sites were read at their call site. The rule applied: **convert unless the
 traceback would be actively harmful or worthless.**

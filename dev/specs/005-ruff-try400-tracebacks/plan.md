@@ -47,7 +47,7 @@ suppressions, 2 file-level suppressions).
 | I. Schema-Driven Integrity | **PASS** — no schema, no generated files. `core/schema/` is explicitly excluded (it only holds TRY004 sites). |
 | II. Branch-Safe by Default | **PASS** — no queries, no branch/temporal logic touched. |
 | III. Type Safety & Explicit Contracts | **PASS** — no signatures or types change. Strengthens observability of the existing contracts. |
-| IV. Test Discipline | **PASS with note** — a logging-call substitution has no new behaviour to test; the guard is the lint gate itself (SC-001/002) plus the existing unit suite proving no regression. Adding tests that assert on log internals at 28 sites would be test-for-test's-sake. Recorded in Complexity Tracking. |
+| IV. Test Discipline | **PASS with note** — a logging-call substitution has no new behaviour to test; the guard is the lint gate itself (SC-001/002) plus the existing unit suite proving no regression. Adding tests that assert on log internals at 27 sites would be test-for-test's-sake. Recorded in Complexity Tracking. |
 | V. Query Performance & Efficiency | **PASS** — no query changes. |
 | VI. Security & Input Boundaries | **PASS** — `auth/` is untouched by construction (FR-006). No new data enters a log record beyond the traceback of an already-caught exception. |
 | VII. Simplicity & Maintainability | **PASS** — net simplification: removes a category-wide suppression for one rule and replaces implicit traceback loss with either a traceback or an explicit justified exception. |
@@ -87,7 +87,7 @@ backend/infrahub/
 │   ├── integrator.py                           # 9 convert + 4 noqa
 │   ├── repository.py                           # 1 convert
 │   └── tasks.py                                # 1 convert
-├── graphql/app.py                              # 2 convert  (ASGI error handling only)
+├── graphql/app.py                              # 1 convert + 1 noqa (ASGI error handling only)
 ├── services/scheduler.py                       # 1 convert
 ├── webhook/tasks/process.py                    # 1 noqa     (see research.md §R3)
 ├── workers/infrahub_async.py                   # 1 convert + 1 noqa
@@ -121,7 +121,7 @@ progress meter, and reaching zero is the completion signal.
 
 Each file is independent, so files can be done in any order. For every site: read the handler,
 apply the §R4 decision, preserve message and keyword arguments exactly. `ruff --fix` for TRY400
-is **unsafe-fix-only** and is not used — the 6 noqa sites and the `graphql/app.py:535`
+is **unsafe-fix-only** and is not used — the 7 noqa sites and the `_observe_subscription`
 `exc_info` removal are exactly the judgements an autofix gets wrong (see §R3, §R5).
 
 Each `# noqa: TRY400` carries a one-line reason on the same line or immediately above, so SC-007
@@ -175,5 +175,5 @@ grep -rn 'noqa: TRY400'                                 # SC-007: every one just
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| No new tests for 28 changed call sites (Principle IV) | The change is a level-preserving logging substitution with no new behaviour. The lint gate (SC-001/002) is the durable regression guard, and the existing unit suite proves nothing broke. | Asserting on captured log records at each site would pin implementation detail of logging calls, be brittle to message edits, and test structlog rather than Infrahub. |
+| No new tests for 27 changed call sites (Principle IV) | The change is a level-preserving logging substitution with no new behaviour. The lint gate (SC-001/002) is the durable regression guard, and the existing unit suite proves nothing broke. | Asserting on captured log records at each site would pin implementation detail of logging calls, be brittle to message edits, and test structlog rather than Infrahub. |
 | A new `per-file-ignores` entry added by a change whose purpose is *removing* a suppression | `backend/infrahub/auth/auth.py` is off-limits to the automated pipeline, but the rule must still be enforceable repo-wide. | Editing the 2 auth sites inline is the better end state and is what the reviewer will likely ask for — but it requires a human to own the auth-module change. Leaving the rule fully off instead would forfeit the other 34 sites. |

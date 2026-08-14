@@ -26,7 +26,7 @@ against the inline ask.
 
 | Severity | Category | Ask reference | Spec reference | Description |
 |----------|----------|---------------|----------------|-------------|
-| info | expansion | WHAT TO BUILD #2 ("if `exception` would be wrong there, use a targeted `# noqa: TRY400`") | research.md §R4, FR-003 | The ask authorised per-site noqa in the abstract; the spec/research resolve it concretely into 28 conversions + 6 justified suppressions. Elaboration of an explicit instruction, not drift. |
+| info | expansion | WHAT TO BUILD #2 ("if `exception` would be wrong there, use a targeted `# noqa: TRY400`") | research.md §R4, FR-003 | The ask authorised per-site noqa in the abstract; the spec/research resolve it concretely into 27 conversions + 7 justified suppressions. Elaboration of an explicit instruction, not drift. |
 | info | added | — | SC-007 | "Every remaining `# noqa: TRY400` carries a one-line justification" is a criterion the ask implied ("with a one-line reason") but did not list under ACCEPTANCE. Added as a verifiable gate. |
 | info | added | — | research.md §R3 | The `TracebackSuppressionFilter` interaction was discovered during Phase 0, not present in the ask. It *narrows* scope at one site for a correctness reason and is documented. |
 | info | changed | ask: "the 34 TRY400 violations ... EXCEPT auth/auth.py" | spec.md Context | The ask's own arithmetic (36 total, 2 in auth ⇒ 34 in scope) is preserved exactly; the spec additionally publishes the full 36-site distribution table. Presentation only. |

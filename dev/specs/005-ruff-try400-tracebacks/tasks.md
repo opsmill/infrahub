@@ -147,7 +147,7 @@ Both sites are in `_init_infrahub_client`:
 
 Per critique P2/P3/P4, the PR body MUST:
 
-- state **28 of 36** sites converted, not a clean sweep — 6 justified in-line `# noqa` + 2
+- state **27 of 36** sites converted, not a clean sweep — 7 justified in-line `# noqa` + 2
   deferred in `auth/auth.py`;
 - lead with the `webhook/tasks/process.py:204` finding (converting it would have silently
   deleted the delivery-failure log record) — it is the reason this was not an autofix;

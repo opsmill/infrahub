@@ -21,7 +21,7 @@ human.
 | T001 Enable TRY400 in `pyproject.toml` | ✅ | `extend-select = ["TRY400"]`; `"TRY"` ignore annotated |
 | T002 `git/integrator.py` (9 convert + 4 noqa) | ✅ | |
 | T003 `utilities/infrahub_load_tester.py` (8 convert) | ✅ | |
-| T004 `graphql/app.py` (2 convert) | ✅ | incl. redundant `exc_info` removal |
+| T004 `graphql/app.py` (1 convert + 1 noqa) | ✅ | `_observe_subscription` converted incl. redundant `exc_info` removal; `_handle_http_request` kept as `log.error` + noqa |
 | T005 `git/base.py` (2 convert) | ✅ | |
 | T006 `workers/infrahub_async.py` (1 convert + 1 noqa) | ✅ | |
 | T007 `webhook/tasks/process.py` (1 noqa) | ✅ | the dropped-record case |
@@ -44,7 +44,7 @@ human.
 | SC-004 format + lint clean | ✅ `invoke format` clean; `invoke lint` → ruff + **ty** + **mypy** all pass (mypy: 1610 files, no issues) |
 | SC-005 no gated path in the diff | ✅ no `core/schema/`, `core/migrations/`, `auth/`, `.github/`, no generated file |
 | SC-006 unit tests pass | ✅ `invoke backend.test-unit` → **2233 passed** |
-| SC-007 every `noqa: TRY400` justified | ✅ all 6 carry a reason comment |
+| SC-007 every `noqa: TRY400` justified | ✅ all 7 carry a reason comment |
 
 Also run green: `invoke main.lint`, `uv lock --check`, `invoke backend.validate-generated`,
 `invoke docs.validate`, `invoke schema.validate-graphqlschema`,
