@@ -286,3 +286,22 @@ takes to get there.
 
 This is FR-021 and US1 AS3 observed rather than asserted. The rollback an operator would reach for
 is a setting, it reaches the containers, and it restores the previous behaviour.
+
+
+## Parity between the two paths (T044)
+
+Run at 50 changed nodes in both modes, each on its own stack, comparing the final stored value of
+every owner by name.
+
+| | Owners | Result |
+|---|---|---|
+| Switch off, per-node path | 50 | recorded |
+| Switch on, coalesced pass | 50 | identical, value for value |
+
+This is the check the timing numbers cannot make. They show the coalesced pass is faster and writes
+the same *number* of nodes; a merge that refreshed the right count with one stale value among them
+would satisfy every other assertion in the suite and fail this one.
+
+The comparison is keyed on node name because each mode needs its own stack, so the ids differ. It
+compares the mappings rather than their sizes, and the run skips rather than passes when only one
+side has been recorded, so half a run cannot look like a result.
