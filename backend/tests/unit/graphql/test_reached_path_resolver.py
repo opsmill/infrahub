@@ -35,6 +35,7 @@ ADDRESS = _node("Address")
 PERSON = _node("Person")
 PHYSICAL = _node("Physical")
 VIRTUAL = _node("Virtual")
+THING = _node("Thing")
 ENDPOINT = GenericSchema(name="Endpoint", namespace="Testing")
 DEVICE_WITH_GENERIC = _node("Device", _rel("endpoints", "TestingEndpoint", "device__endpoint"))
 DEVICE_TWO_OWNERS = _node(
@@ -188,6 +189,28 @@ def test_a_kind_reached_via_a_generic_peer_and_a_concrete_relationship_unions_th
         "TestingPhysical": (ReachedPath(hops=(endpoint_hop,)), ReachedPath(hops=(port_hop,))),
         "TestingVirtual": (ReachedPath(hops=(endpoint_hop,)),),
     }
+
+
+def test_a_kind_owned_by_a_generic_widens_while_the_generic_peer_narrows() -> None:
+    # A kind reached through a relationship on a generic owner cannot be pinned to a concrete
+    # node_kind for the reverse traversal (matching the generic label would miss instances created
+    # before the generic was added to the kind's inheritance -- schema changes do not relabel), so it
+    # widens. The generic peer's own implementations still narrow, since they are matched by uuid.
+    things = _tree("things", THING)
+    endpoints = _tree("endpoints", ENDPOINT, things)
+    endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
+    tree = _tree("TestingDevice", DEVICE_WITH_GENERIC, endpoints)
+
+    result = ReachedPathResolver(queries=[tree]).resolve()
+
+    endpoint_hop = RelationshipHop(
+        node_kind="TestingDevice", relationship_identifier="device__endpoint", relationship_direction=OUT
+    )
+    assert result == {
+        "TestingPhysical": (ReachedPath(hops=(endpoint_hop,)),),
+        "TestingVirtual": (ReachedPath(hops=(endpoint_hop,)),),
+    }
+    assert "TestingThing" not in result
 
 
 def test_an_implementation_also_reached_un_pinnably_widens_while_its_siblings_narrow() -> None:
