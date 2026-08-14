@@ -45,7 +45,7 @@ export const DropdownMenuItem = ({ className, ref, ...props }: DropdownMenuItemP
     ref={ref}
     className={classNames(
       "rounded-lg px-2 py-1.5",
-      "text-foreground text-sm",
+      "text-sm text-subtle",
       "relative flex items-center gap-1.5",
       "cursor-pointer outline-hidden focus:bg-neutral-100",
       "data-disabled:pointer-events-none data-disabled:opacity-40",

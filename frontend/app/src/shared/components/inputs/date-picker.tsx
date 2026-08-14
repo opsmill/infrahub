@@ -87,7 +87,7 @@ export const DatePicker = ({
               handleClear();
             }}
           >
-            <Icon icon="mdi:close" className="text-gray-400" />
+            <Icon icon="mdi:close" className="text-subtle-muted" />
           </Button>
         </div>
       )}

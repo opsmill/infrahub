@@ -31,7 +31,7 @@ export function AccountTokenCreateAction() {
               className="ml-auto"
             />
           </Row>
-          <span className="text-gray-500 text-sm">
+          <span className="text-foreground-muted text-sm">
             These tokens provide full access to your account. Please keep them secure.
           </span>
         </Col>

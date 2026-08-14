@@ -83,7 +83,7 @@ export function SortableList<T extends object>({
 
 const sortableItemStyles = tv({
   base: [
-    "flex cursor-grab items-center gap-1.5 rounded-lg border border-transparent p-0.5 text-sm text-foreground-muted outline-hidden select-none",
+    "flex cursor-grab items-center gap-1.5 rounded-lg border border-transparent p-0.5 text-sm text-subtle outline-hidden select-none",
     "data-focus-visible:bg-stone-700/10 data-focus-visible:text-foreground",
     "data-selected:bg-stone-700/10 data-selected:text-foreground",
     "data-dragging:cursor-grabbing",
@@ -115,7 +115,7 @@ export function SortableItem({ children, className, ref, ...props }: SortableIte
             shape="square"
             size="xxs"
             aria-label="Reorder"
-            className="text-stone-400"
+            className="text-subtle-muted"
           >
             <GripVerticalIcon className="size-4" />
           </Button>

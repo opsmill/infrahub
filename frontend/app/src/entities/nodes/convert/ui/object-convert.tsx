@@ -100,7 +100,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
               targetSchema={targetSchema}
             />
           ) : (
-            <div className="col-span-full flex flex-col items-center justify-center py-12 text-stone-500">
+            <div className="col-span-full flex flex-col items-center justify-center py-12 text-foreground-muted">
               <Icon icon="mdi:table-off" className="mb-2 text-3xl" />
               <div className="font-medium text-lg">No kind selected</div>
               <div className="text-sm">Please select a kind for the conversion target</div>

@@ -106,7 +106,7 @@ const ListItems = ({
                 shape="circle"
                 variant="ghost"
                 onPress={() => onDelete(item)}
-                className="h-4 w-4 text-gray-500 data-hovered:text-foreground"
+                className="h-4 w-4 text-subtle-muted data-hovered:text-foreground"
                 aria-label={`Remove ${item}`}
               >
                 &times;
@@ -115,7 +115,7 @@ const ListItems = ({
           </Badge>
         ))
       ) : (
-        <span className="mx-auto text-gray-400 italic">Empty list</span>
+        <span className="mx-auto text-foreground-muted italic">Empty list</span>
       )}
     </div>
   );

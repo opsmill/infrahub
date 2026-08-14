@@ -106,7 +106,7 @@ export function TreeItemLoader(props: AriaTreeLoadMoreItemProps) {
     <AriaTreeLoadMoreItem {...props}>
       {({ level }) => (
         <div
-          className="flex h-8 items-center justify-start gap-2 text-sm text-neutral-500"
+          className="flex h-8 items-center justify-start gap-2 text-sm text-subtle-muted"
           style={{ paddingLeft: level * LOADER_INDENT_PX }}
         >
           <Spinner />

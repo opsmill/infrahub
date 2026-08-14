@@ -38,7 +38,7 @@ export function SearchAnywhereInput({
           onPress={() => setCaseSensitive(!caseSensitive)}
           className={classNames(
             "absolute top-1 right-1 size-8 rounded",
-            !caseSensitive && "text-gray-400"
+            !caseSensitive && "text-subtle-muted"
           )}
         >
           <CaseSensitiveIcon className="size-5" />

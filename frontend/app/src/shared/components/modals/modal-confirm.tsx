@@ -36,7 +36,7 @@ export function ModalConfirm({
           {title}
         </Heading>
 
-        {description && <p className="px-8 text-gray-500 text-sm">{description}</p>}
+        {description && <p className="px-8 text-foreground-muted text-sm">{description}</p>}
       </Col>
 
       <Row className="justify-end bg-gray-50 p-3">

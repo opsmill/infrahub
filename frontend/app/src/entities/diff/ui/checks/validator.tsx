@@ -133,7 +133,7 @@ export const Validator = ({ validator }: tValidatorProps) => {
           <Link
             to={getObjectDetailsUrl("CoreArtifactDefinition", artifactDefinition.id)}
             onClick={(e) => e.stopPropagation()}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-subtle-muted hover:text-subtle"
           >
             <Icon icon="mdi:open-in-new" />
           </Link>

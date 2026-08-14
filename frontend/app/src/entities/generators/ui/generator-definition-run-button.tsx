@@ -155,7 +155,7 @@ export function GeneratorTargetSelectionForm({
           variant="ghost"
           size="xs"
           onPress={onCancel}
-          className="h-5 p-1 text-gray-500 text-xs data-hovered:text-gray-700"
+          className="h-5 p-1 text-subtle-muted text-xs data-hovered:text-subtle"
         >
           Back
         </Button>
@@ -186,7 +186,7 @@ export function GeneratorTargetSelectionForm({
             })}
           </div>
         ) : (
-          <span className="text-gray-400">No targets selected</span>
+          <span className="text-subtle-muted">No targets selected</span>
         )}
       </div>
 

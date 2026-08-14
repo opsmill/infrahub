@@ -22,7 +22,7 @@ const VARIANT_CLASSES: Record<
 > = {
   blue: {
     headerBanner: "",
-    headerText: "text-gray-700",
+    headerText: "text-subtle",
     selected: "data-[selected=true]:border-blue-300 data-[selected=true]:bg-blue-50",
     selectedTitle: "text-blue-700",
   },
@@ -120,12 +120,12 @@ export function PathResultsList({
                       <span
                         className={classNames(
                           "truncate font-medium text-xs",
-                          isExpanded ? v.selectedTitle : "text-foreground-muted"
+                          isExpanded ? v.selectedTitle : "text-subtle"
                         )}
                       >
                         {getItemTitle(path, index)}
                       </span>
-                      <span className="shrink-0 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-500">
+                      <span className="shrink-0 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] text-subtle-muted">
                         {path.depth} hop{path.depth !== 1 ? "s" : ""}
                       </span>
                     </div>
@@ -136,7 +136,7 @@ export function PathResultsList({
                           e.stopPropagation();
                           copyToClipboard(copyItemText(index));
                         }}
-                        className="shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition-opacity hover:text-gray-500 focus-visible:opacity-100 group-hover:opacity-100"
+                        className="shrink-0 rounded p-0.5 text-subtle-muted opacity-0 transition-opacity hover:text-subtle focus-visible:opacity-100 group-hover:opacity-100"
                         title="Copy this entry"
                       >
                         copy
@@ -144,14 +144,16 @@ export function PathResultsList({
                     )}
                   </div>
                   {subtitle && !isExpanded && (
-                    <div className="truncate px-3 pb-2 text-[10px] text-gray-400">{subtitle}</div>
+                    <div className="truncate px-3 pb-2 text-[10px] text-subtle-muted">
+                      {subtitle}
+                    </div>
                   )}
                   {isExpanded && (
                     <ul className="space-y-1 px-3 pb-2">
                       {path.hops.map((hop, hopIndex) => (
                         <li
                           key={`${hop.node.id}-${hopIndex}`}
-                          className="flex items-center gap-2 text-[11px] text-gray-700"
+                          className="flex items-center gap-2 text-[11px] text-subtle"
                         >
                           <span
                             className="size-1.5 shrink-0 rounded-full"
@@ -168,7 +170,7 @@ export function PathResultsList({
           </Command.List>
         </Command>
       ) : (
-        <div className="text-center text-gray-400 text-sm">{emptyMessage}</div>
+        <div className="text-center text-sm text-subtle-muted">{emptyMessage}</div>
       )}
     </div>
   );

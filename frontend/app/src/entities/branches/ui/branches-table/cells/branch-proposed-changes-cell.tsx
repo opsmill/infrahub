@@ -41,7 +41,7 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
   if (!firstPC) {
     return (
       <TableCell className="h-auto min-h-14">
-        <span className="text-gray-400">-</span>
+        <span className="text-subtle-muted">-</span>
       </TableCell>
     );
   }
@@ -68,7 +68,7 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
         {remainingCount > 0 && (
           <Link
             to={listUrl}
-            className="shrink-0 whitespace-nowrap text-gray-500 text-sm hover:underline"
+            className="shrink-0 whitespace-nowrap text-foreground-muted text-sm hover:underline"
           >
             +{remainingCount} more
           </Link>

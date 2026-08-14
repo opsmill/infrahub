@@ -31,7 +31,7 @@ export function RelationshipFilterCombobox({
                 variant="ghost"
                 preventFocusOnPress
                 onPress={() => onChange(value.filter((item) => item.id !== id))}
-                className="h-4 w-4 text-gray-500 data-hovered:text-foreground"
+                className="h-4 w-4 text-subtle-muted data-hovered:text-foreground"
                 aria-label="Remove"
                 data-testid="remove-option"
               >

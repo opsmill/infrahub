@@ -66,7 +66,7 @@ export const TaskFilters = () => {
             shape="circle"
             data-testid="remove-filters"
           >
-            <Icon icon="mdi:close" className="text-gray-400" />
+            <Icon icon="mdi:close" className="text-subtle-muted" />
           </Button>
         )}
       </div>

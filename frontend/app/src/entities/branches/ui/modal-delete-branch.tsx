@@ -102,7 +102,7 @@ export function ModalDeleteBranch({
           Delete
         </Heading>
 
-        <p className="px-8 text-gray-500 text-sm">{description}</p>
+        <p className="px-8 text-foreground-muted text-sm">{description}</p>
 
         <RadioGroup
           value={scope}
@@ -119,7 +119,7 @@ export function ModalDeleteBranch({
           >
             <div>
               <div className="font-medium text-sm">Local only</div>
-              <div className="text-gray-500 text-xs">
+              <div className="text-foreground-muted text-xs">
                 Remove the branch from Infrahub. The remote Git repository will not be affected.
               </div>
             </div>
@@ -135,7 +135,7 @@ export function ModalDeleteBranch({
           >
             <div>
               <div className="font-medium text-sm">Local and remote</div>
-              <div className="text-gray-500 text-xs">
+              <div className="text-foreground-muted text-xs">
                 Remove the branch from Infrahub and delete it from the remote Git repository.
               </div>
             </div>

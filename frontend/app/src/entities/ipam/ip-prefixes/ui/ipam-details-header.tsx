@@ -131,7 +131,7 @@ const Title = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement
 );
 
 const Value = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement>) => (
-  <div className={classNames("truncate font-medium text-gray-600", className)} {...props}>
+  <div className={classNames("truncate font-medium text-foreground-muted", className)} {...props}>
     {children}
   </div>
 );

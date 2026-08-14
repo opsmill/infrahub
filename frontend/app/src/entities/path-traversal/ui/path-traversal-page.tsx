@@ -70,7 +70,7 @@ export function PathTraversalPage() {
                   size="xs"
                   onPress={() => setMode(m)}
                   className={`flex-1 font-medium text-xs ${
-                    mode === m ? MODE_META[m].activeClass : "text-gray-500"
+                    mode === m ? MODE_META[m].activeClass : "text-subtle-muted"
                   }`}
                 >
                   {MODE_LABELS[m]}

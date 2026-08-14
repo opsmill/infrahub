@@ -166,7 +166,7 @@ const HierarchicalExplorer = ({
                     onSelect={() => handleSelect(node)}
                   >
                     <span className="truncate">{getNodeLabel(node)}</span>
-                    <span className="ml-auto text-gray-500 text-xs">{schema?.label}</span>
+                    <span className="ml-auto text-subtle-muted text-xs">{schema?.label}</span>
                   </ComboboxItem>
                 );
               });

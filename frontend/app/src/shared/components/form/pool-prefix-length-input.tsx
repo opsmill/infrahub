@@ -31,7 +31,7 @@ export function PoolPrefixLengthInput({
       className={classNames(inputStyle, focusWithinStyle, "w-18 gap-1", invalid && inputErrorStyle)}
       title="Prefix length"
     >
-      <span className="text-gray-500">/</span>
+      <span className="text-subtle-muted">/</span>
       <input
         type="number"
         min={MIN_PREFIX_LENGTH}

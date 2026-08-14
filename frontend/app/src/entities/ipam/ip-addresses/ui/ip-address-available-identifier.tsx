@@ -22,7 +22,7 @@ export function IpAddressAvailableIdentifier({
       variant="ghost"
       size="sm"
       className={classNames(
-        "rounded-full pr-2.5 pl-1.5 text-neutral-400 data-hovered:underline",
+        "rounded-full pr-2.5 pl-1.5 text-subtle-muted data-hovered:underline",
         className
       )}
       {...props}
@@ -35,7 +35,7 @@ export function IpAddressAvailableIdentifier({
       variant="ghost"
       size="sm"
       className={classNames(
-        "rounded-full pr-2.5 pl-1.5 text-neutral-400 data-hovered:underline",
+        "rounded-full pr-2.5 pl-1.5 text-subtle-muted data-hovered:underline",
         className
       )}
       {...props}

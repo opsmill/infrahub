@@ -50,7 +50,7 @@ export function ObjectActionsCell({
             variant="ghost"
             data-testid={`actions-cell-${objectLabel}`}
           >
-            <Icon icon="mdi:dots-vertical" className="text-gray-500" />
+            <Icon icon="mdi:dots-vertical" className="text-subtle-muted" />
           </Button>
 
           <Popover placement="bottom end">

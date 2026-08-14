@@ -56,7 +56,7 @@ export function ExportMenu({ onExport, label = "Export diagram" }: ExportMenuPro
           aria-controls={open ? menuId : undefined}
           onPress={() => setOpen(!open)}
           className={cn(
-            open ? "bg-indigo-500 text-white data-hovered:bg-indigo-600" : "text-foreground-muted",
+            open ? "bg-indigo-500 text-white data-hovered:bg-indigo-600" : "text-subtle",
           )}
         >
           <Icon icon="mdi:download" className="text-lg" />
@@ -73,18 +73,18 @@ export function ExportMenu({ onExport, label = "Export diagram" }: ExportMenuPro
             variant="ghost"
             size="sm"
             onPress={() => handleExport("png")}
-            className="w-full justify-start rounded-none px-3 py-2 text-gray-700 text-sm"
+            className="w-full justify-start rounded-none px-3 py-2 text-subtle text-sm"
           >
-            <Icon icon="mdi:image-outline" className="text-gray-500 text-lg" />
+            <Icon icon="mdi:image-outline" className="text-subtle-muted text-lg" />
             PNG
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onPress={() => handleExport("svg")}
-            className="w-full justify-start rounded-none px-3 py-2 text-gray-700 text-sm"
+            className="w-full justify-start rounded-none px-3 py-2 text-subtle text-sm"
           >
-            <Icon icon="mdi:file-code-outline" className="text-gray-500 text-lg" />
+            <Icon icon="mdi:file-code-outline" className="text-subtle-muted text-lg" />
             SVG
           </Button>
         </div>

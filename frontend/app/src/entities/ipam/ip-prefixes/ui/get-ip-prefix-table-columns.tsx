@@ -102,7 +102,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
               <TableCell className="gap-4 whitespace-nowrap">
                 <TableAttributeCell attributeSchema={attribute} attributeData={attributeData} />
                 <div className="ml-auto text-xs">
-                  <span className="text-gray-400">{pluralize(memberCount, "member")}</span>
+                  <span className="text-foreground-muted">{pluralize(memberCount, "member")}</span>
                 </div>
               </TableCell>
             );

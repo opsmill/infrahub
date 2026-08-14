@@ -4,6 +4,8 @@
   --background: var(--color-stone-100);
   --foreground: var(--color-stone-800);
   --foreground-muted: var(--color-stone-600);
+  --subtle: var(--color-stone-600);
+  --subtle-muted: var(--color-stone-400);
 
   --border: var(--color-neutral-200);
   --border-strong: var(--color-neutral-300);
@@ -57,6 +59,8 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-foreground-muted: var(--foreground-muted);
+  --color-subtle: var(--subtle);
+  --color-subtle-muted: var(--subtle-muted);
 
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);

@@ -67,7 +67,7 @@ export function RelationshipActionsCell({
               variant="ghost"
               data-testid={`actions-cell-${relationshipLabel}`}
             >
-              <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
+              <Icon icon={"mdi:dots-vertical"} className="text-subtle-muted" />
             </Button>
           </PopoverAnchor>
 

@@ -31,7 +31,7 @@ export function FilterKindSelect({
         >
           <div className="flex grow flex-wrap gap-2">{value && schemaKindLabel[value]}</div>
 
-          <button type="button" className="h-3.5 w-3.5 text-foreground-muted outline-hidden">
+          <button type="button" className="h-3.5 w-3.5 text-subtle-muted outline-hidden">
             <Icon icon="mdi:unfold-more-horizontal" />
           </button>
         </div>

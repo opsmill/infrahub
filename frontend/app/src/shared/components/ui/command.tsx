@@ -29,7 +29,7 @@ export function CommandInput({ className, ref, ...props }: CommandInputProps) {
       <Icon icon="mdi:search" className="mx-2.5 shrink-0 text-lg" />
       <CommandPrimitive.Input
         ref={ref}
-        className="grow border-none bg-transparent pl-0 text-sm outline-hidden placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50 focus:[box-shadow:none]"
+        className="grow border-none bg-transparent pl-0 text-sm outline-hidden placeholder:text-subtle-muted disabled:cursor-not-allowed disabled:opacity-50 focus:[box-shadow:none]"
         {...props}
       />
     </div>

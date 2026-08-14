@@ -21,7 +21,7 @@ export function NodeDescription({ node, className, ...props }: ObjectInlineDispl
   return (
     <div className={classNames("flex flex-col text-sm", className)} {...props}>
       <div className="flex items-center gap-1">
-        <Icon icon={getSchemaIcon(schema)} className="text-gray-400 text-xs" />
+        <Icon icon={getSchemaIcon(schema)} className="text-subtle-muted text-xs" />
         {schemaLabel}
       </div>
 
