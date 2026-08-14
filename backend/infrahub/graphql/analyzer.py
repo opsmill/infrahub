@@ -294,19 +294,23 @@ class GraphQLQueryNode:
         return models
 
 
+def _reached_path_sort_key(path: ReachedPath) -> tuple[tuple[str, str, str], ...]:
+    return tuple((hop.node_kind, hop.relationship_identifier, hop.relationship_direction.value) for hop in path.hops)
+
+
 @dataclass(frozen=True)
 class ReachedPathResolver:
-    """Reconstruct, from a query's node tree, the relationship chain reaching each related kind.
+    """Reconstruct, from a query's node tree, the relationship chains reaching each related kind.
 
-    A kind is resolved only when it is reached by exactly one unambiguous relationship chain of
-    concrete objects. A kind reached through a generic peer, through an inline/named fragment, by
-    more than one distinct chain, or also read at a root is deliberately absent, so a change there
-    widens rather than resolving to a subset.
+    A kind is resolved to every unambiguous relationship chain of concrete objects that reaches it, so
+    a changed node is mapped back through all of them and the owners are unioned. A kind is absent --
+    so a change there widens -- when any way it is reached cannot be pinned: through a generic peer,
+    through an inline/named fragment, or when the kind is also read at a root.
     """
 
     queries: list[GraphQLQueryNode]
 
-    def resolve(self) -> dict[str, ReachedPath]:
+    def resolve(self) -> dict[str, tuple[ReachedPath, ...]]:
         root_kinds = {
             query_model.model.kind for query in self.queries for query_model in query.get_models() if query_model.root
         }
@@ -324,9 +328,9 @@ class ReachedPathResolver:
                     chains_by_kind[kind].add(chain)
 
         return {
-            kind: next(iter(chains))
+            kind: tuple(sorted(chains, key=_reached_path_sort_key))
             for kind, chains in chains_by_kind.items()
-            if len(chains) == 1 and kind not in ambiguous_kinds and kind not in root_kinds
+            if kind not in ambiguous_kinds and kind not in root_kinds
         }
 
     def _iter_object_nodes(self, node: GraphQLQueryNode) -> Iterator[GraphQLQueryNode]:
@@ -426,8 +430,8 @@ class GraphQLQueryReport:
         return kinds
 
     @cached_property
-    def relationship_reached_paths(self) -> dict[str, ReachedPath]:
-        """The relationship chain reaching each related kind that can be narrowed to its owning roots."""
+    def relationship_reached_paths(self) -> dict[str, tuple[ReachedPath, ...]]:
+        """The relationship chains reaching each related kind that can be narrowed to its owning roots."""
         return ReachedPathResolver(queries=self.queries).resolve()
 
     def fields_by_kind(self, kind: str) -> list[str]:

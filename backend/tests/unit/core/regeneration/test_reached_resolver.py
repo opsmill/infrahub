@@ -67,7 +67,7 @@ async def test_single_hop_resolves_the_owning_member() -> None:
     members = await ReachedMemberResolver(resolver=resolver).resolve(
         RelationshipReachedChanges(
             direct_member_node_ids=[],
-            reached=[ReachedChange(node_ids=["intf1"], path=ReachedPath(hops=(DEVICE_HOP,)))],
+            reached=[ReachedChange(node_ids=["intf1"], paths=(ReachedPath(hops=(DEVICE_HOP,)),))],
         )
     )
 
@@ -86,7 +86,7 @@ async def test_multi_hop_chains_each_hop_output_into_the_next() -> None:
     members = await ReachedMemberResolver(resolver=resolver).resolve(
         RelationshipReachedChanges(
             direct_member_node_ids=[],
-            reached=[ReachedChange(node_ids=["ip1"], path=ReachedPath(hops=(INTERFACE_HOP, DEVICE_HOP)))],
+            reached=[ReachedChange(node_ids=["ip1"], paths=(ReachedPath(hops=(INTERFACE_HOP, DEVICE_HOP)),))],
         )
     )
 
@@ -97,13 +97,44 @@ async def test_multi_hop_chains_each_hop_output_into_the_next() -> None:
     ]
 
 
+async def test_multiple_paths_for_a_change_union_their_owners() -> None:
+    resolver = RecordingDependentResolver(
+        owners_by_identifier={
+            "car__owner": {"p1": {"car1"}},
+            "car__previous_owner": {"p1": {"car2"}},
+        },
+    )
+    owner_hop = RelationshipHop(
+        node_kind="TestCar", relationship_identifier="car__owner", relationship_direction=RelationshipDirection.OUTBOUND
+    )
+    previous_owner_hop = RelationshipHop(
+        node_kind="TestCar",
+        relationship_identifier="car__previous_owner",
+        relationship_direction=RelationshipDirection.OUTBOUND,
+    )
+
+    members = await ReachedMemberResolver(resolver=resolver).resolve(
+        RelationshipReachedChanges(
+            direct_member_node_ids=[],
+            reached=[
+                ReachedChange(
+                    node_ids=["p1"],
+                    paths=(ReachedPath(hops=(owner_hop,)), ReachedPath(hops=(previous_owner_hop,))),
+                )
+            ],
+        )
+    )
+
+    assert members == {"car1", "car2"}
+
+
 async def test_a_hop_resolving_to_nothing_stops_the_chain_and_contributes_no_member() -> None:
     resolver = RecordingDependentResolver(owners_by_identifier={"interface__ip": {}})
 
     members = await ReachedMemberResolver(resolver=resolver).resolve(
         RelationshipReachedChanges(
             direct_member_node_ids=["dev9"],
-            reached=[ReachedChange(node_ids=["ip1"], path=ReachedPath(hops=(INTERFACE_HOP, DEVICE_HOP)))],
+            reached=[ReachedChange(node_ids=["ip1"], paths=(ReachedPath(hops=(INTERFACE_HOP, DEVICE_HOP)),))],
         )
     )
 
@@ -119,7 +150,7 @@ async def test_direct_and_reached_members_union() -> None:
     members = await ReachedMemberResolver(resolver=resolver).resolve(
         RelationshipReachedChanges(
             direct_member_node_ids=["dev5"],
-            reached=[ReachedChange(node_ids=["intf1"], path=ReachedPath(hops=(DEVICE_HOP,)))],
+            reached=[ReachedChange(node_ids=["intf1"], paths=(ReachedPath(hops=(DEVICE_HOP,)),))],
         )
     )
 
@@ -133,7 +164,7 @@ async def test_peer_uuids_are_passed_sorted_for_a_stable_query(peer_uuids: list[
     await ReachedMemberResolver(resolver=resolver).resolve(
         RelationshipReachedChanges(
             direct_member_node_ids=[],
-            reached=[ReachedChange(node_ids=peer_uuids, path=ReachedPath(hops=(DEVICE_HOP,)))],
+            reached=[ReachedChange(node_ids=peer_uuids, paths=(ReachedPath(hops=(DEVICE_HOP,)),))],
         )
     )
 

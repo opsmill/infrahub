@@ -20,7 +20,7 @@ query { TestingCar { edges { node { owner { node { name { value } } } } } } }
 """
 
 # The car reads its owner's name through two distinct relationships, so the owner kind is reached by
-# two chains and cannot be narrowed to one.
+# two chains and both are kept.
 TWO_RELATIONSHIPS_TO_THE_SAME_KIND = """
 query {
     TestingCar {
@@ -46,7 +46,7 @@ query { TestingDevice { edges { node { interfaces { edges { node { name { value 
 """
 
 
-async def _reached_paths(db: InfrahubDatabase, branch: Branch, query: str) -> dict[str, ReachedPath]:
+async def _reached_paths(db: InfrahubDatabase, branch: Branch, query: str) -> dict[str, tuple[ReachedPath, ...]]:
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
     gql_params = await prepare_graphql_params(db=db, branch=branch)
     report = InfrahubGraphQLQueryAnalyzer(
@@ -68,7 +68,31 @@ class TestReachedPathsFromQueryCarSchema(TestInfrahubApp):
         result = await _reached_paths(db, default_branch, SINGLE_HOP)
 
         assert result == {
-            TestKind.PERSON: ReachedPath(
+            TestKind.PERSON: (
+                ReachedPath(
+                    hops=(
+                        RelationshipHop(
+                            node_kind=TestKind.CAR,
+                            relationship_identifier=owner.identifier,
+                            relationship_direction=owner.direction,
+                        ),
+                    )
+                ),
+            )
+        }
+
+    async def test_a_kind_reached_by_two_relationships_keeps_both(
+        self, db: InfrahubDatabase, default_branch: Branch, car_schema: None
+    ) -> None:
+        car = registry.schema.get(name=TestKind.CAR, branch=default_branch)
+        owner = car.get_relationship("owner")
+        previous_owner = car.get_relationship("previous_owner")
+
+        result = await _reached_paths(db, default_branch, TWO_RELATIONSHIPS_TO_THE_SAME_KIND)
+
+        assert result.keys() == {TestKind.PERSON}
+        assert set(result[TestKind.PERSON]) == {
+            ReachedPath(
                 hops=(
                     RelationshipHop(
                         node_kind=TestKind.CAR,
@@ -76,15 +100,17 @@ class TestReachedPathsFromQueryCarSchema(TestInfrahubApp):
                         relationship_direction=owner.direction,
                     ),
                 )
-            )
+            ),
+            ReachedPath(
+                hops=(
+                    RelationshipHop(
+                        node_kind=TestKind.CAR,
+                        relationship_identifier=previous_owner.identifier,
+                        relationship_direction=previous_owner.direction,
+                    ),
+                )
+            ),
         }
-
-    async def test_a_kind_reached_by_two_relationships_widens(
-        self, db: InfrahubDatabase, default_branch: Branch, car_schema: None
-    ) -> None:
-        result = await _reached_paths(db, default_branch, TWO_RELATIONSHIPS_TO_THE_SAME_KIND)
-
-        assert result == {}
 
     async def test_a_kind_read_at_a_root_and_through_a_relationship_widens(
         self, db: InfrahubDatabase, default_branch: Branch, car_schema: None
@@ -99,9 +125,7 @@ class TestReachedPathsFromQueryDeviceSchema(TestInfrahubApp):
     async def device_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         await load_schema(db=db, schema=DEVICE_SCHEMA, update_db=True)
 
-    async def test_generic_peer_widens(
-        self, db: InfrahubDatabase, default_branch: Branch, device_schema: None
-    ) -> None:
+    async def test_generic_peer_widens(self, db: InfrahubDatabase, default_branch: Branch, device_schema: None) -> None:
         result = await _reached_paths(db, default_branch, GENERIC_PEER)
 
         assert result == {}

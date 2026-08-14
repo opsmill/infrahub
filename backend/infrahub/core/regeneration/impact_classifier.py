@@ -32,10 +32,14 @@ class ChangedNodes:
 
 @dataclass(frozen=True, slots=True)
 class ReachedChange:
-    """Changed nodes of one related kind, paired with the chain that resolves them to owning roots."""
+    """Changed nodes of one related kind, paired with the chains that resolve them to owning roots.
+
+    The kind may be reached by more than one relationship chain; the changed nodes are mapped back
+    through every one and the resolved owners are unioned.
+    """
 
     node_ids: list[str]
-    path: ReachedPath
+    paths: tuple[ReachedPath, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,7 +80,7 @@ class QueryImpactClassifier:
     only_has_unique_targets: bool
     traversed_kinds: set[str]
     readable_fields_by_kind: dict[str, set[str]]
-    reached_paths: dict[str, ReachedPath] = field(default_factory=dict)
+    reached_paths: dict[str, tuple[ReachedPath, ...]] = field(default_factory=dict)
 
     def assess(self, diff_summary: list[NodeDiff]) -> ImpactAssessment:
         if not self.only_has_unique_targets:
@@ -98,12 +102,12 @@ class QueryImpactClassifier:
             changed_ids = self._changed_node_ids(diff_summary=diff_summary, kinds={kind: fields})
             if not changed_ids:
                 continue
-            path = self.reached_paths.get(kind)
-            if path is None:
+            paths = self.reached_paths.get(kind)
+            if paths is None:
                 # A change on this related kind cannot be mapped back to specific members, so every
                 # target has to run rather than risk leaving one stale.
                 return EveryTarget()
-            reached.append(ReachedChange(node_ids=changed_ids, path=path))
+            reached.append(ReachedChange(node_ids=changed_ids, paths=paths))
 
         if reached:
             return RelationshipReachedChanges(direct_member_node_ids=member_node_ids, reached=reached)
