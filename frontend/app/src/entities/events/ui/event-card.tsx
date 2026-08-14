@@ -1,3 +1,4 @@
+import { Card } from "@infrahub/ui";
 import { useLocation } from "react-router";
 
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -85,7 +86,7 @@ export const EventCard = (props: EventType) => {
     <div className="flex gap-2">
       <TimelineBorder />
 
-      <div className="flex min-w-0 grow flex-col gap-3 rounded-md border bg-white p-2 text-sm shadow-xs">
+      <Card className="min-w-0 grow gap-3 rounded-md p-2 text-sm">
         <EventContent {...props} />
 
         <div className="flex justify-between text-gray-500">
@@ -103,7 +104,7 @@ export const EventCard = (props: EventType) => {
             {pathname !== "/" && <EventDetailsPopover {...props} />}
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

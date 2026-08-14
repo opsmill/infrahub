@@ -26,6 +26,18 @@ export const AllVariants: StoryObj = {
           CardHeader and CardContent handle their own padding. No overrides needed on Card.
         </CardContent>
       </Card>
+
+      <Card variant="secondary" className="max-w-sm">
+        <CardContent className="text-sm text-neutral-700">
+          The secondary surface is for app chrome — header, sidebar, content shell.
+        </CardContent>
+      </Card>
+
+      <Card variant="panel" className="max-w-sm">
+        <CardContent className="text-sm text-neutral-700">
+          The panel surface recedes behind the cards it contains.
+        </CardContent>
+      </Card>
     </div>
   ),
 };

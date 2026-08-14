@@ -1,26 +1,28 @@
 import type React from "react";
 
-import { cn } from "tailwind-variants";
+import { cn, tv, type VariantProps } from "tailwind-variants";
 
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+const cardVariants = tv({
+  base: "flex flex-col rounded-2xl border",
+  variants: {
+    variant: {
+      card: "bg-card shadow-card",
+      secondary: "bg-secondary shadow-secondary",
+      panel: "border-border-strong bg-panel shadow-panel",
+    },
+  },
+  defaultVariants: {
+    variant: "card",
+  },
+});
+
+export interface CardProps
+  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof cardVariants> {
   ref?: React.Ref<HTMLDivElement>;
 }
 
-export function Card({ className, ref, ...props }: CardProps) {
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "flex flex-col",
-        "rounded-2xl",
-        "bg-card",
-        "border",
-        "shadow-card",
-        className,
-      )}
-      {...props}
-    />
-  );
+export function Card({ className, ref, variant, ...props }: CardProps) {
+  return <div ref={ref} className={cardVariants({ variant, class: className })} {...props} />;
 }
 
 export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
