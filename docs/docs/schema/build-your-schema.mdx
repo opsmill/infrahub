@@ -7,7 +7,7 @@ description: Describe a schema change in plain language and let an AI coding ass
 
 Describe a schema change in plain language and `infrahub-managing-schemas` returns valid schema YAML for it, using the same top-level keys and conventions covered in [Create and load schema](./create-and-load) — nodes, generics, attributes, relationships, hierarchies. It checks the result against your instance with `infrahubctl schema check` before handing it back. Before modeling anything from scratch, it checks the [Marketplace](./marketplace) for a published schema you can reuse or adapt. For a change to an existing schema, it also plans the migration — see [Schema migration](./migration) for the attribute-level sequencing it follows: safe addition, removal via `state: absent`, two-step renames, type changes.
 
-This covers direct, well-scoped changes — adding or modifying nodes, attributes, and relationships. Designing a whole new schema domain with relationships from scratch is a bigger job: describe the domain and let the assistant produce a plan first, rather than a single prompt. See the note on [Build your first schema](../academy/tutorials/build-your-first-schema).
+This covers direct, well-scoped changes — adding or modifying nodes, attributes, and relationships. Designing a whole new schema domain with relationships from scratch is a bigger job: describe the domain and let the assistant produce a plan first, rather than a single prompt. See the note on [Build your first schema](../learn/tutorials/build-your-first-schema).
 
 ## Example prompts
 
