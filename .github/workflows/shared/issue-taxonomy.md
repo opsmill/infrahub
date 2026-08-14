@@ -14,8 +14,8 @@ Two things are decided deterministically by other workflows, so do not spend
 effort on them and do not second-guess them:
 
 - **`type/*`** comes from the issue form (`labels:` in the template). Never add one.
-- **`group/*`** is mapped from the form's Component dropdown by the
-  `issue-component-labeler` workflow, for the four options that map exactly
+- **`group/*`** is mapped from the form's Component dropdown by the `Labeler`
+  workflow (its `issue-component` job), for the four options that map exactly
   (Frontend UI, API Server / GraphQL, Git Integration, CI/CD).
 
 You therefore only need to supply `group/*` when that mapping could not decide:

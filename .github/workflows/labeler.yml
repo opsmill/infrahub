@@ -1,12 +1,23 @@
 ---
 # yamllint disable rule:truthy
-name: "Pull Request Labeler"
+# Rule-based labelling. Both jobs are deterministic on purpose: they derive
+# labels from structured data (changed paths, issue form fields), never from
+# judgement. Anything needing judgement is handled by the issue-triage-labeler
+# and issue-triage-sweep agentic workflows instead.
+name: "Labeler"
+
 on:
-  - pull_request
+  pull_request:
+  issues:
+    # Only on open. Re-running on `edited` would re-add a label a maintainer
+    # had deliberately removed; late-filled Component fields are picked up by
+    # the weekly issue-triage-sweep instead.
+    types: [opened]
 
 jobs:
-  triage:
-    if: github.event.pull_request.head.repo.fork == false
+  # Pull requests: label from the paths of the changed files (.github/labeler.yml).
+  pull-request:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
     permissions:
       contents: read
       pull-requests: write
@@ -16,3 +27,95 @@ jobs:
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
           sync-labels: true
+
+  # Issues: map the issue form's Component dropdown to a group/* label.
+  # actions/labeler cannot do this -- it matches changed files and branch names,
+  # neither of which an issue has -- so this is a direct lookup instead.
+  #
+  # Options deliberately NOT mapped, because they have no exact group/*
+  # equivalent and need judgement: "Python SDK", "infrahubctl CLI",
+  # "Documentation & Examples", "Not Sure". Those fall through to the agentic
+  # issue-triage-labeler.
+  issue-component:
+    if: github.event_name == 'issues'
+    permissions:
+      contents: read
+      issues: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Map Component dropdown to group/* labels
+        uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553  # v9
+        with:
+          script: |
+            const COMPONENT_TO_LABEL = {
+              'frontend ui': 'group/frontend',
+              'api server / graphql': 'group/backend',
+              'git integration': 'group/backend',
+              'ci/cd': 'group/ci',
+            };
+
+            const body = context.payload.issue.body || '';
+
+            // Two shapes occur in practice:
+            //   1. "### Component\n\n<comma separated>"  - created via the issue forms
+            //   2. "**Component:** <comma separated>"    - created by hand or by tooling
+            // Split on headings rather than using one big regex, so a missing
+            // trailing section or CRLF line endings cannot break the match.
+            const section = body
+              .split(/^###[ \t]+/m)
+              .slice(1)
+              .find((chunk) => /^Component[ \t]*\r?\n/.test(chunk));
+
+            let raw = section === undefined
+              ? null
+              : section.replace(/^Component[ \t]*\r?\n/, '');
+
+            if (raw === null) {
+              const inline = body.match(/^\*\*Component:?\*\*[ \t]*(.+)$/m);
+              raw = inline ? inline[1] : null;
+            }
+
+            if (raw === null) {
+              core.info('No Component section found, leaving this to the agentic labeler.');
+              return;
+            }
+
+            const selected = raw
+              .split(',')
+              .map((value) => value.trim().toLowerCase())
+              .filter(Boolean);
+
+            if (selected.length === 0) {
+              core.info('Component section is empty, leaving this to the agentic labeler.');
+              return;
+            }
+
+            const mapped = [...new Set(
+              selected.map((value) => COMPONENT_TO_LABEL[value]).filter(Boolean)
+            )];
+
+            if (mapped.length === 0) {
+              core.info(
+                `No exact mapping for [${selected.join(', ')}], leaving this to the agentic labeler.`
+              );
+              return;
+            }
+
+            // Never replace what is already there, only fill in what is missing.
+            const existing = new Set(
+              (context.payload.issue.labels || []).map((label) => label.name)
+            );
+            const toAdd = mapped.filter((label) => !existing.has(label));
+
+            if (toAdd.length === 0) {
+              core.info(`Already labelled: ${mapped.join(', ')}`);
+              return;
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              labels: toAdd,
+            });
+            core.info(`Added: ${toAdd.join(', ')}`);

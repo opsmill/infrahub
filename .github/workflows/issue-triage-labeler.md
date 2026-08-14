@@ -71,8 +71,9 @@ here, and the only labels you may apply are the ones in the allowed list.
 1. Read the issue title, body and existing labels from the GitHub context.
 2. Decide whether the component axis is yours to fill. Look at the body's `Component`
    section: if it names exactly one of *Frontend UI*, *API Server / GraphQL*,
-   *Git Integration* or *CI/CD*, the deterministic `issue-component-labeler` workflow
-   is handling it, so **do not add a `group/*` label** even if none is visible yet
+   *Git Integration* or *CI/CD*, the deterministic `Labeler` workflow (its
+   `issue-component` job) is handling it, so **do not add a `group/*` label**
+   even if none is visible yet
    (that workflow may still be running). Judge this from the dropdown value, never
    from whether the label has appeared.
 3. Otherwise ("Not Sure", "Python SDK", "infrahubctl CLI", "Documentation & Examples",
