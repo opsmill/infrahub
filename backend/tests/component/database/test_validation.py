@@ -133,6 +133,76 @@ CREATE (a)-[:HAS_VALUE {branch: $branch_name, branch_level: $branch_level, statu
     )
 
 
+async def _split_node_vertex_keeping_the_field(db: InfrahubDatabase, node_uuid: str, attr_name: str, at: str) -> None:
+    """Copy the node vertex the way a kind update does, moving the field's edge onto the copy.
+
+    The old vertex's edge is deleted and the copy's is opened at the same moment, both pointing at the one
+    field vertex, so the field never stops being in use.
+    """
+    query = """
+MATCH (n:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE {status: "active"}]->(a:Attribute {name: $attr_name})
+WHERE hae.to IS NULL
+WITH n, hae, a LIMIT 1
+SET hae.to = $at
+CREATE (n)-[:HAS_ATTRIBUTE {branch: hae.branch, branch_level: hae.branch_level, status: "deleted", from: $at}]->(a)
+CREATE (copy:$(labels(n)))
+SET copy = properties(n)
+CREATE (copy)-[:HAS_ATTRIBUTE {branch: hae.branch, branch_level: hae.branch_level, status: "active", from: $at}]->(a)
+    """
+    await db.execute_query(query=query, params={"node_id": node_uuid, "attr_name": attr_name, "at": at})
+
+
+async def _update_value_on_branch(
+    db: InfrahubDatabase, node_uuid: str, attr_name: str, branch: Branch, value: str, at: str
+) -> None:
+    """Change an attribute's value the way the product does: close the open edge, open one to the new value."""
+    query = """
+MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attr_name})-[hv:HAS_VALUE]->(:AttributeValue)
+WHERE hv.status = "active" AND hv.to IS NULL
+WITH a, hv LIMIT 1
+SET hv.to = $at
+MERGE (new_value:AttributeValue:AttributeValueIndexed {value: $value, is_default: false})
+CREATE (a)-[:HAS_VALUE {branch: $branch_name, branch_level: $branch_level, status: "active", from: $at}]->(new_value)
+    """
+    await db.execute_query(
+        query=query,
+        params={
+            "node_id": node_uuid,
+            "attr_name": attr_name,
+            "branch_name": branch.name,
+            "branch_level": branch.hierarchy_level,
+            "value": value,
+            "at": at,
+        },
+    )
+
+
+async def _delete_attribute_on_branch(
+    db: InfrahubDatabase, node_uuid: str, attr_name: str, branch: Branch, at: str
+) -> None:
+    """Delete an attribute on a branch, shadowing the default branch's edges rather than closing them."""
+    query = """
+MATCH (n:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE {status: "active"}]->(a:Attribute {name: $attr_name})
+WHERE hae.to IS NULL
+WITH n, hae, a LIMIT 1
+CREATE (n)-[:HAS_ATTRIBUTE {branch: $branch_name, branch_level: $branch_level, status: "deleted", from: $at}]->(a)
+WITH a
+MATCH (a)-[child]->(peer)
+WHERE child.status = "active" AND child.to IS NULL
+CREATE (a)-[:$(type(child)) {branch: $branch_name, branch_level: $branch_level, status: "deleted", from: $at}]->(peer)
+    """
+    await db.execute_query(
+        query=query,
+        params={
+            "node_id": node_uuid,
+            "attr_name": attr_name,
+            "branch_name": branch.name,
+            "branch_level": branch.hierarchy_level,
+            "at": at,
+        },
+    )
+
+
 @dataclass
 class GraphDamageCase:
     name: str
@@ -267,6 +337,72 @@ class TestVerifyGraph:
 
         violations = await collect_graph_violations(db=db, kinds=["TestCar"])
         assert [violation.check for violation in violations] == [GraphCheck.ORPHANED_ACTIVE_EDGES]
+
+    async def test_kind_update_before_a_delete_does_not_backdate_it(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_person_schema: SchemaBranch,
+        person_john_main: Node,
+        car_accord_main: Node,
+    ) -> None:
+        """A kind update deletes one edge to the field and opens another, and the field lives on.
+
+        The delete that matters is the last one, so an update written between the two is not a write to a
+        deleted field.
+        """
+        kind_update_at = Timestamp()
+        await _split_node_vertex_keeping_the_field(
+            db=db, node_uuid=car_accord_main.id, attr_name="name", at=kind_update_at.to_string()
+        )
+
+        value_update_at = kind_update_at.add_delta(seconds=10)
+        await _update_value_on_branch(
+            db=db,
+            node_uuid=car_accord_main.id,
+            attr_name="name",
+            branch=default_branch,
+            value="renamed-accord",
+            at=value_update_at.to_string(),
+        )
+
+        await _delete_attribute_cleanly(
+            db=db,
+            node_uuid=car_accord_main.id,
+            attr_name="name",
+            at=value_update_at.add_delta(seconds=10).to_string(),
+        )
+
+        assert await collect_graph_violations(db=db, kinds=["TestCar"]) == []
+
+    async def test_a_delete_on_one_branch_is_not_inherited_by_another(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_person_schema: SchemaBranch,
+        person_john_main: Node,
+        car_accord_main: Node,
+    ) -> None:
+        """Branches are cut from the default branch, so one branch never sees another's delete."""
+        deleting_branch = await create_branch(db=db, branch_name="deleting-branch")
+        await _delete_attribute_on_branch(
+            db=db,
+            node_uuid=car_accord_main.id,
+            attr_name="name",
+            branch=deleting_branch,
+            at=Timestamp().to_string(),
+        )
+
+        sibling_branch = await create_branch(db=db, branch_name="sibling-branch")
+        await _write_value_edge_on_branch(
+            db=db,
+            node_uuid=car_accord_main.id,
+            attr_name="name",
+            branch=sibling_branch,
+            at=Timestamp().to_string(),
+        )
+
+        assert await collect_graph_violations(db=db, kinds=["TestCar"]) == []
 
     async def test_every_check_runs_and_all_violations_are_reported(
         self,

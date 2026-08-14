@@ -269,8 +269,9 @@ AND CASE
         OR child.from > delete_time
         OR child.to > delete_time
     )
-    // updates on branch forked after the delete
-    ELSE EXISTS {
+    // Updates on a branch that forked after the delete. Branches are cut from the default branch, so only
+    // a delete there is inherited: a delete on one branch is invisible to every other one.
+    ELSE branch = $default_branch AND EXISTS {
         MATCH (child_branch:Branch {name: child.branch})
         WHERE child_branch.branched_from > delete_time
         AND child.from > child_branch.branched_from
@@ -278,23 +279,26 @@ AND CASE
 END
 RETURN DISTINCT
     field.name AS field_name,
-    branch,
+    branch AS deleted_on,
+    child.branch AS edge_on,
     labels(field)[0] AS field_type,
     type(child) AS child_type
     """ % {"node_labels": _node_labels(kinds)}
-    records = await db.execute_query(query=query)
+    records = await db.execute_query(query=query, params={"default_branch": registry.default_branch})
     violations = []
     for record in records:
         field_name = record.get("field_name")
-        branch = record.get("branch")
+        deleted_on = record.get("deleted_on")
+        edge_on = record.get("edge_on")
         field_type = record.get("field_type")
         child_type = record.get("child_type")
+        location = f"branch '{edge_on}'" if edge_on == deleted_on else f"branch '{edge_on}', deleted on '{deleted_on}'"
         violations.append(
             GraphViolation(
                 check=GraphCheck.ORPHANED_ACTIVE_EDGES,
                 message=(
                     f"Orphaned active {child_type} edge on {field_type} '{field_name}' "
-                    f"where all parent edges are deleted on branch '{branch}'"
+                    f"where all parent edges are deleted, on {location}"
                 ),
             )
         )
@@ -420,8 +424,15 @@ CALL (n, field, branch, branch_branched_from) {
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
 }
-WITH n, branch, field_name, r
-WHERE r.status = "active" AND r.to IS NULL
+WITH n, branch, field_name, r, branch_branched_from
+// ----------------
+// A default-branch edge closed after the branch forked is still open as the branch reads it
+// ----------------
+WHERE r.status = "active"
+AND (
+    r.to IS NULL
+    OR (branch <> $default_branch AND r.branch = $default_branch AND r.to > branch_branched_from)
+)
 WITH n, branch, field_name, count(*) AS num_fields
 WHERE num_fields > 1
 RETURN n.uuid AS node_id, branch, field_name, num_fields
