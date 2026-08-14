@@ -21,30 +21,6 @@ On top of that, the MCP server authenticates with an [API token](../deploy-manag
 
 This is enforced in the server's code, not left to convention — see the [MCP methods reference](https://docs.infrahub.app/mcp/references/methods) if you want to verify it yourself, or read [Branches](../branches/overview) and [Proposed Changes](../proposed-changes/overview) for how the workflow looks on the receiving end.
 
-## Install
-
-Install the skills into your project:
-
-```bash
-npx skills add opsmill/infrahub-skills
-```
-
-This detects the AI tools already configured in your environment (Claude Code, GitHub Copilot, Cursor, and others) and installs the skills in the right format for each. Skills operate on local files, so this step alone covers schema, objects, checks, generators, transforms, and menus.
-
-Some pages — [Analyze your data](../schema/analyze-your-data), and validating a generated schema or Generator against real data — need the MCP server connected to a running instance:
-
-```bash
-pip install infrahub-mcp
-```
-
-```bash
-export INFRAHUB_ADDRESS=http://localhost:8000
-export INFRAHUB_API_TOKEN=<your-token>
-infrahub-mcp
-```
-
-See the [MCP server docs](https://docs.infrahub.app/mcp) for Docker deployment, remote transports, and client-specific setup (Claude Desktop, VS Code, Cursor).
-
 ## Two ways of working
 
 Depending on the size and complexity of the change — not just how clearly you can describe it — work with the skills in one of two modes.
@@ -86,6 +62,18 @@ For a bigger job — designing a new schema domain with relationships, building 
 - `infrahub-managing-menus` — describe how you want the left-hand menu organized and get menu YAML. See [Menu customization](../menu/overview).
 - `infrahub-auditing-repo` — audit a repository's `.infrahub.yml` and file structure against convention and get a report of what to fix. See [infrahub.yml configuration](../git-integration/infrahub-yml).
 - `infrahub-reporting-issues` — figure out which `opsmill/infrahub-*` repository a bug or feature request belongs to, check for duplicates, and draft the issue for your review. See the FAQ's ["How do I get help with Infrahub?"](../faq/faq.mdx#how-do-i-get-help-with-infrahub) entry.
+
+## Install
+
+Install the skills into your project:
+
+```bash
+npx skills add opsmill/infrahub-skills
+```
+
+This detects the AI tools already configured in your environment and installs the skills in the right format for each. Skills operate on local files, so this step alone covers schema, objects, checks, generators, transforms, and menus. See [Installation & Setup](https://docs.infrahub.app/skills/installation-setup) for the Claude Code plugin and manual-copy alternatives.
+
+Some pages — [Analyze your data](../schema/analyze-your-data), and validating a generated schema or Generator against real data — need the MCP server connected to a running instance. See [Installation](https://docs.infrahub.app/mcp/getting-started/installation) for setup, including the `INFRAHUB_ADDRESS` and `INFRAHUB_API_TOKEN` environment variables it needs, plus Docker deployment and client-specific configuration (Claude Desktop, VS Code, Cursor).
 
 ## What to watch for
 

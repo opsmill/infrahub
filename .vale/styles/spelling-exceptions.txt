@@ -30,6 +30,7 @@ Buildkite
 cAdvisor
 Ceph
 changelog
+chatbot
 conftest
 Conftest
 check_color_tags_name
@@ -64,6 +65,7 @@ datetime
 default_branch
 default_filter
 Delinea
+denormalized
 Dependabot
 dev
 Diataxis
