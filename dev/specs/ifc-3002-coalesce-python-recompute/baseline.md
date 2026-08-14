@@ -56,3 +56,40 @@ For the after-comparison, the two targets this baseline sets:
 - **`setsid` does not exist on macOS.** Detach with plain `nohup ... &`, and confirm the pid is alive before believing the run started. A launch that fails instantly leaves a log that a naive watcher reads as "still working".
 - **Watch the process, not only the log.** A filter that matches only the success line and a few expected errors stays silent when the run dies for an unanticipated reason, and silence is indistinguishable from progress.
 - **Absolute seconds are container-relative.** Only the ratio transfers between machines, which is why SC-002 is expressed as a percentage. Measured on 8 CPUs and 25 GB.
+
+
+## Running the after-measurement (T061)
+
+Not yet recorded: two attempts were made and neither produced a number. What they established, so
+the next attempt does not repeat them:
+
+1. **Sweep before starting.** The first attempt failed in 13 s with every infra container healthy
+   and all five app containers stuck in `Created`. A stack left behind by an earlier run was still
+   holding the ports. The fixture raises before its `yield`, so its teardown never runs and the
+   orphan survives the failure that it caused. Clear it first:
+
+   ```bash
+   docker compose ls -a
+   docker compose -p <project> down -v --remove-orphans
+   ```
+
+2. **Capture the whole log, not a tail.** Piping the run through `tail -30` discarded the compose
+   exception and left only RabbitMQ boot noise, which reads like a message-queue problem and is
+   not one. Redirect to a file.
+
+3. **Expect a long run and watch it from outside.** The second attempt reached 28 minutes with the
+   stack healthy before it was interrupted, and the test prints only at the end, so there is no
+   progress signal in its own output. Both `_wait_idle` and the measurement window carry 3600 s
+   deadlines, which means a coalesced pass that never completes looks identical to one that is
+   merely slow. Watch the worker instead:
+
+   ```bash
+   P=$(docker ps --format '{{.Label "com.docker.compose.project"}}' | grep infrahub-test | head -1)
+   docker compose -p $P logs task-worker --tail 20
+   ```
+
+   Recompute activity on `computed_attribute_process_transform` means progress; only periodic
+   `refresh.git.fetch` lines means the run is idle and something is stuck.
+
+4. **Sweep again afterwards.** An interrupted run leaves its stack up, which is what causes
+   failure 1 on the next attempt.
