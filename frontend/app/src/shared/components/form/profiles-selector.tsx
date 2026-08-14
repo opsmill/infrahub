@@ -73,7 +73,7 @@ export const ProfilesSelector = ({
   return (
     <div className="bg-gray-100 p-4">
       <Label htmlFor={id}>
-        Select profiles <span className="ml-1 text-subtle-muted text-xs italic">optional</span>
+        Select profiles <span className="ml-1 text-foreground-muted text-xs italic">optional</span>
       </Label>
 
       <Combobox>

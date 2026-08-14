@@ -53,7 +53,7 @@ export function KindMultiSelect({
         <Label htmlFor={id} className="inline-block w-fit">
           {label}
           {value.length > 0 && (
-            <span className="ml-1 font-normal text-subtle-muted text-xs">({value.length})</span>
+            <span className="ml-1 font-normal text-foreground-muted text-xs">({value.length})</span>
           )}
         </Label>
       )}

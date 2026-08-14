@@ -77,7 +77,7 @@ export function Component() {
         <EmptyActivitiesView hasFilters={filters.length > 0} />
       ) : (
         <>
-          <div className="grid grid-cols-8 gap-2 px-4 py-2 font-semibold text-subtle-muted text-xs">
+          <div className="grid grid-cols-8 gap-2 px-4 py-2 font-semibold text-foreground-muted text-xs">
             <span>Date</span>
             <span className="col-span-5">Event</span>
             <span>Branch</span>

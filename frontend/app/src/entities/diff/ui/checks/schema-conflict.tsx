@@ -24,12 +24,12 @@ export const SchemaConflict = ({ id, kind, name, type }: SchemaConflictProps) =>
       </div>
 
       <div className="flex">
-        <div className="min-w-40 font-semibold text-subtle-muted">Name</div>
+        <div className="min-w-40 font-semibold text-foreground-muted">Name</div>
         <div>{name}</div>
       </div>
 
       <div className="flex">
-        <div className="min-w-40 font-semibold text-subtle-muted">Type</div>
+        <div className="min-w-40 font-semibold text-foreground-muted">Type</div>
         <div>{type}</div>
       </div>
     </div>
