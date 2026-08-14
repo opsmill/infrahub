@@ -49,7 +49,8 @@ class SchemaUpdateCoordinator:
         db: InfrahubDatabase,
         branch: Branch,
         schema_manager: SchemaManager,
-        origin_schema: SchemaBranch,
+        migration_baseline_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
         workflow: InfrahubWorkflow | None = None,
         context: InfrahubContext | None = None,
         migration_executor: MigrationExecutor = MigrationExecutor.WORKFLOW,
@@ -61,7 +62,10 @@ class SchemaUpdateCoordinator:
             db: Database connection
             branch: Branch being updated
             schema_manager: Schema manager for updating schema in DB and registry
-            origin_schema: Original schema before update (for rollback)
+            migration_baseline_schema: Schema the migrations compare the candidate against.
+            rollback_schema: Schema restored into the registry when the update fails. This is the
+                schema the branch itself had before the update, which is not the migration baseline
+                whenever the branch carries changes of its own.
             workflow: Workflow service for executing migrations (required for WORKFLOW executor)
             context: Infrahub context (required for WORKFLOW executor)
             migration_executor: How to execute migrations (DIRECT or WORKFLOW)
@@ -74,7 +78,8 @@ class SchemaUpdateCoordinator:
         self.db = db
         self.branch = branch
         self.schema_manager = schema_manager
-        self.origin_schema = origin_schema
+        self.migration_baseline_schema = migration_baseline_schema
+        self.rollback_schema = rollback_schema
         self.workflow = workflow
         self.context = context
         self.migration_executor = migration_executor
@@ -279,7 +284,7 @@ class SchemaUpdateCoordinator:
         apply_migration_data = SchemaApplyMigrationData(
             branch=self.branch,
             new_schema=candidate_schema,
-            previous_schema=self.origin_schema,
+            previous_schema=self.migration_baseline_schema,
             migrations=migrations,
             at=at,
             user_id=user_id,
@@ -333,8 +338,8 @@ class SchemaUpdateCoordinator:
         await rollback_query.execute(db=self.db)
 
     async def _restore_registry_state(self) -> None:
-        """Restore original schema in registry and reset branch hash."""
-        self.schema_manager.set_schema_branch(name=self.branch.name, schema=self.origin_schema)
+        """Restore the branch's pre-update schema in the registry and reset its hash."""
+        self.schema_manager.set_schema_branch(name=self.branch.name, schema=self.rollback_schema)
         self.branch.update_schema_hash()
         await self.branch.save(db=self.db)
 

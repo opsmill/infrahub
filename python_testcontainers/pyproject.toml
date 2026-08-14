@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-testcontainers"
-version = "1.10.6"
+version = "1.10.7"
 requires-python = ">=3.10"
 
 description = "Testcontainers instance for Infrahub to easily build integration tests"
@@ -80,6 +80,12 @@ ignore = [
     "SLF001",   # Private member accessed: `_session` (pytest internal API, no public alternative)
     "TRY002",   # Create your own exception
     "TRY003",   # Avoid specifying long messages outside the exception class
+]
+
+"tests/**.py" = [
+    # Test doubles override base methods, so the signature is dictated by the superclass
+    "ARG002",   # Unused method argument
+    "PLR6301",  # Method could be a function, class method, or static method
 ]
 
 

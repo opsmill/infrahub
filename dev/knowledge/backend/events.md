@@ -33,10 +33,32 @@ an oversized event is dropped entirely, never recorded. Node mutation events
 build their related resources in priority order — node-scoped entries first
 (attribute updates, parent, the node's own related-node entry), then
 relationship updates (which automation triggers match on), then per-peer
-related-node entries — and truncate at that maximum with a warning log. A node
+related-node entries — and truncate with a warning log. A node
 with a very large cardinality-many relationship therefore keeps its event, but
 not every peer is represented in `related`; the full peer list remains
 available in the event payload's changelog.
+
+Events truncate to `get_related_resource_budget()`, which sits below that
+maximum rather than on it. Prefect's events worker appends run-context
+resources — flow run, task run, flow, deployment, work queue, work pool, and
+one per flow-run tag — after the event has been handed over, extending the list
+in place in a way that skips the client-side validation. An event that leaves
+Infrahub on the maximum therefore arrives above it, and the Prefect API answers
+by closing the `/events/in` websocket rather than by dropping the single event.
+The reserved headroom keeps the enlarged event acceptable.
+
+Group mutation events (`member_added` / `member_removed`) follow the same rule.
+Each member and each ancestor is a single related resource carrying its own
+role (`infrahub.group.member` / `infrahub.group.ancestor`) rather than a
+role-plus-duplicate pair, so the list grows by one per member instead of two.
+The fixed group-scoped entries come first and members/ancestors come last, so
+the same ordered truncation keeps the event within the budget. Group
+automations match the primary group resource and read the changed members from
+the payload, so truncating overflow members only trims the event-query display;
+the event is always recorded and automations always fire. The event query
+API treats members and ancestors as related nodes (matching all three roles and
+deduplicating by id), which keeps its output stable across the consolidated
+format and any older events still carrying the duplicate related-node role.
 
 ## Event Types
 

@@ -14,7 +14,6 @@ from infrahub.core.node.standard import StandardNode, StandardNodeOrdering
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.branch import (
     BranchNodeGetListQuery,
-    DeleteBranchRelationshipsQuery,
     RebaseBranchQuery,
 )
 from infrahub.core.registry import registry
@@ -315,17 +314,16 @@ class Branch(StandardNode):
         return await super().create(db=db, user_id=user_id)
 
     async def delete(self, db: InfrahubDatabase) -> None:
-        if self.is_default:
-            raise ValidationError(f"Unable to delete {self.name} it is the default branch.")
-        if self.is_global:
-            raise ValidationError(f"Unable to delete {self.name} this is an internal branch.")
+        """Not supported on a Branch.
 
-        self.status = BranchStatus.DELETING
-        await self.save(db=db)
+        The inherited implementation would drop the Branch vertex and silently leave every edge and
+        vertex belonging to the branch behind, so it is refused rather than overridden.
 
-        query = await DeleteBranchRelationshipsQuery.init(db=db, branch_name=self.name)
-        await query.execute(db=db)
-        await super().delete(db=db)
+        Raises:
+            NotImplementedError: Always.
+
+        """
+        raise NotImplementedError("Unable to delete a Branch directly, use BranchDataDeleter instead.")
 
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Timestamp] = None, include_outside_parentheses: bool = False

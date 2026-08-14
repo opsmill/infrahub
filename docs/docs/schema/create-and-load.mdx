@@ -89,6 +89,17 @@ schemas:
   </TabItem>
 </Tabs>
 
+## Inspect the loaded schema
+
+Once a schema is loaded, list the kinds available in your instance and inspect any one of them from the command line:
+
+```shell
+infrahubctl schema list [--filter <name>] [--branch <branch_name>]
+infrahubctl schema show <kind> [--branch <branch_name>]
+```
+
+`schema show` prints the attributes and relationships of a kind, which is useful when querying or creating objects with [`infrahubctl`](../objects/manage-from-cli).
+
 ## Troubleshooting
 
 ### Input should be a valid string (string_type)
@@ -145,4 +156,4 @@ This issue commonly appears in:
 - [Schema extensions](./extensions) — Add attributes and relationships to existing nodes
 - [Schema migration](./migration) — How Infrahub handles schema updates and data migrations
 - [Schema validation](../reference/schema-validation) — Editor validation for schema YAML files
-- [Build your first schema](../academy/tutorials/build-your-first-schema) — Step-by-step tutorial for creating a schema from scratch
+- [Build your first schema](../learn/tutorials/build-your-first-schema) — Step-by-step tutorial for creating a schema from scratch

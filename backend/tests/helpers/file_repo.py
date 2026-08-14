@@ -29,6 +29,15 @@ class FileRepo:
             return self._repo
         raise InitializationError
 
+    def _accept_pushes_to_current_branch(self) -> None:
+        """Let this non-bare repo act as a push target, mirroring a real remote.
+
+        A non-bare repo rejects pushes to its checked-out branch by default; a hosted remote does
+        not, so tests that push the default branch back would otherwise exercise a rejection that
+        never happens in production.
+        """
+        self.repo.git.config("receive.denyCurrentBranch", "ignore")
+
     def _initial_directory(self, repo_base: Path) -> str:
         initial_candidates = list(repo_base.glob("initial__*"))
         assert len(initial_candidates) == 1
@@ -60,6 +69,7 @@ class FileRepo:
         initial_directory = self._initial_directory(repo_base=repo_base)
         shutil.copytree(repo_base / initial_directory, self.sources_directory / self.name)
         self._repo = Repo.init(self.sources_directory / self.name, initial_branch=self._initial_branch)
+        self._accept_pushes_to_current_branch()
         for untracked in self.repo.untracked_files:
             self.repo.index.add(untracked)
         self.repo.index.commit("First commit")
@@ -129,6 +139,7 @@ class MultipleStagesFileRepo(FileRepo):
 
         shutil.copytree(repo_base / initial_directory, self.sources_directory / self.name)
         self._repo = Repo.init(self.sources_directory / self.name, initial_branch=self._initial_branch)
+        self._accept_pushes_to_current_branch()
 
         self._setup_initial_branch(directory=repo_base / initial_directory)
         self._apply_pull_requests(repo_base=repo_base)

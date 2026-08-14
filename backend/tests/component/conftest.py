@@ -69,6 +69,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_workflow
+from tests.adapters.workflow import WorkflowRecorder
 from tests.conftest import TestHelper
 from tests.helpers.constants import (
     PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS,
@@ -2961,6 +2962,17 @@ def workflow_local(dependency_provider: Provider) -> Generator[WorkflowLocalExec
     config.OVERRIDE.workflow = workflow
     with dependency_provider.scope(build_workflow, lambda: workflow):
         yield workflow
+    config.OVERRIDE.workflow = original
+
+
+@pytest.fixture
+def workflow_recorder(dependency_provider: Provider) -> Generator[WorkflowRecorder, None, None]:
+    """Record workflow submissions instead of running them."""
+    original = config.OVERRIDE.workflow
+    recorder = WorkflowRecorder()
+    config.OVERRIDE.workflow = recorder
+    with dependency_provider.scope(build_workflow, lambda: recorder):
+        yield recorder
     config.OVERRIDE.workflow = original
 
 
