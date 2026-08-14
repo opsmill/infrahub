@@ -93,3 +93,53 @@ the next attempt does not repeat them:
 
 4. **Sweep again afterwards.** An interrupted run leaves its stack up, which is what causes
    failure 1 on the next attempt.
+
+## Two live runs, and what they showed (T061 still open)
+
+Both were interrupted before the harness printed, so neither is a recorded measurement. Both were
+read directly off the running stack instead, which is where the findings below come from.
+
+### Run A — the mechanism works
+
+Queried after the merge completed:
+
+| Query | Result |
+|---|---|
+| `computed_attribute_process_transform`, all | 21 |
+| same, filtered on `branch: "main"` | 0 |
+| `TestingTShirt.pitch` on main | refreshed, post-merge values |
+
+21 runs is 20 live ones from creating 20 owners plus **one** coalesced run for the merge, where the
+per-node path would have produced 20. That is the collapse this feature is for, observed end to end.
+
+The zero is what led to the branch-tag fix: a tag added from inside a run never reaches the task
+filter, so the coalesced submissions were invisible to every branch-scoped query. The harness waits
+on exactly that count, which is why it hung rather than finished.
+
+### Run B — a different failure, still unexplained
+
+Same scale, image rebuilt with the tag fix:
+
+| Signal | Value |
+|---|---|
+| `computed_attribute_process_transform` runs | 0 |
+| `TestingTShirt.pitch` | null, before and after the merge |
+| Coalesced submission | `trigger_update_python_computed_attributes`, i.e. **widened** |
+| `query_transform_targets` runs | 20 |
+
+Three things to explain, none of them yet explained:
+
+1. **The initial live computation never fired.** Pitch was null before any merge, so the owner-axis
+   automation did not run when the owners were created. Run A did compute it. The likely candidate
+   is a race between creating the owners and `computed_attribute_setup_python` registering the
+   automations, which is not something this feature introduced, but it invalidates the run.
+2. **The pass widened.** The read-field index came back without an entry for the pair, and the
+   transform does exist in the database. Worth tracing `DatabaseReadFieldIndex.for_branch` against
+   a live stack before trusting the narrowing at scale.
+3. **The widened flow produced nothing.** `trigger_update_python_computed_attributes` completed and
+   submitted no `process_transform` at all, though 20 owners exist on the branch it was given.
+
+Do not read run B as evidence the tag fix broke something: it touches only the submission path, and
+none of the three symptoms sit on it. Do not read run A as a measurement either. The next session
+should reproduce run B's shape first, since a widened pass that dispatches nothing is the one
+outcome that would be worse than the behaviour being replaced.
