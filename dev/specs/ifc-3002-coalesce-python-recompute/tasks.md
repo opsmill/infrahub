@@ -163,7 +163,7 @@
 - [x] T057 [US4] Log the selected attribute-and-kind pairs and their node counts at info level, in `backend/infrahub/core/merge/python_target_resolution.py`
 - [x] T058 [US4] Log every widening with the affected pair and the reason at debug level, in the same file
 - [x] T059 [P] [US4] Assert on both log records. Done as a unit test in `backend/tests/unit/core/merge/test_python_target_resolution.py` rather than a component one: `structlog.testing.capture_logs` reads the records directly, so the database tier buys nothing
-- [ ] T060 [US4] Integration-test that turning the switch off restores today's per-node behaviour exactly, in `backend/tests/integration_docker/test_merge_recompute.py`
+- [x] T060 [US4] Integration-test that turning the switch off restores today's per-node behaviour exactly, in `backend/tests/integration_docker/test_merge_recompute.py`. Verified at 1000 nodes on the same machine as the switch-on runs: the per-node fan-out returns in full (2000 reader-resolution runs, 2655 transform runs, against 4 submissions). Counts read off the live stack in `baseline.md`; the harness run was interrupted before it printed
 
 **Checkpoint**: all four stories complete.
 

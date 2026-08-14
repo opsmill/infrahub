@@ -266,3 +266,23 @@ This was confirmed, and it did not hold. The resolution step does still run unde
 mechanism is real even though the cost was not measurable here; if the critical path ever does become
 a problem, moving that step off the locked path is the fix, since the pass needs the change set and
 not the lock.
+
+
+## The switch off, same machine, same session (T060)
+
+Run interrupted before the harness printed, so these are counts read off the live stack. The worker
+was confirmed to hold `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE=false` before reading them.
+
+| Flow, whole run at 1000 changed nodes | Switch on | Switch off |
+|---|---|---|
+| `computed_attribute_process_transform` | 4 for the merge recompute | 2655 |
+| `query-computed-attribute-transform-targets` | 0 | 2000 |
+| Owners with a computed value | 1000 | 1000 |
+
+Turning the switch off brings the per-node fan-out straight back: two thousand reader-resolution
+runs and some two and a half thousand transform runs, against four submissions with it on. The
+owners are refreshed either way, which is the point; the difference is entirely in how much work it
+takes to get there.
+
+This is FR-021 and US1 AS3 observed rather than asserted. The rollback an operator would reach for
+is a setting, it reaches the containers, and it restores the previous behaviour.
