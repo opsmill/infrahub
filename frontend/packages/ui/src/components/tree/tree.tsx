@@ -53,7 +53,7 @@ export function TreeItem({ className, ...props }: TreeItemProps) {
       className={composeAriaClassName(className, (resolvedClassName) =>
         cn(
           focusVisibleStyle,
-          "cursor-pointer rounded-md border border-transparent text-sm mix-blend-multiply hover:bg-neutral-100",
+          "cursor-pointer rounded-md border border-transparent text-sm text-subtle hover:bg-highlight hover:text-highlight-foreground",
           resolvedClassName,
         ),
       )}

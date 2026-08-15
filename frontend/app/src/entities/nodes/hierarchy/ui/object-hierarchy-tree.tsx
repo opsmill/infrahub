@@ -126,7 +126,10 @@ export function ObjectTreeItem({
       id={node.id}
       textValue={nodeLabel}
       href={getObjectDetailsUrl(node.__typename, node.id)}
-      className={classNames(currentNodeId === node.id && "bg-neutral-100")}
+      className={classNames(
+        currentNodeId === node.id &&
+          "bg-selected text-selected-foreground shadow-selected hover:bg-selected-highlight"
+      )}
     >
       <TreeItemContent onExpandedChange={() => setExpanded((expanded) => !expanded)}>
         <Icon icon={getSchemaIcon(nodeSchema)} className="mr-2" />
