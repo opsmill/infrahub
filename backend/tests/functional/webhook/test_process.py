@@ -10,10 +10,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.webhook.models import EventContext
 from infrahub.webhook.tasks import convert_node_to_webhook, webhook_process
 from infrahub.workers.dependencies import build_http_service
-<<<<<<< HEAD
 from infrahub.workflows.constants import WorkflowTag
-=======
->>>>>>> origin/stable
 from tests.adapters.http import MemoryHTTP
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -143,12 +140,9 @@ class TestWebhookProcess(TestInfrahubApp):
         immediate_webhook_retries: None,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-<<<<<<< HEAD
         # One representative case is enough here: per-class classification is covered by the unit tests;
         # this asserts the classifier is wired into the send flow and the run ends in a clean failed
         # state carrying the reason and remediation, without a stacktrace.
-=======
->>>>>>> origin/stable
         http = MemoryHTTP()
         http.add_post_response(
             url=WEBHOOK_TARGET_URL,
