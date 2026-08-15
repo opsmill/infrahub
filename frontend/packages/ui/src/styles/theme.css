@@ -29,8 +29,6 @@
   --selected: var(--highlight);
   --selected-foreground: var(--foreground);
   --selected-shadow: 0 0 #0000;
-
-  /* Focused/hovered selected item: the highlight layered over the selected surface */
   --selected-highlight: var(--highlight), var(--selected);
 
   --card: linear-gradient(to bottom, var(--color-stone-50) 0%, var(--color-white) 10%);

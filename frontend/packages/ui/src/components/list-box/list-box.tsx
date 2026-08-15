@@ -87,7 +87,28 @@ const listBoxItemStyles = tv({
     isFocused: {
       true: "bg-highlight text-highlight-foreground",
     },
+    isSelected: {
+      true: "",
+    },
+    selectionIndicator: {
+      checkmark: "",
+      highlight: "",
+      none: "",
+    },
   },
+  compoundVariants: [
+    {
+      isSelected: true,
+      selectionIndicator: "highlight",
+      class: "bg-selected text-selected-foreground shadow-selected",
+    },
+    {
+      isFocused: true,
+      isSelected: true,
+      selectionIndicator: "highlight",
+      class: "bg-selected-highlight",
+    },
+  ],
 });
 
 export interface ListBoxItemProps<T> extends AriaListBoxItemProps<T> {
@@ -107,14 +128,7 @@ export function ListBoxItem<T extends object>({
       ref={ref}
       textValue={textValue || (typeof children === "string" ? children : undefined)}
       className={composeAriaClassName(className, ({ isFocused, isSelected }) =>
-        cn(
-          listBoxItemStyles({ isFocused }),
-          isSelected &&
-            selectionIndicator === "highlight" && [
-              "text-selected-foreground shadow-selected",
-              isFocused ? "bg-selected-highlight" : "bg-selected",
-            ],
-        ),
+        listBoxItemStyles({ isFocused, isSelected, selectionIndicator }),
       )}
       {...props}
     >
