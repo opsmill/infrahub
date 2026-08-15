@@ -6,30 +6,23 @@ import viteConfig from "./vite.config";
 export default mergeConfig(
   viteConfig,
   defineConfig({
-    // Deps discovered mid-run trigger a re-optimization reload that resets vi.mock and
-    // flakes the browser tests, so anything not seen by Vite's initial scan must be
-    // pre-bundled here.
+    // A dep discovered mid-run makes Vite reload the page, dropping the vi.mock() registrations
+    // made before it. `entries` widens the initial scan, which browser mode otherwise seeds with
+    // the test files alone, missing anything reachable only from a page no test imports.
+    // `include` covers the rest; each entry resolves from frontend/app, so a dep owned by a
+    // workspace package needs Vite's nested `<owner> > <dep>` form. A bare specifier that does
+    // not resolve is dropped with a warning and protects nothing.
     //
-    // Every entry is resolved from this config's root (frontend/app). An entry that does
-    // not resolve is dropped with a "Failed to resolve dependency: <x>, present in client
-    // 'optimizeDeps.include'" warning and protects nothing, so a dep owned by a workspace
-    // package rather than by the app must use Vite's nested `<owner> > <dep>` form —
-    // pnpm's isolated node_modules gives each workspace member its own copy, and versions
-    // can differ between members (hence two entries for tailwind-variants).
+    // Verifying a change here: dev/guides/frontend/writing-component-tests.md
     optimizeDeps: {
+      entries: ["index.html", "src/**/*.{ts,tsx}"],
       include: [
-        // Deps of @infrahub/ui, @infrahub/graph and infrahub-schema-visualizer, workspace
-        // packages consumed as SOURCE (live symlinks), so Vite treats their imports as
-        // app source but resolves them from the owning package.
         "@infrahub/ui > @radix-ui/react-scroll-area",
         "@infrahub/ui > react-resizable-panels",
         "@infrahub/ui > tailwind-variants",
         "@infrahub/graph > tailwind-variants",
         "infrahub-schema-visualizer > @dagrejs/dagre",
         "infrahub-schema-visualizer > html-to-image",
-        // The app's own deps that no test file reaches statically (lazily imported, or
-        // only used by pages that are not under test), which the initial scan cannot see
-        // and CI's cold cache discovers mid-run.
         "@date-fns/tz",
         "react-aria-components",
         "lucide-react",

@@ -360,12 +360,25 @@ failures for the fingerprint — `dependencies optimized: …` followed by
 reloaded a test`. **This is not your breakage**; re-run the job on the same SHA
 to confirm.
 
-The fix is to pre-bundle the named dependencies in `optimizeDeps.include` in
-`frontend/app/vitest.config.ts`. Read the comment above that list first: every
-entry resolves from `frontend/app`, so a dependency owned by a workspace package
-(`@infrahub/ui`, `@infrahub/graph`, `infrahub-schema-visualizer`) needs the
-nested `"<owner> > <dep>"` form. A bare specifier that does not resolve is
-dropped with a warning and protects nothing.
+`frontend/app/vitest.config.ts` guards against this in two layers, and the
+comment above `optimizeDeps` there is the authority — read it before changing
+anything:
+
+- `optimizeDeps.entries` widens Vite's initial scan to all of `src`. Browser
+  mode otherwise seeds the scan with the test files only, so a dependency is
+  missed whenever no test imports its module. This layer covers anything
+  statically reachable, so a new component pulling in a new dependency needs no
+  config change at all.
+- `optimizeDeps.include` pre-bundles the remainder: imports whose specifier is
+  not a literal. Every entry here resolves from `frontend/app`, so a dependency
+  owned by a workspace package (`@infrahub/ui`, `@infrahub/graph`,
+  `infrahub-schema-visualizer`) needs the nested `"<owner> > <dep>"` form. A
+  bare specifier that does not resolve is dropped with a `Failed to resolve
+  dependency` warning and protects nothing.
+
+If a reload still happens, add the dependencies named in the log line to
+`include` — but check first whether widening the scan is the better answer,
+since that scales and the list does not.
 
 Reproduce and verify locally with CI's own command and a cold optimizer cache —
 plain `vitest run` does not reload, which makes this look CI-only:
