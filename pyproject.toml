@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.10.7"
+version = "1.10.8"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -606,7 +606,6 @@ allow-dunder-method-names = [
     "PERF403",  # Use a dictionary comprehension instead of a for-loop
     "PGH003",   # Use specific rule codes when ignoring type issues
     "PGH004",   # Use specific rule codes when using `noqa`
-    "PLC0415",  # `import` should be at the top-level of a file
     "PLR0904",  # Too many public methods
     "PLR0912",  # Too many branches
     "PLR0913",  # Too many arguments in function definition
@@ -891,7 +890,6 @@ allow-dunder-method-names = [
     "INP001",   # File is part of an implicit namespace package
     "N806",     # Variable in function should be lowercase
     "PGH003",   # Use specific rule codes when ignoring type issues
-    "PLC0415",  # `import` should be at the top-level of a file
     "PLC2701",  # Private name import from external module
     "PLR0904",  # Too many public methods
     "PLR0913",  # Too many arguments in function definition
@@ -921,7 +919,6 @@ allow-dunder-method-names = [
     "FIX",      # flake8-fixme
     "INP001",   # File is part of an implicit namespace package
     "PERF401",  # Use a list comprehension to create a transformed list
-    "PLC0415",  # `import` should be at the top-level of a file
     "PLR0904",  # Too many public methods
     "PLR0913",  # Too many arguments in function definition
     "PLR0914",  # Too many local variables
@@ -998,7 +995,6 @@ allow-dunder-method-names = [
     "PERF401",  # Use a list comprehension to create a transformed list
     "PGH003",   # Use specific rule codes when ignoring type issues
     "PGH004",   # Use specific rule codes when using `noqa`
-    "PLC0415",  # `import` should be at the top-level of a file
     "PLC2701",  # Private name import from external module
     "PLR0904",  # Too many public methods
     "PLR0912",  # Too many branches
