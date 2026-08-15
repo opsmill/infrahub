@@ -13,13 +13,13 @@ The package is published locally via the workspace and consumed in `frontend/app
 | Component | Exports | Notes |
 |---|---|---|
 | `Breadcrumbs` | `Breadcrumbs`, `Breadcrumb`, `BreadcrumbItem`, `BreadcrumbItemLoading`, `BreadcrumbItemError`, `BreadcrumbsProps`, `BreadcrumbProps`, `BreadcrumbItemProps` | Trail of links/buttons with `/` separator, plus loading and error item variants. |
-| `Button` | `Button`, `LinkButton`, `buttonVariants`, `ButtonProps`, `LinkButtonProps` | Migrated in #9065. Replaces ad-hoc `<button>` with Tailwind classes. |
-| `Card` | `Card`, `CardHeader`, `CardContent`, `CardProps`, `CardHeaderProps`, `CardContentProps` | Migrated in #9048. Replaces hand-rolled `<section className="rounded-md border bg-white p-4 shadow-lg">` patterns. |
+| `Button` | `Button`, `LinkButton`, `buttonVariants`, `ButtonProps`, `LinkButtonProps` | Replaces ad-hoc `<button>` with Tailwind classes. |
+| `Card` | `Card`, `CardHeader`, `CardContent`, `CardProps`, `CardHeaderProps`, `CardContentProps` | Replaces hand-rolled `<section className="rounded-md border bg-white p-4 shadow-lg">` patterns. |
 | `CheckboxCard` | `CheckboxCard`, `CheckboxCardProps` | Card-style checkbox primitive for selectable card choices. |
-| `Modal` | `Modal`, `ModalOverlay`, `ModalProps`, `ModalOverlayProps` | Migrated in #9088. Use instead of HeadlessUI Dialog for new modals. |
+| `Modal` | `Modal`, `ModalOverlay`, `ModalProps`, `ModalOverlayProps` | Use instead of HeadlessUI Dialog for new modals. |
 | `Spinner` | `Spinner`, `SpinnerProps` | Loading indicator. |
-| `Meter` | `Meter`, `MeterProps` | Migrated in #9100. Replaces ad-hoc progress-bar charts. |
-| `ScrollArea` | `ScrollArea`, `ScrollAreaProps` | Migrated in #9101. Replaces `shared/components/ui/scroll-area`. |
+| `Meter` | `Meter`, `MeterProps` | Replaces ad-hoc progress-bar charts. |
+| `ScrollArea` | `ScrollArea`, `ScrollAreaProps` | Replaces `shared/components/ui/scroll-area`. |
 
 Source of truth: `frontend/packages/ui/src/index.ts`.
 
@@ -44,7 +44,7 @@ When you touch one of these and notice it could be a generic primitive, consider
 ## Migration policy
 
 - Net-new generic primitives (no Infrahub-specific data dependencies) should land in `@infrahub/ui` from day one.
-- Existing primitives in `shared/components/ui/` are migrated incrementally — see PRs #9048 (Card), #9065 (Button), #9088 (Modal) as references.
+- Existing primitives in `shared/components/ui/` are migrated incrementally — Card, Button, and Modal are migrated precedents.
 - Migration PRs include: the component, its Storybook story, focus-visible styles, and call-site updates across the app.
 
 ## Storybook
