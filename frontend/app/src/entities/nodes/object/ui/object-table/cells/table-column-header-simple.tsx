@@ -20,7 +20,7 @@ export function TableColumnHeaderSimple({ columnSchema, className }: TableColumn
     : (columnSchema.label ?? columnSchema.name);
 
   return (
-    <div className={classNames(cellsStyle, cellHeaderStyle, "hover:bg-white", className)}>
+    <div className={classNames(cellsStyle, cellHeaderStyle, className)}>
       <FieldSchemaIcon fieldSchema={columnSchema} />
       <span className="mr-2 truncate">{label}</span>
     </div>

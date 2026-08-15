@@ -1,15 +1,15 @@
 import { Popover as AriaPopover, Button, Menu, MenuItem, MenuTrigger, Sheet } from "@infrahub/ui";
-import { PencilLineIcon } from "lucide-react";
+import { EllipsisVerticalIcon, PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Icon } from "@/shared/components/display/icon";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { TableCell } from "@/shared/components/table/table-cell";
 import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/popover";
 
 import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
+import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { canDissociateRelationship } from "@/entities/nodes/relationships/domain/rules/can-dissociate-relationship";
 import { DissociateRelationshipsModal } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
@@ -57,8 +57,7 @@ export function RelationshipActionsCell({
 
   return (
     <Popover open={showPropertiesModal} onOpenChange={setShowPropertiesModal}>
-      <TableCell className="sticky right-0 -ml-px size-10 items-center justify-center border-l bg-white">
-        <div className="pointer-events-none absolute top-0 bottom-0 -left-4 w-4 bg-linear-to-r from-transparent to-gray-300/30" />
+      <StickyRightCell>
         <MenuTrigger>
           <PopoverAnchor>
             <Button
@@ -67,7 +66,7 @@ export function RelationshipActionsCell({
               variant="ghost"
               data-testid={`actions-cell-${relationshipLabel}`}
             >
-              <Icon icon={"mdi:dots-vertical"} className="text-subtle-muted" />
+              <EllipsisVerticalIcon className="text-foreground-muted" />
             </Button>
           </PopoverAnchor>
 
@@ -100,7 +99,7 @@ export function RelationshipActionsCell({
             </Menu>
           </AriaPopover>
         </MenuTrigger>
-      </TableCell>
+      </StickyRightCell>
 
       <PopoverContent>
         <RelationshipProperties

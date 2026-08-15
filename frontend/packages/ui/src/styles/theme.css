@@ -14,6 +14,8 @@
   --ring: var(--color-cyan-700);
   --ring-halo: --alpha(var(--ring) / 25%);
 
+  --accent: #087895;
+
   --input: var(--color-white);
   --input-border: var(--border);
   --input-shadow: 0 2px 4px rgb(0 0 0 / 0.04);
@@ -49,6 +51,10 @@
   --sheet-frame: --alpha(var(--color-white) / 25%);
   --sheet-frame-border: var(--border);
   --sheet-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  --table-cell: var(--color-stone-50);
+  --table-cell-pinned: var(--color-white);
+  --table-frame: none;
 }
 
 .dark {
@@ -63,6 +69,8 @@
 
   --ring: var(--color-cyan-700);
   --ring-halo: --alpha(var(--ring) / 25%);
+
+  --accent: #a7d9e6;
 
   --input: var(--color-stone-900);
   --input-border: var(--border-strong);
@@ -101,6 +109,13 @@
   --sheet-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.12), 0 28px 70px rgb(0 0 0 / 0.75),
     0 6px 20px rgb(0 0 0 / 0.5);
+
+  --table-cell: rgb(255 255 255 / 0.02);
+  --table-cell-pinned: rgb(18 18 18 / 0.94);
+  --table-frame:
+    radial-gradient(85% 60% at 10% 0%, rgb(255 244 230 / 0.11), transparent 55%),
+    linear-gradient(0deg, rgb(255 244 230 / 0.09), transparent 160px),
+    linear-gradient(var(--color-black), var(--color-black));
 }
 
 @theme inline {
@@ -115,6 +130,8 @@
 
   --color-ring: var(--ring);
   --color-ring-halo: var(--ring-halo);
+
+  --color-accent: var(--accent);
 
   --color-input: var(--input);
   --color-input-border: var(--input-border);
@@ -146,6 +163,10 @@
   --color-sheet-frame: var(--sheet-frame);
   --color-sheet-frame-border: var(--sheet-frame-border);
   --shadow-sheet: var(--sheet-shadow);
+
+  --color-table-cell: var(--table-cell);
+  --color-table-cell-pinned: var(--table-cell-pinned);
+  --background-image-table-frame: var(--table-frame);
 }
 
 @layer base {
@@ -158,7 +179,6 @@
   }
 
   body {
-    background: var(--background);
     color: var(--foreground);
   }
 

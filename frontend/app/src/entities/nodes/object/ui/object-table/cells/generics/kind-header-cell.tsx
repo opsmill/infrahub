@@ -13,7 +13,7 @@ export interface KindHeaderCellProps extends React.HTMLAttributes<HTMLDivElement
 export function KindHeaderCell({ schema, className, ...props }: KindHeaderCellProps) {
   return (
     <div
-      className={classNames(cellsStyle, cellHeaderStyle, "hover:bg-white", className)}
+      className={classNames(cellsStyle, cellHeaderStyle, className)}
       data-testid="kind-header-cell"
       {...props}
     >

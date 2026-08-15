@@ -21,7 +21,7 @@ export function ModalOverlay({ className, ...props }: ModalOverlayProps) {
     <AriaModalOverlay
       isDismissable
       className={cn(
-        "absolute inset-0 z-50 overflow-hidden bg-gray-600/25",
+        "absolute inset-0 z-50 overflow-hidden bg-black/25",
         "data-entering:animate-in data-entering:duration-200 data-entering:fade-in-0",
         "data-exiting:animate-out data-exiting:duration-150 data-exiting:fade-out-0",
         className,

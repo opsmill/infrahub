@@ -1,9 +1,8 @@
 import { Button, Menu, MenuItem, MenuTrigger, Popover, Sheet } from "@infrahub/ui";
-import { PencilLineIcon, Trash2Icon } from "lucide-react";
+import { EllipsisVerticalIcon, Maximize2Icon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Icon } from "@/shared/components/display/icon";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
@@ -50,13 +49,13 @@ export function ObjectActionsCell({
             variant="ghost"
             data-testid={`actions-cell-${objectLabel}`}
           >
-            <Icon icon="mdi:dots-vertical" className="text-subtle-muted" />
+            <EllipsisVerticalIcon className="text-foreground-muted" />
           </Button>
 
           <Popover placement="bottom end">
             <Menu aria-label="Object actions">
               <MenuItem href={getObjectDetailsUrl(objectKind, objectId)}>
-                <Icon icon="mdi:arrow-expand" />
+                <Maximize2Icon />
                 <span>View details</span>
               </MenuItem>
 
