@@ -110,8 +110,10 @@ export function ListBoxItem<T extends object>({
         cn(
           listBoxItemStyles({ isFocused }),
           isSelected &&
-            selectionIndicator === "highlight" &&
-            "bg-selected text-selected-foreground shadow-selected",
+            selectionIndicator === "highlight" && [
+              "text-selected-foreground shadow-selected",
+              isFocused ? "bg-selected-highlight" : "bg-selected",
+            ],
         ),
       )}
       {...props}
