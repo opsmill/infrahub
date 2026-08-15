@@ -180,7 +180,7 @@ The outer `MATCH` returns one row per matching edge, and the graph keeps one `HA
 
 ### Query performance
 
-`AttributeValueIndexed` values are stored natively typed (a number attribute's `av.value` is an integer). Compare `av.value` directly in `WHERE` predicates — wrapping it in a function (`toInteger(av.value) >= $x`) makes the predicate non-sargable and forces a scan of the kind instead of an index range seek.
+`AttributeValueIndexed` values are stored natively typed (a number attribute's `av.value` is an integer). Compare `av.value` directly in `WHERE` predicates — wrapping the property in a function (`toInteger(av.value) >= $x`) prevents Neo4j from using the index, so the query scans every row of the kind instead of seeking the matching range.
 
 ### Cypher Variable Shadowing (Neo4j 5+)
 
