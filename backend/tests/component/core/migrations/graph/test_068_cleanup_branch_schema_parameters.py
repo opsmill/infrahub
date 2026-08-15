@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.migrations.graph.m068_cleanup_branch_schema_parameters import (
     ALL_NULL_PARAMETER_VALUES,
@@ -218,8 +219,6 @@ async def test_migration_068_skips_merged_branches(
     schema_data: SchemaManager,
 ) -> None:
     """Migration should skip merged branches even if they have spurious parameters."""
-    from infrahub.core.branch.enums import BranchStatus
-
     node_attrs = _get_node_attr_ids(schema_data, default_branch.name)
     merged_branch = await create_branch(db=db, branch_name="merged-branch")
 
