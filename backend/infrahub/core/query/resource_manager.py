@@ -575,7 +575,7 @@ class NumberPoolGetTaken(Query):
         pool: CoreNumberPool,
         min_value: int | None = None,
         max_value: int | None = None,
-        **kwargs: Any,
+        **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
         self.min_value = min_value
