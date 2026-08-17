@@ -26,21 +26,21 @@ const parseCSV = (csv: string): string[][] => {
   });
 };
 
-const cellStyle = "whitespace-nowrap border px-4 py-3";
+const cellStyle = "whitespace-nowrap border border-stone-600 px-4 py-3";
 
 export function CsvTable({ content }: CsvTableProps) {
   const rows = parseCSV(content);
 
   if (!rows[0]) {
-    return <div className="text-foreground-muted text-sm">No data available</div>;
+    return <div className="text-neutral-400 text-sm">No data available</div>;
   }
 
   const headers = rows[0];
   const dataRows = rows.slice(1);
 
   return (
-    <table className="border-collapse border bg-table-frame text-sm">
-      <thead className="bg-table-cell-pinned">
+    <table className="border-collapse text-sm">
+      <thead className="bg-neutral-900">
         <tr>
           {headers.map((header, index) => (
             <th

@@ -16,7 +16,7 @@ export function ProposedChangeTab({ to, label, count, isCountLoading }: Proposed
       {label}
       {isCountLoading && <Spinner className="mx-1" />}
       {!isCountLoading && count !== undefined && (
-        <Badge className="rounded-full font-medium text-gray-80">{count}</Badge>
+        <Badge className="rounded-full font-medium text-foreground-muted">{count}</Badge>
       )}
     </LinkTab>
   );
