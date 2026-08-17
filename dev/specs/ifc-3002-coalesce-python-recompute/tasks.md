@@ -195,7 +195,7 @@
 - [x] T065 [P] Add a changelog fragment at `changelog/+ifc3002.fixed.md`
 - [x] T066 Run `uv run invoke format`, `uv run invoke lint` and `uv run ruff format --check backend/`. `ruff check` and `ruff format --check` are clean on every tracked file. `invoke format` is deliberately not run repo-wide: it would rewrite the untracked `test_generator_chain_fanout.py`, which belongs to other work in progress
 - [x] T067 Run `uv run invoke backend.generate` and `uv run invoke docs.validate` and confirm no diff. `backend.generate` and `docs.validate` both produce no diff
-- [ ] T068 Run `/pre-ci` before pushing
+- [x] T068 Run `/pre-ci` before pushing. Run on the develop-based branch and green across every check. It caught eight `ty` errors that `mypy` did not, two of them real: a trigger test building Prefect's `EventTrigger` where the code under test takes Infrahub's, and a test double recording a bare id set against a type that said otherwise
 
 ---
 
