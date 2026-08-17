@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub_sdk.utils import compare_lists
 
-from infrahub.core.constants import PathType
+from infrahub.core.constants import MigrationIdentifier, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import MainSchemaTypes, NodeSchema
 from infrahub.exceptions import SchemaNotFoundError
@@ -25,7 +25,7 @@ class NodeInheritFromChecker(ConstraintCheckerInterface):
 
     @property
     def name(self) -> str:
-        return "node.inherit_from.update"
+        return MigrationIdentifier.NODE_INHERIT_FROM_UPDATE.value
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name == self.name

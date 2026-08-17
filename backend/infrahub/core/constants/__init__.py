@@ -6,11 +6,19 @@ from infrahub.core.constants import infrahubkind as InfrahubKind  # noqa: N812
 from infrahub.exceptions import ValidationError
 from infrahub.utils import InfrahubNumberEnum, InfrahubStringEnum
 
-from .schema import FlagProperty, NodeProperty, SchemaElementPathType, UpdateSupport, UpdateValidationErrorType
+from .schema import (
+    FlagProperty,
+    MigrationIdentifier,
+    NodeProperty,
+    SchemaElementPathType,
+    UpdateSupport,
+    UpdateValidationErrorType,
+)
 
 __all__ = [
     "FlagProperty",
     "InfrahubKind",
+    "MigrationIdentifier",
     "NodeProperty",
     "SchemaElementPathType",
     "UpdateSupport",

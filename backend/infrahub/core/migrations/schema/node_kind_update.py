@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
-from infrahub.core.constants import SchemaPathType
+from infrahub.core.constants import MigrationIdentifier, SchemaPathType
 from infrahub.core.path import SchemaPath
 
-from ..enum import MigrationIdentifier
 from ..query import MigrationQuery
 from ..query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
 from ..shared import MigrationInput, MigrationResult, SchemaMigration

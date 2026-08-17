@@ -1,3 +1,4 @@
+from infrahub.core.constants import MigrationIdentifier
 from infrahub.core.validators.attribute.min_max import AttributeNumberChecker
 
 from .attribute.choices import AttributeChoicesChecker
@@ -43,7 +44,7 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
     "relationship.min_count.update": RelationshipCountChecker,
     "relationship.max_count.update": RelationshipCountChecker,
     "relationship.common_parent.update": RelationshipPeerParentChecker,
-    "node.inherit_from.update": NodeInheritFromChecker,
+    MigrationIdentifier.NODE_INHERIT_FROM_UPDATE.value: NodeInheritFromChecker,
     "node.uniqueness_constraints.update": UniquenessChecker,
     "node.parent.update": NodeHierarchyChecker,
     "node.children.update": NodeHierarchyChecker,

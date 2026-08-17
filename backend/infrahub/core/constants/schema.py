@@ -1,4 +1,4 @@
-from enum import Enum, Flag, auto
+from enum import Enum, Flag, StrEnum, auto
 
 PARENT_CHILD_IDENTIFIER = "parent__child"
 RESOURCE_POOL_REL_SUFFIX = "_from_resource_pool"
@@ -26,6 +26,14 @@ class UpdateValidationErrorType(Enum):
     VALIDATOR_FAILED = "validator_failed"
     MIGRATION_NOT_AVAILABLE = "migration_not_available"
     VALIDATOR_NOT_AVAILABLE = "validator_not_available"
+
+
+class MigrationIdentifier(StrEnum):
+    """Names under which schema migrations are registered in the migration map."""
+
+    NODE_INHERIT_FROM_UPDATE = "node.inherit_from.update"
+    NODE_NAME_UPDATE = "node.name.update"
+    NODE_NAMESPACE_UPDATE = "node.namespace.update"
 
 
 class SchemaElementPathType(Flag):

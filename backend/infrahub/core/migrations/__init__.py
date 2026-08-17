@@ -1,4 +1,5 @@
-from .enum import MigrationIdentifier
+from infrahub.core.constants import MigrationIdentifier
+
 from .schema.attribute_kind_update import AttributeKindUpdateMigration
 from .schema.attribute_name_update import AttributeNameUpdateMigration
 from .schema.attribute_supports_generated_schema import AttributeSupportsGeneratedSchemaMigration

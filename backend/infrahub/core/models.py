@@ -10,6 +10,7 @@ from typing_extensions import Self
 
 from infrahub.core.constants import (
     HashableModelState,
+    MigrationIdentifier,
     SchemaPathType,
     UpdateSupport,
     UpdateValidationErrorType,
@@ -198,7 +199,7 @@ class SchemaUpdateValidationResult(BaseModel):
                         path=SchemaPath(  # type: ignore[call-arg]
                             schema_kind=schema_name, path_type=SchemaPathType.NODE
                         ),
-                        migration_name="node.inherit_from.update",
+                        migration_name=MigrationIdentifier.NODE_INHERIT_FROM_UPDATE.value,
                     )
                 )
 
