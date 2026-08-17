@@ -2,6 +2,10 @@
 title: Allocate IPs and prefixes
 ---
 
+## When to allocate from a pool
+
+Allocate from a Resource Pool when something other than a person assigns the address — a provisioning pipeline creating devices, a Generator rendering configuration, a CI/CD job reserving space for a new service. If you are only recording and querying IP data that already exists, the IPAM nodes alone are enough.
+
 ## Use a resource pool
 
 Resource Pool is the recommended way to allocate IP addresses and prefixes. A `CoreIPAddressPool` or `CoreIPPrefixPool` takes your IPAM prefixes as its `resources` and returns the next available address or subnet on request.
