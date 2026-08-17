@@ -15,6 +15,7 @@ import { store } from "@/shared/stores";
 
 import { AuthProvider } from "@/entities/authentication/ui/auth-provider";
 import { ConfigProvider } from "@/entities/config/ui/config-provider";
+import { ThemeProvider } from "@/entities/config/ui/theme-provider";
 import { DatePreferencesProvider } from "@/entities/preferences/ui/date-preferences-provider";
 
 import "@/app/styles/index.css";
@@ -30,9 +31,11 @@ export function App() {
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
               <ConfigProvider>
-                <DatePreferencesProvider>
-                  <RouterProvider router={router} />
-                </DatePreferencesProvider>
+                <ThemeProvider>
+                  <DatePreferencesProvider>
+                    <RouterProvider router={router} />
+                  </DatePreferencesProvider>
+                </ThemeProvider>
               </ConfigProvider>
             </AuthProvider>
             <TanStackQueryDevtools buttonPosition="bottom-left" />

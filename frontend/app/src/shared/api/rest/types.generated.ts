@@ -851,6 +851,12 @@ export interface components {
              */
             graphql_enums: boolean;
             /**
+             * Dark Theme
+             * @description Offer the dark theme in the web interface. Alpha: some surfaces still render incorrectly.
+             * @default false
+             */
+            dark_theme: boolean;
+            /**
              * Value Db Index
              * @deprecated
              * @default false

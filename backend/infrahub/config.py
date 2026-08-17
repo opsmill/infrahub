@@ -990,6 +990,10 @@ class AnalyticsSettings(BaseSettings):
 class ExperimentalFeaturesSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_EXPERIMENTAL_")
     graphql_enums: bool = False
+    dark_theme: bool = Field(
+        default=False,
+        description="Offer the dark theme in the web interface. Alpha: some surfaces still render incorrectly.",
+    )
     value_db_index: bool = Field(
         default=False,
         deprecated="This setting has no effect and will be removed in a future version.",

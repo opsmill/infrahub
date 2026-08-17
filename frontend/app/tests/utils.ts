@@ -4,6 +4,15 @@ export const saveScreenshotForDocs = async (page: Page, filename: string) => {
   if (!process.env.UPDATE_DOCS_SCREENSHOTS) return;
 
   await page.waitForLoadState("networkidle");
+
+  // The published documentation is written against the light theme, while a development stack now
+  // starts dark. Without pinning it here, a regeneration run would quietly turn every screenshot in
+  // the docs dark.
+  await page.evaluate(() => {
+    localStorage.setItem("infrahub.theme.choice", "light");
+    document.documentElement.classList.remove("dark");
+  });
+
   await page.screenshot({
     path: `../../docs/docs/media/${filename}.png`,
     animations: "disabled",
