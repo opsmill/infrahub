@@ -62,6 +62,7 @@ from infrahub.core.schema.attribute_parameters import (
 )
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
+from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
@@ -2579,7 +2580,7 @@ class SchemaBranch:
                 self.set(name=node_name, schema=node_schema)
 
     def _get_profile_kind(self, node_kind: str) -> str:
-        return f"Profile{node_kind}"
+        return get_profile_kind(node_kind=node_kind)
 
     def generate_profile_from_node(self, node: NodeSchema | GenericSchema) -> ProfileSchema:
         core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
@@ -2644,7 +2645,7 @@ class SchemaBranch:
         return profile
 
     def _get_object_template_kind(self, node_kind: str) -> str:
-        return f"Template{node_kind}"
+        return get_object_template_kind(node_kind=node_kind)
 
     def manage_object_template_relationships(self) -> None:
         """Add an `object_template` relationship to all nodes that can be created from object templates.

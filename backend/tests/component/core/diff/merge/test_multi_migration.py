@@ -208,10 +208,12 @@ async def test_diff_and_merge_with_migrated_node_kind_and_migrated_inheritance(
     assert migrated_car_with_metadata.name._get_updated_by() == SYSTEM_USER_ID
 
     # Validate relationship-level metadata on migrated car after merge
-    # Owner relationship was updated by branch-user
+    # The inheritance migration ran after branch-user set the owner, and a kind update re-creates
+    # every edge of the vertices it moves, so the edge that survives was opened by the migration
+    # even though the update it carries is still branch-user's
     owner_rel = await migrated_car_with_metadata.owner.get(db=db)
     assert owner_rel._get_created_at() == merge_at
-    assert owner_rel._get_created_by() == "branch-user"
+    assert owner_rel._get_created_by() == "migration-user-two"
     assert owner_rel._get_updated_at() == merge_at
     assert owner_rel._get_updated_by() == "branch-user"
 
