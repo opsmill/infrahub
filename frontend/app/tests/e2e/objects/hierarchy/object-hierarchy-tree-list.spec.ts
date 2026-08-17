@@ -42,7 +42,7 @@ test.describe("Object hierarchy tree lite - Focused tree view", () => {
       await expect(objectHierarchyTreeLite.getByText("North America")).toBeVisible();
       await expect(
         objectHierarchyTreeLite.getByRole("row", { name: "United States of America" })
-      ).toContainClass("bg-neutral-100");
+      ).toContainClass("bg-selected");
       await expect(objectHierarchyTreeLite.getByText("Canada")).toBeVisible();
     });
 

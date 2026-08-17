@@ -10,7 +10,7 @@ import {
   ListLayout,
   Virtualizer,
 } from "react-aria-components";
-import { cn, tv } from "tailwind-variants";
+import { tv } from "tailwind-variants";
 
 import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 
@@ -47,9 +47,7 @@ export function ListBox<T extends object>({
     <SelectionIndicatorContext.Provider value={selectionIndicator}>
       <AriaListBox
         shouldFocusOnHover
-        className={composeAriaClassName(className, (resolvedClassName) =>
-          cn(listBoxStyles({ virtualized }), resolvedClassName),
-        )}
+        className={composeAriaClassName(className, listBoxStyles({ virtualized }))}
         renderEmptyState={
           emptyMessage === undefined
             ? undefined
