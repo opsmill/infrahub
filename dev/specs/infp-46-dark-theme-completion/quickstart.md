@@ -1,0 +1,169 @@
+# Quickstart: Dark Theme Completion
+
+**Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md)
+
+How to set the work up and how to verify each user story. Written to be usable before any of the
+implementation exists.
+
+## Prerequisites
+
+```bash
+git submodule update --init frontend/packages/schema-visualizer
+```
+
+Required for User Story 7, and it also clears the two phantom `betterer` findings an uninitialised
+submodule produces in a fresh worktree.
+
+```bash
+uv pip install -e python_sdk
+```
+
+Fresh worktrees skip building the editable SDK, and `infrahub_sdk` imports fail without this.
+
+### Branch base
+
+This work assumes PR [#10284](https://github.com/opsmill/infrahub/pull/10284) has landed — it
+supplies the surfaces User Story 5 migrates. Until it merges, rebase onto its branch to see the real
+target state:
+
+```bash
+git fetch origin bab-dark-theme-app && git rebase origin/bab-dark-theme-app
+```
+
+## Verification commands
+
+⚠ `pnpm test` and the other `pnpm` scripts abort before running in this environment. Call the
+binaries directly.
+
+```bash
+cd frontend/app && node_modules/.bin/vitest run
+```
+
+```bash
+cd frontend/app && node_modules/.bin/biome ci .
+```
+
+```bash
+cd frontend/app && node_modules/.bin/tsc --noEmit
+```
+
+```bash
+cd frontend/app && node_modules/.bin/betterer ci
+```
+
+Backend:
+
+```bash
+uv run invoke backend.test-unit
+```
+
+After changing the GraphQL schema or config model, regenerate and commit — CI fails on stale
+generated files:
+
+```bash
+uv run invoke schema.generate-graphqlschema && uv run invoke schema.generate-jsonschema
+```
+
+```bash
+cd frontend/app && pnpm codegen
+```
+
+## Manual verification by user story
+
+Run the stack, then walk each story. The theme class lands on the document element, so the fastest
+sanity check throughout is the browser console:
+
+```js
+document.documentElement.classList.contains("dark")
+```
+
+### US1 — Choose a theme
+
+1. Sign in, open preferences. The theme field shows the deployment default with a source note
+   distinguishing it from a personal choice.
+2. The dark option carries a visible pre-release marker.
+3. Select dark — the interface repaints with no reload.
+4. Reload. It is dark **in the first painted frame**. To check honestly, throttle the network hard
+   (DevTools → Network → Slow 3G) so the preference query is visibly slow: a correct implementation
+   still paints dark immediately, a broken one shows light and flips.
+5. Sign in from a second browser: dark there too.
+6. Select "match system", then switch the operating system's appearance with the page open — the
+   interface follows without a reload.
+7. Set an organisation default, then check it applies to a user with no personal choice and loses to
+   one who has.
+
+### US2 — Non-production default
+
+```bash
+uv run python -c "import importlib.metadata as m; from packaging.version import Version; v=m.version('infrahub-server'); print(v, Version(v).is_prerelease)"
+```
+
+A local checkout reports something like `1.11.0b2.dev134+geb5acb009 True`.
+
+1. As a user with **no** stored theme, load the application: dark.
+2. Confirm `GET /api/config` returns `default_theme: "dark"` and does **not** include a version.
+3. Set the operator override to `light`, restart, reload: light — the override beat the version.
+4. Set a personal preference, then flip the override: the personal preference still wins and its
+   stored value is unchanged.
+
+To check the release path without cutting a release, exercise the resolution function directly with
+`1.11.0` in a unit test rather than trying to fake the deployment's version.
+
+### US3 — GraphQL sandbox
+
+1. In dark, open the GraphQL sandbox: it renders dark.
+2. Change the theme in another tab or via preferences: the sandbox follows.
+3. Confirm GraphiQL's **own** theme picker is absent from its settings dialog — with `forcedTheme`
+   set, GraphiQL hides it, which is the intended single source of truth.
+4. In light, confirm it is unchanged from today.
+
+### US4 — Mermaid diagrams
+
+1. In dark, open content containing a Mermaid diagram. Both the diagram palette and the container
+   behind it are dark — the `bg-white` wrapper is the usual culprit if the diagram looks correct but
+   sits on a bright panel.
+2. Switch the theme with the diagram on screen: it re-renders to match.
+3. ⚠ Watch the console and the React profiler while doing this. The plugin array must be memoised on
+   the resolved theme; if it is rebuilt every render the pipeline re-runs continuously and the
+   diagram flickers or the page pins a CPU core.
+4. Render a deliberately invalid diagram and confirm the error banner is legible in both themes.
+
+### US5 — Token discipline
+
+1. In dark, walk the proposed-changes flow, a diff view, the checks view and path traversal. No
+   bright surface, and borders and text match the rest of the interface.
+2. Confirm no application component carries per-theme overrides:
+
+   ```bash
+   git grep -c "dark:" -- 'frontend/app/src/**/*.tsx'
+   ```
+
+   Expect no output. ⚠ `rtk` reformats grep output and an empty piped result is not proof — run this
+   through plain `git grep`.
+3. In light, compare the same pages against the pre-change build: no visual difference.
+
+### US6 — Data viewer
+
+1. In dark, open the data viewer beside another dark surface: the greys belong to the same family.
+   The tell is `neutral` (cold) against the theme's `stone` (warm).
+2. Exercise each content type the viewer handles. None shows a fixed light background — two `bg-white`
+   containers exist today.
+
+### US7 — Schema visualizer
+
+1. Upstream first: dark support merged and released in `opsmill/infrahub-schema-visualizer`.
+2. Here: bump the pointer, then in dark open the visualizer and confirm canvas, nodes, edges, labels
+   and controls are dark and legible.
+3. ⚠ Never move the submodule pointer to an unpushed commit — it breaks every other checkout.
+4. Confirm no visualizer styling code landed in this repository.
+
+## Regression watch
+
+- **Light theme unchanged (FR-020, SC-005)** is the constraint most easily broken by a careless token
+  swap. Compare light-theme rendering before and after on every page touched.
+- **Semantic colors (FR-021)** — status, severity, diff conflict, danger — must stay mutually
+  distinguishable, not merely dark. `shared/components/ui/badge.tsx` carries the most of these.
+- **End-to-end suites** pin the theme explicitly rather than inheriting the build default, so they
+  stay deterministic. ⚠ #10284's end-to-end checks are already failing and are out of scope — do not
+  read those failures as fallout from this work; establish the baseline from a green run after it
+  lands.
