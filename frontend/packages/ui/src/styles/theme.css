@@ -2,6 +2,10 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  /* Tells the browser which palette to paint the parts of the page CSS cannot reach: scrollbars,
+     native form controls and their popups, autofill highlights, and the canvas behind overscroll. */
+  color-scheme: light;
+
   --background: var(--color-stone-100);
   --surface: var(--color-stone-200);
   --foreground: var(--color-stone-800);
@@ -77,6 +81,8 @@
 }
 
 .dark {
+  color-scheme: dark;
+
   --background: var(--color-black);
   --surface: var(--color-stone-800);
   --foreground: var(--color-stone-200);
