@@ -64,7 +64,7 @@ class Migration075(ArbitraryMigration):
             names_query = await DeletingBranchNamesQuery.init(db=db)
             await names_query.execute(db=db)
             branch_names = names_query.get_branch_names()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - a lookup failure is reported, never raised out of a migration
             return MigrationResult(errors=[f"Unable to look up branches in the DELETING state: {exc}"])
 
         if not branch_names:
@@ -81,7 +81,7 @@ class Migration075(ArbitraryMigration):
             try:
                 branch = await Branch.get_by_name(db=db, name=branch_name, ignore_deleting=False)
                 delete_result = await deleter.delete(branch=branch)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - see the comment above: one branch must not hide the others
                 console.log(f"Branch '{branch_name}' could not be deleted: {exc}")
                 errors.append(f"branch '{branch_name}': {exc}")
                 continue
