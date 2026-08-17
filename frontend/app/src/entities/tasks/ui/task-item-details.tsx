@@ -1,3 +1,4 @@
+import { Card } from "@infrahub/ui";
 import React from "react";
 import { useParams } from "react-router";
 
@@ -138,11 +139,9 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="bg-white">
-        <List columns={columns} row={row} />
-      </div>
+      <List columns={columns} row={row} />
 
-      <div className="m-4 overflow-hidden rounded-md bg-white p-2">
+      <Card className="m-4 overflow-hidden p-2">
         <div className="mb-2 flex">
           <h2 className="m-2 ml-0 flex-1 font-semibold text-foreground">Task Logs ({count})</h2>
 
@@ -156,7 +155,7 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
         </div>
 
         <Logs logs={logs} />
-      </div>
+      </Card>
     </div>
   );
 };

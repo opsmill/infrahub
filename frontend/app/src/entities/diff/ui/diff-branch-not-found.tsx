@@ -14,7 +14,7 @@ export function DiffBranchNotFound({ branchName }: DiffBranchNotFoundProps) {
   return (
     <div className="my-10 flex flex-col items-center gap-5">
       <div className="inline-flex rounded-full bg-white p-3">
-        <Icon icon="mdi:source-branch-remove" className="text-2xl text-red-400" />
+        <Icon icon="mdi:source-branch-remove" className="text-2xl text-danger" />
       </div>
 
       <h1 className="font-semibold text-lg">Branch not available</h1>

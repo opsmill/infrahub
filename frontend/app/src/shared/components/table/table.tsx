@@ -34,7 +34,7 @@ export const Table = ({ columns, rows, className }: TableProps) => {
           className
         )}
       >
-        <thead className="rounded-md border-border-strong border-b bg-gray-50 text-left">
+        <thead className="rounded-md border-border-strong border-b bg-table-cell-pinned text-left">
           <tr>
             {columns.map((column) => (
               <th
@@ -48,13 +48,13 @@ export const Table = ({ columns, rows, className }: TableProps) => {
           </tr>
         </thead>
 
-        <tbody className="bg-white text-left">
+        <tbody className="bg-table-cell text-left">
           {rows.map((row, index: number) => (
             <tr
               key={index}
               className={classNames(
                 "h-9 border-b",
-                row.link ? "cursor-pointer hover:bg-gray-50" : ""
+                row.link ? "cursor-pointer hover:bg-highlight" : ""
               )}
             >
               {columns.map((column, index) => {

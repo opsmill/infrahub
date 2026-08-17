@@ -54,8 +54,8 @@ export function FileInfoCard({
           className={classNames(
             inputStyle,
             focusVisibleStyle,
-            "gap-2 bg-gray-50 px-3 text-left",
-            "hover:border-border-strong hover:bg-gray-100",
+            "gap-2 bg-input px-3 text-left",
+            "hover:border-border-strong hover:bg-highlight",
             className
           )}
         >
@@ -67,6 +67,6 @@ export function FileInfoCard({
   }
 
   return (
-    <div className={classNames("rounded-md border bg-gray-50 px-3 py-2", className)}>{content}</div>
+    <div className={classNames("rounded-xl border bg-card px-3 py-2", className)}>{content}</div>
   );
 }

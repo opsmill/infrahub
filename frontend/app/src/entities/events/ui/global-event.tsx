@@ -68,7 +68,7 @@ export const Event = (props: EventType) => {
     <div
       className={classNames(
         "relative grid grid-cols-8 gap-2 p-2",
-        "rounded-md border bg-gray-50 shadow-xs transition-all"
+        "rounded-md border bg-card shadow-card transition-all"
       )}
     >
       <div className="flex items-center whitespace-nowrap font-medium text-foreground-muted text-xs">
@@ -98,7 +98,7 @@ export const Event = (props: EventType) => {
           <Tooltip message="Contains sub activities" nonInteractiveTrigger>
             <Icon
               icon={"mdi:subtasks"}
-              className="absolute right-2 rounded-full bg-custom-blue-500/10 p-1.5 text-custom-blue-500"
+              className="absolute right-2 rounded-full bg-accent/10 p-1.5 text-accent"
               data-testid="activity-has-children-icon"
             />
           </Tooltip>

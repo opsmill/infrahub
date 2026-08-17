@@ -36,7 +36,7 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
             <MenuItem
               isDisabled={!isDeleteAllowed}
               tooltip={permission.delete.message}
-              className="text-red-500"
+              className="text-danger"
               onAction={() => setShowDeleteModal(true)}
               data-testid={"delete-row-button"}
             >

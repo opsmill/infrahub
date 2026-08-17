@@ -1,6 +1,6 @@
 import { Button, Popover, PopoverTrigger } from "@infrahub/ui";
+import { InfoIcon } from "lucide-react";
 
-import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { PropertyList } from "@/shared/components/table/property-list";
@@ -72,12 +72,12 @@ export function NodeMetadataPopover(props: NodeMetadataProps) {
     <PopoverTrigger>
       <Button
         size="xs"
-        shape="circle"
+        shape="square"
         variant="ghost"
-        className="text-subtle-muted"
+        className="text-foreground-muted"
         aria-label="View node metadata"
       >
-        <Icon icon="mdi:information-slab-circle-outline" />
+        <InfoIcon />
       </Button>
 
       <Popover>

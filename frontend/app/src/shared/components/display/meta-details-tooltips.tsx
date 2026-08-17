@@ -1,5 +1,5 @@
 import { Button, Popover, PopoverTrigger } from "@infrahub/ui";
-import { FileBoxIcon } from "lucide-react";
+import { FileBoxIcon, InfoIcon } from "lucide-react";
 import type React from "react";
 
 import type { AnyAttribute } from "@/shared/api/graphql/generated/types";
@@ -77,8 +77,14 @@ export default function MetaDetailsTooltip({
 
   return (
     <PopoverTrigger>
-      <Button size="xs" shape="circle" variant="ghost" data-testid="view-metadata-button">
-        <Icon icon="mdi:information-slab-circle-outline" />
+      <Button
+        size="xs"
+        shape="circle"
+        variant="ghost"
+        className="text-foreground-muted"
+        data-testid="view-metadata-button"
+      >
+        <InfoIcon />
       </Button>
 
       <Popover data-testid="metadata-tooltip">

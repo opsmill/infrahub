@@ -2,8 +2,8 @@ import {
   Dialog as AriaDialog,
   Modal as AriaModal,
   ModalOverlay as AriaModalOverlay,
-  type DialogProps,
   type ModalOverlayProps as AriaModalOverlayProps,
+  type DialogProps,
 } from "react-aria-components";
 import { cn } from "tailwind-variants";
 
@@ -51,8 +51,8 @@ export function Modal({
             <AriaModal
               className={cn(
                 "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-200",
-                "no-scrollbar box-border flex max-h-[calc(var(--visual-viewport-height)*0.95)] max-w-[90vw] flex-col overflow-hidden rounded-2xl p-1 shadow-lg",
-                "border bg-white/25 backdrop-blur",
+                "no-scrollbar box-border flex max-h-[calc(var(--visual-viewport-height)*0.99)] max-w-[90vw] flex-col overflow-hidden rounded-2xl p-1",
+                "border border-modal-frame-border bg-modal-frame shadow-modal backdrop-blur-lg",
                 "data-entering:animate-in data-entering:duration-200 data-entering:ease-out data-entering:zoom-in-80",
                 "data-exiting:animate-out data-exiting:duration-150 data-exiting:ease-in data-exiting:zoom-out-80",
               )}
@@ -65,7 +65,7 @@ export function Modal({
               <AriaDialog
                 aria-label={ariaLabel}
                 className={cn(
-                  "flex h-full min-h-0 w-full min-w-0 flex-col overflow-auto rounded-xl border border-border-strong bg-white outline-hidden",
+                  "flex h-full min-h-0 w-full min-w-0 flex-col overflow-auto rounded-xl bg-secondary outline-hidden",
                   className,
                 )}
               >

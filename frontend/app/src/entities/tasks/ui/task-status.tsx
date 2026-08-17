@@ -49,7 +49,7 @@ export function TaskStatus() {
     return (
       <Tooltip message={tooltipContent}>
         <LinkButton {...commonButtonProps} aria-label={tooltipContent}>
-          <Icon icon="mdi:error-outline" className="text-red-500" />
+          <Icon icon="mdi:error-outline" className="text-danger" />
         </LinkButton>
       </Tooltip>
     );

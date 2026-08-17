@@ -22,7 +22,7 @@ interface StartButtonProps extends ButtonProps {
 const StartButton = ({ icon, title, description, className, ...props }: StartButtonProps) => (
   <Button
     className={classNames(
-      "flex items-center gap-2 rounded-lg border border-border-strong border-dashed p-4 hover:bg-gray-50",
+      "flex items-center gap-2 rounded-lg border border-border-strong border-dashed p-4 hover:bg-highlight",
       className
     )}
     {...props}

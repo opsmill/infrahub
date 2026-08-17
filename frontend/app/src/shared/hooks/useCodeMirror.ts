@@ -36,6 +36,19 @@ const theme = EditorView.baseTheme({
   },
 });
 
+const darkTheme = EditorView.theme(
+  {
+    "&": {
+      backgroundColor: "transparent",
+      color: "var(--foreground)",
+    },
+    ".cm-cursor": {
+      borderLeftColor: "var(--foreground)",
+    },
+  },
+  { dark: true }
+);
+
 type CodeMirrorProps = {
   defaultValue?: string;
   value?: string;
@@ -82,11 +95,12 @@ export function useCodeMirror(
 
   useEffect(() => {
     if (containerElement && !state) {
+      const isDark = document.documentElement.classList.contains("dark");
       const langExtensions =
         lang === "markdown"
           ? [
               keymap.of([...defaultKeymap, indentWithTab, ...markdownKeymap, ...historyKeymap]),
-              basicLight,
+              ...(isDark ? [darkTheme, syntaxHighlighting(oneDarkHighlightStyle)] : [basicLight]),
               markdown({ base: markdownLanguage }),
             ]
           : [

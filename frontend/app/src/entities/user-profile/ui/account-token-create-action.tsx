@@ -53,8 +53,8 @@ export function AccountTokenCreateAction() {
       >
         <Col className="p-3">
           <Heading slot="title" className="flex items-center gap-2 font-semibold">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-custom-blue-600">
-              <Icon icon="mdi:key-variant" className="text-white" />
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-custom-blue-600 dark:bg-custom-blue-500/30">
+              <Icon icon="mdi:key-variant" className="text-white dark:text-custom-blue-300" />
             </div>
             Token created
           </Heading>
@@ -65,12 +65,12 @@ export function AccountTokenCreateAction() {
           </div>
 
           <Row>
-            <div className="h-9 grow rounded-md bg-gray-100 p-2">{newToken}</div>
+            <div className="h-9 grow rounded-md bg-gray-100 p-2 dark:bg-white/10">{newToken}</div>
             <CopyToClipboard text={newToken} shape="square" variant="outline" />
           </Row>
         </Col>
 
-        <Row className="justify-end bg-gray-50 p-3">
+        <Row className="justify-end bg-gray-50 p-3 dark:bg-white/5">
           <Button variant="primary" onPress={() => setNewToken("")}>
             Confirm
           </Button>

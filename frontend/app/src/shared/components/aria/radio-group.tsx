@@ -42,7 +42,7 @@ export const Radio = ({ className, children, ...props }: AriaRadioProps) => {
             className={classNames(
               "flex size-4 items-center justify-center rounded-full border border-border-strong",
               "transition-colors group-data-focus-visible/radio:border-ring group-data-focus-visible/radio:outline-hidden group-data-focus-visible/radio:ring-2 group-data-focus-visible/radio:ring-ring-halo",
-              "group-data-invalid/radio:border-red-600"
+              "group-data-invalid/radio:border-danger"
             )}
           >
             {renderProps.isSelected && (

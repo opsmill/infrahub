@@ -47,9 +47,9 @@ export function ProcessingMutateObject({ node, payload, onSuccess }: ProcessingM
   if (error) {
     return (
       <NodeCard node={node}>
-        <Row className="cursor-pointer text-red-600 text-xs">
+        <Row className="cursor-pointer text-danger text-xs">
           <span>{error.message}</span>
-          <div className="rounded-full border border-red-200 bg-red-50 p-1 hover:border-current">
+          <div className="rounded-full border border-danger/25 bg-danger-surface p-1 hover:border-current">
             <RefreshCwIcon className="size-2.5" onClick={() => handleProcessing()} />
           </div>
         </Row>

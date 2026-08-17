@@ -16,7 +16,10 @@ export function BranchWorkingNotice({ branch }: BranchWorkingNoticeProps) {
 
   if (currentBranch.name === branch.name) {
     return (
-      <BranchNotice className="bg-cyan-700/10 text-cyan-800" data-testid="branch-working-notice">
+      <BranchNotice
+        className="bg-cyan-700/10 text-cyan-800 dark:bg-cyan-200/10 dark:text-cyan-200"
+        data-testid="branch-working-notice"
+      >
         <GitBranchIcon className="size-4 shrink-0" aria-hidden="true" />
         <p>You're working on this branch.</p>
       </BranchNotice>
@@ -24,7 +27,10 @@ export function BranchWorkingNotice({ branch }: BranchWorkingNoticeProps) {
   }
 
   return (
-    <BranchNotice className="bg-amber-50 text-amber-800" data-testid="branch-mismatch-notice">
+    <BranchNotice
+      className="bg-amber-50 text-amber-800 dark:bg-amber-200/10 dark:text-amber-200"
+      data-testid="branch-mismatch-notice"
+    >
       <TriangleAlertIcon className="size-4 shrink-0" aria-hidden="true" />
       <p>
         You're viewing <span className="font-semibold">{branch.name}</span> but working on{" "}

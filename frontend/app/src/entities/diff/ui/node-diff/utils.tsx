@@ -71,25 +71,37 @@ const DiffDisplay = ({
   rightClassName,
 }: DiffRowProps) => {
   return (
-    <div className={classNames("relative min-h-9", hasConflicts && "bg-yellow-50")}>
+    <div
+      className={classNames(
+        "relative min-h-9",
+        hasConflicts && "bg-yellow-50 dark:bg-yellow-400/10"
+      )}
+    >
       {hasConflicts && <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-yellow-400" />}
 
       <div className={classNames("group grid grid-cols-3 pl-8 font-normal text-xs", className)}>
         {title}
 
-        <div className="bg-white">
-          <div className={classNames("flex h-full items-center bg-gray-50 p-2", leftClassName)}>
+        <div className="bg-white dark:bg-stone-900">
+          <div
+            className={classNames(
+              "flex h-full items-center bg-gray-50 p-2 dark:bg-white/5",
+              leftClassName
+            )}
+          >
             {left}
           </div>
         </div>
 
-        <div className="bg-white">
+        <div className="bg-white dark:bg-stone-900">
           <div
             className={classNames(
               "flex h-full items-center p-2 font-medium",
-              status === "ADDED" && "bg-green-100 text-green-900",
-              status === "REMOVED" && "bg-red-100 text-red-900",
-              status === "UPDATED" && "bg-blue-100 text-blue-900",
+              status === "ADDED" &&
+                "bg-green-100 text-green-900 dark:bg-green-400/15 dark:text-green-300",
+              status === "REMOVED" && "bg-danger-surface text-danger",
+              status === "UPDATED" &&
+                "bg-blue-100 text-blue-900 dark:bg-blue-400/15 dark:text-blue-300",
               rightClassName
             )}
           >
@@ -109,7 +121,12 @@ export const DiffRow = ({ children, iconClassName, ...props }: DiffRowProps) => 
   }
 
   return (
-    <div className={classNames("relative min-h-9", hasConflicts && "bg-yellow-50")}>
+    <div
+      className={classNames(
+        "relative min-h-9",
+        hasConflicts && "bg-yellow-50 dark:bg-yellow-400/10"
+      )}
+    >
       {hasConflicts && <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-yellow-400" />}
 
       <Accordion

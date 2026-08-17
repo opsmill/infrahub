@@ -56,7 +56,9 @@ export function ExportMenu({ onExport, label = "Export diagram" }: ExportMenuPro
           aria-controls={open ? menuId : undefined}
           onPress={() => setOpen(!open)}
           className={cn(
-            open ? "bg-indigo-500 text-white data-hovered:bg-indigo-600" : "text-subtle",
+            open
+              ? "bg-selected text-selected-foreground shadow-selected data-hovered:bg-selected-highlight"
+              : "text-subtle",
           )}
         >
           <Icon icon="mdi:download" className="text-lg" />
@@ -65,7 +67,7 @@ export function ExportMenu({ onExport, label = "Export diagram" }: ExportMenuPro
       {open && (
         <div
           id={menuId}
-          className="absolute bottom-full left-1/2 mb-2 min-w-[120px] -translate-x-1/2 rounded-lg border bg-white py-1 shadow-lg"
+          className="absolute bottom-full left-1/2 mb-2 min-w-[120px] -translate-x-1/2 rounded-lg border bg-popover py-1 shadow-lg backdrop-blur-lg"
         >
           <Button
             // oxlint-disable-next-line jsx-a11y/no-autofocus -- moving focus into the menu on open is the WAI-ARIA menu pattern, not a page-load autofocus

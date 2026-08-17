@@ -1,3 +1,4 @@
+import { LinkButton } from "@infrahub/ui";
 import { useLocation, useSearchParams } from "react-router";
 
 import { Icon } from "@/shared/components/display/icon";
@@ -49,12 +50,9 @@ export const ProviderButton = ({
   const authorizeUrl = `${INFRAHUB_API_SERVER_URL + provider.authorize_path}?final_url=${encodeURIComponent(redirectTo)}`;
 
   return (
-    <a
-      className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md border bg-white px-4 py-2 font-medium text-sm shadow-xs hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
-      href={authorizeUrl}
-    >
+    <LinkButton variant="outline" href={authorizeUrl} className="font-medium">
       <Icon icon={provider.icon} />
-      <span className="ml-2">Continue with {provider.display_label}</span>
-    </a>
+      Continue with {provider.display_label}
+    </LinkButton>
   );
 };

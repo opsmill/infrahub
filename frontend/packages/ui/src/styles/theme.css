@@ -3,6 +3,7 @@
 
 :root {
   --background: var(--color-stone-100);
+  --surface: var(--color-stone-200);
   --foreground: var(--color-stone-800);
   --foreground-muted: var(--color-stone-600);
   --subtle: var(--color-stone-600);
@@ -15,6 +16,9 @@
   --ring-halo: --alpha(var(--ring) / 25%);
 
   --accent: #087895;
+
+  --danger: var(--color-rose-700);
+  --danger-surface: --alpha(var(--color-rose-500) / 15%);
 
   --input: var(--color-white);
   --input-border: var(--border);
@@ -48,9 +52,9 @@
   --panel: linear-gradient(var(--color-gray-50), var(--color-gray-50));
   --panel-shadow: 0 0 #0000;
 
-  --sheet-frame: --alpha(var(--color-white) / 25%);
-  --sheet-frame-border: var(--border);
-  --sheet-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --modal-frame: --alpha(var(--color-white) / 25%);
+  --modal-frame-border: var(--border);
+  --modal-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 
   --table-cell: var(--color-stone-50);
   --table-cell-pinned: var(--color-white);
@@ -59,6 +63,7 @@
 
 .dark {
   --background: var(--color-black);
+  --surface: var(--color-stone-800);
   --foreground: var(--color-stone-200);
   --foreground-muted: var(--color-stone-400);
   --subtle: var(--color-stone-400);
@@ -71,6 +76,9 @@
   --ring-halo: --alpha(var(--ring) / 25%);
 
   --accent: #a7d9e6;
+
+  --danger: var(--color-rose-400);
+  --danger-surface: --alpha(var(--color-rose-400) / 20%);
 
   --input: var(--color-stone-900);
   --input-border: var(--border-strong);
@@ -101,12 +109,18 @@
     linear-gradient(180deg, #1a1817 0%, #0d0c0b 18%, #000000 100%);
   --secondary-shadow: 0 0 #0000;
 
-  --panel: linear-gradient(180deg, oklch(1 0 0 / 0.06) 0%, oklch(0.4 0 0 / 0.3) 80%);
-  --panel-shadow: inset 0 2px 4px 0 oklch(0.8 0 0 / 0.05);
+  --panel: linear-gradient(
+    180deg,
+    #211f1d 0,
+    #0b0a09 160px,
+    #0b0a09 calc(100% - 160px),
+    #211f1d 100%
+  );
+  --panel-shadow: 0 0 #0000;
 
-  --sheet-frame: rgb(255 251 246 / 0.14);
-  --sheet-frame-border: rgb(255 255 255 / 0.22);
-  --sheet-shadow:
+  --modal-frame: rgb(255 251 246 / 0.14);
+  --modal-frame-border: rgb(255 255 255 / 0.22);
+  --modal-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.12), 0 28px 70px rgb(0 0 0 / 0.75),
     0 6px 20px rgb(0 0 0 / 0.5);
 
@@ -120,6 +134,7 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
   --color-foreground-muted: var(--foreground-muted);
   --color-subtle: var(--subtle);
@@ -132,6 +147,9 @@
   --color-ring-halo: var(--ring-halo);
 
   --color-accent: var(--accent);
+
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
 
   --color-input: var(--input);
   --color-input-border: var(--input-border);
@@ -160,9 +178,9 @@
   --background-image-panel: var(--panel);
   --shadow-panel: var(--panel-shadow);
 
-  --color-sheet-frame: var(--sheet-frame);
-  --color-sheet-frame-border: var(--sheet-frame-border);
-  --shadow-sheet: var(--sheet-shadow);
+  --color-modal-frame: var(--modal-frame);
+  --color-modal-frame-border: var(--modal-frame-border);
+  --shadow-modal: var(--modal-shadow);
 
   --color-table-cell: var(--table-cell);
   --color-table-cell-pinned: var(--table-cell-pinned);

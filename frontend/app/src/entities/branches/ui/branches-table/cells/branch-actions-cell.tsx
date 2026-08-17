@@ -47,7 +47,7 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
               <MenuItem
                 isDisabled={!isDeleteAllowed}
                 tooltip={branch.is_default ? "Cannot delete the default branch" : "Login required"}
-                className="text-red-500"
+                className="text-danger"
                 onAction={() => setShowDeleteModal(true)}
               >
                 <Trash2Icon />

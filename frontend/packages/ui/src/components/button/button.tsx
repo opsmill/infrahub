@@ -38,13 +38,13 @@ const buttonVariants = tv({
         "dark:data-hovered:from-stone-500/25",
       ],
       danger: [
-        "border-rose-700 bg-gradient-to-b from-rose-700 to-rose-700/70 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
+        "border-rose-700 bg-gradient-to-b from-rose-700 to-rose-700/70 text-foreground inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       "danger-outline": [
-        "border-rose-700 bg-gradient-to-b from-stone-100 to-white text-rose-500 inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
+        "border-danger-surface bg-gradient-to-b from-stone-100 to-white text-danger inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
         "data-hovered:from-rose-50",
-        "dark:border-rose-600/30 dark:from-stone-500/15 dark:to-stone-500/5 dark:inset-shadow-[0_1px_0_rgba(255,255,255,0.12)]",
+        "dark:from-stone-500/15 dark:to-stone-500/5 dark:inset-shadow-[0_1px_0_rgba(255,255,255,0.12)]",
         "dark:data-hovered:from-rose-500/15",
       ],
       warning: [
@@ -62,7 +62,7 @@ const buttonVariants = tv({
       ],
       ghost: [
         "border-transparent text-foreground shadow-none",
-        "data-hovered:bg-neutral-600/10",
+        "data-hovered:bg-border",
         "data-pressed:bg-border",
       ],
       input: [

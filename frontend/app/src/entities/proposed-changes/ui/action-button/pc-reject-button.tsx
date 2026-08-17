@@ -56,7 +56,7 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     <>
       <Tooltip message={isUnavailable ? tooltipMessage : undefined} className="whitespace-pre">
         <Button
-          className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
+          className="flex h-full grow flex-wrap gap-2 rounded-r-none"
           onPress={handleAction}
           variant={"primary"}
           isPending={isPending}

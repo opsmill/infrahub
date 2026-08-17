@@ -1,9 +1,9 @@
-import { Button, Modal } from "@infrahub/ui";
+import { Button, Card, Modal } from "@infrahub/ui";
 import { XIcon } from "lucide-react";
 
 import { Separator } from "@/shared/components/aria/separator";
 import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipboard-button";
-import { Col, Row } from "@/shared/components/container";
+import { Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { InfrahubLogo } from "@/shared/components/ui/infrahub-logo";
 
@@ -37,13 +37,13 @@ export function AboutModal({ isOpen, onOpenChange }: AboutModalProps) {
         </Button>
       </Row>
 
-      <Col className="rounded-xl bg-stone-100 px-3 py-2.5">
+      <Card variant="panel" className="gap-2 rounded-xl px-3 py-2.5">
         <InfoRow label="Version" value={version} isLoading={isPending} />
         <Separator />
         <InfoRow label="Edition" value={config.installation_type} />
         <Separator />
         <InfoRow label="Deployment ID" value={deploymentId} isLoading={isPending} />
-      </Col>
+      </Card>
     </Modal>
   );
 }

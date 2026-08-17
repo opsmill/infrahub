@@ -112,7 +112,7 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
         );
       })}
 
-      <div className="sticky -bottom-2 border-t bg-white p-2 text-right">
+      <div className="sticky -bottom-2 border-t bg-card p-2 text-right">
         <FormSubmit>Convert</FormSubmit>
       </div>
     </Form>

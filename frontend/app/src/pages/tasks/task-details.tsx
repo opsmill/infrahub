@@ -37,7 +37,7 @@ const TaskDetailsPage = () => {
 
   const title = (
     <div className="flex items-center gap-2">
-      <div className="flex bg-white font-normal text-sm">
+      <div className="flex font-normal text-sm">
         <Link to={constructPath("/tasks")} className="flex items-center p-2">
           <Icon icon={"mdi:chevron-left"} />
           All tasks

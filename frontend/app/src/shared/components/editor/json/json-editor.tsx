@@ -7,7 +7,7 @@ import "prismjs/components/prism-json";
 
 import EditorImport from "react-simple-code-editor";
 
-import { focusWithinStyle } from "@/shared/components/ui/style";
+import { focusWithinStyle, inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 // Handle CJS/ESM interop — Vite may double-wrap the default export
@@ -39,12 +39,8 @@ export const JsonEditor = ({ id, onChange, value, className, ref, ...props }: Js
         fontSize: 12,
       }}
       preClassName="break-all!"
-      textareaClassName="break-all! text-red-100! disabled:cursor-not-allowed disabled:bg-gray-100! mix-blend-multiply" // text-red-100 needed to make highligted text (in browser search) visible
-      className={classNames(
-        "w-full rounded-md border border-border-strong bg-white text-sm shadow-xs placeholder:text-subtle-muted",
-        focusWithinStyle,
-        className
-      )}
+      textareaClassName="break-all disabled:cursor-not-allowed disabled:opacity-60 rounded-[inherit]"
+      className={classNames(focusWithinStyle, inputStyle, className)}
       {...props}
       padding={10}
       highlight={(code) => Prism.highlight(code, Prism.languages.json, "json")}

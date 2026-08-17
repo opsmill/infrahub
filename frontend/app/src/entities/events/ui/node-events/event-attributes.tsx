@@ -8,7 +8,7 @@ export const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attribut
   if (attributes.length === 0) return null;
 
   return (
-    <Card className="bg-zinc-50">
+    <Card className="bg-background">
       <CardContent className="grid grid-cols-[min-content_auto] gap-1.5 text-xs">
         {attributes.map(({ action, name, value, value_previous }) => {
           return (
@@ -18,7 +18,7 @@ export const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attribut
               <div className="flex items-center gap-2 overflow-hidden">
                 <div className="text-subtle-muted">{value_previous ?? "-"}</div>
 
-                <ChevronRightIcon className="size-3 text-custom-blue-500" />
+                <ChevronRightIcon className="size-3 text-accent" />
 
                 <div className="overflow-hidden text-ellipsis">{value ?? "-"}</div>
               </div>

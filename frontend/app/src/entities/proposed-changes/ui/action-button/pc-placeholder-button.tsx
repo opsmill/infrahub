@@ -6,7 +6,7 @@ export const PcPlaceholderButton = () => {
   return (
     <>
       <Button
-        className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
+        className="flex h-full grow flex-wrap gap-2 rounded-r-none"
         variant={"primary"}
         isDisabled
       >

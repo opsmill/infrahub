@@ -88,7 +88,7 @@ export const SchemaViewer = ({
     <section
       style={style}
       className={classNames(
-        "flex flex-col space-y-4 overflow-hidden rounded-md border bg-white p-4 shadow-lg",
+        "flex flex-col space-y-4 overflow-hidden rounded-md border bg-card p-4 shadow-lg",
         className
       )}
       data-testid="schema-viewer"
@@ -147,7 +147,7 @@ const SchemaViewerTitle = ({ schema }: { schema: ModelSchema }) => {
       {schema.icon && (
         <Icon
           icon={schema.icon}
-          className="self-start rounded-sm border border-custom-blue-100 p-2 text-custom-blue-600 text-xl"
+          className="self-start rounded-sm border border-accent/20 p-2 text-accent text-xl"
         />
       )}
 

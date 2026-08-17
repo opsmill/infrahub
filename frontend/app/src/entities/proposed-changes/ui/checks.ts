@@ -51,7 +51,7 @@ export const getValidatorsStats = (validators: any[]) => {
     failedValidators.length && {
       name: CHECKS_LABEL.FAILURE,
       value: failedValidators.length,
-      className: "fill-red-400",
+      className: "fill-danger",
     },
     queuedValidators.length && {
       name: CHECKS_LABEL.QUEUED,

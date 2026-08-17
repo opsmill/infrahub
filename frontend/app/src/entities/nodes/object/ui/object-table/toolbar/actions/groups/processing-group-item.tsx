@@ -37,9 +37,9 @@ export function ProcessingGroupItem({ group, mutationFn, onSuccess }: Processing
   if (error) {
     return (
       <GroupItem group={group} className="group">
-        <TriangleAlertIcon className="size-4 text-red-500 group-hover:hidden" />
+        <TriangleAlertIcon className="size-4 text-danger group-hover:hidden" />
         <RefreshCwIcon
-          className="hidden size-4 cursor-pointer text-red-500 group-hover:block"
+          className="hidden size-4 cursor-pointer text-danger group-hover:block"
           onClick={() => handleProcessing()}
         />
       </GroupItem>

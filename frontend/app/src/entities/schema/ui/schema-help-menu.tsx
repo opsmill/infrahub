@@ -27,7 +27,7 @@ export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
       <Popover placement="bottom end">
         <Menu data-testid="schema-help-menu-content">
           <MenuItem isDisabled={!schema.documentation} href={documentationUrl} target="_blank">
-            <Icon icon="mdi:book-open-variant-outline" className="text-custom-blue-700 text-lg" />
+            <Icon icon="mdi:book-open-variant-outline" className="text-accent text-lg" />
             Documentation
             <Icon icon="mdi:open-in-new" />
           </MenuItem>
@@ -36,7 +36,7 @@ export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
             isDisabled={isListViewDisabled}
             href={getObjectDetailsUrl(schema.kind as string)}
           >
-            <Icon icon="mdi:table-eye" className="text-custom-blue-700 text-lg" />
+            <Icon icon="mdi:table-eye" className="text-accent text-lg" />
             Open list view
           </MenuItem>
         </Menu>

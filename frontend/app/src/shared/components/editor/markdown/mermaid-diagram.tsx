@@ -15,7 +15,7 @@ export function MermaidDiagram({ node: _node, ...svgProps }: MermaidDiagramProps
   }
 
   return (
-    <div className="relative bg-white">
+    <div className="relative bg-background">
       <TransformWrapper minScale={0.5} maxScale={8} centerOnInit wheel={{ step: 0.1 }}>
         {({ zoomIn, zoomOut, resetTransform }) => (
           <>

@@ -71,7 +71,7 @@ export function ObjectActionsCell({
               <MenuItem
                 isDisabled={!isDeleteAllowed}
                 tooltip={deleteTooltipMessage}
-                className="text-red-500"
+                className="text-danger"
                 onAction={() => setShowDeleteModal(true)}
               >
                 <Trash2Icon />

@@ -52,7 +52,7 @@ export function BottomToolbar({
             onPress={onParametersClick}
             className={classNames(
               isParametersOpen
-                ? "bg-indigo-500 text-white data-hovered:bg-indigo-600"
+                ? "bg-selected text-selected-foreground shadow-selected data-hovered:bg-selected-highlight"
                 : "text-foreground-muted"
             )}
           >

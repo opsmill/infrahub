@@ -52,7 +52,7 @@ export function ObjectHierarchyTreeLite({
         variant="ghost"
         size="sm"
         onPress={() => setDisplayFullTree(true)}
-        className="w-full justify-start gap-2 px-2.5 text-custom-blue-800"
+        className="w-full justify-start gap-2 px-2.5 text-accent"
       >
         <ArrowLeftIcon className="size-3.5" /> Back
       </Button>

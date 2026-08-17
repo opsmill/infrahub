@@ -13,7 +13,7 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
     return (
       <div className="flex flex-wrap items-center gap-1">
         <span>added</span>
-        <div className="flex min-w-0 items-center gap-1 text-black">
+        <div className="flex min-w-0 items-center gap-1 text-foreground">
           {props.related_nodes.slice(0, GROUP_MEMBERSTO_DISPLAY).map(({ id, kind }) => {
             return (
               <Link
@@ -32,7 +32,7 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
           )}
         </div>
         <span>in group</span>
-        <span className="min-w-0 truncate font-semibold text-black">
+        <span className="min-w-0 truncate font-semibold text-foreground">
           <Link
             key={props.primary_node?.id}
             to={constructPath(`/objects/CoreGroup/${props.primary_node?.id}`)}
@@ -52,7 +52,7 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
     return (
       <div className="flex min-w-0 items-center gap-1 overflow-hidden">
         <span className="whitespace-nowrap">removed</span>
-        <div className="flex min-w-0 items-center gap-1 overflow-hidden text-black">
+        <div className="flex min-w-0 items-center gap-1 overflow-hidden text-foreground">
           {props.related_nodes.slice(0, 5).map(({ id, kind }) => {
             return (
               <Link
@@ -71,7 +71,7 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
           )}
         </div>
         <span className="whitespace-nowrap">from group</span>
-        <span className="min-w-0 truncate text-black">
+        <span className="min-w-0 truncate text-foreground">
           <Link
             key={props.primary_node?.id}
             to={constructPath(`/objects/CoreGroup/${props.primary_node?.id}`)}

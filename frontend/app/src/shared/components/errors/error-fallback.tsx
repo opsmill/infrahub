@@ -110,7 +110,7 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
 
       {error?.stack && (
         <Accordion className="text-foreground-muted text-sm" title="View error stack">
-          <pre className="rounded-sm bg-red-50 p-2 text-red-800">{error.stack}</pre>
+          <pre className="rounded-sm bg-danger-surface p-2 text-danger">{error.stack}</pre>
         </Accordion>
       )}
     </Col>

@@ -1,6 +1,5 @@
-import { LinkButton } from "@infrahub/ui";
-
 import { Icon } from "@/shared/components/display/icon";
+import { LinkPill } from "@/shared/components/ui/link-pill";
 
 import type {
   NodeCore,
@@ -46,14 +45,9 @@ export function RelationshipNodeDisplay({ node }: { node: NodeCore }) {
   if (!schema) return `Schema for ${node.__typename} not found`;
 
   return (
-    <LinkButton
-      variant="input"
-      size="sm"
-      href={getObjectDetailsUrl(node.__typename, node.id)}
-      className="truncate rounded-full border-border pr-2.5 hover:border-ring hover:underline dark:border-white/10 dark:bg-white/5 dark:shadow-none dark:hover:border-ring"
-    >
+    <LinkPill href={getObjectDetailsUrl(node.__typename, node.id)} className="truncate">
       <Icon icon={getSchemaIcon(schema)} className="text-accent" />
       {getNodeLabel(node)}
-    </LinkButton>
+    </LinkPill>
   );
 }

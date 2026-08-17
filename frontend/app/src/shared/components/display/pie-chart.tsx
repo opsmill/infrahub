@@ -13,7 +13,7 @@ const renderCustomizedTooltip = (props: any) => {
   }
 
   return (
-    <div className="z-50 rounded-md bg-white p-2 text-xs">
+    <div className="z-50 rounded-md bg-white p-2 text-xs dark:bg-stone-800">
       {data.name}: {data.value}
     </div>
   );
@@ -40,7 +40,7 @@ export const PieChart = (props: PieChartProps) => {
           endAngle={-270}
         >
           {data.map((entry, index) => (
-            <Cell key={index} className={entry.className ?? "fill-gray-200"} />
+            <Cell key={index} className={entry.className ?? "fill-gray-200 dark:fill-white/10"} />
           ))}
         </Pie>
 

@@ -30,7 +30,7 @@ function LoginPage() {
         {errors?.map((error, index) => (
           <p
             key={`${index}-${error.extensions.code}-${error.message}`}
-            className="mt-2 text-red-500 text-sm"
+            className="mt-2 text-danger text-sm"
           >
             ({error.extensions.code}) {error.message}
           </p>

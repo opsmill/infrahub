@@ -171,7 +171,7 @@ export const ProposedChangeDetails = ({
   ];
 
   return (
-    <div className="flex grow flex-col gap-2.5 bg-stone-50 p-2.5">
+    <div className="flex grow flex-col gap-2.5 bg-background p-2.5">
       {!loadingCheck && !!checkCount && (
         <Card>
           <CardContent>

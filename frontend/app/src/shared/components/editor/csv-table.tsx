@@ -39,8 +39,8 @@ export function CsvTable({ content }: CsvTableProps) {
   const dataRows = rows.slice(1);
 
   return (
-    <table className="border-collapse border text-sm">
-      <thead className="bg-neutral-900">
+    <table className="border-collapse border bg-table-frame text-sm">
+      <thead className="bg-table-cell-pinned">
         <tr>
           {headers.map((header, index) => (
             <th

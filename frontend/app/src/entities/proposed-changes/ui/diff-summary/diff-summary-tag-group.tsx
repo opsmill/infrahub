@@ -25,7 +25,7 @@ export function DiffSummaryTagGroup<T extends object>({
 }: DiffSummaryProps<T>) {
   return (
     <TagGroup aria-label="Diff summary" {...props}>
-      <TagList className="inline-flex items-center gap-2 rounded-md bg-gray-100 p-1">
+      <TagList className="inline-flex items-center gap-2 rounded-md bg-gray-100 p-1 dark:bg-white/10">
         <TagList items={items} renderEmptyState={renderEmptyState}>
           {children}
         </TagList>
@@ -103,14 +103,14 @@ export function DiffSummaryIcon({
 }
 
 const diffSummaryCloseStyles = cva(
-  "absolute -top-2 -right-2 flex items-center justify-center rounded-full border-2 border-white",
+  "absolute -top-2 -right-2 flex items-center justify-center rounded-full border-2 border-white dark:border-black",
   {
     variants: {
       variant: {
-        added: "bg-green-200 text-green-800",
-        removed: "bg-red-200 text-red-800",
-        updated: "bg-blue-200 text-blue-800",
-        conflicts: "bg-yellow-200 text-yellow-800",
+        added: "bg-green-200 text-green-800 dark:bg-green-400/20 dark:text-green-300",
+        removed: "bg-danger-surface text-danger",
+        updated: "bg-blue-200 text-blue-800 dark:bg-blue-400/20 dark:text-blue-300",
+        conflicts: "bg-yellow-200 text-yellow-800 dark:bg-yellow-400/20 dark:text-yellow-300",
       },
     },
   }

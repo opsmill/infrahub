@@ -18,7 +18,7 @@ const ArtifactTitleContent = (props: ArtifactEvent) => {
         to={getObjectDetailsUrl(ARTIFACT_OBJECT, props.primary_node?.id, [
           { name: QSP.BRANCH, value: props.branch },
         ])}
-        className="min-w-0 truncate text-black"
+        className="min-w-0 truncate text-foreground"
       >
         <NodeLabel id={props.primary_node?.id} kind={ARTIFACT_OBJECT} />
       </Link>
@@ -27,7 +27,7 @@ const ArtifactTitleContent = (props: ArtifactEvent) => {
         to={getObjectDetailsUrl(ARTIFACT_DEFINITION_KIND, props.artifact_definition_id, [
           { name: QSP.BRANCH, value: props.branch },
         ])}
-        className="min-w-0 truncate text-black"
+        className="min-w-0 truncate text-foreground"
       >
         <NodeLabel id={props.artifact_definition_id} kind={ARTIFACT_DEFINITION_KIND} />
       </Link>
