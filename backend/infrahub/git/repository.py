@@ -390,7 +390,9 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
                 exclude=["tags", "credential"],
                 raise_when_missing=True,
             )
-            ref = repository.ref.value
+            # `ref` is a mandatory attribute defaulting to "main", so the fallback is unreachable in
+            # practice; it keeps the return type honest the way the CoreRepository sibling above does.
+            ref = repository.ref.value or self.default_branch
             self.ref = ref
 
         return ref

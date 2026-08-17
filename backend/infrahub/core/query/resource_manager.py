@@ -575,13 +575,13 @@ class NumberPoolGetTaken(Query):
         pool: CoreNumberPool,
         min_value: int | None = None,
         max_value: int | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         self.pool = pool
         self.min_value = min_value
         self.max_value = max_value
 
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["start_range"] = self.min_value if self.min_value is not None else self.pool.start_range.value
