@@ -158,11 +158,31 @@ query DeviceConfig($device_name: String!) {
 
 ## Ensuring your query is single-target
 
-There is currently no automated way to verify that a query is single-target. The best way to verify is to review the query and ensure it meets all the criteria outlined above.
+Rather than reviewing a query against the criteria above by hand, ask Infrahub how it will interpret it. Run [`infrahubctl graphql query-report`]($(base_url)infrahubctl/infrahubctl-graphql) with the name of the query as declared under `queries` in your `.infrahub.yml`:
 
-When loaded into the system, Infrahub will analyze the query and determine if it is single-target or not. If it is not single-target, Infrahub will log a warning.
+```shell
+infrahubctl graphql query-report device_config_query
+```
 
-It's planned to add more integrated checks in the future to streamline the development process and ensure that queries are correctly structured directly during development.
+```text
+Query 'device_config_query' (local: queries/device_config.gql)
+Targets unique nodes: true
+```
+
+`Targets unique nodes: true` means the query is single-target. `false` means it is not, so whatever the query drives runs for every target instead of only the ones that changed.
+
+The report comes from the server, which analyzes the query exactly as the pipeline does, so the two cannot disagree. Two options are worth knowing:
+
+- `--online` analyzes the version already loaded into Infrahub instead of the file in your working copy, which is how you check a query that is already deployed.
+- `--branch` analyzes the query against a specific branch. Uniqueness constraints come from the schema, so a query can be single-target on one branch and not on another.
+
+Infrahub also flags the problem after the fact. When a proposed change pipeline works out what to regenerate for an artifact definition or a Generator definition and cannot map a change to specific targets, it records a warning in the pipeline's task log:
+
+```text
+Artifact definition device-config query does not guarantee unique targets. All targets will be processed.
+```
+
+This warning appears only when a relevant field actually changed. A pipeline that touches nothing the query reads stays quiet whether or not the query is single-target, so the absence of a warning in one pipeline does not mean the query is fine. Checking with `query-report` is the reliable answer.
 
 ## When single-target queries are required
 
