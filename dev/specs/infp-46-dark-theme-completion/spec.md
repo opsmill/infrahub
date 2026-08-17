@@ -61,10 +61,10 @@ observe the same choice.
 **Acceptance Scenarios**:
 
 1. **Given** a signed-in user whose theme has never been set, **When** they open their preferences,
-   **Then** the theme setting shows the deployment's default as the effective value and indicates
-   that it comes from a default rather than from their own choice.
+   **Then** the theme setting shows the effective value and indicates that it comes from a default
+   rather than from their own choice.
 2. **Given** a user viewing the theme setting, **When** they look at the dark option, **Then** it
-   carries a visible pre-release marker distinguishing it from the light option.
+   carries a visible **alpha** marker distinguishing it from the light option.
 3. **Given** a user on the light theme, **When** they select dark, **Then** the application switches
    to the dark palette without a page reload.
 4. **Given** a user who has selected dark, **When** they reload the page, **Then** the application
@@ -73,43 +73,46 @@ observe the same choice.
    browser, **Then** the application is dark there too.
 6. **Given** a user who has selected "match system", **When** their operating system switches from
    light to dark while the page is open, **Then** the application follows without a reload.
-7. **Given** an administrator setting an organisation-wide theme, **When** a user who has made no
-   personal choice loads the application, **Then** they see the organisation-wide theme; **and when**
-   a user who has made a personal choice loads it, **Then** their personal choice wins.
+7. **Given** a user who has selected a theme, **When** they clear it back to the inherited default,
+   **Then** the setting reports the value as coming from a default again rather than from their own
+   choice.
 
 ---
 
-### User Story 2 - Non-production deployments default to dark (Priority: P1)
+### User Story 2 - The whole feature sits behind a flag, on for the dev stack (Priority: P1)
 
-The team runs non-production builds of Infrahub day to day. Those deployments default to the dark
-theme so that the team lives in it continuously and surfaces the remaining visual defects through
-ordinary use, without every engineer having to opt in individually. This default ignores the
-operating system's appearance deliberately: an engineer on a light system must still see dark, or
-they are not dogfooding it.
+The theme feature is gated by an experimental flag. It is off by default everywhere, and turned on in
+the development stack so the team lives in dark continuously and surfaces its remaining visual
+defects through ordinary use, without any engineer configuring anything themselves.
 
-Production builds default to light. Dark is alpha, so it is reached only by an explicit choice —
-never by inference from a user's system setting.
+The flag does two jobs while dark is alpha: it decides whether the feature exists at all, and — where
+it exists — it makes dark the default for anyone who has not chosen. With the flag off there is no
+theme setting and the application is light. Both are deliberate: an engineer on a light system must
+still see dark or they are not dogfooding it, and a user on a deployment where the flag is off must
+have no route into the alpha palette at all.
 
-**Why this priority**: This is the stated near-term goal of the whole effort — dogfooding dark for
-the coming weeks. It is what converts the setting from a feature into a feedback loop, and it is
-cheap once User Story 1 exists.
+**Why this priority**: This is the stated near-term goal — dogfooding dark for the coming weeks — and
+it is what keeps an unfinished theme away from anyone who has not opted into running it.
 
-**Independent Test**: Load a non-production deployment as a user with no theme preference set and
-observe dark; load a production build the same way and observe light; in both, set a personal
-preference and observe it override the default.
+**Independent Test**: Start the dev stack with no per-engineer setup and observe dark; start with the
+flag off and observe light with no theme setting present; in both, confirm a stored preference is
+never destroyed.
 
 **Acceptance Scenarios**:
 
-1. **Given** a deployment running a non-production build, **When** a user with no theme preference
-   loads the application, **Then** it paints in dark **regardless of their system appearance** —
-   including for an engineer whose operating system is light.
-2. **Given** a deployment running a production build, **When** a user with no theme preference loads
-   the application, **Then** it paints in light, **even if their operating system is dark**. Dark is
-   alpha and is never reached by inference.
-3. **Given** a non-production deployment defaulting to dark, **When** a user explicitly selects
+1. **Given** a deployment with the flag on and a user with no theme preference, **When** they load the
+   application, **Then** it paints dark **regardless of their system appearance** — including for an
+   engineer whose operating system is light.
+2. **Given** a deployment with the flag off, **When** any user loads the application, **Then** it
+   paints light and **no theme setting is offered**. In particular "match system" is absent, so a
+   user on a dark operating system has no route to the alpha palette.
+3. **Given** the flag is on and a user has selected dark, **When** an operator turns the flag off,
+   **Then** the application renders light **and the stored preference is retained, not deleted** —
+   turning the flag back on restores their choice.
+4. **Given** a deployment with the flag on defaulting to dark, **When** a user explicitly selects
    light, **Then** their choice is honoured and persists.
-4. **Given** any deployment, **When** an operator explicitly configures the default theme, **Then**
-   that configuration overrides the build-derived default.
+5. **Given** an engineer starting the development stack, **When** they do nothing else, **Then** the
+   application is dark — no per-engineer configuration step exists.
 
 ---
 
@@ -242,23 +245,27 @@ The first three are one problem with one answer, so they are grouped rather than
   refreshes the cache. Because the cache holds the *resolved* theme, a returning user — signed in or
   not — paints correctly from the first frame.
 
-  With nothing cached, the fallback is light. On production that is already the deployment default,
-  so a first-ever visit is correct. On a non-production deployment it is not: that first visit paints
-  light and corrects to dark once the deployment default arrives. Accepted — it is one frame, on the
-  team's own builds, on a browser that has never loaded the application before. Removing it would
-  mean the server templating the HTML shell, which is disproportionate.
+  With nothing cached, the fallback is light. With the flag off that is already the answer, so the
+  first-ever visit is correct. With the flag on it is not: that first visit paints light and corrects
+  to dark once the flag's value arrives. Accepted — it is one frame, on a flag-enabled deployment, on
+  a browser that has never loaded the application before. Removing it would mean the server
+  templating the HTML shell, which is disproportionate.
 
   ⚠ The fallback is light rather than the operating system's appearance. Consulting the system here
-  would put a dark-OS user into the alpha palette before any preference has been read — the exact
-  inference FR-011 forbids.
+  would put a dark-OS user into the alpha palette before either the preference or the flag has been
+  read — exactly what FR-011 exists to prevent.
 
-- **System appearance changes while the page is open.** A user following their system switches their
-  operating system's appearance. The application follows without a reload. Cheap to support —
-  the browser exposes this as a subscribable change — so it is in scope rather than deferred.
+- **The flag is turned off while a user has dark stored.** The application renders light; the stored
+  preference is retained untouched and honoured again if the flag returns. A config change must
+  never destroy user data.
+
+- **System appearance changes while the page is open.** A user who chose match-system switches their
+  operating system's appearance. The application follows without a reload. Cheap to support — the
+  browser exposes this as a subscribable change — so it is in scope rather than deferred.
 
 - **Existing automated tests.** Tests that assert specific colors, or that screenshot the interface,
-  are sensitive to the default changing on non-production builds. In scope: the suites must be made
-  deterministic rather than left to inherit whatever the build implies.
+  are sensitive to the flag's value. In scope: the suites must pin the theme explicitly rather than
+  inherit whatever the deployment implies.
 
 - **Print and export.** Unchanged; out of scope.
 
@@ -272,12 +279,13 @@ The first three are one problem with one answer, so they are grouped rather than
   operating system.
 - **FR-002**: The system MUST persist a user's theme choice against their account, so it applies on
   any browser or machine where they sign in.
-- **FR-003**: The system MUST support an organisation-wide theme default that applies to users who
-  have made no personal choice, and MUST let a personal choice override it. Setting it MUST require
-  the same permission as the existing organisation-wide preferences; no new permission is introduced.
+- **FR-003**: The theme preference MUST be user-scoped only. No organisation-wide theme default is
+  offered in this version — while the feature is flag-gated to the development stack there is no
+  administrator setting a house theme for anyone. This is deferred to the moment the flag is removed,
+  when a real user for it exists.
 - **FR-004**: The system MUST report which layer an effective theme came from — the user's own
-  choice, the organisation default, or the built-in default — consistent with how existing
-  preferences report their source.
+  choice or the built-in default — consistent with how existing preferences report their source. No
+  new permission is introduced.
 - **FR-005**: Users MUST be able to change the theme and see it applied without reloading the page.
 - **FR-006**: The system MUST apply the correct theme on the first painted frame, with no visible
   flash of the other theme.
@@ -288,19 +296,25 @@ The first three are one problem with one answer, so they are grouped rather than
   label specifically; "alpha" is the word to render, not a paraphrase of it. Because "match system"
   can resolve to dark, its description MUST make that consequence clear.
 - **FR-009**: The system MUST render a coherent theme when no preference can be retrieved, falling
-  back to the last locally cached resolution and then to the deployment default. The cache MUST be
-  read synchronously before the first frame, and its absence or unavailability MUST NOT prevent the
-  application from loading.
+  back to the last locally cached resolution and then to light. The cache MUST be read synchronously
+  before the first frame, and its absence or unavailability MUST NOT prevent the application from
+  loading.
 
-**Deployment defaults**
+**Feature flag**
 
-- **FR-010**: Deployments running a non-production build MUST default to dark for users with no
-  personal choice.
-- **FR-011**: Deployments running a production build MUST default to light. Dark MUST NOT be reached
-  without an explicit user choice, because it is alpha.
-- **FR-012**: Operators MUST be able to override the build-derived default with explicit
-  configuration.
-- **FR-013**: A deployment default MUST NOT overwrite or reset any user's stored personal choice.
+- **FR-010**: The theme feature MUST be gated by an experimental flag, following the convention the
+  existing experimental settings already use: off by default, enabled per deployment through
+  configuration. The development stack MUST enable it, so an engineer gets dark by starting the
+  stack and performing no other step.
+- **FR-011**: With the flag off, the system MUST render light and MUST NOT offer a theme setting at
+  all. Offering only "light" and "match system" is not sufficient: a user on a dark operating system
+  would reach the alpha palette through match-system, defeating the flag.
+- **FR-012**: With the flag on, the system MUST default to dark for users with no personal choice,
+  **regardless of their operating system's appearance**. Following the system here would leave every
+  engineer on a light machine out of the dogfooding, which is the flag's whole purpose.
+- **FR-013**: Changing the flag MUST NOT overwrite, reset or delete any user's stored preference. A
+  stored choice that the flag makes unreachable MUST be ignored while the flag is off and honoured
+  again when it returns.
 
 **Embedded and third-party surfaces**
 
@@ -335,14 +349,14 @@ The first three are one problem with one answer, so they are grouped rather than
 ### Key Entities
 
 - **Theme preference**: A user's chosen appearance. One of light, dark, or match-system. Stored per
-  account and, separately, once for the organisation. Absent by default; absence means "fall back".
+  account only. Absent by default; absence means "fall back".
 - **Effective theme**: The appearance actually applied for a given user at a given moment. Resolved
-  from the user's choice, then the organisation default, then the deployment default; and if the
-  resolved choice is match-system, further resolved against the operating system's current
-  appearance.
-- **Deployment default theme**: The appearance applied to users who have expressed no choice.
-  Derived from whether the running build is a production release, and overridable by operator
-  configuration.
+  from the user's choice, then the flag's default; and if the resolved choice is match-system,
+  further resolved against the operating system's current appearance.
+- **Theme feature flag**: A per-deployment switch, off by default and enabled by configuration. While
+  dark is alpha it decides both whether the feature exists and, where it does, that dark is the
+  default for users who have not chosen. It is never stored against a user and never modifies what
+  is stored against one.
 
 ## Success Criteria *(mandatory)*
 
@@ -362,11 +376,12 @@ The first three are one problem with one answer, so they are grouped rather than
   this feature shows no visual differences.
 - **SC-006**: Every page reachable from the main navigation renders with no bright-on-dark surface
   when dark is active.
-- **SC-007**: Non-production deployments present dark to a user with no stored preference, and
-  production deployments present light, without either altering stored preferences and without
-  either consulting the operating system.
-- **SC-008**: The team can run a non-production deployment in dark continuously for the dogfooding
-  period without needing per-engineer setup.
+- **SC-007**: With the flag on, a user with no stored preference sees dark whatever their operating
+  system says; with the flag off, every user sees light and no theme setting exists. Neither state
+  alters a stored preference, and neither consults the operating system.
+- **SC-008**: An engineer gets dark by starting the development stack and taking **zero** further
+  configuration steps. Counted literally: the number of actions between "stack is up" and "interface
+  is dark" is nought.
 - **SC-009**: Text and essential interface elements meet the same contrast level in dark as the light
   theme already achieves, verified across the pages walked for SC-006 rather than on a sample.
 
@@ -376,26 +391,37 @@ These were decided during specification rather than left open. Each is a judgeme
 reviewer may overturn.
 
 - **Dark is never reached by inference.** Because it is alpha, a user arrives at it only by choosing
-  it — either by selecting dark, or by selecting match-system on a dark operating system. Production
-  therefore defaults to light rather than to the system appearance, and the alpha tag always labels
-  something the user actually chose.
+  it — either by selecting dark, or by selecting match-system on a dark operating system. Where the
+  flag is off there is no route in at all; where it is on, the deployment has opted in on the user's
+  behalf. The alpha tag therefore always labels something someone actually chose.
 
-  An intermediate revision of this spec defaulted production to the system appearance. That was
-  withdrawn once the consequence was made explicit: it would have put dark-OS production users into
-  the alpha palette without any choice on their part, which is precisely what the alpha label exists
-  to prevent.
-- **The non-production default ignores the operating system deliberately.** Following the system on
-  non-production builds would leave every engineer on a light system out of the dogfooding, which is
-  the entire purpose of that default.
+  An intermediate revision defaulted production to the system appearance. It was withdrawn once the
+  consequence was explicit: it would have put dark-OS users into the alpha palette with no choice on
+  their part, which is precisely what the alpha label exists to prevent.
+- **The flag's default ignores the operating system deliberately.** Following the system would leave
+  every engineer on a light machine out of the dogfooding, which is the flag's entire purpose.
 - **Three choices, not two.** Match-system is included rather than deferred: it is the conventional
   expectation for a theme setting, and adding it later would change the meaning of an already-stored
-  value. It is available on every deployment, but only ever as an explicit choice — never a default.
+  value. It is offered only where the flag is on, and only ever as an explicit choice — never a
+  default.
 - **The existing preference machinery is extended, not replaced.** Theme joins date-format and
-  timezone in the established two-layer user/organisation preference model, and inherits its
-  resolution and source-reporting semantics.
-- **"Non-production build" is derived from the running version**, not from a separate deployment
-  flag, so that no additional configuration is required for the common case. Explicit configuration
-  remains available as an override. The precise derivation is a design decision for the plan.
+  timezone in the established preference model and inherits its resolution and source-reporting
+  semantics — but is exposed at the user scope only.
+- **The flag follows the existing experimental-settings convention** rather than deriving from the
+  running version. The two experimental settings already in the codebase default to `false` and are
+  enabled per deployment through configuration; this one does the same, and the development stack
+  enables it.
+
+  An earlier revision derived the default from the version's pre-release status. It was withdrawn
+  because "pre-release" catches any beta or release candidate — including one a customer runs in
+  their own environment — which is broader than "the deployments we run". Following the existing
+  convention targets exactly the intended deployments, matches how the codebase already works, and
+  removes a subsystem. The accepted trade: deployments not started from this repository's
+  configuration files are not covered and stay light unless configured.
+- **The flag has no removal date, knowingly.** It is recorded as open-ended rather than tied to a
+  release, because the release cycle for the version this would land in is not yet known. ⚠ The same
+  settings class already contains a dead experimental flag carrying a deprecation notice, so
+  flag-rot here is a realised failure mode rather than a hypothetical one.
 - **This work stacks on PR #10284.** The branch is based on `bab-dark-theme-app` and the pull request
   targets it, rather than `develop`. #10284's surfaces are the input to User Story 5, and its failing
   end-to-end checks are out of scope. When #10284 merges, this branch re-targets `develop`.
@@ -405,10 +431,10 @@ reviewer may overturn.
 
 ## Dependencies
 
-- PR [#10284](https://github.com/opsmill/infrahub/pull/10284) merged.
-- The existing account-backed preference system (user and organisation layers, effective resolution,
-  source reporting).
-- The existing build-version information already exposed by the backend.
+- PR [#10284](https://github.com/opsmill/infrahub/pull/10284) — stacked on, not waited for.
+- The existing account-backed preference system (effective resolution, source reporting), used at the
+  user scope only.
+- The existing experimental-settings mechanism, already surfaced to the frontend before sign-in.
 - The `opsmill/infrahub-schema-visualizer` repository, for User Story 7 only. That story completes on
   the upstream repository's timeline, not this one, so it is tracked as its own deliverable and does
   not gate the other six. It remains in scope — the seven-item scope was proposed narrower, queried,
@@ -423,6 +449,11 @@ reviewer may overturn.
   work. This feature must not degrade them, but does not redesign them.
 - **Cross-tab synchronisation.** A second open tab is not required to react to a theme change made in
   the first; it picks the change up on its next load.
+- **An organisation-wide theme default.** While the feature is flag-gated there is no administrator
+  setting a house theme for anyone. Deferred to the moment the flag is removed, when a real user for
+  it exists. The backend gains it for free either way — the preference mutation's scope argument is
+  shared — so this defers only the interface for it.
+- **A removal date for the flag**, recorded as knowingly open-ended rather than left unstated.
 - Additional themes beyond light and dark (high contrast, custom palettes, per-branch theming).
 - Theming of printed or exported output.
 - Restyling third-party surfaces beyond binding them to the active theme.

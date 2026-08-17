@@ -79,21 +79,21 @@ throttling and confirm no flash; sign in from a second browser and see the same 
 - [ ] T011 [US1] Resolve `theme` through the existing user → global → default chain in `backend/infrahub/graphql/queries/preferences.py`.
 - [ ] T012 [US1] Write failing tests for the mutation's three-state argument in `backend/tests/unit/graphql/test_preferences.py`: omitted leaves unchanged, explicit `null` clears, a value sets. ⚠ This is the single easiest thing to get wrong — collapsing "omitted" and "null" makes an override impossible to clear.
 - [ ] T013 [US1] Add the `theme` argument and payload field to `backend/infrahub/graphql/mutations/preferences.py`, honouring `_UNSET` exactly as `date_format` does. Passes T012.
-- [ ] T014 [P] [US1] Test the resolution chain: nothing set → `DEFAULT`/null; global only → `GLOBAL`; user overriding global → `USER`; clearing the user layer re-exposes global.
+- [ ] T014 [P] [US1] Test the resolution chain: nothing set → `DEFAULT`/null; user set → `USER`; clearing the user layer returns to `DEFAULT`. The global layer is exercised too — the mutation's `scope` argument reaches it and the chain must keep working — even though no interface writes it in this version.
 - [ ] T015 [P] [US1] Test that a non-`Theme` value is rejected on construction, including on load from the database.
 - [ ] T016 [US1] Regenerate and commit: `uv run invoke schema.generate-graphqlschema`. CI fails on a stale `schema/schema.graphql`.
 
 ### Frontend
 
 - [ ] T017 [US1] Add `theme` to `PreferenceValues` and `EffectivePreferences` in `frontend/app/src/entities/preferences/domain/model/preference.ts`.
-- [ ] T018 [US1] Add `theme` to the effective-preferences query, the user upsert mutation and the global update mutation under `frontend/app/src/entities/preferences/ui/queries/`.
+- [ ] T018 [US1] Add `theme` to the effective-preferences query and the **user** upsert mutation under `frontend/app/src/entities/preferences/ui/queries/`. ⚠ Not `update-global-preferences.mutation.ts` — leaving `theme` out of that document is what keeps the organisation scope unreachable from the interface without needing backend changes.
 - [ ] T019 [US1] Regenerate frontend types: `cd frontend/app && pnpm codegen`.
-- [ ] T020 [US1] Write failing tests for `frontend/app/src/entities/preferences/ui/theme-provider.test.tsx`: fills the shared context from the effective preference; falls back to the deployment default when the query fails; reacts to a `prefers-color-scheme` change while mounted.
+- [ ] T020 [US1] Write failing tests for `frontend/app/src/entities/preferences/ui/theme-provider.test.tsx`: fills the shared context from the effective preference; falls back to the flag's default when the query fails; reacts to a `prefers-color-scheme` change while mounted.
 - [ ] T021 [US1] Implement `frontend/app/src/entities/preferences/ui/theme-provider.tsx` — fills `shared/context/theme-context`, applies the class to `document.documentElement`, writes the `localStorage` mirror, subscribes to `prefers-color-scheme`. Mirror `DatePreferencesProvider`'s shape. Passes T020. No `storage` listener — cross-tab sync is out of scope.
 - [ ] T022 [US1] Mount the provider in `frontend/app/src/app/app.tsx` alongside `DatePreferencesProvider`.
 - [ ] T023 [US1] Add the inline pre-paint script to `frontend/app/index.html` `<head>`, **before** the module script. Precedence: mirrored resolved theme → mirrored `system` choice resolved against `prefers-color-scheme` → light. ⚠ The empty-cache fallback is **light**, not `prefers-color-scheme` — consulting the system there would put a dark-OS user into the alpha palette before any preference has been read. `prefers-color-scheme` is read only when the *user* has chosen match-system. ⚠ It blocks rendering and runs before everything: wrap storage access in `try`/`catch` (`localStorage` throws when storage is disabled, e.g. Safari private browsing) and validate the stored string against the known set before using it as a class name.
 - [ ] T024 [US1] Add the theme field to `frontend/app/src/entities/preferences/ui/preference-fields.tsx` as a `Combobox` matching the existing fields, keeping `"Automatic (inherited)"` as the empty label. Dark carries a visible **"alpha"** tag — the handover named that word specifically, so render it rather than a synonym; "match system" says it can resolve to the alpha palette (FR-008).
-- [ ] T025 [P] [US1] Surface the field in `preferences-form.tsx`, `global-preferences-form.tsx` and `user-preferences-card.tsx`, updating their existing tests.
+- [ ] T025 [P] [US1] Surface the field in `preferences-form.tsx` and `user-preferences-card.tsx`, updating their existing tests. ⚠ **Not** `global-preferences-form.tsx` — theme is user-scoped only in this version. The backend gains the global scope for free (the mutation's `scope` argument is shared), so this defers only the interface.
 - [ ] T026 [US1] End-to-end test for first-paint correctness (FR-006 / SC-002): with a stored dark preference and the preference request delayed, assert the document element carries the dark class before the app has hydrated. Add a cold-cache case — no mirror, emulated **dark** browser preference — asserting the first paint is **light**, since a defaulted user must not reach the alpha palette by inference. ⚠ The pre-paint script sits outside the module graph so Vitest cannot reach it; this is its **only** automated coverage.
 - [ ] T027 [US1] Remove `@custom-variant dark` and its `TODO: DELETE` from `frontend/packages/ui/src/styles/theme.css` (FR-019). ⚠ **Last task in this phase** — it is what all current dark rendering depends on; removing it earlier leaves the tree with no way to reach dark at all.
 
@@ -108,14 +108,14 @@ throttling and confirm no flash; sign in from a second browser and see the same 
 **Independent Test**: load as a user with no stored preference on a pre-release build → dark; on a
 release build → light; a personal choice beats both and is never overwritten.
 
-- [ ] T028 [P] [US2] Write failing tests in `backend/tests/unit/core/preferences/test_theme.py` over the table in [research.md](./research.md) §R1: `1.11.0` → `light`; `1.11.0b2`, `1.11.1rc1`, `1.12.0.dev5+g1a2b3c` → `dark`; override wins in every direction including forcing `light` on a pre-release build. Assert the result is **never** `"system"`.
-- [ ] T029 [US2] Implement `backend/infrahub/core/preferences/theme.py` — pure `(version: str, override) → "light" | "dark"` using PEP 440 pre-release detection: pre-release → `dark`, otherwise → `light`. Passes T028. ⚠ Not `installation_type`, which is community-vs-enterprise and a tempting false lead on the same payload.
-- [ ] T030 [US2] Add `default_theme: Literal["light","dark"] | None = None` to `ExperimentalFeaturesSettings` in `backend/infrahub/config.py`. ⚠ The `| None` is load-bearing: "not configured" must stay distinguishable from every configured value, or an operator could never force a palette on a build whose derived default already matches.
-- [ ] T031 [US2] Add the resolved `default_theme` to `ConfigAPI` in `backend/infrahub/api/internal.py`. ⚠ Publish only the resolved value — never the version, which would newly expose build information on an unauthenticated endpoint.
-- [ ] T032 [US2] Regenerate and commit: `uv run invoke schema.generate-jsonschema`, then `cd frontend/app && pnpm codegen`.
-- [ ] T033 [US2] Substitute `config.default_theme` in the provider when the effective preference resolves with source `DEFAULT`. It is already a concrete palette, so it is applied directly — stage-2 resolution runs only for a *user's* explicit match-system choice. Extend T020's tests to assert a defaulted user's theme does not change when the emulated system appearance flips.
-- [ ] T034 [P] [US2] Test that the deployment default never writes to stored preferences (FR-013).
-- [ ] T035 [US2] Pin the theme explicitly in both end-to-end suites (`frontend/app` Playwright and `tests/e2e` pytest) so they stop inheriting the build-derived default. ⚠ #10284's e2e checks are already failing and are out of scope — baseline only from a green run after it lands, or its failures will be misread as fallout from this change.
+- [ ] T028 [US2] Add `dark_theme: bool = False` to `ExperimentalFeaturesSettings` in `backend/infrahub/config.py`, beside `graphql_enums`. A plain bool — no tri-state is needed, since the flag carries no derived value. ⚠ Not `installation_type`, which is community-vs-enterprise and a tempting false lead on the same payload.
+- [ ] T029 [US2] Regenerate and commit: `uv run invoke schema.generate-jsonschema`, then `cd frontend/app && pnpm codegen`. No new endpoint or payload field — `experimental_features` is already on the unauthenticated `/api/config`.
+- [ ] T030 [US2] Enable it in `development/docker-compose.yml`: `INFRAHUB_EXPERIMENTAL_DARK_THEME: ${INFRAHUB_EXPERIMENTAL_DARK_THEME:-true}`. ⚠ Defaulting to `true` — unlike its two neighbours — is precisely what delivers SC-008. The env var still overrides for an engineer who wants light.
+- [ ] T031 [US2] Decide deliberately whether the **root** `docker-compose.yml` also defaults it on. It reaches deployments beyond the ones the team runs; leaving it `:-false` there is the conservative choice.
+- [ ] T032 [US2] Gate the theme field on the flag: with it off, render light and **omit the field entirely**. ⚠ Not a light-only picker — offering match-system would let a dark-OS user reach the alpha palette straight through the gate.
+- [ ] T033 [US2] Default a user with no stored preference to dark when the flag is on, **ignoring the operating system**. Extend T020's tests to assert a defaulted user's theme does not change when the emulated system appearance flips.
+- [ ] T034 [P] [US2] Test that turning the flag off **retains** a stored `DARK` preference — renders light, leaves the stored value intact, and honours it again when the flag returns. ⚠ A config change must never destroy user data (FR-013).
+- [ ] T035 [US2] Pin the theme explicitly in both end-to-end suites (`frontend/app` Playwright and `tests/e2e` pytest) so they stop inheriting the flag's value. ⚠ #10284's e2e checks are already failing and are out of scope — baseline only from a green run after it lands, or its failures will be misread as fallout from this change.
 
 **Checkpoint**: the dogfooding loop is live.
 
@@ -207,3 +207,6 @@ independent of one another. US7 can start at any time.
 ## Task count
 
 59 tasks: 4 setup, 3 foundational, 20 US1, 8 US2, 2 US3, 4 US4, 7 US5, 3 US6, 4 US7, 4 cross-cutting.
+
+The US2 count is unchanged but its content is not: the version-derived resolver, its tests and the
+config field were replaced by the flag, its compose wiring, and the flag-off behaviour.

@@ -13,20 +13,20 @@ pull request targets that branch, not `develop`, and re-targets `develop` once #
 
 The dark palette exists but is unreachable: it is activated only by a development-only
 `@custom-variant` and a manually added class. This plan makes it reachable, binds every surface that
-currently pins itself to light, retires the token debt, and turns non-production deployments dark by
+currently pins itself to light, retires the token debt, and turns the development stack dark by
 default so the team dogfoods it.
 
 The technical spine is a **single resolution, computed once and handed down**. A stored choice
-(`LIGHT`/`DARK`/`SYSTEM`) resolves server-side across the user and organisation layers; the client
+(`LIGHT`/`DARK`/`SYSTEM`) resolves server-side at the user layer; the client
 resolves `SYSTEM` against the operating system to a strict `light`/`dark`; every consumer — the
 document class, GraphiQL, Mermaid, the schema visualizer — takes that one resolved value. No
 consumer runs its own `prefers-color-scheme` check, which is what makes them incapable of drifting
 apart.
 
 Two decisions carry most of the risk and are settled in [research.md](./research.md): the
-"non-production build" signal is PEP 440 pre-release status on the running version, published as a
-resolved value on the unauthenticated config payload (§R1); and the first paint is owned by an inline
-classification script reading a `localStorage` mirror, not by React (§R2).
+dogfooding gate is an experimental flag following the convention the two existing experimental
+settings already use — off by default, enabled in the development stack (§R1); and the first paint is
+owned by an inline classification script reading a `localStorage` mirror, not by React (§R2).
 
 ## Technical Context
 
@@ -49,11 +49,11 @@ pytest/testcontainers (end-to-end)
 visit. Theme switching repaints without a reload and without re-running the Mermaid pipeline on every
 React render.
 
-**Constraints**: The light theme must be visually unchanged (FR-020). Semantic colors must stay
-mutually distinguishable in both themes (FR-021). The login page must be themed before a session
-exists.
+**Constraints**: The light theme must be visually unchanged (FR-020). Text must stay legible against
+its surface in both themes (FR-021); semantic palettes are out of scope. The login page must be
+themed before a session exists.
 
-**Scale/Scope**: 3 backend layers (constants/model/GraphQL) + 1 config field; ~104 existing CSS
+**Scale/Scope**: 3 backend layers (constants/model/GraphQL) + 1 boolean setting; ~104 existing CSS
 tokens reused, none added; ~20 application files carrying hardcoded variants; 1 external repository.
 
 ## Constitution Check
@@ -65,9 +65,9 @@ tokens reused, none added; ~20 application files carrying hardcoded variants; 1 
 | **I. Schema-Driven Integrity** | ⚠ **Gate — requires sign-off.** Generated artifacts change: `schema/schema.graphql`, `schema/openapi.json`, `frontend/app/src/shared/api/rest/types.generated.ts`. All are regenerated, never hand-edited, and committed. `AGENTS.md` lists GraphQL schema modifications and database schema changes as **Ask First**; see [Open governance points](#open-governance-points). |
 | **II. Branch-Safe by Default** | ✅ Not applicable in substance. `Preference` is a `StandardNode` outside the branched graph, and a theme has no temporal or per-branch meaning. No branch-aware queries are introduced. |
 | **III. Type Safety & Explicit Contracts** | ✅ `Theme` is a closed enum end to end — rejected at construction on read, typed through GraphQL, and a discriminated union on the client. ⚠ Two inherited constraints must be honoured: `Optional[Theme]` not `Theme \| None` (`StandardNode.guess_field_type`), and single-line enum descriptions (SDL printer stability). |
-| **IV. Test Discipline** | ✅ Resolution logic (both stages), the pre-release derivation, and the three-state mutation argument are pure functions with table-driven unit tests. The version-derived default is tested by calling the resolver with version strings, never by faking a deployment. |
+| **IV. Test Discipline** | ✅ Resolution logic (both stages) and the three-state mutation argument are pure functions with table-driven unit tests. The flag's two states are tested by setting the setting directly, never by faking a deployment. |
 | **V. Query Performance & Efficiency** | ✅ One extra nullable property on a record already fetched. No new queries, no new round trips — `theme` rides the existing effective-preferences query and the existing config payload. |
-| **VI. Security & Input Boundaries** | ✅ The config payload gains only a resolved `"light"`/`"dark"`; the version string is **not** newly exposed to anonymous callers. Global-scope writes reuse the existing permission check; no new permission is introduced. |
+| **VI. Security & Input Boundaries** | ✅ The config payload gains one boolean on a field it already carries; no version information is exposed to anonymous callers. Theme is user-scoped only, so no permission surface is touched at all. |
 | **VII. Simplicity & Maintainability** | ✅ Extends the existing preference machinery rather than adding storage. Removes more than it adds: the `@custom-variant` escape hatch, ~20 files of hardcoded variants, and GraphiQL's now-redundant theme picker. |
 
 **Post-design re-check**: no violations introduced. [Complexity Tracking](#complexity-tracking) is
@@ -103,9 +103,9 @@ backend/infrahub/
 │   ├── types/preferences.py      # + Theme, EffectiveTheme; += EffectivePreferencesType, RawPreferencesType
 │   ├── queries/preferences.py    # resolve theme through the existing chain
 │   └── mutations/preferences.py  # + theme argument, _UNSET three-state handling
-├── config.py                     # + ExperimentalFeaturesSettings.default_theme override
-├── api/internal.py               # + ConfigAPI.default_theme (resolved, unauthenticated)
-└── core/preferences/theme.py     # NEW — version → default theme, pure
+└── config.py                     # + ExperimentalFeaturesSettings.dark_theme: bool = False
+
+development/docker-compose.yml    # + INFRAHUB_EXPERIMENTAL_DARK_THEME, defaulted true
 
 frontend/app/
 ├── index.html                    # + inline pre-paint classification script
@@ -115,7 +115,7 @@ frontend/app/
     │   ├── domain/model/preference.ts        # + theme
     │   ├── domain/rules/theme.ts             # NEW — stage-2 resolution, pure (no storage access)
     │   ├── ui/theme-provider.tsx             # NEW — fills the shared context; applies class, mirrors, listens
-    │   ├── ui/preference-fields.tsx          # + theme field with pre-release marker
+    │   ├── ui/preference-fields.tsx          # + theme field with "alpha" tag; hidden when flag off
     │   └── ui/queries/*.ts                   # + theme in query and mutation documents
     ├── pages/graphql/index.tsx               # forcedTheme="light" → resolved theme
     └── shared/components/
@@ -128,9 +128,10 @@ frontend/packages/ui/src/styles/theme.css     # − @custom-variant escape hatch
 ```
 
 **Structure Decision**: Web application layout. The theme preference slots into the existing
-`entities/preferences/` vertical on both sides, so no new architectural seam appears. The one new
-backend module (`core/preferences/theme.py`) exists to keep the version→default derivation a pure,
-directly testable function rather than logic embedded in the API layer.
+`entities/preferences/` vertical on both sides, and the gate slots into the existing experimental
+settings, so no new architectural seam appears and **no new backend module is needed**. An earlier
+revision added `core/preferences/theme.py` to hold a version→default derivation; adopting the
+existing flag convention removed it.
 
 ⚠ **The context must live in `shared/`, not in the entity.** `shared/` components consume the
 resolved theme (Mermaid, the data viewer), and `dev/knowledge/frontend/entities-structure.md`
@@ -198,13 +199,15 @@ The foundation. Everything else consumes the resolved value it produces.
 
 ### Phase B — Non-production default (US2) · P1
 
-1. `core/preferences/theme.py` — pure `(version: str, override) → "light" | "dark"`. Pre-release →
-   `dark`; otherwise → `light`. ⚠ Never returns `"system"`: a defaulted user must not reach the alpha
-   palette by inference, and a system-following non-production default would defeat the dogfooding.
-2. `ExperimentalFeaturesSettings.default_theme: Literal["light","dark"] | None`. ⚠ The `| None` is
-   load-bearing: "not configured" must stay distinguishable from every configured value — see
-   [contracts/rest-config.md](./contracts/rest-config.md).
-3. `ConfigAPI.default_theme`; regenerate the OpenAPI schema and frontend REST types.
+1. `ExperimentalFeaturesSettings.dark_theme: bool = False` — a plain bool, matching `graphql_enums`.
+   No new endpoint or payload field: `experimental_features` is already on the unauthenticated
+   `/api/config`. Regenerate the OpenAPI schema and frontend REST types.
+2. Enable it in `development/docker-compose.yml`:
+   `INFRAHUB_EXPERIMENTAL_DARK_THEME: ${INFRAHUB_EXPERIMENTAL_DARK_THEME:-true}`. ⚠ That default of
+   `true` — unlike its two neighbours — is what delivers SC-008. Decide deliberately whether the root
+   `docker-compose.yml` follows suit; it reaches beyond the deployments the team runs.
+3. With the flag off, render light and **omit the theme field entirely**. ⚠ Not a light-only picker:
+   offering match-system would let a dark-OS user reach the alpha palette straight through the gate.
 4. Client substitutes it when the effective preference resolves with source `DEFAULT`.
 5. Pin the theme explicitly in both end-to-end suites so they stop depending on the build's version.
 
@@ -263,6 +266,9 @@ starts.
 | Semantic colors flattened during migration | Status/severity no longer distinguishable, in work explicitly scoped out of redesigning them | Migrate `badge.tsx` without degrading existing distinctions; hand anomalies to the separate effort |
 | Default flip destabilises end-to-end suites | Failures misattributed | Pin the theme in both suites; baseline only from a green post-#10284 run |
 | #10284 is revised or does not land | This branch is stacked on it, so its history moves under us | Rebase onto `bab-dark-theme-app`; Phases A–C and E do not depend on its content, only D does |
+| Flag off still leaves a route to dark via match-system | The gate leaks for any dark-OS user | Hide the theme field entirely when the flag is off — not a light-only picker |
+| Turning the flag off deletes stored preferences | A config change destroys user data | Ignore the stored value while unreachable; never delete it |
+| The flag outlives the alpha and becomes permanent | `value_db_index` in the same settings class is already a dead flag with a deprecation notice | Recorded as knowingly open-ended; revisit when the release cycle for the target version is known |
 | #10284's failing e2e checks are inherited by this stacked PR | Reviewers misread them as caused by this work | State it in the PR description; baseline only from a green post-merge run |
 | Submodule pointer moved to an unpushed commit | Breaks every other checkout | Upstream merge strictly precedes the bump |
 

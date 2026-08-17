@@ -6,7 +6,7 @@ Phase 0 output. Each section states an open question from the spec, the options 
 decision, and the evidence gathered from the codebase. Findings marked **⚠** are traps that would
 cost a rewrite if discovered during implementation.
 
-## R1 — How is "non-production build" detected? (FR-010, FR-011, FR-012)
+## R1 — How is the dogfooding deployment gated? (FR-010, FR-011, FR-012, FR-013)
 
 **Question**: The handover note called this "make canary enabled by default". No `canary` concept
 exists anywhere in the repository, so the mechanism had to be chosen rather than located.
@@ -15,10 +15,10 @@ exists anywhere in the repository, so the mechanism had to be chosen rather than
 
 | Option | Verdict |
 |---|---|
-| New `ExperimentalFeaturesSettings` flag | Rejected as the primary mechanism |
+| An `ExperimentalFeaturesSettings` flag, following the existing convention | **Chosen** |
+| PEP 440 pre-release detection on the running version | Considered at length, then rejected |
 | `installation_type` | Rejected — wrong axis |
 | Frontend build-time environment variable | Rejected |
-| PEP 440 pre-release detection on the running version | **Chosen** |
 
 **`installation_type` is the wrong axis.** `backend/infrahub/constants/environment.py` defines
 `INSTALLATION_TYPE = "community"`. It distinguishes community from enterprise, not production from
@@ -28,52 +28,68 @@ non-production. It is already on the config payload, which makes it a tempting f
 image deployed into a production-like environment would still claim non-production, and the same
 published assets are served by every deployment.
 
-**An experimental flag alone is wrong** because it requires every non-production deployment to be
-configured individually — which is exactly the per-engineer setup burden SC-008 exists to avoid.
-
 ### Decision
 
-Derive the default from the running version's PEP 440 pre-release status, with an explicit operator
-override retained on top.
+Add `dark_theme: bool = False` to `ExperimentalFeaturesSettings` and enable it in the development
+stack's compose configuration.
 
-Versions come from `hatch-vcs` (`pyproject.toml`: `git_describe_command = ["git", "describe",
-"--tags", "--long", "--match", "infrahub-v*"]`, generating `backend/infrahub/_version.py`) — the
-INFP-566 dynamic-versions work. Verified against the running build:
+The codebase already has this pattern, twice, and both instances default to off with a per-deployment
+env override:
 
-| Version | `is_prerelease` | Default theme |
-|---|---|---|
-| `1.11.0b2.dev134+geb5acb009` (this checkout) | `True` | dark |
-| `1.12.0.dev5+g1a2b3c` (dev build) | `True` | dark |
-| `1.11.0b2` (beta) | `True` | dark |
-| `1.11.1rc1` (release candidate) | `True` | dark |
-| `1.11.0` (release) | `False` | light |
+```yaml
+INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS: ${INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS:-false}
+INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX: ${INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX:-false}
+```
 
-⚠ Neither default consults the operating system, and both directions are deliberate. Production stays
-light because dark is alpha and must be reached only by an explicit choice — deferring to the system
-would put dark-OS users into it by inference. Non-production forces dark because following the system
-would leave every engineer on a light machine out of the dogfooding, which is that default's whole
-purpose.
+`experimental_features` is already on the unauthenticated `/api/config` payload, so the flag is
+readable before sign-in with no new field and no new endpoint.
 
-An intermediate revision defaulted production to `system` and was withdrawn once that first
-consequence was made explicit.
+### Why the version-derived design was withdrawn
 
-This needs no configuration for the common case: every build the team runs day to day carries a
-`.devN`/`bN`/`rcN` segment, and every published release does not. The operator override (FR-012)
-remains available for the deployment that wants to disagree.
+It was specified first, and in detail. Versions come from `hatch-vcs` (`pyproject.toml`:
+`git_describe_command = [..., "--match", "infrahub-v*"]`, generating `backend/infrahub/_version.py`)
+— the INFP-566 dynamic-versions work. The derivation was verified against real builds:
 
-### ⚠ The frontend must not do this detection
+| Version | `is_prerelease` |
+|---|---|
+| `1.11.0b2.dev134+geb5acb009` (this checkout) | `True` |
+| `1.12.0.dev5+g1a2b3c` (dev build) | `True` |
+| `1.11.1rc1` (release candidate) | `True` |
+| `1.11.0` (release) | `False` |
 
-`backend/infrahub/api/internal.py` exposes two endpoints with different auth postures:
+It worked, and it needed no configuration. It was rejected anyway, for two reasons:
 
-- `GET /api/config` — **unauthenticated**. Carries `experimental_features`, `installation_type`, sso,
-  ldap, policy.
-- `GET /api/info` — **authenticated** (`Depends(get_current_user)`). Carries `deployment_id` and
-  `version`.
+1. **It gates on the wrong thing.** "Pre-release" is a property of a *version*, not of a deployment.
+   A customer running `1.11.0rc1` in their own staging environment matches it exactly — and they are
+   not "the deployments we run". The flag targets deployments directly, which is what was meant.
+2. **It invents a mechanism where one exists.** The repository already has a convention for exactly
+   this, used by both existing experimental settings. Deriving a bespoke default from version strings
+   is more machinery doing the same job less precisely.
 
-The version is only on the authenticated endpoint, but the login page needs a theme *before* there is
-a session (spec edge case "Before sign-in"). Therefore the backend computes the default and publishes
-the **result** on the unauthenticated config payload. The frontend never parses a version string, and
-no version information is newly exposed to anonymous callers — only a resolved `light`/`dark` value.
+⚠ The rejected design also required parsing PEP 440 versions in the backend. The chosen design needs
+none, so this feature introduces **no new dependency** — one fewer governance gate crossed.
+
+Withdrawing it removed a resolver module, the version parsing, a config field, and five tasks.
+
+### The accepted trade
+
+The flag only reaches deployments whose configuration this repository controls. A deployment started
+some other way — a shared staging box, a cloud instance — stays light until someone sets the env var
+there. The version-derived design would have covered those automatically. This was raised explicitly
+and the trade accepted: the deployments the team actually runs come from these compose files.
+
+### What the flag governs
+
+While dark is alpha the flag decides both *whether the feature exists* and, where it does, *that dark
+is the default*. Compressing two jobs into one switch is deliberate: they separate at the moment the
+flag is removed, when the production default becomes its own decision.
+
+⚠ With the flag off the theme field is hidden **entirely**, not reduced to a light-only picker.
+Offering "light" and "match system" would leave a hole straight through the gate — a user on a dark
+operating system selects match-system and reaches the alpha palette anyway.
+
+⚠ Flipping the flag off must **ignore** a stored `DARK` preference, never delete it. A configuration
+change that destroys user data is a much worse failure than a theme that reverts.
 
 ## R2 — How is the flash of the wrong theme prevented? (FR-006, SC-002)
 
@@ -94,21 +110,22 @@ which sets the theme class on the document element from a `localStorage` mirror.
 the first paint decision.
 
 The mirror is written whenever the effective theme resolves (from the account preference, or from the
-deployment default on the config payload). Precedence inside the inline script:
+flag's default). Precedence inside the inline script:
 
 1. Mirrored resolved theme, if present.
 2. Mirrored raw choice of "system" → resolve against `prefers-color-scheme` at that instant.
 3. Nothing mirrored → light.
 
-⚠ **Step 3 is light, not `prefers-color-scheme`.** Consulting the system here would put a dark-OS
-user into the alpha palette before any preference has been read — the inference the design forbids.
-On production this fallback matches the deployment default, so a first-ever visit is correct.
+⚠ **Step 3 is light, not `prefers-color-scheme`.** The script runs before the config payload arrives,
+so it cannot know whether the flag is even on. Guessing from the operating system would put a dark-OS
+user into the alpha palette on a deployment where the feature is switched off entirely. Where the
+flag is off, light is also the final answer, so this fallback is correct rather than merely safe.
 
-**Known and accepted limitation**: on a browser's *first ever* visit to a **non-production**
+**Known and accepted limitation**: on a browser's *first ever* visit to a **flag-enabled**
 deployment, nothing is mirrored, so the first paint is light and corrects to dark once the config
 payload arrives. Every subsequent load is correct from the first frame. Eliminating even that one
 frame would require the server to template the HTML shell, which is disproportionate for a case
-affecting the team's own builds only. Recorded as a deliberate boundary, not an oversight.
+affecting flag-enabled deployments only. Recorded as a deliberate boundary, not an oversight.
 
 **Reconciliation**: when the authoritative preference disagrees with the mirror, the class is updated
 and the mirror rewritten.
@@ -286,8 +303,8 @@ produces in a fresh worktree.
 
 ## R8 — Test and verification impact
 
-Changing the default theme on non-production builds (FR-010) changes what the end-to-end suites see,
-since they run against locally built — therefore pre-release — versions.
+Enabling the flag (FR-010) changes what the end-to-end suites see, since they run against the
+repository's own compose configuration — the same place the flag is switched on.
 
 Both suites are affected: the legacy Playwright suite (`frontend/app`, `pnpm test:e2e`) and the
 pytest/testcontainers suite (`tests/e2e`). Any assertion on a specific color, and any screenshot

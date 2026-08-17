@@ -2,6 +2,26 @@
 
 **Date**: 2026-08-17 | **Spec**: [spec.md](./spec.md) | **Remediation passes used**: 0
 
+## Revision 2 — 2026-08-17, after idea grilling
+
+A structured grilling pass over the product core (the part that had wobbled twice) produced five
+decisions. **The feature got smaller.** Nothing was added.
+
+| Decision | Effect |
+|---|---|
+| Gate the whole feature behind a flag rather than defining an alpha exit date | `INFRAHUB_EXPERIMENTAL_DARK_THEME`, off by default, on in `development/docker-compose.yml`. Motivated by the release cycle for the target version being unknown — `1.11.0` has not shipped, the newest tag is `1.11.0b2`. |
+| Flag off → light only | The theme field is hidden entirely. ⚠ Not a light-only picker: offering match-system would let a dark-OS user reach the alpha palette straight through the gate. Stored `DARK` is ignored, never deleted. |
+| Flag defaults from dev config, **not** from the running version | Replaced the PEP 440 pre-release derivation. "Pre-release" is a property of a version, so it caught customer betas too — broader than "the deployments we run". Follows the convention both existing experimental settings already use. |
+| No removal date for the flag | Recorded as knowingly open-ended rather than left unstated. ⚠ `value_db_index` sits in the same settings class today as a dead flag with a deprecation notice — a realised failure mode. |
+| No organisation-wide theme default | FR-003 was an addition made during specification, never requested. With the feature flag-gated to the dev stack it has no user. Backend gains the scope for free; only the interface is deferred. |
+
+**Removed by this revision**: `core/preferences/theme.py`, PEP 440 version parsing, the
+`default_theme` config field and its payload entry, the organisation-scope interface, and the
+`Deployment default theme` entity. **One governance gate dropped** — no new dependency, since nothing
+parses versions any more.
+
+**Net against the original handover**: still all seven items, still fully covered.
+
 ## Revision — 2026-08-17, after edge-case review
 
 The requester reviewed the Edge Cases section and directed six changes. All are applied across

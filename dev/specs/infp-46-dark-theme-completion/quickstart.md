@@ -84,9 +84,9 @@ document.documentElement.classList.contains("dark")
 
 ### US1 — Choose a theme
 
-1. Sign in, open preferences. The theme field shows the deployment default with a source note
+1. Sign in, open preferences. The theme field shows the flag's default with a source note
    distinguishing it from a personal choice.
-2. The dark option carries a visible pre-release marker.
+2. The dark option carries a visible **"alpha"** tag.
 3. Select dark — the interface repaints with no reload.
 4. Reload. It is dark **in the first painted frame**. To check honestly, throttle the network hard
    (DevTools → Network → Slow 3G) so the preference query is visibly slow: a correct implementation
@@ -94,31 +94,27 @@ document.documentElement.classList.contains("dark")
 5. Sign in from a second browser: dark there too.
 6. Select "match system", then switch the operating system's appearance with the page open — the
    interface follows without a reload.
-7. Set an organisation default, then check it applies to a user with no personal choice and loses to
-   one who has.
+7. Clear your choice back to the inherited default and confirm the source note reverts to reporting a
+   default rather than your own preference.
+8. ⚠ Confirm there is **no** theme field on the organisation-wide preferences form — theme is
+   user-scoped in this version.
 
-### US2 — Non-production default
+### US2 — The feature flag
 
-```bash
-uv run python -c "import importlib.metadata as m; from packaging.version import Version; v=m.version('infrahub-server'); print(v, Version(v).is_prerelease)"
-```
-
-A local checkout reports something like `1.11.0b2.dev134+geb5acb009 True`.
-
-1. As a user with **no** stored theme, load the application: dark. Then set your operating system to
-   light and reload — still dark. The non-production default ignores the system deliberately, or an
-   engineer on a light machine would never dogfood it.
-2. Confirm `GET /api/config` returns `default_theme: "dark"` and does **not** include a version.
-3. Set the operator override to `light`, restart, reload: light — the override beat the version.
-4. Set a personal preference, then flip the override: the personal preference still wins and its
-   stored value is unchanged.
-5. Clear browser storage, set the operating system to **dark**, and reload: the first paint is
-   **light**, then corrects to dark. Both halves matter — light because a defaulted user must not
-   reach the alpha palette by inference, and the correction because the deployment default is dark.
-
-To check the release path without cutting a release, exercise the resolution function directly with
-`1.11.0` in a unit test rather than trying to fake the deployment's version. On production the
-equivalent check is: system set to dark, no stored preference → the application stays **light**.
+1. With `INFRAHUB_EXPERIMENTAL_DARK_THEME` on (the dev stack default) and **no** stored theme, load
+   the app: dark. Set your operating system to light and reload — still dark. The default ignores the
+   system deliberately, or an engineer on a light machine would never dogfood it.
+2. Confirm `GET /api/config` reports `experimental_features.dark_theme: true`, unauthenticated, with
+   no version disclosed.
+3. Turn the flag off, restart, reload: light, **and the theme field is gone from preferences** — not
+   merely reduced to light. Check "match system" is absent too; leaving it would be a hole straight
+   through the flag for anyone on a dark operating system.
+4. With the flag off, confirm a previously stored `DARK` preference is **still in the database** —
+   ignored, not deleted. Turn the flag back on and confirm that user is dark again.
+5. Clear browser storage, set the operating system to **dark**, and reload with the flag on: the
+   first paint is **light**, then corrects to dark. Both halves matter — light because the pre-paint
+   script runs before it knows whether the flag is even on, and the correction because the flag's
+   default is dark.
 
 ### US3 — GraphQL sandbox
 
@@ -177,7 +173,7 @@ equivalent check is: system set to dark, no stored preference → the applicatio
 - **Semantic colors are out of scope** — status, severity, diff conflict, danger palettes are tracked
   separately. Do not redesign them here; do not let a mechanical token swap flatten two distinct
   severities into one either. `shared/components/ui/badge.tsx` carries the most of these.
-- **End-to-end suites** pin the theme explicitly rather than inheriting the build default, so they
+- **End-to-end suites** pin the theme explicitly rather than inheriting the flag's value, so they
   stay deterministic. ⚠ #10284's end-to-end checks are already failing and are out of scope — do not
   read those failures as fallout from this work; establish the baseline from a green run after it
   lands.
