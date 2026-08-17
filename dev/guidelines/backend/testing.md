@@ -107,6 +107,10 @@ The module provides individual node/generic schemas (`CAR`, `DEVICE`, `TAG`, `PE
 
 4. **Never modify an existing helper schema to satisfy a single test.** Changes to shared schemas affect every test that uses them. If an existing helper almost fits but not quite, use `deepcopy` as shown above.
 
+## Pin settings the test depends on
+
+`config.SETTINGS` is populated from `INFRAHUB_*` environment variables at process start, so values exported in the developer's shell leak into the test process. Any test whose behavior depends on a settings field must pin it in a save/restore fixture (set the value, `yield`, restore the original) — see `import_every_remote_branch` in `backend/tests/integration/git/conftest.py`. Never assume a field holds its default.
+
 ## Dataclass Test Case Pattern
 
 For parametrized tests with multiple scenarios, use dataclasses to define test cases. This pattern provides type safety, readable test IDs, and clear separation between test data and test logic.
@@ -379,6 +383,9 @@ The exact-match principle above is not limited to error messages — it applies 
 - **Assert a positive count where the number matters.** A test that only checks "no failures" can pass while measuring zero of the thing it claims to test — e.g. if a workflow/name string changes so nothing is counted. Assert that the expected count is `> 0` (or the exact number) so a silently-zero run fails.
 - **Make the scenario actually hold.** A "missing row" test must not create the row; a "no second object" test must prove the count is one. Verify the setup produces the state under test.
 - **Denial tests must verify nothing changed.** When asserting an operation is rejected, also reload the target and assert its state is unchanged (or that no row was created/deleted). Asserting only that an error was returned does not prove the write was actually blocked.
+- **Assert persistence from storage, not from the layer the code wrote.** When the contract is that state reaches (or is restored in) the database, reload it from the DB (e.g. `Branch.get_by_name` and check `active_schema_hash`) instead of reading back the in-memory registry/cache the code under test updated — that assertion is self-confirming and cannot detect a failure to persist.
+- **Pin literal expected values — don't derive them with the code's own dependencies.** Computing the expectation with the same serializer/formatter the implementation calls (`ujson.dumps`, `yaml.dump`, the function under test itself) makes the assertion a tautology: it passes even when the library's output changes. Write the raw expected string into the test.
+- **A "does not raise" test still needs an assertion.** When the contract is that an exception is swallowed, also assert a side effect that only the guarded path produces (state set before the raiser was called). With no assertion, a regression that returns early before the guard passes identically.
 
 ## See Also
 
