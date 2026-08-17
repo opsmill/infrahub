@@ -1,0 +1,209 @@
+# Tasks: Dark Theme Completion
+
+**Input**: Design documents in `dev/specs/infp-46-dark-theme-completion/`
+
+**Prerequisites**: [plan.md](./plan.md), [spec.md](./spec.md), [research.md](./research.md),
+[data-model.md](./data-model.md), [contracts/](./contracts/)
+
+**Tests**: Included. Constitution principle IV (Test Discipline) and `AGENTS.md` both require tests
+for new functionality. Pure-function tasks are written test-first.
+
+## Format: `[ID] [P?] [Story] Description`
+
+- **[P]**: can run in parallel — different files, no dependency on another incomplete task
+- **[Story]**: the user story the task serves
+
+## ⚠ Before starting
+
+Two governance approvals are **required** before Phase 3 (see [plan.md](./plan.md#open-governance-points)).
+`AGENTS.md` lists both as Ask First:
+
+1. **GraphQL schema modification** — new `Theme` enum, `EffectiveTheme` type, field on two types, new
+   mutation argument. Additive and non-breaking, but public schema.
+2. **Persisted model change** — nullable `theme` on the `Preference` `StandardNode`. Expected additive
+   with no data migration; confirm with an owner of the `StandardNode` persistence path.
+
+Phases 1, 2 and 7–9 need neither approval and can proceed meanwhile.
+
+Verification uses the binaries directly — `pnpm` scripts abort in this environment:
+
+```bash
+cd frontend/app && node_modules/.bin/vitest run && node_modules/.bin/biome ci . && node_modules/.bin/tsc --noEmit
+```
+
+---
+
+## Phase 1: Setup
+
+**Purpose**: make the worktree able to build and give the light theme a reference to be compared against.
+
+- [ ] T001 Initialise the visualizer submodule: `git submodule update --init frontend/packages/schema-visualizer`. Required for US7, and it clears the two phantom `betterer` findings an uninitialised submodule produces.
+- [ ] T002 [P] Install the editable SDK: `uv pip install -e python_sdk`. Fresh worktrees skip this and `infrahub_sdk` imports fail.
+- [ ] T003 Rebase onto `origin/bab-dark-theme-app` until PR #10284 lands — it supplies the surfaces US5 migrates. Re-target to `develop` once merged.
+- [ ] T004 Capture light-theme reference screenshots of every page US5/US6 touch (proposed changes, a diff view, checks, path traversal, data viewer). FR-020/SC-005 make "light is unchanged" a hard constraint, and it is unprovable later without a baseline taken now.
+
+**Checkpoint**: builds clean; light-theme baseline exists.
+
+---
+
+## Phase 2: Foundational (blocking)
+
+**Purpose**: the theme value every other story consumes. Nothing here needs the backend, so it can
+start immediately and in parallel with governance approval.
+
+⚠ The context lives in `shared/`, the provider in the entity. `shared/` may not import an entity
+(`dev/knowledge/frontend/entities-structure.md`), and there is **no lint guard** — layer rules are
+review-enforced only.
+
+- [ ] T005 Create `frontend/app/src/shared/context/theme-context.tsx` holding the resolved `"light" | "dark"`, defaulting to `"light"`. It must import nothing from `entities/`. Model it on the sibling `shared/context/date-preferences-context.tsx`.
+- [ ] T006 [P] Write failing tests for stage-2 resolution in `frontend/app/src/entities/preferences/domain/rules/theme.test.ts`: table-driven over `(choice, systemPrefersDark)` → `"light" | "dark"`, covering all three choices and both system states.
+- [ ] T007 Implement `frontend/app/src/entities/preferences/domain/rules/theme.ts` to pass T006. ⚠ Pure only — `domain/rules` may not touch browser storage or React.
+
+**Checkpoint**: a resolved theme can be held and read; consumers can be written against it.
+
+---
+
+## Phase 3: User Story 1 — Choose a theme (P1) 🎯 MVP
+
+**Goal**: a user picks light / dark / match-system; it applies immediately, persists to their account,
+and paints correctly on first frame.
+
+**Independent Test**: change the setting, watch it apply without reload; reload under heavy network
+throttling and confirm no flash; sign in from a second browser and see the same choice.
+
+### Backend
+
+- [ ] T008 [US1] Add `Theme` StrEnum (`LIGHT`, `DARK`, `SYSTEM`) to `backend/infrahub/core/preferences/constants.py`, beside `DateFormat`.
+- [ ] T009 [US1] Add `theme: Optional[Theme] = None` to `Preference` in `backend/infrahub/core/preferences/models.py`. ⚠ `Optional[Theme]`, never `Theme | None` — `StandardNode.guess_field_type` requires it, as the file's own comment records.
+- [ ] T010 [US1] Add `Theme` and `EffectiveTheme` to `backend/infrahub/graphql/types/preferences.py`; add `theme` to `EffectivePreferencesType` and `RawPreferencesType` per [contracts/graphql-preferences.md](./contracts/graphql-preferences.md). ⚠ Enum descriptions stay on **one line** — the SDL printer dedents multi-line descriptions inconsistently and makes the generated schema environment-dependent.
+- [ ] T011 [US1] Resolve `theme` through the existing user → global → default chain in `backend/infrahub/graphql/queries/preferences.py`.
+- [ ] T012 [US1] Write failing tests for the mutation's three-state argument in `backend/tests/unit/graphql/test_preferences.py`: omitted leaves unchanged, explicit `null` clears, a value sets. ⚠ This is the single easiest thing to get wrong — collapsing "omitted" and "null" makes an override impossible to clear.
+- [ ] T013 [US1] Add the `theme` argument and payload field to `backend/infrahub/graphql/mutations/preferences.py`, honouring `_UNSET` exactly as `date_format` does. Passes T012.
+- [ ] T014 [P] [US1] Test the resolution chain: nothing set → `DEFAULT`/null; global only → `GLOBAL`; user overriding global → `USER`; clearing the user layer re-exposes global.
+- [ ] T015 [P] [US1] Test that a non-`Theme` value is rejected on construction, including on load from the database.
+- [ ] T016 [US1] Regenerate and commit: `uv run invoke schema.generate-graphqlschema`. CI fails on a stale `schema/schema.graphql`.
+
+### Frontend
+
+- [ ] T017 [US1] Add `theme` to `PreferenceValues` and `EffectivePreferences` in `frontend/app/src/entities/preferences/domain/model/preference.ts`.
+- [ ] T018 [US1] Add `theme` to the effective-preferences query, the user upsert mutation and the global update mutation under `frontend/app/src/entities/preferences/ui/queries/`.
+- [ ] T019 [US1] Regenerate frontend types: `cd frontend/app && pnpm codegen`.
+- [ ] T020 [US1] Write failing tests for `frontend/app/src/entities/preferences/ui/theme-provider.test.tsx`: fills the shared context from the effective preference; falls back when the query fails; reacts to a `prefers-color-scheme` change while mounted; reconciles on a `storage` event.
+- [ ] T021 [US1] Implement `frontend/app/src/entities/preferences/ui/theme-provider.tsx` — fills `shared/context/theme-context`, applies the class to `document.documentElement`, writes the `localStorage` mirror, subscribes to `prefers-color-scheme` and `storage`. Mirror `DatePreferencesProvider`'s shape. Passes T020.
+- [ ] T022 [US1] Mount the provider in `frontend/app/src/app/app.tsx` alongside `DatePreferencesProvider`.
+- [ ] T023 [US1] Add the inline pre-paint script to `frontend/app/index.html` `<head>`, **before** the module script. ⚠ It blocks rendering and runs before everything: wrap storage access in `try`/`catch` and fall through to light (`localStorage` throws when storage is disabled, e.g. Safari private browsing), and validate the stored string against the known set before using it as a class name.
+- [ ] T024 [US1] Add the theme field to `frontend/app/src/entities/preferences/ui/preference-fields.tsx` as a `Combobox` matching the existing fields, keeping `"Automatic (inherited)"` as the empty label. Dark carries a visible pre-release marker; "match system" says it can resolve to the pre-release palette (FR-008).
+- [ ] T025 [P] [US1] Surface the field in `preferences-form.tsx`, `global-preferences-form.tsx` and `user-preferences-card.tsx`, updating their existing tests.
+- [ ] T026 [US1] End-to-end test for first-paint correctness (FR-006 / SC-002): with a stored dark preference and the preference request delayed, assert the document element carries the dark class before the app has hydrated. ⚠ The pre-paint script sits outside the module graph so Vitest cannot reach it — this is its **only** automated coverage.
+- [ ] T027 [US1] Remove `@custom-variant dark` and its `TODO: DELETE` from `frontend/packages/ui/src/styles/theme.css` (FR-019). ⚠ **Last task in this phase** — it is what all current dark rendering depends on; removing it earlier leaves the tree with no way to reach dark at all.
+
+**Checkpoint**: US1 ships standalone. Dark is reachable, persistent and flash-free.
+
+---
+
+## Phase 4: User Story 2 — Non-production default (P1)
+
+**Goal**: non-production deployments default to dark so the team dogfoods it without per-engineer setup.
+
+**Independent Test**: load as a user with no stored preference on a pre-release build → dark; on a
+release build → light; a personal choice beats both and is never overwritten.
+
+- [ ] T028 [P] [US2] Write failing tests in `backend/tests/unit/core/preferences/test_theme.py` over the table in [research.md](./research.md) §R1: `1.11.0` → light; `1.11.0b2`, `1.11.1rc1`, `1.12.0.dev5+g1a2b3c` → dark; override wins in both directions.
+- [ ] T029 [US2] Implement `backend/infrahub/core/preferences/theme.py` — pure `(version: str, override) → "light" | "dark"` using PEP 440 pre-release detection. Passes T028. ⚠ Not `installation_type`, which is community-vs-enterprise and a tempting false lead on the same payload.
+- [ ] T030 [US2] Add `default_theme: Literal["light","dark"] | None = None` to `ExperimentalFeaturesSettings` in `backend/infrahub/config.py`. ⚠ Tri-state, not `bool` — `False` could not be distinguished from unset, so an operator could never force light on a pre-release build and FR-012 would be unmet in one direction.
+- [ ] T031 [US2] Add the resolved `default_theme` to `ConfigAPI` in `backend/infrahub/api/internal.py`. ⚠ Publish only the resolved value — never the version, which would newly expose build information on an unauthenticated endpoint.
+- [ ] T032 [US2] Regenerate and commit: `uv run invoke schema.generate-jsonschema`, then `cd frontend/app && pnpm codegen`.
+- [ ] T033 [US2] Substitute `config.default_theme` in the provider when the effective preference resolves with source `DEFAULT`; extend T020's tests to cover it.
+- [ ] T034 [P] [US2] Test that the deployment default never writes to stored preferences (FR-013).
+- [ ] T035 [US2] Pin the theme explicitly in both end-to-end suites (`frontend/app` Playwright and `tests/e2e` pytest) so they stop inheriting the build-derived default. ⚠ #10284's e2e checks are already failing and are out of scope — baseline only from a green run after it lands, or its failures will be misread as fallout from this change.
+
+**Checkpoint**: the dogfooding loop is live.
+
+---
+
+## Phase 5: User Story 3 — GraphQL sandbox (P2)
+
+- [ ] T036 [US3] Replace `forcedTheme="light"` in `frontend/app/src/pages/graphql/index.tsx` with the resolved theme from the shared context. ⚠ Pass `"light"`/`"dark"` only — never `"system"`, or GraphiQL runs its own `prefers-color-scheme` detection and can disagree with the application.
+- [ ] T037 [US3] Test that the sandbox receives the resolved value and follows a theme change. ⚠ The relied-upon behaviour (reactive `forcedTheme`, and picker-hiding when set) is not documented public API — it was verified against `graphiql@5.2.4`'s bundled source, so a test is what protects the binding across upgrades.
+
+---
+
+## Phase 6: User Story 4 — Mermaid diagrams (P2)
+
+- [ ] T038 [US4] Derive `mermaidConfig.theme` from the resolved theme in `frontend/app/src/shared/components/editor/markdown/markdown-with-mermaid.tsx`, mapping to Mermaid's `"dark"` / `"default"`. ⚠ `rehypePlugins` is currently a module-level constant; making it theme-dependent **must** memoise on the resolved theme alone. A new array identity per render re-runs the rehype pipeline continuously — the diagram flickers and a CPU core pins.
+- [ ] T039 [US4] Replace the hardcoded `bg-white` on the pan/zoom container in `frontend/app/src/shared/components/editor/markdown/mermaid-diagram.tsx` with a surface token. This is the bright panel behind an otherwise-correct dark diagram.
+- [ ] T040 [P] [US4] Tokenise the `mermaid-error` fallback styling so the parse-error state is legible in both themes (FR-015).
+- [ ] T041 [US4] Test that a theme change re-renders the diagram, and that the plugin array is stable across renders at a fixed theme.
+
+---
+
+## Phase 7: User Story 5 — Legacy pages onto tokens (P2)
+
+**Goal**: no application component carries per-theme overrides or raw color literals.
+
+⚠ Verify the light theme against the T004 baseline after **every batch**, not once at the end. This
+is the constraint a token swap breaks most easily and the most expensive to bisect late.
+
+- [ ] T042 [P] [US5] Migrate `entities/diff/ui/` — `node-diff/utils.tsx`, `node-diff/node.tsx`, `checks/validator.tsx`, `checks/check.tsx`, `checks/data-conflict.tsx`, `diff-badge.tsx`.
+- [ ] T043 [P] [US5] Migrate `entities/path-traversal/ui/` — `path-results-list.tsx`, `infra-node.tsx`, `path-traversal-page.tsx`.
+- [ ] T044 [P] [US5] Migrate `entities/proposed-changes/ui/diff-summary/diff-summary-tag-group.tsx`, `entities/tasks/ui/task-display.tsx`, `entities/branches/ui/branch-working-notice.tsx`, `entities/schema/ui/styled.tsx`, `entities/user-profile/ui/account-token-create-action.tsx`.
+- [ ] T045 [P] [US5] Migrate `shared/components/` — `modals/modal-confirm.tsx`, `table/style.tsx`, `table/sticky-cell-shadow.tsx`, `ui/infrahub-logo.tsx`, `ui/link-pill.tsx`.
+- [ ] T046 [US5] Migrate `shared/components/ui/badge.tsx` **separately and last**. ⚠ Twelve occurrences, the most of any file, and they likely encode semantic colors — this needs a palette decision under FR-021 (severities must stay mutually distinguishable), not a mechanical swap.
+- [ ] T047 [US5] Add the automated guard that makes SC-004 a standing property rather than a one-time cleanup. `betterer` is already wired into CI and is the lower-friction option; a lint rule is stricter. Without a guard the debt returns with the next feature branch.
+- [ ] T048 [US5] Verify: `git grep -c "dark:" -- 'frontend/app/src/**/*.tsx'` returns nothing. ⚠ Use plain `git grep` — `rtk` reformats output and an empty piped result is not proof.
+
+---
+
+## Phase 8: User Story 6 — Data viewer (P3)
+
+- [ ] T049 [US6] Replace `bg-neutral-800 text-neutral-200` (line 29) and `border-neutral-700` (line 77) in `frontend/app/src/shared/components/data-viewer/data-viewer.tsx` with palette tokens. `neutral` is Tailwind's cold grey; the theme is built on warm `stone` — that difference is the reported tone mismatch.
+- [ ] T050 [US6] Replace the two `bg-white` containers (lines 58, 89) with tokens — a fixed light background in dark mode, which FR-018 forbids.
+- [ ] T051 [P] [US6] Walk every content type the viewer handles and confirm none retains a fixed light background.
+
+---
+
+## Phase 9: User Story 7 — Schema visualizer (P3)
+
+⚠ Completes on the upstream repository's timeline. Tracked separately so it does not gate the other
+six; the work stays in scope.
+
+- [ ] T052 [US7] Open a pull request on `opsmill/infrahub-schema-visualizer` adding dark support: canvas, nodes, edges, labels and controls, with the theme accepted from the embedding application rather than detected independently.
+- [ ] T053 [US7] Get it merged and released upstream.
+- [ ] T054 [US7] Bump the submodule pointer here and pass the resolved theme into the visualizer. ⚠ Never point at an unpushed commit — it breaks every other checkout.
+- [ ] T055 [US7] Confirm no visualizer styling code landed in this repository (FR-016).
+
+---
+
+## Phase 10: Cross-cutting
+
+- [ ] T056 Contrast audit (FR-022 / SC-009) across the pages walked for SC-006, not a sample. ⚠ Distinguishability between semantic colors is a different property from legibility against a surface — a palette can satisfy FR-021 in full and still be unreadable.
+- [ ] T057 [P] Add a changelog fragment under `changelog/`. This series used `ci/skip-changelog` for pure restyling, but a user-facing theme setting is a genuine feature and warrants an entry.
+- [ ] T058 [P] Document the theme preference in the user-facing docs under `docs/`, including that dark is pre-release.
+- [ ] T059 Run `/pre-ci` before pushing — it runs the locally-executable CI checks including generated-file and generated-doc validation, which this feature touches in three places.
+
+---
+
+## Dependencies
+
+```text
+Phase 1 (setup)
+   └─▶ Phase 2 (shared context + resolution)      ← blocks every consumer
+          ├─▶ Phase 3 (US1)  ← governance approval required
+          │      └─▶ Phase 4 (US2)
+          ├─▶ Phase 5 (US3)     ┐
+          ├─▶ Phase 6 (US4)     ├─ independent of each other
+          └─▶ Phase 8 (US6)     ┘
+
+Phase 7 (US5) ── needs PR #10284 merged (or T003's rebase)
+Phase 9 (US7) ── independent; gated on the upstream repository
+Phase 10      ── after the phases it audits
+```
+
+**Critical path**: T001 → T005/T007 → T008–T027 (US1) → T028–T035 (US2).
+
+**Parallelisable once Phase 2 lands**: US3, US4, US6 and the US5 migration batches are all
+independent of one another. US7 can start at any time.
+
+## Task count
+
+59 tasks: 4 setup, 3 foundational, 20 US1, 8 US2, 2 US3, 4 US4, 7 US5, 3 US6, 4 US7, 4 cross-cutting.
