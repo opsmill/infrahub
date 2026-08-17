@@ -344,6 +344,61 @@ describe("List Component", () => {
 });
 ```
 
+## Troubleshooting
+
+### `mockClear is not a function` in CI
+
+Symptom: `frontend-tests` fails with `TypeError: vi.mocked(...).mockClear is not
+a function` (or `.mockReturnValue` / `.mockResolvedValue`), in a test file you
+did not touch, and passes on re-run. The file it lands on is random.
+
+Cause: Vite discovered a dependency part-way through the run, re-optimized, and
+reloaded the page. The reload drops every `vi.mock()` registration made before
+it, so `vi.mocked(...)` hands back the real function. Look just above the
+failures for the fingerprint — `dependencies optimized: …` followed by
+`optimized dependencies changed. reloading` and `[vitest] Vite unexpectedly
+reloaded a test`. **This is not your breakage**; re-run the job on the same SHA
+to confirm.
+
+`frontend/app/vitest.config.ts` guards against this in two layers, and the
+comment above `optimizeDeps` there is the authority — read it before changing
+anything:
+
+- `optimizeDeps.entries` widens Vite's initial scan to all of `src`. Browser
+  mode otherwise seeds the scan with the test files only, so a dependency is
+  missed whenever no test imports its module. This layer covers anything
+  statically reachable, so a new component pulling in a new dependency needs no
+  config change at all.
+- `optimizeDeps.include` pre-bundles the remainder: imports whose specifier is
+  not a literal. Every entry here resolves from `frontend/app`, so a dependency
+  owned by a workspace package (`@infrahub/ui`, `@infrahub/graph`,
+  `infrahub-schema-visualizer`) needs the nested `"<owner> > <dep>"` form. A
+  bare specifier that does not resolve is dropped with a `Failed to resolve
+  dependency` warning and protects nothing.
+
+If a reload still happens, add the dependencies named in the log line to
+`include` — but check first whether widening the scan is the better answer,
+since that scales and the list does not.
+
+Reproduce and verify locally with CI's own command and a cold optimizer cache —
+plain `vitest run` does not reload, which makes this look CI-only:
+
+```bash
+cd frontend/app && rm -rf node_modules/.vite && pnpm test:coverage 2>&1 | tee /tmp/vitest.log
+```
+
+All three of these must be `0`:
+
+```bash
+grep -c 'Failed to resolve dependency' /tmp/vitest.log
+grep -c 'dependencies optimized' /tmp/vitest.log
+grep -c 'unexpectedly reloaded' /tmp/vitest.log
+```
+
+Nested entries land in `node_modules/.vite/vitest/<hash>/deps/` as
+`owner_n_dep.js` (for example `infrahub-schema-visualizer_n_@dagrejs_dagre.js`),
+so looking there for a bare package name gives a false negative.
+
 ## Quality Checklist
 
 Before submitting your component tests:
