@@ -257,9 +257,10 @@ nodes, edges and controls are dark and legible.
   flash of the other theme.
 - **FR-007**: When "match system" is selected, the system MUST follow changes to the operating
   system's appearance while the page is open.
-- **FR-008**: The system MUST mark the dark choice as pre-release in the interface, so users
-  understand they are opting into something that may still contain visual defects. Because "match
-  system" can resolve to dark, its description MUST make that consequence clear.
+- **FR-008**: The system MUST mark the dark choice as **alpha** in the interface, so users understand
+  they are opting into something that may still contain visual defects. The handover named this
+  label specifically; "alpha" is the word to render, not a paraphrase of it. Because "match system"
+  can resolve to dark, its description MUST make that consequence clear.
 - **FR-009**: The system MUST render a coherent theme when no preference can be retrieved, falling
   back to the last known choice and then to the deployment default.
 
