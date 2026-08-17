@@ -27,12 +27,6 @@ export default mergeConfig(
         "react-aria-components",
         "lucide-react",
         "tailwind-merge",
-<<<<<<< HEAD
-        "@radix-ui/react-dropdown-menu",
-        "@radix-ui/react-scroll-area",
-        "react-resizable-panels",
-=======
->>>>>>> origin/develop
         "@graphiql/plugin-explorer",
         "@tanstack/react-query-devtools",
         "graphiql",
