@@ -122,6 +122,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/guides/backend/creating-events.md` - Creating new events
 - `dev/guides/backend/creating-async-tasks.md` - How to create an async task, with a pre-submit checklist. Load when adding a `@task`/`@flow`.
 - `dev/guides/backend/creating-messages.md` - Creating message bus messages
+- `dev/guides/backend/creating-migrations.md` - Choosing a migration base class, `GRAPH_VERSION` bookkeeping, batching, and transaction retry. Load when adding a graph or schema migration.
 
 ### ADRs (Why we decided)
 
