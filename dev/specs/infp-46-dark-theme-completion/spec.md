@@ -247,7 +247,8 @@ nodes, edges and controls are dark and legible.
 - **FR-002**: The system MUST persist a user's theme choice against their account, so it applies on
   any browser or machine where they sign in.
 - **FR-003**: The system MUST support an organisation-wide theme default that applies to users who
-  have made no personal choice, and MUST let a personal choice override it.
+  have made no personal choice, and MUST let a personal choice override it. Setting it MUST require
+  the same permission as the existing organisation-wide preferences; no new permission is introduced.
 - **FR-004**: The system MUST report which layer an effective theme came from — the user's own
   choice, the organisation default, or the built-in default — consistent with how existing
   preferences report their source.
@@ -295,6 +296,10 @@ nodes, edges and controls are dark and legible.
 - **FR-020**: The light theme MUST remain visually unchanged by this feature.
 - **FR-021**: Colors that carry meaning — status, severity, diff conflict, danger — MUST remain
   mutually distinguishable in both themes.
+- **FR-022**: Text and essential interface elements MUST remain legible against their background in
+  both themes, meeting the contrast level the light theme already achieves. Distinguishability
+  between semantic colors (FR-021) is a separate property and does not imply legibility against a
+  surface: a palette can satisfy FR-021 in full and still be unreadable.
 
 ### Key Entities
 
@@ -315,7 +320,9 @@ nodes, edges and controls are dark and legible.
 - **SC-001**: A user can change the theme and see the whole application — including the GraphQL
   sandbox, Mermaid diagrams and the schema visualizer — reflect the change, without reloading.
 - **SC-002**: On reload, the correct theme is present in the first painted frame; no flash of the
-  opposite theme is observable.
+  opposite theme is observable. This is verified by an automated end-to-end check, not by manual
+  observation alone — it is the requirement most likely to regress silently, and the mechanism that
+  delivers it runs outside the unit-test harness.
 - **SC-003**: A theme chosen on one machine is in effect when the same user signs in on another.
 - **SC-004**: Zero application components specify per-theme color overrides or raw color literals;
   this is verifiable by inspection of the source and holds as a standing property, not a one-time
@@ -328,6 +335,8 @@ nodes, edges and controls are dark and legible.
   production deployments present light, without either altering stored preferences.
 - **SC-008**: The team can run a non-production deployment in dark continuously for the dogfooding
   period without needing per-engineer setup.
+- **SC-009**: Text and essential interface elements meet the same contrast level in dark as the light
+  theme already achieves, verified across the pages walked for SC-006 rather than on a sample.
 
 ## Assumptions
 
@@ -360,7 +369,10 @@ reviewer may overturn.
 - The existing account-backed preference system (user and organisation layers, effective resolution,
   source reporting).
 - The existing build-version information already exposed by the backend.
-- The `opsmill/infrahub-schema-visualizer` repository, for User Story 7 only.
+- The `opsmill/infrahub-schema-visualizer` repository, for User Story 7 only. That story completes on
+  the upstream repository's timeline, not this one, so it is tracked as its own deliverable and does
+  not gate the other six. It remains in scope — the seven-item scope was proposed narrower, queried,
+  and confirmed at all seven by the requester.
 
 ## Out of Scope
 

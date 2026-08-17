@@ -107,10 +107,11 @@ backend/infrahub/
 frontend/app/
 ├── index.html                    # + inline pre-paint classification script
 └── src/
+    ├── shared/context/theme-context.tsx      # NEW — holds resolved "light"|"dark"; imports no entity
     ├── entities/preferences/
     │   ├── domain/model/preference.ts        # + theme
-    │   ├── domain/rules/theme.ts             # NEW — stage-2 resolution, pure
-    │   ├── ui/theme-provider.tsx             # NEW — applies class, mirrors, listens
+    │   ├── domain/rules/theme.ts             # NEW — stage-2 resolution, pure (no storage access)
+    │   ├── ui/theme-provider.tsx             # NEW — fills the shared context; applies class, mirrors, listens
     │   ├── ui/preference-fields.tsx          # + theme field with pre-release marker
     │   └── ui/queries/*.ts                   # + theme in query and mutation documents
     ├── pages/graphql/index.tsx               # forcedTheme="light" → resolved theme
@@ -127,6 +128,26 @@ frontend/packages/ui/src/styles/theme.css     # − @custom-variant escape hatch
 `entities/preferences/` vertical on both sides, so no new architectural seam appears. The one new
 backend module (`core/preferences/theme.py`) exists to keep the version→default derivation a pure,
 directly testable function rather than logic embedded in the API layer.
+
+⚠ **The context must live in `shared/`, not in the entity.** `shared/` components consume the
+resolved theme (Mermaid, the data viewer), and `dev/knowledge/frontend/entities-structure.md`
+prohibits `shared/` from importing an entity: an entity's component "may be imported by other
+entities and by higher layers — never by `shared/`". So the dependency runs one way only:
+
+```text
+shared/context/theme-context.tsx      ← declares the context, imports no entity
+        ▲                    ▲
+        │ fills              │ consumes
+entities/preferences/ui/     shared/components/*, pages/*
+  theme-provider.tsx
+```
+
+This mirrors `DatePreferencesProvider` exactly — it lives in `entities/preferences/ui/` and fills
+`shared/context/date-preferences-context.tsx`, whose docstring records that the shared context
+"never imports `entities`". Copy that arrangement rather than inventing one.
+
+⚠ `domain/rules` may not touch browser storage, so `domain/rules/theme.ts` stays a pure function and
+the `localStorage` mirror lives in the provider.
 
 ## Implementation phases
 
@@ -154,6 +175,13 @@ The foundation. Everything else consumes the resolved value it produces.
 7. **Pre-paint script** — inline in `index.html` `<head>`, before the module script, reading the
    mirror. Per [research.md](./research.md) §R2, a browser's first-ever visit still corrects after
    the config payload arrives; this is an accepted, documented boundary.
+   ⚠ It runs before everything and blocks rendering, so it must fail safe. `localStorage` access
+   **throws** when storage is disabled or unavailable (Safari private browsing), and an uncaught
+   throw here degrades the whole load for a cosmetic feature — wrap it in `try`/`catch` and fall
+   through to the light default. Validate the stored string against the known set before applying it
+   rather than using it directly as a class name.
+   ⚠ No Content-Security-Policy is configured today, so the inline script is fine. If one is ever
+   added it needs a nonce or hash, or the first paint silently reverts to light.
 8. **Preference field** — a `Combobox` matching the existing fields, with the pre-release marker on
    dark and a description on "match system" making clear it can resolve to the pre-release palette
    (FR-008). "Automatic (inherited)" remains the empty-value label.
@@ -216,6 +244,9 @@ starts.
 | Removing `@custom-variant` before the provider works | Dark becomes unreachable mid-branch | Sequenced last within Phase A |
 | Mermaid plugin array rebuilt per render | Continuous re-render, pinned CPU | Memoise on resolved theme; watch the profiler during US4 verification |
 | Passing `"system"` to GraphiQL | Sandbox silently disagrees with the app | Pass only resolved `light`/`dark` |
+| GraphiQL's `forcedTheme` reactivity and picker-hiding are not documented public API — both were verified by reading the bundled source of 5.2.4 | A minor bump could break the binding without notice | Record the version dependency; re-verify on upgrade; cover the binding with a test |
+| `shared/` importing `entities/` for the theme | Prohibited dependency direction, and **no lint guard exists** — layer rules are review-enforced only | Context in `shared/`, provider in the entity, per the `DatePreferencesProvider` precedent |
+| Pre-paint script throws on unavailable `localStorage` | Blocking head script degrades every load | `try`/`catch` with a light fallback; validate the value before applying |
 | Token swap alters the light theme | Breaks FR-020, the one hard preservation constraint | Verify light after every batch |
 | Semantic colors flattened during migration | Status/severity no longer distinguishable (FR-021) | Handle `badge.tsx` as a palette decision, not a swap |
 | Default flip destabilises end-to-end suites | Failures misattributed | Pin the theme in both suites; baseline only from a green post-#10284 run |
