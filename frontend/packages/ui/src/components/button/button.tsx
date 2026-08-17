@@ -38,7 +38,7 @@ const buttonVariants = tv({
         "dark:data-hovered:from-stone-500/25",
       ],
       danger: [
-        "border-rose-700 bg-gradient-to-b from-rose-700 to-rose-700/70 text-foreground inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
+        "border-rose-700 bg-gradient-to-b from-rose-700 to-rose-700/70 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       "danger-outline": [
