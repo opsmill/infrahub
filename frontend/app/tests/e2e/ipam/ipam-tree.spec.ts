@@ -32,7 +32,7 @@ test.describe("/ipam - Ipam Tree", () => {
       await expect(ipamTree.getByText("10.1.0.0/16")).toBeVisible();
       await expect(ipamTree.getByText("10.1.0.12/31")).toBeVisible();
       await expect(ipamTree.getByRole("row", { name: "10.1.0.12/31" })).toContainClass(
-        "bg-neutral-100"
+        "bg-selected"
       );
     });
   });
