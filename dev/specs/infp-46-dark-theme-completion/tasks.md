@@ -37,10 +37,10 @@ cd frontend/app && node_modules/.bin/vitest run && node_modules/.bin/biome ci . 
 
 **Purpose**: make the worktree able to build and give the light theme a reference to be compared against.
 
-- [ ] T001 Initialise the visualizer submodule: `git submodule update --init frontend/packages/schema-visualizer`. Required for US7, and it clears the two phantom `betterer` findings an uninitialised submodule produces.
-- [ ] T002 [P] Install the editable SDK: `uv pip install -e python_sdk`. Fresh worktrees skip this and `infrahub_sdk` imports fail.
-- [ ] T003 Base the branch on `origin/bab-dark-theme-app` and open the pull request **against that branch**, not `develop` — this is a stacked PR on #10284. It supplies the surfaces US5 migrates and keeps this review free of #10284's 151 files. Re-target `develop` once #10284 merges; rebase if it is revised. ⚠ #10284's failing e2e checks are inherited and will show on this PR — say so in the description so they are not read as caused by this work.
-- [ ] T004 Capture light-theme reference screenshots of every page US5/US6 touch (proposed changes, a diff view, checks, path traversal, data viewer). FR-020/SC-005 make "light is unchanged" a hard constraint, and it is unprovable later without a baseline taken now.
+- [x] T001 Initialise the visualizer submodule: `git submodule update --init frontend/packages/schema-visualizer`. Required for US7, and it clears the two phantom `betterer` findings an uninitialised submodule produces.
+- [x] T002 [P] Install the editable SDK: `uv pip install -e python_sdk`. Fresh worktrees skip this and `infrahub_sdk` imports fail.
+- [x] T003 Base the branch on `origin/bab-dark-theme-app` and open the pull request **against that branch**, not `develop` — this is a stacked PR on #10284. It supplies the surfaces US5 migrates and keeps this review free of #10284's 151 files. Re-target `develop` once #10284 merges; rebase if it is revised. ⚠ #10284's failing e2e checks are inherited and will show on this PR — say so in the description so they are not read as caused by this work.
+- [ ] T004 ⏸ **Deferred to just before Phase 7** (needs a running stack; only US5/US6 depend on it). Capture light-theme reference screenshots of every page US5/US6 touch (proposed changes, a diff view, checks, path traversal, data viewer). FR-020/SC-005 make "light is unchanged" a hard constraint, and it is unprovable later without a baseline taken now.
 
 **Checkpoint**: builds clean; light-theme baseline exists.
 
@@ -55,9 +55,9 @@ start immediately and in parallel with governance approval.
 (`dev/knowledge/frontend/entities-structure.md`), and there is **no lint guard** — layer rules are
 review-enforced only.
 
-- [ ] T005 Create `frontend/app/src/shared/context/theme-context.tsx` holding the resolved `"light" | "dark"`, defaulting to `"light"`. It must import nothing from `entities/`. Model it on the sibling `shared/context/date-preferences-context.tsx`.
-- [ ] T006 [P] Write failing tests for stage-2 resolution in `frontend/app/src/entities/preferences/domain/rules/theme.test.ts`: table-driven over `(choice, systemPrefersDark)` → `"light" | "dark"`, covering all three choices and both system states.
-- [ ] T007 Implement `frontend/app/src/entities/preferences/domain/rules/theme.ts` to pass T006. ⚠ Pure only — `domain/rules` may not touch browser storage or React.
+- [x] T005 Create `frontend/app/src/shared/context/theme-context.ts` exporting the `ResolvedTheme` type (`"light" | "dark"`). It must import nothing from `entities/`. ⚠ **Scope corrected during implementation**: the React context const itself moved to Phase 3 (T021a). `knip` runs in CI and fails on any export without a consumer, so a context with neither a producer nor a reader cannot land green on its own — it must arrive with its provider. The *type* lands here because the pure resolver consumes it immediately.
+- [x] T006 [P] Write failing tests for stage-2 resolution in `frontend/app/src/entities/preferences/domain/rules/theme.test.ts`: table-driven over `(choice, systemPrefersDark)` → `"light" | "dark"`, covering all three choices and both system states.
+- [x] T007 Implement `frontend/app/src/entities/preferences/domain/rules/resolve-theme.ts` to pass T006 (named for the house `resolve-*` convention). ⚠ Pure only — `domain/rules` may not touch browser storage or React.
 
 **Checkpoint**: a resolved theme can be held and read; consumers can be written against it.
 
@@ -89,6 +89,7 @@ throttling and confirm no flash; sign in from a second browser and see the same 
 - [ ] T018 [US1] Add `theme` to the effective-preferences query and the **user** upsert mutation under `frontend/app/src/entities/preferences/ui/queries/`. ⚠ Not `update-global-preferences.mutation.ts` — leaving `theme` out of that document is what keeps the organisation scope unreachable from the interface without needing backend changes.
 - [ ] T019 [US1] Regenerate frontend types: `cd frontend/app && pnpm codegen`.
 - [ ] T020 [US1] Write failing tests for `frontend/app/src/entities/preferences/ui/theme-provider.test.tsx`: fills the shared context from the effective preference; falls back to the flag's default when the query fails; reacts to a `prefers-color-scheme` change while mounted.
+- [ ] T021a [US1] Add the `ThemeContext` const and its reader hook to `frontend/app/src/shared/context/theme-context.ts` (moved from T005 — see the note there). Model it on the sibling `shared/context/date-preferences-context.tsx`. Land it in the same commit as T021 so no export exists without a consumer.
 - [ ] T021 [US1] Implement `frontend/app/src/entities/preferences/ui/theme-provider.tsx` — fills `shared/context/theme-context`, applies the class to `document.documentElement`, writes the `localStorage` mirror, subscribes to `prefers-color-scheme`. Mirror `DatePreferencesProvider`'s shape. Passes T020. No `storage` listener — cross-tab sync is out of scope.
 - [ ] T022 [US1] Mount the provider in `frontend/app/src/app/app.tsx` alongside `DatePreferencesProvider`.
 - [ ] T023 [US1] Add the inline pre-paint script to `frontend/app/index.html` `<head>`, **before** the module script. Precedence: mirrored resolved theme → mirrored `system` choice resolved against `prefers-color-scheme` → light. ⚠ The empty-cache fallback is **light**, not `prefers-color-scheme` — consulting the system there would put a dark-OS user into the alpha palette before any preference has been read. `prefers-color-scheme` is read only when the *user* has chosen match-system. ⚠ It blocks rendering and runs before everything: wrap storage access in `try`/`catch` (`localStorage` throws when storage is disabled, e.g. Safari private browsing) and validate the stored string against the known set before using it as a class name.
