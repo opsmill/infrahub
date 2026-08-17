@@ -51,7 +51,7 @@ interconnect_subnet = await client.allocate_next_ip_prefix(
 )
 ```
 
-`allocate_next_ip_address` and `allocate_next_ip_prefix` take the same `resource_pool` and `identifier` arguments as the underlying `InfrahubIPAddressPoolGetResource` and `InfrahubIPPrefixPoolGetResource` mutations — passing a stable `identifier` (for example, the device name) keeps a Generator idempotent across reruns. See the infrastructure-edge topology model in `models/infrastructure_edge.py` for a worked example that allocates loopback and management addresses, and interconnection subnets, this way.
+`allocate_next_ip_address` and `allocate_next_ip_prefix` take the same `resource_pool` and `identifier` arguments as the underlying `InfrahubIPAddressPoolGetResource` and `InfrahubIPPrefixPoolGetResource` mutations — passing a stable `identifier` (for example, the device name) keeps a Generator idempotent across reruns. The [infrastructure-edge topology model](https://github.com/opsmill/infrahub/blob/stable/models/infrastructure_edge.py) is a worked example that allocates loopback and management addresses, and interconnection subnets, this way.
 
 ## Advanced: next-available GraphQL primitives
 
