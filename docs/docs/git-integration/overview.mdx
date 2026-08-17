@@ -4,7 +4,7 @@ title: Git Integration
 
 import ReferenceLink from "../../src/components/Card";
 
-Connect an external Git repository to keep the code that drives Infrahub — schemas, transformations, generators, checks, GraphQL queries, and artifact definitions — under version control, next to your infrastructure data. Infrahub imports that code and keeps it in sync as the repository changes.
+Connect an external Git repository to keep the code that drives Infrahub — schemas, Transformations, Generators, checks, GraphQL queries, and artifact definitions — under version control, next to your infrastructure data. Infrahub imports that code and keeps it in sync as the repository changes.
 
 To set one up, see [connect a repository](./connect-repository.mdx), [configure `.infrahub.yml`](./infrahub-yml.mdx), and [filter which branches sync](./branch-synchronization.mdx).
 
@@ -13,7 +13,7 @@ To set one up, see [connect a repository](./connect-repository.mdx), [configure 
 Infrahub has two separate version-control systems, and understanding the split is the key to the rest of this section.
 
 - **The graph** — your infrastructure data (objects) and schema. Infrahub versions the graph itself: you branch it, change it, review the diff in a [Proposed Change](../proposed-changes/overview.mdx), and merge. This is Git-like version control, but the store is Infrahub's database, not a Git repository.
-- **Git** — the code that describes intent: schemas, transformations, generators, checks, GraphQL queries, and artifact definitions, declared in [`.infrahub.yml`](./infrahub-yml.mdx). Infrahub reads this code from the repository and imports it.
+- **Git** — the code that describes intent: schemas, Transformations, Generators, checks, GraphQL queries, and artifact definitions, declared in [`.infrahub.yml`](./infrahub-yml.mdx). Infrahub reads this code from the repository and imports it.
 
 The link between the two runs one way: from Git into Infrahub. Git is where you author code intent; Infrahub imports it and applies it to the graph. Data moves the other way only inside Infrahub — when you merge a branch, the change is applied to the graph, not pushed back to Git. A read-write repository does write one thing back to Git, and only one; the [repository types](#read-only-vs-core) section covers it.
 
@@ -32,7 +32,7 @@ Infrahub supports two distinct repository connection types, each designed for sp
 
 ### Repository: read-write integration
 
-The standard **Repository** type gives Infrahub read-write access to Git. Infrahub imports code from every branch automatically, and on a Proposed Change merge it updates the repository's default branch in Git.
+The standard **Repository** type gives Infrahub read-write access to Git. Infrahub imports code from every branch automatically, and on a Proposed Change merge it updates the linked Git branch — for branches that sync with Git (see [Controlling whether a branch reaches Git](#controlling-whether-a-branch-reaches-git)).
 
 **Design principles:**
 
@@ -50,7 +50,7 @@ When you create a Repository connection, Infrahub:
 4. Runs background synchronization tasks every few seconds to detect changes
 5. Parses the `.infrahub.yml` file to determine which resources to import
 
-When you merge a Proposed Change and the source branch is set to sync with Git, Infrahub merges the corresponding branch in the Git repository and pushes the result to the remote. By default this is a fast-forward, so no merge commit is created (see [merging branches](#merging-branches)). Only the code tracked in Git moves; your infrastructure data stays in the graph.
+When you merge a Proposed Change and the source branch is set to sync with Git, Infrahub merges the corresponding branch in the Git repository and pushes the result to the remote. By default this is a fast-forward when possible, so no merge commit is created (see [merging branches](#merging-branches)). Only the code tracked in Git moves; your infrastructure data stays in the graph.
 
 ### Read-only Repository: controlled unidirectional flow
 
@@ -108,7 +108,7 @@ This separation ensures that Git operations don't block API requests and enables
 
 **This applies only to standard repositories:**
 
-By default, Infrahub performs fast-forward only (ff-only) merges between branches. When merging a branch linked to Git, Infrahub updates the destination branch pointer without creating a merge commit.
+By default, Infrahub runs a standard `git merge`, which fast-forwards when the history allows it. When merging a branch linked to Git, Infrahub moves the destination branch pointer forward without creating a merge commit; if the branches have diverged, Git falls back to a merge commit.
 
 You can configure Infrahub to always create a merge commit by setting the `INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT` environment variable to `true`. This approach maintains a more explicit commit history and improves auditability.
 
