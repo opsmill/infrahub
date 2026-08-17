@@ -1,9 +1,4 @@
-"""Removal of the Python work a schema-driven refresh on the same merge already covers.
-
-The schema pass refreshes every node of the kind; the coalesced pass refreshes a subset of the
-same nodes. Keeping both recomputes the overlap twice, so the narrower one gives way. Removing in
-the other direction would leave the nodes the schema pass does not reach stale.
-"""
+"""Removal of the Python work a schema-driven refresh already covers."""
 
 from __future__ import annotations
 

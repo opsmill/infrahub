@@ -1,14 +1,4 @@
-"""The Python recompute is dispatched in batches, on a rebase as well as on a merge.
-
-Kept out of `test_merge_recompute.py` because the rebase arm needs its own stack lifecycle and the
-assertions here are about dispatch shape rather than about stored values, which parity already
-covers.
-
-The shape is the whole point. A run carrying a single object id is the per-node fan-out this
-feature removes, so its absence is what is asserted, not merely that the values came out right.
-The rebase arm is the only integration coverage of the rebase wiring; every measurement so far has
-gone through merge.
-"""
+"""Batched dispatch of the Python recompute, on merge and on rebase."""
 
 from __future__ import annotations
 

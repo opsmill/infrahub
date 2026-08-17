@@ -1,20 +1,4 @@
-"""The coalesced Python recompute writes what the per-node path writes.
-
-The feature replaces one recompute per changed node with a single coalesced pass. Speed is
-measured elsewhere; what this checks is that the two paths leave the graph in the same state,
-because a faster merge that refreshes fewer nodes is a regression dressed as an improvement.
-
-Run it twice, once per mode, and the second run compares itself against the first:
-
-    INFRAHUB_PARITY=1 INFRAHUB_TESTING_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE=false \\
-        pytest backend/tests/integration_docker/test_merge_recompute_parity.py -s
-    INFRAHUB_PARITY=1 \\
-        pytest backend/tests/integration_docker/test_merge_recompute_parity.py -s
-
-Each mode needs its own stack because the switch is read when the container starts, so the two
-runs cannot share one. That is also why the comparison is keyed on node name rather than node id:
-the ids are freshly minted per stack, while the names are seeded deterministically.
-"""
+"""The coalesced pass writes what the per-node path writes."""
 
 from __future__ import annotations
 
@@ -118,6 +102,8 @@ class TestPythonMergeRecomputeParity(TestInfrahubDockerClient):
         await _drain(client)
 
         owners = await client.all(kind=TRANSFORM_OWNER_KIND, branch="main")
+        # Keyed on name, not id: the switch is read at container start, so each mode runs on its
+        # own stack and mints its own ids, while the names are seeded deterministically.
         written = {owner.name.value: owner.pitch.value for owner in owners}
         assert len(written) == CHANGED_NODES
         assert all("edited" in (value or "") for value in written.values()), (

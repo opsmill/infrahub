@@ -1,12 +1,9 @@
 """Narrowing of the Python targets of a coalesced recompute.
 
-The builder emits Python targets unfiltered, because the data needed to narrow them lives in
-the database rather than the schema: which fields a transform's query reads, and which nodes
-read a changed node. This module supplies that data and applies the narrowing.
-
-The narrowing is not an optimisation. The per-node automations it replaces already filter on
-the transform's read fields, so a coalesced pass that skipped the filter would recompute more
-nodes than the path it replaces.
+Which kinds a transform reads lives in its stored query rather than in the schema, so the
+builder names these targets and this step gives them their nodes. The narrowing is not an
+optimisation: the per-node automations it replaces already filter on the read fields, so
+skipping it would recompute more nodes than the path being replaced.
 """
 
 from __future__ import annotations

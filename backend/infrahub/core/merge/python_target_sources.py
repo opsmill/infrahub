@@ -1,8 +1,7 @@
 """Database-backed sources for the Python target narrowing.
 
-Separate from the narrowing itself so the decision logic stays testable without a database
-and without a running instance, and so the modules that touch the client and the graph are
-the only ones importing them.
+Separate from the narrowing itself so the decision logic stays testable without a database,
+and so the modules that touch the client and the graph are the only ones importing them.
 """
 
 from __future__ import annotations

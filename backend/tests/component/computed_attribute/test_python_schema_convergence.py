@@ -1,9 +1,4 @@
-"""A recompute must not fail on a schema its worker has not loaded yet.
-
-With the per-node automations suppressed, the coalesced pass is the only thing that refreshes a
-Python computed attribute on a merge. A submission that raises because the worker is behind on the
-schema takes its whole batch of nodes with it, and every one of those values stays stale.
-"""
+"""A recompute must not fail on a schema its worker has not loaded yet."""
 
 from __future__ import annotations
 
