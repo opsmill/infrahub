@@ -54,7 +54,14 @@ class Deadline:
 
 
 def generate_random_branch_name(prefix: str = "") -> str:
-    """Port of generateRandomBranchName: a random suffix to avoid collisions."""
+    """Port of generateRandomBranchName: a random suffix to avoid collisions.
+
+    The suffix must stay hexadecimal. Playwright's ``name`` option substring-matches, and the
+    branch selector renders the current branch name on every page, so a suffix that spells a word
+    the suites locate by ("save", "name", "path", "main", ...) makes that locator match two
+    elements and the test dies with a strict-mode violation. None of those names are spellable in
+    hex; a wider alphabet reintroduces the flake at roughly one branch in twelve thousand.
+    """
     return f"{prefix}{uuid.uuid4().hex[:12]}"
 
 
