@@ -124,15 +124,15 @@ release build → light; a personal choice beats both and is never overwritten.
 
 ## Phase 5: User Story 3 — GraphQL sandbox (P2)
 
-- [ ] T036 [US3] Replace `forcedTheme="light"` in `frontend/app/src/pages/graphql/index.tsx` with the resolved theme from the shared context. ⚠ Pass `"light"`/`"dark"` only — never `"system"`, or GraphiQL runs its own `prefers-color-scheme` detection and can disagree with the application.
+- [x] T036 [US3] Replace `forcedTheme="light"` in `frontend/app/src/pages/graphql/index.tsx` with the resolved theme from the shared context. ⚠ Pass `"light"`/`"dark"` only — never `"system"`, or GraphiQL runs its own `prefers-color-scheme` detection and can disagree with the application.
 - [ ] T037 [US3] Test that the sandbox receives the resolved value and follows a theme change. ⚠ The relied-upon behaviour (reactive `forcedTheme`, and picker-hiding when set) is not documented public API — it was verified against `graphiql@5.2.4`'s bundled source, so a test is what protects the binding across upgrades.
 
 ---
 
 ## Phase 6: User Story 4 — Mermaid diagrams (P2)
 
-- [ ] T038 [US4] Derive `mermaidConfig.theme` from the resolved theme in `frontend/app/src/shared/components/editor/markdown/markdown-with-mermaid.tsx`, mapping to Mermaid's `"dark"` / `"default"`. ⚠ `rehypePlugins` is currently a module-level constant; making it theme-dependent **must** memoise on the resolved theme alone. A new array identity per render re-runs the rehype pipeline continuously — the diagram flickers and a CPU core pins.
-- [ ] T039 [US4] Replace the hardcoded `bg-white` on the pan/zoom container in `frontend/app/src/shared/components/editor/markdown/mermaid-diagram.tsx` with a surface token. This is the bright panel behind an otherwise-correct dark diagram.
+- [x] T038 [US4] Derive `mermaidConfig.theme` from the resolved theme in `frontend/app/src/shared/components/editor/markdown/markdown-with-mermaid.tsx`, mapping to Mermaid's `"dark"` / `"default"`. ⚠ `rehypePlugins` is currently a module-level constant; making it theme-dependent **must** memoise on the resolved theme alone. A new array identity per render re-runs the rehype pipeline continuously — the diagram flickers and a CPU core pins.
+- [x] T039 [US4] Replace the hardcoded `bg-white` on the pan/zoom container in `frontend/app/src/shared/components/editor/markdown/mermaid-diagram.tsx` with a surface token. This is the bright panel behind an otherwise-correct dark diagram.
 - [ ] T040 [P] [US4] Tokenise the `mermaid-error` fallback styling so the parse-error state is legible in both themes (FR-015).
 - [ ] T041 [US4] Test that a theme change re-renders the diagram, and that the plugin array is stable across renders at a fixed theme.
 
@@ -149,7 +149,7 @@ is the constraint a token swap breaks most easily and the most expensive to bise
 - [ ] T043 [P] [US5] Migrate `entities/path-traversal/ui/` — `path-results-list.tsx`, `infra-node.tsx`, `path-traversal-page.tsx`.
 - [ ] T044 [P] [US5] Migrate `entities/proposed-changes/ui/diff-summary/diff-summary-tag-group.tsx`, `entities/tasks/ui/task-display.tsx`, `entities/branches/ui/branch-working-notice.tsx`, `entities/schema/ui/styled.tsx`, `entities/user-profile/ui/account-token-create-action.tsx`.
 - [ ] T045 [P] [US5] Migrate `shared/components/` — `modals/modal-confirm.tsx`, `table/style.tsx`, `table/sticky-cell-shadow.tsx`, `ui/infrahub-logo.tsx`, `ui/link-pill.tsx`.
-- [ ] T046 [US5] Migrate `shared/components/ui/badge.tsx` **separately and last**. ⚠ Twelve occurrences, the most of any file, and they likely encode semantic colors. Redesigning semantic palettes is **out of scope** (tracked separately); the rule is do not *degrade* them. Where a mechanical swap would flatten two currently-distinct severities into one, keep the distinction and note it for that separate effort.
+- [x] T046 [US5] ✅ **No work needed.** Migrate `shared/components/ui/badge.tsx` **separately and last**. ⚠ Verified during implementation: all twelve occurrences are semantic colours, which are out of scope. The file needs no change. Redesigning semantic palettes is **out of scope** (tracked separately); the rule is do not *degrade* them. Where a mechanical swap would flatten two currently-distinct severities into one, keep the distinction and note it for that separate effort.
 - [ ] T047 [US5] Add the automated guard that makes SC-004 a standing property rather than a one-time cleanup. `betterer` is already wired into CI and is the lower-friction option; a lint rule is stricter. Without a guard the debt returns with the next feature branch.
 - [ ] T048 [US5] Verify: `git grep -c "dark:" -- 'frontend/app/src/**/*.tsx'` returns nothing. ⚠ Use plain `git grep` — `rtk` reformats output and an empty piped result is not proof.
 
@@ -157,7 +157,7 @@ is the constraint a token swap breaks most easily and the most expensive to bise
 
 ## Phase 8: User Story 6 — Data viewer (P3)
 
-- [ ] T049 [US6] Replace `bg-neutral-800 text-neutral-200` (line 29) and `border-neutral-700` (line 77) in `frontend/app/src/shared/components/data-viewer/data-viewer.tsx` with palette tokens. `neutral` is Tailwind's cold grey; the theme is built on warm `stone` — that difference is the reported tone mismatch.
+- [x] T049 [US6] Replace `bg-neutral-800 text-neutral-200` (line 29) and `border-neutral-700` (line 77) in `frontend/app/src/shared/components/data-viewer/data-viewer.tsx` with palette tokens. `neutral` is Tailwind's cold grey; the theme is built on warm `stone` — that difference is the reported tone mismatch.
 - [ ] T050 [US6] Replace the two `bg-white` containers (lines 58, 89) with tokens — a fixed light background in dark mode, which FR-018 forbids.
 - [ ] T051 [P] [US6] Walk every content type the viewer handles and confirm none retains a fixed light background.
 

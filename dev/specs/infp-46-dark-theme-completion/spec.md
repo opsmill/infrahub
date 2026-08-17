@@ -372,9 +372,16 @@ The first three are one problem with one answer, so they are grouped rather than
   observation alone — it is the requirement most likely to regress silently, and the mechanism that
   delivers it runs outside the unit-test harness.
 - **SC-003**: A theme chosen on one machine is in effect when the same user signs in on another.
-- **SC-004**: Zero application components specify per-theme color overrides or raw color literals;
-  this is verifiable by inspection of the source and holds as a standing property, not a one-time
-  cleanup.
+- **SC-004**: No application component paints a fixed light surface regardless of theme. Verifiable
+  by inspection, and holding as a standing property rather than a one-time cleanup.
+
+  ⚠ **Corrected during implementation.** This originally read "zero per-theme colour overrides",
+  measured by counting `dark:` occurrences. That metric was wrong in both directions. It flagged
+  files that *work* — a hardcoded `dark:` variant renders correctly, it is merely unmaintainable —
+  while completely missing the files that are actually broken, which carry no variant at all. The
+  real defects were 38 unconditional `bg-white` and 21 `bg-gray-*` literals; counting `dark:` would
+  never have found one of them. Some `dark:` uses are also legitimate and have no token equivalent,
+  such as swapping between two different logo assets.
 - **SC-005**: The light theme is unchanged: a comparison of light-theme rendering before and after
   this feature shows no visual differences.
 - **SC-006**: Every page reachable from the main navigation renders with no bright-on-dark surface
