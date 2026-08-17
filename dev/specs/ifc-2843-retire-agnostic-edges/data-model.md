@@ -73,9 +73,11 @@ reallocate component test exists.
 
 ### `Branch`
 
-Not modified. Read for its metadata only — **from the graph, never from the `registry.branch`
-in-process cache**, which is per-worker, lazily filled and only ever pruned, so a branch created
-by another worker would be absent and wrongly treated as non-retaining.
+Not modified. Read for its metadata only — from `registry.branch` at the runtime enforcement
+points, and from the database in the migration, which runs in an upgrade process where the
+registry may never have been populated. The registry is a maintained cache: it is refreshed on
+branch create, merge, rebase and delete via a broadcast message, adds branches it does not yet
+know, and has a scheduled sweep behind that.
 
 | Field | Role in the predicate |
 |---|---|

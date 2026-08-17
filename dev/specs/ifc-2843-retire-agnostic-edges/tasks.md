@@ -8,7 +8,7 @@ description: "Task list for retirement of branch-agnostic property edges (IFC-28
 **Input**: Design documents from `specs/ifc-2843-retire-agnostic-edges/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md,
-critiques/critique-20260812.md (remediation already folded into the artifacts)
+critiques/critique-20260812.md, alignment-check.md (all remediation folded into the artifacts)
 
 **Tests**: Included. Every functional requirement in spec.md carries a `Verify:` clause, the PRD
 contributed a full Testing Decisions section, and constitution Principle IV requires tests written
@@ -27,25 +27,25 @@ before or alongside implementation.
 Backend-only change to an existing service. Source under `backend/infrahub/`, tests under
 `backend/tests/{unit,component}/`, user docs under `docs/docs/`.
 
+Directories come into existence with their first real module. Do **not** create empty
+`__init__.py` files as a step of their own — add one only when it has something in it, or when
+something concretely requires it.
+
 ## ⚠️ Blocking gate before any implementation
 
 `AGENTS.md` **Boundaries → Ask First** requires maintainer sign-off for database/migration changes.
 This feature adds graph migration `m076`, bumps `GRAPH_VERSION` 75 → 76, and **hard-deletes**
 customer `Attribute` / `Relationship` vertices during upgrade. T001 exists to obtain that sign-off
-and must complete before T033 (the migration) begins. Phases 1–3 touch no migration and may proceed
+and must complete before T044 (the migration) begins. Phases 1–3 touch no migration and may proceed
 in parallel with the sign-off request.
 
 ---
 
 ## Phase 1: Setup
 
-**Purpose**: Read the governing guidance and create the package skeleton
-
 - [ ] T001 Request maintainer sign-off for the migration gate: `m076`, `GRAPH_VERSION` 75 → 76, and the hard-delete of `Attribute`/`Relationship` vertices with no linked node. Record the outcome in `specs/ifc-2843-retire-agnostic-edges/plan.md` under Ask-First Gate.
 - [ ] T002 [P] Read `dev/guidelines/backend/python.md` (typing, and §"Best-effort side effects degrade to a safe fallback" — the rule T024 depends on) and `dev/guidelines/backend/checklist.md`
 - [ ] T003 [P] Read `dev/knowledge/backend/query-pattern.md` and `dev/knowledge/backend/database-schema.md` for the Query-class contract and edge-activity ordering (`branch_level DESC, from DESC, status ASC`)
-- [ ] T004 Create the package `backend/infrahub/core/agnostic/__init__.py` and the test packages `backend/tests/unit/core/agnostic/__init__.py`
-- [ ] T005 Commit the currently-untracked `backend/tests/component/core/test_agnostic_attribute_fork_window.py` unchanged, so the pre-fix leak it documents is recorded in history before the fix lands
 
 ---
 
@@ -58,20 +58,18 @@ enforcement points, US2 through the query's unbounded form.
 
 ### Types and the pure builder
 
-- [ ] T006 [P] Define the frozen dataclasses `BranchWindow`, `BranchWindowSet`, `RetirementCandidates` (discriminated: explicit node ids / fork-point bound / unbounded) and `RetirementResult(edges_closed, vertices_removed)` in `backend/infrahub/core/agnostic/models.py`
-- [ ] T007 [P] Write unit tests for the branch-window builder in `backend/tests/unit/core/agnostic/test_branch_windows.py`: default branch emits one pair and never collapses; a non-default branch emits two pairs and collapses its origin read to `branched_from`; a branch forked after `at` does not collapse; an empty branch list yields an empty set (not an error). Use hand-picked branch metadata, no DB fixtures.
-- [ ] T008 Implement `AgnosticBranchWindowBuilder.build(branches, at)` in `backend/infrahub/core/agnostic/branch_windows.py`, mirroring the `min(at, branched_from)` collapse of `Branch.get_branches_and_times_to_query_global`. Expose **no** parameter to disable isolation (FR-012), so no future caller can reach for one.
+- [ ] T004 [P] Define the frozen dataclasses `BranchWindow`, `BranchWindowSet`, `RetirementCandidates` (discriminated: explicit node ids / fork-point bound / unbounded) and `RetirementResult(edges_closed, vertices_removed)` in `backend/infrahub/core/agnostic/models.py`
+- [ ] T005 [P] Write unit tests for the branch-window builder in `backend/tests/unit/core/agnostic/test_branch_windows.py`: default branch emits one pair and never collapses; a non-default branch emits two pairs and collapses its origin read to `branched_from`; a branch forked after `at` does not collapse; an empty branch list yields an empty set (not an error). Use hand-picked branch metadata, no DB fixtures.
+- [ ] T006 Implement `AgnosticBranchWindowBuilder.build(branches, at)` in `backend/infrahub/core/agnostic/branch_windows.py`, mirroring the `min(at, branched_from)` collapse of `Branch.get_branches_and_times_to_query_global`. Expose **no** parameter to disable isolation (FR-012), so no future caller can reach for one. Callers pass the branch list in: `registry.branch` values at the runtime enforcement points, `Branch.get_list(db=db)` in the migration.
 
 ### The query
 
-- [ ] T009 Write component tests for the retirement query in `backend/tests/component/query/test_agnostic_retirement_query.py`, asserting graph shape directly (edge presence, `status`, `to`): unretained attribute closes **every** open global edge including `HAS_ATTRIBUTE`; retained attribute stays open; relationship closes its property edges **and both `IS_RELATED` edges** when either peer becomes unreachable; relationship stays open only while **both** peers are live with **both** `IS_RELATED` edges active on the same branch.
-- [ ] T009a [P] Write component tests for the two half-closed shapes in the same file: owning edge closed with property edges open, and the reverse — each must end fully closed (FR-002a)
-- [ ] T010 Implement `RetireAgnosticPropertyEdgesQuery` in `backend/infrahub/core/query/agnostic_retirement.py`. Candidate traversal MUST start from open, active global `HAS_ATTRIBUTE`/`IS_RELATED` edges (FR-011); anchor on the `:Node`/`:Attribute`/`:Relationship` labels, never on schema kinds; close **every open global edge** of the vertex — the four property edges **and** the owning `HAS_ATTRIBUTE`/`IS_RELATED` edge(s) — by `SET e.to = $at` (FR-001, FR-002, FR-013: never a `deleted`-status edge); parameterise every value; expose `get_data() -> RetirementResult`. Model the edge-group subqueries on the validated production Cypher recorded on the ticket.
-- [ ] T010a Make the owning-edge and property-edge closures **independent** in `backend/infrahub/core/query/agnostic_retirement.py`, each guarded by its own `WHERE e.to IS NULL` inside a subquery, so a half-closed vertex is fully closed rather than left half-closed (FR-002a)
-- [ ] T011 Extend `RetireAgnosticPropertyEdgesQuery` to read the branch set from `(:Branch)` vertices in the same pass and compute the fork-window collapse in Cypher, so no stale branch list can reach the predicate. Verify the in-query collapse against `AgnosticBranchWindowBuilder` (T008) on the same inputs. **Never** source branches from `registry.branch` — it is per-worker, lazily filled and only ever pruned, so a branch created by another worker would be treated as non-retaining.
-- [ ] T012 Add the three candidate bounds to `RetireAgnosticPropertyEdgesQuery` (explicit node ids, fork-point timestamp, unbounded) as swappable `MATCH` prefixes over one shared predicate body, with batching (`IN TRANSACTIONS OF n ROWS`) for the unbounded form
-- [ ] T012a Add the two anchor modes to `RetireAgnosticPropertyEdgesQuery`: **open-edge** (runtime, selective, same-UUID protection from the anchor) and **widened** (`status: "active"` regardless of `to`, migration-only, same-UUID protection from the predicate — retained if *any* linked node vertex is live with an active owning edge) per FR-011a
-- [ ] T012b [P] Add a component test in `backend/tests/component/query/test_agnostic_retirement_query.py` proving the widened anchor still protects same-UUID copies: rename a kind, run the widened form, assert the surviving vertex keeps its value. This is the test that would catch the widened anchor silently stripping live data.
+- [ ] T007 Write component tests for the retirement query in `backend/tests/component/query/test_agnostic_retirement_query.py`, asserting graph shape directly (edge presence, `status`, `to`): unretained attribute closes **every** open global edge including `HAS_ATTRIBUTE`; retained attribute stays open; relationship closes its property edges **and both `IS_RELATED` edges** when either peer becomes unreachable; relationship stays open only while **both** peers are live with **both** `IS_RELATED` edges active on the same branch.
+- [ ] T008 Implement `RetireAgnosticPropertyEdgesQuery` in `backend/infrahub/core/query/agnostic_retirement.py`. Candidate traversal MUST start from open, active global `HAS_ATTRIBUTE`/`IS_RELATED` edges (FR-011); anchor on the `:Node`/`:Attribute`/`:Relationship` labels, never on schema kinds; close **every open global edge** of the vertex — the four property edges **and** the owning `HAS_ATTRIBUTE`/`IS_RELATED` edge(s) — by `SET e.to = $at` (FR-001, FR-002, FR-013: never a `deleted`-status edge); take the branch windows as bound parameters rather than reading `(:Branch)`; parameterise every value; expose `get_data() -> RetirementResult`. Model the edge-group subqueries on the validated production Cypher recorded on the ticket.
+- [ ] T009 Guard each edge group's `SET e.to = $at` with its own `WHERE e.to IS NULL` inside a subquery in `backend/infrahub/core/query/agnostic_retirement.py`, so an already-closed edge's timestamp is never overwritten and a half-closed vertex ends fully closed (FR-002a)
+- [ ] T010 Add the three candidate bounds to `RetireAgnosticPropertyEdgesQuery` (explicit node ids, fork-point timestamp, unbounded) as swappable `MATCH` prefixes over one shared predicate body, with batching (`IN TRANSACTIONS OF n ROWS`) for the unbounded form
+- [ ] T011 Add the two anchor modes to `RetireAgnosticPropertyEdgesQuery`: **open-edge** (runtime, selective, same-UUID protection from the anchor) and **widened** (`status: "active"` regardless of `to`, migration-only, same-UUID protection from the predicate — retained if *any* linked node vertex is live with an active owning edge) per FR-011a
+- [ ] T012 [P] Add a component test in `backend/tests/component/query/test_agnostic_retirement_query.py` proving the widened anchor still protects same-UUID copies: rename a kind, run the widened form, assert the surviving vertex keeps its value. This is the test that would catch the widened anchor silently stripping live data.
 - [ ] T013 [P] Add a component test in `backend/tests/component/query/test_agnostic_retirement_query.py` asserting an `AttributeValue` shared by two attributes is never deleted while any attribute still references it (FR-017)
 - [ ] T014 Run `EXPLAIN` on the candidate traversal under all three bounds **and both anchor modes** and record the plans in `specs/ifc-2843-retire-agnostic-edges/research.md` under a new "Query plans" section (Principle V). The widened anchor is expected to be materially less selective — confirm it is acceptable for a batched migration and unacceptable for the runtime paths, which is the reason for the split.
 
@@ -88,8 +86,8 @@ enforcement points, US2 through the query's unbounded form.
 ## Phase 3: User Story 1 - Enforcement wherever a field stops being retained (Priority: P1) 🎯 MVP
 
 **Goal**: On every path by which a branch-agnostic field stops being reachable from a live node on
-any branch, its global property edges are retired; while a retaining branch exists, retirement is
-deferred and re-evaluated whenever an event could have emptied the retaining set.
+any branch, its global edges are retired; while a retaining branch exists, retirement is deferred
+and re-evaluated whenever an event could have emptied the retaining set.
 
 **Independent Test**: Exercise each enforcement point against a branch-aware kind carrying a
 branch-agnostic attribute under a uniqueness constraint, asserting the graph shape after each
@@ -122,13 +120,13 @@ passed.
 ### Cross-cutting correctness tests for US1
 
 - [ ] T031 [P] [US1] Write a regression test in `backend/tests/component/core/test_agnostic_retirement.py`: rename a kind, then run every enforcement point → the surviving vertex keeps its value (FR-011, scenario 10). Confirms same-UUID copies are excluded by the open-edge anchor rather than by luck.
-- [ ] T031a [P] [US1] Assert in the same file that a retired vertex is no longer a candidate on a second pass — re-run retirement over the same candidates and confirm it closes nothing and reports zero (the property that closing the owning edge buys)
-- [ ] T032 [P] [US1] Write a component test asserting retirement registers no change on a branch that forked before it — diff the pre-existing branch after a default-branch delete and assert no attribute or relationship change is reported for that node (FR-014)
-- [ ] T033 [P] [US1] Replace the `_close_global_property_edges` stub in `backend/tests/component/core/test_agnostic_attribute_fork_window.py` with the real delete path and update the pre-fix assertion (`"expected to leave the global value edge open today"`). Both fork-window expectations must hold unchanged — that is the proof the time-close hedge of FR-013 works.
-- [ ] T034 [P] [US1] Write the pool re-allocation test in `backend/tests/component/core/test_agnostic_retirement.py`: allocate, delete, retire, allocate again → the same value is returned (SC-007, scenario 12). Guards the three-edge `IS_RESERVED`/`HAS_VALUE`/`HAS_ATTRIBUTE` dependency documented in data-model.md.
-- [ ] T035 [P] [US1] Write the late-branch-creation test: create a branch after candidate selection → the object stays readable on it. Bounds the residual race and locks in the degraded-read property that makes the time-close choice load-bearing.
-- [ ] T036 [P] [US1] Write the out-of-scope boundary test: deleting a truly branch-agnostic *node* closes its edges exactly once and retirement is a no-op. `Node.delete` resolves `branch` to the global branch for such nodes, so the enforcement point does run against them.
-- [ ] T037 [US1] Measure FR-018 for node deletion, branch merge and branch rebase at both open-branch counts and record medians in `quickstart.md`. Gate: ≤ +10% at both.
+- [ ] T032 [P] [US1] Assert in the same file that a retired vertex is no longer a candidate on a second pass — re-run retirement over the same candidates and confirm it closes nothing and reports zero (the property that closing the owning edge buys)
+- [ ] T033 [P] [US1] Write a component test asserting retirement registers no change on a branch that forked before it — diff the pre-existing branch after a default-branch delete and assert no attribute or relationship change is reported for that node (FR-014)
+- [ ] T034 [US1] Adopt the currently-untracked `backend/tests/component/core/test_agnostic_attribute_fork_window.py`: replace its `_close_global_property_edges` stub with the real delete path and update the pre-fix assertion (`"expected to leave the global value edge open today"`). Both fork-window expectations must hold unchanged — that is the proof the time-close hedge of FR-013 works. **Commit the file together with the change that turns it green**, not before.
+- [ ] T035 [P] [US1] Write the pool re-allocation test in `backend/tests/component/core/test_agnostic_retirement.py`: allocate, delete, retire, allocate again → the same value is returned (SC-007, scenario 12). Guards the three-edge `IS_RESERVED`/`HAS_VALUE`/`HAS_ATTRIBUTE` dependency documented in data-model.md.
+- [ ] T036 [P] [US1] Write the late-branch-creation test: create a branch after candidate selection → the object stays readable on it. Bounds the residual race and locks in the degraded-read property that makes the time-close choice load-bearing.
+- [ ] T037 [P] [US1] Write the out-of-scope boundary test: deleting a truly branch-agnostic *node* closes its edges exactly once and retirement is a no-op. `Node.delete` resolves `branch` to the global branch for such nodes, so the enforcement point does run against them.
+- [ ] T038 [US1] Measure FR-018 for node deletion, branch merge and branch rebase at both open-branch counts and record medians in `quickstart.md`. Gate: ≤ +10% at both.
 
 **Checkpoint**: User Story 1 is fully functional and independently testable. Deletes and schema removals no longer leak; SC-004 through SC-007 are demonstrable.
 
@@ -136,25 +134,25 @@ passed.
 
 ## Phase 4: User Story 2 - Existing damage repaired on upgrade (Priority: P1)
 
-**Goal**: Upgrading retires the global property edges of every branch-agnostic field that no branch
-retains, including the branch-deletion orphans that dominate the reported incident.
+**Goal**: Upgrading retires the global edges of every branch-agnostic field that no branch retains,
+covering both the still-linked orphans and the fully detached ones.
 
 **Independent Test**: Build the orphan shapes as fixtures, run the migration, assert the edges are
 closed or the vertices removed and the reported counts are correct. Delivers value with no
 enforcement present — this is what unblocks a customer stuck today.
 
-**Depends on**: T001 (migration gate sign-off) and Phase 2 (the query's unbounded form). Does
-**not** depend on Phase 3.
+**Depends on**: T001 (migration gate sign-off) and Phase 2 (the query's unbounded form and widened
+anchor). Does **not** depend on Phase 3.
 
-- [ ] T038 [P] [US2] Write component tests in `backend/tests/component/migrations/test_m076_retire_agnostic_property_edges.py` for the **close** shape: a node with open global `HAS_VALUE` edges and no active existence edge on any branch → edges carry `to`, count reported (scenario 1). Build the fixture with raw Cypher — current code paths cannot produce it, which is the point of the migration.
-- [ ] T039 [P] [US2] Write component tests for the **hard-delete** shape: an `Attribute` or `Relationship` vertex with no linked node vertex at all → vertex removed, count reported (scenario 2)
-- [ ] T040 [P] [US2] Write component tests for the **shared-value** shape: two attributes sharing one `AttributeValue`, one orphaned → orphan detached, surviving attribute keeps its value (scenario 3); and for unrepairable state → reported, migration completes without raising (scenario 4)
-- [ ] T040a [P] [US2] Write component tests for the **half-closed** shapes reached only by the widened anchor: an owning edge already closed with property edges still open, and the reverse → each fully closed and counted (FR-002a, FR-011a). Build both with raw Cypher.
-- [ ] T041 [P] [US2] Write a component test asserting `m076` is safe to re-run: a second run reports zero, so an interrupted upgrade is resumable
-- [ ] T042 [US2] Implement `Migration076` in `backend/infrahub/core/migrations/graph/m076_retire_agnostic_property_edges.py` as an `ArbitraryMigration` with `minimum_version: int = 75`, modelled on `m075_finish_deleting_branches.py`: run the query's unbounded form **with the widened anchor** (T012a), batch at the existing `MAX_AGNOSTIC_PEER_BATCH_SIZE` (500) cap, report **both** counts via `get_migration_console()`, and return `MigrationResult(errors=[...])` without raising (FR-016)
-- [ ] T043 [US2] Log the irreversibility of the hard-delete to the console before the migration begins, in `backend/infrahub/core/migrations/graph/m076_retire_agnostic_property_edges.py`, so an operator's pre-upgrade backup is an informed decision. No rollback is built — for vertices with no linked node there is nothing to roll back to.
-- [ ] T044 [US2] Register `Migration076` in `backend/infrahub/core/migrations/graph/__init__.py` and bump `GRAPH_VERSION` from 75 to 76 in `backend/infrahub/core/graph/__init__.py`
-- [ ] T045 [US2] Verify SC-001 and SC-002 on a dataset carrying the pre-fix orphan shapes, adding the checks to `backend/tests/component/migrations/test_m076_retire_agnostic_property_edges.py`: a data-only proposed change validates clean, and a schema update adding a uniqueness constraint on a previously-orphaned branch-agnostic attribute loads successfully
+- [ ] T039 [P] [US2] Write component tests in `backend/tests/component/migrations/test_m076_retire_agnostic_property_edges.py` for the **close** shape: a node with open global edges and no active existence edge on any branch → edges carry `to`, count reported (scenario 1). Build the fixture with raw Cypher — current code paths cannot produce it, which is the point of the migration.
+- [ ] T040 [P] [US2] Write component tests for the **hard-delete** shape: an `Attribute` or `Relationship` vertex with no linked node vertex at all → vertex removed, count reported (scenario 2)
+- [ ] T041 [P] [US2] Write component tests for the **shared-value** shape: two attributes sharing one `AttributeValue`, one orphaned → orphan detached, surviving attribute keeps its value (scenario 3); and for unrepairable state → reported, migration completes without raising (scenario 4)
+- [ ] T042 [P] [US2] Write component tests for the **half-closed** shapes, which only the widened anchor can reach: an owning edge already closed with property edges still open, and the reverse → each fully closed and counted (FR-002a, FR-011a). Build both with raw Cypher. This is the only place half-closed shapes are exercised — no runtime path can create one.
+- [ ] T043 [P] [US2] Write a component test asserting `m076` is safe to re-run: a second run reports zero, so an interrupted upgrade is resumable (SC-004a)
+- [ ] T044 [US2] Implement `Migration076` in `backend/infrahub/core/migrations/graph/m076_retire_agnostic_property_edges.py` as an `ArbitraryMigration` with `minimum_version: int = 75`, modelled on `m075_finish_deleting_branches.py`: read branches with `Branch.get_list(db=db)` (the registry may be unpopulated in an upgrade process), run the query's unbounded form **with the widened anchor** (T011), batch at the existing `MAX_AGNOSTIC_PEER_BATCH_SIZE` (500) cap, report **both** counts via `get_migration_console()`, and return `MigrationResult(errors=[...])` without raising (FR-016)
+- [ ] T045 [US2] Log the irreversibility of the hard-delete to the console before the migration begins, in `backend/infrahub/core/migrations/graph/m076_retire_agnostic_property_edges.py`, so an operator's pre-upgrade backup is an informed decision. No rollback is built — for vertices with no linked node there is nothing to roll back to.
+- [ ] T046 [US2] Register `Migration076` in `backend/infrahub/core/migrations/graph/__init__.py` and bump `GRAPH_VERSION` from 75 to 76 in `backend/infrahub/core/graph/__init__.py`
+- [ ] T047 [US2] Verify SC-001 and SC-002 on a dataset carrying the pre-fix orphan shapes, adding the checks to `backend/tests/component/migrations/test_m076_retire_agnostic_property_edges.py`: a data-only proposed change validates clean, and a schema update adding a uniqueness constraint on a previously-orphaned branch-agnostic attribute loads successfully
 
 **Checkpoint**: A stuck deployment can escape without a database intervention. User Stories 1 and 2 both work independently.
 
@@ -170,9 +168,9 @@ the schema.
 
 **Depends on**: Phase 3 (the behaviour must exist before it is documented).
 
-- [ ] T046 [US3] Document the deletion semantics for branch-agnostic attributes and relationships on branch-aware objects in the relevant page under `docs/docs/`: when the value is released, when release is deferred, what resolves the deferral (delete on the retaining branch, rebase past the deletion, merge, or branch deletion), and what a branch forked before the deletion sees (FR-019, SC-009)
-- [ ] T047 [US3] Document that `m076` mutates existing data on upgrade — closing edges and hard-deleting vertices with no linked node — and that it is irreversible, in the upgrade documentation under `docs/docs/`
-- [ ] T048 [US3] Run `uv run invoke docs.lint` and fix any Markdown violations per `dev/guidelines/markdown.md`
+- [ ] T048 [US3] Document the deletion semantics for branch-agnostic attributes and relationships on branch-aware objects in the relevant page under `docs/docs/`: when the value is released, when release is deferred, what resolves the deferral (delete on the retaining branch, rebase past the deletion, merge, or branch deletion), and what a branch forked before the deletion sees (FR-019, SC-009)
+- [ ] T049 [US3] Document that `m076` mutates existing data on upgrade — closing edges and hard-deleting vertices with no linked node — and that it is irreversible, in the upgrade documentation under `docs/docs/`
+- [ ] T050 [US3] Run `uv run invoke docs.lint` and fix any Markdown violations per `dev/guidelines/markdown.md`
 
 **Checkpoint**: All three user stories independently functional.
 
@@ -180,13 +178,13 @@ the schema.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T049 [P] Add a towncrier changelog fragment under `changelog/` for the user-visible behaviour: branch-agnostic values are released when no branch retains their object, and freed pool values become allocatable again
-- [ ] T050 [P] Update `dev/knowledge/backend/` with the retirement invariant and the six enforcement points, per the constitution's Documentation Requirements for backend architecture changes
-- [ ] T051 Run `uv run invoke format` and `uv run invoke lint` (ruff + mypy) — zero lint errors, no unjustified `type: ignore`
-- [ ] T052 Run `uv run invoke backend.test-unit` and the full component suite for this feature: `uv run pytest backend/tests/unit/core/agnostic/ backend/tests/component -k agnostic`
-- [ ] T053 Run `/pre-ci` (`.agents/commands/pre-ci.md`), including `uv run invoke docs.validate` — CI fails on any stale generated doc
-- [ ] T054 Walk `specs/ifc-2843-retire-agnostic-edges/quickstart.md` end to end, including the manual smoke check (allocate → delete → re-allocate the same value), and fill in the FR-018 table with the measured medians
-- [ ] T055 Confirm every FR-001 … FR-019 has a passing test or a recorded measurement, and record the mapping in `specs/ifc-2843-retire-agnostic-edges/tasks.md` under a Traceability section
+- [ ] T051 [P] Add a towncrier changelog fragment under `changelog/` for the user-visible behaviour: branch-agnostic values are released when no branch retains their object, and freed pool values become allocatable again
+- [ ] T052 [P] Update `dev/knowledge/backend/` with the retirement invariant and the six enforcement points, per the constitution's Documentation Requirements for backend architecture changes
+- [ ] T053 Run `uv run invoke format` and `uv run invoke lint` (ruff + mypy) — zero lint errors, no unjustified `type: ignore`
+- [ ] T054 Run `uv run invoke backend.test-unit` and the full component suite for this feature: `uv run pytest backend/tests/unit/core/agnostic/ backend/tests/component -k agnostic`
+- [ ] T055 Run `/pre-ci` (`.agents/commands/pre-ci.md`), including `uv run invoke docs.validate` — CI fails on any stale generated doc
+- [ ] T056 Walk `specs/ifc-2843-retire-agnostic-edges/quickstart.md` end to end, including the manual smoke check (allocate → delete → re-allocate the same value), and fill in the FR-018 table with the measured medians
+- [ ] T057 Confirm every FR-001 … FR-019 has a passing test or a recorded measurement, and record the mapping in `specs/ifc-2843-retire-agnostic-edges/tasks.md` under a Traceability section
 
 ---
 
@@ -194,7 +192,7 @@ the schema.
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: no dependencies. T001 (migration gate) is long-lead — start it first, then continue.
+- **Setup (Phase 1)**: no dependencies. T001 is long-lead — start it first, then continue.
 - **Foundational (Phase 2)**: depends on Phase 1. **Blocks both P1 user stories.**
 - **User Story 1 (Phase 3)**: depends on Phase 2 only.
 - **User Story 2 (Phase 4)**: depends on Phase 2 and T001. **Independent of Phase 3.**
@@ -204,9 +202,9 @@ the schema.
 ### Critical path
 
 ```text
-T001 (gate) ─────────────────────────────────┐
-T004 → T006 → T008 → T010 → T011 → T012 → T016 → T017 ─┬─→ T019 → T020 (perf gate) → T023…T030 → T037
-                                                        └─→ T042 → T044 → T045
+T001 (gate) ──────────────────────────────────────────────┐
+T004 → T006 → T008 → T009 → T010 → T011 → T016 → T017 ─┬─→ T019 → T020 (perf gate) → T023…T030 → T038
+                                                        └─→ T044 → T046 → T047
 ```
 
 T020 is the **decision point**: if the branch-deletion timing gate fails at ~100 branches, the
@@ -214,27 +212,28 @@ bound narrows and re-measures before T023 onward proceed.
 
 ### Within Phase 2
 
-- T006 blocks T008, T010, T016 (they consume the dataclasses)
-- T010 → T010a → T011 → T012 → T012a are strictly sequential (same file, layered behaviour)
-- T007 before T008; T009 and T009a before T010; T015 before T016 (tests first)
-- T012b after T012a (it tests the widened anchor)
-- T014 (`EXPLAIN`) after T012a — it must cover both anchor modes — and before T019
+- T004 blocks T006, T008, T016 (they consume the dataclasses)
+- T008 → T009 → T010 → T011 are strictly sequential (same file, layered behaviour)
+- T005 before T006; T007 before T008; T015 before T016 (tests first)
+- T012 after T011 (it tests the widened anchor)
+- T014 (`EXPLAIN`) after T011 — it must cover both anchor modes — and before T019
 
 ### Within User Story 1
 
 - T018 before T019 before T020 — the risk-first slice, strictly ordered
 - T021, T022 before T023; T025 before T026; T027 before T028; T029 before T030
-- T031 – T036 are independent of each other and of the enforcement-point order
-- T037 last in the phase — it measures the three points added after T020
+- T031 – T037 are independent of each other and of the enforcement-point order
+- T034 lands in the same commit as the enforcement change that turns it green
+- T038 last in the phase — it measures the three points added after T020
 
 ### Parallel Opportunities
 
 - **Phase 1**: T002, T003 in parallel
-- **Phase 2**: T006 and T007 in parallel; T009a alongside T009; T013, T012b and T015 in parallel once T012a lands
-- **Phase 3**: T021, T022, T025, T027, T029 (all test-authoring, different concerns) in parallel; T031 – T036 all in parallel
-- **Phase 4**: T038 – T041 all in parallel (all test-authoring in one new file — coordinate or split by class)
+- **Phase 2**: T004 and T005 in parallel; T012, T013 and T015 in parallel once T011 lands
+- **Phase 3**: T021, T022, T025, T027, T029 (all test-authoring, different concerns) in parallel; T031 – T037 all in parallel
+- **Phase 4**: T039 – T043 all in parallel (all test-authoring in one new file — split by test class to avoid conflicts)
 - **Phases 3 and 4 in parallel** once Phase 2 completes — the two P1 stories share no source file
-- **Phase 6**: T049, T050 in parallel
+- **Phase 6**: T051, T052 in parallel
 
 ## Parallel Example: User Story 1 test authoring
 
@@ -248,9 +247,9 @@ Task: "T029 schema-removal component tests (scenarios 8-9)"
 
 # Then the cross-cutting correctness set, all independent:
 Task: "T031 kind-rename regression"
-Task: "T034 pool re-allocation"
-Task: "T035 late branch creation"
-Task: "T036 branch-agnostic node no-op"
+Task: "T035 pool re-allocation"
+Task: "T036 late branch creation"
+Task: "T037 branch-agnostic node no-op"
 ```
 
 ## Implementation Strategy
@@ -284,10 +283,16 @@ five integrations already assumed it passed. T020 is deliberately early and deli
 - `[P]` = different files, no dependencies on incomplete tasks
 - Assert the **graph shape** (edge presence, `status`, `to`) — not API responses. The bug is a
   graph-shape bug the API hides.
-- The negative cases (T022, T029's deferral case, T031, T035, T036) are what a naive implementation
+- The negative cases (T022, T029's deferral case, T031, T036, T037) are what a naive implementation
   breaks. A run in which only the positive cases pass is a failed run.
+- Half-closed shapes are exercised **only** in the migration (T042). No runtime path can create
+  one, because the owning edge and the property edges are closed in a single pass.
 - No mocks anywhere (`.agents/rules/testing-python.md`): recording and failing doubles behind the
   query protocol.
+- Don't create empty `__init__.py` files as a step of their own; add one when it has content or
+  when something requires it.
+- Don't commit a test that asserts pre-fix behaviour on its own. Land it with the change that turns
+  it green (T034).
 - No ticket IDs, issue numbers, or FR identifiers in source comments, docstrings, or test names
   (`.agents/rules/code-doc-style.md`). They belong in commit messages, the changelog, and these
   spec files.

@@ -44,10 +44,11 @@ build(branches: Sequence[Branch], at: Timestamp) -> BranchWindowSet
 
 **Caller obligations**
 
-- The branch list **must** come from the database — either matched in-query as `(:Branch)`
-  vertices (preferred) or via `Branch.get_list(db=db)`. Supplying it from `registry.branch` is
-  forbidden: that cache is per-worker, filled lazily, and only ever pruned, so a branch created by
-  another worker is absent and would be treated as non-retaining.
+- Supply the branch list from `registry.branch` at the runtime enforcement points — it is a
+  maintained cache (event-driven refresh on branch create/merge/rebase/delete, plus a scheduled
+  sweep) and costs no query on the delete path.
+- Supply it from `Branch.get_list(db=db)` in the migration, where the registry may never have been
+  populated because the upgrade process is not a worker.
 
 **Rejects**
 
@@ -88,7 +89,6 @@ retire(candidates: RetirementCandidates, at: Timestamp) -> RetirementResult
   is today's behaviour and never data loss. Closing on partial information is the unsafe
   direction and must not happen.
 - Logs what it did: edges closed, and the retaining-branch count when retirement is deferred.
-- Reads its branch list from the database, never from `registry.branch` (see C1).
 
 **Caller obligations**
 
@@ -134,8 +134,8 @@ get_data() -> RetirementResult
 - Batches when a batch size is supplied (required for the unbounded form). The unbounded form caps
   at 500 rows per transaction (`MAX_AGNOSTIC_PEER_BATCH_SIZE`), because each row can drag an
   unbounded number of peer vertices into the transaction with it.
-- Reads the branch set from `(:Branch)` vertices in the same pass where practical, so no stale
-  branch list can reach the predicate.
+- Takes the branch windows as bound parameters. It does not read `(:Branch)` itself — the collapse
+  lives in the builder so it stays unit-testable in one place.
 
 **Verification obligation**
 

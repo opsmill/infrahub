@@ -192,16 +192,22 @@ Three units, each with a single reason to change:
    Mirrors `Branch.get_branches_and_times_to_query_global` but for all branches at once. No
    database, no I/O. Unit-tested with hand-picked branch metadata.
 
-   **The branch list is read from the database, never from `registry.branch`.** That registry is a
-   per-worker dict filled lazily on `get_branch` and only ever pruned by
-   `purge_inactive_branches`, so a branch created by another worker is simply absent from it.
-   Using it as the predicate's source would omit a retaining branch and retire a live object's
-   value — an FR-003 violation arriving as a distributed-worker race rather than a logic bug.
-   Preferred shape: the retirement query matches `(:Branch)` vertices itself and computes the
-   fork-window collapse in Cypher, which removes both the staleness window and a round-trip; the
-   builder then serves the unit-testable pure form of that same collapse and the in-query path is
-   verified against it. Fallback if the in-query join proves costly: `Branch.get_list(db=db)`
-   under the enforcement point's existing transaction.
+  <!-- TODO: registry can be assumed as up-to-date as it is kept in sync across worker by update messages -->
+   **Branch list source: `registry.branch` at the runtime enforcement points,
+   `Branch.get_list(db=db)` in the migration.** The registry is a maintained cache, not a
+   lazily-filled one: `refresh_branches` adds branches it does not yet know via
+   `create_branch_registry` as well as pruning dead ones, the creating worker populates it
+   synchronously, and `BranchCreatedEvent` / `BranchMergedEvent` / `BranchRebasedEvent` /
+   `BranchDeletedEvent` each publish `RefreshRegistryBranches` so every other worker refreshes,
+   with a 900-second scheduled sweep behind that. It is trustworthy for this predicate and costs
+   no query on the delete path.
+
+   The migration is the exception, and not because of staleness: it runs in an upgrade process
+   where the registry may never have been populated at all, so it reads branches explicitly. That
+   read is free there — it is off every hot path.
+
+   Both paths feed the *same* pure builder, which is what keeps the fork-window collapse in one
+   unit-testable place rather than duplicated between a Python path and a Cypher one.
 
 2. **`AgnosticFieldRetirer`** (`core/agnostic/retirement.py`) — the single entry point. Given a
    candidate bound and the retirement timestamp, evaluates the predicate and closes the global
@@ -213,7 +219,8 @@ Three units, each with a single reason to change:
    body, three candidate bounds (node ids / fork point / unbounded) and two anchor modes
    (open-edge for runtime, widened for the migration). Candidate traversal, the retaining-branch
    predicate including the two-peer relationship form, and the time-close of both the owning edge
-   and the property edges in a single pass.
+   and the property edges in a single pass. It receives the branch windows as parameters from the
+   builder; it does not read `(:Branch)` itself.
 
 The six enforcement points are the retirement component's only callers. They contribute a
 candidate set and a timestamp; none of them contains predicate logic.
