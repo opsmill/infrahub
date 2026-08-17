@@ -53,11 +53,15 @@ Computed per deployment, never stored. Derived from the running build's PEP 440 
 overridable by explicit operator configuration.
 
 ```text
-deployment_default_theme : LIGHT | DARK
+deployment_default_theme : LIGHT | DARK | SYSTEM
   = operator override, when configured
-  | DARK   when Version(running_version).is_prerelease
-  | LIGHT  otherwise
+  | DARK    when Version(running_version).is_prerelease
+  | SYSTEM  otherwise
 ```
+
+The production default is `SYSTEM`, not a fixed palette: a deployment with no opinion about a
+particular user defers to that user's own browser setting. Non-production overrides that to `DARK`
+deliberately, because the point is that the team sees dark whatever their operating system says.
 
 It is a *default*, not a value written anywhere: it never touches a stored preference (FR-013), so a
 deployment that flips from pre-release to release changes what un-chosen users see and changes
@@ -116,8 +120,13 @@ Read synchronously by the inline classification script before first paint. It is
 source of truth: the account-backed preference always wins on arrival, and a cleared mirror costs one
 corrected repaint rather than a wrong theme.
 
-It doubles as the cross-tab channel — a second tab observing the `storage` event can reconcile,
-satisfying the spec's "never render a mixed state" without committing to live cross-tab sync.
+⚠ On a cold start the mirror is empty, and the fallback is the browser's own appearance — the same
+answer the production deployment default gives. Cache-hit and cache-miss therefore agree, so a
+first-ever visit is correct rather than merely tolerable. The one case that still corrects after the
+config payload arrives is a **non-production** deployment on a light system: the script paints light
+from the system, then flips to dark. Accepted — it affects the team's own builds only.
+
+Cross-tab synchronisation is out of scope; a second tab picks up a change on its next load.
 
 ## Relationships
 
@@ -139,6 +148,8 @@ Operating system ─────────────────────
   and is how a user returns to "Automatic (inherited)".
 - Writing the global layer requires the same permission as the existing global preference writes; no
   new permission is introduced.
-- The deployment default is always concrete (`LIGHT` or `DARK`) and never `SYSTEM`: a server cannot
-  observe an operating system's appearance, and a `SYSTEM` default would leave the client with
-  nothing to fall back to before the mirror exists.
+- The deployment default may be `SYSTEM`, and on production it is. The server cannot observe an
+  operating system's appearance, but it does not need to: `SYSTEM` is a *deferral*, and stage 2
+  resolves it on the client — including inside the pre-paint script, which can read the browser's
+  appearance synchronously. A `SYSTEM` default therefore leaves the client with a complete answer on
+  a cold start rather than a gap.

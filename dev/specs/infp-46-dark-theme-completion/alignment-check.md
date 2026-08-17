@@ -2,6 +2,32 @@
 
 **Date**: 2026-08-17 | **Spec**: [spec.md](./spec.md) | **Remediation passes used**: 0
 
+## Revision — 2026-08-17, after edge-case review
+
+The requester reviewed the Edge Cases section and directed six changes. All are applied across
+`spec.md`, `research.md`, `data-model.md`, `contracts/rest-config.md`, `plan.md`, `quickstart.md` and
+`tasks.md`. They do not change the seven-item coverage below.
+
+| Direction | Effect |
+|---|---|
+| "By default we should respect the user's browser/system config" | **Production default changed from `light` to `system`** (FR-011). The deployment default is now three-valued; non-production still forces `dark`. |
+| "Couldn't we store something in localStorage?" | Confirmed — already the design. The three cache-related edge cases (pre-sign-in, preference-unavailable, first paint) are now stated as one problem with one mechanism rather than three bullets. |
+| "Multiple tabs — ignore this" | Moved to Out of Scope; the `storage` listener is dropped from the provider. |
+| "System theme changes — react, only if easy" | Kept (FR-007). It is a subscribable browser event, so the cost is small. |
+| "Content that carries its own colors — tackle separately" | Moved to Out of Scope. Former FR-021 (semantic distinguishability) removed; contrast promoted to FR-021 with an explicit boundary. `badge.tsx` becomes migrate-without-degrading rather than a palette redesign. |
+| "Existing automated tests — let's tackle this" | Confirmed in scope; T035 unchanged. |
+| "Build this as a stacked PR on the existing one" | Branch bases on `bab-dark-theme-app` and the PR targets it, not `develop`. Recorded that #10284's failing checks are inherited. |
+
+**Consequence worth noting**: making the production default `system` removed a limitation rather than
+adding one. The earlier design accepted a first-visit flash because an empty cache fell back to
+light while the deployment default might be dark. With `system` as both the cold-start fallback and
+the production default, those two agree, so a first-ever visit to production is now correct from the
+first frame. The only residual flash is a non-production deployment on a light system.
+
+**Trade recorded**: on production, a user whose system is dark now reaches the alpha palette without
+explicitly choosing it. This was raised before the decision and confirmed; it is documented in the
+spec's Assumptions so a later reviewer sees the trade rather than rediscovering it.
+
 ## Source
 
 The source of truth is the **inline handover list** supplied by the requester: seven numbered
@@ -50,7 +76,7 @@ finding was a genuine fidelity loss and has been corrected.
 | Minor | added | not in source | FR-001, `Theme.SYSTEM` | A match-system option was added. The handover implies a light/dark toggle. Recorded in Assumptions: it is the conventional expectation, and adding it later would change the meaning of an already-stored value. Reviewer-overturnable. |
 | Minor | added | not in source | FR-003 | An organisation-wide default. Not requested, but it falls out of reusing the existing preference store, which is already two-layer — excluding it would have meant *removing* behaviour the machinery provides. |
 | Minor | added | not in source | FR-006, SC-002 | First-paint correctness. Not requested, but shipping an account-backed theme setting without it produces a visible flash on every load; treated as inherent to item 1 rather than new scope. |
-| Minor | added | critique | FR-022, SC-009 | A contrast requirement, added by the engineering/product critique. Justified for a feature whose entire subject is color. |
+| Minor | added | critique | FR-021, SC-009 | A contrast requirement, added by the engineering/product critique. Justified for a feature whose entire subject is color. (Numbered FR-022 when added; renumbered to FR-021 in the revision above, when semantic-color distinguishability moved out of scope.) |
 | Minor | added | not in source | T047 | An automated guard so the token cleanup does not regress. Follows from SC-004's "standing property" wording rather than from the ask. |
 | Minor | added | house rules | T057, T058 | Changelog fragment and user-facing documentation. Required by `AGENTS.md` for a user-facing feature, not by the handover. |
 | Open | unresolved | Item 7 — "for the coming weeks" | SC-008 | The dogfooding period has no stated length and no exit criterion, and nothing says where the defects it surfaces are collected. Raised in the critique as P2/P3 and deliberately **not** invented — it is a product decision for whoever owns the period. |

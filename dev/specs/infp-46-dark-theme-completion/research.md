@@ -46,7 +46,13 @@ INFP-566 dynamic-versions work. Verified against the running build:
 | `1.12.0.dev5+g1a2b3c` (dev build) | `True` | dark |
 | `1.11.0b2` (beta) | `True` | dark |
 | `1.11.1rc1` (release candidate) | `True` | dark |
-| `1.11.0` (release) | `False` | light |
+| `1.11.0` (release) | `False` | **system** |
+
+The production default is `system` rather than a fixed palette — specified directly by the requester.
+A deployment with no opinion about a particular user defers to that user's browser setting; only
+non-production overrides that, deliberately, so the team sees dark whatever their operating system
+says. The trade this accepts is recorded in the spec's Assumptions: on production, a user whose
+system is dark reaches the alpha palette without explicitly choosing it.
 
 This needs no configuration for the common case: every build the team runs day to day carries a
 `.devN`/`bN`/`rcN` segment, and every published release does not. The operator override (FR-012)
@@ -89,18 +95,24 @@ deployment default on the config payload). Precedence inside the inline script:
 
 1. Mirrored resolved theme, if present.
 2. Mirrored raw choice of "system" → resolve against `prefers-color-scheme` at that instant.
-3. Nothing mirrored → light.
+3. Nothing mirrored → resolve against `prefers-color-scheme`.
 
-**Known and accepted limitation**: on a browser's *first ever* visit to a non-production deployment,
-nothing is mirrored, so the first paint is light and corrects to dark once the config payload
-arrives. Every subsequent load is correct from the first frame. Eliminating even the first-visit
-flash would require the server to template the shell, which is disproportionate. This is recorded as
-a deliberate scope boundary, not an oversight.
+**Step 3 is why the cold start is correct, not merely tolerable.** Because the production deployment
+default is itself `system`, an empty cache and a populated one give the same answer for a
+never-visited production deployment — the fallback and the authoritative value agree instead of
+fighting. An earlier draft defaulted step 3 to light and accepted a first-visit flash as a scope
+boundary; making the production default `system` removes that case rather than tolerating it.
+
+**Residual case**: a *non-production* deployment on a light system. The script paints light from the
+system setting, then flips to dark when the config payload arrives. This affects the team's own
+builds only, and eliminating it would require the server to template the shell — disproportionate.
 
 **Reconciliation**: when the authoritative preference disagrees with the mirror, the class is updated
-and the mirror rewritten. Because the mirror is also the cross-tab channel, the `storage` event
-covers the multi-tab edge case for free — sufficient for the spec's "must never render a mixed
-state", without committing to live cross-tab sync.
+and the mirror rewritten.
+
+Cross-tab synchronisation is **out of scope** — a second tab picks up a change on its next load. The
+mirror would make a `storage`-event implementation nearly free, so this is a deliberate deferral
+rather than a limitation of the design.
 
 ## R3 — How is the GraphQL sandbox bound? (FR-014)
 
@@ -238,8 +250,11 @@ one-time cleanup. Without a guard the debt returns with the next feature branch,
 versus a `betterer` counter — is left to the plan; `betterer` is already wired into CI here.
 
 `shared/components/ui/badge.tsx` is called out separately: at twelve occurrences it likely encodes
-semantic colors (status, severity), which FR-021 requires to stay mutually distinguishable rather
-than merely dark. It needs a palette decision, not a mechanical swap.
+semantic colors (status, severity). **Redesigning semantic palettes is out of scope** — that is the
+separately-tracked "content that carries its own colors" work. The instruction here is narrower and
+easier to get wrong in the opposite direction: migrate it without *degrading* what exists. Where a
+mechanical token swap would flatten two currently-distinct severities into one, leave the distinction
+in place and note it for the separate effort rather than collapsing it.
 
 ## R7 — Schema visualizer (FR-016)
 

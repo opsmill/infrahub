@@ -26,10 +26,17 @@ This feature closes that gap and clears the seven limitations the author recorde
 
 ### Relationship to PR #10284
 
-Several items below (notably User Story 6) describe debt that #10284 *introduces* — hastily
-dark-themed legacy pages carrying hardcoded variants rather than tokens. This spec assumes #10284
-lands. Its failing end-to-end checks are explicitly **out of scope** for this feature and are not
-addressed here.
+Several items below (notably User Story 5) describe debt that #10284 *introduces* — hastily
+dark-themed legacy pages carrying hardcoded variants rather than tokens.
+
+**This work stacks on #10284**: the branch is based on `bab-dark-theme-app` and the pull request
+targets it, not `develop`. That makes the debt US5 migrates actually present in the tree, and keeps
+this review free of #10284's 151 files. When #10284 merges, this branch re-targets `develop`; if
+#10284 is revised, this branch rebases onto it.
+
+Its failing end-to-end checks are explicitly **out of scope** and are not addressed here. ⚠ Stacking
+means those failures are inherited and will appear on this pull request too — they are pre-existing,
+not caused by this work.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -76,23 +83,24 @@ observe the same choice.
 
 The team runs non-production builds of Infrahub day to day. Those deployments default to the dark
 theme so that the team lives in it continuously and surfaces the remaining visual defects through
-ordinary use, without every engineer having to opt in individually. Production builds continue to
-default to light, because the dark theme is pre-release.
+ordinary use, without every engineer having to opt in individually. Production builds instead follow
+each user's own browser or system appearance.
 
 **Why this priority**: This is the stated near-term goal of the whole effort — dogfooding dark for
 the coming weeks. It is what converts the setting from a feature into a feedback loop, and it is
 cheap once User Story 1 exists.
 
 **Independent Test**: Load a non-production deployment as a user with no theme preference set and
-observe dark; load a production build the same way and observe light; in both, set a personal
-preference and observe it override the default.
+observe dark; load a production build the same way and observe it match the operating system's
+appearance; in both, set a personal preference and observe it override the default.
 
 **Acceptance Scenarios**:
 
 1. **Given** a deployment running a non-production build, **When** a user with no theme preference
-   loads the application, **Then** it paints in dark.
+   loads the application, **Then** it paints in dark regardless of their system appearance.
 2. **Given** a deployment running a production build, **When** a user with no theme preference loads
-   the application, **Then** it paints in light.
+   the application, **Then** it paints to match their system appearance; **and when** they change
+   that system appearance, **Then** the application follows.
 3. **Given** a non-production deployment defaulting to dark, **When** a user explicitly selects
    light, **Then** their choice is honoured and persists.
 4. **Given** any deployment, **When** an operator explicitly configures the default theme, **Then**
@@ -218,23 +226,29 @@ nodes, edges and controls are dark and legible.
 
 ### Edge Cases
 
-- **Before sign-in.** The login page has no user to read a preference from. It uses the deployment
-  default and must not flash.
-- **Preference unavailable.** If the stored preference cannot be read (network failure, backend
-  error), the application still paints a coherent theme — the last known choice, or the deployment
-  default — and never lands half-styled.
-- **First paint.** Theme selection is account-backed, so a naive implementation paints light and then
-  corrects itself. The visible flash this produces is a defect, not an acceptable cost.
-- **Multiple tabs.** A user with the application open twice changes the theme in one tab. The other
-  tab must not end up in a broken mixed state; it may update live or on next navigation.
-- **System theme changes.** A user on "match system" whose operating system switches appearance while
-  the page is open.
-- **Content that carries its own colors.** Diagrams, syntax highlighting, status and severity colors,
-  and user-supplied content must stay meaningful in both themes — a severity color must remain
-  distinguishable, not merely dark.
+The first three are one problem with one answer, so they are grouped rather than listed apart.
+
+- **No account-backed answer yet — before sign-in, on first paint, or when the preference cannot be
+  read.** In all three the application must still paint a coherent theme immediately and never land
+  half-styled or flash.
+
+  A single mechanism covers all three: a locally cached copy of the last resolved theme, read
+  synchronously before the first frame. When nothing is cached, the browser's own appearance setting
+  answers instead — which is also the deployment default, so the cached path and the cold path agree
+  rather than fighting. The account-backed preference reconciles on arrival and refreshes the cache.
+
+  This means the cold-start case is *correct*, not merely tolerable: a first-ever visit resolves from
+  the browser's setting rather than guessing.
+
+- **System appearance changes while the page is open.** A user following their system switches their
+  operating system's appearance. The application follows without a reload. Cheap to support —
+  the browser exposes this as a subscribable change — so it is in scope rather than deferred.
+
 - **Existing automated tests.** Tests that assert specific colors, or that screenshot the interface,
-  may be sensitive to the default theme changing on non-production builds.
-- **Print and export.** Out of scope; printing behaviour is unchanged.
+  are sensitive to the default changing on non-production builds. In scope: the suites must be made
+  deterministic rather than left to inherit whatever the build implies.
+
+- **Print and export.** Unchanged; out of scope.
 
 ## Requirements *(mandatory)*
 
@@ -262,13 +276,16 @@ nodes, edges and controls are dark and legible.
   label specifically; "alpha" is the word to render, not a paraphrase of it. Because "match system"
   can resolve to dark, its description MUST make that consequence clear.
 - **FR-009**: The system MUST render a coherent theme when no preference can be retrieved, falling
-  back to the last known choice and then to the deployment default.
+  back to the last locally cached resolution and then to the deployment default. The cache MUST be
+  read synchronously before the first frame, and its absence or unavailability MUST NOT prevent the
+  application from loading.
 
 **Deployment defaults**
 
 - **FR-010**: Deployments running a non-production build MUST default to dark for users with no
   personal choice.
-- **FR-011**: Deployments running a production build MUST default to light.
+- **FR-011**: Deployments running a production build MUST default to following the user's browser or
+  operating system appearance, rather than to a fixed palette.
 - **FR-012**: Operators MUST be able to override the build-derived default with explicit
   configuration.
 - **FR-013**: A deployment default MUST NOT overwrite or reset any user's stored personal choice.
@@ -295,12 +312,13 @@ nodes, edges and controls are dark and legible.
 **Preservation**
 
 - **FR-020**: The light theme MUST remain visually unchanged by this feature.
-- **FR-021**: Colors that carry meaning — status, severity, diff conflict, danger — MUST remain
-  mutually distinguishable in both themes.
-- **FR-022**: Text and essential interface elements MUST remain legible against their background in
-  both themes, meeting the contrast level the light theme already achieves. Distinguishability
-  between semantic colors (FR-021) is a separate property and does not imply legibility against a
-  surface: a palette can satisfy FR-021 in full and still be unreadable.
+- **FR-021**: Text and essential interface elements MUST remain legible against their background in
+  both themes, meeting the contrast level the light theme already achieves.
+
+  This is about text against a surface, not about telling semantic colors apart from each other.
+  Content that carries its own colors — diagrams, syntax highlighting, status and severity palettes,
+  user-supplied content — is **out of scope** and tracked separately; a migration here must not make
+  those worse, but redesigning them is not this feature's job.
 
 ### Key Entities
 
@@ -333,7 +351,8 @@ nodes, edges and controls are dark and legible.
 - **SC-006**: Every page reachable from the main navigation renders with no bright-on-dark surface
   when dark is active.
 - **SC-007**: Non-production deployments present dark to a user with no stored preference, and
-  production deployments present light, without either altering stored preferences.
+  production deployments present whatever that user's system appearance calls for, without either
+  altering stored preferences.
 - **SC-008**: The team can run a non-production deployment in dark continuously for the dogfooding
   period without needing per-engineer setup.
 - **SC-009**: Text and essential interface elements meet the same contrast level in dark as the light
@@ -344,24 +363,27 @@ nodes, edges and controls are dark and legible.
 These were decided during specification rather than left open. Each is a judgement call that a
 reviewer may overturn.
 
-- **Production defaults to light.** Dark is pre-release. Defaulting production users into it on the
-  strength of their operating system setting would ship a known-defective appearance to people who
-  never opted in. "Match system" is therefore available but never the default.
+- **Production follows the user's system appearance by default.** This was specified directly by the
+  requester. It was initially assumed to be light, on the reasoning that dark is alpha and
+  defaulting production users into it ships a known-defective appearance to people who never opted
+  in — that consequence was raised explicitly and the decision was confirmed. It is recorded here so
+  a later reviewer sees the trade rather than rediscovering it: **on production, a user whose system
+  is dark gets the alpha theme without choosing it**, and the alpha tag then labels only an explicit
+  choice they never had to make.
 - **Three choices, not two.** Match-system is included rather than deferred: it is the conventional
-  expectation for a theme setting, and adding it later would change the meaning of an already-stored
-  value.
+  expectation for a theme setting, it is what the production default resolves to, and adding it later
+  would change the meaning of an already-stored value.
 - **The existing preference machinery is extended, not replaced.** Theme joins date-format and
   timezone in the established two-layer user/organisation preference model, and inherits its
   resolution and source-reporting semantics.
 - **"Non-production build" is derived from the running version**, not from a separate deployment
   flag, so that no additional configuration is required for the common case. Explicit configuration
   remains available as an override. The precise derivation is a design decision for the plan.
-- **PR #10284 lands before this work merges.** Its surfaces are the input to User Story 5. Its
-  failing end-to-end checks are out of scope.
+- **This work stacks on PR #10284.** The branch is based on `bab-dark-theme-app` and the pull request
+  targets it, rather than `develop`. #10284's surfaces are the input to User Story 5, and its failing
+  end-to-end checks are out of scope. When #10284 merges, this branch re-targets `develop`.
 - **The schema visualizer is a separate deliverable.** Upstream release precedes adoption here; the
   adoption in this repository is a dependency version change with no styling code.
-- **Cross-tab synchronisation is not required.** A second open tab may update live or on next
-  navigation, provided it never renders a mixed state.
 - **Print, export and screenshot output are unchanged.**
 
 ## Dependencies
@@ -379,6 +401,11 @@ reviewer may overturn.
 
 - The failing end-to-end checks on PR #10284.
 - Any change to the light theme's appearance.
+- **Content that carries its own colors** — diagrams, syntax highlighting, status and severity
+  palettes, user-supplied content. Making these meaningful in both themes is a separate piece of
+  work. This feature must not degrade them, but does not redesign them.
+- **Cross-tab synchronisation.** A second open tab is not required to react to a theme change made in
+  the first; it picks the change up on its next load.
 - Additional themes beyond light and dark (high contrast, custom palettes, per-branch theming).
 - Theming of printed or exported output.
 - Restyling third-party surfaces beyond binding them to the active theme.

@@ -1,6 +1,9 @@
 # Implementation Plan: Dark Theme Completion
 
-**Branch**: `dark-theme-completion-infp-46` | **Date**: 2026-08-17 | **Spec**: [spec.md](./spec.md)
+**Branch**: `dark-theme-completion-infp-46`, **stacked on `bab-dark-theme-app`** (PR #10284) — the
+pull request targets that branch, not `develop`, and re-targets `develop` once #10284 merges.
+
+**Date**: 2026-08-17 | **Spec**: [spec.md](./spec.md)
 
 **Ticket**: [INFP-46](https://opsmill.atlassian.net/browse/INFP-46)
 
@@ -168,18 +171,21 @@ The foundation. Everything else consumes the resolved value it produces.
    the effective-preferences query and the upsert mutation.
 5. **Stage-2 resolution** — `domain/rules/theme.ts`: pure `(choice, systemPrefersDark) → "light" |
    "dark"`.
-6. **Theme provider** — applies the class to the document element, writes the `localStorage` mirror,
-   subscribes to `prefers-color-scheme` changes (FR-007) and to `storage` events (multi-tab), and
-   exposes the resolved value to consumers. Sits alongside the existing
-   `date-preferences-provider.tsx`, which is the established pattern for this shape.
+6. **Theme provider** — fills the shared context, applies the class to the document element, writes
+   the `localStorage` mirror, and subscribes to `prefers-color-scheme` changes (FR-007). Sits
+   alongside the existing `date-preferences-provider.tsx`, which is the established pattern for this
+   shape. No `storage` listener: cross-tab synchronisation is out of scope.
 7. **Pre-paint script** — inline in `index.html` `<head>`, before the module script, reading the
    mirror. Per [research.md](./research.md) §R2, a browser's first-ever visit still corrects after
    the config payload arrives; this is an accepted, documented boundary.
    ⚠ It runs before everything and blocks rendering, so it must fail safe. `localStorage` access
    **throws** when storage is disabled or unavailable (Safari private browsing), and an uncaught
    throw here degrades the whole load for a cosmetic feature — wrap it in `try`/`catch` and fall
-   through to the light default. Validate the stored string against the known set before applying it
-   rather than using it directly as a class name.
+   through to `prefers-color-scheme`. Validate the stored string against the known set before applying
+   it rather than using it directly as a class name.
+   ⚠ The empty-cache fallback is `prefers-color-scheme`, **not** light. Because the production
+   deployment default is itself `system`, that makes a cold start correct rather than merely
+   tolerable — the cache-miss path and the authoritative value agree.
    ⚠ No Content-Security-Policy is configured today, so the inline script is fine. If one is ever
    added it needs a nonce or hash, or the first paint silently reverts to light.
 8. **Preference field** — a `Combobox` matching the existing fields, with the pre-release marker on
@@ -191,9 +197,11 @@ The foundation. Everything else consumes the resolved value it produces.
 
 ### Phase B — Non-production default (US2) · P1
 
-1. `core/preferences/theme.py` — pure `(version: str, override) → "light" | "dark"`.
-2. `ExperimentalFeaturesSettings.default_theme: Literal["light","dark"] | None`. ⚠ Tri-state, not
-   `bool` — see [contracts/rest-config.md](./contracts/rest-config.md).
+1. `core/preferences/theme.py` — pure `(version: str, override) → "light" | "dark" | "system"`.
+   Pre-release → `dark`; otherwise → `system`.
+2. `ExperimentalFeaturesSettings.default_theme: Literal["light","dark","system"] | None`. ⚠ The
+   `| None` is load-bearing: "not configured" must stay distinguishable from every configured value
+   — see [contracts/rest-config.md](./contracts/rest-config.md).
 3. `ConfigAPI.default_theme`; regenerate the OpenAPI schema and frontend REST types.
 4. Client substitutes it when the effective preference resolves with source `DEFAULT`.
 5. Pin the theme explicitly in both end-to-end suites so they stop depending on the build's version.
@@ -210,7 +218,9 @@ The foundation. Everything else consumes the resolved value it produces.
 
 1. Migrate the ~20 files carrying hardcoded `dark:` variants to tokens.
 2. `shared/components/ui/badge.tsx` last and separately — twelve occurrences that likely encode
-   semantic colors, needing a palette decision under FR-021 rather than a mechanical swap.
+   semantic colors. ⚠ Redesigning semantic palettes is **out of scope** (tracked separately); the
+   rule here is do not *degrade* them. Where a mechanical swap would flatten two distinct severities
+   into one, keep the distinction and note it for that separate effort.
 3. Data viewer: `neutral`/`bg-white` → tokens.
 4. Add the automated guard that makes SC-004 a standing property. `betterer` is already in CI and
    is the lower-friction option; a lint rule is the stricter one. Decide when writing the tasks.
@@ -248,14 +258,17 @@ starts.
 | `shared/` importing `entities/` for the theme | Prohibited dependency direction, and **no lint guard exists** — layer rules are review-enforced only | Context in `shared/`, provider in the entity, per the `DatePreferencesProvider` precedent |
 | Pre-paint script throws on unavailable `localStorage` | Blocking head script degrades every load | `try`/`catch` with a light fallback; validate the value before applying |
 | Token swap alters the light theme | Breaks FR-020, the one hard preservation constraint | Verify light after every batch |
-| Semantic colors flattened during migration | Status/severity no longer distinguishable (FR-021) | Handle `badge.tsx` as a palette decision, not a swap |
+| Semantic colors flattened during migration | Status/severity no longer distinguishable, in work explicitly scoped out of redesigning them | Migrate `badge.tsx` without degrading existing distinctions; hand anomalies to the separate effort |
 | Default flip destabilises end-to-end suites | Failures misattributed | Pin the theme in both suites; baseline only from a green post-#10284 run |
-| #10284 does not land | Phase D's target surfaces do not exist | Phases A–C and E are independent of it; D rebases onto it |
+| #10284 is revised or does not land | This branch is stacked on it, so its history moves under us | Rebase onto `bab-dark-theme-app`; Phases A–C and E do not depend on its content, only D does |
+| #10284's failing e2e checks are inherited by this stacked PR | Reviewers misread them as caused by this work | State it in the PR description; baseline only from a green post-merge run |
 | Submodule pointer moved to an unpushed commit | Breaks every other checkout | Upstream merge strictly precedes the bump |
 
 ## Dependencies
 
-- PR [#10284](https://github.com/opsmill/infrahub/pull/10284) merged — Phase D only.
+- PR [#10284](https://github.com/opsmill/infrahub/pull/10284) — this branch is **stacked** on
+  `bab-dark-theme-app` rather than waiting for it to merge. Phase D consumes its surfaces; the other
+  phases only inherit its base.
 - Existing account-backed preference machinery (user/global layers, effective resolution, source
   reporting, permissions, locking).
 - `hatch-vcs` version derivation (the INFP-566 work) — Phase B.

@@ -41,19 +41,20 @@ expose it and is not required.
      ldap: config.LDAPInfo
      installation_type: str
      policy: config.PolicySettings
-+    default_theme: Literal["light", "dark"]
++    default_theme: Literal["light", "dark", "system"]
 ```
 
-Always concrete — never `system`. A server cannot observe an operating system's appearance, and a
-`system` default would leave the client with nothing to fall back to before its mirror exists.
+`system` is a **deferral**, not an unresolved value: the client resolves it against the browser's
+appearance, including synchronously inside the pre-paint script. Publishing it costs the client
+nothing and is what lets a cold start be correct.
 
 ## Resolution
 
 ```text
 default_theme
   = operator override, when explicitly configured
-  | "dark"   when Version(infrahub.__version__).is_prerelease
-  | "light"  otherwise
+  | "dark"    when Version(infrahub.__version__).is_prerelease
+  | "system"  otherwise
 ```
 
 Verified shapes (see [research.md](../research.md) §R1):
@@ -63,7 +64,11 @@ Verified shapes (see [research.md](../research.md) §R1):
 | `1.11.0b2.dev134+geb5acb009` | `True` | `dark` |
 | `1.12.0.dev5+g1a2b3c` | `True` | `dark` |
 | `1.11.1rc1` | `True` | `dark` |
-| `1.11.0` | `False` | `light` |
+| `1.11.0` | `False` | `system` |
+
+⚠ A production deployment therefore never forces a palette on a user who has not chosen one — it
+defers to their browser. A non-production deployment deliberately does force one, because the point
+of the dogfooding period is that the team sees dark whatever their operating system says.
 
 ⚠ `installation_type` is **not** the signal. It is `"community"` — community versus enterprise, not
 production versus non-production. Its presence on this same payload makes it an easy false lead.
@@ -78,20 +83,24 @@ class ExperimentalFeaturesSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_EXPERIMENTAL_")
     graphql_enums: bool = False
     value_db_index: bool = Field(default=False, deprecated="…")
-    default_theme: Literal["light", "dark"] | None = None   # None → derive from version
+    default_theme: Literal["light", "dark", "system"] | None = None   # None → derive from version
 ```
 
 ⚠ A plain `bool` would be wrong: `False` could not be told apart from unset, so an operator could
-never force light on a pre-release build, and FR-012 would be unmet in one direction.
+never force light on a pre-release build, and FR-012 would be unmet in one direction. The `| None` is
+load-bearing for the same reason — "not configured" must stay distinguishable from every configured
+value, including `"system"`.
 
 ## Behavioural contract
 
 | Given | When | Then |
 |---|---|---|
 | Pre-release build, no override | `GET /api/config` | `default_theme = "dark"` |
-| Release build, no override | `GET /api/config` | `default_theme = "light"` |
+| Release build, no override | `GET /api/config` | `default_theme = "system"` |
 | Pre-release build, override `light` | `GET /api/config` | `default_theme = "light"` |
 | Release build, override `dark` | `GET /api/config` | `default_theme = "dark"` |
+| Release build, no override, user's system is dark | client resolves | dark, without anything stored |
+| Release build, no override, user's system flips to light | client resolves | follows to light |
 | Any build | anonymous request | succeeds; no version information disclosed |
 | User has a stored preference | any deployment default | the stored preference wins; the default is never written to storage (FR-013) |
 | Deployment upgrades pre-release → release | users who chose a theme | unaffected — only un-chosen users' effective theme changes |

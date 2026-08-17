@@ -20,15 +20,20 @@ uv pip install -e python_sdk
 
 Fresh worktrees skip building the editable SDK, and `infrahub_sdk` imports fail without this.
 
-### Branch base
+### Branch base — this is a stacked PR
 
-This work assumes PR [#10284](https://github.com/opsmill/infrahub/pull/10284) has landed — it
-supplies the surfaces User Story 5 migrates. Until it merges, rebase onto its branch to see the real
-target state:
+The branch is based on `bab-dark-theme-app` (PR
+[#10284](https://github.com/opsmill/infrahub/pull/10284)) and the pull request **targets that
+branch**, not `develop`. That puts the surfaces User Story 5 migrates actually in the tree and keeps
+this review free of #10284's 151 files.
 
 ```bash
 git fetch origin bab-dark-theme-app && git rebase origin/bab-dark-theme-app
 ```
+
+Re-target `develop` once #10284 merges; rebase again if it is revised. ⚠ #10284's failing end-to-end
+checks are inherited by this pull request — say so in the description so reviewers do not read them
+as caused by this work.
 
 ## Verification commands
 
@@ -100,14 +105,17 @@ uv run python -c "import importlib.metadata as m; from packaging.version import 
 
 A local checkout reports something like `1.11.0b2.dev134+geb5acb009 True`.
 
-1. As a user with **no** stored theme, load the application: dark.
+1. As a user with **no** stored theme, load the application: dark, regardless of your system setting.
 2. Confirm `GET /api/config` returns `default_theme: "dark"` and does **not** include a version.
 3. Set the operator override to `light`, restart, reload: light — the override beat the version.
 4. Set a personal preference, then flip the override: the personal preference still wins and its
    stored value is unchanged.
+5. Clear your browser storage and reload with the operating system in dark: the first paint is dark
+   with nothing cached — the cold-start path resolving from `prefers-color-scheme`.
 
 To check the release path without cutting a release, exercise the resolution function directly with
-`1.11.0` in a unit test rather than trying to fake the deployment's version.
+`1.11.0` in a unit test — it must return `system`, not `light` — rather than trying to fake the
+deployment's version.
 
 ### US3 — GraphQL sandbox
 
@@ -161,8 +169,11 @@ To check the release path without cutting a release, exercise the resolution fun
 
 - **Light theme unchanged (FR-020, SC-005)** is the constraint most easily broken by a careless token
   swap. Compare light-theme rendering before and after on every page touched.
-- **Semantic colors (FR-021)** — status, severity, diff conflict, danger — must stay mutually
-  distinguishable, not merely dark. `shared/components/ui/badge.tsx` carries the most of these.
+- **Contrast (FR-021)** — text and essential interface elements must stay legible against their
+  surfaces in dark, at the level light already achieves.
+- **Semantic colors are out of scope** — status, severity, diff conflict, danger palettes are tracked
+  separately. Do not redesign them here; do not let a mechanical token swap flatten two distinct
+  severities into one either. `shared/components/ui/badge.tsx` carries the most of these.
 - **End-to-end suites** pin the theme explicitly rather than inheriting the build default, so they
   stay deterministic. ⚠ #10284's end-to-end checks are already failing and are out of scope — do not
   read those failures as fallout from this work; establish the baseline from a green run after it
