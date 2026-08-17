@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterId
+from prefect.client.schemas.sorting import FlowRunSort
 from prefect.events.schemas.events import Event, Resource
 from prefect.types import DateTime
 
@@ -21,6 +22,16 @@ if TYPE_CHECKING:
     from prefect.client.orchestration import PrefectClient
 
     from infrahub.database import InfrahubDatabase
+
+
+async def read_process_run_ids(prefect_client: PrefectClient, deployment_filter: DeploymentFilter) -> set[str]:
+    # The session-scoped Prefect server accumulates webhook-process runs across the suite and caps a
+    # read at its default page size, so sort newest-first to keep a just-created run in the page.
+    runs = await prefect_client.read_flow_runs(
+        deployment_filter=deployment_filter,
+        sort=FlowRunSort.EXPECTED_START_TIME_DESC,
+    )
+    return {str(run.id) for run in runs}
 
 
 class TestWebhookRender(TestInfrahubApp):
@@ -63,7 +74,7 @@ class TestWebhookRender(TestInfrahubApp):
 
         deployment = await prefect_client.read_deployment_by_name(f"{WEBHOOK_PROCESS.name}/{WEBHOOK_PROCESS.name}")
         deployment_filter = DeploymentFilter(id=DeploymentFilterId(any_=[deployment.id]))
-        runs_before = len(await prefect_client.read_flow_runs(deployment_filter=deployment_filter))
+        runs_before = await read_process_run_ids(prefect_client, deployment_filter)
 
         # A branch-less event: the resource carries no infrahub.branch.name, the id is a UUID and the
         # occurred time a datetime -- all values the action parameters must render as plain strings.
@@ -76,10 +87,10 @@ class TestWebhookRender(TestInfrahubApp):
         )
         await prefect_client._client.post("/events", json=[event.model_dump(mode="json")])
 
-        runs_after = runs_before
+        new_runs: set[str] = set()
         for _ in range(PREFECT_EVENT_WAIT_SECONDS):
-            runs_after = len(await prefect_client.read_flow_runs(deployment_filter=deployment_filter))
-            if runs_after > runs_before:
+            new_runs = await read_process_run_ids(prefect_client, deployment_filter) - runs_before
+            if new_runs:
                 break
             await asyncio.sleep(1)
-        assert runs_after > runs_before, "webhook-process deployment was not run; server-side parameter render failed"
+        assert new_runs, "webhook-process deployment was not run; server-side parameter render failed"
