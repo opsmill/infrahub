@@ -37,6 +37,7 @@ jobs:
         repo:
           - "opsmill/infrahub-demo-dc"
           - "opsmill/infrahub-demo-sp"
+          - "opsmill/infrahub-solution-ai-dc"
           - "INFRAHUB_PACKER_REPOSITORY"
           - "INFRAHUB_ENTERPRISE_REPOSITORY"
           - "INFRAHUB_CUSTOMER1_REPOSITORY"
