@@ -47,11 +47,22 @@ This table is a snapshot. Source of truth: `frontend/packages/ui/src/index.ts` �
 
 | Component | Exports | Notes |
 |---|---|---|
+<<<<<<< HEAD
 | `Toolbar` | `Toolbar`, `Toolbar.Divider`, `ToolbarProps`, `ToolbarDividerProps` | Floating toolbar container built on react-aria's `Toolbar` (`aria-label` required): one tab stop, arrow keys move between controls. + vertical divider. |
 | `FloatingPanel` | `FloatingPanel`, `FloatingPanelProps` | Floating overlay built on `Card` + a ghost square `Button`: header (title/description/close) + scroll body; optional `dismissable` (outside-click + Escape). |
 | `ExportMenu` | `ExportMenu`, `ExportFormat`, `ExportMenuProps` | PNG/SVG export popover. |
 | `GraphControls` | `GraphControls`, `GraphControlsProps`, `EdgeStyle`, `LayoutDirection` | Zoom / fit / edge-style / layout controls; uses `useReactFlow` from `@xyflow/react`. |
 | `useDismiss` | `useDismiss` | Hook — outside-pointerdown + Escape dismissal. |
+=======
+| `Breadcrumbs` | `Breadcrumbs`, `Breadcrumb`, `BreadcrumbItem`, `BreadcrumbItemLoading`, `BreadcrumbItemError`, `BreadcrumbsProps`, `BreadcrumbProps`, `BreadcrumbItemProps` | Trail of links/buttons with `/` separator, plus loading and error item variants. |
+| `Button` | `Button`, `LinkButton`, `buttonVariants`, `ButtonProps`, `LinkButtonProps` | Replaces ad-hoc `<button>` with Tailwind classes. |
+| `Card` | `Card`, `CardHeader`, `CardContent`, `CardProps`, `CardHeaderProps`, `CardContentProps` | Replaces hand-rolled `<section className="rounded-md border bg-white p-4 shadow-lg">` patterns. |
+| `CheckboxCard` | `CheckboxCard`, `CheckboxCardProps` | Card-style checkbox primitive for selectable card choices. |
+| `Modal` | `Modal`, `ModalOverlay`, `ModalProps`, `ModalOverlayProps` | Use instead of HeadlessUI Dialog for new modals. |
+| `Spinner` | `Spinner`, `SpinnerProps` | Loading indicator. |
+| `Meter` | `Meter`, `MeterProps` | Replaces ad-hoc progress-bar charts. |
+| `ScrollArea` | `ScrollArea`, `ScrollAreaProps` | Replaces `shared/components/ui/scroll-area`. |
+>>>>>>> origin/stable
 
 Source of truth: `frontend/packages/graph/src/index.ts`. Adopted by `path-traversal`.
 
@@ -80,7 +91,7 @@ When you touch one of these and notice it could be a generic primitive, consider
 ## Migration policy
 
 - Net-new generic primitives (no Infrahub-specific data dependencies) should land in `@infrahub/ui` from day one.
-- Existing primitives in `shared/components/ui/` are migrated incrementally — see PRs #9048 (Card), #9065 (Button), #9088 (Modal) as references.
+- Existing primitives in `shared/components/ui/` are migrated incrementally — Card, Button, and Modal are migrated precedents.
 - Migration PRs include: the component, its Storybook story, focus-visible styles, and call-site updates across the app.
 
 ## Storybook

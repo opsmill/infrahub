@@ -82,6 +82,7 @@ uv run towncrier create -c "Migrated the frontend build to pnpm workspaces" +pnp
 - **Placing it in a sub-package directory** (e.g. `backend/changelog/`) instead of the configured fragments directory.
 - **Describing the implementation.** "Refactored the auth-token cache layer" → instead say what the user sees: "Fixed users being unexpectedly logged out".
 - **Wrong tense or multiple sentences.** One past-tense sentence.
+- **Duplicating an existing fragment.** On a feature branch spanning multiple PRs, list the fragments directory first — numbered (`NNNN.type.md`) and `+`-prefixed fragments all render into the changelog. If a fragment already describes the same user-visible change, extend or reconcile it instead of adding an overlapping one.
 
 ## See Also
 

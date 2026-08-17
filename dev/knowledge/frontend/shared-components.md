@@ -2,7 +2,7 @@
 
 > Part of: `dev/knowledge/frontend/`
 
-A discovery map of reusable building blocks. **Look here before building a new picker, combobox, kind selector, or form input.** Most "new" UI in this codebase already has a shared primitive — see PR #9099 for an example where a 200+ line custom object picker and a hand-rolled `gql` UUID resolver were written because this map didn't exist.
+A discovery map of reusable building blocks. **Look here before building a new picker, combobox, kind selector, or form input.** Most "new" UI in this codebase already has a shared primitive — before this map existed, a 200+ line custom object picker and a hand-rolled `gql` UUID resolver were built for UI that already had one.
 
 The dependency rule still applies: `app → pages → entities → shared`. Cross-entity reuse goes through another entity's `domain/` or `ui/` — never `api/`.
 
