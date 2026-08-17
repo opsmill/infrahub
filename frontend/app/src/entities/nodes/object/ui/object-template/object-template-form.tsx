@@ -27,7 +27,7 @@ const StartButton = ({ icon, title, description, className, ...props }: StartBut
     )}
     {...props}
   >
-    <div className="rounded-lg bg-indigo-100 p-3">{icon}</div>
+    <div className="rounded-lg bg-active-surface p-3">{icon}</div>
 
     <div className="flex flex-col items-start gap-1">
       <p className="font-medium text-sm">{title}</p>

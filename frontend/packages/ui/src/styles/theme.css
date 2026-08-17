@@ -25,6 +25,7 @@
      sorted or filtered. Each theme needs its own end of the ramp to clear WCAG AA against its own
      background, so a single shade cannot serve both. */
   --active: var(--color-indigo-700);
+  --active-surface: var(--color-indigo-100);
 
   --danger: var(--color-rose-700);
   --danger-surface: --alpha(var(--color-rose-500) / 15%);
@@ -104,6 +105,7 @@
   --accent: #a7d9e6;
 
   --active: var(--color-indigo-400);
+  --active-surface: --alpha(var(--color-indigo-400) / 15%);
 
   --danger: var(--color-rose-400);
   --danger-surface: --alpha(var(--color-rose-400) / 20%);
@@ -199,6 +201,7 @@
 
   --color-accent: var(--accent);
   --color-active: var(--active);
+  --color-active-surface: var(--active-surface);
 
   --color-danger: var(--danger);
   --color-danger-surface: var(--danger-surface);
