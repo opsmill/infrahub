@@ -208,6 +208,7 @@ export const ObjectAttributeValue = ({
     case ATTRIBUTE_KIND.FILE:
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
+    case ATTRIBUTE_KIND.IP_ADDRESS:
     case ATTRIBUTE_KIND.ANY:
       return <TextDisplay>{getTextValue(attributeData).toString()}</TextDisplay>;
     case ATTRIBUTE_KIND.URL:
@@ -220,7 +221,8 @@ export const ObjectAttributeValue = ({
     case ATTRIBUTE_KIND.CHECKBOX:
       return attributeData.value ? <CheckIcon className="size-4" /> : <XIcon className="size-4" />;
     case ATTRIBUTE_KIND.DATETIME:
-      return <DateDisplay date={getTextValue(attributeData)} />;
+      // User-authored data, not metadata: never the age-dependent compact/relative form.
+      return <DateDisplay date={getTextValue(attributeData)} fullTimestamp />;
     case ATTRIBUTE_KIND.TEXTAREA:
       return <MarkdownRender markdownText={getTextValue(attributeData)} />;
     case ATTRIBUTE_KIND.PASSWORD:

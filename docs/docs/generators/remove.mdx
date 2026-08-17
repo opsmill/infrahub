@@ -1,0 +1,45 @@
+---
+title: Remove a generator
+---
+
+# Remove a generator
+
+Removing a Generator involves two separate things: the **Generator definition** registered from `.infrahub.yml`, and the **objects the Generator created** in Infrahub. Removing the definition stops the Generator from running, but it does not delete the objects it already created — those stay in Infrahub until you remove them.
+
+Handle the objects first, then the definition.
+
+## Delete the objects the Generator created
+
+A Generator removes its own obsolete objects only when it runs, through the [SDK tracking feature]($(base_url)python-sdk/topics/tracking). Once the definition is gone the Generator never runs again, so it can no longer remove the objects it created. Delete or reassign those objects — through the UI, GraphQL, or the SDK — while the definition still exists.
+
+To identify what a Generator created, see [Generator instances](./overview#generator-instances).
+
+## Remove the definition from `.infrahub.yml`
+
+On a branch, delete the Generator's entry from the `generator_definitions` list in your repository's `.infrahub.yml`:
+
+```yaml
+generator_definitions:
+  # Remove the block for the Generator you are retiring:
+  - name: <your_generator>
+    file_path: "generators/<your_generator>.py"
+    targets: <your_target_group>
+    query: <your_query>
+    class_name: YourGenerator
+```
+
+Remove the Generator's Python file, and any query used only by this Generator. Commit the changes and merge the branch through a [Proposed Change](../proposed-changes/overview). Infrahub removes the `CoreGeneratorDefinition` registration on the next repository sync.
+
+## Verify the removal
+
+```shell
+infrahubctl generator --list
+```
+
+The retired Generator no longer appears in the list. In the UI, confirm it is gone from Actions → Generator Definitions.
+
+## Related
+
+- [Build a generator](./build) — create a Generator
+- [About Generators](./overview) — concept, instances, and tracking
+- [infrahub.yml configuration](../git-integration/infrahub-yml) — the `generator_definitions` syntax

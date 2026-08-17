@@ -3,8 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
-from prefect import flow, task
-from prefect.cache_policies import NONE
+from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
@@ -21,6 +20,7 @@ from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001 
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
+from infrahub.utilities.chunks import chunked
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
@@ -28,6 +28,7 @@ from infrahub.workflows.catalogue import (
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
+from infrahub.workflows.constants import WorkflowTag
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_computed_attribute_python
@@ -51,11 +52,8 @@ from .transform_recompute import TransformRecomputeSubmitter
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
     from infrahub.database import InfrahubDatabase
+    from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
     from infrahub.graphql.analyzer import GraphQLQueryReport
-
-
-def _chunk_ids(ids: list[str], chunk_size: int) -> list[list[str]]:
-    return [ids[i : i + chunk_size] for i in range(0, len(ids), chunk_size)]
 
 
 async def _reconcile_python_computed_attribute_automations(db: InfrahubDatabase) -> None:
@@ -81,24 +79,6 @@ async def _reconcile_python_computed_attribute_automations(db: InfrahubDatabase)
     log.debug("Reconciled Python computed-attribute node-input automations")
 
 
-UPDATE_ATTRIBUTE = """
-mutation UpdateAttribute(
-    $id: String!,
-    $kind: String!,
-    $attribute: String!,
-    $value: String!
-    $context_account_id: String!
-  ) {
-  InfrahubUpdateComputedAttribute(
-    context: {account: {id: $context_account_id}},
-    data: {id: $id, attribute: $attribute, value: $value, kind: $kind}
-  ) {
-    ok
-  }
-}
-"""
-
-
 def _resolve_changed_elements(
     changed_elements: ChangedElementsPayload | None,
 ) -> ChangedElementSet | None:
@@ -119,32 +99,28 @@ def _transform_read_set_from_query_report(report: GraphQLQueryReport) -> Transfo
     return TransformReadSet.from_read_fields({kind: access.fields for kind, access in report.requested_read.items()})
 
 
-@task(name="computed-attribute-process-transform-for-node", cache_policy=NONE)
-async def process_transform_for_node(
+async def _transform_value_for_node(
+    *,
     branch_name: str,
     object_id: str,
-    node_kind: str,
     attribute_name: str,
     query_id: str,
     transform_timeout: int | None,
-    repository_id: str,
-    repository_name: str,
-    repository_kind: str,
     commit: str | None,
     file_path: str,
     class_name: str,
     convert_query_response: bool,
     context: EventContext,
-) -> None:
-    client = get_client()
+    repo: InfrahubReadOnlyRepository | InfrahubRepository,
+) -> AttributeValueWrite:
+    """Compute one node's value against a shared, pre-initialized repository.
 
-    repo = await get_initialized_repo(
-        client=client,
-        repository_id=repository_id,
-        name=repository_name,
-        repository_kind=repository_kind,
-        commit=commit,
-    )
+    ``update_group`` keeps the node subscribed to the transform's query group, which is
+    what routes future source changes back to this node. ``context`` is reapplied here
+    because ``get_client()`` builds a fresh client per call rather than inheriting one.
+    """
+    client = get_client()
+    client.request_context = context.to_request_context()
 
     data = await client.query_gql_query(
         name=query_id,
@@ -154,7 +130,7 @@ async def process_transform_for_node(
         subscribers=[object_id],
     )
 
-    transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=transform_timeout)(
+    value = await repo.execute_python_transform.with_options(timeout_seconds=transform_timeout)(
         client=client,
         branch_name=branch_name,
         commit=commit,
@@ -163,17 +139,27 @@ async def process_transform_for_node(
         convert_query_response=convert_query_response,
     )  # type: ignore[call-overload]
 
-    await client.execute_graphql(
-        query=UPDATE_ATTRIBUTE,
-        variables={
-            "id": object_id,
-            "kind": node_kind,
-            "attribute": attribute_name,
-            "value": transformed_data,
-            "context_account_id": context.account_id,
-        },
-        branch_name=branch_name,
-    )
+    return AttributeValueWrite(node_id=object_id, field=attribute_name, value=value)
+
+
+def _partition_transform_results(
+    results: list[tuple[str, AttributeValueWrite | Exception]],
+) -> tuple[list[AttributeValueWrite], list[tuple[str, str]]]:
+    """Split results into values to persist and ``(node_id, reason)`` skips.
+
+    A raised or non-string result is skipped so one bad node cannot block its siblings,
+    and a failure never overwrites the last good value with null.
+    """
+    writes: list[AttributeValueWrite] = []
+    skipped: list[tuple[str, str]] = []
+    for object_id, result in results:
+        if isinstance(result, Exception):
+            skipped.append((object_id, f"transform raised {result!r}"))
+        elif not isinstance(result.value, str):
+            skipped.append((object_id, f"transform returned {type(result.value).__name__}, expected a string"))
+        else:
+            writes.append(result)
+    return writes, skipped
 
 
 @flow(
@@ -190,9 +176,23 @@ async def process_transform(
     object_ids: list[str] | None = None,
     updated_fields: list[str] | None = None,  # noqa: ARG001
 ) -> None:
+    """Recompute Python computed attributes for a batch of nodes.
+
+    One repository init and one bulk write per batch; unchanged values emit no events
+    and fan out no further recompute; a failing node keeps its previous value without
+    blocking its siblings.
+
+    Raises:
+        ValueError: if a computed attribute has no transform configured or the transform cannot be fetched.
+
+    """
+    log = get_run_logger()
     all_ids = list({*([object_id] if object_id else []), *(object_ids or [])})
     await add_tags(branches=[branch_name], nodes=all_ids)
+    if not all_ids:
+        return
     client = get_client()
+    client.request_context = context.to_request_context()
 
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     node_schema = schema_branch.get_node(name=node_kind, duplicate=False)
@@ -220,26 +220,51 @@ async def process_transform(
                 f"Unable to fetch transform '{transform_attribute.transform}' for computed attribute '{attribute_name}'"
             )
 
-        batch = await client.create_batch()
+        repo = await get_initialized_repo(
+            client=client,
+            repository_id=transform.repository_id,
+            name=transform.repository_name,
+            repository_kind=transform.repository_typename,
+            commit=transform.repository_commit,
+        )
+
+        # One failing node must not abort the batch and drop its siblings' writes.
+        batch = await client.create_batch(return_exceptions=True)
         for oid in all_ids:
             batch.add(
-                task=process_transform_for_node,
+                task=_transform_value_for_node,
+                node=oid,
                 branch_name=branch_name,
                 object_id=oid,
-                node_kind=node_kind,
                 attribute_name=attribute_name,
                 query_id=transform.query_name,
                 transform_timeout=transform.timeout,
-                repository_id=transform.repository_id,
-                repository_name=transform.repository_name,
-                repository_kind=transform.repository_typename,
                 commit=transform.repository_commit,
                 file_path=transform.file_path,
                 class_name=transform.class_name,
                 convert_query_response=transform.convert_query_response,
                 context=context,
+                repo=repo,
             )
-        _ = [r async for _, r in batch.execute()]
+        results: list[tuple[str, AttributeValueWrite | Exception]] = [
+            (oid, result) async for oid, result in batch.execute()
+        ]
+        writes, skipped = _partition_transform_results(results)
+        for skipped_id, reason in skipped:
+            log.warning(f"Skipping recompute of '{attribute_name}' for node {skipped_id}: {reason}")
+
+        dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
+        await dispatcher.dispatch(
+            writes=writes,
+            branch_name=branch_name,
+            context=context,
+            coalesced=False,
+            recompute_depth=0,
+        )
+        log.info(
+            f"Recompute of '{attribute_name}' complete: submitted={len(results)} "
+            f"written={len(writes)} skipped={len(skipped)}"
+        )
 
 
 @flow(
@@ -254,14 +279,16 @@ async def trigger_update_python_computed_attributes(
 ) -> None:
     await add_tags(branches=[branch_name])
 
-    nodes = await get_client().all(kind=computed_attribute_kind, branch=branch_name)
+    client = get_client()
+    client.request_context = context.to_request_context()
+    nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
     object_ids = [node.id for node in nodes]
 
     if not object_ids:
         return
 
     chunk_size = get_submission_chunk_size()
-    for chunk in _chunk_ids(object_ids, chunk_size):
+    for chunk in chunked(object_ids, chunk_size):
         await get_workflow().submit_workflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
             context=context,
@@ -273,6 +300,8 @@ async def trigger_update_python_computed_attributes(
                 "computed_attribute_kind": computed_attribute_kind,
                 "context": context,
             },
+            # Must be a creation tag: in-flow tag updates drop tags added mid-run.
+            tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
         )
 
 
@@ -299,6 +328,7 @@ async def process_jinja2(
     """
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     filter_id: str | list[str] | None = object_ids if object_ids is not None else object_id
     if not filter_id:
@@ -376,6 +406,7 @@ async def trigger_update_jinja2_computed_attributes(
     await add_tags(branches=[branch_name])
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
     workflow = get_workflow()
@@ -634,7 +665,9 @@ async def query_transform_targets(
 ) -> None:
     await add_tags(branches=[branch_name])
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
-    targets = await get_client().execute_graphql(
+    client = get_client()
+    client.request_context = context.to_request_context()
+    targets = await client.execute_graphql(
         query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS, variables={"members": [object_id]}, branch_name=branch_name
     )
 
@@ -658,7 +691,7 @@ async def query_transform_targets(
 
     chunk_size = get_submission_chunk_size()
     for (kind, attribute_name), batch_object_ids in batches.items():
-        for chunk in _chunk_ids(batch_object_ids, chunk_size):
+        for chunk in chunked(batch_object_ids, chunk_size):
             await get_workflow().submit_workflow(
                 workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
                 context=context,
@@ -670,6 +703,8 @@ async def query_transform_targets(
                     "computed_attribute_kind": kind,
                     "context": context,
                 },
+                # Must be a creation tag: in-flow tag updates drop tags added mid-run.
+                tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
             )
 
 

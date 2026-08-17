@@ -2,6 +2,7 @@ import re
 import shutil
 from pathlib import Path
 from typing import Any, Generator
+from unittest.mock import AsyncMock, patch
 
 import anyio
 import pytest
@@ -31,6 +32,13 @@ from tests.helpers.test_client import dummy_async_request
 @pytest.fixture
 def client() -> InfrahubClient:
     return InfrahubClient(config=Config(address="http://mock", insert_tracker=True))
+
+
+@pytest.fixture
+def mock_branch_all() -> Generator[AsyncMock]:
+    """Git sync queries all branches to skip merged/read-only ones; stub the SDK call with no such branches."""
+    with patch("infrahub_sdk.branch.InfrahubBranchManager.all", new_callable=AsyncMock, return_value={}) as mock:
+        yield mock
 
 
 @pytest.fixture
@@ -409,19 +417,20 @@ async def git_repo_transforms(
     """Git Repository with git_upstream_repo_02 as remote.
 
     The repo has 1 local branch: main.
-    The main branch contains 2 transforms: transform01 and transform02.
-    Transform01 will change to uppercase the keys in the data dict always and Transform02 is not valid.
+    The main branch contains 3 transforms: transform01, transform02 and transform03.
+    Transform01 will change to uppercase the keys in the data dict always, Transform02 is not valid and
+    Transform03 returns no payload.
     """
     checks_fixture_dir = get_fixtures_dir() / "transforms"
     upstream = Repo(git_upstream_repo_02["path"])
 
-    files_to_copy = ["transform01.py", "transform02.py"]
+    files_to_copy = ["transform01.py", "transform02.py", "transform03.py"]
 
     for file_to_copy in files_to_copy:
         shutil.copyfile(checks_fixture_dir / file_to_copy, git_upstream_repo_02["path"] / file_to_copy)
         upstream.index.add(file_to_copy)
 
-    upstream.index.commit("Add 2 Transforms files")
+    upstream.index.commit("Add 3 Transforms files")
 
     return await InfrahubRepository.new(
         id=UUIDT.new(),

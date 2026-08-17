@@ -1,8 +1,7 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import type { ContextParams } from "@/shared/api/types";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
@@ -55,7 +54,8 @@ export async function getObjectForEditingFromApi({
             ...addRelationshipsToRequest([...formRelationships, ...extraRelationships], {
               withMetadata: true,
             }),
-            ...("generate_profile" in objectSchema && objectSchema.generate_profile
+            // `generate_profile` can be true while the GraphQL type exposes no `profiles` field.
+            ...((objectSchema.relationships ?? []).some((rel) => rel.name === "profiles")
               ? {
                   profiles: {
                     edges: {
@@ -76,11 +76,10 @@ export async function getObjectForEditingFromApi({
   });
 
   return graphqlClient.query({
-    query: gql(queryString),
+    query: graphql(queryString),
     context: {
       branch: branchName,
       date: atDate,
     },
-    fetchPolicy: "no-cache",
   });
 }

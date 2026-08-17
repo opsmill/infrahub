@@ -59,28 +59,29 @@ const sidebars: SidebarsConfig = {
       collapsible: false,
       collapsed: false,
       items: [
-        { type: 'doc', id: 'academy/academy', label: 'About Academy' },
         {
           type: 'category',
-          label: 'Getting Started',
-          link: { type: 'generated-index' },
+          label: 'Infrahub Labs',
+          link: { type: 'doc', id: 'learn/labs/overview' }, // hub
           items: [
-            'academy/getting-started/infrahub-introduction',
-            'academy/getting-started/deploy-first-configuration',
+            { type: 'doc', id: 'learn/labs/fundamentals-to-expert', label: 'Infrahub: Fundamentals to Expert' },
+            { type: 'doc', id: 'learn/labs/infrahub-introduction', label: 'First Tour of Infrahub' },
+            { type: 'doc', id: 'learn/labs/schema-deep-dive', label: 'Schema Deep Dive' },
+            'learn/labs/deploy-first-configuration',
           ],
         },
         {
           type: 'category',
           label: 'Tutorials',
-          link: { type: 'generated-index' },
+          link: { type: 'doc', id: 'learn/tutorials/overview' }, // hub
           items: [
-            'academy/tutorials/build-your-first-schema',
-            'academy/tutorials/groups',
-            'academy/tutorials/build-a-check',
-            'academy/tutorials/transformations/build-a-jinja2-transformation',
-            'academy/tutorials/transformations/build-a-python-transformation',
-            'academy/tutorials/generators/build-your-first-generator',
-            'academy/tutorials/generators/build-chained-generators',
+            'learn/tutorials/build-your-first-schema',
+            'learn/tutorials/groups',
+            'learn/tutorials/build-a-check',
+            'learn/tutorials/transformations/build-a-jinja2-transformation',
+            'learn/tutorials/transformations/build-a-python-transformation',
+            'learn/tutorials/generators/build-your-first-generator',
+            'learn/tutorials/generators/build-chained-generators',
           ],
         },
       ],
@@ -100,6 +101,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'schema/overview' }, // hub
           items: [
             { type: 'doc', id: 'schema/nodes-and-attributes', label: 'Nodes & attributes' },
+            { type: 'doc', id: 'schema/namespaces', label: 'Namespaces' },
             { type: 'doc', id: 'schema/relationships', label: 'Relationships' },
             { type: 'doc', id: 'schema/generics-and-inheritance', label: 'Generics & inheritance' },
             { type: 'doc', id: 'schema/branch-awareness', label: 'Branch awareness' },
@@ -147,9 +149,11 @@ const sidebars: SidebarsConfig = {
           label: 'Objects',
           link: { type: 'doc', id: 'objects/overview' }, // hub
           items: [
+            { type: 'doc', id: 'objects/create-objects', label: 'Create objects' },
+            { type: 'doc', id: 'objects/manage-from-cli', label: 'Manage objects with infrahubctl' },
+            { type: 'doc', id: 'objects/load-from-yaml', label: 'Load data using YAML file' },
             { type: 'doc', id: 'objects/convert-object-kind', label: 'Convert object kind' },
             { type: 'doc', id: 'objects/metadata', label: 'Metadata & lineage' },
-            { type: 'doc', id: 'objects/load-from-yaml', label: 'Load data in bulk using YAML file' },
           ],
         },
         {
@@ -263,6 +267,9 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'git-integration/connect-repository', label: 'Connect a repository' },
             { type: 'doc', id: 'git-integration/infrahub-yml', label: 'infrahub.yml configuration' },
             { type: 'doc', id: 'git-integration/branch-synchronization', label: 'Branch synchronization' },
+            { type: 'doc', id: 'git-integration/develop-changes', label: 'Develop changes' },
+            { type: 'doc', id: 'git-integration/multi-environment', label: 'Multiple environments' },
+            { type: 'doc', id: 'git-integration/promote-between-environments', label: 'Promote between environments' },
           ],
         },
       ],
@@ -281,6 +288,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'generators/overview' }, // hub
           items: [
             { type: 'doc', id: 'generators/build', label: 'Build a generator' },
+            { type: 'doc', id: 'generators/remove', label: 'Remove a generator' },
             { type: 'doc', id: 'generators/modular', label: 'Modular generators' },
             { type: 'doc', id: 'generators/modular-best-practices', label: 'Modular generator best practices' },
           ],
@@ -381,6 +389,7 @@ const sidebars: SidebarsConfig = {
             },
             // Configure Infrahub (PR 4)
             { type: 'doc', id: 'deploy-manage/install-configure/configure-infrahub', label: 'Configure Infrahub' },
+            { type: 'doc', id: 'deploy-manage/install-configure/performance-tuning', label: 'Tune performance' },
             // Configuration reference — stays in reference/, cross-linked here (PR 4)
             { type: 'ref', id: 'reference/configuration', label: 'Configuration reference' },
           ],
@@ -565,6 +574,7 @@ const sidebars: SidebarsConfig = {
             'reference/infrahub-cli/infrahub-server',
             'reference/infrahub-cli/infrahub-dev',
             'reference/infrahub-cli/infrahub-upgrade',
+            'reference/infrahub-cli/infrahub-recover',
           ],
         },
         {
@@ -679,6 +689,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'release-notes/deprecation-guides/display_labels',
+                'release-notes/deprecation-guides/schema-load-write-contract',
                 'release-notes/deprecation-guides/sso-account-name-fallback',
               ],
             },

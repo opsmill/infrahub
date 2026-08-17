@@ -12,6 +12,8 @@ from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.creator import BranchCreator
+from infrahub.core.branch.data_deleter import BranchDataDeleter
+from infrahub.core.branch.delete_coordinator import BranchDeleteOrchestrator
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
 from infrahub.core.constants import MutationAction
@@ -20,6 +22,8 @@ from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.diff.summary_cache import DiffSummaryCache
+from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
 from infrahub.core.merge.merge_locker import MergeLocker
@@ -29,18 +33,22 @@ from infrahub.core.merge.recompute_coalescing import (
     MergeChange,
     MergeRecomputeCoordinator,
 )
+from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher, submit_full_regeneration
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
+from infrahub.core.merge.selective_regen.generator_diff_capturer import GeneratorTrackingGroupDiffCapturer
+from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
+from infrahub.core.validators.constraint_merge import build_constraint_info_merger
+from infrahub.core.validators.determiner import build_constraint_validator_determiner
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.branch_action import (
-    BranchDeletedEvent,
     BranchMigratedEvent,
     BranchRebasedEvent,
 )
@@ -48,17 +56,20 @@ from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
-from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
-from infrahub.workers.dependencies import get_cache, get_component, get_database, get_event_service, get_workflow
+from infrahub.utils import log_exception_guard
+from infrahub.workers.dependencies import (
+    get_cache,
+    get_client,
+    get_component,
+    get_database,
+    get_event_service,
+    get_workflow,
+)
 from infrahub.workflows.catalogue import (
-    BRANCH_CANCEL_PROPOSED_CHANGES,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
-    GIT_REPOSITORIES_DELETE_BRANCH,
     IPAM_RECONCILIATION,
-    TRIGGER_ARTIFACT_DEFINITION_GENERATE,
-    TRIGGER_GENERATOR_DEFINITION_RUN,
 )
 from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.utils import add_tags
@@ -66,6 +77,7 @@ from infrahub.workflows.utils import add_tags
 if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
 
+    from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.database import InfrahubDatabase
 
 
@@ -152,7 +164,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             schema_manager=registry.schema,
         )
         schema_update_coordinator = SchemaUpdateCoordinator(
-            db=db, schema_manager=registry.schema, workflow=workflow, logger=log
+            db=db,
+            schema_manager=registry.schema,
+            rollbacker=GraphRollbacker(db=db),
+            workflow=workflow,
+            logger=log,
         )
 
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
@@ -175,14 +191,19 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         )
 
         candidate_schema = schema_analyzer.get_candidate_schema()
-        determiner = ConstraintValidatorDeterminer(schema_branch=candidate_schema)
-        constraints = await determiner.get_constraints(node_diffs=node_diff_field_summaries)
+        determiner = build_constraint_validator_determiner(db=db, branch=user_branch, at=rebase_at)
+        data_diff_constraints = await determiner.get_constraints(
+            schema_branch=candidate_schema, node_diffs=node_diff_field_summaries
+        )
 
         # If there are some changes related to the schema between this branch and main, we need to
         #  - Run all the validations to ensure everything is correct before rebasing the branch
         #  - Run all the migrations after the rebase
-        if user_branch.has_schema_changes:
-            constraints += await schema_analyzer.calculate_validations(target_schema=candidate_schema)
+        schema_diff_constraints: list[SchemaUpdateConstraintInfo] = []
+        if user_branch.schema_differs_from_default_branch:
+            schema_diff_constraints = await schema_analyzer.calculate_validations(target_schema=candidate_schema)
+        merger = build_constraint_info_merger()
+        constraints = merger.merge(candidate_schema, data_diff_constraints, schema_diff_constraints)
         if constraints:
             responses = await schema_validate_migrations(
                 message=SchemaValidateMigrationData(
@@ -198,25 +219,25 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
 
-        # Use the branch-creation (common-ancestor) schema as the migration baseline: it still contains
-        # any element removed on either side, so remove migrations can resolve what to close.
-        pre_rebase_schema = (await schema_analyzer.get_common_ancestor_schema()).duplicate()
         migrations = []
         async with lock.registry.global_graph_lock():
             async with db.start_transaction() as dbt:
                 await user_branch.rebase(db=dbt, user_id=context.account.account_id, at=rebase_at)
                 log.info("Branch graph rebased")
 
-            if user_branch.has_schema_changes:
+            if user_branch.schema_differs_from_default_branch:
                 # Update the registry and run migrations after the rebase, with rollback on failure.
                 # Schema nodes were already written by the rebase, so load that schema and apply only
                 # the migrations it implies.
                 log.info("Running migrations")
+                migration_baseline_schema = (await schema_analyzer.get_common_ancestor_schema()).duplicate()
+                pre_rebase_schema = registry.schema.get_schema_branch(name=user_branch.name).duplicate()
                 rebased_schema = await registry.schema.load_schema_from_db(db=db, branch=user_branch)
                 migrations = await schema_analyzer.calculate_migrations(target_schema=rebased_schema)
                 await schema_update_coordinator.execute(
                     branch=user_branch,
-                    origin_schema=pre_rebase_schema,
+                    origin_schema=migration_baseline_schema,
+                    rollback_schema=pre_rebase_schema,
                     candidate_schema=rebased_schema,
                     at=rebase_at,
                     context=context,
@@ -299,7 +320,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     for event in events:
         await event_service.send(event)
 
-    try:
+    with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
         schema_name = (
             user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
         )
@@ -309,8 +330,6 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
         )
         await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
-    except Exception:
-        log.exception("Failed to submit the coalesced post-rebase recompute")
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
@@ -322,7 +341,9 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
     async with database.start_session() as db:
         # Hold the global merge lock for the whole flow and load the branch under it, so the merge
         # decision and the orchestrator operate on branch state that cannot change mid-merge.
+        log.info("Acquiring global merge lock")
         async with MergeLocker().acquire_global_lock():
+            log.info("Global merge lock acquired")
             source_branch = await Branch.get_by_name(db=db, name=branch)
             if source_branch.status != BranchStatus.OPEN:
                 log.info(f"Branch '{branch}' is not open (status={source_branch.status}), skipping merge")
@@ -361,40 +382,31 @@ async def delete_branch(
 ) -> None:
     await add_tags(branches=[branch], nodes=[proposed_change_id] if proposed_change_id else None)
     database = await get_database()
-
-    low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
-
+    workflow = get_workflow()
+    event_service = await get_event_service()
     async with database.start_session() as db:
-        obj = await Branch.get_by_name(db=db, name=str(branch))
+        # ignore_deleting=False so that a delete which failed part way through can be run again:
+        obj = await Branch.get_by_name(db=db, name=str(branch), ignore_deleting=False)
 
         component_registry = get_component_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
-        await diff_repository.freeze_diffs_for_branch(branch_name=branch)
 
-        await obj.delete(db=db)
-
-        event_context = context.to_event_context()
-        event = BranchDeletedEvent(
-            branch_name=branch,
-            branch_id=str(obj.uuid),
-            sync_with_git=obj.sync_with_git,
-            meta=EventMeta.from_context(context=event_context, branch=registry.get_global_branch()),
-            proposed_change_id=proposed_change_id,
+        log = get_run_logger()
+        orchestrator = BranchDeleteOrchestrator(
+            data_deleter=BranchDataDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit, log=log),
+            diff_freezer=diff_repository,
+            event_service=event_service,
+            workflow=workflow,
+            log=log,
+            global_branch=registry.get_global_branch(),
+            delete_git_branch_after_merge=config.SETTINGS.git.delete_git_branch_after_merge,
         )
-
-        await get_workflow().submit_workflow(
-            workflow=BRANCH_CANCEL_PROPOSED_CHANGES, context=low_context, parameters={"branch_name": branch}
-        )
-
-        event_service = await get_event_service()
-        await event_service.send(event=event)
-
-    should_delete_git = (config.SETTINGS.git.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git
-    if should_delete_git:
-        await get_workflow().submit_workflow(
-            workflow=GIT_REPOSITORIES_DELETE_BRANCH,
+        low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
+        await orchestrator.delete(
+            branch=obj,
             context=low_context,
-            parameters={"branch": branch},
+            delete_from_git=delete_from_git,
+            proposed_change_id=proposed_change_id,
         )
 
 
@@ -464,11 +476,41 @@ async def _get_diff_root(
     return default_branch_diff
 
 
+async def _build_post_merge_regeneration_dispatcher(
+    db: InfrahubDatabase,
+    branch: Branch,
+    log: Logger | LoggerAdapter[Logger],
+) -> PostMergeRegenerationDispatcher:
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    return PostMergeRegenerationDispatcher(
+        workflow=get_workflow(),
+        selector=build_merge_selective_regeneration(client=get_client(), log=log),
+        summary_cache=DiffSummaryCache(
+            cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
+        ),
+        generator_diff_capturer=GeneratorTrackingGroupDiffCapturer(
+            diff_coordinator=diff_coordinator,
+            diff_repository=diff_repository,
+            serializer=DiffSummarySerializer(),
+            client=get_client(),
+            branch=branch,
+        ),
+        log=log,
+    )
+
+
 @flow(
     name="branch-merge-post-process",
     flow_run_name="Run additional tasks after merging {source_branch} in {target_branch}",
 )
-async def post_process_branch_merge(source_branch: str, target_branch: str, context: InfrahubContext) -> None:
+async def post_process_branch_merge(
+    source_branch: str,
+    target_branch: str,
+    context: InfrahubContext,
+    merge_diff_cache_key: str | None = None,
+) -> None:
     database = await get_database()
     async with database.start_session() as db:
         await add_tags(branches=[source_branch])
@@ -479,17 +521,16 @@ async def post_process_branch_merge(source_branch: str, target_branch: str, cont
         default_branch = registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
-        await get_workflow().submit_workflow(
-            workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
-            context=context,
-            parameters={"branch": target_branch},
-        )
-
-        await get_workflow().submit_workflow(
-            workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
-            context=context,
-            parameters={"branch": target_branch, "source": GeneratorDefinitionRunSource.MERGE},
-        )
+        if config.SETTINGS.main.selective_execution_after_merge:
+            target_branch_obj = await Branch.get_by_name(db=db, name=target_branch)
+            dispatcher = await _build_post_merge_regeneration_dispatcher(db=db, branch=target_branch_obj, log=log)
+            await dispatcher.dispatch(
+                context=context,
+                target_branch=target_branch,
+                merge_diff_cache_key=merge_diff_cache_key,
+            )
+        else:
+            await submit_full_regeneration(workflow=get_workflow(), context=context, target_branch=target_branch)
 
         if not config.SETTINGS.main.diff_update_after_merge:
             return

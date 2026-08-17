@@ -1,0 +1,1 @@
+Deprecated the `has_schema_changes` field on the `Branch` and `InfrahubBranch` GraphQL types. Use `schema_differs_from_default_branch` instead. `has_schema_changes` still returns the same value and is scheduled for removal in Infrahub 1.14.0.

@@ -8,11 +8,13 @@ from typing import TYPE_CHECKING
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.filters import BranchListFilters
+from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreProposedChange
-from infrahub.core.query.rollback import RollbackQuery, RollbackScope
+from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
+from infrahub.lock import GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK, LOCK_PREFIX
 from infrahub.log import get_logger
 from infrahub.proposed_change.constants import ProposedChangeState
 
@@ -20,7 +22,11 @@ from .merge_locker import MERGE_LOCK_KEY
 from .write_blocker import MalformedMergeProtectionError
 
 if TYPE_CHECKING:
+    from infrahub.core.rollback import GraphRollbacker
+    from infrahub.core.schema.manager import SchemaManager
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.locks.cleaner import StaleLockCleaner
     from infrahub.services.adapters.cache import InfrahubCache
 
     from .failure_identifier import MergeFailureIdentifier
@@ -62,12 +68,20 @@ class MergeFailureRecoverer:
         identifier: MergeFailureIdentifier,
         default_branch: Branch,
         cache: InfrahubCache,
+        rollbacker: GraphRollbacker,
+        schema_manager: SchemaManager,
+        lock_cleaner: StaleLockCleaner,
+        diff_locker: DiffLocker,
     ) -> None:
         self.db = db
         self.merge_write_blocker = merge_write_blocker
         self.identifier = identifier
         self.default_branch = default_branch
         self.cache = cache
+        self.rollbacker = rollbacker
+        self.schema_manager = schema_manager
+        self.lock_cleaner = lock_cleaner
+        self.diff_locker = diff_locker
 
     async def preview(self, *, force: bool = False, branch_name: str | None = None) -> RecoveryReport:
         """Report whether a failed merge can be recovered, making no changes.
@@ -125,12 +139,19 @@ class MergeFailureRecoverer:
         started_at = time.monotonic()
         try:
             await self._rollback(merge_started_at=merge_started_at)
+            # Restore the destination schema metadata right after the graph rollback so a failure here
+            # leaves the branch flagged and a re-run is idempotent.
+            await self._restore_destination_schema_metadata(branch=branch)
             # Reset the proposed change before the branch in case a later step fails, the branch stays
             # flagged so a re-run re-detects it and completes.
             await self._reset_proposed_change(proposed_change=proposed_change)
             # Drop the stale merge lock while protection is still up, so this unconditional delete can
             # only hit the dead worker's lock, not a lock for a fresh merge.
             await self._release_merge_lock()
+            # Clear the branch/global locks the dead merge leaked, while protection is still up. Unlike
+            # the merge lock these may be legitimately held by a live flow, so a liveness check guards
+            # each delete.
+            await self._clear_stale_locks(branch=branch)
             await self._reset_branch(branch=branch)
             # Lift the write protection last, so a failure earlier in the sequence leaves it in place.
             await self.merge_write_blocker.delete()
@@ -254,20 +275,38 @@ class MergeFailureRecoverer:
         """
         if merge_started_at is None:
             return
-        rollback_query = await RollbackQuery.init(
-            db=self.db,
-            branch=self.default_branch,
+        await self.rollbacker.rollback(
             target_branch=self.default_branch,
             at=Timestamp(merge_started_at),
             scope=RollbackScope.SINCE_TIMESTAMP,
             restore_metadata=True,
         )
-        await rollback_query.execute(db=self.db)
 
     async def _reset_branch(self, branch: Branch) -> None:
         branch.status = BranchStatus.OPEN
         await branch.save(db=self.db)
         registry.branch[branch.name] = branch
+
+    async def _restore_destination_schema_metadata(self, branch: Branch) -> None:
+        """Realign the destination branch's persisted schema hash/changed-at with the rolled-back graph.
+
+        The range rollback reverts versioned edges but not the plain ``Branch`` vertex properties the
+        merge wrote in place, so a crash mid-merge leaves the persisted schema metadata at the
+        failed-merge values. The hash is recomputed from the rolled-back graph rather than restored
+        literally; the changed-at is restored from the value captured at merge start.
+        """
+        # Reload the destination branch so the metadata is written onto the current persisted record
+        # rather than a possibly-stale in-memory copy carried in from before the rollback.
+        default_branch = await Branch.get_by_name(db=self.db, name=self.default_branch.name)
+        schema_branch = await self._load_destination_schema(branch=default_branch)
+        default_branch.schema_hash = schema_branch.get_hash_full()
+        default_branch.schema_changed_at = branch.pre_merge_destination_schema_changed_at
+        await default_branch.save(db=self.db)
+        self.default_branch = default_branch
+        registry.branch[default_branch.name] = default_branch
+
+    async def _load_destination_schema(self, branch: Branch) -> SchemaBranch:
+        return await self.schema_manager.load_schema_from_db(db=self.db, branch=branch)
 
     async def _release_merge_lock(self) -> None:
         """Release the global merge lock a dead merge worker left held by dropping its cache key.
@@ -275,6 +314,25 @@ class MergeFailureRecoverer:
         A no-op when the lock is already unheld.
         """
         await self.cache.delete(key=MERGE_LOCK_KEY)
+
+    async def _clear_stale_locks(self, branch: Branch) -> None:
+        """Clear the diff-update and global graph/schema locks a dead merge may have left held.
+
+        Deletes only keys whose holder is no longer an active worker, so a lock a live flow still
+        holds is left in place.
+        """
+        diff_names = [
+            self.diff_locker.get_lock_name(
+                base_branch_name=self.default_branch.name, diff_branch_name=branch.name, is_incremental=incremental
+            )
+            for incremental in (False, True)
+        ]
+        keys = [
+            f"{LOCK_PREFIX}.{GLOBAL_GRAPH_LOCK}",
+            f"{LOCK_PREFIX}.{GLOBAL_SCHEMA_LOCK}",
+            *(f"{LOCK_PREFIX}.{DiffLocker.lock_namespace}.{name}" for name in diff_names),
+        ]
+        await self.lock_cleaner.clear_if_holder_dead(keys=keys)
 
     async def _find_proposed_change(self, branch_name: str) -> CoreProposedChange | None:
         proposed_changes = await NodeManager.query(

@@ -41,7 +41,7 @@ test.describe("Object hierarchy - Create, Read, Update, Delete operations", () =
       await page.getByRole("combobox", { name: "Select an object type" }).click();
       await page.getByRole("option", { name: "Country Location" }).click();
       await page.getByRole("textbox", { name: "Name *" }).fill("Test Country");
-      await page.getByRole("combobox", { name: "Parent *" }).click();
+      await page.getByRole("combobox", { name: "Continent *" }).click();
       await page.getByRole("option", { name: "Test Continent" }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Country created")).toBeVisible();
@@ -67,7 +67,7 @@ test.describe("Object hierarchy - Create, Read, Update, Delete operations", () =
       await page.getByRole("combobox", { name: "Select an object type" }).click();
       await page.getByRole("option", { name: "Country Location" }).click();
       await page.getByRole("textbox", { name: "Name *" }).fill("Test country 2");
-      await page.getByRole("combobox", { name: "Parent *" }).click();
+      await page.getByRole("combobox", { name: "Continent *" }).click();
       await page.getByRole("option", { name: "Test Continent" }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Country created")).toBeVisible();

@@ -16,6 +16,10 @@ test.describe("Branch details view", () => {
       await expect(page.getByText("default", { exact: true })).toBeVisible();
       await expect(page.getByRole("button", { name: "View node metadata" })).toBeVisible();
 
+      // Already working on main, so there is nothing to switch to
+      await expect(page.getByTestId("branch-working-notice")).toBeVisible();
+      await expect(page.getByTestId("switch-to-viewed-branch")).not.toBeVisible();
+
       // Tabs
       await expect(page.getByRole("navigation", { name: "Tabs" })).not.toBeVisible();
 
@@ -24,7 +28,7 @@ test.describe("Branch details view", () => {
       await expect(page.getByText("Sync with Git")).toBeVisible();
 
       // Non-default specific attributes should NOT be visible
-      await expect(page.getByText("Has schema changes")).not.toBeVisible();
+      await expect(page.getByText("Schema differs from default branch")).not.toBeVisible();
       await expect(page.getByText("Last rebase")).not.toBeVisible();
 
       // All action buttons should be not visible
@@ -46,13 +50,13 @@ test.describe("Branch details view", () => {
 
       // Header
       await expect(page.getByRole("heading", { name: BRANCH_NAME })).toBeVisible();
-      await expect(page.getByText("default")).not.toBeVisible();
+      await expect(page.getByText("default", { exact: true })).not.toBeVisible();
       await expect(page.getByRole("button", { name: "View node metadata" })).toBeVisible();
 
       // Branch attributes
       await expect(page.getByText("Name")).toBeVisible();
       await expect(page.getByText("Sync with Git")).toBeVisible();
-      await expect(page.getByText("Has schema changes")).toBeVisible();
+      await expect(page.getByText("Schema differs from default branch")).toBeVisible();
       await expect(page.getByText("Last rebase")).toBeVisible();
 
       // Tabs navigation should be visible
@@ -94,6 +98,20 @@ test.describe("Branch details view", () => {
 
       await tabsNav.getByText("Details").click();
       await expect(page).toHaveURL(new RegExp(`/branches/${BRANCH_NAME}$`));
+    });
+
+    test("should switch to the viewed branch from the mismatch notice", async ({ page }) => {
+      await page.goto(`/branches/${BRANCH_NAME}`);
+
+      await expect(page.getByTestId("branch-mismatch-notice")).toContainText(
+        `You're viewing ${BRANCH_NAME} but working on main`
+      );
+
+      await page.getByTestId("switch-to-viewed-branch").click();
+
+      await expect(page.getByTestId("branch-working-notice")).toBeVisible();
+      await expect(page.getByTestId("branch-mismatch-notice")).not.toBeVisible();
+      await expect(page.getByTestId("branch-selector-trigger")).toContainText(BRANCH_NAME);
     });
 
     test("should display node metadata when clicking metadata button", async ({ page }) => {

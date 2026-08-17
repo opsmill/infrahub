@@ -12,6 +12,7 @@ import type {
   AttributeValueFromUser,
   FormAttributeValue,
 } from "@/shared/components/form/type";
+import { makePoolSource } from "@/shared/components/form/utils/make-pool-source";
 
 import type { FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
 import type {
@@ -22,6 +23,7 @@ import type {
 } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { isPoolSchema } from "@/entities/schema/domain/rules/is-pool-schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
@@ -158,12 +160,11 @@ const getDefaultValueFromPoolRelationship = (
   const poolNode = companionData.node;
 
   return {
-    source: {
-      type: "pool",
+    source: makePoolSource({
       id: poolNode.id,
       label: getNodeLabel(poolNode),
       kind: poolNode.__typename,
-    },
+    }),
     value: { from_pool: { id: poolNode.id } },
   };
 };
@@ -185,12 +186,11 @@ const getDefaultValueFromPool = (
   if (!source.id) return null;
 
   return {
-    source: {
-      type: "pool",
+    source: makePoolSource({
       id: source.id,
       label: source.display_label || null,
       kind: source.__typename,
-    },
+    }),
     value: currentField.value as unknown as AttributeValueFromPool["value"],
   };
 };
@@ -210,13 +210,12 @@ export const getDefaultValueFromTemplate = (
       const { schema: sourceSchema } = getSchema(currentField.source.__typename);
       if (sourceSchema && isPoolSchema(sourceSchema)) {
         return {
-          source: {
-            type: "pool",
+          source: makePoolSource({
             fromTemplate: true,
             id: currentField.source.id,
             label: getNodeLabel(currentField.source),
             kind: currentField.source.__typename,
-          },
+          }),
           value: { from_pool: { id: currentField.source.id } },
         };
       }
@@ -252,10 +251,12 @@ export const getDefaultValueFromTemplate = (
 export const getDefaultValueFromSchema = (
   fieldSchema: FieldSchema
 ): AttributeValueFromUser | null => {
-  return "default_value" in fieldSchema
-    ? {
-        source: { type: "schema" },
-        value: fieldSchema.default_value as AttributeValueFromUser["value"],
-      }
-    : null;
+  if (isRelationshipSchema(fieldSchema)) {
+    return null;
+  }
+
+  return {
+    source: { type: "schema" },
+    value: fieldSchema.default_value as AttributeValueFromUser["value"],
+  };
 };

@@ -1,6 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 
 const BRANCH_CREATE = graphql(`
   mutation BRANCH_CREATE($name: String!, $description: String, $sync_with_git: Boolean) {
@@ -16,7 +14,7 @@ const BRANCH_CREATE = graphql(`
         sync_with_git
         is_default
         status
-        has_schema_changes
+        schema_differs_from_default_branch
       }
     }
   }

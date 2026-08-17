@@ -25,7 +25,6 @@ from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
 from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
-from infrahub.workflows.constants import WorkflowPriority
 
 if TYPE_CHECKING:
     from infrahub.auth.session import AccountSession
@@ -113,9 +112,14 @@ async def generate_artifact(
         limit=payload.nodes,
     )
 
+    # No explicit priority: the fan-out inherits the catalogue default (MEDIUM), like the
+    # same generation triggered through the artifact-definition mutation. Dispatching at
+    # HIGH would stamp the whole task tree -- including every per-target /api/query call
+    # the workers make -- as X-Priority: high, making a user-triggered regeneration of
+    # thousands of artifacts unsheddable by the admission layer at the same class as
+    # interactive traffic.
     await service.workflow.submit_workflow(
         workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
         context=context,
         parameters={"model": model},
-        priority=WorkflowPriority.HIGH,
     )

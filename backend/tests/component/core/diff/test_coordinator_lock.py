@@ -17,8 +17,12 @@ from infrahub.core.merge.constraints import MergeConstraintValidator
 from infrahub.core.merge.graph_merger import GraphMerger
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.node import Node
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.validators.constraint_merge import build_constraint_info_merger
+from infrahub.core.validators.determiner import build_constraint_validator_determiner
+from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import get_component_registry
 
@@ -193,6 +197,7 @@ class TestDiffCoordinatorLocks:
                 destination_branch=default_branch,
                 diff_repository=diff_repository,
                 exclusion_plan_builder=MergeExclusionPlanBuilder(),
+                rollbacker=GraphRollbacker(db=db),
             ),
             diff_repository=diff_repository,
             source_branch=diff_branch,
@@ -205,7 +210,13 @@ class TestDiffCoordinatorLocks:
                 diff_repository=diff_repository,
                 schema_manager=registry.schema,
             ),
-            constraint_validator=MergeConstraintValidator(db=db, branch=diff_branch, diff_repository=diff_repository),
+            constraint_validator=MergeConstraintValidator(
+                branch=diff_branch,
+                diff_repository=diff_repository,
+                determiner=build_constraint_validator_determiner(db=db, branch=diff_branch),
+                constraint_info_merger=build_constraint_info_merger(),
+                migration_validator=schema_validate_migrations,
+            ),
         )
 
         results = await asyncio.gather(
@@ -245,6 +256,7 @@ class TestDiffCoordinatorLocks:
                 destination_branch=default_branch,
                 diff_repository=diff_repository_2,
                 exclusion_plan_builder=MergeExclusionPlanBuilder(),
+                rollbacker=GraphRollbacker(db=db2),
             ),
             diff_repository=diff_repository_2,
             source_branch=diff_branch,
@@ -258,7 +270,11 @@ class TestDiffCoordinatorLocks:
                 schema_manager=registry.schema,
             ),
             constraint_validator=MergeConstraintValidator(
-                db=db2, branch=diff_branch, diff_repository=diff_repository_2
+                branch=diff_branch,
+                diff_repository=diff_repository_2,
+                determiner=build_constraint_validator_determiner(db=db2, branch=diff_branch),
+                constraint_info_merger=build_constraint_info_merger(),
+                migration_validator=schema_validate_migrations,
             ),
         )
 

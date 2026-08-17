@@ -1,6 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import createClient, { type Middleware } from "openapi-fetch";
 
+import { PRIORITY_HEADER, resolvePriority } from "@/shared/api/priority";
 import type { paths } from "@/shared/api/rest/types.generated";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 
@@ -22,8 +23,11 @@ export const apiClient = createClient<paths>({ baseUrl: INFRAHUB_API_SERVER_URL 
 // Store cloned requests for retry purposes
 const requestClones = new WeakMap<Request, Request>();
 
-const authMiddleware: Middleware = {
+export const authMiddleware: Middleware = {
   async onRequest({ request }) {
+    // The backend prioritizes by X-Priority under load - UI requests are always high.
+    request.headers.set(PRIORITY_HEADER, resolvePriority(request.headers.get(PRIORITY_HEADER)));
+
     const hadAuth = request.headers.has("Authorization");
     if (hadAuth) return request;
 
@@ -53,13 +57,6 @@ const authMiddleware: Middleware = {
 
     try {
       const newToken = await queryClient.fetchQuery(refreshAccessTokenQueryOptions());
-
-      if (!newToken?.access_token) {
-        // Refresh resolved but server returned no token — treat as failure
-        // and bounce to /login, matching the Apollo errorLink behaviour.
-        redirectToLogin();
-        return response;
-      }
 
       clonedRequest.headers.set("Authorization", `Bearer ${newToken.access_token}`);
       return fetch(clonedRequest);

@@ -3,26 +3,40 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, ObjectType, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk.uuidt import UUIDT
+from neo4j.exceptions import DriverError, Neo4jError
+from redis.exceptions import RedisError
 from typing_extensions import Self
 
+from infrahub import lock
 from infrahub.auth.types import AuthType
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.order import OrderModel
+from infrahub.core.preferences.constants import PREFERENCE_LOCK_NAMESPACE
+from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.core.protocols import CoreAccount, CoreNode, InternalAccountToken
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
-from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError, ValidationError
+from infrahub.exceptions import (
+    DatabaseError,
+    NodeNotFoundError,
+    PermissionDeniedError,
+    QueryTimeoutError,
+    ValidationError,
+)
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.mutations.main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
+from infrahub.log import get_logger
 
 from ..types import InfrahubObjectType
 
 if TYPE_CHECKING:
     from ..initialization import GraphqlContext
+
+log = get_logger()
 
 
 class InfrahubAccountTokenCreateInput(InputObjectType):
@@ -220,4 +234,14 @@ class InfrahubAccountMutation(InfrahubMutationMixin, Mutation):
         if graphql_context.account_session and obj.id == graphql_context.account_session.authenticating_account_id:
             raise ValidationError(input_value="Cannot delete your own account")
 
-        return await super().mutate_delete(info=info, data=data, branch=branch)
+        result = await super().mutate_delete(info=info, data=data, branch=branch)
+
+        # Best-effort Preference cleanup: the shared per-owner lock keeps an in-flight preference
+        # upsert from re-creating the row, and a failure only logs (the orphaned row is benign).
+        try:
+            async with lock.registry.get(name=obj.id, namespace=PREFERENCE_LOCK_NAMESPACE, local=False):
+                await PreferenceRepository(db=graphql_context.db).delete_for_owner(owner_id=obj.id)
+        except (DatabaseError, QueryTimeoutError, DriverError, Neo4jError, RedisError) as exc:
+            log.warning(f"Failed to delete the Preference row of deleted account {obj.id}: {exc}")
+
+        return result

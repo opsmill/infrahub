@@ -14,7 +14,8 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.node import NodeGetHierarchyQuery
-from infrahub.core.query.rollback import RollbackQuery, RollbackScope
+from infrahub.core.query.rollback import RollbackScope
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -471,17 +472,15 @@ class TestNodeKindUpdateMetadata:
         await _assert_migration_metadata(db=db, update=update)
 
     async def test_migration_rollback(self, db: InfrahubDatabase, update: _NodeKindUpdate) -> None:
-        """RollbackQuery undoes the migration: the branch edges and vertex metadata are restored, idempotently."""
+        """A range rollback undoes the migration: the branch edges and vertex metadata are restored, idempotently."""
 
         async def _run_rollback() -> None:
-            query = await RollbackQuery.init(
-                db=db,
+            await GraphRollbacker(db=db).rollback(
                 target_branch=update.branch,
                 at=update.migration_time,
                 scope=RollbackScope.SINCE_TIMESTAMP,
                 restore_metadata=True,
             )
-            await query.execute(db=db)
 
         await _run_rollback()
         await verify_graph(db=db)

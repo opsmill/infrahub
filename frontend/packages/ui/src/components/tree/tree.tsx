@@ -3,6 +3,7 @@ import type React from "react";
 import { ChevronRightIcon } from "lucide-react";
 import {
   Tree as AriaTree,
+  type TreeProps as AriaTreeProps,
   TreeItem as AriaTreeItem,
   TreeItemContent as AriaTreeItemContent,
   type TreeItemContentProps as AriaTreeItemContentProps,
@@ -41,6 +42,7 @@ function DotIcon(props: React.HTMLAttributes<SVGSVGElement>) {
   );
 }
 
+export type TreeProps<T> = AriaTreeProps<T>;
 export const Tree = AriaTree;
 
 export interface TreeItemProps extends AriaTreeItemProps {}

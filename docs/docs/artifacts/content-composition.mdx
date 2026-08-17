@@ -15,7 +15,7 @@ Before starting this guide, ensure you have:
 - A running Infrahub instance with task workers
 - At least one source artifact already generating content
 - An [external repository](../git-integration/connect-repository) connected to Infrahub
-- Familiarity with [creating a Jinja2 Transformation](../academy/tutorials/transformations/build-a-jinja2-transformation) or [creating a Python Transformation](../academy/tutorials/transformations/build-a-python-transformation)
+- Familiarity with [creating a Jinja2 Transformation](../learn/tutorials/transformations/build-a-jinja2-transformation) or [creating a Python Transformation](../learn/tutorials/transformations/build-a-python-transformation)
 - Familiarity with [generating artifacts](./use)
 
 ## 1. Understand the composition model
@@ -260,13 +260,14 @@ The composition filters raise errors in the following situations:
 2. **Worker context only**: The `artifact_content` and `file_object_content` family of filters require an active Infrahub client connection. They are not available during local `infrahubctl render` without a server connection.
 3. **Text content only**: Only text-based content can be composed. Binary files (images, PDF documents) are not supported by these filters.
 4. **Circular references**: If artifact A includes content from artifact B and artifact B includes content from artifact A, the result is undefined. Design composition pipelines as a directed acyclic graph.
+5. **Not refreshed after a merge changes the source**: If artifact B inlines content from artifact A and a merge changes A, B keeps the stale inlined content. Post-merge regeneration selects the artifacts the merge affected, and nothing records that one artifact's content is embedded in another, so B is not selected. Regenerate B explicitly, or set `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE` to `false` to regenerate every artifact after each merge.
 
 :::
 
 ## Next steps
 
-- [Write a Jinja2 Transformation](../academy/tutorials/transformations/build-a-jinja2-transformation)
-- [Write a Python Transformation](../academy/tutorials/transformations/build-a-python-transformation)
+- [Write a Jinja2 Transformation](../learn/tutorials/transformations/build-a-jinja2-transformation)
+- [Write a Python Transformation](../learn/tutorials/transformations/build-a-python-transformation)
 - [Use artifacts](./use)
 - [Object storage](../artifact-file-storage/overview.mdx)
 - [File objects](../schema/file-object)

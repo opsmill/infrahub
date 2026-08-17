@@ -10,8 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-
-from .factories import (
+from tests.helpers.diff_factories import (
     EnrichedNodeFactory,
     EnrichedPropertyFactory,
     EnrichedRelationshipElementFactory,

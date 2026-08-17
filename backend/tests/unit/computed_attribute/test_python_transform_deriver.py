@@ -129,7 +129,8 @@ def test_display_label_read_marks_imprecise() -> None:
 
 
 def test_hfid_read_marks_imprecise() -> None:
-    read_set = TransformReadSet.from_read_fields({OWNER_KIND: {"hfid"}})
+    # The analyzer reports the schema name, not the hfid query spelling.
+    read_set = TransformReadSet.from_read_fields({OWNER_KIND: {"human_friendly_id"}})
 
     assert read_set.depends_on_everything is True
 
@@ -145,10 +146,21 @@ def test_from_read_fields_precise() -> None:
     }
 
 
-def test_kind_with_no_mapped_fields_marks_imprecise() -> None:
-    # The query analyzer drops reads it cannot map to a concrete schema element (such as a
-    # human-friendly id read), leaving a traversed kind with an empty field set. That read
-    # cannot be scoped, so the whole set must be imprecise rather than a precise read of nothing.
-    read_set = TransformReadSet.from_read_fields({OWNER_KIND: set()})
+def test_kind_with_no_mapped_fields_is_kind_only() -> None:
+    # Traversing a relationship to a generic reports every member kind, including the ones
+    # the query reads nothing from. Those stay a kind-level dependency only.
+    read_set = TransformReadSet.from_read_fields(
+        {
+            "TestPerson": {"name", "cars"},
+            "TestElectricCar": {"nbr_engine"},
+            OWNER_KIND: set(),
+            "TestGazCar": set(),
+        }
+    )
 
-    assert read_set.depends_on_everything is True
+    assert read_set.depends_on_everything is False
+    assert set(read_set.read_kinds) == {"TestPerson", "TestElectricCar", OWNER_KIND, "TestGazCar"}
+    assert {kind: set(fields) for kind, fields in read_set.read_fields.items()} == {
+        "TestPerson": {"name", "cars"},
+        "TestElectricCar": {"nbr_engine"},
+    }

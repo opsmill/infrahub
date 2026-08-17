@@ -21,39 +21,45 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const VerticalContent = () => (
-  <div className="space-y-1 p-3 text-sm">
-    {verticalIndices.map((index) => (
-      <div key={index}>Item {index}</div>
-    ))}
-  </div>
-);
+function VerticalContent() {
+  return (
+    <div className="space-y-1 p-3 text-sm">
+      {verticalIndices.map((index) => (
+        <div key={index}>Item {index}</div>
+      ))}
+    </div>
+  );
+}
 
-const HorizontalContent = () => (
-  <div className="flex gap-2 p-3">
-    {horizontalIndices.map((index) => (
-      <div
-        key={index}
-        className="flex h-16 w-32 shrink-0 items-center justify-center rounded border border-stone-300 bg-stone-100 text-sm"
-      >
-        Item {index}
-      </div>
-    ))}
-  </div>
-);
+function HorizontalContent() {
+  return (
+    <div className="flex gap-2 p-3">
+      {horizontalIndices.map((index) => (
+        <div
+          key={index}
+          className="flex h-16 w-32 shrink-0 items-center justify-center rounded border border-stone-300 bg-stone-100 text-sm"
+        >
+          Item {index}
+        </div>
+      ))}
+    </div>
+  );
+}
 
-const BothContent = () => (
-  <div className="grid grid-cols-10 gap-2 p-3" style={{ width: "800px" }}>
-    {bothIndices.map((index) => (
-      <div
-        key={index}
-        className="flex h-16 w-20 items-center justify-center rounded border border-stone-300 bg-stone-100 text-sm"
-      >
-        {index}
-      </div>
-    ))}
-  </div>
-);
+function BothContent() {
+  return (
+    <div className="grid grid-cols-10 gap-2 p-3" style={{ width: "800px" }}>
+      {bothIndices.map((index) => (
+        <div
+          key={index}
+          className="flex h-16 w-20 items-center justify-center rounded border border-stone-300 bg-stone-100 text-sm"
+        >
+          {index}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export const Default: Story = {
   render: () => (

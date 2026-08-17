@@ -47,7 +47,11 @@ def test_jinja2_config_dispatches_to_jinja2_closure(tmp_path: Path) -> None:
 
 
 def test_python_config_dispatches_to_python_closure(tmp_path: Path) -> None:
-    """A Python transform config is dispatched to the Python builder and the manifest path is appended."""
+    """A Python transform config is dispatched to the Python builder and the manifest path is appended.
+
+    The undeclared sibling stays out: neither builder treats co-location as a dependency,
+    so the Python closure is the entry file alone until `watch.files` says otherwise.
+    """
     repo = Repo.init(tmp_path)
     _write(tmp_path, "transforms/network/main.py", "")
     _write(tmp_path, "transforms/network/helpers.py", "")
@@ -61,9 +65,7 @@ def test_python_config_dispatches_to_python_closure(tmp_path: Path) -> None:
 
     result = build_default_closure_builder(logger=LOGGER).build(transform_config=config, worktree_root=tmp_path)
 
-    assert "transforms/network/main.py" in result.dependencies
-    assert "transforms/network/helpers.py" in result.dependencies
-    assert ".infrahub.yml" in result.dependencies
+    assert result.dependencies == (".infrahub.yml", "transforms/network/main.py")
     assert result.complete is True
 
 

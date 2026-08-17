@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
 type GenerateRelationshipListQueryParams = PaginationParams & {
@@ -9,6 +8,9 @@ type GenerateRelationshipListQueryParams = PaginationParams & {
   parent?: { name: string; value: string };
   search?: string;
   filterQuery?: Record<string, string | number | boolean | string[]>;
+  // Extra node fields to select (json-to-graphql-query form), so callers request
+  // kind-specific fields without this builder knowing about any node kind.
+  additionalFields?: Record<string, unknown>;
 };
 
 const generateRelationshipListQuery = ({
@@ -18,6 +20,7 @@ const generateRelationshipListQuery = ({
   offset = 0,
   search = "",
   filterQuery = {},
+  additionalFields = {},
 }: GenerateRelationshipListQueryParams): string => {
   const defaultArgs = { limit, offset, any__value: search, partial_match: true };
 
@@ -39,6 +42,7 @@ const generateRelationshipListQuery = ({
             hfid: true,
             display_label: true,
             __typename: true,
+            ...additionalFields,
           },
         },
       },
@@ -59,8 +63,11 @@ export const getRelationshipsFromApi = async ({
   branchName,
   atDate,
   filterQuery,
+  additionalFields,
 }: getRelationshipsFromApiParams) => {
-  const query = gql(generateRelationshipListQuery({ peer, limit, offset, search, filterQuery }));
+  const query = graphql(
+    generateRelationshipListQuery({ peer, limit, offset, search, filterQuery, additionalFields })
+  );
 
   return graphqlClient.query({
     query,

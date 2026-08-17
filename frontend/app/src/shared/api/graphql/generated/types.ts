@@ -275,6 +275,7 @@ export type Branch = {
   created_at: Maybe<Scalars['String']['output']>;
   description: Maybe<Scalars['String']['output']>;
   graph_version: Maybe<Scalars['Int']['output']>;
+  /** @deprecated Use schema_differs_from_default_branch instead. has_schema_changes is scheduled for removal in Infrahub 1.14.0. */
   has_schema_changes: Maybe<Scalars['Boolean']['output']>;
   id: Scalars['String']['output'];
   is_default: Maybe<Scalars['Boolean']['output']>;
@@ -282,6 +283,7 @@ export type Branch = {
   is_isolated: Maybe<Scalars['Boolean']['output']>;
   name: Scalars['String']['output'];
   origin_branch: Maybe<Scalars['String']['output']>;
+  schema_differs_from_default_branch: Maybe<Scalars['Boolean']['output']>;
   status: BranchStatus;
   sync_with_git: Maybe<Scalars['Boolean']['output']>;
 };
@@ -17944,6 +17946,23 @@ export type HttpResponse = {
   status_code: Maybe<Scalars['Int']['output']>;
 };
 
+/** Attribute of type IPAddress */
+export type IpAddress = AttributeInterface & {
+  __typename: 'IPAddress';
+  id: Maybe<Scalars['String']['output']>;
+  is_default: Maybe<Scalars['Boolean']['output']>;
+  is_from_profile: Maybe<Scalars['Boolean']['output']>;
+  is_protected: Maybe<Scalars['Boolean']['output']>;
+  owner: Maybe<LineageOwner>;
+  permissions: Maybe<PermissionType>;
+  source: Maybe<LineageSource>;
+  /** Date/Time when the attribute was last modified by a user or a system task */
+  updated_at: Maybe<Scalars['DateTime']['output']>;
+  updated_by: Maybe<CoreGenericAccount>;
+  value: Maybe<Scalars['String']['output']>;
+  version: Maybe<Scalars['Int']['output']>;
+};
+
 export type IpAddressGetNextAvailable = {
   __typename: 'IPAddressGetNextAvailable';
   address: Scalars['String']['output'];
@@ -18153,6 +18172,7 @@ export type InfrahubBranch = {
   created_at: Maybe<Scalars['String']['output']>;
   description: Maybe<NonRequiredStringValueField>;
   graph_version: Maybe<NonRequiredIntValueField>;
+  /** @deprecated Use schema_differs_from_default_branch instead. has_schema_changes is scheduled for removal in Infrahub 1.14.0. */
   has_schema_changes: Maybe<NonRequiredBooleanValueField>;
   id: Scalars['String']['output'];
   is_default: Maybe<NonRequiredBooleanValueField>;
@@ -18160,6 +18180,7 @@ export type InfrahubBranch = {
   is_isolated: Maybe<NonRequiredBooleanValueField>;
   name: RequiredStringValueField;
   origin_branch: Maybe<NonRequiredStringValueField>;
+  schema_differs_from_default_branch: Maybe<NonRequiredBooleanValueField>;
   status: StatusField;
   sync_with_git: Maybe<NonRequiredBooleanValueField>;
 };

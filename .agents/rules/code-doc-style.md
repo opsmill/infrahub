@@ -2,11 +2,15 @@
 paths:
   - "backend/**/*.py"
   - "python_testcontainers/**/*.py"
+  - "frontend/app/src/**/*.ts"
+  - "frontend/app/src/**/*.tsx"
 ---
 
 # Code documentation style
 
-Applies to docstrings, comments, and any inline documentation in Python source files.
+Applies to docstrings, comments, and any inline documentation in source files — Python and TypeScript alike.
+
+Never leave comments that narrate what the change is doing or restate the code below them ("// fetch the user", "# loop over the results"). Reviewers repeatedly have to ask for these to be removed.
 
 ## No references to other code
 
@@ -46,3 +50,4 @@ Where IDs *do* belong:
 - Comment the *why*, never the *what*: a constraint, an invariant, a workaround, a deliberate deviation from the obvious approach. Never paraphrase the line below it or restate the type signature.
 - Documents the contract of a public function (inputs, outputs, errors raised) when it crosses a module boundary.
 - Stays silent by default. If code needs a comment to explain *what* it does, rename or extract until it doesn't. A comment that restates the code is worse than none — noise that rots the moment the code changes.
+- When a why-comment is warranted, one sentence. If the why needs a paragraph, it belongs in the function's docstring or a `dev/knowledge/` page, not inline. Reviewers repeatedly ask for multi-line inline comments to be condensed.

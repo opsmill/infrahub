@@ -13,9 +13,12 @@ from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Path as Neo4jPath
 from neo4j.graph import Relationship as Neo4jRelationship
 from opentelemetry import trace
+from rich import print as rprint
+from rich.console import Console
+from rich.table import Table
 
 from infrahub import config
-from infrahub.core.constants import SYSTEM_USER_ID, PermissionLevel
+from infrahub.core.constants import SYSTEM_USER_ID, PermissionLevel, RelationshipDirection
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import QueryError
 
@@ -136,6 +139,36 @@ class QueryRel(QueryElement):
             return "-%s->" % main_str
 
         return "-%s-" % main_str
+
+
+@dataclass
+class QueryArrow:
+    start: str
+    end: str
+
+
+@dataclass
+class QueryArrowInbound(QueryArrow):
+    start: str = "<-"
+    end: str = "-"
+
+
+@dataclass
+class QueryArrowOutbound(QueryArrow):
+    start: str = "-"
+    end: str = "->"
+
+
+@dataclass
+class QueryArrowBidir(QueryArrow):
+    start: str = "-"
+    end: str = "-"
+
+
+@dataclass
+class QueryArrows:
+    left: QueryArrow
+    right: QueryArrow
 
 
 class QueryType(Enum):
@@ -444,6 +477,20 @@ class Query:
         return {}
 
     @staticmethod
+    def get_query_arrows(direction: RelationshipDirection) -> QueryArrows:
+        """Return the 2 arrows of the node→Relationship→peer path for a relationship direction.
+
+        The edges around a Relationship vertex are created in the direction of the relationship, so
+        a query must traverse them the same way to tell the two ends of the path apart.
+        """
+        if direction == RelationshipDirection.OUTBOUND:
+            return QueryArrows(left=QueryArrowOutbound(), right=QueryArrowOutbound())
+        if direction == RelationshipDirection.INBOUND:
+            return QueryArrows(left=QueryArrowInbound(), right=QueryArrowInbound())
+
+        return QueryArrows(left=QueryArrowOutbound(), right=QueryArrowInbound())
+
+    @staticmethod
     @lru_cache(maxsize=1024)
     def _split_query_lines(query: str) -> list[str]:
         return [line.strip() for line in query.split("\n") if line.strip()]
@@ -719,9 +766,6 @@ class Query:
         return len([result for result in self.results if not result.has_deleted_rels])
 
     def print_table(self) -> None:
-        from rich.console import Console
-        from rich.table import Table
-
         console = Console()
 
         table = Table(title=f"Query {self.name} : params: {self.params}")
@@ -736,8 +780,6 @@ class Query:
         console.print(table)
 
     def print(self, include_var: bool = False) -> None:
-        from rich import print as rprint
-
         print("-------------------------------------------------------")
         print(self.get_query(var=include_var))
         if self.params:

@@ -111,4 +111,5 @@ If a new endpoint or mutation must respect branch status:
 
 - [architecture.md](architecture.md) — Overall backend structure
 - [mutations.md](mutations.md) — GraphQL mutation dispatch flow
+- [merge-failure-recovery.md](merge-failure-recovery.md) — Recovering a failed merge and lifting the `MERGING`/`MERGE_FAILED` write block
 - [testing.md](testing.md) — Test infrastructure patterns

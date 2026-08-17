@@ -102,9 +102,55 @@ class NodeIdentifier:
 
 @dataclass
 class NodeDiffFieldSummary:
+    """Which fields changed for a kind, and which nodes changed each one.
+
+    The per-field maps keep the correlation between a changed field and the nodes that changed it,
+    so a consumer can scope work to the nodes touching a specific field rather than every changed
+    node of the kind. ``attribute_names``/``relationship_names``/``node_uuids`` are derived views.
+    """
+
     kind: str
-    attribute_names: set[str] = field(default_factory=set)
-    relationship_names: set[str] = field(default_factory=set)
+    attribute_node_uuids: dict[str, set[str]] = field(default_factory=dict)
+    relationship_node_uuids: dict[str, set[str]] = field(default_factory=dict)
+
+    def add_attribute_node_uuid(self, name: str, node_uuid: str) -> None:
+        """Record that `node_uuid` is a node of this kind whose attribute `name` changed."""
+        self.attribute_node_uuids.setdefault(name, set()).add(node_uuid)
+
+    def add_relationship_node_uuid(self, name: str, node_uuid: str) -> None:
+        """Record that `node_uuid` is a node of this kind whose relationship `name` changed."""
+        self.relationship_node_uuids.setdefault(name, set()).add(node_uuid)
+
+    def merge(self, other: NodeDiffFieldSummary) -> None:
+        """Fold another summary of the same kind into this one.
+
+        Raises:
+            ValueError: If the other summary is for a different kind.
+
+        """
+        if other.kind != self.kind:
+            raise ValueError(f"Cannot merge summary for kind {other.kind} into summary for kind {self.kind}")
+        for name, node_uuids in other.attribute_node_uuids.items():
+            self.attribute_node_uuids.setdefault(name, set()).update(node_uuids)
+        for name, node_uuids in other.relationship_node_uuids.items():
+            self.relationship_node_uuids.setdefault(name, set()).update(node_uuids)
+
+    @property
+    def attribute_names(self) -> set[str]:
+        return set(self.attribute_node_uuids)
+
+    @property
+    def relationship_names(self) -> set[str]:
+        return set(self.relationship_node_uuids)
+
+    @property
+    def node_uuids(self) -> set[str]:
+        uuids: set[str] = set()
+        for field_uuids in self.attribute_node_uuids.values():
+            uuids |= field_uuids
+        for field_uuids in self.relationship_node_uuids.values():
+            uuids |= field_uuids
+        return uuids
 
 
 @dataclass

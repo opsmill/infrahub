@@ -18,16 +18,18 @@ import type {
 } from "@/entities/nodes/object/domain/model/node";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
+import { getRelationshipLabel } from "@/entities/schema/domain/rules/get-relationship-label";
 import { validateRelationshipMany } from "@/entities/schema/domain/rules/validation/validate-relationship-many";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 interface GetFieldLabelParams {
   type?: RelationshipFieldType;
   relationshipSchema: RelationshipSchema;
+  peerSchema?: ModelSchema | null;
 }
 
-const getFieldLabel = ({ type, relationshipSchema }: GetFieldLabelParams) => {
-  const label = relationshipSchema.label ?? relationshipSchema.name;
+const getFormFieldLabel = ({ type, relationshipSchema, peerSchema }: GetFieldLabelParams) => {
+  const label = getRelationshipLabel(relationshipSchema, peerSchema);
 
   if (type === "relationship-add") {
     return `Add ${label}`;
@@ -69,7 +71,9 @@ export const getFormFieldFromRelationship = ({
   parentData,
   auth,
 }: GetFormFieldFromRelationshipParams): DynamicRelationshipFieldProps => {
-  const label = getFieldLabel({ type, relationshipSchema });
+  const { schema: peerSchema } = getSchema(relationshipSchema.peer);
+
+  const label = getFormFieldLabel({ type, relationshipSchema, peerSchema });
 
   const relationshipData = objectData?.[relationshipSchema.name] as NodeRelationship | undefined;
 
@@ -77,7 +81,6 @@ export const getFormFieldFromRelationship = ({
     | NodeRelationship
     | undefined;
 
-  const { schema: peerSchema } = getSchema(relationshipSchema.peer);
   const poolKind = peerSchema ? getPoolKindFromSchema(peerSchema) : null;
 
   const fromPoolName = `${relationshipSchema.name}${FROM_RESOURCE_POOL_SUFFIX}`;

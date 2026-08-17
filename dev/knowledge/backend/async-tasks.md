@@ -72,14 +72,18 @@ WorkflowDefinition(
 
 ### Flow Functions
 
-Async functions decorated with `@flow` containing business logic:
+Async functions decorated with `@flow`. A flow function is a **composition root, not the home of business logic**: it resolves the singleton services (`get_database()`, `get_workflow()`, …), builds a component with those dependencies injected, and delegates to it. Keep the flow body thin — the logic lives in the component, where it is testable without a running worker (see `.agents/rules/backend-component-design.md`).
 
 ```python
 @flow(name="branch-merge", flow_run_name="Merge branch {branch}")
 async def merge_branch(branch: str, context: InfrahubContext) -> None:
     database = await get_database()
-    # ... implementation
+    async with database.start_session() as db:
+        merger = BranchMerger(db=db, diff_coordinator=..., ...)  # collaborators injected here
+        await merger.merge()
 ```
+
+Singleton getters belong at this entry point only — do not call `get_database()`/`get_workflow()` inside helper functions or component internals; pass the resolved services down as constructor arguments.
 
 ### Task Functions
 
@@ -101,6 +105,8 @@ Names must use **lowercase with dashes** (not underscores):
 - Bad: `branch_merge`, `BranchMerge`, `branchMerge`
 
 All flows and tasks must have an explicit `name` parameter in their decorator.
+
+**Reference workflow names via the catalogue, never as re-typed string literals.** When code outside the flow needs a workflow's name — dispatching it, filtering its flow runs, labelling metrics — import the `WorkflowDefinition` from `backend/infrahub/workflows/catalogue.py` and use it (e.g. pass `workflow=WEBHOOK_PROCESS`, or read `WEBHOOK_PROCESS.name`). A duplicated literal drifts silently when the flow is renamed.
 
 ### Flow Run Names
 
@@ -144,6 +150,8 @@ Workflows receive metadata tags for organization and filtering:
 | Node | `infrahub.app/node/{id}` | Associate with specific node |
 | Workflow Type | `infrahub.app/workflow-type/{type}` | Categorize by type |
 | Database Change | `infrahub.app/database-change` | Flag database-modifying workflows |
+
+Tags come from two moments, and the difference matters: tags present at run creation (the deployment's static tags plus any `tags=` passed to `submit_workflow`) survive for the run's lifetime, while tags added mid-run via `add_tags` are rebuilt from the tags known at flow start, so a later in-flow tag update drops anything another in-flow update added before it. A tag that filtering depends on (the branch tag for branch-filtered task queries, for example) must therefore be passed at submission, not added from inside the flow.
 
 ## Execution Flow
 
@@ -219,6 +227,13 @@ Available dependencies:
 - `get_workflow()`: Workflow service for submitting child flows
 - `get_event_service()`: Event emission service
 - `get_component()`: Component registry access
+
+## Logging
+
+Prefect only surfaces logs from its own run logger plus the loggers named in the worker's task-logger set — `DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]` in `backend/infrahub/workers/infrahub_async.py`, extended by `config.SETTINGS.workflow.extra_loggers`. A bare `logging.getLogger(__name__)` sits outside that set, so its records never reach the task manager.
+
+- **Inside a `@flow` or `@task` body**, use Prefect's `get_run_logger()`.
+- **In a plain helper** that runs inside a flow but is not itself decorated — so it has no Prefect run context, and is typically also called directly from tests — use `infrahub.log.get_run_logger()`. It returns the `infrahub.tasks` stdlib logger, which the worker registers with Prefect and which is safe to call with no run context (Prefect's own `get_run_logger()` raises outside a run).
 
 ## Read Query Optimization in Prefect Tasks
 
@@ -299,13 +314,29 @@ Existing examples: `DisplayLabelNodeIDQuery`, `HFIDNodeIDQuery`, `ComputedAttrib
 
 When inspecting a subflow's terminal state, gate on `state.is_completed()`, not on the negation of `state.is_failed()`. `is_failed()` is only one terminal failure mode — a `CANCELLED` or `CRASHED` subflow is not failed but is also not a success, so `if not state.is_failed(): return` reports those as success. Treat "completed" as the only success and every other terminal state as a failure.
 
+### Observability side-writes must never change the primary outcome
+
+A write whose only purpose is observability — persisting a Prefect artifact that captures a request/response, emitting a metric, invoking a metrics-observer callback — is best-effort by definition. It must be exception-isolated (catch, log a warning, continue) so that its failure can never fail, retry, or alter the outcome of the operation it observes: a webhook delivery that succeeded must not be reported as failed because the capture artifact could not be written, and a metrics callback raising must not corrupt lock/pool state. The primary operation's result is decided before and independently of the telemetry write.
+
 ### Post-commit follow-up work is best-effort
 
 Work dispatched *after* an operation has already committed — the recompute and event-send follow-ups after a merge, for example — must not be able to fail or roll back the committed operation. The contract to follow for such work is log-and-continue: catch per item, log the skipped item at exception level so a partial failure is greppable rather than silent, and carry on with the rest of the batch so one failed dispatch never aborts the others. Guaranteeing eventual consistency after a transient dispatch failure is the job of a separate reconciliation/backfill job, not of the best-effort path — do not bolt retries onto it. (Not every post-commit path enforces this yet — the merge recompute does per-item; verify before assuming a given caller isolates failures.)
 
+### Transient database errors are retried at the transaction layer, not by task retry
+
+A Prefect task retry re-runs the failed task and by default waits no time between attempts. When a batch of concurrent tasks contend for the same nodes, each deadlocking task retries at the same moment and deadlocks again. Transient database errors therefore belong to the transaction-layer retry (`retry_db_transaction`), which reopens a fresh transaction after an exponential backoff with jitter so contending writers separate; the task-level retry remains the outer fallback. A transaction-owning write path invoked from a task must carry `retry_db_transaction` and let retriable errors reach that owner. See [Database Schema — Transaction Retry](database-schema.md#transaction-retry).
+
 ## Recovery actions
 
 A task run can expose recovery actions through the GraphQL `Task` type's `available_actions` field, gated by the run's current state. `TaskActionGenerator` derives the action set per workflow, and `InfrahubTaskRetry` and `InfrahubTaskCancel` carry the actions out. Only `WEBHOOK_SEND` runs expose actions today; see [Webhooks](webhooks.md) for the delivery-specific behavior.
+
+## Task typing (polymorphic)
+
+A task result is polymorphic by the run's workflow name, mirroring the events type hierarchy. `TaskNodeInterface` carries every field common to all tasks, including `available_actions` and the classified `error`, and each concrete type declares `interfaces = (TaskNodeInterface,)`. `TaskNodeInterface.resolve_type` returns `TASK_TYPES.get(instance["workflow"], TaskNode)`, so the discriminant is the run's workflow name (already serialized as the `workflow` field). `TASK_TYPES` maps a catalogue workflow name to its concrete type (`{WEBHOOK_SEND.name: WebhookDeliveryTask}`); anything unmapped resolves to `TaskNode`. Concrete types are registered in the GraphQL manager, mirroring `_load_event_types`.
+
+Because the discriminant is intrinsic to every run, historical runs type correctly with no backfill and no stored `task_type` field. A concrete type adds only its own fields (`WebhookDeliveryTask` adds `http_request` / `http_response`; see [Webhooks](webhooks.md)); shared capabilities stay on the interface.
+
+`TaskNodes.node` is the interface type, not a concrete object. The change is backward-compatible: `TaskNode` keeps its name, so existing selections of common fields, SDK usage, and `__typename` checks keep resolving. The deprecated `related_node` / `related_node_kind` accessors live on the interface rather than on `TaskNode`, because existing consumers select them directly on `node` without an inline fragment, and those selections must keep resolving.
 
 ## Liveness and zombie detection
 

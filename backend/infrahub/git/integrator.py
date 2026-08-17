@@ -33,6 +33,7 @@ from infrahub_sdk.schema.repository import (
     InfrahubRepositoryConfig,
     InfrahubWatchConfig,
 )
+from infrahub_sdk.schema.validate import validate_schema as validate_write_schema
 from infrahub_sdk.spec.menu import MenuFile
 from infrahub_sdk.spec.object import ObjectFile
 from infrahub_sdk.template import Jinja2Template
@@ -206,6 +207,31 @@ class ObjectImportPlan:
     artifact_definitions: dict[str, InfrahubRepositoryArtifactDefinitionConfig]
 
 
+def serialize_artifact_content(
+    content: Any, content_type: str, repository_name: str, commit: str, location: str
+) -> str:
+    """Convert the payload returned by a transform into the content stored for an artifact.
+
+    Raises:
+        TransformError: When the transform returned no payload.
+
+    """
+    if content is None:
+        raise TransformError(
+            repository_name=repository_name,
+            commit=commit,
+            location=location,
+            message=f"The transform at {location} did not return a payload",
+        )
+
+    if content_type == ContentType.APPLICATION_JSON.value and isinstance(content, dict):
+        return ujson.dumps(content, indent=2)
+    if content_type == ContentType.APPLICATION_YAML.value and isinstance(content, dict):
+        return yaml.dump(content, indent=2)
+
+    return str(content)
+
+
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     """This class provides interfaces to read and process information from .infrahub.yml files and can perform.
 
@@ -223,7 +249,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             self.validate_local_directories()
         except RepositoryInvalidFileSystemError:
             await self.ensure_location_is_defined()
-            await self.create_locally(infrahub_branch_name=self.infrahub_branch_name, update_commit_value=False)
+            await self.create_locally(
+                checkout_ref=await self.resolve_checkout_ref(),
+                infrahub_branch_name=self.infrahub_branch_name,
+                update_commit_value=False,
+            )
             self.reinitialized = True
             log.info(f"Initialized the local directory for {self.name} because it was missing.")
 
@@ -563,7 +593,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     ) -> bool:
         if (
             existing_transform.description.value != local_transform.description
-            or existing_transform.template_path.value != local_transform.template_path
+            or existing_transform.template_path.value != str(local_transform.template_path)
             or existing_transform.query.id != local_transform.query
             or existing_transform.dependencies.value != local_transform.dependencies
             or existing_transform.dependencies_complete.value != local_transform.dependencies_complete
@@ -865,14 +895,16 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         # Valid data format of content
         for schema_file in schemas_data:
-            try:
-                self.sdk.schema.validate(schema_file.content)
-            except PydanticValidationError as exc:
-                log.error(f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}")
-                raise ValidationError(
-                    identifier=str(self.id),
-                    message=f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}",
-                ) from exc
+            result = validate_write_schema(schema=schema_file.content or {})
+            for warning in result.warnings:
+                log.warning(f"{schema_file.identifier}: {warning.message}")
+            if not result.valid:
+                message = (
+                    f"Schema not valid, found '{len(result.errors)}' error(s) in "
+                    f"{schema_file.identifier} : {'; '.join(result.messages)}"
+                )
+                log.error(message)
+                raise ValidationError(identifier=str(self.id), message=message)
 
         response = await self.sdk.schema.load(
             schemas=[item.content for item in schemas_data], branch=branch_name, wait_until_converged=True
@@ -2000,9 +2032,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         )
 
         if transformation.typename == InfrahubKind.TRANSFORMJINJA2:
+            transformation_location = transformation.template_path.value
             artifact_content = await self.render_jinja2_template.with_options(
                 timeout_seconds=transformation.timeout.value
-            )(commit=commit, location=transformation.template_path.value, data=response)  # type: ignore[call-overload]
+            )(commit=commit, location=transformation_location, data=response)  # type: ignore[call-overload]
         elif transformation.typename == InfrahubKind.TRANSFORMPYTHON:
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
             artifact_content = await self.execute_python_transform.with_options(
@@ -2016,12 +2049,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 convert_query_response=transformation.convert_query_response.value,
             )  # type: ignore[call-overload]
 
-        if definition.content_type.value == ContentType.APPLICATION_JSON.value and isinstance(artifact_content, dict):
-            artifact_content_str = ujson.dumps(artifact_content, indent=2)
-        elif definition.content_type.value == ContentType.APPLICATION_YAML.value and isinstance(artifact_content, dict):
-            artifact_content_str = yaml.dump(artifact_content, indent=2)
-        else:
-            artifact_content_str = str(artifact_content)
+        artifact_content_str = serialize_artifact_content(
+            content=artifact_content,
+            content_type=definition.content_type.value,
+            repository_name=self.name,
+            commit=commit,
+            location=transformation_location,
+        )
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 
@@ -2076,12 +2110,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 convert_query_response=message.convert_query_response,
             )  # type: ignore[call-overload]
 
-        if message.content_type == ContentType.APPLICATION_JSON.value and isinstance(artifact_content, dict):
-            artifact_content_str = ujson.dumps(artifact_content, indent=2)
-        elif message.content_type == ContentType.APPLICATION_YAML.value and isinstance(artifact_content, dict):
-            artifact_content_str = yaml.dump(artifact_content, indent=2)
-        else:
-            artifact_content_str = str(artifact_content)
+        artifact_content_str = serialize_artifact_content(
+            content=artifact_content,
+            content_type=message.content_type,
+            repository_name=self.name,
+            commit=message.commit,
+            location=message.transform_location,
+        )
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 

@@ -36,7 +36,7 @@ def format_all(context: Context) -> None:
 def _lint_ruff(context: Context) -> None:
     """Run ruff to check that Python files adherence to standards."""
     print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = f"uv run ruff check --diff {' '.join(DIRECTORIES)}"
+    exec_cmd = f"uv run ruff check {' '.join(DIRECTORIES)}"
 
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)

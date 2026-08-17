@@ -129,8 +129,8 @@ What this means in practice:
 The rules above are the target. These violations still exist in the codebase — do not copy them,
 and remove them when touching the code:
 
-- Entity-root state and files: `branches/stores.ts` (Jotai `branchesState`, `currentBranchAtom`),
-  `schema/stores/`, `proposed-changes/stores/`, and the stray root component
+- Entity-root state and files: `branches/stores.ts` (Jotai `branchesState`), `schema/stores/`,
+  `proposed-changes/stores/`, and the stray root component
   `nodes/getObjectItemDisplayValue.tsx`.
 - Global state in a use-case: `branches/domain/use-cases/get-branches.ts` imports `store` from
   `@/shared/stores` and calls `store.set(branchesState, branches)` inside `getAllBranches`.
@@ -287,10 +287,7 @@ Do not write a one-off `resolveUuid` function.
 
 ### api-layer `graphqlClient` call conventions
 
-Two defaults of the shared `graphqlClient` are easy to override by mistake in `api/*-from-api.ts` files:
-
-- **Don't pass `fetchPolicy`.** The client already defaults to `no-cache` (TanStack Query owns caching, not Apollo). Passing `fetchPolicy: "no-cache"` is redundant — omit it.
-- **Mutations already surface their own error toast.** The client's error link shows a toast for a failed request. If the caller *also* renders one (e.g. in a `useMutation` `onError`), the user sees two. To let the caller own the toast, suppress the client's with the mutation `context`:
+- **Mutations already surface their own error toast.** The client routes a failed request to a toast. If the caller *also* renders one (e.g. in a `useMutation` `onError`), the user sees two. To let the caller own the toast, suppress the client's with the mutation `context`:
 
   ```ts
   graphqlClient.mutate({
@@ -310,6 +307,23 @@ If the server defaults, filters, sorts, or hides something, the client must not 
 - Pagination defaults, sort order, and ACL checks live on the server.
 
 If the client genuinely needs to display a server-side default, surface it via the API response — do not mirror the constant.
+
+## Schema-driven rendering: the extra-field tier
+
+The object views tier a node's attributes and relationships by the schema `display` field
+(`default` | `extra`), a frontend-only concern the backend never acts on. Classification is pure
+`domain/rules`; the tiering is `ui/`:
+
+- `entities/nodes/object/domain/rules/` — `has-extra-fields.ts` reports whether any field is
+  `extra`; `get-attributes-visible-in-list-view.ts` and `get-relationships-visible-in-list-view.ts`
+  drop `extra` fields from list view.
+- `entities/nodes/object/ui/object-details/object-data-display/` — `object-data-display.tsx` hides
+  `extra` fields in the detail view until a `showExtra` toggle reveals them, and
+  `object-attribute-row.tsx` / `object-relationship-row.tsx` mark them with an `ExtraFieldIndicator`.
+
+`display` is read off the loaded schema like any other schema fact (see
+[Backend is authoritative](#backend-is-authoritative)); there is no client-side list of which fields
+are advanced.
 
 ## Reference Example: branches
 
@@ -335,7 +349,7 @@ entities/branches/
 │       ├── get-branches.ts           # calls api fetcher + api mapper; extracts filters via rules
 │       ├── create-branch.ts
 │       └── … (delete/merge/rebase/validate/count/details/action-state)
-├── stores.ts                         # branchesState, currentBranchAtom — migration debt, do not copy
+├── stores.ts                         # branchesState — migration debt, do not copy
 └── ui/
     ├── queries/
     │   ├── branch.query-keys.ts      # branchesQueryKeys factory
@@ -362,10 +376,10 @@ See `dev/guidelines/frontend/naming-conventions.md` for the full naming conventi
 
 ## GraphQL transport vs server-state hooks
 
-Apollo Client is kept as the GraphQL transport (auth links, error handling, retry) only. All server-state hooks are TanStack Query. Do not use `useQuery` / `useMutation` / `useLazyQuery` from `@apollo/client` — they were removed in 2026-05.
+`@urql/core` is the GraphQL transport (auth, error routing, token refresh, uploads) only — there is no GraphQL-layer cache and there are no GraphQL hooks. All server-state hooks are TanStack Query.
 
-- `@apollo/client` imports are allowed **only** in `src/app/app.tsx` (for `ApolloProvider`) and `src/shared/api/graphql/graphqlClientApollo.tsx` (client construction), plus `gql` template-tag imports in `entities/*/api/` files.
-- React hooks (`useQuery`, `useMutation`, etc.) from `@apollo/client` are forbidden throughout the codebase.
+- `@urql/core` imports are allowed **only** in `src/shared/api/graphql/client.ts` (tests may import it to build documents). There is no provider to wrap the app in — the client is used imperatively.
+- Everything else imports `graphql` and `graphqlClient` from `@/shared/api/graphql/client`, so the transport library stays swappable. `graphql()` covers both cases: a template literal gives a typed document, and a runtime-assembled string (the `jsonToGraphQLQuery` sites) gives an untyped one.
 - Use `useQuery` / `useMutation` from `@tanstack/react-query` (typically via the pattern in `ui/queries/`) for all data fetching.
 
 ### Mutation invalidation

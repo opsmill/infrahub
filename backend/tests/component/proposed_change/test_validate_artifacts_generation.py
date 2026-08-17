@@ -106,8 +106,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:
-        workflow_recorder.execute_calls.clear()
-        workflow_recorder.submit_calls.clear()
+        workflow_recorder.reset()
 
     @pytest.fixture(scope="class")
     async def artifact_dataset(

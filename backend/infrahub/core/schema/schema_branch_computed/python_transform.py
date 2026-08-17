@@ -15,8 +15,9 @@ if TYPE_CHECKING:
 
 # Reads of these computed/derived fields cannot be mapped back to a precise set of
 # backing schema elements, so an attribute that reads them must be recomputed on any
-# schema change.
-IMPRECISE_READ_FIELDS = frozenset({"display_label", "hfid"})
+# schema change: editing a display_label template moves every label with no data change.
+# Data-change triggers do filter on them by name. Schema names, not the GraphQL spelling.
+IMPRECISE_READ_FIELDS = frozenset({"display_label", "human_friendly_id"})
 
 
 @dataclass
@@ -49,21 +50,25 @@ class TransformReadSet:
     def from_read_fields(cls, read_fields_by_kind: Mapping[str, Iterable[str]]) -> TransformReadSet:
         """Build the read set from a kind to read-field-names mapping.
 
-        The set is marked imprecise when a read cannot be mapped to concrete backing
-        elements: a read of a derived field (such as the display label), or a read
-        kind that contributes no mappable field at all. The latter covers a query
-        that selects only a value with no concrete schema element behind it (such as
-        a human-friendly id), which would otherwise look like a precise read of
-        nothing and be skipped on every change.
+        The whole set is imprecise when any kind reads a derived field. An imprecise set is
+        recomputed on every schema change.
+
+        A kind the query reaches but reads no field from stays in ``read_kinds`` and is left
+        out of ``read_fields``: adding or removing that kind still triggers, a field change
+        on it does not. Traversing a relationship to a generic reports every member kind,
+        including the ones the query reads nothing from.
         """
+        read_kinds: set[str] = set()
         read_fields: dict[str, frozenset[str]] = {}
         for kind, names in read_fields_by_kind.items():
             fields = frozenset(names)
-            if not fields or fields & IMPRECISE_READ_FIELDS:
+            if fields & IMPRECISE_READ_FIELDS:
                 return cls.imprecise()
-            read_fields[kind] = fields
+            read_kinds.add(kind)
+            if fields:
+                read_fields[kind] = fields
 
-        return cls(read_kinds=frozenset(read_fields), read_fields=read_fields)
+        return cls(read_kinds=frozenset(read_kinds), read_fields=read_fields)
 
 
 class PythonTransformRegistry:

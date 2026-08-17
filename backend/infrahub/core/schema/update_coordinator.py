@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Literal, NoReturn, overload
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
-from infrahub.core.query.rollback import RollbackQuery, RollbackScope
+from infrahub.core.query.rollback import RollbackScope
 from infrahub.exceptions import MigrationError
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.core.models import SchemaBranchHash, SchemaDiff, SchemaUpdateMigrationInfo
+    from infrahub.core.rollback import GraphRollbacker
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
@@ -48,6 +49,7 @@ class SchemaUpdateCoordinator:
         self,
         db: InfrahubDatabase,
         schema_manager: SchemaManager,
+        rollbacker: GraphRollbacker,
         workflow: InfrahubWorkflow | None = None,
         logger: logging.Logger | logging.LoggerAdapter[logging.Logger] | None = None,
     ) -> None:
@@ -56,12 +58,14 @@ class SchemaUpdateCoordinator:
         Args:
             db: Database connection
             schema_manager: Schema manager for updating schema in DB and registry
+            rollbacker: Reverses database writes when a schema update fails
             workflow: Workflow service for executing migrations (required for the WORKFLOW executor)
             logger: Logger to use (defaults to module logger)
 
         """
         self.db = db
         self.schema_manager = schema_manager
+        self.rollbacker = rollbacker
         self.workflow = workflow
         self.log = logger or _default_log
 
@@ -82,6 +86,7 @@ class SchemaUpdateCoordinator:
         *,
         branch: Branch,
         origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None = ...,
@@ -101,6 +106,7 @@ class SchemaUpdateCoordinator:
         *,
         branch: Branch,
         origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None = ...,
@@ -120,6 +126,7 @@ class SchemaUpdateCoordinator:
         *,
         branch: Branch,
         origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None = ...,
@@ -138,6 +145,7 @@ class SchemaUpdateCoordinator:
         *,
         branch: Branch,
         origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None = None,
@@ -154,7 +162,11 @@ class SchemaUpdateCoordinator:
 
         Args:
             branch: Branch being updated
-            origin_schema: Original schema before the update (for rollback)
+            origin_schema: Schema the migrations compare the candidate against
+            rollback_schema: Schema restored into the registry when the update fails. This is the
+                schema the branch itself had before the update, which is not the migration baseline
+                whenever the branch carries changes of its own: a rebase compares against the common
+                ancestor but must restore the schema the branch itself had.
             candidate_schema: New schema to apply
             at: Timestamp for all operations (enables atomic rollback)
             context: Infrahub context (required for the WORKFLOW executor)
@@ -208,7 +220,7 @@ class SchemaUpdateCoordinator:
                 if manage_rollback:
                     await self._handle_failure_and_rollback(
                         branch=branch,
-                        origin_schema=origin_schema,
+                        rollback_schema=rollback_schema,
                         origin_schema_changed_at=origin_schema_changed_at,
                         origin_schema_hash=origin_schema_hash,
                         at=at,
@@ -237,7 +249,7 @@ class SchemaUpdateCoordinator:
             if manage_rollback:
                 await self._handle_failure_and_rollback(
                     branch=branch,
-                    origin_schema=origin_schema,
+                    rollback_schema=rollback_schema,
                     origin_schema_changed_at=origin_schema_changed_at,
                     origin_schema_hash=origin_schema_hash,
                     at=at,
@@ -373,24 +385,22 @@ class SchemaUpdateCoordinator:
         Scoped to the exact timestamp: the branch is not write-blocked during a schema update, so
         other writers may have stamped later writes that must survive the rollback.
         """
-        rollback_query = await RollbackQuery.init(
-            db=self.db,
+        await self.rollbacker.rollback(
             target_branch=branch,
             at=at,
             scope=RollbackScope.AT_TIMESTAMP,
             restore_metadata=False,
         )
-        await rollback_query.execute(db=self.db)
 
     async def _restore_registry_state(
         self,
         branch: Branch,
-        origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
         origin_schema_changed_at: str | None,
         origin_schema_hash: SchemaBranchHash | None,
     ) -> None:
         """Restore original schema in registry and reset the branch hash to its pre-update value."""
-        self.schema_manager.set_schema_branch(name=branch.name, schema=origin_schema)
+        self.schema_manager.set_schema_branch(name=branch.name, schema=rollback_schema)
         branch.schema_hash = origin_schema_hash
         branch.schema_changed_at = origin_schema_changed_at
         await branch.save(db=self.db)
@@ -398,7 +408,7 @@ class SchemaUpdateCoordinator:
     async def _handle_failure_and_rollback(
         self,
         branch: Branch,
-        origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
         origin_schema_changed_at: str | None,
         origin_schema_hash: SchemaBranchHash | None,
         at: Timestamp,
@@ -431,7 +441,7 @@ class SchemaUpdateCoordinator:
         await self._rollback(branch=branch, at=at)
         await self._restore_registry_state(
             branch=branch,
-            origin_schema=origin_schema,
+            rollback_schema=rollback_schema,
             origin_schema_changed_at=origin_schema_changed_at,
             origin_schema_hash=origin_schema_hash,
         )

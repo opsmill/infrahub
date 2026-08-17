@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { toast } from "react-toastify";
 
 import DynamicForm from "@/shared/components/form/dynamic-form";
@@ -9,6 +8,7 @@ import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormF
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
@@ -26,14 +26,16 @@ export function IpPrefixPoolForm({
   ...props
 }: IpPrefixPoolFormProps) {
   const { schema: genericPrefixSchema, isGeneric } = useSchema(IP_PREFIX_GENERIC);
+  const { currentBranch } = useCurrentBranch();
   const { parentSchema, parentData } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
   const updateObject = useUpdateObjectMutation();
 
-  const fields = useMemo(() => {
+  const fields = (() => {
     const schemaFields = getFormFieldsFromSchema({
       ...props,
       initialObject: currentObject,
+      isDefaultBranch: !!currentBranch.is_default,
       isUpdate,
       parentSchema,
       parentData,
@@ -82,7 +84,7 @@ export function IpPrefixPoolForm({
       }
       return field;
     });
-  }, [props, genericPrefixSchema, isGeneric, currentObject, isUpdate]);
+  })();
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
     const newObject = getCreateMutationFromFormData(fields, data, props.objectTemplate?.id);

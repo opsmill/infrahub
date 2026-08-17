@@ -10,8 +10,10 @@ from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema.relationship_schema import RelationshipSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.metadata import build_metadata_query_options, get_metadata_options_from_fields
 
@@ -27,6 +29,41 @@ if TYPE_CHECKING:
 class SingleRelationshipResolver:
     def __init__(self) -> None:
         self._data_loader_instances: dict[GetManyParams, NodeDataLoader] = {}
+
+    def _build_id_only_node(
+        self,
+        rel_schema: RelationshipSchema,
+        parent: dict[str, Any],
+        schema_branch: SchemaBranch,
+        node_fields: dict[str, Any],
+        property_fields: dict[str, Any],
+        metadata_fields: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """Build the peer payload for an id-only query straight from the parent's preloaded data.
+
+        The cardinality-one peer ID is already loaded on the parent, so a query
+        wanting nothing but that ID can be answered without hydrating the peer.
+        Returns None whenever that is not possible and the caller has to hydrate.
+        """
+        if set(node_fields) != {"id"} or property_fields or any(metadata_fields.values()):
+            return None
+
+        try:
+            peer_stub = parent[rel_schema.name][0]["node"]
+            peer_id = peer_stub["id"]
+        except (KeyError, IndexError):
+            return None
+
+        if rel_schema.peer not in schema_branch.generics:
+            return {"id": peer_id}
+
+        # A generic peer resolves to a GraphQL interface, whose type resolution
+        # needs the peer's concrete kind.
+        peer_kind = peer_stub.get(KIND_GRAPHQL_FIELD_NAME)
+        if not peer_kind:
+            return None
+
+        return {"id": peer_id, KIND_GRAPHQL_FIELD_NAME: peer_kind}
 
     def _build_relationship_meta_response(
         self, relationship: Relationship, metadata_fields: dict[str, Any]
@@ -84,6 +121,21 @@ class SingleRelationshipResolver:
         node_rel = node_schema.get_relationship(info.field_name)
 
         response: dict[str, Any] = {"node": None, "properties": {}}
+
+        schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)
+        id_only_node = self._build_id_only_node(
+            rel_schema=node_rel,
+            parent=parent,
+            schema_branch=schema_branch,
+            node_fields=node_fields,
+            property_fields=property_fields,
+            metadata_fields=metadata_fields,
+        )
+        if id_only_node is not None:
+            response["node"] = id_only_node
+            if graphql_context.related_node_ids is not None:
+                graphql_context.related_node_ids.add(id_only_node["id"])
+            return response
 
         relationship: Relationship | None = None
         peer_node: Node | None = None

@@ -7,6 +7,11 @@ import type { FormField } from "@/shared/components/ui/form";
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
 import type {
+  IpPoolKind,
+  NumberPoolKind,
+  PoolKind,
+} from "@/entities/resource-manager/domain/model/pool";
+import type {
   AttributeKind,
   AttributeSchema,
   ModelSchema,
@@ -20,13 +25,26 @@ export type EmptyFieldValue = {
   value: null;
 };
 
-export type PoolSource = {
+export type { PoolKind };
+
+type PoolSourceBase = {
   type: "pool";
   label: string | null;
-  kind: string;
   id: string;
   fromTemplate?: boolean;
 };
+
+export type IpPoolSource = PoolSourceBase & {
+  kind: IpPoolKind;
+  /** Pool default, shown as the prefix-length override placeholder; never serialized. */
+  defaultPrefixLength?: number | null;
+};
+
+export type NumberPoolSource = PoolSourceBase & {
+  kind: NumberPoolKind;
+};
+
+export type PoolSource = IpPoolSource | NumberPoolSource;
 
 export type ProfileSource = {
   type: "profile";
@@ -49,7 +67,7 @@ export type AttributeValueFromProfile = {
 
 export type AttributeValueFromPool = {
   source: PoolSource;
-  value: { from_pool: { id: string } };
+  value: { from_pool: { id: string; prefixLength?: number } };
 };
 
 export type AttributeValueForCheckbox = {
@@ -104,7 +122,7 @@ export type RelationshipManyValueFromTemplate = {
 
 export type RelationshipValueFromPool = {
   source: PoolSource;
-  value: NodeCore | { from_pool: { id: string } };
+  value: NodeCore | { from_pool: { id: string; prefixLength?: number } };
 };
 
 export type RelationshipOneValueFromProfile = {

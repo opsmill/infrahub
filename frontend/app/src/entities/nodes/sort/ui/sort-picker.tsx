@@ -16,7 +16,7 @@ export function SortPicker({ schema }: SortPickerProps) {
 
   return (
     <PopoverTrigger>
-      <Button variant="outline" size="sm" className="rounded-xl">
+      <Button variant="input" size="sm">
         <ArrowUpDownIcon /> Sort
         {!!customSort?.length && <CountBadge count={customSort.length} />}
       </Button>

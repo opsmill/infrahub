@@ -23,6 +23,7 @@ import { Skeleton } from "@/shared/components/loading/skeleton";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
@@ -43,6 +44,7 @@ export const NodeAttributeMatchForm = ({
   onCancel,
   ...props
 }: NodeAttributeMatchFormProps) => {
+  const { currentBranch } = useCurrentBranch();
   const { parentData, parentSchema } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
   const updateObject = useUpdateObjectMutation();
@@ -50,6 +52,7 @@ export const NodeAttributeMatchForm = ({
   const schemaFields = getFormFieldsFromSchema({
     ...props,
     initialObject: currentObject,
+    isDefaultBranch: !!currentBranch.is_default,
     isUpdate,
     parentData,
     parentSchema,

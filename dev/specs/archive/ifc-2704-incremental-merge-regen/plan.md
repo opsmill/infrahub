@@ -1,0 +1,259 @@
+# Implementation Plan: Incremental generator & artifact execution on merge
+
+**Branch**: `incremental-merge-regen-ifc-2704` | **Date**: 2026-07-10 | **Spec**: [spec.md](./spec.md)
+
+**Input**: Feature specification from `specs/ifc-2704-incremental-merge-regen/spec.md`
+
+## Summary
+
+Post-merge follow-up currently regenerates every artifact and runs every eligible generator
+regardless of what the merge changed. This plan makes that execution selective by (1)
+capturing the enriched merge diff in the merge orchestrator before the diff is frozen,
+serialized into the same `NodeDiff` summary shape the proposed-change pipeline consumes and
+stored in cache under a merge-scoped key; (2) threading only that cache key through the
+follow-up chain; and (3) replacing the two blanket trigger submissions with a selection step
+that reuses the proposed-change definition-level predicates and member-level impact analysis,
+translating the result into the merge/manual dispatch workflows' member filters. Every
+uncertain path falls back to full regeneration, preserving the no-under-execution invariant.
+Behavior is gated behind a new `selective_execution_after_merge` config flag.
+
+See [research.md](./research.md) for the verified findings and design decisions (D1–D9)
+that this plan is built on.
+
+## Technical Context
+
+**Language/Version**: Python 3.14 (backend)
+
+**Primary Dependencies**: FastAPI, Prefect (workflow orchestration), Pydantic 2.12, Neo4j
+driver 6.2, Redis-backed `InfrahubCache`
+
+**Storage**: Neo4j (graph + enriched diff persistence); Redis (`InfrahubCache`) for the diff
+summary payload
+
+**Testing**: pytest — unit (`tests/unit/`), functional (`tests/functional/`), integration
+Docker (`tests/integration_docker/`)
+
+**Target Platform**: Linux server (backend workers + task-worker)
+
+**Project Type**: Backend service (single project; no frontend surface for this feature)
+
+**Performance Goals**: Reduce post-merge dispatched-task count from O(all definitions × all
+members) to O(affected definitions × affected members) for typical small merges; eliminate the
+~20-minute post-merge unresponsiveness window (IFC-2306)
+
+**Constraints**: No under-execution (INFP-409 invariant — every affected artifact/generator
+regenerates); no new core-schema or GraphQL-schema changes (reuse IFC-2844 `fingerprint` and
+IFC-2738/INFP-409 `dependencies` fields); only string data may cross the Prefect parameter
+boundary; branch-safe and temporal-correct (constitution II)
+
+**Scale/Scope**: Backend-only; touches the merge orchestrator, post-merge dispatcher, the two
+merge trigger tasks, the proposed-change selection helpers (generalized to a second caller),
+two workflow message models, and one config flag
+
+## Constitution Check
+
+*GATE: evaluated against `.specify/memory/constitution.md` v1.0.0.*
+
+| Principle | Status | Notes |
+|---|---|---|
+| I. Schema-Driven Integrity | ✅ PASS | No new schema; reuses existing `fingerprint` / `dependencies` / `execute_after_merge` fields. No generated schema files edited. |
+| II. Branch-Safe by Default | ✅ PASS | Core of the feature is merge behavior; diff captured on the source branch pre-freeze; selection runs against the target (destination) branch via the threaded `target_branch`, not a hardcoded default lookup. Merge behavior is specified and will be tested (FR-001..FR-011). |
+| III. Type Safety & Explicit Contracts | ✅ PASS | New converter and selection routine fully typed; the `NodeDiff` TypedDict and Pydantic message models are the boundary contracts; `str | None` for the threaded key. |
+| IV. Test Discipline | ✅ PASS | Unit (converter, predicates on merge summary, limit-trap filter), functional (selective dispatch end-to-end inline), integration Docker (full stack — this feature is a triggered-action path, so integration coverage is required). |
+| V. Query Performance & Efficiency | ✅ PASS | The definition-level gate adds no Cypher (the diff is already loaded). Member reconciliation performs bounded per-selected-definition group/subscriber fetches — the same fetches the proposed-change CHECK flow already runs, and required for correct new-member coverage (research D4a). Net effect is still far fewer dispatched tasks. |
+| VI. Security & Input Boundaries | ✅ PASS | No new external input; cache payload is internally produced; no user-supplied Cypher. |
+| VII. Simplicity & Maintainability | ✅ PASS | Reuses existing predicates/impact analysis rather than reimplementing; the one extraction serves two callers (PC + merge); over-execution fallback chosen over complex cross-workflow sequencing (D7). |
+
+**Ask-First items** (per AGENTS.md): none triggered — no DB schema/migration change, no
+GraphQL schema change, no new dependency, no CI/CD workflow change, no auth change. The new
+config flag is not on the Ask-First list. (This is the planning phase; the user reviews
+`tasks.md` before implementation.)
+
+No violations → Complexity Tracking section omitted.
+
+## Project Structure
+
+### Documentation (this feature)
+
+```text
+specs/ifc-2704-incremental-merge-regen/
+├── plan.md              # This file
+├── spec.md              # Feature specification
+├── research.md          # Phase 0 — decisions D1–D9
+├── data-model.md        # Phase 1 — entities & payloads
+├── quickstart.md        # Phase 1 — validation scenarios
+├── contracts/           # Phase 1 — interface contracts
+│   ├── merge-diff-summary.md
+│   ├── branch-merge-post-process.md
+│   └── artifact-generate-members.md
+└── tasks.md             # Phase 2 — /speckit-tasks (not created here)
+```
+
+### Source Code (repository root)
+
+```text
+backend/infrahub/
+├── core/
+│   ├── merge/
+│   │   ├── orchestrator.py        # D1: capture branch_diff → summary → cache; D3: pass key to run_follow_ups
+│   │   ├── post_merge.py          # D3: thread merge_diff_cache_key + proposed_change_id into BRANCH_MERGE_POST_PROCESS params
+│   │   ├── regeneration_dispatcher.py  # NEW — D6/D7: decide+submit; per-generator isolation, targeted generator→artifact cascade, fallbacks
+│   │   ├── diff_summary.py        # NEW — D2: EnrichedDiffNode → NodeDiff converter (target-branch tag) + merge-scoped cache fns
+│   │   └── selective_regen/       # NEW — D4/D4a package: orchestrator.py (selector), definition_selector/ (base + artifact/generator), fallbacks.py, generator_diff_capturer.py (group-scoped output capture), models.py
+│   ├── regeneration/             # NEW — shared selection primitives extracted for both callers: predicates.py, members.py, definitions.py, models.py
+│   └── branch/
+│       └── tasks.py               # D4/D6/D7/D9: post_process_branch_merge — flag gate, dispatcher wiring, fallbacks, observability
+├── proposed_change/
+│   ├── tasks.py                   # D4: generalize predicates + get_field_level_impacted_subscribers to accept a resolved summary + explicit query branch
+│   └── branch_diff.py             # reference for cache shape / get_modified_kinds (reused)
+├── git/
+│   ├── models.py                  # D5: add `members: list[str]` to RequestArtifactDefinitionGenerate
+│   └── tasks.py                   # D5: consume `members` in generate_request_artifact_definition
+├── generators/
+│   ├── models.py                  # reference — RequestGeneratorDefinitionRun.target_members (reused)
+│   └── tasks.py                   # reference — run_generator_definition / target_members filter (reused)
+└── config.py                      # D9: selective_execution_after_merge flag on MainSettings
+
+docker-compose.yml                 # D9: regenerated (release.gen-config-env)
+docs/docs/reference/configuration.mdx  # D9: regenerated (docs.generate)
+
+backend/tests/
+├── unit/core/merge/              # dispatcher branch matrix, gate, selector, cache round-trip, summary converter
+├── component/                    # real-graph selection driving the dispatcher via a recording workflow backend
+└── api/                          # real regenerated-output assertions (T039, T044)
+```
+
+The planned `integration_docker/` full live-stack matrix is not used for this path; see the
+implementation-sync revision below.
+
+**Structure Decision**: Single backend project. The merge-specific new code lives under
+`backend/infrahub/core/merge/` (converter + cache in `diff_summary.py`, selection in
+`selective_regen.py`) to keep the merge path cohesive; the reused selection primitives stay in
+`proposed_change/` and are generalized in place to accept a resolved summary, so both callers
+share one implementation.
+
+## Phase 0 — Research
+
+Complete. See [research.md](./research.md). All spec open questions resolved: OQ1 →
+Decision 7 (over-execution fallback on direct merges with generator runs, plus a validation
+spike); OQ2 → Decision 8 (no design change, explicit no-double-trigger test); OQ3 →
+Decision 6 (null-fingerprint over-execution fallback).
+
+## Phase 1 — Design & Contracts
+
+Complete. Artifacts:
+
+- [data-model.md](./data-model.md) — the merge diff summary entity, the reused
+  `RegenerationDefinition` inputs, `ImpactedSubscribers`, and the dispatch payloads.
+- [contracts/merge-diff-summary.md](./contracts/merge-diff-summary.md) — the
+  `EnrichedDiffNode → NodeDiff` converter contract and the merge-scoped cache key/value.
+- [contracts/branch-merge-post-process.md](./contracts/branch-merge-post-process.md) — the
+  threaded `merge_diff_cache_key` parameter and the fallback contract.
+- [contracts/artifact-generate-members.md](./contracts/artifact-generate-members.md) — the new
+  `members` filter on `RequestArtifactDefinitionGenerate` and its member-id semantics.
+- [quickstart.md](./quickstart.md) — runnable validation scenarios mapped to the spec's
+  testing focus.
+
+### Implementation phases (for /speckit-tasks to expand)
+
+1. **Config flag + generated files** (D9) — add the setting, regenerate `docker-compose.yml`
+   and `configuration.mdx`, verify the two CI validators pass locally.
+2. **Diff capture + serialization** (D1, D2) — converter, merge-scoped cache functions,
+   capture call in the orchestrator; unit tests for the converter (all element types, action
+   uppercasing, conflict-resolved-to-base retained, membership/relationship changes).
+3. **Thread the key** (D3) — extend `run_follow_ups`, `BRANCH_MERGE_POST_PROCESS`
+   parameters, and the `post_process_branch_merge` signature with both `merge_diff_cache_key`
+   and `proposed_change_id` (the latter distinguishes a proposed-change merge from a direct
+   merge, which the direct-merge generator cascade in D7 depends on).
+4. **Generalize the selection primitives** (D4) — refactor the predicates and
+   `get_field_level_impacted_subscribers` to accept a resolved `diff_summary`; keep the PC
+   path passing its cached summary. No behavior change to the PC path (regression-tested).
+5. **Merge selection routine — definition level** (D4, D6) — `selective_regen.py`: definition
+   gates (query/definition/fingerprint/modified-kinds), the group-membership gate, the repo-code
+   fingerprint signal + null-fingerprint fallback (with the E6 repo-signal verification).
+   A fingerprint that moved between the fork point and the source branch needs no dedicated
+   mechanism: the hash is recomputed and persisted on the source branch at import, and
+   `fingerprint` is an ordinary branch-tracked attribute, so the delta rides the merge diff
+   summary as a `NodeDiff` element on the definition node and is selected by the
+   `definition_changed` gate like any other node change. The null-fingerprint fallback in
+   `fallbacks.py` covers only the disjoint pre-feature case where the hash was never computed
+   (`fingerprint=null`), not a hash that changed.
+6. **Merge selection routine — member level** (D4a, D5) — live-group reconciliation on the
+   **target branch**: fetch group members + subscriber map, compute `managed_branch`, map
+   impacted subscriber ids → member ids, force-render new members, emit member-id filters.
+   Generalize `get_field_level_impacted_subscribers` + predicates to accept a resolved summary
+   and an explicit query branch. Add the artifact `members` field + consumer (D5). **This is the
+   safety-critical step (critique E1/E2/X1); it must land with its own tests.**
+7. **Fallbacks + direct-merge cascade** (D6, D7) — full-regeneration fallback wiring in
+   `post_process_branch_merge`. **Blocking spike first (E4)**: does the event machinery cover
+   generator→artifact staleness on direct merges? If yes, drop the fallback; if no, the
+   fallback must *await* generator completion (sequenced), never concurrent.
+8. **Observability** (E8) — per-merge log/metric of selective-vs-fallback path + dispatch counts.
+9. **Tests** — unit (converter, cache round-trip, limit-trap `members` filter, gates on a merge
+   summary); functional (selective dispatch; the three member-reconciliation cases — new object
+   in group, existing object added to group, SPECIFIC field change); integration Docker (full
+   testing-focus matrix incl. baseline dispatched-task count flag on/off); no-double-trigger
+   regression (D8).
+
+### Agent context
+
+The Spec Kit block in `CLAUDE.md` will be updated (via the `after_plan`
+`speckit.agent-context.update` hook) to reference this plan.
+
+### Revision: design tightening 2026-07-10
+
+- Reason: Decision 1 diff-capture timing tightened. Serialization now runs against the
+  already-loaded in-memory `branch_diff` before the freeze, but the cache write is deferred
+  until after the merge's point of no return (post `MERGED` transition / write-block lift), so a
+  failed or rolled-back merge writes no cache entry at all (previously it could leave a benign
+  orphan that expired on TTL). Both steps are guarded so a capture failure degrades to the
+  full-regeneration fallback and can never roll back a committed merge. Affects research.md D1,
+  contracts/merge-diff-summary.md, contracts/branch-merge-post-process.md, and task T006.
+  Reinforces Constitution II (Branch-Safe by Default).
+
+### Revision: terminology 2026-07-13
+
+- Reason: The branch the summary is tagged with and where selection runs its live lookups is the
+  merge **target (destination) branch** (`self.destination_branch` / the threaded `target_branch`
+  parameter), not a hardcoded `registry.default_branch` lookup. Infrahub merges always target the
+  default branch today (`branch/tasks.py:298`), so target == default in practice; keying off the
+  `target_branch` parameter keeps the design correct if that assumption ever changes. Wording
+  aligned across research.md (D2/D4/D4a), contracts, and tasks (T004/T011). No behavior change.
+
+## Post-Design Constitution Re-Check
+
+Re-evaluated after design: no new violations. The design introduces no new schema, no new
+dependency, and no new query on the hot path; it adds two typed module files and one message
+field, and extracts one shared helper serving two callers. **PASS.**
+
+### Revision: Implementation Sync 2026-07-16
+
+- Reason: reconciled the testing strategy to the tiers that shipped. Selective-dispatch
+  selection is covered at the unit tier (dispatcher branch matrix, gate, selector) and by a
+  real-graph selection test at the component tier driving the dispatcher through a recording
+  workflow backend. The planned `integration_docker/` full live-stack matrix is not used for this
+  path: the testcontainer harness cannot execute the render flow's worker→server callback, so
+  real regenerated-output assertions move to the API tier (tasks T039, T044). The representative
+  perf A/B (SC-001/SC-004/SC-005) is recorded in `perf-validation.md`; the scale run (SC-002)
+  remains deferred pending the profiling-harness dataset (tasks T040, T045).
+
+### Revision: Implementation Sync 2026-07-24
+
+- Reason: reconciled the shipped structure and the direct-merge cascade (Phase 7 / T035).
+  - **Structure**: the selection code shipped as a `core/merge/selective_regen/` package (a
+    `RegenerationSelector` orchestrator, per-kind definition selectors, fallbacks, and a
+    group-scoped generator-output capturer) plus a `core/merge/regeneration_dispatcher.py`
+    that decides and submits the plan; the shared predicates/members/definitions primitives
+    were extracted to a `core/regeneration/` package serving both the merge and proposed-change
+    callers. This supersedes the single planned `selective_regen.py`.
+  - **Cascade (D7)**: the direct-merge cascade is now targeted, not blanket. The dispatcher
+    awaits each after-merge generator, captures the nodes it wrote scoped to that generator's
+    per-member tracking group, and regenerates only the artifacts that read the tracked output.
+    It widens to regenerating every artifact when a generator's tracked set is unresolved or the
+    output cannot be captured, and — on a generator run failure — regenerates all artifacts
+    without re-running the generators. Artifact requests selected by both the merge diff and the
+    generator output are consolidated into one request per definition (member/limit filters
+    unioned; an empty filter subsumes a specific one).
+  - **Config default (D9)**: `selective_execution_after_merge` now ships `default=True`; the
+    T001 caveat (ship `False` until the fallbacks land) is resolved.
+  - **Observability (E8)**: the per-merge selective-vs-fallback line is emitted at debug level.

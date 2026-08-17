@@ -74,6 +74,18 @@ def get_data_table_row(page: Page, name: str) -> Locator:
     return page.get_by_test_id("data-table-row").filter(has=page.get_by_role("link", name=name, exact=True))
 
 
+async def select_pool(page: Page, pool_name: str) -> None:
+    """Open a from-pool field's pool picker and select the pool by name.
+
+    The "open the resource-pool dropdown, then click the named pool" pair is
+    identical across every from-pool allocation flow (IPAM create, object
+    create / relationship / bulk-edit, object templates), so it lives here once.
+    Callers keep their own surrounding navigation, field fills and assertions.
+    """
+    await page.get_by_test_id("select-open-pool-option-button").click()
+    await page.get_by_role("option", name=pool_name).click()
+
+
 async def login(page: Page, username: str, password: str) -> None:
     """Port of the auth.setup.ts UI login flow.
 

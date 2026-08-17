@@ -19,12 +19,12 @@ Style: be direct and substantive. No filler, preamble, or pleasantries. Challeng
 
 - `backend/` – Python backend (FastAPI, GraphQL, core logic) - see [backend/AGENTS.md](backend/AGENTS.md)
 - `frontend/app/` – React frontend - see [frontend/app/AGENTS.md](frontend/app/AGENTS.md)
-- `docs/` – Docusaurus documentation - see [docs/AGENTS.md](docs/AGENTS.md)
+- `docs/` – External customers documentation by Docusaurus, deployed at https://docs.infrahub.app/ - see [docs/AGENTS.md](docs/AGENTS.md)
+- `dev/` – Internal developer documentation - see [dev/README.md](dev/README.md)
 - `python_sdk/` – Python SDK (Git submodule)
 - `tasks/` – Invoke task definitions
 - `schema/` – JSON/GraphQL schema definitions
 - `changelog/` – Towncrier changelog fragments
-- `dev/` – Internal developer documentation - see [dev/README.md](dev/README.md)
 
 ## Commands
 
@@ -44,6 +44,10 @@ cd frontend/app && pnpm test          # Frontend unit tests
 cd frontend/app && pnpm test:e2e      # Frontend E2E tests (legacy TS suite)
 uv run pytest -c tests/e2e/pytest.ini tests/e2e  # E2E tests (pytest, testcontainers)
 ```
+
+Component tests (`backend/tests/component/`) start their backing services via testcontainers, so
+they need a running Docker daemon (set `INFRAHUB_USE_TEST_CONTAINERS=false` to reuse an
+already-running database instead).
 
 #### Debugging e2e tests with `--pdb`
 
@@ -127,7 +131,7 @@ checkout.
 
 ## Coding Standards
 
-- Backend: `dev/guidelines/backend/python.md`
+- Backend: `dev/guidelines/backend/python.md` (load before writing backend Python — typing, exception handling) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
 - Frontend: `frontend/app/AGENTS.md`
 - Git workflow: `dev/guidelines/git-workflow.md`
 - Markdown: `dev/guidelines/markdown.md`

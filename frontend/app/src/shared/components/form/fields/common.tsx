@@ -22,7 +22,7 @@ import { classNames } from "@/shared/utils/common";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
-export const InputUniqueTips = ({ className }: { className: string }) => (
+export const InputUniqueTips = ({ className }: { className?: string }) => (
   <span className={classNames("text-gray-600 text-xs italic leading-3", className)}>
     must be unique
   </span>
@@ -47,16 +47,20 @@ export const LabelFormField = ({
   ...props
 }: LabelFormFieldProps) => {
   return (
-    <div className={classNames("flex h-4 items-center gap-1", className)}>
-      <FormLabel {...props}>
-        {label} {required && "*"}
-      </FormLabel>
-      {unique && <InputUniqueTips className="mb-px self-end" />}
-      {description && <QuestionMark message={description} className="ml-1" />}
+    <div className={classNames("flex flex-col gap-0.5", className)}>
+      <div className="flex min-h-4 flex-wrap items-center gap-1">
+        <FormLabel {...props}>
+          {label} {required && "*"}
+        </FormLabel>
+        {description && <QuestionMark message={description} className="ml-1" />}
 
-      {fieldData?.source?.type === "profile" && <ProfileSourceBadge source={fieldData.source} />}
-      {fieldData?.source?.type === "pool" && <PoolSourceBadge source={fieldData.source} />}
-      {fieldData?.source?.type === "template" && <TemplateSourceBadge source={fieldData.source} />}
+        {fieldData?.source?.type === "profile" && <ProfileSourceBadge source={fieldData.source} />}
+        {fieldData?.source?.type === "pool" && <PoolSourceBadge source={fieldData.source} />}
+        {fieldData?.source?.type === "template" && (
+          <TemplateSourceBadge source={fieldData.source} />
+        )}
+      </div>
+      {unique && <InputUniqueTips />}
     </div>
   );
 };
@@ -93,7 +97,7 @@ const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
         <div className="max-w-60">
           <p>This value is allocated from the pool:</p>
           <Link
-            to={getObjectDetailsUrl(source.kind!, source.id)}
+            to={getObjectDetailsUrl(source.kind, source.id)}
             className="inline-flex items-center gap-1 underline"
           >
             {source?.label} <Icon icon="mdi:open-in-new" />

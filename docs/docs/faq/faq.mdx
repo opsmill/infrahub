@@ -216,9 +216,11 @@ export INFRAHUB_TELEMETRY_OPTOUT=true
 
 The following information is included in telemetry:
 
-- Infrahub version
-- Platform information
-- Anonymous counters about the graph and the schema
+- Infrahub version, deployment type, and platform (Python / OS / architecture)
+- Anonymous counters about the graph, schema, and features in use
+- Adoption counts: active accounts, account groups, and open branches
+- Database, worker, and infrastructure statistics
+- Daily activity over the previous day: logins, validation checks, artifact generation, branch operations, and webhook deliveries
 
 This information is used as aggregated analysis to better understand what and how to improve the project. All information collected is anonymous and the implementation is open source on GitHub.
 

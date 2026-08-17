@@ -6,18 +6,23 @@ from fast_depends import Provider
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import MigrationError, ValidationError
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database
+from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION
+from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.schema import load_schema
 
 
 async def test_rebase_graph(
@@ -294,3 +299,104 @@ async def test_rebase_preserves_metadata(
     assert owner_peer._get_created_by() == "person-create-user"
     assert before_car2_create < owner_peer._get_updated_at() < after_car2_create
     assert owner_peer._get_updated_by() == "car2-create-user"
+
+
+async def test_rebase_schemas_handed_to_the_update_coordinator(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dependency_provider: Provider,
+    workflow_recorder: WorkflowRecorder,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """The rebase must migrate against the branch-creation schema and roll back to the branch's own.
+
+    Both cases share one fork-before-inheritance setup, which is the expensive part, but they need
+    separate branches: observing the migration baseline needs a rebase that succeeds, observing the
+    rollback needs one that fails.
+    """
+    widget_kind = "TestingWidget"
+    gadget_kind = "TestingGadget"
+    ownable_kind = "TestingOwnable"
+    ownable = GenericSchema(
+        name="Ownable",
+        namespace="Testing",
+        attributes=[AttributeSchema(name="owner_name", kind="Text", optional=True)],
+    )
+    widget = NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        default_filter="name__value",
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    gadget = NodeSchema(
+        name="Gadget",
+        namespace="Testing",
+        default_filter="name__value",
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    await load_schema(db=db, schema=SchemaRoot(generics=[ownable], nodes=[widget, gadget]), update_db=True)
+
+    baseline_branch = await create_branch(db=db, branch_name="baseline-branch")
+    rollback_branch = await create_branch(db=db, branch_name="rollback-branch")
+    fork_hash = baseline_branch.active_schema_hash.main
+
+    # A schema change that exists only on the branch being rolled back, on a kind the destination
+    # never touches so that the rebase does not report a conflict
+    branch_gadget = gadget.duplicate()
+    branch_gadget.attributes.append(AttributeSchema(name="serial", kind="Text", optional=True))
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(nodes=[branch_gadget]),
+        branch_name=rollback_branch.name,
+        update_db=True,
+        limit=[gadget_kind],
+    )
+    rollback_pre_rebase_hash = registry.schema.get_schema_branch(name=rollback_branch.name).get_hash()
+
+    # The destination branch adopts the generic only after both branches forked
+    inheriting_widget = widget.duplicate()
+    inheriting_widget.inherit_from = [ownable_kind]
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(nodes=[inheriting_widget]),
+        update_db=True,
+        limit=[widget_kind, ownable_kind],
+    )
+    assert set(
+        registry.schema.get_schema_branch(name=default_branch.name).get_node(name=widget_kind).attribute_names
+    ) == {"name", "owner_name"}
+
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+
+    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+        await rebase_branch(branch=baseline_branch.name, context=context)
+
+        migration_calls = workflow_recorder.get_execute_calls_for(SCHEMA_APPLY_MIGRATION)
+        assert len(migration_calls) == 1
+        baseline_schema = migration_calls[0]["parameters"]["message"].previous_schema
+        assert isinstance(baseline_schema, SchemaBranch)
+
+        # The whole baseline, not just the widget, must be the schema as it stood at branch creation
+        assert baseline_schema.get_hash() == fork_hash
+        assert baseline_schema.get_hash() != registry.schema.get_schema_branch(name=default_branch.name).get_hash()
+        assert set(baseline_schema.get_node(name=widget_kind).attribute_names) == {"name"}
+
+        # Now make the migrations fail, on the branch that carries a schema change of its own
+        workflow_recorder.execute_results[SCHEMA_APPLY_MIGRATION.name] = ["migration failed on purpose"]
+        with pytest.raises(MigrationError) as exc_info:
+            await rebase_branch(branch=rollback_branch.name, context=context)
+    assert exc_info.value.message == "migration failed on purpose"
+
+    # The rollback must keep the branch-only change and must not adopt the generic the destination
+    # picked up after the fork
+    restored_schema = registry.schema.get_schema_branch(name=rollback_branch.name)
+    assert set(restored_schema.get_node(name=gadget_kind).attribute_names) == {"name", "serial"}
+    assert set(restored_schema.get_node(name=widget_kind).attribute_names) == {"name"}
+    assert restored_schema.get_hash() == rollback_pre_rebase_hash
+
+    # The restored hash has to reach storage, not just the in-memory registry the rollback wrote
+    reloaded_branch = await Branch.get_by_name(db=db, name=rollback_branch.name)
+    assert reloaded_branch.active_schema_hash.main == rollback_pre_rebase_hash

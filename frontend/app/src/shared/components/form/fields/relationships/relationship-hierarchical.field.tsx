@@ -18,6 +18,8 @@ import {
   RelationshipHierarchicalManyInput,
 } from "@/entities/nodes/relationships/ui/relationship-hierarchical-input";
 
+import { useCommonParentFilter } from "./useCommonParentFilter";
+
 export interface RelationshipHierarchicalFieldProps
   extends Omit<DynamicRelationshipFieldProps, "type"> {}
 
@@ -33,6 +35,8 @@ export default function RelationshipHierarchicalField({
   shouldUnregister,
   pool,
 }: RelationshipHierarchicalFieldProps) {
+  const commonParent = useCommonParentFilter(relationship, name);
+
   return (
     <FormField
       name={name}
@@ -75,6 +79,10 @@ export default function RelationshipHierarchicalField({
                     peer={peer}
                     value={value as RelationshipNode[] | null}
                     onChange={onChange}
+                    filterQuery={commonParent.filterQuery}
+                    hideExplore={commonParent.isActive}
+                    addNewInitialObject={commonParent.addNewInitialObject}
+                    enforceFilterQueryOnIdSearch={commonParent.isActive}
                   />
                 ) : (
                   <RelationshipHierarchicalInput
@@ -82,15 +90,21 @@ export default function RelationshipHierarchicalField({
                     peer={peer}
                     value={value as RelationshipNode | null}
                     onChange={onChange}
+                    filterQuery={commonParent.filterQuery}
+                    hideExplore={commonParent.isActive}
+                    addNewInitialObject={commonParent.addNewInitialObject}
+                    enforceFilterQueryOnIdSearch={commonParent.isActive}
                   />
                 )}
               </FormInput>
 
               {relationship.cardinality === "one" && pool && (
                 <PoolSelect
+                  name={name}
                   poolKind={pool.kind}
                   poolDefaultAllocatedObjectKind={pool.defaultAllocatedObjectKind}
                   selectedPoolId={selectedPoolId}
+                  value={fieldData}
                   onChange={onChange}
                 />
               )}

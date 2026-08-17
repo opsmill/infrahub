@@ -41,13 +41,24 @@ test.describe("Object hierarchy- Navigation", () => {
     await test.step("navigate using tree should not expand tree", async () => {
       await objectHierarchyTree.getByText("United States of America").click();
       await expect(page.getByText("NameUnited States of America")).toBeVisible();
-      await expect(page.getByText("Children5")).toBeVisible();
       await expect(
         objectHierarchyTree.getByRole("row", { name: "United States of America" })
       ).toContainClass("bg-neutral-100");
       await expect(
         objectHierarchyTree.getByRole("button", { name: "Expand United States of" })
       ).toBeVisible();
+    });
+
+    await test.step("hierarchical parent/children use the peer kind label, not Parent/Children", async () => {
+      // United States of America is a Country: its parent peer is a Continent and its children
+      // peers are Sites, so both relationships must render the peer kind label.
+      const objectDetails = page.getByTestId("object-details");
+      await expect(objectDetails.getByText("Continent", { exact: true })).toBeVisible();
+      await expect(objectDetails.getByText("Parent", { exact: true })).toHaveCount(0);
+
+      const childrenTab = page.locator('a[href*="/children"]');
+      await expect(childrenTab).toContainText("Site");
+      await expect(childrenTab).not.toContainText("Children");
     });
 
     await test.step("navigate on right panel should not change the tree", async () => {

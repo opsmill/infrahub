@@ -2,10 +2,11 @@ import { Button, Modal } from "@infrahub/ui";
 import { EyeIcon } from "lucide-react";
 import { DialogTrigger } from "react-aria-components";
 
-import type { components } from "@/shared/api/rest/types.generated";
 import { Row } from "@/shared/components/container";
 import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
 import { Badge } from "@/shared/components/ui/badge";
+
+import type { ComputedAttribute } from "@/entities/schema/domain/model/schema";
 
 import { SchemaKindDisplay } from "./styled";
 
@@ -13,7 +14,7 @@ export const ComputedAttributeDisplay = ({
   computedAttribute,
   onKindClick,
 }: {
-  computedAttribute?: components["schemas"]["ComputedAttribute-Output"] | null;
+  computedAttribute?: ComputedAttribute | null;
   onKindClick?: (kind: string) => void;
 }) => {
   if (!computedAttribute) {

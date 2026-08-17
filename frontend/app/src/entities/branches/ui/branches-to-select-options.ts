@@ -8,12 +8,12 @@ export const branchesToSelectOptions = (branches: BranchListItem[]) =>
       status: branch.status,
       sync_with_git: branch.sync_with_git,
       is_default: branch.is_default,
-      has_schema_changes: branch.has_schema_changes,
+      schema_differs_from_default_branch: branch.schema_differs_from_default_branch,
       created_at: branch.created_at,
     }))
     .sort((a, b) => {
-      // "main" always pins to the top.
-      if (a.name === "main") return -1;
-      if (b.name === "main") return 1;
+      // The default branch always pins to the top.
+      if (a.is_default) return -1;
+      if (b.is_default) return 1;
       return a.name.localeCompare(b.name);
     });
