@@ -17,8 +17,8 @@ Infrahub documentation is organized using the [Diataxis framework](https://diata
 
 | Question | Doc Type | See Guide |
 |----------|----------|-----------|
-| Teaching users to complete a specific task? | **Guide** | [guides/AGENTS.md](docs/guides/AGENTS.md) |
-| Explaining concepts or how something works? | **Topic** | [topics/AGENTS.md](docs/topics/AGENTS.md) |
+| Teaching users to complete a specific task? | **Guide** | [writing-a-guide.md](../dev/guides/docs/writing-a-guide.md) |
+| Explaining concepts or how something works? | **Topic** | [writing-a-topic.md](../dev/guides/docs/writing-a-topic.md) |
 | Providing reference information? | **Reference** | Auto-generated |
 | Walking through a complete learning scenario? | **Tutorial** | Diataxis framework |
 
@@ -26,9 +26,7 @@ Infrahub documentation is organized using the [Diataxis framework](https://diata
 
 - `docs/` – MDX content
   - `guides/` – How-to guides (task-oriented)
-    - `AGENTS.md` – **Specialized instructions for writing guides**
   - `topics/` – Explanations (understanding-oriented)
-    - `AGENTS.md` – **Specialized instructions for writing topics**
   - `reference/` – API/configuration reference
   - `tutorials/` – Learning tutorials
   - `media/` – Images and screenshots
@@ -76,6 +74,7 @@ For the complete style guide including terminology, see `docs/development/style-
 - **Imperative mood** for guides: "Click **New Branch**"
 - **Present tense**: "Infrahub uses branches to isolate changes"
 - **Professional but approachable**: Avoid "simple", "easy", or "just"
+- **Literal words**: much of the audience reads English as a second or third language. Avoid figurative phrasing — "carry" (for have), "lives on" (for is stored on), "walk" (for traverse), "reach for" (for use). Say the literal thing.
 
 ### Infrahub Terminology
 
@@ -95,12 +94,22 @@ Capitalize these Infrahub-specific terms when referring to the feature:
 ## Documentation Workflow
 
 1. **Choose documentation type** using the table above (if not specified)
-2. **Follow specialized guide** (guides/AGENTS.md or topics/AGENTS.md)
+2. **Follow specialized guide** (`dev/guides/docs/writing-a-guide.md` or `dev/guides/docs/writing-a-topic.md`)
 3. **Create the .mdx file** in the appropriate directory
 4. **Add to navigation** by editing `sidebars.ts` in the appropriate section
 5. **Lint before committing**: `uv run invoke docs.lint`
 6. **Build to verify**: `uv run invoke docs.build`
 7. **Serve for human verification**: `uv run invoke docs.serve`
+
+## Restructuring existing docs
+
+When restructuring, merging, or deleting existing pages (on any branch, not only the docs-revamp workflow):
+
+- **Inventory the old content.** Every claim, example, and section from a deleted page gets a home in the new set or an explicit drop decision — including when-to-use guidance and basic CRUD paths, not just the headline topics.
+- **Add redirects.** Every deleted or renamed published URL needs an entry in `docs/redirects-pending/` in the same PR.
+- **Close every spoke.** In hub+spokes feature docs, each spoke ends with a `## Next` section linking to adjacent spokes.
+
+The `migrate-feature-page` skill documents the full workflow.
 
 ## Boundaries
 
@@ -112,6 +121,9 @@ Capitalize these Infrahub-specific terms when referring to the feature:
 - Include language tags on code blocks
 - Choose the appropriate documentation type (guide vs. topic)
 - Define technical terms on first use
+- Verify factual claims (attribute kinds, GraphQL fields, defaults) against the code on the branch the PR targets — docs PRs frequently target a release branch whose features differ from the development branch; this applies doubly before acting on a bot review claim that something "does not exist"
+- When documenting marketplace items, verify each item actually resolves in the live catalog at <https://marketplace.infrahub.app>; if an item is planned but unpublished, get an explicit decision on release timing before referencing it
+- Prefer plain Markdown/MDX over custom React components in doc pages; before adding anything to `docs/src/components/`, check the existing components for reuse, and give a genuinely new component typed props (the docs package typechecks with `tsc`)
 
 ### Ask First
 
@@ -126,3 +138,4 @@ Capitalize these Infrahub-specific terms when referring to the feature:
 - Commit large unoptimized images
 - Skip alt text for images
 - Mix guide and topic content in the same document
+- Delete or rename a published docs page without adding a redirect entry in `docs/redirects-pending/` (see `docs/redirects-pending/README.md`)

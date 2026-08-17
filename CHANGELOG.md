@@ -11,6 +11,15 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.10.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.8) - 2026-08-14
+
+### Fixed
+
+- Fixed the proposed change Data diff tab crashing with `RangeError: Invalid array length` when the diff spans more than one page (300+ nodes). Each page also ships the ancestors of its own nodes as hierarchy context, so the same node could arrive several times; the duplicated entries corrupted the diff tree collection and crashed rendering. Each node is now kept once, preferring its changed entry when a page also delivered it as an unchanged placeholder. ([#10155](https://github.com/opsmill/infrahub/issues/10155))
+- Fixed `CoreNumberPool` allocation stalling on a value that already exists on the target kind but was created outside the pool. Previously the pool kept offering such a value, the attribute's uniqueness constraint rejected it, and because the failed allocation reserved nothing the pool re-offered the same value on every subsequent attempt, parking permanently at that value. When the target attribute is unique, the pool now skips values already present on the target and advances to the next free one, so pools can be declared over ranges that already contain data. Attributes that are not unique on their own (including per-relationship uniqueness constraints) are unaffected and remain fully allocatable. ([#10179](https://github.com/opsmill/infrahub/issues/10179))
+- Node and group mutation events no longer overflow the Prefect related-resources maximum after Prefect enlarges them. Events were truncated to exactly the configured maximum, and Prefect's events worker then appended its own run-context resources (flow run, task run, flow, deployment, work queue, work pool and one per flow-run tag) to the list in place, which skips the client-side validation. The enlarged event was refused by the Prefect API, which closes the event stream rather than dropping the single event. Events are now truncated to a budget that leaves room for that append. ([#10241](https://github.com/opsmill/infrahub/issues/10241))
+- Schema and graph migrations now retry transient database errors (such as deadlocks) on a fresh transaction instead of failing the migration, matching the retry behavior already applied to mutations and resolvers.
+
 ## [Infrahub - v1.10.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.7) - 2026-08-11
 
 ### Changed
