@@ -159,12 +159,13 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
             "partials/header.j2",
         }
 
+        # The Python transform declares one of its siblings through `watch.files`; the others
+        # sit in the same directory and stay out of the closure.
         assert transform_python.dependencies_complete.value is True
         assert set(transform_python.dependencies.value) == {
             ".infrahub.yml",
             "transforms/foo/foo.py",
             "transforms/foo/helpers.py",
-            "transforms/foo/__init__.py",
         }
 
     async def test_readme_edit_regenerates_nothing(
@@ -205,7 +206,7 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
         )
         assert selected == ["artifact-python"]
 
-    async def test_sibling_helper_edit_selects_via_package_floor(
+    async def test_watched_sibling_edit_selects_owning_definition(
         self,
         dataset: dict[str, Any],
         default_branch: Branch,
@@ -213,7 +214,7 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
         memory_cache: MemoryCache,
         workflow_recorder: WorkflowRecorder,
     ) -> None:
-        """A sibling file in the transform's package directory selects the owning definition."""
+        """A sibling the transform declared through `watch.files` selects the definition using it."""
         selected = await self._selected_definitions(
             dataset=dataset,
             default_branch=default_branch,
@@ -223,6 +224,29 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
             files_changed=["transforms/foo/helpers.py"],
         )
         assert selected == ["artifact-python"]
+
+    async def test_undeclared_sibling_edit_regenerates_nothing(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+    ) -> None:
+        """A module sitting beside the transform that it never declared dispatches no regeneration.
+
+        This is the shape that made a shared transform directory regenerate everything rooted
+        in it: co-location alone must not put a file in the closure.
+        """
+        selected = await self._selected_definitions(
+            dataset=dataset,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            memory_cache=memory_cache,
+            workflow_recorder=workflow_recorder,
+            files_changed=["transforms/foo/unused_sibling.py"],
+        )
+        assert selected == []
 
     async def test_jinja_partial_edit_selects_via_transitive_include(
         self,

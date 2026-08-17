@@ -191,6 +191,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     def default_branch(self) -> str:
         return self.default_branch_name or registry.default_branch
 
+    @abstractmethod
+    async def resolve_checkout_ref(self) -> str:
+        """Return the git ref the primary clone has to be checked out on, reading it from the graph if needed."""
+        raise NotImplementedError()
+
     @property
     def legacy_directory_root(self) -> Path:
         """Return the legacy path to the root directory for this repository."""
@@ -648,11 +653,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     async def create_branch_in_graph(self, branch_name: str) -> BranchData:
         """Create a new branch in the graph.
 
+        The branch originates from a git repository, so it must sync with git: merging it, running
+        its repository checks and generating its artifacts are all gated on that flag. It is passed
+        explicitly rather than left to the client default, which does not sync with git.
+
         NOTE We need to validate that we are not gonna end up with a race condition
         since a call to the GraphQL API will trigger a new RPC call to add a branch in this repo.
         """
         # TODO need to handle the exception properly
-        branch = await self.sdk.branch.create(branch_name=branch_name)
+        branch = await self.sdk.branch.create(branch_name=branch_name, sync_with_git=True)
 
         log.debug(f"Branch {branch_name} created in the Graph", repository=self.name, branch=branch_name)
         return branch

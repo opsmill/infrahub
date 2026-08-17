@@ -21,6 +21,7 @@ from infrahub.core.utils import count_relationships, get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
+from infrahub.profiles.node_applier import NodeProfilesApplier
 
 
 async def test_node_init(
@@ -946,8 +947,6 @@ async def test_node_create_with_object_template_with_profile(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """Test creating a device from a template with profile application."""
-    from infrahub.profiles.node_applier import NodeProfilesApplier
-
     # Define schemas
     DUMMY = NodeSchema(
         name="Dummy",
@@ -1058,8 +1057,6 @@ async def test_node_create_with_object_template_with_profile_and_components(
     - Interface templates can have profiles
     - Profiles are applied correctly to interface templates
     """
-    from infrahub.profiles.node_applier import NodeProfilesApplier
-
     # Define schemas
     INTERFACE = NodeSchema(
         name="Interface",

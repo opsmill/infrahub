@@ -59,28 +59,29 @@ const sidebars: SidebarsConfig = {
       collapsible: false,
       collapsed: false,
       items: [
-        { type: 'doc', id: 'academy/academy', label: 'About Academy' },
         {
           type: 'category',
-          label: 'Getting Started',
-          link: { type: 'generated-index' },
+          label: 'Infrahub Labs',
+          link: { type: 'doc', id: 'learn/labs/overview' }, // hub
           items: [
-            'academy/getting-started/infrahub-introduction',
-            'academy/getting-started/deploy-first-configuration',
+            { type: 'doc', id: 'learn/labs/fundamentals-to-expert', label: 'Infrahub: Fundamentals to Expert' },
+            { type: 'doc', id: 'learn/labs/infrahub-introduction', label: 'First Tour of Infrahub' },
+            { type: 'doc', id: 'learn/labs/schema-deep-dive', label: 'Schema Deep Dive' },
+            'learn/labs/deploy-first-configuration',
           ],
         },
         {
           type: 'category',
           label: 'Tutorials',
-          link: { type: 'generated-index' },
+          link: { type: 'doc', id: 'learn/tutorials/overview' }, // hub
           items: [
-            'academy/tutorials/build-your-first-schema',
-            'academy/tutorials/groups',
-            'academy/tutorials/build-a-check',
-            'academy/tutorials/transformations/build-a-jinja2-transformation',
-            'academy/tutorials/transformations/build-a-python-transformation',
-            'academy/tutorials/generators/build-your-first-generator',
-            'academy/tutorials/generators/build-chained-generators',
+            'learn/tutorials/build-your-first-schema',
+            'learn/tutorials/groups',
+            'learn/tutorials/build-a-check',
+            'learn/tutorials/transformations/build-a-jinja2-transformation',
+            'learn/tutorials/transformations/build-a-python-transformation',
+            'learn/tutorials/generators/build-your-first-generator',
+            'learn/tutorials/generators/build-chained-generators',
           ],
         },
       ],
@@ -148,10 +149,11 @@ const sidebars: SidebarsConfig = {
           label: 'Objects',
           link: { type: 'doc', id: 'objects/overview' }, // hub
           items: [
-            { type: 'doc', id: 'objects/manage-from-cli', label: 'Manage objects from the command line' },
+            { type: 'doc', id: 'objects/create-objects', label: 'Create objects' },
+            { type: 'doc', id: 'objects/manage-from-cli', label: 'Manage objects with infrahubctl' },
+            { type: 'doc', id: 'objects/load-from-yaml', label: 'Load data using YAML file' },
             { type: 'doc', id: 'objects/convert-object-kind', label: 'Convert object kind' },
             { type: 'doc', id: 'objects/metadata', label: 'Metadata & lineage' },
-            { type: 'doc', id: 'objects/load-from-yaml', label: 'Load data in bulk using YAML file' },
           ],
         },
         {

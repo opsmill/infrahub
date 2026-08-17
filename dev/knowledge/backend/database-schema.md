@@ -248,6 +248,8 @@ Outbound on `n1`, inbound on `n2`.
 - **Same branch**: Set `to` property to deletion time
 - **User branch deleting default branch data**: Add `status="deleted"` edge with `from` = deletion time
 
+These two mechanisms are exclusive. A `status="deleted"` edge is terminal: it always keeps `to: NULL`, never receives a `to` timestamp, and is never re-opened. `to` is only ever set to close a `status="active"` edge.
+
 ### Branch Deletion
 
 Hard-deletes all edges on the branch and the `Branch` vertex.
@@ -356,7 +358,28 @@ CALL (peer, rl) {
 - **Order then filter**: Always `ORDER BY ... LIMIT 1` first, then `WHERE status = "active"` to handle the case where the latest edge is a deletion
 - **No `to` timestamp**: `to IS NULL` ensures the edge is currently valid (not expired)
 
+These filters apply to *any* query whose contract mentions "active" or "current" state — detection/audit queries and test helpers included; an unfiltered edge match silently counts tombstoned rows as live.
+
+## Transaction Retry
+
+Neo4j rejects some writes with errors that are safe to replay on a fresh transaction (a lock contention deadlock, or an entity that a concurrent transaction removed mid-statement). Infrahub retries these at the transaction layer with the `retry_db_transaction` decorator.
+
+`retry_db_transaction(name=...)` wraps an `async` method that owns its transaction. On a retriable error it re-runs the whole method after an exponential backoff with jitter, up to `retry_limit` attempts; a non-retriable error propagates immediately. The retriable set is defined by `is_retriable_db_error` in `database/__init__.py`:
+
+| Error | Retriable |
+|-------|-----------|
+| `neo4j.exceptions.TransientError` (deadlock, lock timeout) | Yes |
+| `ClientError` with code `Neo.ClientError.Statement.EntityNotFound` | Yes |
+| Any other exception | No |
+
+Backoff is configured under the `database` settings (`INFRAHUB_DB_RETRY_*` environment variables): `retry_limit`, `retry_base_delay`, `retry_max_delay`, `retry_jitter_max`.
+
+**The retry must run at the transaction owner.** A method decorated with `retry_db_transaction` opens the transaction it retries. Code running *inside* that transaction (a query loop, a nested helper) must let a retriable error propagate to the owner rather than catching it and returning a failed result: a caught error still leaves the transaction poisoned, so the commit fails with a non-retryable `TransactionError` and the replay never happens. Only paths that run outside any transaction (they skip the transaction wrapper and have no owner to replay them) record the error as a failure instead. Gate that choice on `db.is_transaction`.
+
+This transaction-layer retry is distinct from Prefect task retry (see [Async Tasks — Failure handling](async-tasks.md#failure-handling)): a task retry re-runs the failed task with no delay between attempts, so a batch of concurrent tasks that deadlock on the same nodes retry at the same time and deadlock again. Transient database errors belong to the transaction-layer retry, which spaces replays with backoff and jitter so contending writers separate.
+
 ## See Also
 
 - [Query Pattern](query-pattern.md) - How to write database queries
 - [Architecture](architecture.md) - Backend architecture overview
+- [Creating Graph Migrations](../../guides/backend/creating-migrations.md) - Transaction-owning migrations and retry

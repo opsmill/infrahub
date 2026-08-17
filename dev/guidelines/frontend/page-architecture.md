@@ -2,7 +2,7 @@
 
 > Part of: `dev/guidelines/frontend/`
 
-Rules for structuring page components and the forms / panels they contain. These exist because a recent feature (see PR #9099, path-traversal) shipped a 500+ line page that owned URL sync, clipboard helpers, formatters, mode routing, and rendering simultaneously, and duplicated `useState` between the page and its selector subcomponents.
+Rules for structuring page components and the forms / panels they contain. These exist because a recent feature shipped a 500+ line page that owned URL sync, clipboard helpers, formatters, mode routing, and rendering simultaneously, and duplicated `useState` between the page and its selector subcomponents.
 
 ## State ownership
 
@@ -82,7 +82,7 @@ Move these out of the page component the moment you write them:
 
 ## Component contracts: design for both callers from the start
 
-When two modes/features will share a visualization or panel, design the contract for both *before* shipping the first one. Example from PR #9099: a graph component shipped with `destination` as a required prop; when a second mode arrived without a single destination, the only fix was fabricating a synthetic value — a smell that traces back to the original prop design.
+When two modes/features will share a visualization or panel, design the contract for both *before* shipping the first one. Example: a graph component shipped with `destination` as a required prop; when a second mode arrived without a single destination, the only fix was fabricating a synthetic value — a smell that traces back to the original prop design.
 
 Rule: if a second caller is in the spec at all, the prop API must support it on the first iteration. Make optional what is genuinely optional.
 
@@ -106,9 +106,9 @@ For any *new* offset-paginated list that supports both sorting and pagination, p
 
 | Anti-pattern | Replacement |
 |---|---|
-| 500+ line page mixing URL sync, formatters, clipboard, modes, rendering (PR #9099) | Split into mode components + `utils.ts` + dedicated form |
-| Two selectors each owning a copy of the same `sourceId/maxDepth/...` via `useState` (PR #9099) | Single form (or controlled inputs from page); no `useState` mirror |
-| Mapper fabricating a synthetic destination to satisfy a required prop (PR #9099) | Make the prop optional on the visualization API |
+| 500+ line page mixing URL sync, formatters, clipboard, modes, rendering | Split into mode components + `utils.ts` + dedicated form |
+| Two selectors each owning a copy of the same `sourceId/maxDepth/...` via `useState` | Single form (or controlled inputs from page); no `useState` mirror |
+| Mapper fabricating a synthetic destination to satisfy a required prop | Make the prop optional on the visualization API |
 | Two selectors with ~50% duplicated UI | Extract a `KindMultiSelect` / shared block once both exist |
 | Hand-rolling `gql` + `graphqlClient.query` in a `ui/` file | Use the entity layer (`useGetObject`, `ui/queries/`) |
 | Hardcoding `HIDDEN_NAMESPACES` on the client | Backend-authoritative; surface via schema if needed |

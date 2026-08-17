@@ -10,7 +10,7 @@ from infrahub.database import InfrahubDatabase
 @pytest.fixture
 def client(nats: dict[int, int] | None, redis: dict[int, int] | None) -> TestClient:
     # In order to mock some methods later we can't load app by default because it will automatically load all import in main.py as well
-    from infrahub.server import app
+    from infrahub.server import app  # noqa: PLC0415
 
     return TestClient(app)
 

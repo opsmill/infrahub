@@ -146,6 +146,19 @@ The goal of this phase is to discover whether the CI is currently passing, faili
 
 For each failed run, list its failed jobs and work out how to reproduce each one locally.
 
+**Failure outside the PR's diff — don't trust a stale "commits behind" count.** A failure in a
+file or config the PR's diff doesn't touch may be inherited from the base — but the "how far
+behind" distance is a snapshot, not a durable property. It can go stale the moment the base gets
+fixed, including while you're escalating or waiting on a reviewer reply — a branch that was
+genuinely 0 commits behind an hour ago is not proof it still is now.
+
+- **Re-fetch and recompute immediately before deciding**, never reuse a distance computed earlier
+  in the session: `git fetch origin && git rev-list --count HEAD..origin/<base-branch>`.
+- **Reproduce against the base's current tip**, not the branch's original merge-base — if the
+  failure is gone there, a rebase is the fix, not an escalation.
+- A reviewer's "this needs a rebase" is a cue to re-verify, not a claim to argue against with a
+  distance computed earlier — that number may no longer be true.
+
 1. **List failed jobs for each failed run:**
 
    ```bash
