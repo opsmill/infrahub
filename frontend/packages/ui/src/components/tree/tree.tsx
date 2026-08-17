@@ -50,11 +50,11 @@ export interface TreeItemProps extends AriaTreeItemProps {}
 export function TreeItem({ className, ...props }: TreeItemProps) {
   return (
     <AriaTreeItem
-      className={composeAriaClassName(className, (resolvedClassName) =>
+      className={composeAriaClassName(
+        className,
         cn(
           focusVisibleStyle,
           "cursor-pointer rounded-md border border-transparent text-sm text-subtle hover:bg-highlight hover:text-highlight-foreground",
-          resolvedClassName,
         ),
       )}
       {...props}
