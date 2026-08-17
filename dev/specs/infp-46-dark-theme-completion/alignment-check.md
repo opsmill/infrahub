@@ -14,6 +14,8 @@ decisions. **The feature got smaller.** Nothing was added.
 | Flag defaults from dev config, **not** from the running version | Replaced the PEP 440 pre-release derivation. "Pre-release" is a property of a version, so it caught customer betas too — broader than "the deployments we run". Follows the convention both existing experimental settings already use. |
 | No removal date for the flag | Recorded as knowingly open-ended rather than left unstated. ⚠ `value_db_index` sits in the same settings class today as a dead flag with a deprecation notice — a realised failure mode. |
 | No organisation-wide theme default | FR-003 was an addition made during specification, never requested. With the feature flag-gated to the dev stack it has no user. Backend gains the scope for free; only the interface is deferred. |
+| The flag goes in `development/docker-compose.yml` **only** | The root `docker-compose.yml` does not get it, unlike its two experimental siblings there. Decided, not an oversight — a deployment brought up from the root file therefore cannot enable dark via the host env var, which is the intent while dark is alpha. |
+| Dogfooding defects are reported over Slack | Closes the critique's P3. Naming the destination is what makes "no new defects were found" checkable rather than an absence of evidence. |
 
 **Removed by this revision**: `core/preferences/theme.py`, PEP 440 version parsing, the
 `default_theme` config field and its payload entry, the organisation-scope interface, and the
@@ -40,15 +42,15 @@ The requester reviewed the Edge Cases section and directed six changes. All are 
 
 **Governing principle, now stated explicitly in the spec**: dark is never reached by inference. A
 user arrives at it only by choosing dark, or by choosing match-system on a dark machine. That single
-rule decides both defaults — production is light rather than system-following, and the pre-paint
+rule decides both defaults — flag-off is light rather than system-following, and the pre-paint
 script's empty-cache fallback is light rather than `prefers-color-scheme`.
 
-The mirror-image rule governs the other default: non-production forces dark *ignoring* the system,
-because following it would leave every engineer on a light machine out of the dogfooding.
+The mirror-image rule governs the other default: with the flag on, dark is forced *ignoring* the
+system, because following it would leave every engineer on a light machine out of the dogfooding.
 
-**Residual limitation, unchanged from the original design**: a first-ever visit to a non-production
-deployment paints light for one frame before correcting to dark. Production is unaffected, since
-light is already its default.
+**Residual limitation, unchanged from the original design**: a first-ever visit to a flag-enabled
+deployment paints light for one frame before correcting to dark. Flag-off deployments are unaffected,
+since light is already the final answer there.
 
 ## Source
 
@@ -101,7 +103,7 @@ finding was a genuine fidelity loss and has been corrected.
 | Minor | added | critique | FR-021, SC-009 | A contrast requirement, added by the engineering/product critique. Justified for a feature whose entire subject is color. (Numbered FR-022 when added; renumbered to FR-021 in the revision above, when semantic-color distinguishability moved out of scope.) |
 | Minor | added | not in source | T047 | An automated guard so the token cleanup does not regress. Follows from SC-004's "standing property" wording rather than from the ask. |
 | Minor | added | house rules | T057, T058 | Changelog fragment and user-facing documentation. Required by `AGENTS.md` for a user-facing feature, not by the handover. |
-| Open | unresolved | Item 7 — "for the coming weeks" | SC-008 | The dogfooding period has no stated length and no exit criterion, and nothing says where the defects it surfaces are collected. Raised in the critique as P2/P3 and deliberately **not** invented — it is a product decision for whoever owns the period. |
+| Resolved | — | Item 7 — "for the coming weeks" | SC-008, US2 | Raised in the critique as P2/P3 and left open at the time. Both halves now answered by the requester: the period is bounded by a feature flag rather than a date or an exit criterion, and defects found during it are reported over Slack. SC-008 was rewritten to something countable in the meantime. |
 
 ### On item 7's mechanism
 

@@ -47,8 +47,8 @@ timezone settings, and picks between light, dark, and matching their operating s
 applies immediately, survives a reload, and follows them to another browser or machine because it is
 stored with their account rather than in one browser.
 
-Because the dark palette is known to still contain visual defects, the dark choice is presented as
-explicitly pre-release so a user opting in knows what they are accepting.
+Because the dark palette is known to still contain visual defects, the dark choice is tagged **alpha**
+so a user opting in knows what they are accepting.
 
 **Why this priority**: This is the keystone. Every other story either binds a surface to "the
 selected theme" or adjusts how that theme looks — none of them are meaningful until a selected theme
@@ -93,6 +93,9 @@ have no route into the alpha palette at all.
 
 **Why this priority**: This is the stated near-term goal — dogfooding dark for the coming weeks — and
 it is what keeps an unfinished theme away from anyone who has not opted into running it.
+
+Defects found this way are reported over Slack. Naming the destination is what makes "no new defects
+were found" a claim someone can check rather than an absence of evidence.
 
 **Independent Test**: Start the dev stack with no per-engineer setup and observe dark; start with the
 flag off and observe light with no theme setting present; in both, confirm a stored preference is
