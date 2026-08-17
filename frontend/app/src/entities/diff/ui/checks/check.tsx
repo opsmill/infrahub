@@ -82,7 +82,7 @@ export const Check = ({ id }: tCheckProps) => {
 
   if (error) {
     return (
-      <div className={"flex flex-col rounded-md border-l-4 bg-white p-2 dark:bg-stone-900"}>
+      <div className={"flex flex-col rounded-md border-l-4 bg-content p-2"}>
         <ErrorScreen message="Something went wrong when fetching the check details" />
       </div>
     );
@@ -135,7 +135,7 @@ export const Check = ({ id }: tCheckProps) => {
   return (
     <div
       className={classNames(
-        "flex min-w-0 flex-col rounded-md border border-l-4 bg-gray-50 p-2 dark:bg-white/5",
+        "flex min-w-0 flex-col rounded-md border border-l-4 bg-content-muted p-2",
         getCheckBorderColor(severity?.value)
       )}
     >

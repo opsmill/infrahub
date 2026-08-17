@@ -3,6 +3,7 @@ import { GraphiQL, HISTORY_PLUGIN } from "graphiql";
 import { useQueryState } from "nuqs";
 
 import { QSP } from "@/shared/config/qsp";
+import { useResolvedTheme } from "@/shared/hooks/use-resolved-theme";
 import { parallelModePlugin } from "@/shared/libs/graphiql/parallel-mode-plugin";
 import { useGraphiqlFetcher } from "@/shared/libs/graphiql/use-graphiql-fetcher";
 
@@ -14,6 +15,10 @@ const plugins = [HISTORY_PLUGIN, explorerPlugin(), parallelModePlugin];
 export function Component() {
   const [query] = useQueryState(QSP.QUERY);
   const fetcher = useGraphiqlFetcher();
+  // Forcing the resolved palette rather than "system" keeps the sandbox from running its own
+  // prefers-color-scheme check, which could disagree with the app around it. It also hides
+  // GraphiQL's own theme picker, leaving one place to change the theme.
+  const theme = useResolvedTheme();
 
   return (
     <GraphiQL
@@ -21,7 +26,7 @@ export function Component() {
       defaultEditorToolsVisibility
       initialQuery={query ?? undefined}
       plugins={plugins}
-      forcedTheme="light"
+      forcedTheme={theme}
       fetcher={fetcher}
     />
   );

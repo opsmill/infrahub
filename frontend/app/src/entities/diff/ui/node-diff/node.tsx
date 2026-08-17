@@ -79,7 +79,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
             }
             className="rounded-md border bg-gray-100 dark:bg-white/5"
           >
-            <div className="divide-y border-t bg-white dark:bg-stone-900">
+            <div className="divide-y border-t bg-content">
               <div className="grid grid-cols-3 pl-8">
                 <Badge variant="green" className="col-start-2 col-end-3 bg-transparent">
                   <Icon icon="mdi:layers-triple" className="mr-1" /> {sourceBranch}

@@ -82,18 +82,15 @@ const DiffDisplay = ({
       <div className={classNames("group grid grid-cols-3 pl-8 font-normal text-xs", className)}>
         {title}
 
-        <div className="bg-white dark:bg-stone-900">
+        <div className="bg-content">
           <div
-            className={classNames(
-              "flex h-full items-center bg-gray-50 p-2 dark:bg-white/5",
-              leftClassName
-            )}
+            className={classNames("flex h-full items-center bg-content-muted p-2", leftClassName)}
           >
             {left}
           </div>
         </div>
 
-        <div className="bg-white dark:bg-stone-900">
+        <div className="bg-content">
           <div
             className={classNames(
               "flex h-full items-center p-2 font-medium",

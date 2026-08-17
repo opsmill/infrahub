@@ -1,4 +1,4 @@
-import type { ResolvedTheme } from "@/shared/context/theme-context";
+import type { ResolvedTheme } from "@/shared/hooks/use-resolved-theme";
 
 import type { ThemeChoice } from "@/entities/preferences/domain/model/theme";
 

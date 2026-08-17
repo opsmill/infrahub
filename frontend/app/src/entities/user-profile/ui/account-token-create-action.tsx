@@ -70,7 +70,7 @@ export function AccountTokenCreateAction() {
           </Row>
         </Col>
 
-        <Row className="justify-end bg-gray-50 p-3 dark:bg-white/5">
+        <Row className="justify-end bg-content-muted p-3">
           <Button variant="primary" onPress={() => setNewToken("")}>
             Confirm
           </Button>
