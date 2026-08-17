@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any
 
 import pytest
 from structlog.testing import capture_logs
@@ -38,12 +37,18 @@ ATTRIBUTE = "pitch"
 KEY = (OWNER_KIND, ATTRIBUTE)
 
 
-def _read_set(**kwargs: Any) -> TransformReadSet:
-    defaults = {
-        "read_kinds": frozenset({OWNER_KIND, PEER_KIND}),
-        "read_fields": {OWNER_KIND: frozenset({"name"}), PEER_KIND: frozenset({"description"})},
-    }
-    return TransformReadSet(**{**defaults, **kwargs})
+def _read_set(
+    read_kinds: frozenset[str] | None = None,
+    read_fields: dict[str, frozenset[str]] | None = None,
+    depends_on_everything: bool = False,
+) -> TransformReadSet:
+    return TransformReadSet(
+        read_kinds=frozenset({OWNER_KIND, PEER_KIND}) if read_kinds is None else read_kinds,
+        read_fields={OWNER_KIND: frozenset({"name"}), PEER_KIND: frozenset({"description"})}
+        if read_fields is None
+        else read_fields,
+        depends_on_everything=depends_on_everything,
+    )
 
 
 def _python_target() -> AffectedTarget:
@@ -60,19 +65,19 @@ def _coalesced(*targets: AffectedTarget) -> CoalescedRecompute:
     return CoalescedRecompute(branch="main", targets=frozenset(targets))
 
 
-_DEFAULT = object()
+# An empty index is a meaningful case, so it must not be conflated with "not supplied".
+_DEFAULT: dict[tuple[str, str], TransformReadSet] = {}
 
 
 def _resolver(
     *,
-    index: dict[tuple[str, str], TransformReadSet] | object = _DEFAULT,
+    index: dict[tuple[str, str], TransformReadSet] | None = None,
     readers: dict[str, frozenset[str]] | None = None,
     readers_at: dict[str, frozenset[str]] | None = None,
     failing_index: bool = False,
     failing_lookup: bool = False,
 ) -> tuple[NarrowingPythonTargetResolver, RecordingSubscriberLookup | FailingSubscriberLookup]:
-    # An empty index is a meaningful case, so it must not be conflated with "not supplied".
-    resolved_index = {KEY: _read_set()} if index is _DEFAULT else index
+    resolved_index = {KEY: _read_set()} if index is None else index
     read_field_index = FailingReadFieldIndex() if failing_index else RecordingReadFieldIndex(index=resolved_index)
     lookup = (
         FailingSubscriberLookup()

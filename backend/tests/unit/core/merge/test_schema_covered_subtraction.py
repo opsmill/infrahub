@@ -15,6 +15,7 @@ from infrahub.core.merge.recompute_coalescing import (
     MergeChange,
     MergeRecomputeCoordinator,
     ReaderLookup,
+    RecomputeFamily,
     _drop_schema_covered,
 )
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -38,9 +39,9 @@ def _schema_branch() -> SchemaBranch:
     return schema_branch
 
 
-def _target(family: str, attribute_name: str) -> AffectedTarget:
+def _target(family: RecomputeFamily, attribute_name: str) -> AffectedTarget:
     return AffectedTarget(
-        family=family,  # type: ignore[arg-type]
+        family=family,
         target_kind=PROFILE_NODE_KIND,
         attribute_name=attribute_name,
         reads_across_relationship=True,

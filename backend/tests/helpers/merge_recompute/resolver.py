@@ -73,7 +73,7 @@ class FailingSubscriberLookup:
     async def readers_of(
         self, *, node_ids: frozenset[str], branch: str, at: Timestamp | None
     ) -> dict[str, frozenset[str]]:
-        self.calls.append(node_ids)
+        self.calls.append(LookupCall(node_ids=node_ids, at=at))
         raise LookupUnavailableError("subscriber lookup unavailable")
 
 

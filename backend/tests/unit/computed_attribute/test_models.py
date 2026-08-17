@@ -3,7 +3,8 @@ from collections.abc import Iterator
 from datetime import timedelta
 
 import pytest
-from prefect.events.schemas.automations import Automation, EventTrigger, Posture
+from prefect.events.schemas.automations import Automation, Posture
+from prefect.events.schemas.automations import EventTrigger as PrefectEventTrigger
 
 from infrahub import config
 from infrahub.computed_attribute.constants import (
@@ -21,6 +22,7 @@ from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
+from infrahub.trigger.models import EventTrigger
 
 
 @pytest.fixture
@@ -36,9 +38,7 @@ def test_python_automations_ignore_a_merge_when_the_pass_covers_it() -> None:
 
     Leaving the automation open to them is the per-node fan-out this feature removes.
     """
-    event_trigger = EventTrigger()
-    # Assigned as a plain dict, the way every trigger builder in this module builds it.
-    event_trigger.match = {"infrahub.node.kind": "TestingTShirt"}
+    event_trigger = EventTrigger(match={"infrahub.node.kind": "TestingTShirt"})
 
     _restrict_to_live_origin(event_trigger)
 
@@ -48,9 +48,7 @@ def test_python_automations_ignore_a_merge_when_the_pass_covers_it() -> None:
 @pytest.mark.usefixtures("coalescing_disabled")
 def test_python_automations_stay_open_to_every_origin_when_the_switch_is_off() -> None:
     """Turning the switch off has to give back today's behaviour, automations included."""
-    event_trigger = EventTrigger()
-    # Assigned as a plain dict, the way every trigger builder in this module builds it.
-    event_trigger.match = {"infrahub.node.kind": "TestingTShirt"}
+    event_trigger = EventTrigger(match={"infrahub.node.kind": "TestingTShirt"})
 
     _restrict_to_live_origin(event_trigger)
 
@@ -83,9 +81,9 @@ def _build_schema(
 
 
 def generate_automation(
-    name: str, description: str = "", trigger: EventTrigger | None = None, actions: list | None = None
+    name: str, description: str = "", trigger: PrefectEventTrigger | None = None, actions: list | None = None
 ) -> Automation:
-    default_trigger = EventTrigger(
+    default_trigger = PrefectEventTrigger(
         posture=Posture.Reactive,
         expect={"infrahub.node.*"},
         within=timedelta(0),
