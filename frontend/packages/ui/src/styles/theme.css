@@ -21,6 +21,11 @@
 
   --accent: #087895;
 
+  /* Marks the element the user is currently acting on: an open navigation menu, a column being
+     sorted or filtered. Each theme needs its own end of the ramp to clear WCAG AA against its own
+     background, so a single shade cannot serve both. */
+  --active: var(--color-indigo-700);
+
   --danger: var(--color-rose-700);
   --danger-surface: --alpha(var(--color-rose-500) / 15%);
 
@@ -97,6 +102,8 @@
   --ring-halo: --alpha(var(--ring) / 25%);
 
   --accent: #a7d9e6;
+
+  --active: var(--color-indigo-400);
 
   --danger: var(--color-rose-400);
   --danger-surface: --alpha(var(--color-rose-400) / 20%);
@@ -191,6 +198,7 @@
   --color-ring-halo: var(--ring-halo);
 
   --color-accent: var(--accent);
+  --color-active: var(--active);
 
   --color-danger: var(--danger);
   --color-danger-surface: var(--danger-surface);
