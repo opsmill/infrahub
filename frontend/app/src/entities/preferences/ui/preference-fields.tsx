@@ -128,13 +128,8 @@ export function DateFormatField({
         </div>
         <div className="min-w-0 flex-1 truncate">
           {selected && (
-<<<<<<< HEAD
             <p id={exampleId} className="truncate text-foreground-muted text-xs">
-              Example: {formatDateFormatExample(selected, now)}
-=======
-            <p id={exampleId} className="truncate text-gray-500 text-xs">
               Example: {example(selected)}
->>>>>>> origin/release-1.11
             </p>
           )}
         </div>
