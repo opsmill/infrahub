@@ -105,17 +105,20 @@ uv run python -c "import importlib.metadata as m; from packaging.version import 
 
 A local checkout reports something like `1.11.0b2.dev134+geb5acb009 True`.
 
-1. As a user with **no** stored theme, load the application: dark, regardless of your system setting.
+1. As a user with **no** stored theme, load the application: dark. Then set your operating system to
+   light and reload — still dark. The non-production default ignores the system deliberately, or an
+   engineer on a light machine would never dogfood it.
 2. Confirm `GET /api/config` returns `default_theme: "dark"` and does **not** include a version.
 3. Set the operator override to `light`, restart, reload: light — the override beat the version.
 4. Set a personal preference, then flip the override: the personal preference still wins and its
    stored value is unchanged.
-5. Clear your browser storage and reload with the operating system in dark: the first paint is dark
-   with nothing cached — the cold-start path resolving from `prefers-color-scheme`.
+5. Clear browser storage, set the operating system to **dark**, and reload: the first paint is
+   **light**, then corrects to dark. Both halves matter — light because a defaulted user must not
+   reach the alpha palette by inference, and the correction because the deployment default is dark.
 
 To check the release path without cutting a release, exercise the resolution function directly with
-`1.11.0` in a unit test — it must return `system`, not `light` — rather than trying to fake the
-deployment's version.
+`1.11.0` in a unit test rather than trying to fake the deployment's version. On production the
+equivalent check is: system set to dark, no stored preference → the application stays **light**.
 
 ### US3 — GraphQL sandbox
 

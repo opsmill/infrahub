@@ -181,11 +181,12 @@ The foundation. Everything else consumes the resolved value it produces.
    ⚠ It runs before everything and blocks rendering, so it must fail safe. `localStorage` access
    **throws** when storage is disabled or unavailable (Safari private browsing), and an uncaught
    throw here degrades the whole load for a cosmetic feature — wrap it in `try`/`catch` and fall
-   through to `prefers-color-scheme`. Validate the stored string against the known set before applying
-   it rather than using it directly as a class name.
-   ⚠ The empty-cache fallback is `prefers-color-scheme`, **not** light. Because the production
-   deployment default is itself `system`, that makes a cold start correct rather than merely
-   tolerable — the cache-miss path and the authoritative value agree.
+   through to light. Validate the stored string against the known set before applying it rather than
+   using it directly as a class name.
+   ⚠ The empty-cache fallback is **light**, not `prefers-color-scheme`. Consulting the system there
+   would put a dark-OS user into the alpha palette before any preference has been read. The cost is
+   one corrected frame on a first-ever visit to a non-production deployment; production is correct
+   because light is already its default.
    ⚠ No Content-Security-Policy is configured today, so the inline script is fine. If one is ever
    added it needs a nonce or hash, or the first paint silently reverts to light.
 8. **Preference field** — a `Combobox` matching the existing fields, with the pre-release marker on
@@ -197,11 +198,12 @@ The foundation. Everything else consumes the resolved value it produces.
 
 ### Phase B — Non-production default (US2) · P1
 
-1. `core/preferences/theme.py` — pure `(version: str, override) → "light" | "dark" | "system"`.
-   Pre-release → `dark`; otherwise → `system`.
-2. `ExperimentalFeaturesSettings.default_theme: Literal["light","dark","system"] | None`. ⚠ The
-   `| None` is load-bearing: "not configured" must stay distinguishable from every configured value
-   — see [contracts/rest-config.md](./contracts/rest-config.md).
+1. `core/preferences/theme.py` — pure `(version: str, override) → "light" | "dark"`. Pre-release →
+   `dark`; otherwise → `light`. ⚠ Never returns `"system"`: a defaulted user must not reach the alpha
+   palette by inference, and a system-following non-production default would defeat the dogfooding.
+2. `ExperimentalFeaturesSettings.default_theme: Literal["light","dark"] | None`. ⚠ The `| None` is
+   load-bearing: "not configured" must stay distinguishable from every configured value — see
+   [contracts/rest-config.md](./contracts/rest-config.md).
 3. `ConfigAPI.default_theme`; regenerate the OpenAPI schema and frontend REST types.
 4. Client substitutes it when the effective preference resolves with source `DEFAULT`.
 5. Pin the theme explicitly in both end-to-end suites so they stop depending on the build's version.

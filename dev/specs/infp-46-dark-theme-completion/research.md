@@ -46,13 +46,16 @@ INFP-566 dynamic-versions work. Verified against the running build:
 | `1.12.0.dev5+g1a2b3c` (dev build) | `True` | dark |
 | `1.11.0b2` (beta) | `True` | dark |
 | `1.11.1rc1` (release candidate) | `True` | dark |
-| `1.11.0` (release) | `False` | **system** |
+| `1.11.0` (release) | `False` | light |
 
-The production default is `system` rather than a fixed palette — specified directly by the requester.
-A deployment with no opinion about a particular user defers to that user's browser setting; only
-non-production overrides that, deliberately, so the team sees dark whatever their operating system
-says. The trade this accepts is recorded in the spec's Assumptions: on production, a user whose
-system is dark reaches the alpha palette without explicitly choosing it.
+⚠ Neither default consults the operating system, and both directions are deliberate. Production stays
+light because dark is alpha and must be reached only by an explicit choice — deferring to the system
+would put dark-OS users into it by inference. Non-production forces dark because following the system
+would leave every engineer on a light machine out of the dogfooding, which is that default's whole
+purpose.
+
+An intermediate revision defaulted production to `system` and was withdrawn once that first
+consequence was made explicit.
 
 This needs no configuration for the common case: every build the team runs day to day carries a
 `.devN`/`bN`/`rcN` segment, and every published release does not. The operator override (FR-012)
@@ -95,17 +98,17 @@ deployment default on the config payload). Precedence inside the inline script:
 
 1. Mirrored resolved theme, if present.
 2. Mirrored raw choice of "system" → resolve against `prefers-color-scheme` at that instant.
-3. Nothing mirrored → resolve against `prefers-color-scheme`.
+3. Nothing mirrored → light.
 
-**Step 3 is why the cold start is correct, not merely tolerable.** Because the production deployment
-default is itself `system`, an empty cache and a populated one give the same answer for a
-never-visited production deployment — the fallback and the authoritative value agree instead of
-fighting. An earlier draft defaulted step 3 to light and accepted a first-visit flash as a scope
-boundary; making the production default `system` removes that case rather than tolerating it.
+⚠ **Step 3 is light, not `prefers-color-scheme`.** Consulting the system here would put a dark-OS
+user into the alpha palette before any preference has been read — the inference the design forbids.
+On production this fallback matches the deployment default, so a first-ever visit is correct.
 
-**Residual case**: a *non-production* deployment on a light system. The script paints light from the
-system setting, then flips to dark when the config payload arrives. This affects the team's own
-builds only, and eliminating it would require the server to template the shell — disproportionate.
+**Known and accepted limitation**: on a browser's *first ever* visit to a **non-production**
+deployment, nothing is mirrored, so the first paint is light and corrects to dark once the config
+payload arrives. Every subsequent load is correct from the first frame. Eliminating even that one
+frame would require the server to template the HTML shell, which is disproportionate for a case
+affecting the team's own builds only. Recorded as a deliberate boundary, not an oversight.
 
 **Reconciliation**: when the authoritative preference disagrees with the mirror, the class is updated
 and the mirror rewritten.

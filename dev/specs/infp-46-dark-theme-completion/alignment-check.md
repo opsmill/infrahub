@@ -10,7 +10,7 @@ The requester reviewed the Edge Cases section and directed six changes. All are 
 
 | Direction | Effect |
 |---|---|
-| "By default we should respect the user's browser/system config" | **Production default changed from `light` to `system`** (FR-011). The deployment default is now three-valued; non-production still forces `dark`. |
+| "By default we should respect the user's browser/system config" — then, on seeing the consequence: "dark should remain alpha; respect system preferences only if you're in alpha" | **Net effect: no change.** An intermediate revision moved the production default to `system`; it was withdrawn once the requester saw that it would put dark-OS production users into the alpha palette without choosing it. Final state matches the original spec: production → `light`, non-production → `dark` (forced, ignoring the OS). Match-system stays available everywhere as an explicit user choice, never a default. |
 | "Couldn't we store something in localStorage?" | Confirmed — already the design. The three cache-related edge cases (pre-sign-in, preference-unavailable, first paint) are now stated as one problem with one mechanism rather than three bullets. |
 | "Multiple tabs — ignore this" | Moved to Out of Scope; the `storage` listener is dropped from the provider. |
 | "System theme changes — react, only if easy" | Kept (FR-007). It is a subscribable browser event, so the cost is small. |
@@ -18,15 +18,17 @@ The requester reviewed the Edge Cases section and directed six changes. All are 
 | "Existing automated tests — let's tackle this" | Confirmed in scope; T035 unchanged. |
 | "Build this as a stacked PR on the existing one" | Branch bases on `bab-dark-theme-app` and the PR targets it, not `develop`. Recorded that #10284's failing checks are inherited. |
 
-**Consequence worth noting**: making the production default `system` removed a limitation rather than
-adding one. The earlier design accepted a first-visit flash because an empty cache fell back to
-light while the deployment default might be dark. With `system` as both the cold-start fallback and
-the production default, those two agree, so a first-ever visit to production is now correct from the
-first frame. The only residual flash is a non-production deployment on a light system.
+**Governing principle, now stated explicitly in the spec**: dark is never reached by inference. A
+user arrives at it only by choosing dark, or by choosing match-system on a dark machine. That single
+rule decides both defaults — production is light rather than system-following, and the pre-paint
+script's empty-cache fallback is light rather than `prefers-color-scheme`.
 
-**Trade recorded**: on production, a user whose system is dark now reaches the alpha palette without
-explicitly choosing it. This was raised before the decision and confirmed; it is documented in the
-spec's Assumptions so a later reviewer sees the trade rather than rediscovering it.
+The mirror-image rule governs the other default: non-production forces dark *ignoring* the system,
+because following it would leave every engineer on a light machine out of the dogfooding.
+
+**Residual limitation, unchanged from the original design**: a first-ever visit to a non-production
+deployment paints light for one frame before correcting to dark. Production is unaffected, since
+light is already its default.
 
 ## Source
 

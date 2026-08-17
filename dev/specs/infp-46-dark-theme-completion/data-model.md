@@ -53,15 +53,21 @@ Computed per deployment, never stored. Derived from the running build's PEP 440 
 overridable by explicit operator configuration.
 
 ```text
-deployment_default_theme : LIGHT | DARK | SYSTEM
+deployment_default_theme : LIGHT | DARK
   = operator override, when configured
-  | DARK    when Version(running_version).is_prerelease
-  | SYSTEM  otherwise
+  | DARK   when Version(running_version).is_prerelease
+  | LIGHT  otherwise
 ```
 
-The production default is `SYSTEM`, not a fixed palette: a deployment with no opinion about a
-particular user defers to that user's own browser setting. Non-production overrides that to `DARK`
-deliberately, because the point is that the team sees dark whatever their operating system says.
+Always a concrete palette, never `SYSTEM`. Both ends of that are deliberate:
+
+- **Production is `LIGHT`, not `SYSTEM`.** Dark is alpha, so it is reached only by a user's own
+  choice. Deferring to the operating system would put dark-OS users into it by inference.
+- **Non-production is `DARK`, not `SYSTEM`.** Following the system would leave every engineer on a
+  light system out of the dogfooding, which is the whole point of that default.
+
+`SYSTEM` remains available to users as an explicit choice on any deployment — it is simply never a
+default.
 
 It is a *default*, not a value written anywhere: it never touches a stored preference (FR-013), so a
 deployment that flips from pre-release to release changes what un-chosen users see and changes
@@ -120,11 +126,12 @@ Read synchronously by the inline classification script before first paint. It is
 source of truth: the account-backed preference always wins on arrival, and a cleared mirror costs one
 corrected repaint rather than a wrong theme.
 
-⚠ On a cold start the mirror is empty, and the fallback is the browser's own appearance — the same
-answer the production deployment default gives. Cache-hit and cache-miss therefore agree, so a
-first-ever visit is correct rather than merely tolerable. The one case that still corrects after the
-config payload arrives is a **non-production** deployment on a light system: the script paints light
-from the system, then flips to dark. Accepted — it affects the team's own builds only.
+⚠ On a cold start the mirror is empty and the fallback is **light** — not the browser's appearance.
+Consulting the system here would put a dark-OS user into the alpha palette before any preference has
+been read, which is the inference the whole design forbids. On production this fallback matches the
+deployment default, so a first-ever visit is correct; on a non-production deployment it paints light
+and corrects to dark once the config payload lands. That single first-visit frame is accepted — it
+affects the team's own builds only.
 
 Cross-tab synchronisation is out of scope; a second tab picks up a change on its next load.
 
@@ -148,8 +155,7 @@ Operating system ─────────────────────
   and is how a user returns to "Automatic (inherited)".
 - Writing the global layer requires the same permission as the existing global preference writes; no
   new permission is introduced.
-- The deployment default may be `SYSTEM`, and on production it is. The server cannot observe an
-  operating system's appearance, but it does not need to: `SYSTEM` is a *deferral*, and stage 2
-  resolves it on the client — including inside the pre-paint script, which can read the browser's
-  appearance synchronously. A `SYSTEM` default therefore leaves the client with a complete answer on
-  a cold start rather than a gap.
+- The deployment default is always concrete (`LIGHT` or `DARK`) and never `SYSTEM`. This is a policy
+  constraint, not a technical one — stage 2 could resolve a `SYSTEM` default perfectly well. It is
+  excluded because a defaulted user must never reach the alpha palette by inference, and because a
+  system-following non-production default would defeat the dogfooding.

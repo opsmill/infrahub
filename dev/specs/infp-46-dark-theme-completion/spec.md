@@ -83,24 +83,29 @@ observe the same choice.
 
 The team runs non-production builds of Infrahub day to day. Those deployments default to the dark
 theme so that the team lives in it continuously and surfaces the remaining visual defects through
-ordinary use, without every engineer having to opt in individually. Production builds instead follow
-each user's own browser or system appearance.
+ordinary use, without every engineer having to opt in individually. This default ignores the
+operating system's appearance deliberately: an engineer on a light system must still see dark, or
+they are not dogfooding it.
+
+Production builds default to light. Dark is alpha, so it is reached only by an explicit choice —
+never by inference from a user's system setting.
 
 **Why this priority**: This is the stated near-term goal of the whole effort — dogfooding dark for
 the coming weeks. It is what converts the setting from a feature into a feedback loop, and it is
 cheap once User Story 1 exists.
 
 **Independent Test**: Load a non-production deployment as a user with no theme preference set and
-observe dark; load a production build the same way and observe it match the operating system's
-appearance; in both, set a personal preference and observe it override the default.
+observe dark; load a production build the same way and observe light; in both, set a personal
+preference and observe it override the default.
 
 **Acceptance Scenarios**:
 
 1. **Given** a deployment running a non-production build, **When** a user with no theme preference
-   loads the application, **Then** it paints in dark regardless of their system appearance.
+   loads the application, **Then** it paints in dark **regardless of their system appearance** —
+   including for an engineer whose operating system is light.
 2. **Given** a deployment running a production build, **When** a user with no theme preference loads
-   the application, **Then** it paints to match their system appearance; **and when** they change
-   that system appearance, **Then** the application follows.
+   the application, **Then** it paints in light, **even if their operating system is dark**. Dark is
+   alpha and is never reached by inference.
 3. **Given** a non-production deployment defaulting to dark, **When** a user explicitly selects
    light, **Then** their choice is honoured and persists.
 4. **Given** any deployment, **When** an operator explicitly configures the default theme, **Then**
@@ -233,12 +238,19 @@ The first three are one problem with one answer, so they are grouped rather than
   half-styled or flash.
 
   A single mechanism covers all three: a locally cached copy of the last resolved theme, read
-  synchronously before the first frame. When nothing is cached, the browser's own appearance setting
-  answers instead — which is also the deployment default, so the cached path and the cold path agree
-  rather than fighting. The account-backed preference reconciles on arrival and refreshes the cache.
+  synchronously before the first frame. The account-backed preference reconciles on arrival and
+  refreshes the cache. Because the cache holds the *resolved* theme, a returning user — signed in or
+  not — paints correctly from the first frame.
 
-  This means the cold-start case is *correct*, not merely tolerable: a first-ever visit resolves from
-  the browser's setting rather than guessing.
+  With nothing cached, the fallback is light. On production that is already the deployment default,
+  so a first-ever visit is correct. On a non-production deployment it is not: that first visit paints
+  light and corrects to dark once the deployment default arrives. Accepted — it is one frame, on the
+  team's own builds, on a browser that has never loaded the application before. Removing it would
+  mean the server templating the HTML shell, which is disproportionate.
+
+  ⚠ The fallback is light rather than the operating system's appearance. Consulting the system here
+  would put a dark-OS user into the alpha palette before any preference has been read — the exact
+  inference FR-011 forbids.
 
 - **System appearance changes while the page is open.** A user following their system switches their
   operating system's appearance. The application follows without a reload. Cheap to support —
@@ -284,8 +296,8 @@ The first three are one problem with one answer, so they are grouped rather than
 
 - **FR-010**: Deployments running a non-production build MUST default to dark for users with no
   personal choice.
-- **FR-011**: Deployments running a production build MUST default to following the user's browser or
-  operating system appearance, rather than to a fixed palette.
+- **FR-011**: Deployments running a production build MUST default to light. Dark MUST NOT be reached
+  without an explicit user choice, because it is alpha.
 - **FR-012**: Operators MUST be able to override the build-derived default with explicit
   configuration.
 - **FR-013**: A deployment default MUST NOT overwrite or reset any user's stored personal choice.
@@ -351,8 +363,8 @@ The first three are one problem with one answer, so they are grouped rather than
 - **SC-006**: Every page reachable from the main navigation renders with no bright-on-dark surface
   when dark is active.
 - **SC-007**: Non-production deployments present dark to a user with no stored preference, and
-  production deployments present whatever that user's system appearance calls for, without either
-  altering stored preferences.
+  production deployments present light, without either altering stored preferences and without
+  either consulting the operating system.
 - **SC-008**: The team can run a non-production deployment in dark continuously for the dogfooding
   period without needing per-engineer setup.
 - **SC-009**: Text and essential interface elements meet the same contrast level in dark as the light
@@ -363,16 +375,21 @@ The first three are one problem with one answer, so they are grouped rather than
 These were decided during specification rather than left open. Each is a judgement call that a
 reviewer may overturn.
 
-- **Production follows the user's system appearance by default.** This was specified directly by the
-  requester. It was initially assumed to be light, on the reasoning that dark is alpha and
-  defaulting production users into it ships a known-defective appearance to people who never opted
-  in — that consequence was raised explicitly and the decision was confirmed. It is recorded here so
-  a later reviewer sees the trade rather than rediscovering it: **on production, a user whose system
-  is dark gets the alpha theme without choosing it**, and the alpha tag then labels only an explicit
-  choice they never had to make.
+- **Dark is never reached by inference.** Because it is alpha, a user arrives at it only by choosing
+  it — either by selecting dark, or by selecting match-system on a dark operating system. Production
+  therefore defaults to light rather than to the system appearance, and the alpha tag always labels
+  something the user actually chose.
+
+  An intermediate revision of this spec defaulted production to the system appearance. That was
+  withdrawn once the consequence was made explicit: it would have put dark-OS production users into
+  the alpha palette without any choice on their part, which is precisely what the alpha label exists
+  to prevent.
+- **The non-production default ignores the operating system deliberately.** Following the system on
+  non-production builds would leave every engineer on a light system out of the dogfooding, which is
+  the entire purpose of that default.
 - **Three choices, not two.** Match-system is included rather than deferred: it is the conventional
-  expectation for a theme setting, it is what the production default resolves to, and adding it later
-  would change the meaning of an already-stored value.
+  expectation for a theme setting, and adding it later would change the meaning of an already-stored
+  value. It is available on every deployment, but only ever as an explicit choice — never a default.
 - **The existing preference machinery is extended, not replaced.** Theme joins date-format and
   timezone in the established two-layer user/organisation preference model, and inherits its
   resolution and source-reporting semantics.
