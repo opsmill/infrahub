@@ -35,7 +35,7 @@ export function ToolbarAddToGroupsAction({ selectedRows }: ToolbarAddToGroupActi
         Add to groups
       </Button>
 
-      <Popover placement="top start" className="bg-white">
+      <Popover placement="top start" className="bg-content">
         <PopoverDialog>
           {({ close }) => {
             return (

@@ -24,6 +24,7 @@
      which sits lower, and from --input, which happens to share these values but tracks form fields. */
   --content: var(--color-white);
   --content-muted: var(--color-gray-50);
+  --content-strong: var(--color-gray-100);
 
   --input: var(--color-white);
   --input-border: var(--border);
@@ -96,6 +97,7 @@
 
   --content: var(--color-stone-900);
   --content-muted: rgb(255 255 255 / 0.05);
+  --content-strong: rgb(255 255 255 / 0.1);
 
   --input: var(--color-stone-900);
   --input-border: var(--border-strong);
@@ -189,6 +191,7 @@
 
   --color-content: var(--content);
   --color-content-muted: var(--content-muted);
+  --color-content-strong: var(--content-strong);
 
   --color-input: var(--input);
   --color-input-border: var(--input-border);

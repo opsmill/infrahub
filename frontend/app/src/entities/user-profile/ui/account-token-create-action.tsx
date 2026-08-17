@@ -65,7 +65,7 @@ export function AccountTokenCreateAction() {
           </div>
 
           <Row>
-            <div className="h-9 grow rounded-md bg-gray-100 p-2 dark:bg-white/10">{newToken}</div>
+            <div className="h-9 grow rounded-md bg-content-strong p-2">{newToken}</div>
             <CopyToClipboard text={newToken} shape="square" variant="outline" />
           </Row>
         </Col>

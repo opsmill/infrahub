@@ -267,7 +267,7 @@ export function FileContentDiff({
       return {
         ...widgets,
         [changeKey]: change?.comments?.map((comment: any, index: number) => (
-          <div key={index} className="m-2 rounded-md border border-custom-blue-500 bg-white p-4">
+          <div key={index} className="m-2 rounded-md border border-custom-blue-500 bg-content p-4">
             {comment.message}
           </div>
         )),
@@ -328,7 +328,7 @@ export function FileContentDiff({
   });
 
   return (
-    <div className={"m-4 rounded-lg bg-white p-2 shadow-sm"}>
+    <div className={"m-4 rounded-lg bg-content p-2 shadow-sm"}>
       <Accordion
         title={
           <Row>
@@ -347,7 +347,7 @@ export function FileContentDiff({
           </div>
         </div>
 
-        <div className="ml-2 bg-gray-50">
+        <div className="ml-2 bg-content-muted">
           <Diff
             key={`${sha(diff)}${previousFile ? sha(previousFile) : ""}${newFile ? sha(newFile) : ""}`}
             hunks={fileContent.hunks}

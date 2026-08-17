@@ -13,7 +13,9 @@ const STYLES = [
 export function SidebarMenuItemAvatar({ name }: { name: string }) {
   const firstLetter = name[0];
   if (!firstLetter) {
-    return <div className="flex h-6 w-6 items-center justify-center rounded-sm bg-gray-100" />;
+    return (
+      <div className="flex h-6 w-6 items-center justify-center rounded-sm bg-content-strong" />
+    );
   }
 
   const styleIndex = firstLetter.charCodeAt(0) % STYLES.length;

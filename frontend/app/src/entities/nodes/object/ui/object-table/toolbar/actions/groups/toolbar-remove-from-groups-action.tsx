@@ -35,7 +35,7 @@ export function ToolbarRemoveFromGroupsAction({ selectedRows }: ToolbarRemoveFro
         Remove from groups
       </Button>
 
-      <Popover placement="top start" className="bg-white">
+      <Popover placement="top start" className="bg-content">
         <PopoverDialog>
           {({ close }) => (
             <BulkMutateGroups

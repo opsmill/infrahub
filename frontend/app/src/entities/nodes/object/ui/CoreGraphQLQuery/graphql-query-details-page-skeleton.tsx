@@ -3,7 +3,7 @@ import { Skeleton } from "@/shared/components/loading/skeleton";
 export function GraphQLQueryDetailsPageSkeleton() {
   return (
     <div>
-      <div className="flex h-16 items-center justify-between gap-2 bg-white px-4">
+      <div className="flex h-16 items-center justify-between gap-2 bg-content px-4">
         <Skeleton className="h-8 w-full max-w-sm" />
         <Skeleton className="h-7 w-7 rounded-full" />
       </div>

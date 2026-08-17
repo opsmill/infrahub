@@ -255,7 +255,7 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
       return {
         ...widgets,
         [changeKey]: change?.comments?.map((comment: any, index: number) => (
-          <div key={index} className="m-2 rounded-md border border-custom-blue-500 bg-white p-4">
+          <div key={index} className="m-2 rounded-md border border-custom-blue-500 bg-content p-4">
             {comment.message}
           </div>
         )),
@@ -324,7 +324,7 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
         </div>
       </div>
 
-      <div className="ml-2 bg-gray-50">
+      <div className="ml-2 bg-content-muted">
         <Diff
           key={`${sha(diff)}${previousFile ? sha(previousFile) : ""}`}
           hunks={fileContent.hunks}

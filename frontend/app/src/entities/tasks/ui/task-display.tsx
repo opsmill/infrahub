@@ -50,7 +50,7 @@ function Task({ task }) {
       <div
         className={classNames(
           "m-auto flex flex-col gap-4 rounded-md p-4",
-          "bg-gray-100 dark:bg-white/10",
+          "bg-content-strong",
           background[task.state]
         )}
       >
@@ -105,7 +105,7 @@ export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps)
 
   if (tasks.length === 0) {
     return (
-      <span className="m-auto flex flex-col gap-4 rounded-md bg-gray-100 p-4 text-sm dark:bg-white/10">
+      <span className="m-auto flex flex-col gap-4 rounded-md bg-content-strong p-4 text-sm">
         No task
       </span>
     );
@@ -122,7 +122,7 @@ export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps)
 
 function Log({ message, severity, timestamp }: tLog) {
   return (
-    <div className="flex flex-col gap-2 rounded-md bg-white p-2 dark:bg-black/40">
+    <div className="flex flex-col gap-2 rounded-md bg-content p-2 dark:bg-black/40">
       <div className="flex items-center justify-between">
         {getSeverityBadge[severity]}
         <DateDisplay date={timestamp} />

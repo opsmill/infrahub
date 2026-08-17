@@ -25,7 +25,7 @@ export function DiffSummaryTagGroup<T extends object>({
 }: DiffSummaryProps<T>) {
   return (
     <TagGroup aria-label="Diff summary" {...props}>
-      <TagList className="inline-flex items-center gap-2 rounded-md bg-gray-100 p-1 dark:bg-white/10">
+      <TagList className="inline-flex items-center gap-2 rounded-md bg-content-strong p-1">
         <TagList items={items} renderEmptyState={renderEmptyState}>
           {children}
         </TagList>

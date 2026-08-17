@@ -77,7 +77,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                 {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
               </div>
             }
-            className="rounded-md border bg-gray-100 dark:bg-white/5"
+            className="rounded-md border bg-content-strong dark:bg-white/5"
           >
             <div className="divide-y border-t bg-content">
               <div className="grid grid-cols-3 pl-8">
