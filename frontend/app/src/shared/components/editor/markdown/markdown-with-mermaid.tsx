@@ -6,13 +6,15 @@ import rehypeMermaid, { type RehypeMermaidOptions } from "rehype-mermaid";
 
 import { remarkPlugins } from "@/shared/components/editor/markdown/markdown-render";
 import { MermaidDiagram } from "@/shared/components/editor/markdown/mermaid-diagram";
-import { type ResolvedTheme, useResolvedTheme } from "@/shared/hooks/use-resolved-theme";
+import { withMermaidTheme } from "@/shared/components/editor/markdown/mermaid-theme";
+import { useResolvedTheme } from "@/shared/hooks/use-resolved-theme";
 
-const mermaidThemeFor = (theme: ResolvedTheme) => (theme === "dark" ? "dark" : "default");
-
-const rehypeMermaidOptions = (theme: ResolvedTheme): RehypeMermaidOptions => ({
+// mermaidConfig is inert in the browser: the renderer's browser build never calls
+// mermaid.initialize, so nothing here reaches mermaid. It is kept because the same options object
+// is honoured by the node build. The theme travels through the diagram source instead.
+const rehypeMermaidOptions: RehypeMermaidOptions = {
   strategy: "inline-svg",
-  mermaidConfig: { securityLevel: "strict", theme: mermaidThemeFor(theme) },
+  mermaidConfig: { securityLevel: "strict" },
   // On failure, show a red error banner with the message above the raw diagram
   errorFallback: (_element, diagram, error) => {
     const message = error instanceof Error ? error.message : String(error);
@@ -43,7 +45,9 @@ const rehypeMermaidOptions = (theme: ResolvedTheme): RehypeMermaidOptions => ({
       ],
     };
   },
-});
+};
+
+const rehypePlugins: Options["rehypePlugins"] = [[rehypeMermaid, rehypeMermaidOptions]];
 
 // Wrap the rendered mermaid <svg> in a pan/zoom container with controls.
 const components: Components = { svg: MermaidDiagram };
@@ -55,12 +59,12 @@ type MarkdownWithMermaidProps = {
 
 export default function MarkdownWithMermaid({ markdownText, fallback }: MarkdownWithMermaidProps) {
   const theme = useResolvedTheme();
-  // Mermaid bakes colors into the SVG it emits, so a theme change has to re-run the pipeline. Keying
-  // the plugin array on the resolved theme alone is what bounds that: a fresh array on every render
-  // would re-render every diagram continuously.
-  const rehypePlugins = useMemo<Options["rehypePlugins"]>(
-    () => [[rehypeMermaid, rehypeMermaidOptions(theme)]],
-    [theme]
+  // Mermaid bakes colors into the SVG it emits, so a theme change has to re-run the pipeline.
+  // Keying the themed source on the theme is what bounds that: a fresh string every render would
+  // re-render every diagram continuously.
+  const themedMarkdown = useMemo(
+    () => withMermaidTheme(markdownText, theme),
+    [markdownText, theme]
   );
 
   return (
@@ -70,7 +74,7 @@ export default function MarkdownWithMermaid({ markdownText, fallback }: Markdown
       components={components}
       fallback={fallback}
     >
-      {markdownText}
+      {themedMarkdown}
     </MarkdownHooks>
   );
 }
