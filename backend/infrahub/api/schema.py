@@ -449,6 +449,7 @@ async def load_schema(
         updated_hash = await coordinator.execute(
             branch=branch,
             origin_schema=origin_schema,
+            rollback_schema=origin_schema,
             candidate_schema=candidate_schema,
             at=Timestamp(),
             # The caller blocks on this request: a priority stamped into the

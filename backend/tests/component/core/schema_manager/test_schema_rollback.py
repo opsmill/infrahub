@@ -130,6 +130,7 @@ class TestSchemaUpdateAndRollback:
         await coordinator.execute(
             branch=default_branch,
             origin_schema=original_schema_copy,
+            rollback_schema=original_schema_copy,
             candidate_schema=updated_schema_branch,
             at=schema_update_at,
             migration_executor=MigrationExecutor.DIRECT,
@@ -271,6 +272,7 @@ class TestSchemaUpdateAndRollback:
             await coordinator.execute(
                 branch=default_branch,
                 origin_schema=origin_schema_copy,
+                rollback_schema=origin_schema_copy,
                 candidate_schema=candidate_schema,
                 at=Timestamp(),
                 migration_executor=MigrationExecutor.DIRECT,

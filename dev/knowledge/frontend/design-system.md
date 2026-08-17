@@ -82,7 +82,7 @@ When you touch one of these and notice it could be a generic primitive, consider
 ## Migration policy
 
 - Net-new generic primitives (no Infrahub-specific data dependencies) should land in `@infrahub/ui` from day one.
-- Existing primitives in `shared/components/ui/` are migrated incrementally — see PRs #9048 (Card), #9065 (Button), #9088 (Modal) as references.
+- Existing primitives in `shared/components/ui/` are migrated incrementally — Card, Button, and Modal are migrated precedents.
 - Migration PRs include: the component, its Storybook story, focus-visible styles, and call-site updates across the app.
 
 ## Storybook

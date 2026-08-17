@@ -9,12 +9,14 @@ import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Combobox, type ComboboxItem } from "@/shared/components/inputs/combobox";
 import { FormField } from "@/shared/components/ui/form";
+import { formatWithPreferences } from "@/shared/context/date-preferences-context";
+import { supportedTimezone } from "@/shared/utils/date";
 
 import type { Preference } from "@/entities/preferences/domain/model/preference";
 import {
   buildDateFormatPresets,
   dateFormatLabel,
-  formatDateFormatExample,
+  dateFormatPattern,
 } from "@/entities/preferences/domain/rules/date-format";
 
 const EMPTY_VALUE_LABEL = "Automatic (inherited)";
@@ -74,10 +76,16 @@ interface PreferenceFieldProps {
   emptyValueLabel?: string;
 }
 
+interface DateFormatFieldProps extends PreferenceFieldProps {
+  /** Zone the examples use while the form's timezone field is empty; omit for the browser's. */
+  fallbackTimezone?: string | null;
+}
+
 export function DateFormatField({
   preference,
   emptyValueLabel = EMPTY_VALUE_LABEL,
-}: PreferenceFieldProps) {
+  fallbackTimezone,
+}: DateFormatFieldProps) {
   const now = new Date();
   const exampleId = React.useId();
   const items = buildDateFormatPresets().map(({ key, label }) => ({ value: key, label }));
@@ -85,11 +93,16 @@ export function DateFormatField({
   const fieldValue = useWatch({ name: "date_format" }) as FormAttributeValue | undefined;
   const selected = (fieldValue?.value as string | null | undefined) ?? null;
 
+  // Previews what saving would produce, so it follows the form's own (possibly unsaved) zone.
+  const timezoneValue = useWatch({ name: "timezone" }) as FormAttributeValue | undefined;
+  const timezone = (timezoneValue?.value as string | null | undefined) ?? fallbackTimezone ?? null;
+  const example = (key: string) =>
+    formatWithPreferences(now, { pattern: dateFormatPattern(key), timezone });
+
   const message = preference
     ? sourceMessage(preference, {
-        formatGlobalValue: (value) =>
-          `${formatDateFormatExample(value, now)} (${dateFormatLabel(value)})`,
-        browserValue: now.toLocaleString(),
+        formatGlobalValue: (value) => `${example(value)} (${dateFormatLabel(value)})`,
+        browserValue: formatWithPreferences(now, { pattern: null, timezone }),
       })
     : null;
 
@@ -115,8 +128,13 @@ export function DateFormatField({
         </div>
         <div className="min-w-0 flex-1 truncate">
           {selected && (
+<<<<<<< HEAD
             <p id={exampleId} className="truncate text-foreground-muted text-xs">
               Example: {formatDateFormatExample(selected, now)}
+=======
+            <p id={exampleId} className="truncate text-gray-500 text-xs">
+              Example: {example(selected)}
+>>>>>>> origin/release-1.11
             </p>
           )}
         </div>
@@ -126,15 +144,25 @@ export function DateFormatField({
   );
 }
 
+/** Resolves the (i) hint for a timezone, correcting the source claim when this browser can't apply it.
+ * A resolved zone this runtime cannot render is silently displayed in the browser's own zone, so the
+ * hint must report that fallback rather than claim the stored zone is in effect. */
+function timezoneSourceMessage(preference: Preference, browserZone: string): string {
+  if (preference.value && !supportedTimezone(preference.value)) {
+    return `This browser can't display ${preference.value}; times are shown in ${browserZone}.`;
+  }
+  return sourceMessage(preference, {
+    formatGlobalValue: (value) => value,
+    browserValue: browserZone,
+  });
+}
+
 export function TimezoneField({
   preference,
   emptyValueLabel = EMPTY_VALUE_LABEL,
 }: PreferenceFieldProps) {
   const message = preference
-    ? sourceMessage(preference, {
-        formatGlobalValue: (value) => value,
-        browserValue: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      })
+    ? timezoneSourceMessage(preference, Intl.DateTimeFormat().resolvedOptions().timeZone)
     : null;
 
   return (

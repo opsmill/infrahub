@@ -9,6 +9,7 @@ from cachetools.keys import hashkey
 from cachetools_async import cached
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.protocols import CoreReadOnlyRepository, CoreRepository
 from prefect import task
 from prefect.cache_policies import NONE
 from pydantic import Field
@@ -82,6 +83,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         )
         log.info("Created new repository locally.", repository=self.name)
         return self
+
+    async def resolve_checkout_ref(self) -> str:
+        if not self.default_branch_name:
+            repository = await self.sdk.get(
+                kind=CoreRepository, name__value=self.name, exclude=["tags", "credential"], raise_when_missing=True
+            )
+            self.default_branch_name = repository.default_branch.value
+
+        return self.default_branch
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         branches = {}
@@ -274,7 +284,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return []
 
     async def push(self, branch_name: str) -> bool:
-        """Push a given branch to the remote Origin repository."""
+        """Push a given branch to the remote Origin repository.
+
+        Raises:
+            RepositoryError: When the remote rejects the push.
+
+        """
         if not self.has_origin:
             return False
 
@@ -282,10 +297,18 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             f"Pushing the latest update to the remote origin for the branch '{branch_name}'", repository=self.name
         )
 
-        # TODO Catch potential exceptions coming from origin.push
         repo = self.get_git_repo_worktree(identifier=branch_name)
         remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
-        repo.remotes.origin.push(remote_branch)
+        # Push the worktree HEAD, not the bare branch name: the local branch checked out in this
+        # worktree may not be named after the remote branch (it differs when the repository's
+        # default branch is not the Infrahub default), so a bare refspec would have no local source.
+        push_infos = repo.remotes.origin.push(refspec=f"HEAD:refs/heads/{remote_branch}")
+        for push_info in push_infos:
+            if push_info.flags & push_info.ERROR:
+                raise RepositoryError(
+                    identifier=self.name,
+                    message=f"Unable to push the branch {remote_branch} to the remote for repository {self.name}: {push_info.summary.strip()}",
+                )
 
         return True
 
@@ -357,6 +380,20 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         await self.create_locally(checkout_ref=self.ref, infrahub_branch_name=self.infrahub_branch_name)
         log.info("Created new repository locally.", repository=self.name)
         return self
+
+    async def resolve_checkout_ref(self) -> str:
+        ref = self.ref
+        if not ref:
+            repository = await self.sdk.get(
+                kind=CoreReadOnlyRepository,
+                name__value=self.name,
+                exclude=["tags", "credential"],
+                raise_when_missing=True,
+            )
+            ref = repository.ref.value
+            self.ref = ref
+
+        return ref
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:  # noqa: ARG002
         """Always get the latest commit for this repository's ref on the remote.

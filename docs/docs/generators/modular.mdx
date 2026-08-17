@@ -9,7 +9,7 @@ Real-world automation is rarely that contained. A data center fabric has layers:
 **Modular Generators** solve this by splitting generation across multiple focused Generators, each responsible for one layer or domain. Later Generators depend on objects created by earlier ones, connected through an event-driven signaling mechanism.
 
 :::info
-For single-Generator fundamentals, see [Generators](./overview). For a step-by-step walkthrough, see [Build your first Generator](../academy/tutorials/generators/build-your-first-generator) in the Academy tutorials.
+For single-Generator fundamentals, see [Generators](./overview). For a step-by-step walkthrough, see [Build your first Generator](../learn/tutorials/generators/build-your-first-generator) in the Academy tutorials.
 :::
 
 ## Why split into multiple Generators
@@ -119,8 +119,8 @@ A fabric with 4 pods and 32 racks per pod runs 4 pod Generators concurrently, th
 
 - [Generators](./overview): single-Generator fundamentals, high-level design, and execution methods
 - [Build a generator](./build): recipe-form how-to for creating a Generator
-- [Build your first generator](../academy/tutorials/generators/build-your-first-generator): step-by-step Academy tutorial
-- [Build chained generators](../academy/tutorials/generators/build-chained-generators): checksum-based trigger pattern walkthrough
+- [Build your first generator](../learn/tutorials/generators/build-your-first-generator): step-by-step Academy tutorial
+- [Build chained generators](../learn/tutorials/generators/build-chained-generators): checksum-based trigger pattern walkthrough
 - [Modular Generator best practices](./modular-best-practices): idempotency, pool scoping, debugging, and operational guidance
 - [Groups](../groups/overview): Generators use groups to define their targets and track generated objects
 - [GraphQL queries](../development-resources/graphql/overview): each Generator definition includes a query that collects input data

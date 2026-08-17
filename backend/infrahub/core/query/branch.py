@@ -10,81 +10,135 @@ from infrahub.core.query.standard_node import StandardNodeGetListQuery
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from infrahub.core.constants.database import DatabaseEdgeType
     from infrahub.database import InfrahubDatabase
 
 
-class DeleteBranchRelationshipsQuery(Query):
-    name: str = "delete_branch_relationships"
+class DeleteBranchAgnosticRelationshipsQuery(Query):
+    """Delete the agnostic Relationship vertices attached to Nodes that only exist on this branch.
+
+    Must run before any IS_PART_OF edge of the branch is deleted: the branch-only determination
+    reads those edges, so once they are gone the affected Nodes can no longer be found and their
+    agnostic peers leak.
+    """
+
+    name: str = "delete_branch_agnostic_relationships"
     insert_return: bool = False
+    insert_limit: bool = False
 
     type: QueryType = QueryType.WRITE
 
-    def __init__(self, branch_name: str, **kwargs: Any) -> None:
+    def __init__(self, branch_name: str, batch_size: int, **kwargs: Any) -> None:
         self.branch_name = branch_name
+        self.batch_size = batch_size
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
-// --------------
-// for every Node that only exists on this branch (it's about to be deleted),
-// find any agnostic relationships or attributes connected to the Node and delete them
-// --------------
-OPTIONAL MATCH (:Root)<-[e:IS_PART_OF {status: "active"}]-(n:Node)
+MATCH (:Root)<-[e:IS_PART_OF {status: "active"}]-(n:Node)
 WHERE e.branch = $branch_name
-// does the node only exist on this branch?
-CALL (n) {
-    OPTIONAL MATCH (n)-[ipo:IS_PART_OF {status: "active"}]->(:Root)
+AND NOT EXISTS {
+    MATCH (n)-[ipo:IS_PART_OF {status: "active"}]->(:Root)
     WHERE ipo.branch <> $branch_name
-    LIMIT 1
-    RETURN ipo IS NOT NULL AS node_exists_on_other_branch
 }
-// if so, delete any linked agnostic relationships or attributes
-CALL (n, node_exists_on_other_branch) {
-    WITH n, node_exists_on_other_branch
-    WHERE node_exists_on_other_branch = FALSE
-    OPTIONAL MATCH (n)-[:IS_RELATED {branch: $global_branch_name}]-(rel:Relationship)
+CALL (n) {
+    MATCH (n)-[:IS_RELATED {branch: $global_branch_name}]-(rel:Relationship)
     DETACH DELETE rel
-} IN TRANSACTIONS OF 500 ROWS
-CALL (n, node_exists_on_other_branch) {
-    WITH n, node_exists_on_other_branch
-    WHERE node_exists_on_other_branch = FALSE
-    OPTIONAL MATCH (n)-[:HAS_ATTRIBUTE {branch: $global_branch_name}]-(attr:Attribute)
-    DETACH DELETE attr
-} IN TRANSACTIONS OF 500 ROWS
-
-// reduce the results to a single row
-WITH 1 AS one
-LIMIT 1
-
-// --------------
-// for every edge on this branch, delete it
-// --------------
-MATCH (s)-[r]->(d)
-WHERE r.branch = $branch_name
-CALL (r) {
-    DELETE r
-} IN TRANSACTIONS OF 500 ROWS
-
-// --------------
-// get the database IDs of every vertex linked to a deleted edge
-// --------------
-WITH DISTINCT elementId(s) AS s_id, elementId(d) AS d_id
-WITH collect(s_id) + collect(d_id) AS vertex_ids
-UNWIND vertex_ids AS vertex_id
-
-// --------------
-// delete any vertices that are now orphaned
-// --------------
-CALL (vertex_id) {
-    MATCH (n)
-    WHERE elementId(n) = vertex_id
-    AND NOT exists((n)--())
-    DELETE n
-} IN TRANSACTIONS OF 500 ROWS
-        """
+} IN TRANSACTIONS OF %(batch_size)s ROWS
+        """ % {"batch_size": self.batch_size}
         self.params["branch_name"] = self.branch_name
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.add_to_query(query)
+
+
+class DeleteBranchAgnosticAttributesQuery(Query):
+    """Delete the agnostic Attribute vertices attached to Nodes that only exist on this branch.
+
+    Carries the same ordering requirement as the agnostic Relationship query.
+    """
+
+    name: str = "delete_branch_agnostic_attributes"
+    insert_return: bool = False
+    insert_limit: bool = False
+
+    type: QueryType = QueryType.WRITE
+
+    def __init__(self, branch_name: str, batch_size: int, **kwargs: Any) -> None:
+        self.branch_name = branch_name
+        self.batch_size = batch_size
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        query = """
+MATCH (:Root)<-[e:IS_PART_OF {status: "active"}]-(n:Node)
+WHERE e.branch = $branch_name
+AND NOT EXISTS {
+    MATCH (n)-[ipo:IS_PART_OF {status: "active"}]->(:Root)
+    WHERE ipo.branch <> $branch_name
+}
+CALL (n) {
+    MATCH (n)-[:HAS_ATTRIBUTE {branch: $global_branch_name}]-(attr:Attribute)
+    DETACH DELETE attr
+} IN TRANSACTIONS OF %(batch_size)s ROWS
+        """ % {"batch_size": self.batch_size}
+        self.params["branch_name"] = self.branch_name
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.add_to_query(query)
+
+
+class DeleteBranchEdgesQuery(Query):
+    """Delete one batch of edges of a single type belonging to a branch, plus any vertex left bare.
+
+    Every edge on the branch is removed by this query's DELETE, and both endpoints of each one are
+    then re-examined, so a vertex is examined once per edge it had. The batch that removes its last
+    edge is therefore the one that sees it at degree zero and deletes it. Nothing can be stranded,
+    because no edge is ever removed by any other means -- which is why the vertices need no separate
+    sweep afterwards, and why the vertex delete must not be a DETACH DELETE. A DETACH DELETE would
+    take out the branch edges the vertex still had, and those edges would then never reach a batch
+    of their own, leaving the vertices on their far side unexamined and orphaned.
+
+    The DISTINCT is what makes this sound: it forces the whole batch's edge deletes to complete
+    before the first vertex is examined, so degree zero means degree zero.
+
+    Naming the edge type is what lets the `branch` range index be used for the match; the type
+    cannot be a query parameter, so it is interpolated from the closed DatabaseEdgeType enum.
+
+    Run repeatedly until it stops deleting edges.
+    """
+
+    name: str = "delete_branch_edges"
+    insert_return: bool = False
+    insert_limit: bool = False
+
+    type: QueryType = QueryType.WRITE
+
+    def __init__(self, branch_name: str, edge_type: DatabaseEdgeType, batch_size: int, **kwargs: Any) -> None:
+        self.branch_name = branch_name
+        self.edge_type = edge_type
+        self.batch_size = batch_size
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        query = """
+MATCH (s)-[r:%(edge_type)s]->(d)
+WHERE r.branch = $branch_name
+WITH s, r, d
+LIMIT $batch_size
+DELETE r
+
+WITH s, d
+UNWIND [s, d] AS v
+WITH DISTINCT v
+WHERE NOT v:Root
+AND NOT EXISTS { MATCH (v)--() }
+DELETE v
+        """ % {"edge_type": self.edge_type.value}
+        self.params["branch_name"] = self.branch_name
+        self.params["batch_size"] = self.batch_size
+        self.add_to_query(query)
+
+    def deleted_edge_count(self) -> int:
+        return self.stats.get_counter("relationships_deleted")
 
 
 class RebaseBranchQuery(Query):
