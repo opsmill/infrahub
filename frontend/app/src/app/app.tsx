@@ -20,6 +20,7 @@ import { DatePreferencesProvider } from "@/entities/preferences/ui/date-preferen
 
 import "@/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
+import "@/app/styles/toastify-overrides.css";
 
 addCollection(mdiIcons);
 
