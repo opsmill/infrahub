@@ -95,7 +95,7 @@ export const Alert = (props: AlertProps) => {
           bg: "",
           text: "text-foreground",
           button:
-            "bg-content-muted p-1.5 text-subtle-muted hover:bg-content-strong focus:ring-gray-600 focus:ring-offset-gray-50",
+            "bg-content-muted p-1.5 text-subtle-muted hover:bg-content-strong focus:ring-ring focus:ring-offset-content-muted",
         };
       }
     }
