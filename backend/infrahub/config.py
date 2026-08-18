@@ -990,8 +990,15 @@ class AnalyticsSettings(BaseSettings):
 class ExperimentalFeaturesSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_EXPERIMENTAL_")
     graphql_enums: bool = False
+    # TEMPORARY — REVERT TO default=False BEFORE THIS LEAVES DRAFT (INFP-46).
+    # Defaulted on so the `cd/preview` ephemeral environment serves dark without a deployment-side
+    # env var, which is the only other lever and lives outside this repository. Every other guard
+    # still holds: the flag exists, an operator setting it to false wins, and the frontend renders
+    # light the moment it does. Reverting is one line here plus `invoke release.gen-config-env`,
+    # `invoke docs.generate` and `invoke schema.generate-jsonschema` to refresh the three generated
+    # artifacts that record this default.
     dark_theme: bool = Field(
-        default=False,
+        default=True,
         description="Offer the dark theme in the web interface. Alpha: some surfaces still render incorrectly.",
     )
     value_db_index: bool = Field(
