@@ -10,18 +10,19 @@
     <link rel="manifest" href="/manifest.json">
     <title>Infrahub</title>
     <script>
-    // Paints the stored theme before the first frame, so a reload does not flash light and then
-    // snap to dark once the config request returns. Blocking is the point: it has to run before
-    // the browser paints, which rules out the module graph, and so also rules out importing the
-    // key names from src/shared/theme/theme-storage.ts — they are duplicated here on purpose.
-    // Only the exact string "dark" turns the class on, so anything unexpected in storage, and
-    // storage being unreadable at all, both land on light.
+    // Paints the last resolved theme before the first frame, so a reload does not flash light and
+    // then snap to dark once the config request returns. Blocking is the point: it has to run
+    // before the browser paints, which rules out the module graph, and so also rules out importing
+    // the key name from src/shared/theme/theme-storage.ts — it is duplicated here on purpose.
+    // Only the resolved mirror is read, never the user's raw choice: the mirror records what the
+    // app actually settled on once the feature flag had its say, while the raw choice may name a
+    // theme this deployment no longer offers. Only the exact string "dark" turns the class on, so
+    // anything unexpected in storage, and storage being unreadable at all, both land on light.
     "use strict";
     try {
-      const stored =
-        localStorage.getItem("infrahub.theme.choice") ||
-        localStorage.getItem("infrahub.theme.resolved");
-      if (stored === "dark") document.documentElement.classList.add("dark");
+      if (localStorage.getItem("infrahub.theme.resolved") === "dark") {
+        document.documentElement.classList.add("dark");
+      }
     } catch {
       // Storage is disabled; light it is.
     }

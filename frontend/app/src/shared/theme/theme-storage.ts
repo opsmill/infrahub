@@ -1,11 +1,12 @@
 import type { ResolvedTheme } from "@/shared/hooks/use-resolved-theme";
 
-/**
- * ⚠ These two keys are repeated verbatim in the pre-paint script in `index.html`. That script runs
- * before the module graph exists and so cannot import them; changing a name here means changing it
- * there in the same commit, or a reload flashes the wrong palette.
- */
 const CHOICE_KEY = "infrahub.theme.choice";
+
+/**
+ * ⚠ This key is repeated verbatim in the pre-paint script in `index.html`. That script runs before
+ * the module graph exists and so cannot import it; changing the name here means changing it there
+ * in the same commit, or a reload flashes the wrong palette.
+ */
 const RESOLVED_KEY = "infrahub.theme.resolved";
 
 function read(key: string): ResolvedTheme | null {
@@ -37,9 +38,10 @@ export function storeChoice(theme: ResolvedTheme): void {
 }
 
 /**
- * Records what the app actually settled on, which is what the pre-paint script reads when the user
- * has expressed no choice of their own. Without it, a reload cannot know the feature flag's value
- * until the config request returns, and would have to guess.
+ * Records what the app actually settled on, which is the pre-paint script's only source. The raw
+ * choice would be the wrong thing to paint from: it may name a theme the deployment's flag no
+ * longer offers, whereas the mirror is written after the flag has had its say — so a flag-off
+ * deployment reloads straight into light even for a user whose stored choice is dark.
  */
 export function mirrorResolvedTheme(theme: ResolvedTheme): void {
   write(RESOLVED_KEY, theme);
