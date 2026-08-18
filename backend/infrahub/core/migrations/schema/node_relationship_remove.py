@@ -7,6 +7,7 @@ from infrahub.core.constants import RelationshipStatus
 from infrahub.core.query import QueryType
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.database import retry_db_transaction
 
 from ..query import MigrationBaseQuery
 from ..shared import MigrationResult, RelationshipSchemaMigration
@@ -256,6 +257,7 @@ class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
             rel_identifiers=rel_identifiers,
         )
 
+    @retry_db_transaction(name="relationship_remove_schema_migration")
     async def execute(
         self,
         migration_input: MigrationInput,
