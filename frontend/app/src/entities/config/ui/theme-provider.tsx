@@ -6,6 +6,7 @@ import type { ResolvedTheme } from "@/shared/hooks/use-resolved-theme";
 import { applyTheme } from "@/shared/theme/apply-theme";
 import { mirrorResolvedTheme, readStoredChoice, storeChoice } from "@/shared/theme/theme-storage";
 
+import { canOfferDarkTheme } from "@/entities/config/domain/rules/can-offer-dark-theme";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
 /**
@@ -19,7 +20,7 @@ import { useConfig } from "@/entities/config/ui/config-provider";
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const config = useConfig();
-  const canChoose = config.experimental_features?.dark_theme ?? false;
+  const canChoose = canOfferDarkTheme(config.experimental_features, import.meta.env.DEV);
 
   const [choice, setChoice] = useState<ResolvedTheme | null>(readStoredChoice);
 
