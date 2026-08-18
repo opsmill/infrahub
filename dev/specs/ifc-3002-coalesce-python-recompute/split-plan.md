@@ -30,7 +30,7 @@ the same timing metric moved between 62.9 s and 121.0 s across identical runs on
 
 Each targets the previous branch. Risk is concentrated in PR4, which is deliberately tiny.
 
-### PR 1 — Shared plumbing and the switch. No behaviour change.
+### PR 1 (IFC-3016) — Shared plumbing and the switch. No behaviour change.
 
 - `3e639d017` share the query-group subscriber lookup
 - The `whole_kind` field on `AffectedTarget` and its handling in `plan()`, plus the
@@ -43,7 +43,7 @@ Reviewer question: does this change any behaviour? No.
 Standalone value: the subscriber lookup was duplicated between regeneration and computed
 attributes. This is also the answer to "why not reuse the post-merge regeneration work" — it does.
 
-### PR 2 — The resolver. Standalone, nothing calls it.
+### PR 2 (IFC-3017) — The resolver. Standalone, nothing calls it.
 
 - `818138eab` the seam, `1bdf5262c` the database sources, `922ff02dd` the narrowing
 - `0cec55754` squashed in, which is the fix for the widening regression. Do not ship the
@@ -59,7 +59,7 @@ semantics as #10189, which is on `release-1.11` and still not on `develop`.
 Reviewer question: is the narrowing correct, and does it fail safe? Nothing calls it, so it cannot
 break anything.
 
-### PR 3 — Activate. Work happens twice, nothing is missed.
+### PR 3 (IFC-3018) — Activate. Work happens twice, nothing is missed.
 
 - `576974d17` builder derivation
 - `46cafe2e7` the wiring, and the `process_transform` changes
@@ -72,7 +72,7 @@ Reviewer question: with the switch on, is anything done twice or missed? Twice, 
 Standalone value: `process_transform` used to ignore the attribute name it was given and recompute
 every Python attribute of the kind, so a kind with several did N times the work.
 
-### PR 4 — Suppress, and prove it. About thirty lines of behaviour.
+### PR 4 (IFC-3019) — Suppress, and prove it. About thirty lines of behaviour.
 
 - The origin filter on both Python triggers, the other half of `2db2a3c79`
 - `c1c1830fe` the compose passthrough for the switch
