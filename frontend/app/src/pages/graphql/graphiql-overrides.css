@@ -1,0 +1,8 @@
+/* GraphiQL paints its logo text with its own low-emphasis gray, which measures 4.26:1 against its
+   light chrome — just under the 4.5:1 AA needs for text this size. Dropping the alpha it applies
+   reuses its full-strength neutral, so the override keeps following GraphiQL's palette in both
+   themes. */
+.graphiql-container .graphiql-logo,
+.graphiql-container .graphiql-logo .graphiql-logo-link {
+  color: hsl(var(--color-neutral));
+}

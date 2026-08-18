@@ -133,8 +133,8 @@ release build → light; a personal choice beats both and is never overwritten.
 
 - [x] T038 [US4] Derive `mermaidConfig.theme` from the resolved theme in `frontend/app/src/shared/components/editor/markdown/markdown-with-mermaid.tsx`, mapping to Mermaid's `"dark"` / `"default"`. ⚠ `rehypePlugins` is currently a module-level constant; making it theme-dependent **must** memoise on the resolved theme alone. A new array identity per render re-runs the rehype pipeline continuously — the diagram flickers and a CPU core pins.
 - [x] T039 [US4] Replace the hardcoded `bg-white` on the pan/zoom container in `frontend/app/src/shared/components/editor/markdown/mermaid-diagram.tsx` with a surface token. This is the bright panel behind an otherwise-correct dark diagram.
-- [ ] T040 [P] [US4] Tokenise the `mermaid-error` fallback styling so the parse-error state is legible in both themes (FR-015).
-- [ ] T041 [US4] Test that a theme change re-renders the diagram, and that the plugin array is stable across renders at a fixed theme.
+- [x] T040 [P] [US4] Tokenise the `mermaid-error` fallback styling so the parse-error state is legible in both themes (FR-015).
+- [x] T041 [US4] Test that a theme change re-renders the diagram, and that the plugin array is stable across renders at a fixed theme.
 
 ---
 
@@ -177,7 +177,7 @@ six; the work stays in scope.
 
 ## Phase 10: Cross-cutting
 
-- [ ] T056 Contrast audit (FR-021 / SC-009) across the pages walked for SC-006, not a sample — text and essential interface elements against their surfaces. ⚠ Scope boundary: this is legibility against a background, **not** semantic palettes (diagram, syntax-highlighting, status and severity colors), which are tracked separately. Record anything noticed there for that effort rather than fixing it here.
+- [x] T056 Contrast audit (FR-021 / SC-009) across the pages walked for SC-006, not a sample — text and essential interface elements against their surfaces. ⚠ Scope boundary: this is legibility against a background, **not** semantic palettes (diagram, syntax-highlighting, status and severity colors), which are tracked separately. Record anything noticed there for that effort rather than fixing it here.
 - [ ] T057 [P] Add a changelog fragment under `changelog/`. This series used `ci/skip-changelog` for pure restyling, but a user-facing theme setting is a genuine feature and warrants an entry.
 - [ ] T058 [P] Document the theme preference in the user-facing docs under `docs/`, including that dark is pre-release.
 - [ ] T059 Run `/pre-ci` before pushing — it runs the locally-executable CI checks including generated-file and generated-doc validation, which this feature touches in three places.

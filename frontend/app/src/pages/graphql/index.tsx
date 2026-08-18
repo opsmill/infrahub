@@ -9,6 +9,7 @@ import { useGraphiqlFetcher } from "@/shared/libs/graphiql/use-graphiql-fetcher"
 
 import "graphiql/style.css";
 import "@graphiql/plugin-explorer/style.css";
+import "./graphiql-overrides.css";
 
 const plugins = [HISTORY_PLUGIN, explorerPlugin(), parallelModePlugin];
 
