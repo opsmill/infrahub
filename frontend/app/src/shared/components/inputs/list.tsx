@@ -87,7 +87,7 @@ const ListItems = ({
       className={classNames(
         inputStyle,
         "flex-wrap gap-1.5",
-        disabled && "cursor-not-allowed bg-gray-100"
+        disabled && "cursor-not-allowed opacity-60"
       )}
     >
       {items.length > 0 ? (

@@ -6,6 +6,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Col, Row } from "@/shared/components/container";
 import { Icon } from "@/shared/components/display/icon";
+import { inputStyle } from "@/shared/components/ui/style";
 
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { AccountTokenCreateForm } from "@/entities/user-profile/ui/account-token-create-form";
@@ -65,8 +66,8 @@ export function AccountTokenCreateAction() {
           </div>
 
           <Row>
-            <div className="h-9 grow rounded-md bg-gray-100 p-2 dark:bg-white/10">{newToken}</div>
-            <CopyToClipboard text={newToken} shape="square" variant="outline" />
+            <div className={inputStyle}>{newToken}</div>
+            <CopyToClipboard size="md" text={newToken} shape="square" variant="outline" />
           </Row>
         </Col>
 
