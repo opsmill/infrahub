@@ -1557,7 +1557,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-aio-pika", specifier = "==0.60b0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.60b0" },
     { name = "prefect", specifier = "==3.7.5" },
-    { name = "prefect-redis", specifier = "==0.2.12" },
+    { name = "prefect-redis", specifier = "==0.2.14" },
     { name = "puremagic", specifier = ">=1.30,<2" },
     { name = "pyarrow", specifier = ">=14" },
     { name = "pydantic", specifier = ">=2.12,<2.13" },
@@ -2616,8 +2616,8 @@ name = "pendulum"
 version = "3.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "python-dateutil" },
-    { name = "tzdata" },
+    { name = "python-dateutil", marker = "python_full_version < '3.13'" },
+    { name = "tzdata", marker = "python_full_version < '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cb/72/9a51afa0a822b09e286c4cb827ed7b00bc818dac7bd11a5f161e493a217d/pendulum-3.2.0.tar.gz", hash = "sha256:e80feda2d10fa3ff8b1526715f7d33dcb7e08494b3088f2c8a3ac92d4a4331ce", size = 86912, upload-time = "2026-01-30T11:22:24.093Z" }
 wheels = [
@@ -2836,15 +2836,15 @@ wheels = [
 
 [[package]]
 name = "prefect-redis"
-version = "0.2.12"
+version = "0.2.14"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "prefect" },
     { name = "redis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b1/7c/cde8765c731560781ffd188a6d871f2710753f2d80ea10db034ce543a697/prefect_redis-0.2.12.tar.gz", hash = "sha256:92a19d607713239e20d146f42db0fcbc06895821e80091ba263fc8e7909b0bad", size = 57678, upload-time = "2026-06-05T19:38:41.186Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/98/a3/ddea50bf9ab561709b1cc7ff66913453aa7f93aa47a83b661c4fcfc2bf00/prefect_redis-0.2.14.tar.gz", hash = "sha256:f1dbcbe2539c931202c5d0863cfc32d738b0966dff98a54afec495a09c5af4c2", size = 64031, upload-time = "2026-08-04T17:57:16.249Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/76/de/708e65fa9655f10e7e61190de2ed03dabd25f03fb2231acfe3709d995411/prefect_redis-0.2.12-py3-none-any.whl", hash = "sha256:c97e3642d012d6b76c9ba794bb08b3cbd576ae9b7f60b52943dfd1f0d1ac5df6", size = 37950, upload-time = "2026-06-05T19:38:40.118Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/43/a0a709837c3904e522a2ce335fc527897289304151570b3243ae8c8d4224/prefect_redis-0.2.14-py3-none-any.whl", hash = "sha256:6cc2d476ac349badf3892e8ab62ca089ecfe72767cda4b0e19af300ca16c7ee4", size = 39843, upload-time = "2026-08-04T17:57:15.041Z" },
 ]
 
 [[package]]
