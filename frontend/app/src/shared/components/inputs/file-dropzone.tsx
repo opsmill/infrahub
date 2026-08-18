@@ -46,7 +46,7 @@ export function FileDropzone({ onFileSelect, className, ...props }: FileDropzone
                 disabledStyle,
                 focusVisibleStyle,
                 "size-full h-38 justify-center",
-                isDropTarget && "border-custom-blue-500 bg-content-strong",
+                isDropTarget && "border-ring bg-highlight",
                 className
               )}
             >
