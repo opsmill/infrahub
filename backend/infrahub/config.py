@@ -995,8 +995,9 @@ class ExperimentalFeaturesSettings(BaseSettings):
     # env var, which is the only other lever and lives outside this repository. Every other guard
     # still holds: the flag exists, an operator setting it to false wins, and the frontend renders
     # light the moment it does. Reverting is one line here plus `invoke release.gen-config-env`,
-    # `invoke docs.generate` and `invoke schema.generate-jsonschema` to refresh the three generated
-    # artifacts that record this default.
+    # `invoke docs.generate`, `invoke schema.generate-jsonschema` and, in `frontend/app`,
+    # `pnpm codegen:openapi` — four generated artifacts record this default, and the frontend one
+    # is downstream of the OpenAPI schema rather than of this file, so it is the easy one to miss.
     dark_theme: bool = Field(
         default=True,
         description="Offer the dark theme in the web interface. Alpha: some surfaces still render incorrectly.",

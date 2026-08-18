@@ -853,7 +853,7 @@ export interface components {
             /**
              * Dark Theme
              * @description Offer the dark theme in the web interface. Alpha: some surfaces still render incorrectly.
-             * @default false
+             * @default true
              */
             dark_theme: boolean;
             /**
