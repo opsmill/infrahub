@@ -1,10 +1,11 @@
 import { Row } from "@/shared/components/container";
+import { Skeleton } from "@/shared/components/loading/skeleton";
 
 export function DiffSummarySkeleton() {
   return (
     <Row>
       {[...Array(4)].map((_, index) => (
-        <div key={index} className="h-6 w-9 animate-pulse rounded-full bg-gray-200" />
+        <Skeleton key={index} className="h-6 w-9 rounded-full" />
       ))}
     </Row>
   );
