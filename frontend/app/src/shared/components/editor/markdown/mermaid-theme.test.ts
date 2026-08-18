@@ -56,4 +56,27 @@ describe("withMermaidTheme", () => {
 
     expect(out).toContain('~~~mermaid\n%%{init: {"theme":"dark"}}%%');
   });
+
+  test("leaves a mermaid fence quoted inside an outer fence alone", () => {
+    // GIVEN documentation that shows a mermaid snippet as a literal example
+    const source = "````markdown\n```mermaid\ngraph TD\n```\n````";
+
+    // THEN the example is content, not a diagram, and stays byte-identical
+    expect(withMermaidTheme(source, "dark")).toBe(source);
+  });
+
+  test("leaves a mermaid fence quoted inside a tilde fence alone", () => {
+    const source = "~~~text\n```mermaid\ngraph TD\n```\n~~~";
+
+    expect(withMermaidTheme(source, "dark")).toBe(source);
+  });
+
+  test("themes a real diagram that follows a quoted example", () => {
+    const source = "````markdown\n```mermaid\ngraph TD\n```\n````\n\n```mermaid\npie\n```";
+
+    const out = withMermaidTheme(source, "dark");
+
+    expect(out.match(/%%\{init:/g)).toHaveLength(1);
+    expect(out).toContain('````\n\n```mermaid\n%%{init: {"theme":"dark"}}%%\npie\n```');
+  });
 });
