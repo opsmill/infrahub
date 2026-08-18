@@ -25,8 +25,28 @@ from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
 
+BRANCH_CREATE_WITH_BRANCHED_FROM = """
+mutation($name: String!, $branchedFrom: String) {
+    BranchCreate(data: { name: $name, branched_from: $branchedFrom }) {
+        ok
+        object {
+            id
+            name
+            branched_from
+        }
+    }
+}
+"""
+
 
 class TestBranchCreateBranchedFrom(TestInfrahubApp):
+    @pytest.mark.parametrize(
+        ("branch_name", "branched_from"),
+        [
+            ("own-branched-from", "2020-01-01T00:00:00.000Z"),
+            ("empty-branched-from", ""),
+        ],
+    )
     async def test_user_supplied_branched_from_is_rejected(
         self,
         db: InfrahubDatabase,
@@ -35,22 +55,17 @@ class TestBranchCreateBranchedFrom(TestInfrahubApp):
         session_admin: AccountSession,
         client: InfrahubClient,
         service: InfrahubServices,
+        branch_name: str,
+        branched_from: str,
     ) -> None:
         """branched_from records when the branch was created or last rebased, never a client-chosen time."""
-        query = """
-        mutation {
-            BranchCreate(data: { name: "own-branched-from", branched_from: "2020-01-01T00:00:00.000Z" }) {
-                ok
-                object {
-                    id
-                    name
-                    branched_from
-                }
-            }
-        }
-        """
         result = await graphql_mutation(
-            query=query, db=db, service=service, branch=default_branch, account_session=session_admin
+            query=BRANCH_CREATE_WITH_BRANCHED_FROM,
+            db=db,
+            service=service,
+            branch=default_branch,
+            account_session=session_admin,
+            variables={"name": branch_name, "branchedFrom": branched_from},
         )
 
         assert result.errors is not None
@@ -61,7 +76,31 @@ class TestBranchCreateBranchedFrom(TestInfrahubApp):
         )
 
         with pytest.raises(BranchNotFoundError):
-            await Branch.get_by_name(db=db, name="own-branched-from")
+            await Branch.get_by_name(db=db, name=branch_name)
+
+    async def test_omitted_branched_from_is_accepted(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+        service: InfrahubServices,
+    ) -> None:
+        """An explicit null is equivalent to not supplying the field, so it must not be rejected."""
+        result = await graphql_mutation(
+            query=BRANCH_CREATE_WITH_BRANCHED_FROM,
+            db=db,
+            service=service,
+            branch=default_branch,
+            account_session=session_admin,
+            variables={"name": "null-branched-from", "branchedFrom": None},
+        )
+
+        assert result.errors is None
+        assert result.data
+        assert result.data["BranchCreate"]["ok"] is True
+        assert result.data["BranchCreate"]["object"]["branched_from"]
 
 
 class TestBranchCreate(TestInfrahubApp):

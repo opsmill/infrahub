@@ -80,8 +80,8 @@ class BranchCreate(Mutation):
     ) -> Self:
         if data.origin_branch and data.origin_branch != registry.default_branch:
             raise ValueError(f"origin_branch must be '{registry.default_branch}'")
-        if data.branched_from:
-            raise ValueError(
+        if data.get("branched_from") is not None:
+            raise ValidationError(
                 "branched_from input is deprecated and cannot be set, it will be the create time of the branch."
             )
 
