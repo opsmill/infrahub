@@ -326,7 +326,7 @@ exports[`fix ts error`] = {
       [67, 40, 23, "tsc: Argument of type \'number | string | tRowValue | undefined\' is not assignable to parameter of type \'number | string | tRowValue\'.\\n  Type \'undefined\' is not assignable to type \'number | string | tRowValue\'.", "1426455104"],
       [73, 40, 23, "tsc: Argument of type \'number | string | tRowValue | undefined\' is not assignable to parameter of type \'number | string | tRowValue\'.\\n  Type \'undefined\' is not assignable to type \'number | string | tRowValue\'.", "1426455104"]
     ],
-    "src/shared/components/ui/alert.tsx:594415186": [
+    "src/shared/components/ui/alert.tsx:1540020858": [
       [15, 12, 11, "tsc: This syntax is not allowed when \'erasableSyntaxOnly\' is enabled.", "2602525471"]
     ]
   }`
