@@ -78,8 +78,9 @@ class BranchCreate(Mutation):
         background_execution: bool = False,
         wait_until_completion: bool = True,
     ) -> Self:
-        if data.origin_branch and data.origin_branch != registry.default_branch:
-            raise ValueError(f"origin_branch must be '{registry.default_branch}'")
+        origin_branch = data.get("origin_branch")
+        if origin_branch is not None and origin_branch != registry.default_branch:
+            raise ValidationError(f"origin_branch must be '{registry.default_branch}'")
         if data.get("branched_from") is not None:
             raise ValidationError(
                 "branched_from input is deprecated and cannot be set, it will be the create time of the branch."
@@ -88,7 +89,7 @@ class BranchCreate(Mutation):
         graphql_context: GraphqlContext = info.context
         task: dict | None = None
 
-        model = BranchCreateModel(**data)
+        model = BranchCreateModel(**{key: value for key, value in data.items() if value is not None})
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         try:
