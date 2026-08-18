@@ -202,6 +202,9 @@ class NarrowingPythonTargetResolver:
             )
             index = {}
 
+        # Targets that select the same changes ask the same question, and after the field filter
+        # is skipped for an imprecise read set they usually do. One answer serves all of them.
+        readers_memo: dict[tuple[frozenset[str], frozenset[str]], dict[str, frozenset[str]]] = {}
         resolved: list[AffectedTarget] = []
         for target in python_targets:
             resolved_target = await self._resolve_one(
@@ -211,6 +214,7 @@ class NarrowingPythonTargetResolver:
                 branch=branch,
                 deleted_at=deleted_at,
                 recompute_depth=recompute_depth,
+                readers_memo=readers_memo,
             )
             if resolved_target is not None:
                 resolved.append(resolved_target)
@@ -244,6 +248,7 @@ class NarrowingPythonTargetResolver:
         gone_ids: frozenset[str],
         branch: str,
         deleted_at: Timestamp | None,
+        readers_memo: dict[tuple[frozenset[str], frozenset[str]], dict[str, frozenset[str]]],
     ) -> dict[str, frozenset[str]]:
         """Who reads the changed nodes, taking the deleted ones at a point before they went.
 
@@ -252,6 +257,10 @@ class NarrowingPythonTargetResolver:
         membership the merge itself created, which is its own under-recompute, so the two halves
         are looked up separately and unioned.
         """
+        memoised = readers_memo.get((live_ids, gone_ids))
+        if memoised is not None:
+            return memoised
+
         readers: dict[str, set[str]] = {}
         lookups = [(live_ids, None), (gone_ids, deleted_at)]
         for node_ids, at in lookups:
@@ -260,7 +269,9 @@ class NarrowingPythonTargetResolver:
             found = await self.subscriber_lookup.readers_of(node_ids=node_ids, branch=branch, at=at)
             for kind, ids in found.items():
                 readers.setdefault(kind, set()).update(ids)
-        return {kind: frozenset(ids) for kind, ids in readers.items()}
+        answer = {kind: frozenset(ids) for kind, ids in readers.items()}
+        readers_memo[live_ids, gone_ids] = answer
+        return answer
 
     async def _resolve_one(
         self,
@@ -271,6 +282,7 @@ class NarrowingPythonTargetResolver:
         branch: str,
         deleted_at: Timestamp | None,
         recompute_depth: int,
+        readers_memo: dict[tuple[frozenset[str], frozenset[str]], dict[str, frozenset[str]]],
     ) -> AffectedTarget | None:
         key = (target.target_kind, target.attribute_name or "")
         read_set = index.get(key)
@@ -301,7 +313,11 @@ class NarrowingPythonTargetResolver:
         if live_ids or gone_ids:
             try:
                 readers = await self._readers_of(
-                    live_ids=live_ids, gone_ids=gone_ids, branch=branch, deleted_at=deleted_at
+                    live_ids=live_ids,
+                    gone_ids=gone_ids,
+                    branch=branch,
+                    deleted_at=deleted_at,
+                    readers_memo=readers_memo,
                 )
             except Exception as exc:  # noqa: BLE001  as above: an escaping error would skip all four families
                 if recompute_depth > 0:

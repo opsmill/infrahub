@@ -471,3 +471,26 @@ async def test_a_lookup_failure_at_the_first_level_still_widens() -> None:
     )
 
     assert _only(result).whole_kind is True
+
+
+async def test_targets_asking_the_same_question_share_one_lookup() -> None:
+    """Two attributes selecting the same changes must not each pay for a round trip.
+
+    After the field filter is skipped for an imprecise read set this is the common case, so a
+    lookup per target would scale the cost with the number of Python attributes in the schema.
+    """
+    second = replace(_python_target(), attribute_name="tagline")
+    resolver, lookup = _resolver(
+        index={KEY: _read_set(), (OWNER_KIND, "tagline"): _read_set()},
+        readers={OWNER_KIND: frozenset({"shirt-1"})},
+    )
+    changes = [
+        MergeChange(node_id="color-1", kind=PEER_KIND, action=UPDATED, changed_fields=frozenset({"description"}))
+    ]
+
+    result = await resolver.resolve(
+        coalesced=_coalesced(_python_target(), second), changes=changes, branch="main", deleted_at=None
+    )
+
+    assert len(result.targets) == 2, "both attributes still resolve"
+    assert lookup.calls == [LookupCall(node_ids=frozenset({"color-1"}), at=None)], "one lookup, not one per target"

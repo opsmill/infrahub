@@ -14,6 +14,7 @@ from infrahub.core.merge.python_target_resolution import (
     NarrowingPythonTargetResolver,
 )
 from infrahub.core.query_group.subscribers import fetch_subscriber_refs
+from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events.limits import get_submission_chunk_size
 from infrahub.log import get_logger
@@ -39,15 +40,22 @@ fast and widen rather than block every other merge on the instance.
 class DatabaseReadFieldIndex:
     """Derives, per branch, the kinds and fields each Python computed attribute's query reads.
 
-    One pass per coalesced recompute, deliberately uncached: a cache would be populated
-    asynchronously and could be empty right after a schema rebuild, which silently widens
-    or, worse, misses. One derivation is cheap against the work it scopes.
+    Cached against the schema hash rather than left uncached or cached on the branch alone. The
+    hash changes whenever the schema does, so a rebuild cannot be served a stale index, which was
+    the reason for deriving it every time. The cache lives on the instance, which is built once per
+    merge or rebase, so what it saves is the repeat derivation at each level of a recompute chain.
     """
 
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
+        self._cache: dict[tuple[str, str], dict[tuple[str, str], TransformReadSet]] = {}
 
     async def for_branch(self, *, branch: str) -> dict[tuple[str, str], TransformReadSet]:
+        schema_hash = registry.schema.get_schema_branch(name=branch).get_hash()
+        cached = self._cache.get((branch, schema_hash))
+        if cached is not None:
+            return cached
+
         attributes = await gather_python_transform_attributes(db=self.db, branch_name=branch)
         index: dict[tuple[str, str], TransformReadSet] = {}
         for attribute in attributes:
@@ -55,6 +63,7 @@ class DatabaseReadFieldIndex:
             index[key] = TransformReadSet.from_read_fields(
                 {kind: access.fields for kind, access in attribute.query_analyzer.query_report.requested_read.items()}
             )
+        self._cache = {(branch, schema_hash): index}
         return index
 
 
