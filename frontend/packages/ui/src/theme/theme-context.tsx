@@ -1,8 +1,8 @@
-import { createContext, use } from "react";
+import React from "react";
 
-import type { ResolvedTheme } from "@/shared/hooks/use-resolved-theme";
+import type { ResolvedTheme } from "./resolved-theme";
 
-export type ThemeControl = {
+export interface ThemeControl {
   /**
    * Whether this deployment offers a theme at all. False hides the control outright rather than
    * disabling it: a visible switch that cannot be used reads as a bug, and offering a choice the
@@ -10,14 +10,17 @@ export type ThemeControl = {
    */
   canChoose: boolean;
   setTheme: (theme: ResolvedTheme) => void;
-};
+}
 
-/** The default leaves the app light and the control hidden, which is what an unwired tree should do. */
-export const ThemeContext = createContext<ThemeControl>({
+/**
+ * Filled by whichever provider owns the theme decision. The default leaves the page light and the
+ * control hidden, which is what an unwired tree should do.
+ */
+export const ThemeContext = React.createContext<ThemeControl>({
   canChoose: false,
   setTheme: () => {},
 });
 
 export function useThemeControl(): ThemeControl {
-  return use(ThemeContext);
+  return React.use(ThemeContext);
 }

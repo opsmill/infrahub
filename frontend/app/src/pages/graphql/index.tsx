@@ -1,9 +1,9 @@
 import { explorerPlugin } from "@graphiql/plugin-explorer";
+import { useResolvedTheme } from "@infrahub/ui";
 import { GraphiQL, HISTORY_PLUGIN } from "graphiql";
 import { useQueryState } from "nuqs";
 
 import { QSP } from "@/shared/config/qsp";
-import { useResolvedTheme } from "@/shared/hooks/use-resolved-theme";
 import { parallelModePlugin } from "@/shared/libs/graphiql/parallel-mode-plugin";
 import { useGraphiqlFetcher } from "@/shared/libs/graphiql/use-graphiql-fetcher";
 

@@ -1,6 +1,5 @@
+import { useThemeControl } from "@infrahub/ui";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-
-import { useThemeControl } from "@/shared/context/theme-context";
 
 import type { Config } from "@/entities/config/domain/model/config";
 import { ConfigContext } from "@/entities/config/ui/config-provider";

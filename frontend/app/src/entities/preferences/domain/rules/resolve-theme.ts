@@ -1,4 +1,4 @@
-import type { ResolvedTheme } from "@/shared/hooks/use-resolved-theme";
+import type { ResolvedTheme } from "@infrahub/ui";
 
 import type { ThemeChoice } from "@/entities/preferences/domain/model/theme";
 

@@ -1,3 +1,5 @@
+import { type ResolvedTheme, useResolvedTheme } from "@infrahub/ui";
+import mermaid from "mermaid";
 import type React from "react";
 import { useMemo } from "react";
 import type { Components, Options } from "react-markdown";
@@ -6,15 +8,9 @@ import rehypeMermaid, { type RehypeMermaidOptions } from "rehype-mermaid";
 
 import { remarkPlugins } from "@/shared/components/editor/markdown/markdown-render";
 import { MermaidDiagram } from "@/shared/components/editor/markdown/mermaid-diagram";
-import { withMermaidTheme } from "@/shared/components/editor/markdown/mermaid-theme";
-import { useResolvedTheme } from "@/shared/hooks/use-resolved-theme";
 
-// mermaidConfig is inert in the browser: the renderer's browser build never calls
-// mermaid.initialize, so nothing here reaches mermaid. It is kept because the same options object
-// is honoured by the node build. The theme travels through the diagram source instead.
 const rehypeMermaidOptions: RehypeMermaidOptions = {
   strategy: "inline-svg",
-  mermaidConfig: { securityLevel: "strict" },
   // On failure, show a red error banner with the message above the raw diagram
   errorFallback: (_element, diagram, error) => {
     const message = error instanceof Error ? error.message : String(error);
@@ -47,10 +43,32 @@ const rehypeMermaidOptions: RehypeMermaidOptions = {
   },
 };
 
-const rehypePlugins: Options["rehypePlugins"] = [[rehypeMermaid, rehypeMermaidOptions]];
-
 // Wrap the rendered mermaid <svg> in a pan/zoom container with controls.
 const components: Components = { svg: MermaidDiagram };
+
+/**
+ * Configures mermaid for the diagrams about to render. The renderer's browser build calls
+ * `mermaid.render` against mermaid's global configuration and ignores the rehype plugin's
+ * `mermaidConfig` — its documentation says to call `mermaid.initialize()` manually, which reaches
+ * the same module instance. A diagram's own `%%{init}%%` directive or front matter still wins, by
+ * mermaid's own precedence.
+ *
+ * Shaped as a rehype plugin so the call is part of the pipeline itself, sequenced before the
+ * rendering plugin. A render-phase call in the component would be at the React Compiler's mercy
+ * (it may drop a memoized expression whose result is unused), and an effect would race the child's
+ * async processing.
+ *
+ * ⚠ The version range in package.json must stay compatible with the one `mermaid-isomorphic`
+ * declares, or the tree would hold two mermaid instances and this would configure the one the
+ * renderer does not use.
+ */
+function rehypeConfigureMermaid({ theme }: { theme: ResolvedTheme }) {
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    theme: theme === "dark" ? "dark" : "default",
+  });
+}
 
 type MarkdownWithMermaidProps = {
   markdownText: string;
@@ -59,22 +77,26 @@ type MarkdownWithMermaidProps = {
 
 export default function MarkdownWithMermaid({ markdownText, fallback }: MarkdownWithMermaidProps) {
   const theme = useResolvedTheme();
-  // Mermaid bakes colors into the SVG it emits, so a theme change has to re-run the pipeline.
-  // Keying the themed source on the theme is what bounds that: a fresh string every render would
-  // re-render every diagram continuously.
-  const themedMarkdown = useMemo(
-    () => withMermaidTheme(markdownText, theme),
-    [markdownText, theme]
+
+  const rehypePlugins: Options["rehypePlugins"] = useMemo(
+    () => [
+      [rehypeConfigureMermaid, { theme }],
+      [rehypeMermaid, rehypeMermaidOptions],
+    ],
+    [theme]
   );
 
+  // Mermaid bakes colors into the SVG it emits, and the source text does not change on a theme
+  // flip — remounting on the theme is what forces the pipeline to run again.
   return (
     <MarkdownHooks
+      key={theme}
       remarkPlugins={remarkPlugins}
       rehypePlugins={rehypePlugins}
       components={components}
       fallback={fallback}
     >
-      {themedMarkdown}
+      {markdownText}
     </MarkdownHooks>
   );
 }

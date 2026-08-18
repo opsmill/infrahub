@@ -1,18 +1,21 @@
+import {
+  applyTheme,
+  mirrorResolvedTheme,
+  type ResolvedTheme,
+  readStoredChoice,
+  storeChoice,
+  ThemeContext,
+} from "@infrahub/ui";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
-
-import { ThemeContext } from "@/shared/context/theme-context";
-import type { ResolvedTheme } from "@/shared/hooks/use-resolved-theme";
-import { applyTheme } from "@/shared/theme/apply-theme";
-import { mirrorResolvedTheme, readStoredChoice, storeChoice } from "@/shared/theme/theme-storage";
 
 import { canOfferDarkTheme } from "@/entities/config/domain/rules/can-offer-dark-theme";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
 /**
- * Decides the theme from the deployment's flag and this browser's choice, and fills the shared
- * control context. Lives in `entities/config` because the flag is config data; `shared` components
- * read the resulting theme off the document element and never import this.
+ * Decides the theme from the deployment's flag and this browser's choice, and fills the design
+ * system's control context. Lives in `entities/config` because the flag is config data; everything
+ * presentational reads the theme through the design system and never imports this.
  *
  * A choice made while the feature was enabled is kept, not cleared, when the flag goes off. Turning
  * a flag off is an operator's decision about a deployment, and it should not reach through and

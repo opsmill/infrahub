@@ -7,6 +7,7 @@ import {
   MenuTrigger,
   Popover,
   Spinner,
+  ThemeSwitchMenuItem,
 } from "@infrahub/ui";
 import {
   CircleUserIcon,
@@ -15,9 +16,7 @@ import {
   InfoIcon,
   LogInIcon,
   LogOutIcon,
-  MoonIcon,
   SlidersHorizontalIcon,
-  SunIcon,
 } from "lucide-react";
 import React from "react";
 import { useLocation } from "react-router";
@@ -27,15 +26,12 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { Avatar } from "@/shared/components/display/avatar";
 import { Icon } from "@/shared/components/display/icon";
 import { Skeleton } from "@/shared/components/loading/skeleton";
-import { Badge } from "@/shared/components/ui/badge";
 import {
   INFRAHUB_DISCORD_URL,
   INFRAHUB_DOC_LOCAL,
   INFRAHUB_GITHUB_URL,
   INFRAHUB_SWAGGER_DOC_URL,
 } from "@/shared/config/config";
-import { useThemeControl } from "@/shared/context/theme-context";
-import { useResolvedTheme } from "@/shared/hooks/use-resolved-theme";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useLogoutMutation } from "@/entities/authentication/ui/queries/logout.mutation";
@@ -61,28 +57,9 @@ export const AccountMenu = () => {
   );
 };
 
-const ThemeMenuItem = () => {
-  const { canChoose, setTheme } = useThemeControl();
-  const theme = useResolvedTheme();
-
-  if (!canChoose) return null;
-
-  const isDark = theme === "dark";
-
-  return (
-    <MenuItem onAction={() => setTheme(isDark ? "light" : "dark")}>
-      {isDark ? <SunIcon /> : <MoonIcon />}
-      {isDark ? "Light theme" : "Dark theme"}
-      <Badge variant="yellow" className="ml-auto">
-        alpha
-      </Badge>
-    </MenuItem>
-  );
-};
-
 const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => (
   <>
-    <ThemeMenuItem />
+    <ThemeSwitchMenuItem />
 
     <MenuItem onAction={onAboutClick}>
       <InfoIcon /> About Infrahub

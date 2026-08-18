@@ -39,23 +39,27 @@ background behind it.
 
 ## How dark mode switches on
 
-The `dark` class on `document.documentElement` is the only switch. Three things manage it:
+The `dark` class on `document.documentElement` is the only switch. The primitives live in the
+design system (`frontend/packages/ui/src/theme/`), so anything built on `@infrahub/ui` can read and
+offer the theme; the application owns only the *policy* that decides it. Three things manage the
+class:
 
 1. **The pre-paint script** in `frontend/app/index.html` — a blocking inline script in `<head>`
    that applies the class before the first frame, from the `infrahub.theme.resolved` localStorage
    mirror. It is deliberately outside the module graph (it must run before any bundle loads), so
    the storage key is duplicated there verbatim — renaming the key means changing both files in
    the same commit.
-2. **`ThemeProvider`** (`frontend/app/src/entities/config/ui/theme-provider.tsx`) — decides the
-   real theme once config arrives: the `dark_theme` experimental flag gates whether dark is offered
-   at all, `infrahub.theme.choice` holds this browser's explicit choice, and the resolved outcome
-   is applied to the class and mirrored back to storage. An absent flag (backend predates it)
-   counts as enabled under a Vite dev server only — see
+2. **`ThemeProvider`** (`frontend/app/src/entities/config/ui/theme-provider.tsx`) — the policy.
+   Decides the real theme once config arrives: the `dark_theme` experimental flag gates whether
+   dark is offered at all, `infrahub.theme.choice` holds this browser's explicit choice, and the
+   resolved outcome is applied to the class and mirrored back to storage (`applyTheme` and the
+   storage helpers come from `@infrahub/ui`). It fills the design system's `ThemeContext`, which is
+   what makes `ThemeSwitchMenuItem` — the ready-made switch a menu can drop in — render and work.
+   An absent flag (backend predates it) counts as enabled under a Vite dev server only — see
    `entities/config/domain/rules/can-offer-dark-theme.ts`.
-3. **`useResolvedTheme`** (`frontend/app/src/shared/hooks/use-resolved-theme.ts`) — how components
-   *read* the current theme: a `useSyncExternalStore` subscription to the class via
-   MutationObserver. Components never read storage or config for this; the document element is the
-   single source of truth.
+3. **`useResolvedTheme`** (from `@infrahub/ui`) — how components *read* the current theme: a
+   `useSyncExternalStore` subscription to the class via MutationObserver. Components never read
+   storage or config for this; the document element is the single source of truth.
 
 The deployment gate is `INFRAHUB_EXPERIMENTAL_DARK_THEME`, passed through in
 `development/docker-compose.yml` only (default `true` there). The root compose file deliberately
@@ -65,9 +69,16 @@ has no passthrough while the theme is alpha.
 
 Three renderers bake colours into their output and cannot be themed by CSS tokens:
 
-- **Mermaid diagrams** — themed by prefixing each diagram with an `%%{init}%%` directive
-  (`shared/components/editor/markdown/mermaid-theme.ts`). The rehype plugin's `mermaidConfig` is
-  silently ignored by its browser build, so the diagram source is the only working channel.
+- **Mermaid diagrams** — themed through `mermaid.initialize({ theme })`, called from a small rehype
+  plugin sequenced before the rendering plugin
+  (`shared/components/editor/markdown/markdown-with-mermaid.tsx`). The rendering plugin's own
+  `mermaidConfig` option is silently ignored by its browser build; its documentation says to call
+  `initialize` manually, and the browser build renders against that same global config. Two traps
+  worth knowing: the `mermaid` version range must stay compatible with the one `mermaid-isomorphic`
+  declares (two instances in the tree would mean configuring the wrong one), and the call must live
+  *inside* the pipeline — a render-phase call is dropped by the React Compiler, and an effect races
+  the child's async processing. A diagram's own `%%{init}%%` directive still wins, by mermaid's own
+  precedence.
 - **GraphiQL** — has its own theme; the sandbox page passes the app's resolved theme through
   `forcedTheme` so it can never disagree with the app around it.
 - **Schema-defined colours** (role badges, kind palettes, user-picked hex values) — data, not
@@ -105,9 +116,10 @@ once. The two legitimate exceptions, both from
 | Flag/choice resolution, retention across flag flips | `entities/config/ui/theme-provider.test.tsx`, `entities/config/domain/rules/can-offer-dark-theme.test.ts` |
 | Reading the theme from the class | `shared/hooks/use-resolved-theme.test.tsx` |
 | The switch in the account menu, alpha tag, gating | `entities/user-profile/ui/account-menu.test.tsx` |
-| Mermaid directive injection, nested-fence safety | `shared/components/editor/markdown/mermaid-theme.test.ts` |
+| Mermaid renders in the active theme, reacts to a flip, author directive wins | `shared/components/editor/markdown/markdown-with-mermaid.test.tsx` (asserts the colours baked into the real SVG) |
 | First-paint, persistence, flag-off journeys | `tests/e2e/theme.spec.ts` (Playwright, needs a stack) |
 | Docs screenshots stay light | pinned in `tests/utils.ts` |
 
-The pre-paint script itself is reachable only by the e2e suite — it sits outside the module graph,
-so no vitest test can import it.
+The design-system package has no test runner, so tests for its theme primitives are hosted in the
+application suite. The pre-paint script itself is reachable only by the e2e suite — it sits outside
+the module graph, so no vitest test can import it.

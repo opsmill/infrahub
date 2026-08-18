@@ -1,6 +1,6 @@
+// Hosted here because the design-system package has no test runner of its own.
+import { useResolvedTheme } from "@infrahub/ui";
 import { afterEach, describe, expect, test } from "vitest";
-
-import { useResolvedTheme } from "@/shared/hooks/use-resolved-theme";
 
 import { render } from "../../../tests/components/render";
 
