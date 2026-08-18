@@ -1,6 +1,6 @@
 # Styling Guidelines
 
-> Part of: `dev/guidelines/frontend/`
+> Part of: `dev/guidelines/frontend/` | Related: [Theming](../../knowledge/frontend/theming.md)
 
 ## Layout Components
 
