@@ -9,7 +9,7 @@ skipping it would recompute more nodes than the path being replaced.
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, TypeGuard
 
 from infrahub.core.merge.recompute_coalescing import (
     CREATED,
@@ -70,16 +70,18 @@ class PythonTargetResolver(Protocol):
         changes: Sequence[MergeChange],
         branch: str,
         deleted_at: Timestamp | None,
+        recompute_depth: int = 0,
     ) -> CoalescedRecompute: ...
 
 
 def widen(target: AffectedTarget, *, reason: str) -> AffectedTarget:
     """Fall back to recomputing every node of the target's kind, and say why.
 
-    Bounded to the one attribute-and-kind pair: a transform whose readers cannot be found
-    never widens a different attribute, and never escalates to the whole branch.
+    An error path, not a routine one. The only thing that reaches it is a subscriber lookup that
+    failed: an unanswerable question about *fields* is handled by skipping the field filter, not
+    by refreshing the kind. Bounded to the one attribute-and-kind pair.
     """
-    log.debug(
+    log.warning(
         "COALESCED_PYTHON widened to whole kind",
         kind=target.target_kind,
         attribute=target.attribute_name,
@@ -117,6 +119,16 @@ def replace_python_targets(coalesced: CoalescedRecompute, resolved: list[Affecte
     return CoalescedRecompute(branch=coalesced.branch, targets=frozenset(others + resolved))
 
 
+def can_filter_on_fields(read_set: TransformReadSet | None) -> TypeGuard[TransformReadSet]:
+    """Whether the read set can say which fields matter.
+
+    It cannot when the transform is absent from the database, or when its query reads a derived
+    field. Neither says anything about *which nodes* read the change, which is what the subscriber
+    lookup answers, so neither is a reason to refresh a whole kind.
+    """
+    return read_set is not None and not read_set.depends_on_everything
+
+
 def selects_change(change: MergeChange, read_set: TransformReadSet) -> bool:
     """Whether one changed node can affect the value of an attribute with this read set.
 
@@ -150,6 +162,7 @@ class DroppingPythonTargetResolver:
         changes: Sequence[MergeChange],  # noqa: ARG002  part of the protocol
         branch: str,  # noqa: ARG002  part of the protocol
         deleted_at: Timestamp | None,  # noqa: ARG002  part of the protocol
+        recompute_depth: int = 0,  # noqa: ARG002  part of the protocol
     ) -> CoalescedRecompute:
         return replace_python_targets(coalesced, [])
 
@@ -173,6 +186,7 @@ class NarrowingPythonTargetResolver:
         changes: Sequence[MergeChange],
         branch: str,
         deleted_at: Timestamp | None,
+        recompute_depth: int = 0,
     ) -> CoalescedRecompute:
         python_targets = [target for target in coalesced.targets if is_python(target)]
         if not python_targets:
@@ -180,14 +194,23 @@ class NarrowingPythonTargetResolver:
 
         try:
             index = await self.read_field_index.for_branch(branch=branch)
-        except Exception as exc:  # noqa: BLE001  the resolver must never raise; widening is the answer to any failure
-            widened = [widen(target, reason=f"read-field index unavailable: {exc!r}") for target in python_targets]
-            return replace_python_targets(coalesced, widened)
+        except Exception as exc:  # noqa: BLE001  the resolver must never raise
+            # Every target loses its field pre-filter and keeps its reader lookup. Widening them
+            # all would refresh every node of every kind that owns a Python attribute.
+            log.warning(
+                "COALESCED_PYTHON read-field index unavailable, resolving without it", branch=branch, error=repr(exc)
+            )
+            index = {}
 
         resolved: list[AffectedTarget] = []
         for target in python_targets:
             resolved_target = await self._resolve_one(
-                target=target, changes=changes, index=index, branch=branch, deleted_at=deleted_at
+                target=target,
+                changes=changes,
+                index=index,
+                branch=branch,
+                deleted_at=deleted_at,
+                recompute_depth=recompute_depth,
             )
             if resolved_target is not None:
                 resolved.append(resolved_target)
@@ -247,13 +270,18 @@ class NarrowingPythonTargetResolver:
         index: dict[tuple[str, str], TransformReadSet],
         branch: str,
         deleted_at: Timestamp | None,
+        recompute_depth: int,
     ) -> AffectedTarget | None:
         key = (target.target_kind, target.attribute_name or "")
         read_set = index.get(key)
-        if read_set is None or read_set.depends_on_everything:
-            return widen(target, reason="read set is imprecise" if read_set else "no read set for the attribute")
-
-        selected = [change for change in changes if selects_change(change, read_set)]
+        # Without a usable read set the field question goes unanswered, so every change is a
+        # candidate and the subscriber lookup below decides. Refreshing the kind instead would
+        # do it on every merge, including the ones touching nothing this transform reads.
+        selected = (
+            [change for change in changes if selects_change(change, read_set)]
+            if can_filter_on_fields(read_set)
+            else list(changes)
+        )
         if not selected:
             return None
 
@@ -276,6 +304,18 @@ class NarrowingPythonTargetResolver:
                     live_ids=live_ids, gone_ids=gone_ids, branch=branch, deleted_at=deleted_at
                 )
             except Exception as exc:  # noqa: BLE001  as above: an escaping error would skip all four families
+                if recompute_depth > 0:
+                    # A level that widened would refresh the kind again at every level below it.
+                    # Stopping the chain here loses the readers of this level's writes, which is
+                    # the lesser harm against an unbounded fan-out, and it is logged as a loss.
+                    log.warning(
+                        "COALESCED_PYTHON stopping a chained level rather than widening",
+                        kind=target.target_kind,
+                        attribute=target.attribute_name,
+                        depth=recompute_depth,
+                        error=repr(exc),
+                    )
+                    return None
                 return widen(target, reason=f"subscriber lookup failed: {exc!r}")
             owner_ids |= set(readers.get(target.target_kind, frozenset()))
 

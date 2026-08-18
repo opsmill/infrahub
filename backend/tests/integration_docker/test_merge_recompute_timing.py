@@ -302,7 +302,6 @@ class TestImpreciseReadSetDoesNotWiden(TestInfrahubDockerClient):
     def infrahub_version(self) -> str:
         return "local"
 
-    @pytest.mark.xfail(strict=True, reason="an imprecise read set widens instead of resolving its readers")
     @pytest.mark.timeout(3600)
     async def test_an_imprecise_attribute_does_not_refresh_its_whole_kind(
         self, client: InfrahubClient, remote_repos_dir: Path

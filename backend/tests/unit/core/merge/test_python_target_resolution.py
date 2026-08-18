@@ -173,7 +173,8 @@ async def test_lookup_that_fails_widens_rather_than_dropping() -> None:
     assert target.precise is False
 
 
-async def test_imprecise_read_set_widens() -> None:
+async def test_imprecise_read_set_keeps_the_reader_lookup() -> None:
+    """An unanswerable field question is not an unanswerable reader question."""
     resolver, _ = _resolver(index={KEY: _read_set(depends_on_everything=True)})
     changes = [MergeChange(node_id="shirt-1", kind=OWNER_KIND, action=UPDATED, changed_fields=frozenset({"name"}))]
 
@@ -181,10 +182,13 @@ async def test_imprecise_read_set_widens() -> None:
         coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None
     )
 
-    assert _only(result).whole_kind is True
+    target = _only(result)
+    assert target.whole_kind is False
+    assert next(iter(target.reader_lookups)).source_node_ids == frozenset({"shirt-1"})
 
 
-async def test_missing_read_set_widens() -> None:
+async def test_missing_read_set_keeps_the_reader_lookup() -> None:
+    """A transform absent from the database cannot be run, so refreshing its kind is pure waste."""
     resolver, _ = _resolver(index={})
     changes = [MergeChange(node_id="shirt-1", kind=OWNER_KIND, action=UPDATED, changed_fields=frozenset({"name"}))]
 
@@ -192,10 +196,11 @@ async def test_missing_read_set_widens() -> None:
         coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None
     )
 
-    assert _only(result).whole_kind is True
+    assert _only(result).whole_kind is False
 
 
-async def test_index_failure_widens_every_python_target_and_does_not_raise() -> None:
+async def test_index_failure_drops_the_filter_rather_than_widening_and_does_not_raise() -> None:
+    """Widening every target here would refresh every kind that owns a Python attribute."""
     resolver, _ = _resolver(failing_index=True)
     changes = [MergeChange(node_id="shirt-1", kind=OWNER_KIND, action=UPDATED, changed_fields=frozenset({"name"}))]
 
@@ -203,7 +208,7 @@ async def test_index_failure_widens_every_python_target_and_does_not_raise() -> 
         coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None
     )
 
-    assert _only(result).whole_kind is True
+    assert _only(result).whole_kind is False
 
 
 async def test_other_families_pass_through_untouched_when_the_lookup_fails() -> None:
@@ -387,9 +392,6 @@ async def test_a_widening_is_logged_with_its_pair_and_reason() -> None:
     assert selection["targets"] == [f"{OWNER_KIND}.{ATTRIBUTE}=whole-kind"]
 
 
-@pytest.mark.xfail(
-    strict=True, reason="the resolver widens on an unanswered field question instead of asking the subscriber lookup"
-)
 async def test_an_imprecise_read_set_does_not_widen_when_nothing_reads_the_change() -> None:
     """Imprecision is about fields, not about readers.
 
@@ -411,9 +413,6 @@ async def test_an_imprecise_read_set_does_not_widen_when_nothing_reads_the_chang
     assert result.targets == frozenset()
 
 
-@pytest.mark.xfail(
-    strict=True, reason="the resolver widens on an unanswered field question instead of asking the subscriber lookup"
-)
 async def test_an_imprecise_read_set_narrows_to_the_readers_the_lookup_finds() -> None:
     """With no field filter available, the readers are still the answer, not the whole kind."""
     resolver, _ = _resolver(
@@ -432,9 +431,6 @@ async def test_an_imprecise_read_set_narrows_to_the_readers_the_lookup_finds() -
     assert next(iter(target.reader_lookups)).source_node_ids == frozenset({"shirt-1"})
 
 
-@pytest.mark.xfail(
-    strict=True, reason="the resolver widens on an unanswered field question instead of asking the subscriber lookup"
-)
 async def test_a_missing_read_set_does_not_widen() -> None:
     """A transform absent from the database cannot be run at all, so refreshing its kind is waste."""
     resolver, _ = _resolver(index={}, readers={})
@@ -447,3 +443,31 @@ async def test_a_missing_read_set_does_not_widen() -> None:
     )
 
     assert result.targets == frozenset()
+
+
+async def test_a_lookup_failure_in_a_chain_stops_rather_than_widening() -> None:
+    """One bad decision at depth would repeat itself at every level below."""
+    resolver, _ = _resolver(failing_lookup=True)
+    changes = [
+        MergeChange(node_id="color-1", kind=PEER_KIND, action=UPDATED, changed_fields=frozenset({"description"}))
+    ]
+
+    result = await resolver.resolve(
+        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None, recompute_depth=1
+    )
+
+    assert result.targets == frozenset()
+
+
+async def test_a_lookup_failure_at_the_first_level_still_widens() -> None:
+    """The lookup failing is the one thing widening is for."""
+    resolver, _ = _resolver(failing_lookup=True)
+    changes = [
+        MergeChange(node_id="color-1", kind=PEER_KIND, action=UPDATED, changed_fields=frozenset({"description"}))
+    ]
+
+    result = await resolver.resolve(
+        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None, recompute_depth=0
+    )
+
+    assert _only(result).whole_kind is True

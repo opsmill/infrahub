@@ -146,15 +146,15 @@ def test_from_read_fields_precise() -> None:
     }
 
 
-def test_kind_with_no_mapped_fields_marks_imprecise() -> None:
-    # A kind the query reaches but reads no field from. Whether that should mark the whole
-    # set imprecise is unsettled; this pins the current behaviour.
+def test_a_query_reading_no_field_at_all_is_still_precise() -> None:
+    """Reaching one kind and reading nothing from it is a kind-level dependency, not an unknown."""
     read_set = TransformReadSet.from_read_fields({OWNER_KIND: set()})
 
-    assert read_set.depends_on_everything is True
+    assert read_set.depends_on_everything is False
+    assert read_set.read_kinds == frozenset({OWNER_KIND})
+    assert read_set.read_fields == {}
 
 
-@pytest.mark.xfail(strict=True, reason="a field-less read kind collapses the whole set to imprecise")
 def test_a_kind_read_without_any_field_is_a_kind_level_dependency() -> None:
     """Traversing to a kind and reading no field of it says something narrow, not something unknown.
 

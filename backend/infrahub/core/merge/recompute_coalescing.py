@@ -603,7 +603,11 @@ class MergeRecomputeCoordinator:
         if schema_covered_pairs:
             coalesced = _drop_schema_covered(coalesced=coalesced, covered=schema_covered_pairs)
         coalesced = await self.resolver.resolve(
-            coalesced=coalesced, changes=changes, branch=branch, deleted_at=deleted_at
+            coalesced=coalesced,
+            changes=changes,
+            branch=branch,
+            deleted_at=deleted_at,
+            recompute_depth=recompute_depth,
         )
         return await self.submitter.submit(coalesced=coalesced, context=context, recompute_depth=recompute_depth)
 

@@ -50,17 +50,23 @@ class TransformReadSet:
     def from_read_fields(cls, read_fields_by_kind: Mapping[str, Iterable[str]]) -> TransformReadSet:
         """Build the read set from a kind to read-field-names mapping.
 
-        The whole set is imprecise when any kind reads a derived field, or reads no field
-        at all. An imprecise set is recomputed on every schema change.
+        The whole set is imprecise only when a kind reads a derived field, whose backing fields
+        cannot be named. A kind the query reaches but reads no field from stays in ``read_kinds``
+        and is left out of ``read_fields``: its instances appearing or disappearing changes the
+        result, a field edit on one does not. Collapsing the whole set for that case throws the
+        distinction away and pushes every consumer to its widest behaviour.
         """
+        read_kinds: set[str] = set()
         read_fields: dict[str, frozenset[str]] = {}
         for kind, names in read_fields_by_kind.items():
             fields = frozenset(names)
-            if not fields or fields & IMPRECISE_READ_FIELDS:
+            if fields & IMPRECISE_READ_FIELDS:
                 return cls.imprecise()
-            read_fields[kind] = fields
+            read_kinds.add(kind)
+            if fields:
+                read_fields[kind] = fields
 
-        return cls(read_kinds=frozenset(read_fields), read_fields=read_fields)
+        return cls(read_kinds=frozenset(read_kinds), read_fields=read_fields)
 
 
 class PythonTransformRegistry:
