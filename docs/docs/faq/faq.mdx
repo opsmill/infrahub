@@ -141,6 +141,12 @@ Infrahub exposes a metrics endpoint by default, and the Infrahub Exporter provid
 
 In production, the most commonly monitored signals are API request latency, task manager queue depth, database connection pool usage, and disk utilisation.
 
+### Does the web interface have a dark theme?
+
+Yes, as a pre-release feature. The dark theme is gated behind the `INFRAHUB_EXPERIMENTAL_DARK_THEME` setting (see the [configuration reference](../reference/configuration)): with the setting enabled, the interface starts in dark and the account menu at the bottom of the sidebar offers a switch between light and dark, marked *alpha*. The choice is remembered per browser. With the setting disabled — the default — the interface is light-only.
+
+While the theme is in alpha, some surfaces may still render with incorrect colours. Development deployments started from the repository's compose file enable it by default so those get found; production deployments stay light unless an operator opts in.
+
 ### How does Infrahub handle authentication and access control?
 
 Infrahub supports OAuth2 / OIDC single sign-on (see the [SSO guide](../deploy-manage/user-management/sso/overview) and token-based API authentication (see [managing API tokens](../deploy-manage/user-management/managing-api-tokens)).
