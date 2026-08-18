@@ -152,3 +152,18 @@ def test_kind_with_no_mapped_fields_marks_imprecise() -> None:
     read_set = TransformReadSet.from_read_fields({OWNER_KIND: set()})
 
     assert read_set.depends_on_everything is True
+
+
+@pytest.mark.xfail(strict=True, reason="a field-less read kind collapses the whole set to imprecise")
+def test_a_kind_read_without_any_field_is_a_kind_level_dependency() -> None:
+    """Traversing to a kind and reading no field of it says something narrow, not something unknown.
+
+    Its instances appearing or disappearing changes the query result; editing a field on one
+    cannot, because no field of it is read. Collapsing the whole set to imprecise throws that
+    away and makes every consumer fall back to its widest behaviour.
+    """
+    read_set = TransformReadSet.from_read_fields({OWNER_KIND: {"name"}, "TestPerson": set()})
+
+    assert read_set.depends_on_everything is False
+    assert read_set.read_kinds == frozenset({OWNER_KIND, "TestPerson"})
+    assert read_set.read_fields == {OWNER_KIND: frozenset({"name"})}

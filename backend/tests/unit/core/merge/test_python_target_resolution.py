@@ -385,3 +385,65 @@ async def test_a_widening_is_logged_with_its_pair_and_reason() -> None:
     selection = next(record for record in records if record["event"] == "COALESCED_PYTHON selected targets")
     assert selection["widened"] == 1
     assert selection["targets"] == [f"{OWNER_KIND}.{ATTRIBUTE}=whole-kind"]
+
+
+@pytest.mark.xfail(
+    strict=True, reason="the resolver widens on an unanswered field question instead of asking the subscriber lookup"
+)
+async def test_an_imprecise_read_set_does_not_widen_when_nothing_reads_the_change() -> None:
+    """Imprecision is about fields, not about readers.
+
+    The field pre-filter cannot run without a precise read set, but the subscriber lookup still
+    answers who reads the changed nodes. When it answers nobody, there is nothing to do. Widening
+    before asking makes every imprecise attribute refresh its whole kind on every merge, whether
+    or not the merge touched anything it reads.
+    """
+    resolver, lookup = _resolver(index={KEY: _read_set(depends_on_everything=True)}, readers={})
+    changes = [
+        MergeChange(node_id="color-1", kind=PEER_KIND, action=UPDATED, changed_fields=frozenset({"description"}))
+    ]
+
+    result = await resolver.resolve(
+        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None
+    )
+
+    assert lookup.calls, "the lookup must still run; an imprecise read set is not a reason to skip it"
+    assert result.targets == frozenset()
+
+
+@pytest.mark.xfail(
+    strict=True, reason="the resolver widens on an unanswered field question instead of asking the subscriber lookup"
+)
+async def test_an_imprecise_read_set_narrows_to_the_readers_the_lookup_finds() -> None:
+    """With no field filter available, the readers are still the answer, not the whole kind."""
+    resolver, _ = _resolver(
+        index={KEY: _read_set(depends_on_everything=True)}, readers={OWNER_KIND: frozenset({"shirt-1"})}
+    )
+    changes = [
+        MergeChange(node_id="color-1", kind=PEER_KIND, action=UPDATED, changed_fields=frozenset({"description"}))
+    ]
+
+    result = await resolver.resolve(
+        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None
+    )
+
+    target = _only(result)
+    assert target.whole_kind is False
+    assert next(iter(target.reader_lookups)).source_node_ids == frozenset({"shirt-1"})
+
+
+@pytest.mark.xfail(
+    strict=True, reason="the resolver widens on an unanswered field question instead of asking the subscriber lookup"
+)
+async def test_a_missing_read_set_does_not_widen() -> None:
+    """A transform absent from the database cannot be run at all, so refreshing its kind is waste."""
+    resolver, _ = _resolver(index={}, readers={})
+    changes = [
+        MergeChange(node_id="color-1", kind=PEER_KIND, action=UPDATED, changed_fields=frozenset({"description"}))
+    ]
+
+    result = await resolver.resolve(
+        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None
+    )
+
+    assert result.targets == frozenset()
