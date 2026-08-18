@@ -12,6 +12,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
     SchemaPathType,
 )
 from infrahub.core.manager import NodeManager
@@ -371,6 +372,57 @@ class TestRetireNodeAgnosticFields:
         assert edge_summary(await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")) == (
             edge_summary(before)
         )
+
+    async def test_an_edge_that_begins_after_the_requested_time_is_left_alone(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        nodedel_schema: None,
+    ) -> None:
+        """Closing an edge at a time before it began would invert its interval, so it is not a candidate."""
+        widget = await _create_widget(db=db, branch=default_branch, name="edge-from-the-future", serial=4200)
+        await tombstone_existence_only(db=db, node_id=widget.get_id(), branch=default_branch, at=Timestamp())
+
+        before = await attribute_global_edges(db=db, node_id=widget.get_id(), attribute_name="serial")
+        assert open_active_edges(before) != [], "the field has to be retirable, or the bounds are not what spared it"
+
+        # the anchor half: nothing is even a candidate at a time before its owning edge began
+        assert await _retire(
+            db=db, node_id=widget.get_id(), at=Timestamp().subtract(hours=1)
+        ) == NodeAgnosticRetirementResult(edges_closed=0)
+        assert edge_summary(
+            await attribute_global_edges(db=db, node_id=widget.get_id(), attribute_name="serial")
+        ) == edge_summary(before), "no candidate, so nothing is closed"
+
+        # the closure half: a field that IS a candidate, holding one edge that begins later
+        future = Timestamp().add_delta(hours=1)
+        await db.execute_query(
+            query="""
+            MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: "serial"})
+            WITH DISTINCT a
+            MATCH (owner:Node {uuid: $node_id})
+            CREATE (a)-[:HAS_SOURCE {branch: $global_branch, branch_level: 1, status: "active", from: $future}]->(owner)
+            """,
+            params={
+                "node_id": widget.get_id(),
+                "global_branch": GLOBAL_BRANCH_NAME,
+                "future": future.to_string(),
+            },
+        )
+        with_future = await attribute_global_edges(db=db, node_id=widget.get_id(), attribute_name="serial")
+        assert len(open_active_edges(with_future)) == len(open_active_edges(before)) + 1
+
+        at = Timestamp()
+        assert await _retire(db=db, node_id=widget.get_id(), at=at) == NodeAgnosticRetirementResult(
+            edges_closed=len(open_active_edges(before))
+        ), "every edge that had begun is closed, and the one that had not is not counted"
+
+        after = await attribute_global_edges(db=db, node_id=widget.get_id(), attribute_name="serial")
+        still_open = open_active_edges(after)
+        assert [edge.edge_type for edge in still_open] == ["HAS_SOURCE"], (
+            "the edge that begins later is left open rather than closed before it existed"
+        )
+        assert still_open[0].to_time is None
 
     async def test_a_second_run_over_an_already_retired_field_closes_nothing(
         self,

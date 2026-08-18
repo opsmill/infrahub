@@ -1170,8 +1170,8 @@ async def run_check_merge_conflicts(model: CheckRepositoryMergeConflicts) -> Val
         await check.save()
 
     database = await get_database()
-    async with database.start_session() as db:
-        await NodeManager.delete(db=db, nodes=list(existing_checks.values()))
+    async with database.start_transaction() as dbt:
+        await NodeManager.delete(db=dbt, nodes=list(existing_checks.values()))
 
     return validator_conclusion
 

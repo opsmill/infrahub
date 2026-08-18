@@ -27,6 +27,7 @@ _RETIRE_UNRETAINED_FIELDS_OF_NODE = """
 MATCH (anchor_node:Node {uuid: $node_uuid})-[anchor:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
 WHERE anchor.branch = $global_branch_name
   AND anchor.status = "active"
+  AND anchor.from <= $at
   AND anchor.to IS NULL
 WITH DISTINCT field
 %(unretained_predicate)s
@@ -34,6 +35,7 @@ WITH DISTINCT field
 MATCH (field)-[e]-()
 WHERE e.branch = $global_branch_name
   AND e.status = "active"
+  AND e.from <= $at
   AND e.to IS NULL
 SET e.to = $at
 RETURN count(e) AS edges_closed
