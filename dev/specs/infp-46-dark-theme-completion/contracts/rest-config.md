@@ -51,9 +51,10 @@ root `docker-compose.yml`:
 character is what delivers SC-008 (an engineer gets dark with zero further steps). The env var still
 overrides, so an engineer who wants light can set it without editing the file.
 
-⚠ Decide deliberately whether the **root** `docker-compose.yml` also defaults to `true`. It is used
-for deployments beyond the dev stack; defaulting it on there widens the blast radius past "the
-deployments we run".
+⚠ Decided: the **root** `docker-compose.yml` gets **no passthrough at all** (T031). It is used for
+deployments beyond the dev stack, and while dark is alpha such a deployment cannot enable the flag
+by setting the env var on the host — there is no line to carry it. That consequence is accepted
+deliberately, not an oversight.
 
 ## What the flag governs
 

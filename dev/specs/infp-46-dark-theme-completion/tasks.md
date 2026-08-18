@@ -125,7 +125,7 @@ release build → light; a personal choice beats both and is never overwritten.
 ## Phase 5: User Story 3 — GraphQL sandbox (P2)
 
 - [x] T036 [US3] Replace `forcedTheme="light"` in `frontend/app/src/pages/graphql/index.tsx` with the resolved theme from the shared context. ⚠ Pass `"light"`/`"dark"` only — never `"system"`, or GraphiQL runs its own `prefers-color-scheme` detection and can disagree with the application.
-- [ ] T037 [US3] Test that the sandbox receives the resolved value and follows a theme change. ⚠ The relied-upon behaviour (reactive `forcedTheme`, and picker-hiding when set) is not documented public API — it was verified against `graphiql@5.2.4`'s bundled source, so a test is what protects the binding across upgrades.
+- [ ] T037 [US3] Test that the sandbox receives the resolved value and follows a theme change. ⚠ The relied-upon behaviour (reactive `forcedTheme`, and picker-hiding when set) is not documented public API — it was verified against `graphiql@5.2.4`'s bundled source, so a test is what protects the binding across upgrades. *Partially covered*: `use-resolved-theme.test.tsx` now guards the hook the page reads from; the GraphiQL binding itself (that `forcedTheme` reaches the sandbox and reacts) remains untested — GraphiQL is too heavy for the browser-mode suite, so this wants an e2e assertion on the sandbox page.
 
 ---
 

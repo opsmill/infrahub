@@ -53,8 +53,10 @@ React render.
 its surface in both themes (FR-021); semantic palettes are out of scope. The login page must be
 themed before a session exists.
 
-**Scale/Scope**: 3 backend layers (constants/model/GraphQL) + 1 boolean setting; ~104 existing CSS
-tokens reused, none added; ~20 application files carrying hardcoded variants; 1 external repository.
+**Scale/Scope**: 3 backend layers (constants/model/GraphQL) + 1 boolean setting; ~40 existing CSS
+tokens reused, extended where a role had no token yet (implementation added `--content`,
+`--content-muted`, `--content-strong`, `--active`, `--active-surface`); ~20 application files
+carrying hardcoded variants; 1 external repository.
 
 ## Constitution Check
 

@@ -4,8 +4,8 @@
 
 ## Revision 2 — 2026-08-17, after idea grilling
 
-A structured grilling pass over the product core (the part that had wobbled twice) produced five
-decisions. **The feature got smaller.** Nothing was added.
+A structured grilling pass over the product core (the part that had wobbled twice) produced the
+seven decisions tabled below. **The feature got smaller.** Nothing was added.
 
 | Decision | Effect |
 |---|---|
@@ -108,15 +108,17 @@ finding was a genuine fidelity loss and has been corrected.
 ### On item 7's mechanism
 
 The handover asked to "make canary enabled by default". No `canary` concept exists anywhere in the
-repository, so the term had no referent to implement. Rather than guess silently, the mechanism was
-chosen with evidence and documented in [research.md](./research.md) §R1: PEP 440 pre-release status
-on the running version, verified against the actual build (`1.11.0b2.dev134+geb5acb009` →
-pre-release; `1.11.0` → not).
+repository, so the term had no referent to implement. Rather than guess silently, a mechanism was
+first chosen with evidence ([research.md](./research.md) §R1: PEP 440 pre-release status on the
+running version) — and then **replaced in Revision 2**, when grilling surfaced that both existing
+experimental settings follow a house convention instead: an `INFRAHUB_EXPERIMENTAL_*` env var
+passed through docker-compose. "Pre-release" is a property of a version and would have caught
+customer betas too — broader than "the deployments we run". The shipped mechanism is
+`INFRAHUB_EXPERIMENTAL_DARK_THEME`, defaulting to `true` in `development/docker-compose.yml` only.
 
 This is recorded as a **resolution of an underspecified item**, not as drift — the intent ("the
-non-production versions we usually run default to dark") is met exactly. But it is the single
-decision in this spec most worth a reviewer's attention, because the requester may have had a
-specific existing concept in mind that this analysis did not find.
+non-production versions we usually run default to dark") is met exactly, and the requester chose
+the flag design explicitly when both options were presented.
 
 ## Action
 

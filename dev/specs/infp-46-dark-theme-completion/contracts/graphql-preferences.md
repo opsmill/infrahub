@@ -91,6 +91,13 @@ if theme is not _UNSET:
 
 ## Behavioural contract
 
+⚠ The `GLOBAL` rows describe the **backend resolution chain**, which is shared across all
+preference fields and therefore accepts a global theme write. No interface offers one in this
+version — theme is user-scoped only (FR-003), achieved by leaving `theme` out of the
+global-preferences mutation document, so the global layer simply has no writer. The rows exist
+because the chain must keep resolving correctly through a layer that is always `null` today and
+gains a writer only when the organisation-wide default ships later.
+
 | Given | When | Then |
 |---|---|---|
 | No preference at any layer | `InfrahubEffectivePreferences` queried | `theme.value = null`, `theme.source = DEFAULT` |

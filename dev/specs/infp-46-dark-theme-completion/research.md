@@ -248,9 +248,12 @@ flagged for explicit human sign-off before implementation, not assumed.
 
 ### Evidence
 
-`frontend/packages/ui/src/styles/theme.css` defines 104 custom properties on `:root` with a `.dark`
-block at line 60. The light palette is **warm** — `--background: var(--color-stone-100)`,
-`--foreground: var(--color-stone-800)`, `--card`/`--panel` built from `stone`/`gray` stops.
+`frontend/packages/ui/src/styles/theme.css` defines ~40 semantic custom properties on `:root`, a
+`.dark` block redefining the same names, and an `@theme inline` block bridging each token into
+Tailwind utilities. (Exact counts and line numbers drift as this very PR adds tokens — the
+structure is the durable fact.) The light palette is **warm** — `--background:
+var(--color-stone-100)`, `--foreground: var(--color-stone-800)`, `--card`/`--panel` built from
+`stone`/`gray` stops.
 
 `shared/components/data-viewer/data-viewer.tsx` uses `bg-neutral-800 text-neutral-200` (line 29),
 `border-neutral-700` (line 77) and two `bg-white` containers (lines 58, 89). `neutral` is Tailwind's

@@ -139,14 +139,17 @@ document.documentElement.classList.contains("dark")
 
 1. In dark, walk the proposed-changes flow, a diff view, the checks view and path traversal. No
    bright surface, and borders and text match the rest of the interface.
-2. Confirm no application component carries per-theme overrides:
+2. Confirm no application component paints a fixed surface palette:
 
    ```bash
-   git grep -c "dark:" -- 'frontend/app/src/**/*.tsx'
+   git grep -nE 'bg-(white|gray-(50|100))\b' -- 'frontend/app/src/**/*.tsx'
    ```
 
-   Expect no output. ⚠ `rtk` reformats grep output and an empty piped result is not proof — run this
-   through plain `git grep`.
+   Expect no output. ⚠ Counting `dark:` occurrences is the wrong metric in both directions: a
+   `dark:` variant renders correctly (merely unmaintainable, and legitimate for categorical ramps
+   and asset swaps), while the files that are actually broken carry no variant at all — the defect
+   is the *absence* of one on a fixed palette. ⚠ `rtk` reformats grep output and an empty piped
+   result is not proof — run this through plain `git grep`.
 3. In light, compare the same pages against the pre-change build: no visual difference.
 
 ### US6 — Data viewer
