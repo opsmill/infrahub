@@ -1,3 +1,5 @@
+from collections.abc import Awaitable, Callable
+
 import ujson
 from prefect import Flow
 
@@ -8,7 +10,11 @@ from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.tasks.check import set_check_status
 
-COMMAND_MAP = {
+# Annotated for the same reason MESSAGE_MAP is: the routing key selects both the message class
+# and its handler, so they always agree at runtime, but that correspondence is not expressible
+# in the type system. Without the annotation the value type infers as a union of the eight
+# concrete handler signatures, and dispatching a base InfrahubMessage fails against every one.
+COMMAND_MAP: dict[str, Callable[..., Awaitable[None]]] = {
     "git.file.get": git.file.get,
     "git.repository.connectivity": git.repository.connectivity,
     "refresh.git.fetch": git.repository.fetch,
