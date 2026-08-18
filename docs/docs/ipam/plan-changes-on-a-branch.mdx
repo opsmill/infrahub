@@ -1,0 +1,37 @@
+---
+title: Plan changes on a branch
+---
+
+Use a branch to draft IP prefix and address changes, review exactly what will change, and merge once you're confident — the same version-control workflow Infrahub applies to the rest of your infrastructure data.
+
+## The workflow
+
+Create a branch, then create, update, or delete IP namespaces, prefixes, and addresses on it through the web interface, GraphQL, or the Python SDK — the same way you would on the default branch. See [Create a branch](../branches/create.mdx) if you haven't created one before.
+
+Once your changes are ready, open a [Proposed Change](../proposed-changes/overview.mdx) to review them. The Data tab shows exactly which prefixes, addresses, and namespaces were added, modified, or deleted, and which attributes changed on each. Merge once the review is complete — see [Merge a branch](../branches/merge.mdx) for what happens at merge time.
+
+## What reconciles on merge
+
+IPAM hierarchy reconciliation runs immediately after each mutation on a branch, so the branch's own prefix and address tree stays consistent while you work. When the branch merges or is rebased, Infrahub reads the diff between the two branches, identifies which prefixes and addresses changed, and reconciles only those — reassigning parent prefixes, child prefixes, and address-to-prefix associations as needed on the target branch.
+
+## Concurrency
+
+Allocating from a resource pool is guarded by lock-based concurrency control (`InfrahubMultiLock`) on any branch — two clients requesting the next address or prefix from the same pool at the same time cannot receive the same value.
+
+Creating or updating a prefix with an explicit value is locked on any branch as well, so two clients cannot create the same prefix concurrently. Creating or updating an address with an explicit value is only locked on the default branch — on other branches, concurrent clients can create the same address value without contention.
+
+## Worked example: redesign a subnet on a branch
+
+Continuing the ISP example from [Use namespaces](./use-namespaces.mdx): Customer A's network team needs to split their `10.0.0.0/16` supernet into two `/17` subnets ahead of a datacenter migration.
+
+1. Create a branch: `customer-a-subnet-redesign`.
+2. On the branch, create the two `10.0.0.0/17` and `10.0.128.0/17` prefixes in the `customer-a` namespace, both with `10.0.0.0/16` as their parent.
+3. Move the existing `/24` and `/26` prefixes under whichever new `/17` contains them — Infrahub re-parents each one automatically based on its network containment.
+4. Open a Proposed Change and review the Data tab: the new `/17` prefixes appear as additions, and each moved prefix shows its `parent` relationship changing from `10.0.0.0/16` to the matching `/17`.
+5. Merge. Infrahub reconciles the hierarchy of the `customer-a` namespace on the default branch to match.
+
+## Related
+
+- [Branches](../branches/overview.mdx) — branch lifecycle and isolation modes
+- [Proposed Changes](../proposed-changes/overview.mdx) — the review and merge workflow
+- [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) — allocating on a branch during provisioning
