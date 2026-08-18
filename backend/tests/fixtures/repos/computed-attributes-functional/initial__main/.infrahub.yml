@@ -4,7 +4,12 @@ python_transforms:
   - name: TShirtPitch
     class_name: TShirtPitch
     file_path: "transforms/tshirt_pitch.py"
+  - name: TShirtBadge
+    class_name: TShirtBadge
+    file_path: "transforms/tshirt_badge.py"
 
 queries:
   - name: tshirt_colors
     file_path: "transforms/tshirt_colors.gql"
+  - name: tshirt_badge
+    file_path: "transforms/tshirt_badge.gql"

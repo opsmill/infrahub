@@ -1,0 +1,16 @@
+query TestingTshirtBadge($id: ID!) {
+  TestingTShirt(ids: [$id]) {
+    edges {
+      node {
+        name {
+          value
+        }
+        color {
+          node {
+            display_label
+          }
+        }
+      }
+    }
+  }
+}

@@ -37,9 +37,11 @@ from tests.helpers.fixtures import get_fixtures_dir
 from tests.helpers.merge_recompute.dataset import (
     PROFILE_NODE_KIND,
     PROFILE_PEER_KIND,
+    TRANSFORM_IMPRECISE_ATTRIBUTE,
     TRANSFORM_OWNER_KIND,
     TRANSFORM_PEER_KIND,
     TRANSFORM_REPO_NAME,
+    build_imprecise_transform_schema_dict,
     build_profile_schema_dict,
     build_transform_schema_dict,
 )
@@ -283,3 +285,85 @@ class TestPythonMergeRecomputeTiming(TestInfrahubDockerClient):
 
         assert merge_critical_path_s > 0
         assert refreshed == changed_nodes, "every owner reading a changed peer must refresh"
+
+
+@pytest.mark.skipif(
+    not os.environ.get("INFRAHUB_PROFILE_TIMING"),
+    reason="on-demand merge timing profile; set INFRAHUB_PROFILE_TIMING to run",
+)
+class TestImpreciseReadSetDoesNotWiden(TestInfrahubDockerClient):
+    """An attribute whose read set cannot be mapped to fields must still be narrowed by its readers.
+
+    Reading a display label makes the read set imprecise. The pass has to answer that by asking who
+    reads the changed nodes, not by refreshing every node of the kind.
+    """
+
+    @pytest.fixture(scope="class")
+    def infrahub_version(self) -> str:
+        return "local"
+
+    @pytest.mark.xfail(strict=True, reason="an imprecise read set widens instead of resolving its readers")
+    @pytest.mark.timeout(3600)
+    async def test_an_imprecise_attribute_does_not_refresh_its_whole_kind(
+        self, client: InfrahubClient, remote_repos_dir: Path
+    ) -> None:
+        changed_nodes = int(os.environ.get("INFRAHUB_PROFILE_SCALE", "20"))
+
+        await client.schema.load(schemas=[build_imprecise_transform_schema_dict()], wait_until_converged=True)
+        repo = GitRepo(
+            type=GitRepoType.INTEGRATED,
+            name=TRANSFORM_REPO_NAME,
+            src_directory=get_fixtures_dir() / "repos" / TRANSFORM_REPO_NAME / "initial__main",
+            dst_directory=remote_repos_dir,
+        )
+        await repo.add_to_infrahub(client=client)
+        assert await repo.wait_for_sync_to_complete(client=client)
+
+        peers = []
+        for index in range(changed_nodes):
+            peer = await client.create(
+                kind=TRANSFORM_PEER_KIND,
+                data={"name": f"imprecise-color-{index:05d}", "description": f"shade {index:05d}"},
+            )
+            await peer.save()
+            peers.append(peer)
+        for index in range(changed_nodes):
+            owner = await client.create(
+                kind=TRANSFORM_OWNER_KIND, data={"name": f"imprecise-shirt-{index:05d}", "color": peers[index]}
+            )
+            await owner.save()
+
+        await _wait_idle(client)
+        seeded = await client.all(kind=TRANSFORM_OWNER_KIND, branch="main")
+        assert sum(1 for owner in seeded if getattr(owner, TRANSFORM_IMPRECISE_ATTRIBUTE).value) == changed_nodes, (
+            "the imprecise transform had not run for every owner before the merge"
+        )
+
+        widened_before = await client.task.count(
+            filters=TaskFilter(workflow=[TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES.name])
+        )
+        batches_before = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM.name])
+        )
+
+        branch = await client.branch.create(branch_name="imprecise-read-set")
+        for index, peer in enumerate(peers):
+            obj = await client.get(kind=TRANSFORM_PEER_KIND, id=peer.id, branch=branch.name)
+            obj.description.value = f"shade {index:05d} edited"
+            await obj.save()
+        await _wait_idle(client)
+        assert await client.branch.merge(branch_name=branch.name)
+        await _wait_idle(client)
+
+        widened = (
+            await client.task.count(filters=TaskFilter(workflow=[TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES.name]))
+            - widened_before
+        )
+        batches = (
+            await client.task.count(filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM.name]))
+            - batches_before
+        )
+        print(f"\n[imprecise-read-set] changed_nodes={changed_nodes} widened={widened} batches={batches}")
+
+        assert widened == 0, f"the pass widened {widened} time(s) instead of resolving the readers"
+        assert batches < changed_nodes, f"{batches} batches for {changed_nodes} changed nodes is per-node fan-out"

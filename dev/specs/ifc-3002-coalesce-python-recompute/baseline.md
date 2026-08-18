@@ -346,3 +346,29 @@ change is needed, because the query already reads the field; only its provenance
 Both directions want the assertion on the final stored value and on the chain depth reached, not
 only on the value: a chain that settles by accident, because the same-node cascade did the work,
 would pass a value-only assertion while leaving the chained level untested.
+
+
+## The measurements above hold only for a precise read set
+
+Every number in this document was taken with the fixture transform reading a field on each kind it
+touches, so its read set is precise and the pass narrows. Measured in real conditions against a
+workload that does not have that property, the branch **regresses**: roughly twenty times more
+process runs than the base plus a whole-kind fan-out, and a drain window about three times longer,
+for the same set of refreshed readers.
+
+Reproduced in the repository with a second transform that reads the peer's display label, which no
+read set can map to backing fields:
+
+```text
+[imprecise-read-set] changed_nodes=20 widened=1 batches=42
+```
+
+Forty-two batches for twenty changed nodes is 2.1 per node, against a per-node baseline of 2.0. In
+this case the coalesced pass does more work than the path it replaces.
+
+The cause is narrower than "widening is too eager". In `_resolve_one` the widen check runs before
+anything asks whether the change is relevant, so an imprecise or missing read set refreshes its
+whole kind on **every** merge, whether or not that merge touched anything the transform reads. The
+subscriber lookup, which would have answered that nobody reads the changed nodes, is never called.
+
+Do not quote the headline numbers without this qualification.

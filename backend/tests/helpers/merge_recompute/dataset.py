@@ -231,6 +231,34 @@ def build_transform_schema_dict() -> dict:
     }
 
 
+TRANSFORM_IMPRECISE_ATTRIBUTE = "badge"
+TRANSFORM_IMPRECISE_NAME = "TShirtBadge"
+
+
+def build_imprecise_transform_schema_dict() -> dict:
+    """The same two kinds, plus an attribute whose transform reads the peer's display label.
+
+    A display label cannot be mapped back to the fields it is built from, so the read set for
+    this attribute is imprecise. That is the case the pass has to answer by asking who reads the
+    changed nodes; refreshing the whole kind instead is what this exists to catch.
+
+    Kept apart from ``build_transform_schema_dict`` so the recorded measurements stay attributable
+    to a single attribute.
+    """
+    schema = build_transform_schema_dict()
+    tshirt = next(node for node in schema["nodes"] if node["name"] == "TShirt")
+    tshirt["attributes"].append(
+        {
+            "name": TRANSFORM_IMPRECISE_ATTRIBUTE,
+            "kind": "Text",
+            "optional": True,
+            "read_only": True,
+            "computed_attribute": {"kind": "TransformPython", "transform": TRANSFORM_IMPRECISE_NAME},
+        }
+    )
+    return schema
+
+
 CHAIN_NAMESPACE = "Testing"
 
 
