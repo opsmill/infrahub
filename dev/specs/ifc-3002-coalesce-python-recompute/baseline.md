@@ -372,3 +372,28 @@ whole kind on **every** merge, whether or not that merge touched anything the tr
 subscriber lookup, which would have answered that nobody reads the changed nodes, is never called.
 
 Do not quote the headline numbers without this qualification.
+
+
+## After the widening fix
+
+Same gate, same scale, on a rebuilt image:
+
+| | Before | After |
+|---|---|---|
+| Whole-kind widenings | 1 | 0 |
+| Merge dispatch batches | 42 | 2 |
+| Changed nodes | 20 | 20 |
+
+Two batches for two attributes, which is one per affected pair, with the same readers refreshed.
+
+Two measurement traps this run walked into, both worth knowing before repeating it:
+
+The image has to be rebuilt. A first attempt reported numbers identical to the broken run, because
+the stack was still running the previously built image and none of the fix was in it. Identical
+numbers after a change are a signal to check what is deployed, not to conclude the change did
+nothing.
+
+The counters have to start after the branch edits. Editing twenty peers on a branch is live work
+and legitimately fans out per node; counting from before those edits attributes forty runs to the
+merge that did not come from it. The first pass at this gate reported 42 for that reason alone,
+and only 2 of them were the merge.
