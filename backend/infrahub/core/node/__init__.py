@@ -421,16 +421,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         """
         number_pool_id: str | None = None
         # Templates must use _from_resource_pool relationships, not from_pool
-        if isinstance(self._schema, TemplateSchema):
-            if attribute.from_pool:
-                pool_rel_name = f"{attribute.name}{RESOURCE_POOL_REL_SUFFIX}"
-                raise ValidationError(
-                    {
-                        f"{attribute.name}.from_pool": (
-                            f"'from_pool' is not supported on template attributes. Set the '{pool_rel_name}' relationship on this template instead."
-                        )
-                    }
-                )
+        if isinstance(self._schema, TemplateSchema) and attribute.from_pool:
+            pool_rel_name = f"{attribute.name}{RESOURCE_POOL_REL_SUFFIX}"
+            raise ValidationError(
+                {
+                    f"{attribute.name}.from_pool": (
+                        f"'from_pool' is not supported on template attributes. Set the '{pool_rel_name}' relationship on this template instead."
+                    )
+                }
+            )
 
         # Case 1: Schema-defined NumberPool attribute
         if (
@@ -984,10 +983,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     async def process_label(self, db: InfrahubDatabase | None = None) -> None:  # noqa: ARG002
         # If there label and name are both defined for this node
         #  if label is not define, we'll automatically populate it with a human friendy vesion of name
-        if not self._existing and hasattr(self, "label") and hasattr(self, "name"):
-            if self.label.value is None and self.name.value:
-                self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
-                self.label.is_default = False
+        if (
+            not self._existing
+            and hasattr(self, "label")
+            and hasattr(self, "name")
+            and self.label.value is None
+            and self.name.value
+        ):
+            self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
+            self.label.is_default = False
 
     async def new(self, db: InfrahubDatabase, id: str | None = None, process_pools: bool = True, **kwargs: Any) -> Self:
         if id and not is_valid_uuid(id):
@@ -1022,17 +1026,20 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # If we are creating a new node, we need to resolve extra filters from Display Labels or HFIDs, if we don't do
         # this the fields might be blank.
         # We could also need it when we need to recompute the Display Labels or HFIDs
-        if (not self._existing) or self._human_friendly_id:
-            if hfid := schema_branch.hfids.get_template_nodes().get(self._schema.kind):
-                definitions.append(hfid)
-        if (not self._existing) or self._display_label:
-            if display_labels := schema_branch.display_labels.get_template_nodes().get(self._schema.kind):
-                definitions.append(display_labels)
+        if ((not self._existing) or self._human_friendly_id) and (
+            hfid := schema_branch.hfids.get_template_nodes().get(self._schema.kind)
+        ):
+            definitions.append(hfid)
+        if ((not self._existing) or self._display_label) and (
+            display_labels := schema_branch.display_labels.get_template_nodes().get(self._schema.kind)
+        ):
+            definitions.append(display_labels)
 
         # For existing nodes (updates), also include peer attributes needed by Jinja2 computed attribute templates
-        if self._existing:
-            if computed := schema_branch.computed_attributes.get_registered_jinja2_node(self._schema.kind):
-                definitions.append(computed)
+        if self._existing and (
+            computed := schema_branch.computed_attributes.get_registered_jinja2_node(self._schema.kind)
+        ):
+            definitions.append(computed)
 
         return self._merge_relationship_fields(definitions)
 
@@ -1146,13 +1153,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 updated_relationship = await rel.save(db=db, user_id=user_id, at=update_at)
                 node_changelog.add_relationship(relationship_changelog=updated_relationship)
 
-        if len(processed_relationships) != len(self._relationships):
-            # Analyze if the node has a parent and add it to the changelog if missing
-            if parent_relationship := self._get_parent_relationship_name():
-                if parent_relationship not in processed_relationships:
-                    rel = self.get_relationship(name=parent_relationship)
-                    if parent := await rel.get_parent(db=db):
-                        node_changelog.add_parent_from_relationship(parent=parent)
+        # Analyze if the node has a parent and add it to the changelog if missing
+        if (
+            len(processed_relationships) != len(self._relationships)
+            and (parent_relationship := self._get_parent_relationship_name())
+            and parent_relationship not in processed_relationships
+        ):
+            rel = self.get_relationship(name=parent_relationship)
+            if parent := await rel.get_parent(db=db):
+                node_changelog.add_parent_from_relationship(parent=parent)
 
         # Recompute Jinja2 computed attributes affected by the updated fields
         await self._recompute_local_jinja2(
@@ -1218,17 +1227,19 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         if self._human_friendly_id:
-            if deleted_attribute := await self._human_friendly_id.get_node_attribute(node=self, at=delete_at).delete(
+            deleted_attribute = await self._human_friendly_id.get_node_attribute(node=self, at=delete_at).delete(
                 db=db,
                 user_id=user_id,
                 at=delete_at,
-            ):
+            )
+            if deleted_attribute:
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         if self._display_label:
-            if deleted_attribute := await self._display_label.get_node_attribute(node=self, at=delete_at).delete(
+            deleted_attribute = await self._display_label.get_node_attribute(node=self, at=delete_at).delete(
                 db=db, at=delete_at, user_id=user_id
-            ):
+            )
+            if deleted_attribute:
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         branch = self.get_branch_based_on_support_type()

@@ -34,9 +34,8 @@ class NodeIDQuery(BaseModel):
         result: list[str] = []
         if kind_payload := response.get(self.kind):
             for edge in kind_payload.get("edges", []):
-                if node := edge.get("node"):
-                    if node_id := node.get("id"):
-                        result.append(node_id)
+                if (node := edge.get("node")) and (node_id := node.get("id")):
+                    result.append(node_id)
         return result
 
     async def fetch_all_paginated(

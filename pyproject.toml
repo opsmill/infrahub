@@ -589,7 +589,6 @@ allow-dunder-method-names = [
     "S101",     # Use of `assert` detected
     "S105",     # Possible hardcoded password
     "S311",     # Standard pseudo-random generators are not suitable for crypto
-    "SIM102",   # Use a single `if` statement instead of nested `if` statements
     "SIM103",   # Return the condition directly
     "SIM108",   # Use ternary operator instead of `if`-`else`-block
     "SIM110",   # Use `return any(...)` instead of `for` loop
@@ -820,7 +819,6 @@ allow-dunder-method-names = [
     "INP001",   # File is part of an implicit namespace package
     "PLR2004",  # Magic value used in comparison
     "RUF010",   # Use explicit conversion flag
-    "SIM102",   # Use a single `if` statement instead of nested `if` statements
 ]
 
 "backend/tests/functional/**.py" = [

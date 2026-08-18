@@ -589,16 +589,15 @@ async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> bool:
 async def get_groups_from_provider(
     provider: SecurityOAuth2Settings | SecurityOIDCSettings, service: InfrahubServices, payload: dict, user_info: dict
 ) -> list[str]:
-    if isinstance(provider, (SecurityOAuth2Google, SecurityOIDCGoogle)):
-        # Poor man's workaround to fetch user groups from Google
-        if provider.fetch_groups:
-            groups_response = await service.http.get(
-                f"{provider.cloudidentity_url}?query=member_key_id == '{user_info['email']}'",
-                headers={"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"},
-            )
-            group_memberships = groups_response.json()
-            if "memberships" in group_memberships:
-                return [membership["groupKey"]["id"] for membership in group_memberships["memberships"]]
+    # Poor man's workaround to fetch user groups from Google
+    if isinstance(provider, (SecurityOAuth2Google, SecurityOIDCGoogle)) and provider.fetch_groups:
+        groups_response = await service.http.get(
+            f"{provider.cloudidentity_url}?query=member_key_id == '{user_info['email']}'",
+            headers={"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"},
+        )
+        group_memberships = groups_response.json()
+        if "memberships" in group_memberships:
+            return [membership["groupKey"]["id"] for membership in group_memberships["memberships"]]
 
     return []
 

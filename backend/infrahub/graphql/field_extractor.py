@@ -56,9 +56,10 @@ class GraphQLFieldExtractor:
                     elif isinstance(fields[sub_node_name_value], dict) and isinstance(value, dict):
                         fields[sub_node_name_value].update(value)
             elif isinstance(node, FragmentSpreadNode):
-                if node.name.value in self.info.fragments:
-                    if fragment_fields := self._extract_fields(self.info.fragments[node.name.value].selection_set):
-                        fields.update(fragment_fields)
+                if node.name.value in self.info.fragments and (
+                    fragment_fields := self._extract_fields(self.info.fragments[node.name.value].selection_set)
+                ):
+                    fields.update(fragment_fields)
 
         return fields
 

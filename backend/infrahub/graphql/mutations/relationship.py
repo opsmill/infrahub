@@ -489,11 +489,10 @@ async def _validate_peer_types(
             and peer_relationships[0].cardinality == RelationshipCardinality.ONE
         ):
             peer_relationship: RelationshipManager = getattr(node, peer_relationships[0].name)
-            if peer := await peer_relationship.get_peer(db=graphql_context.db):
-                if peer.id != input_id:
-                    raise ValidationError(
-                        f"{node_id!r} {node.get_kind()!r} is already related to another peer on '{peer_relationships[0].name}'"
-                    )
+            if (peer := await peer_relationship.get_peer(db=graphql_context.db)) and peer.id != input_id:
+                raise ValidationError(
+                    f"{node_id!r} {node.get_kind()!r} is already related to another peer on '{peer_relationships[0].name}'"
+                )
 
 
 async def _validate_peer_parents(
