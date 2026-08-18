@@ -8,6 +8,7 @@ import pytest
 from infrahub.core.constants import InfrahubKind
 from infrahub.webhook.models import EventContext
 from infrahub.webhook.tasks import convert_node_to_webhook, webhook_process
+from infrahub.workers.dependencies import build_http_service
 from tests.adapters.http import MemoryHTTP
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -105,8 +106,6 @@ class TestWebhookProcess(TestInfrahubApp):
         webhook_deployment: None,
         dependency_provider: Provider,
     ) -> None:
-        from infrahub.workers.dependencies import build_http_service
-
         http = MemoryHTTP()
         http.add_post_response(
             url="https://url.mock",
@@ -132,8 +131,6 @@ class TestWebhookProcess(TestInfrahubApp):
         webhook_deployment: None,
         dependency_provider: Provider,
     ) -> None:
-        from infrahub.workers.dependencies import build_http_service
-
         http = MemoryHTTP()
         http.add_post_response(
             url="https://url.mock",

@@ -13,10 +13,6 @@ paths:
 
 Full reference: `dev/guidelines/backend/testing.md`
 
-## Import at the top
-
-All imports should be at the top of the test file. Do not import inside of test functions or classes.
-
 ## No mocking
 
 Do NOT use `unittest.mock`, `pytest-mock`, `MagicMock`, `patch`, or `Mock`.
@@ -55,7 +51,7 @@ Assert on the exact message with `==`, not substring checks with `in`. Vague che
 
 ## Assert exact expectations
 
-Exact-match is not only for error messages. Assert the exact collection (full set/dict equality, not `in`/`issubset`), never mere non-emptiness (`!= frozenset()`, `len() > 0`), and a positive count where the number matters (so a run that silently measures zero fails). A denial test must also reload the target and assert nothing changed. Full guidance in `dev/guidelines/backend/testing.md` §"Assert exact expectations".
+Exact-match is not only for error messages. Assert the exact collection (full set/dict equality, not `in`/`issubset`), never mere non-emptiness (`!= frozenset()`, `len() > 0`), and a positive count where the number matters (so a run that silently measures zero fails). A denial test must also reload the target and assert nothing changed. Pin literal expected values — never compute the expectation with the same serializer/library the implementation calls. Full guidance in `dev/guidelines/backend/testing.md` §"Assert exact expectations".
 
 ## Don't test the framework
 

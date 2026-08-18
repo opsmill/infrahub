@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
+from rich import print as rprint
 from typing_extensions import Self
 
 from infrahub.core.constants import (
@@ -435,8 +436,6 @@ class HashableModel(BaseModel):
                 md5hash.update(item)
 
         if display_values:
-            from rich import print as rprint
-
             rprint(tuple(values))
 
         return md5hash.hexdigest()

@@ -50,3 +50,4 @@ Where IDs *do* belong:
 - Explains *why* the code exists when the why is non-obvious (a constraint, an invariant, a workaround for a specific upstream bug).
 - Documents the contract of a public function (inputs, outputs, errors raised) when it crosses a module boundary.
 - Stays silent by default. A comment that restates the code is worse than no comment — it adds noise and rots the moment the code changes.
+- When a why-comment is warranted, one sentence. If the why needs a paragraph, it belongs in the function's docstring or a `dev/knowledge/` page, not inline. Reviewers repeatedly ask for multi-line inline comments to be condensed.
