@@ -13,6 +13,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 
 import "react-datepicker/dist/react-datepicker.css";
+import "@/shared/components/inputs/datepicker-overrides.css";
 
 export const TimeFrameSelector = () => {
   const [qspDate, setQspDate] = useQueryState(QSP.DATETIME, parseAsIsoDateTime);
