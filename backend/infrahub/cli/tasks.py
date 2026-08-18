@@ -16,6 +16,10 @@ from infrahub.workflows.models import WorkerPoolDefinition
 
 app = AsyncTyper()
 
+# States a flow run can be stuck in: RUNNING for a worker that died mid-flow, PENDING for one
+# that was picked up but never got to start.
+STALE_FLOW_RUN_STATES = [StateType.RUNNING, StateType.PENDING]
+
 
 @app.command()
 async def init(
@@ -89,7 +93,7 @@ async def stale_runs(
     days_to_keep: int = 2,
     batch_size: int = 100,
 ) -> None:
-    """Flush stale task runs."""
+    """Flush stale task runs, marking long RUNNING or PENDING flow runs as crashed."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -98,5 +102,5 @@ async def stale_runs(
 
     async with get_client(sync_client=False) as client:
         await FlowRunRetention(client=PrefectClientAdapter(client)).purge(
-            states=[StateType.RUNNING], delete=False, days_to_keep=days_to_keep, batch_size=batch_size
+            states=STALE_FLOW_RUN_STATES, delete=False, days_to_keep=days_to_keep, batch_size=batch_size
         )
