@@ -294,12 +294,14 @@ export type BranchCreate = {
 };
 
 export type BranchCreateInput = {
+  /** @deprecated branched_from is set by the server and cannot be provided */
   branched_from?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['String']['input']>;
   /** @deprecated Non isolated mode is not supported anymore */
   is_isolated?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
+  /** @deprecated Branches can only be created from the default branch */
   origin_branch?: InputMaybe<Scalars['String']['input']>;
   sync_with_git?: InputMaybe<Scalars['Boolean']['input']>;
 };

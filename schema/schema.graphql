@@ -252,12 +252,12 @@ type BranchCreate {
 }
 
 input BranchCreateInput {
-  branched_from: String
+  branched_from: String @deprecated(reason: "branched_from is set by the server and cannot be provided")
   description: String
   id: String
   is_isolated: Boolean @deprecated(reason: "Non isolated mode is not supported anymore")
   name: String!
-  origin_branch: String
+  origin_branch: String @deprecated(reason: "Branches can only be created from the default branch")
   sync_with_git: Boolean
 }
 

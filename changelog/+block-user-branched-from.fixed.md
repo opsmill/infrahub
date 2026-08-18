@@ -1,0 +1,1 @@
+The `BranchCreate` GraphQL mutation now rejects a client-supplied `branched_from` value with an error, and the field is marked deprecated. `branched_from` is an internal field managed by the application. The `origin_branch` field, which was already rejected for any value other than the default branch, is now also marked deprecated.
