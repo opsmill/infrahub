@@ -1553,12 +1553,8 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-aio-pika", specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.65b0" },
     { name = "prefect", specifier = "==3.7.5" },
-<<<<<<< HEAD
-    { name = "prefect-redis", specifier = "==0.2.12" },
-    { name = "prometheus-client", specifier = ">=0.25,<0.26" },
-=======
     { name = "prefect-redis", specifier = "==0.2.14" },
->>>>>>> origin/stable
+    { name = "prometheus-client", specifier = ">=0.25,<0.26" },
     { name = "puremagic", specifier = ">=1.30,<2" },
     { name = "pyarrow", marker = "extra == 'object-transfer'", specifier = ">=14" },
     { name = "pydantic", specifier = ">=2.12,<2.13" },
