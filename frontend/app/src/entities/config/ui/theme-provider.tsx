@@ -1,52 +1,30 @@
-import {
-  applyTheme,
-  mirrorResolvedTheme,
-  type ResolvedTheme,
-  readStoredChoice,
-  storeChoice,
-  ThemeContext,
-} from "@infrahub/ui";
+import { ThemeProvider as DesignSystemThemeProvider } from "@infrahub/ui";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
 
 import { canOfferDarkTheme } from "@/entities/config/domain/rules/can-offer-dark-theme";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
 /**
- * Decides the theme from the deployment's flag and this browser's choice, and fills the design
- * system's control context. Lives in `entities/config` because the flag is config data; everything
- * presentational reads the theme through the design system and never imports this.
+ * Infrahub's theme policy. The design system owns the machinery — storing a choice, painting it,
+ * exposing the switch — and this decides the two things that are ours to decide: whether the
+ * deployment offers dark at all, and what a user who has never chosen should see.
  *
- * A choice made while the feature was enabled is kept, not cleared, when the flag goes off. Turning
- * a flag off is an operator's decision about a deployment, and it should not reach through and
- * delete what users picked — flipping it back restores them to the theme they chose.
+ * Lives in `entities/config` because the flag is config data. Nothing presentational imports it;
+ * everything reads the theme through the design system.
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const config = useConfig();
   const canChoose = canOfferDarkTheme(config.experimental_features, import.meta.env.DEV);
 
-  const [choice, setChoice] = useState<ResolvedTheme | null>(readStoredChoice);
-
-  // Dark rather than the operating system's appearance: the point of enabling this on a
-  // non-production deployment is that everyone working on it sees the theme being worked on, which
-  // an OS-derived default would give only to the engineers already running a dark desktop.
-  const theme: ResolvedTheme = canChoose ? (choice ?? "dark") : "light";
-
-  useEffect(() => {
-    applyTheme(theme);
-    mirrorResolvedTheme(theme);
-  }, [theme]);
-
-  const control = useMemo(
-    () => ({
-      canChoose,
-      setTheme: (next: ResolvedTheme) => {
-        storeChoice(next);
-        setChoice(next);
-      },
-    }),
-    [canChoose]
+  return (
+    <DesignSystemThemeProvider
+      canChoose={canChoose}
+      // Dark rather than the operating system's appearance: the point of enabling this on a
+      // non-production deployment is that everyone working on it sees the theme being worked on,
+      // which an OS-derived default would give only to those already running a dark desktop.
+      defaultTheme={canChoose ? "dark" : "light"}
+    >
+      {children}
+    </DesignSystemThemeProvider>
   );
-
-  return <ThemeContext value={control}>{children}</ThemeContext>;
 }
