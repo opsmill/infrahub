@@ -1,0 +1,1 @@
+Fixed an error when browsing the task list where a task referenced a node that no longer exists in the graph. A deleted node's kind cannot be resolved, which made the whole query fail. Such references are now omitted from a task's related nodes; their ids remain visible in the task's tags.

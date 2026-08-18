@@ -52,14 +52,16 @@ class RelatedNodesInfo(BaseModel):
         self.flows[flow_id][node_id] = self.nodes[node_id]
 
     def get_related_nodes(self, flow_id: UUID) -> list[RelatedNodeInfo]:
-        if flow_id not in self.flows or len(self.flows[flow_id].keys()) == 0:
-            return []
-        return list(self.flows[flow_id].values())
+        """Return the related nodes of a flow that still exist in the graph.
+
+        A task outlives the nodes it references, and a node whose vertex is gone has no
+        resolvable kind. Those references are dropped rather than exposed as partial
+        entries; their ids remain readable from the flow run tags they are derived from.
+        """
+        return [node for node in self.flows.get(flow_id, {}).values() if node.kind is not None]
 
     def get_related_nodes_as_dict(self, flow_id: UUID) -> list[dict[str, str | None]]:
-        if flow_id not in self.flows or len(self.flows[flow_id].keys()) == 0:
-            return []
-        return [item.model_dump() for item in list(self.flows[flow_id].values())]
+        return [item.model_dump() for item in self.get_related_nodes(flow_id=flow_id)]
 
     def get_first_related_node(self, flow_id: UUID) -> RelatedNodeInfo | None:
         if nodes := self.get_related_nodes(flow_id=flow_id):
