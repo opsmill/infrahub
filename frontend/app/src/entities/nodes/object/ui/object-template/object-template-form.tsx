@@ -27,7 +27,7 @@ const StartButton = ({ icon, title, description, className, ...props }: StartBut
     )}
     {...props}
   >
-    <div className="rounded-lg bg-indigo-100 p-3">{icon}</div>
+    <div className="rounded-lg bg-indigo-100/50 p-3">{icon}</div>
 
     <div className="flex flex-col items-start gap-1">
       <p className="font-medium text-sm">{title}</p>
@@ -51,7 +51,7 @@ const StartFromTemplateButton = ({
         description="Pick a premade object and customize it"
       />
 
-      <Popover placement="bottom start" width="trigger" className="bg-white">
+      <Popover placement="bottom start" width="trigger">
         <Dialog>
           <ObjectTemplateAutocomplete
             autoFocus

@@ -43,7 +43,7 @@ export function CommandList({ className, ref, ...props }: CommandListProps) {
     <CommandPrimitive.List
       ref={ref}
       className={classNames(
-        "max-h-[280px] grow overflow-y-auto overflow-x-hidden rounded-md p-2",
+        "max-h-70 grow overflow-y-auto overflow-x-hidden rounded-md p-2 text-subtle",
         className
       )}
       asChild

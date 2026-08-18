@@ -48,7 +48,7 @@ export function ProcessingGroupItem({ group, mutationFn, onSuccess }: Processing
 
   return (
     <GroupItem group={group}>
-      <div className="rounded-full bg-green-200 p-0.5">
+      <div className="rounded-full bg-green-200 p-0.5 dark:bg-green-800">
         <CheckIcon className="size-3 text-foreground" />
       </div>
     </GroupItem>
