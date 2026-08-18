@@ -180,7 +180,7 @@ six; the work stays in scope.
 - [x] T056 Contrast audit (FR-021 / SC-009) across the pages walked for SC-006, not a sample — text and essential interface elements against their surfaces. ⚠ Scope boundary: this is legibility against a background, **not** semantic palettes (diagram, syntax-highlighting, status and severity colors), which are tracked separately. Record anything noticed there for that effort rather than fixing it here.
 - [x] T057 [P] Add a changelog fragment under `changelog/`. This series used `ci/skip-changelog` for pure restyling, but a user-facing theme setting is a genuine feature and warrants an entry.
 - [x] T058 [P] Document the theme preference in the user-facing docs under `docs/`, including that dark is pre-release.
-- [ ] T059 Run `/pre-ci` before pushing — it runs the locally-executable CI checks including generated-file and generated-doc validation, which this feature touches in three places.
+- [x] T059 Run `/pre-ci` before pushing — it runs the locally-executable CI checks including generated-file and generated-doc validation, which this feature touches in three places.
 
 ---
 
