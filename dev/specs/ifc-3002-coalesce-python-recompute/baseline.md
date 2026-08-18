@@ -432,3 +432,41 @@ same run-count gate as the merge leg.
 
 Still outstanding: a second 1000-node run to put an interval around the window, and the same
 comparison against the private scenario that produced the original report.
+
+
+## Does the problem still exist on the base? Measured, at 20 changed nodes
+
+Real-conditions runs showed the branch at parity with `release-1.11`, which raised the question of
+whether the fan-out this feature removes still exists at all. Those runs change roughly one node and
+fan out to three hundred readers, so the base emits one reader-resolution flow and there is nothing
+to collapse.
+
+The axis this feature works on is the number of **changed** nodes. Measured on today's
+`release-1.11` with the same harness, twenty changed source nodes:
+
+| 20 changed nodes | Base (release-1.11) | Branch |
+|---|---|---|
+| Merge, `process_transform` runs | 20 | ~2 |
+| Merge, `query_transform_targets` runs | 60 | 0 |
+| Rebase, `process_transform` runs | 20 | ~2 |
+| Rebase, `query_transform_targets` runs | 100 | 0 |
+| Readers refreshed | 20 | 20 |
+
+One process run per changed node, plus sixty to a hundred reader-resolution flows on top. The
+premise holds: the base still fans out, and it does so in proportion to the change set. The junk
+trigger fix that landed in `release-1.11` removed noise; it did not make the per-node path
+constant, because that path is one flow per changed node by design.
+
+This also settles why the production comparison looked flat. It is not that the feature does
+nothing; it is that the workload measured does not change enough nodes for it to matter. Roughly:
+
+- Few changed nodes, many readers: base and branch both do about two runs. Parity.
+- Many changed nodes: base does one per changed node, branch does about two in total.
+
+The branch figures come from the dispatch gate, which asserts a bound rather than printing an exact
+count, and from the imprecise gate, which reports two batches at the same scale. The base figures
+are exact.
+
+What this means for the success criteria: the honest claim is that the work scales with the number
+of derived values affected rather than with the changed-node count. A merge that changes little
+will not get faster, and should not be expected to.
