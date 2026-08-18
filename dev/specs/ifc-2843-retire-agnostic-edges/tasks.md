@@ -44,42 +44,69 @@ in parallel with the sign-off request.
 ## Phase 1: Setup
 
 - [ ] T001 Request maintainer sign-off for the migration gate: `m076`, `GRAPH_VERSION` 75 → 76, and the hard-delete of `Attribute`/`Relationship` vertices with no linked node. Record the outcome in `specs/ifc-2843-retire-agnostic-edges/plan.md` under Ask-First Gate.
-- [ ] T002 [P] Read `dev/guidelines/backend/python.md` (typing, and §"Best-effort side effects degrade to a safe fallback" — the rule T024 depends on) and `dev/guidelines/backend/checklist.md`
-- [ ] T003 [P] Read `dev/knowledge/backend/query-pattern.md` and `dev/knowledge/backend/database-schema.md` for the Query-class contract and edge-activity ordering (`branch_level DESC, from DESC, status ASC`)
 
 ---
 
-## Phase 2: Foundational (Blocking Prerequisites)
+## Phase 2: Foundational — withdrawn 2026-08-17
 
-**Purpose**: The invariant's three units. Both P1 user stories consume them — US1 through five
-enforcement points, US2 through the query's unbounded form.
+The original foundational phase (T004–T017b) built a `core/agnostic/` package: frozen
+branch-window types, a pure window builder, a retirement component behind a query `Protocol`, its
+adapter, and one query class carrying three candidate bounds and two anchor modes. A maintainer
+decision replaced that design with one shared Cypher predicate composed by a query per enforcement
+point, so none of those artifacts ships and their tasks are withdrawn rather than completed. The
+reasoning is in plan.md §"Design revision"; the ids are left unused so the numbering below still
+matches the critique and alignment-check records.
 
-**⚠️ CRITICAL**: No user story work can begin until this phase is complete.
+Work is tracked in **Phase 2R**.
 
-### Types and the pure builder
+---
 
-- [ ] T004 [P] Define the frozen dataclasses `BranchWindow`, `BranchWindowSet`, `RetirementCandidates` (discriminated: explicit node ids / fork-point bound / unbounded) and `RetirementResult(edges_closed, vertices_removed)` in `backend/infrahub/core/agnostic/models.py`
-- [ ] T005 [P] Write unit tests for the branch-window builder in `backend/tests/unit/core/agnostic/test_branch_windows.py`: default branch emits one pair and never collapses; a non-default branch emits two pairs and collapses its origin read to `branched_from`; a branch forked after `at` does not collapse; an empty branch list yields an empty set (not an error). Use hand-picked branch metadata, no DB fixtures.
-- [ ] T006 Implement `AgnosticBranchWindowBuilder.build(branches, at)` in `backend/infrahub/core/agnostic/branch_windows.py`, mirroring the `min(at, branched_from)` collapse of `Branch.get_branches_and_times_to_query_global`. Expose **no** parameter to disable isolation (FR-012), so no future caller can reach for one. Callers pass the branch list in: `registry.branch` values at the runtime enforcement points, `Branch.get_list(db=db)` in the migration.
+## Phase 2R: Delivery by enforcement point (revised plan of record)
 
-### The query
+Each enforcement point lands as its own slice: its query, its wiring, and the tests that pin it,
+with the shared retention predicate extended only where a slice proves it must be.
 
-- [ ] T007 Write component tests for the retirement query in `backend/tests/component/query/test_agnostic_retirement_query.py`, asserting graph shape directly (edge presence, `status`, `to`): unretained attribute closes **every** open global edge including `HAS_ATTRIBUTE`; retained attribute stays open; relationship closes its property edges **and both `IS_RELATED` edges** when either peer becomes unreachable; relationship stays open only while **both** peers are live with **both** `IS_RELATED` edges active on the same branch.
-- [ ] T008 Implement `RetireAgnosticPropertyEdgesQuery` in `backend/infrahub/core/query/agnostic_retirement.py`. Candidate traversal MUST start from open, active global `HAS_ATTRIBUTE`/`IS_RELATED` edges (FR-011); anchor on the `:Node`/`:Attribute`/`:Relationship` labels, never on schema kinds; close **every open global edge** of the vertex — the four property edges **and** the owning `HAS_ATTRIBUTE`/`IS_RELATED` edge(s) — by `SET e.to = $at` (FR-001, FR-002, FR-013: never a `deleted`-status edge); take the branch windows as bound parameters rather than reading `(:Branch)`; parameterise every value; expose `get_data() -> RetirementResult`. Model the edge-group subqueries on the validated production Cypher recorded on the ticket.
-- [ ] T009 Guard each edge group's `SET e.to = $at` with its own `WHERE e.to IS NULL` inside a subquery in `backend/infrahub/core/query/agnostic_retirement.py`, so an already-closed edge's timestamp is never overwritten and a half-closed vertex ends fully closed (FR-002a)
-- [ ] T010 Add the three candidate bounds to `RetireAgnosticPropertyEdgesQuery` (explicit node ids, fork-point timestamp, unbounded) as swappable `MATCH` prefixes over one shared predicate body, with batching (`IN TRANSACTIONS OF n ROWS`) for the unbounded form
-- [ ] T011 Add the two anchor modes to `RetireAgnosticPropertyEdgesQuery`: **open-edge** (runtime, selective, same-UUID protection from the anchor) and **widened** (`status: "active"` regardless of `to`, migration-only, same-UUID protection from the predicate — retained if *any* linked node vertex is live with an active owning edge) per FR-011a
-- [ ] T012 [P] Add a component test in `backend/tests/component/query/test_agnostic_retirement_query.py` proving the widened anchor still protects same-UUID copies: rename a kind, run the widened form, assert the surviving vertex keeps its value. This is the test that would catch the widened anchor silently stripping live data.
-- [ ] T013 [P] Add a component test in `backend/tests/component/query/test_agnostic_retirement_query.py` asserting an `AttributeValue` shared by two attributes is never deleted while any attribute still references it (FR-017)
-- [ ] T014 Run `EXPLAIN` on the candidate traversal under all three bounds **and both anchor modes** and record the plans in `specs/ifc-2843-retire-agnostic-edges/research.md` under a new "Query plans" section (Principle V). The widened anchor is expected to be materially less selective — confirm it is acceptable for a batched migration and unacceptable for the runtime paths, which is the reason for the split.
+- [X] R01 **Shared retention predicate** — `UNRETAINED_AGNOSTIC_FIELD_PREDICATE` in
+  `backend/infrahub/core/query/agnostic_retention.py`. Flat (no nested subqueries), derives branch
+  windows in Cypher from `(:Branch)`, conjoins existence and field-edge axes per branch and per
+  linked vertex, counts live peers by uuid, reduces across branches with `max`.
+- [X] R02 **Slice 1 — single object deletion.** `RetireNodeAgnosticFieldsQuery` in
+  `backend/infrahub/core/query/node_agnostic_retirement.py`, node-uuid anchored, one static Cypher
+  body, caller-supplied stamp, no batching; wired into `Node.delete` after the existence tombstone,
+  failures propagating. Tests in `backend/tests/component/query/test_node_agnostic_retirement_query.py`
+  and `backend/tests/component/core/test_agnostic_retirement.py`.
+- [ ] R03 **Slice 2 — schema attribute and relationship removal.** Fold the closure into
+  `AttributeRemoveQuery` (`backend/infrahub/core/migrations/query/attribute_remove.py`) and its
+  relationship equivalent rather than calling retirement after them, which also removes the ordering
+  problem in T030: once the removal query has closed the owning edge, an open-edge anchor can no
+  longer see the candidate. Supersedes T029/T030. Carries T030a and T030b.
+- [ ] R04 **Slice 3 — branch merge and rebase.** Supersedes T025–T028. Both supply node uuids from
+  the diff they already compute.
+- [ ] R05 **Slice 4 — branch deletion and the FR-018 timing gate.** Its own query, fork-point
+  bounded. Supersedes T018–T020 and carries T038's measurement obligation.
+- [ ] R06 **Slice 5 — repair migration.** Blocked on T001. Supersedes Phase 4; C4 in
+  `contracts/retirement-component.md` states its contract, including the per-candidate stamp
+  derivation that FR-015 now requires.
+- [ ] R07 **Re-run `EXPLAIN`** against the delivered queries and record the plans. The recorded
+  plans in research.md were measured against the superseded query and are marked stale; Principle
+  V's obligation is currently unmet.
+- [ ] R08 **Remove the superseded stack** once the last slice lands: `backend/infrahub/core/agnostic/`,
+  `backend/infrahub/core/query/agnostic_retirement.py`, and their tests. Until then the retention
+  logic exists twice, deliberately and visibly.
 
-### The component
+### Corrections to Phases 3–6 arising from the revision
 
-- [ ] T015 [P] Write unit tests for the retirement component in `backend/tests/unit/core/agnostic/test_retirement.py` using a **recording double** behind the query protocol (no mocks): assert the exact candidate sets and closure calls in order; assert a `Failing` double's exception does not propagate and leaves the edges untouched
-- [ ] T016 Define the query `Protocol` and implement `AgnosticFieldRetirer.retire(candidates, at) -> RetirementResult` in `backend/infrahub/core/agnostic/retirement.py`. All constructor dependencies required (`db`, the query collaborator) — no optional injection, no late registration. The component never reads the clock; `at` is always supplied.
-- [ ] T017 Add best-effort failure handling and logging to `AgnosticFieldRetirer` per `dev/guidelines/backend/python.md` §"Best-effort side effects degrade to a safe fallback": log the failure; fall back to **leaving the global edges open** (over-reserving — today's behaviour, never data loss); log edges closed, and the retaining-branch count when retirement is deferred
-
-**Checkpoint**: The invariant is implemented and independently tested. Both user stories can now proceed in parallel.
+- **T024 is inverted.** It requires that a retirement failure must not fail the user's delete. The
+  opposite is now true and implemented: failures propagate so the transaction rolls back. See
+  T017a.
+- **T030's ordering is moot** — the closure is part of the removal query rather than a call after it.
+- **T037's prediction was right and its reasoning was wrong.** Deleting a fully branch-agnostic
+  object *is* a retirement no-op, but not because the enforcement point declines to act: the ordinary
+  agnostic delete already both tombstones the global edges and stamps `to` on the superseded active
+  ones, so nothing is left to close. Covered by
+  `test_an_owner_that_is_itself_branch_agnostic_is_closed_once_by_its_own_deletion`.
+- **T015's description is stale** — it asks for a `Failing` double proving the exception does *not*
+  propagate. The shipped test proves the opposite.
 
 ---
 
@@ -116,6 +143,8 @@ passed.
 - [ ] T028 [US1] Invoke retirement from `rebase_branch` in `backend/infrahub/core/branch/tasks.py`, inside the existing `lock.registry.global_graph_lock()` and **before** `user_branch.rebase(...)` is applied, at `rebase_at`. Obtain the base-branch deletions via a second `DiffRepository` read under the existing tracking id (decided in plan.md §"Resolved during critique").
 - [ ] T029 [P] [US1] Write component tests for schema removal: a branch-agnostic attribute removed from the schema → closed; likewise a relationship; and with a branch that forked beforehand → deferred and still readable there (FR-010, scenarios 8–9)
 - [ ] T030 [US1] Invoke retirement from `NodeAttributeRemoveMigration` in `backend/infrahub/core/migrations/schema/node_attribute_remove.py` and `NodeRelationshipRemoveMigration` in `backend/infrahub/core/migrations/schema/node_relationship_remove.py`, after each existing removal query runs
+- [ ] T030a [US1] Write the cross-axis component test driven through the **real** removal migration: an object deleted on the default branch while a branch forked after its creation had the attribute removed from its schema. That branch retains the object but not the field, so nothing retains the value and the global edges must close. Deferred from the object-delete slice deliberately — the fixture is only faithful once the removal path is final, and a hand-built version could encode a shape the schema slice changes. The object-delete slice covers the same conjunction with a raw-Cypher fixture instead.
+- [ ] T030b [US1] Write the inverse of T030a: the attribute removed from the schema on the default branch while a branch forked beforehand deleted the object. That branch retains the field but not the object, so again nothing retains the value. Both directions prove the retention conjunction is per branch rather than a disjunction across axes.
 
 ### Cross-cutting correctness tests for US1
 
@@ -188,69 +217,48 @@ the schema.
 
 ---
 
+## Follow-ups (out of scope here — file separately)
+
+- [ ] F001 File an issue for **merged branches retaining branch-agnostic attributes and relationships**. A branch that forked after an object was created reads that object as live at its fork point regardless of its own status, so a `MERGED` branch keeps the object's branch-agnostic value reserved until the branch itself is deleted. Predates this work — the branch list has always come from sources that include merged branches — but the retirement invariant makes it visible and load-bearing: after a proposed change merges, the value stays allocated with no operator signal, which is the mirror of the leak this feature fixes.
+
+  The desired end state is that a merged branch does **not** retain, while a user querying that merged branch still sees valid objects — a mandatory branch-agnostic attribute still resolving to a value rather than to nothing. That is mechanically achievable and the design is symmetric with the isolation collapse already in `Branch.get_branches_and_times_to_query_global`: the branch's own pair reads `-global-` at the present, and for a merged branch it would collapse to the merge time, exactly as the origin pair collapses to `branched_from`. Three obstacles belong in the issue rather than here:
+
+  1. `Branch` records no merge timestamp — only `status` and `branched_from` — so pinning reads to merge time needs a new field and a migration, which is an Ask-First gate and a second graph-version bump.
+  2. That method serves every branch-agnostic read, so the change affects all agnostic data on all merged branches, not only retired values.
+  3. Releasing a value at merge while keeping the merged branch readable means the value can legitimately appear twice — historically on the merged branch, currently on its new holder. For a unique attribute (the pool case that opened this ticket) that is only safe if uniqueness validation considers the present only. Answer that before anything ships, or the change re-creates the duplicate-value failure this feature exists to eliminate.
+
+  Until then the conservative behaviour stands: merged branches retain, and deleting the branch releases the value.
+
+- [ ] F002 File an issue for **a kind or inheritance migration run on a branch closing the superseded vertex's global edges for every branch**. Observed while probing whether two same-uuid vertices can be live at once. Running `NodeKindUpdateMigrationQuery01` on a branch leaves the node's uuid on two vertices, and treats them asymmetrically by branch as expected — the superseded vertex keeps an active `IS_PART_OF` on the default branch and gains a `deleted` one on the migrating branch, while the new vertex exists only on the migrating branch. But the superseded vertex's branch-agnostic `IS_RELATED` edge is **time-closed on `-global-`**, not tombstoned per branch:
+
+  ```text
+  IS_PART_OF   old vertex   main             active   open
+  IS_PART_OF   old vertex   <branch>         deleted  open
+  IS_PART_OF   new vertex   <branch>         active   open
+  IS_RELATED   old vertex   -global-         active   CLOSED   <- closes for every branch
+  IS_RELATED   old vertex   -global-         deleted  open
+  IS_RELATED   new vertex   -global-         active   open
+  ```
+
+  So the default branch keeps a live object whose branch-agnostic relationship it can no longer reach over a live edge, without anything on the default branch having changed. The new vertex that does hold the live edge is visible only on the migrating branch. Predates this work and is not caused by retirement — retirement only made it visible, because the retention predicate reads exactly these edges. Worth confirming whether the same happens to branch-agnostic **attributes**, which the probe did not cover.
+
+  Relevant to this feature because it is a way for the graph to reach a state the retention predicate reads as "the default branch does not retain this", produced by a schema migration rather than by a deletion.
+
 ## Dependencies & Execution Order
 
-### Phase Dependencies
+- **T001** (the migration gate) is long-lead and blocks only the repair migration, R06.
+- **R01** (the shared predicate) is delivered and is what every later slice composes. A slice may
+  extend it, but no slice may fork it.
+- **R02 – R05** are independent of each other: each enforcement point supplies its own candidate
+  selection and stamp. Order them by risk rather than by dependency — R05 (branch deletion) carries
+  the FR-018 timing gate, so a failure there is worth surfacing before the remaining wiring assumes
+  it passed.
+- **R06** depends on T001 and on R01.
+- **Phase 5** (documentation) depends on the runtime slices being settled.
+- **R08** (removing the superseded stack) is last: until then the retention logic exists twice.
 
-- **Setup (Phase 1)**: no dependencies. T001 is long-lead — start it first, then continue.
-- **Foundational (Phase 2)**: depends on Phase 1. **Blocks both P1 user stories.**
-- **User Story 1 (Phase 3)**: depends on Phase 2 only.
-- **User Story 2 (Phase 4)**: depends on Phase 2 and T001. **Independent of Phase 3.**
-- **User Story 3 (Phase 5)**: depends on Phase 3 (behaviour before documentation).
-- **Polish (Phase 6)**: depends on all desired stories.
-
-### Critical path
-
-```text
-T001 (gate) ──────────────────────────────────────────────┐
-T004 → T006 → T008 → T009 → T010 → T011 → T016 → T017 ─┬─→ T019 → T020 (perf gate) → T023…T030 → T038
-                                                        └─→ T044 → T046 → T047
-```
-
-T020 is the **decision point**: if the branch-deletion timing gate fails at ~100 branches, the
-bound narrows and re-measures before T023 onward proceed.
-
-### Within Phase 2
-
-- T004 blocks T006, T008, T016 (they consume the dataclasses)
-- T008 → T009 → T010 → T011 are strictly sequential (same file, layered behaviour)
-- T005 before T006; T007 before T008; T015 before T016 (tests first)
-- T012 after T011 (it tests the widened anchor)
-- T014 (`EXPLAIN`) after T011 — it must cover both anchor modes — and before T019
-
-### Within User Story 1
-
-- T018 before T019 before T020 — the risk-first slice, strictly ordered
-- T021, T022 before T023; T025 before T026; T027 before T028; T029 before T030
-- T031 – T037 are independent of each other and of the enforcement-point order
-- T034 lands in the same commit as the enforcement change that turns it green
-- T038 last in the phase — it measures the three points added after T020
-
-### Parallel Opportunities
-
-- **Phase 1**: T002, T003 in parallel
-- **Phase 2**: T004 and T005 in parallel; T012, T013 and T015 in parallel once T011 lands
-- **Phase 3**: T021, T022, T025, T027, T029 (all test-authoring, different concerns) in parallel; T031 – T037 all in parallel
-- **Phase 4**: T039 – T043 all in parallel (all test-authoring in one new file — split by test class to avoid conflicts)
-- **Phases 3 and 4 in parallel** once Phase 2 completes — the two P1 stories share no source file
-- **Phase 6**: T051, T052 in parallel
-
-## Parallel Example: User Story 1 test authoring
-
-```bash
-# After Phase 2 completes and T019/T020 have settled the branch-deletion path:
-Task: "T021 node-deletion component tests (scenarios 1-3)"
-Task: "T022 negative component tests (scenarios 4, 6)"
-Task: "T025 merge component test (scenario 5c)"
-Task: "T027 rebase component tests (scenarios 5b, 11)"
-Task: "T029 schema-removal component tests (scenarios 8-9)"
-
-# Then the cross-cutting correctness set, all independent:
-Task: "T031 kind-rename regression"
-Task: "T035 pool re-allocation"
-Task: "T036 late branch creation"
-Task: "T037 branch-agnostic node no-op"
-```
+Within a slice the order is the same each time: the tests that pin the behaviour, the query, the
+wiring, then the mutation checks that prove the tests bite.
 
 ## Implementation Strategy
 

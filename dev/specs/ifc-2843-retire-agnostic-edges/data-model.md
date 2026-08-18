@@ -217,20 +217,20 @@ all shapes and must not be sequenced or justified on the assumption that any one
 
 ## In-memory types (new)
 
-All frozen dataclasses, per Principle III. None is persisted.
+> **Revised 2026-08-17.** The branch-window and candidate-bound types are gone. Windows are derived
+> inside Cypher from `(:Branch)` rather than built in Python and passed in, and each enforcement
+> point has its own query rather than one query parameterised by a discriminated bound — so neither
+> type has a consumer. See plan.md §"Design revision".
+
+Each query exposes its result as a frozen dataclass, per Principle III; none is persisted.
 
 ```text
-BranchWindow           frozen  — one branch's (branch_names, timestamp) pairs
-BranchWindowSet        frozen  — the collection the query is parameterised with
-
-RetirementCandidates   frozen  — a discriminated candidate bound:
-                                   • explicit node vertex ids / uuids   (points 1–3, 5–6)
-                                   • fork-point timestamp bound          (point 4)
-                                   • unbounded                           (m076)
-
-RetirementResult       frozen  — edges_closed: int, vertices_removed: int
+NodeAgnosticRetirementResult   frozen  — edges_closed: int
 ```
 
-`RetirementResult` is what FR-016 and SC-003 report to the upgrade log, and what the component
-tests assert against. Query results are exposed through a `get_data()` method returning a frozen
-dataclass — never raw Neo4j records (Principle III).
+The repair migration's result will additionally carry the count of hard-deleted vertices, which is
+what FR-016 and SC-003 report to the upgrade log. Query results are exposed through a `get_data()`
+method returning a frozen dataclass — never raw Neo4j records (Principle III).
+
+**Superseded**: `BranchWindow`, `BranchWindowSet`, `RetirementCandidates` (explicit ids /
+fork-point / unbounded), `RetirementResult(edges_closed, vertices_removed)`.

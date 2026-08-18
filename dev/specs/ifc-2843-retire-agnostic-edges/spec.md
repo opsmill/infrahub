@@ -243,10 +243,13 @@ each is independently developable, testable, and demonstrable.
   default branch with no branch forked during the object's lifetime; assert no open global
   edge remains, including `HAS_ATTRIBUTE`.*
 - **FR-002**: The system MUST close a `Relationship` vertex's global property edges — and
-  **both of its global `IS_RELATED` edges** — when no branch has both of its peers live
-  with both `IS_RELATED` edges active, including when one peer survives. *Verify: delete
-  one peer of a branch-agnostic relationship; assert closure of the property edges and both
-  `IS_RELATED` edges.*
+  **both of its global `IS_RELATED` edges** — when no branch has **two live peer entities**
+  reaching it over active `IS_RELATED` edges, including when one peer survives. Peers are
+  counted by uuid, so the same-UUID copies a kind or inheritance change leaves behind count
+  once between them and cannot supply both ends. *Verify: delete one peer of a branch-agnostic
+  relationship; assert closure of the property edges and both `IS_RELATED` edges. Also tombstone
+  one peer edge while both peers are live, and assert closure.* (Amended 2026-08-17: previously
+  worded as a rule about edges rather than peer entities.)
 - **FR-002a**: The system MUST close the owning edge (`HAS_ATTRIBUTE` / `IS_RELATED`) and
   the property edges **independently**, so a vertex whose owning edge is already closed but
   whose property edges are still open — or the reverse — is fully closed rather than
@@ -285,16 +288,18 @@ each is independently developable, testable, and demonstrable.
   a branch-agnostic relationship from the schema; assert closure when unretained and
   deferral when a branch forked beforehand.*
 - **FR-011**: At the runtime enforcement points, candidate traversal MUST start from open,
-  active global `HAS_ATTRIBUTE` / `IS_RELATED` edges, so a vertex shared with a live node
-  copy is never reached. Because FR-001 and FR-002 close that same edge, a retired vertex
-  stops being a candidate on subsequent passes. *Verify: rename a kind, then run every
-  enforcement point; the surviving vertex keeps its value.*
+  active global `HAS_ATTRIBUTE` / `IS_RELATED` edges. Because FR-001 and FR-002 close that same
+  edge, a retired vertex stops being a candidate on subsequent passes. Same-UUID protection is
+  **not** provided by this anchor: it comes from the retention predicate, which reads every node
+  vertex linked to the field. *Verify: rename a kind, then run every enforcement point; the
+  surviving vertex keeps its value.* (Amended 2026-08-17: the original attributed same-UUID
+  protection to the anchor, which testing disproved — the anchor buys selectivity and
+  idempotence.)
 - **FR-011a**: The repair migration MUST widen the anchor to global `HAS_ATTRIBUTE` /
   `IS_RELATED` edges with `status: "active"` regardless of whether they are open, so the
-  pre-existing half-closed shapes of FR-002a are reachable. Same-UUID protection MUST then
-  come from the predicate rather than the anchor: a vertex is retained when **any** node
-  vertex linked to it is live with an active owning edge on some branch, so a vertex shared
-  with a live copy is still never retired. This widening is confined to the migration, which
+  pre-existing half-closed shapes of FR-002a are reachable. Same-UUID protection is unaffected,
+  because it lives in the predicate rather than the anchor in every mode (FR-011): a vertex is
+  retained while any node vertex linked to it is live with an active owning edge on some branch. This widening is confined to the migration, which
   is batched and off every hot path. *Verify: rename a kind, then run the migration; the
   surviving vertex keeps its value. Then re-run the migration and assert it reports zero.*
 - **FR-012**: The predicate MUST evaluate each branch under its own branch and time filter
@@ -307,9 +312,20 @@ each is independently developable, testable, and demonstrable.
 - **FR-014**: Retirement MUST NOT register as a change on any branch that forked before it.
   *Verify: diff a pre-existing branch after a default-branch delete — no attribute or
   relationship change is reported for that node.*
-- **FR-015**: Retirement MUST be stamped with the owner's latest deletion time where one
-  survives, and the migration run time only where none does. *Verify: assert the stamped
-  timestamp in both cases.*
+- **FR-015**: Retirement MUST be stamped with the time the field stopped being reachable,
+  derived per candidate rather than taken from the clock:
+
+  1. the owner's latest effective deletion time where one is derivable from its existence edges;
+  2. otherwise the latest `to` among the vertex's already-closed owning edges — the case a schema
+     field removal leaves behind, where the owner is still live;
+  3. where neither is derivable the candidate MUST be left alone, not stamped with the run time.
+
+  At the runtime enforcement points the caller's own timestamp already satisfies (1). *Verify:
+  build two orphans deleted at different times, run the repair pass once, and assert each carries
+  its own stamp and not the run time.* (Amended 2026-08-17, replacing "the migration run time only
+  where none does": stamping the run time would land the close inside the window of every branch
+  forked before the upgrade, which FR-014 forbids, and the no-stamp case coincides with the
+  hard-delete case where the stamp is moot.)
 - **FR-016**: The repair migration MUST close the global property edges **and the owning
   `HAS_ATTRIBUTE` / `IS_RELATED` edges** of vertices that no branch retains, including the
   half-closed shapes of FR-002a via the widened anchor of FR-011a, and MUST hard-delete

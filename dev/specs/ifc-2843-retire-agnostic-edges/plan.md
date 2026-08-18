@@ -12,17 +12,48 @@ nodes that existed on no other branch); every other path leaks, accumulating res
 values with no owner until uniqueness validation fails on UUIDs that resolve to nothing.
 
 The fix is one invariant enforced at six points, plus a repair migration for the existing
-backlog. A single **retirement component** owns the invariant; two **candidate-set producers**
-feed it (diff-derived for merge and rebase, fork-point-bounded query for branch deletion); one
-**query** implements candidate traversal, the retaining-branch predicate and the time-close in
-one pass, with an unbounded form the migration reuses. No new persisted state, no API surface,
-no frontend surface.
+backlog. One **shared Cypher predicate** owns the invariant; each enforcement point owns a query
+that composes it and supplies only its own candidate selection, timestamp and batching. No new
+persisted state, no API surface, no frontend surface.
 
-Technical approach, in the order risk resolves: build the pure branch-window set builder and
-the query first (they are testable at the cheapest tiers), wire the branch-deletion path next
-because it is the only enforcement point that gains a query the others do not and therefore
-carries the whole performance risk, then the remaining five enforcement points, then `m076`,
-then documentation.
+Technical approach: deliver one enforcement point at a time, each with the tests that pin it,
+starting with single-object deletion because it is the canonical case and settles the shared
+predicate. Branch deletion carries the FR-018 timing risk and the repair migration is gated on
+maintainer sign-off, so both come after the shape is proven.
+
+## Design revision (2026-08-17)
+
+The design this document originally described was replaced part-way through implementation, by
+maintainer decision. Recorded here because much of what follows was written against the original and
+the reasoning matters more than the diff.
+
+**What changed.** A single query class served all six enforcement points and the migration, through
+three swappable candidate bounds and two anchor modes, fed by pre-built branch windows from an
+injected component behind a `Protocol`. It is now one shared retention fragment composed by a
+separate query per enforcement point, with the branch windows derived inside Cypher.
+
+**Why.**
+
+1. *The migration and the runtime paths want different things.* The migration runs once and must
+   cope with a wide set of broken states; the runtime paths can assume an attribute's owning and
+   value edges are in sync, because they close both in one transaction. Serving both from one class
+   meant three constructor guards whose only purpose was keeping the runtime path away from
+   migration-only features, one dead predicate gate, and a triple-nested retention subquery.
+2. *Marshalling branches through Python was a latent data-loss path.* The prescribed source,
+   `Branch.get_list(db=db)`, paginates with a default limit of 1000; past that, missing windows turn
+   retained fields into unretained ones with no signal. Deriving the windows in Cypher removes the
+   failure mode rather than documenting it, and works when no registry has been populated. This
+   reverses research R2 and a critique finding that had rejected the in-query read as unnecessary
+   complexity — the complexity is real, and it is worth it.
+3. *Retirement is not a best-effort side effect.* It runs inside the caller's still-open transaction,
+   before the commit, so swallowing a failure commits the orphan shape this feature exists to
+   eliminate. Failures propagate; the operation rolls back. See §"Retirement failure handling".
+4. *Schema removals fold into the removal queries themselves* rather than calling a shared retirement
+   afterwards, which also dissolves an ordering problem: after the removal query has closed the
+   owning edge, an open-edge anchor can no longer see the candidate.
+
+**What did not change.** The invariant, the enforcement points, the fork-window semantics, the
+time-close-only rule, and the requirement that retention be judged per branch.
 
 ## Technical Context
 
@@ -49,7 +80,8 @@ time-close (`SET e.to = ...`), never a `deleted`-status edge on the global branc
 predicate's filter grows linearly in the number of **open branches**, not in graph size, so
 branch count is a first-class dimension of the FR-018 measurement.
 
-**Scale/Scope**: ~8 modules touched, 1 new migration, 2 new core components, 1 new query class.
+**Scale/Scope**: ~8 modules touched, 1 new migration, 1 shared Cypher fragment, one query per
+enforcement point.
 Target branch `release-1.11`; reaches `develop` through the normal release merge.
 
 ## Constitution Check
@@ -60,17 +92,17 @@ Target branch `release-1.11`; reaches `develop` through the normal release merge
 |---|---|---|
 | **I. Schema-Driven Integrity** | No schema-layer change. `m076` is a graph migration with no schema surface; no generated files affected. | ✅ Pass |
 | **II. Branch-Safe by Default** | The feature *is* this principle. Cross-branch side effects on branch-agnostic data are the subject, explicitly documented (FR-019) and tested. Merge **and** rebase behaviour specified before completion (FR-006, FR-007). Every branch evaluated under its own filter with isolation intact (FR-012). Soft-delete governs all runtime paths — retirement is a time-close (FR-013). **One deviation**: `m076` hard-deletes vertices with no linked node. See Complexity Tracking. | ⚠️ Pass with justified deviation |
-| **III. Type Safety & Explicit Contracts** | Frozen dataclasses for the branch-window pairs and the retirement result; query results exposed via `get_data()` returning a frozen dataclass, never raw Neo4j records. Collaborator injected behind a `Protocol`. No API contract change. | ✅ Pass |
-| **IV. Test Discipline** | Component coverage per enforcement point, migration fixtures per orphan shape, pure predicate logic unit-tested. Graph migration with no schema surface → the integration-Docker requirement for schema migrations does not apply. No frontend surface → no Playwright requirement. Recording double behind a protocol, no mocks. | ✅ Pass |
+| **III. Type Safety & Explicit Contracts** | Query results exposed via `get_data()` returning a frozen dataclass, never raw Neo4j records. No API contract change. *(Revised: the branch-window dataclasses and the injected `Protocol` are gone — the windows are derived in Cypher and each query is self-sufficient.)* | ✅ Pass |
+| **IV. Test Discipline** | Component coverage per enforcement point, migration fixtures per orphan shape, pure predicate logic unit-tested. Graph migration with no schema surface → the integration-Docker requirement for schema migrations does not apply. No frontend surface → no Playwright requirement. No mocks. *(Revised: with no injected collaborator there is no double to record; the predicate is exercised through component tests asserting graph shape, and each guarantee is mutation-checked.)* | ✅ Pass |
 | **V. Query Performance & Efficiency** | Candidate sets diff- and query-bounded rather than swept; predicate anchored on graph labels so indexes apply; migration batched; all Cypher parameterised; `EXPLAIN` required on the new query. Uniqueness validation — on the merge/schema-check hot path and the active target of separate perf work — deliberately untouched. | ✅ Pass |
 | **VI. Security & Input Boundaries** | No user input reaches the new Cypher; every parameter is internally derived (branch names, timestamps, node ids) and bound via `$param`. No new error messages exposed to users. | ✅ Pass |
-| **VII. Simplicity & Maintainability** | One invariant, two candidate producers, one retirement mechanism — versus six hand-written closure rules that drift apart. The uniqueness post-filter is declined specifically to keep the mechanism count down. Follows the established Query-class and injected-collaborator patterns. | ✅ Pass |
+| **VII. Simplicity & Maintainability** | One shared retention predicate — versus six hand-written closure rules that drift apart — composed by a query per enforcement point, so each call site reads on its own. The uniqueness post-filter is declined specifically to keep the mechanism count down. Follows the established Query-class pattern. | ✅ Pass |
 
-**Post-Phase-1 re-check**: unchanged. The design introduces no abstraction beyond the two
-components the PRD names, and both have ≥2 callers on delivery (the retirement component has
-six; the query has three parameterisations). The `Protocol` around the query satisfies the
-"interface to keep an out-of-domain dependency out" case in the component-design rule, and its
-second implementation is the recording double the unit tests require.
+**Post-implementation re-check (2026-08-17)**: the revised design introduces *fewer* abstractions
+than the original — no component, no protocol, no adapter, no window types. The one shared artifact
+is a Cypher fragment with a caller per enforcement point. Principle VII improves; Principle III is
+narrower in scope but not weaker, since the typed boundary that mattered (`get_data()` returning a
+frozen dataclass) is retained.
 
 ## Ask-First Gate
 
@@ -83,6 +115,10 @@ maintainer sign-off before implementation begins:
 
 No other gate is crossed: no API/GraphQL/public-interface change, no new dependency, no CI/CD
 workflow change, no auth change.
+
+**Status (2026-08-17)**: sign-off requested; decision **deferred**, gate still open. The shared
+predicate and the runtime enforcement points touch no migration and proceed. The repair migration
+(`m076`, the `GRAPH_VERSION` bump, and the hard-delete) stays blocked until the gate is signed off.
 
 ## Project Structure
 
@@ -107,12 +143,9 @@ specs/ifc-2843-retire-agnostic-edges/
 ```text
 backend/infrahub/core/
 ├── graph/__init__.py                      # GRAPH_VERSION 75 → 76                    (edit)
-├── agnostic/                                                                          (new)
-│   ├── __init__.py
-│   ├── branch_windows.py                  # pure branch-window set builder
-│   └── retirement.py                      # retirement component + query Protocol
 ├── query/
-│   ├── agnostic_retirement.py             # RetireAgnosticPropertyEdgesQuery          (new)
+│   ├── agnostic_retention.py              # shared retention predicate fragment       (new)
+│   ├── node_agnostic_retirement.py        # RetireNodeAgnosticFieldsQuery             (new)
 │   └── branch.py                          # existing agnostic cleanup queries         (read)
 ├── node/__init__.py                        # Node.delete → invoke retirement          (edit)
 ├── branch/
@@ -122,20 +155,15 @@ backend/infrahub/core/
 └── migrations/
     ├── graph/m076_retire_agnostic_property_edges.py                                   (new)
     ├── graph/__init__.py                  # register m076                             (edit)
-    └── schema/
-        ├── node_attribute_remove.py       # invoke retirement                         (edit)
-        └── node_relationship_remove.py    # invoke retirement                         (edit)
+    └── query/
+        └── attribute_remove.py            # close the global edges in the same query  (edit)
 
-backend/tests/
-├── unit/core/agnostic/
-│   ├── test_branch_windows.py                                                         (new)
-│   └── test_retirement.py                 # recording double, no DB                   (new)
-└── component/
-    ├── core/
-    │   ├── test_agnostic_attribute_fork_window.py   # ADOPT existing untracked file
-    │   └── test_agnostic_retirement.py    # enforcement-point behaviour               (new)
-    ├── query/test_agnostic_retirement_query.py      # graph shape, two-peer form      (new)
-    └── migrations/test_m076_retire_agnostic_property_edges.py                         (new)
+backend/tests/component/
+├── core/
+│   ├── test_agnostic_attribute_fork_window.py       # ADOPT existing untracked file
+│   └── test_agnostic_retirement.py        # enforcement-point behaviour               (new)
+├── query/test_node_agnostic_retirement_query.py     # graph shape, per-query          (new)
+└── migrations/test_m076_retire_agnostic_property_edges.py                             (new)
 
 docs/docs/                                  # deletion semantics for agnostic fields   (edit)
 changelog/                                  # towncrier fragment                       (new)
@@ -157,7 +185,8 @@ where, for V an Attribute vertex:
     reachable(V, B) ≡ ∃ node n :  live(n, B) ∧ active(HAS_ATTRIBUTE(n → V), B)
 
 and, for V a Relationship vertex:
-    reachable(V, B) ≡ ∃ peers p₁, p₂ :  live(p₁, B) ∧ live(p₂, B)
+    reachable(V, B) ≡ ∃ peers p₁, p₂ with distinct uuids :
+                                         live(p₁, B) ∧ live(p₂, B)
                                        ∧ active(IS_RELATED(p₁ → V), B)
                                        ∧ active(IS_RELATED(p₂ → V), B)
 
@@ -165,8 +194,17 @@ and  live(n, B) ≡ n has an active IS_PART_OF edge under B's own branch-and-tim
                   filter, with isolation applied
 ```
 
-`live` is evaluated **per node vertex**, not per UUID — same-UUID copies produced by kind and
-inheritance changes are distinct vertices and must be treated as such (see `data-model.md`).
+The two halves of `reachable` are conjoined **per branch and per node vertex**: the same vertex must
+be live *and* hold the active edge, under the same branch's view. Satisfying one half on one branch
+or vertex and the other half elsewhere is not reachability, and reading it as such strands the value.
+
+`live` is evaluated **per node vertex**, since same-UUID copies produced by kind and inheritance
+changes are distinct vertices carrying their own edges. Peers, however, are *counted* by uuid: two
+copies of one object are one peer, so they cannot supply both ends of a relationship between them
+(see `data-model.md`).
+
+A relationship reaching one peer twice is not whole. Branch-agnostic self-referential relationships
+are out of scope — the schema layer does not support them — and no accommodation is made for them.
 
 ### Prior art: the validated production remediation
 
@@ -185,45 +223,36 @@ per-attribute-name, relationships as well as attributes, and the two-peer retent
 
 ### Component decomposition
 
-Three units, each with a single reason to change:
+> **Revised 2026-08-17.** This section previously described three units: a pure
+> `AgnosticBranchWindowBuilder`, an injected `AgnosticFieldRetirer` behind a query `Protocol`, and one
+> `RetireAgnosticPropertyEdgesQuery` parameterised by three candidate bounds and two anchor modes.
+> None of them is being shipped. See §"Design revision" for why.
 
-1. **`AgnosticBranchWindowBuilder`** (`core/agnostic/branch_windows.py`) — pure. Takes the list
-   of open branches plus a timestamp, returns the per-branch `(branch_names, timestamp)` pairs.
-   Mirrors `Branch.get_branches_and_times_to_query_global` but for all branches at once. No
-   database, no I/O. Unit-tested with hand-picked branch metadata.
+**One shared predicate, one query per enforcement point.**
 
-  <!-- TODO: registry can be assumed as up-to-date as it is kept in sync across worker by update messages -->
-   **Branch list source: `registry.branch` at the runtime enforcement points,
-   `Branch.get_list(db=db)` in the migration.** The registry is a maintained cache, not a
-   lazily-filled one: `refresh_branches` adds branches it does not yet know via
-   `create_branch_registry` as well as pruning dead ones, the creating worker populates it
-   synchronously, and `BranchCreatedEvent` / `BranchMergedEvent` / `BranchRebasedEvent` /
-   `BranchDeletedEvent` each publish `RefreshRegistryBranches` so every other worker refreshes,
-   with a 900-second scheduled sweep behind that. It is trustworthy for this predicate and costs
-   no query on the delete path.
+1. **`UNRETAINED_AGNOSTIC_FIELD_PREDICATE`** (`core/query/agnostic_retention.py`) — a Cypher
+   fragment, not a class. Given `field` rows in scope it emits the candidates no branch retains.
+   Every enforcement point composes this same fragment, so the judgement exists in one place while
+   the queries around it stay readable on their own.
 
-   The migration is the exception, and not because of staleness: it runs in an upgrade process
-   where the registry may never have been populated at all, so it reads branches explicitly. That
-   read is free there — it is off every hot path.
+   It derives the branch windows **inside Cypher** from `(:Branch)`. There is therefore no window
+   builder and no branch list to marshal: `Branch.get_list(db=db)` paginates with a default limit,
+   and a page limit quietly turns the branches past it into branches that retain nothing, which
+   closes the very edges they were meant to keep. Reading `(:Branch)` removes that failure mode
+   structurally and works in an upgrade process where no registry has been populated.
 
-   Both paths feed the *same* pure builder, which is what keeps the fork-window collapse in one
-   unit-testable place rather than duplicated between a Python path and a Cypher one.
+2. **One query per enforcement point**, each composing the fragment and differing only in candidate
+   selection, stamp derivation and batching. Delivered so far:
+   `RetireNodeAgnosticFieldsQuery` (`core/query/node_agnostic_retirement.py`) for node deletion —
+   node-uuid anchored, one static Cypher body, caller-supplied `at`, no batching, no anchor
+   parameter.
 
-2. **`AgnosticFieldRetirer`** (`core/agnostic/retirement.py`) — the single entry point. Given a
-   candidate bound and the retirement timestamp, evaluates the predicate and closes the global
-   property edges of everything no branch retains. Takes its query collaborator through the
-   constructor behind a `Protocol`, per the backend component-design rule; the recording double
-   in the unit tests is its second implementation.
+   The schema removals do not get a query of their own: their closure folds into the existing
+   `AttributeRemoveQuery` and its relationship equivalent, which already match the right vertices
+   for the kind and already carry the branch filter.
 
-3. **`RetireAgnosticPropertyEdgesQuery`** (`core/query/agnostic_retirement.py`) — one Cypher
-   body, three candidate bounds (node ids / fork point / unbounded) and two anchor modes
-   (open-edge for runtime, widened for the migration). Candidate traversal, the retaining-branch
-   predicate including the two-peer relationship form, and the time-close of both the owning edge
-   and the property edges in a single pass. It receives the branch windows as parameters from the
-   builder; it does not read `(:Branch)` itself.
-
-The six enforcement points are the retirement component's only callers. They contribute a
-candidate set and a timestamp; none of them contains predicate logic.
+There is no retirement component and no protocol. The queries are self-sufficient, and each
+enforcement point constructs the one it needs.
 
 ### Enforcement points and their candidate sets
 
@@ -270,24 +299,49 @@ candidate anchor — leaving it open would keep the vertex a candidate on every 
 forever. The owning edge and the property edges are closed **independently**, each only where
 still open (FR-002a), because existing data contains both mismatched states.
 
-**Retirement is a best-effort side effect at every runtime enforcement point.** It runs after a
-delete, merge, rebase or branch deletion has already committed. If it propagated, a graph hiccup
-would fail user-facing deletes — a correctness regression FR-018 does not cover. If it were
-swallowed bare, leaks would return silently and the feature's own failure would be undetectable.
+**A retirement failure propagates at every runtime enforcement point** (maintainer decision,
+2026-08-17). An earlier revision of this plan called retirement a best-effort side effect governed by
+`dev/guidelines/backend/python.md` §"Best-effort side effects degrade to a safe fallback", logged its
+failures and swallowed them. That was implemented, and then removed, because the premise does not
+survive contact with the call sites.
 
-Follow `dev/guidelines/backend/python.md` §"Best-effort side effects degrade to a safe fallback",
-whose three conditions map directly:
+**Retirement runs before the commit, not after it.** The GraphQL delete runs `NodeManager.delete`
+inside `async with db.start_transaction()`, under a mutation decorated `@retry_db_transaction`.
+Retirement sits inside `Node.delete` — inside that still-open transaction, after the existence
+tombstone is written but before anything is committed. So it does not run after an operation that
+"has already committed"; it straddles the point of no return, which is exactly what the guideline's
+third condition forbids: *do the best-effort work either fully before the point of no return or
+fully after it, never straddling it.* The guideline's preamble narrows it further to a side effect
+whose failure must not abort a primary operation **that has already succeeded**, and offers a cache
+write and an observability emit as its examples. Retirement is not an optimization layered on the
+delete; it is the invariant the delete exists to maintain.
 
-- **Log the failure** — required anyway by the observability decision below.
-- **Fall back safely** — the fallback is *leaving the global edges open*. That over-reserves,
-  which is today's behaviour: a value stays reserved when it could have been freed. The opposite
-  fallback — closing on partial information — is data loss. This is the "must over-execute, not
-  under-execute" rule applied to a reservation.
-- **Position it after the point of no return** — retirement runs fully after the primary
-  operation's own writes, never straddling them.
+**Leaving the global edges open is not a safe fallback at the delete point.** What each choice
+actually commits:
 
-`m076` keeps its own non-fatal reporting (FR-016): same principle, different mechanism, because a
-migration reports through `MigrationResult` rather than through a log-and-continue.
+- **Propagating** aborts the transaction, so the tombstone is never written either. The retry
+  decorator absorbs the transient case; a persistent failure surfaces as a retryable, visible delete
+  failure. The graph is never committed in the illegal shape.
+- **Swallowing** commits a node that is gone still holding a live branch-agnostic value — precisely
+  the orphan shape this feature exists to eliminate — and nothing a user or an operator can invoke
+  repairs it, because `m076` runs only at upgrade. That is not "today's behaviour preserved"; it is
+  today's bug re-introduced by the code written to fix it.
+
+The runtime path can only work this way, which is worth stating because it looks like an
+implementation detail. Neo4j forbids `CALL { … } IN TRANSACTIONS` inside an explicit transaction, so
+the runtime adapter's `batch_size=None` is a requirement rather than a preference: retirement runs as
+a participant in the caller's transaction, and that participation is what makes the rollback
+available at all.
+
+**One thing does still degrade rather than fail: an empty branch list defers retirement** and leaves
+the global edges open, logged. That is a refusal to act on a degenerate input, not failure handling —
+with no branch to read retention under there is no retention picture to judge, and over-reserving is
+the safe direction, while closing on partial information is data loss. This is the "must
+over-execute, not under-execute" rule applied to a reservation, and it is the only place it applies.
+
+`m076` keeps its own non-fatal reporting (FR-016), and that is *not* the same principle applied
+through a different mechanism: the migration has no caller transaction to roll back and no user
+operation to abort, so accumulating into `MigrationResult` is simply the correct shape there.
 
 **Every enforcement point logs what it did** — edges closed, and how many branches retain the
 field when retirement is deferred. Without this, an operator cannot distinguish a correct
@@ -306,17 +360,19 @@ file already encodes the degraded-read behaviour it buys.
 
 ### Implementation sequencing (risk-first)
 
-1. Branch-window builder + query + component — cheapest tiers, and everything else depends on
-   them.
-2. **Branch deletion (point 4) and its timing measurement.** It is the only point that gains a
-   query the others do not, so it carries the entire FR-018 risk. Measuring here first means a
-   failed gate surfaces before five other integrations are built on the assumption it passes.
+Revised 2026-08-17: one enforcement point at a time, each landing with the tests that pin it,
+rather than a shared substrate followed by six integrations.
+
+1. **Node deletion (point 1)** — the canonical two-axis case, one call site, transaction semantics
+   already settled. It establishes the shared predicate, which the rest reuse unchanged.
+2. Schema removals (points 5–6) — the analogue that proves the predicate generalises to the field
+   axis, and self-contained because the closure folds into the existing removal queries.
+3. Merge and rebase (points 2–3).
+4. **Branch deletion (point 4) and its timing measurement.** It carries the entire FR-018 risk.
    Measure at **two open-branch counts** (a low one and a realistic-high one, e.g. 3 and 100),
    because the predicate's filter grows with branch count and a three-branch fixture is not
    evidence about a real deployment.
-3. Node deletion, merge, rebase (points 1–3).
-4. Schema-removal migrations (points 5–6).
-5. `m076` + `GRAPH_VERSION` bump.
+5. `m076` + `GRAPH_VERSION` bump, once the Ask-First gate is signed off.
 6. Documentation + changelog.
 
 `m076` is deliberately late despite being P1: it is the unbounded form of a query that must
@@ -327,7 +383,10 @@ already be proven correct, and it is the one step that mutates customer data.
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |---|---|---|
 | **Principle II** — `m076` hard-deletes `Attribute` / `Relationship` vertices with no linked node vertex, where the constitution permits hard-delete only for branch deletion itself | A vertex with no linked node cannot be reached, diffed, or time-travelled to. A time-close would leave permanent garbage with no reader, and would not remove it from any future scan. | Time-closing them instead: leaves unreachable vertices in the graph forever with no path to ever remove them. Mitigating factor: these vertices were *produced by* branch deletions predating the existing agnostic-peer cleanup, and `BranchDataDeleter._delete_agnostic_peers` already `DETACH DELETE`s exactly this shape at branch-deletion time. The migration completes an operation the system already performs — late rather than newly — so this is arguably inside the existing exemption rather than a new one. |
-| **New `core/agnostic/` package** for two components, where Principle VII asks that shared abstractions serve ≥2 callers before extraction | The retirement component has six callers on delivery (five enforcement points plus the migration); the query has three parameterisations. Both clear the bar at the moment they are introduced. | Inlining the predicate at each enforcement point: this is precisely the "six hand-written closure rules that drift apart" outcome the single-invariant design exists to avoid, and the leak being fixed was caused by exactly that drift. |
+
+The original plan also tracked a `core/agnostic/` package holding a retirement component and a
+window builder as a Principle VII deviation. That package is not part of the revised design and the
+deviation no longer exists.
 
 ## Test plan additions
 
