@@ -51,7 +51,7 @@ const StartFromTemplateButton = ({
         description="Pick a premade object and customize it"
       />
 
-      <Popover placement="bottom start" width="trigger" className="bg-content">
+      <Popover placement="bottom start" width="trigger">
         <Dialog>
           <ObjectTemplateAutocomplete
             autoFocus
