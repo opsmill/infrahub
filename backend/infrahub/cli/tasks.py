@@ -100,13 +100,7 @@ async def stale_runs(
 
     config.load_and_exit(config_file_name=config_file)
 
-<<<<<<< HEAD
     async with get_client(sync_client=False) as client:
         await FlowRunRetention(client=PrefectClientAdapter(client)).purge(
-            states=[StateType.RUNNING], delete=False, days_to_keep=days_to_keep, batch_size=batch_size
+            states=STALE_FLOW_RUN_STATES, delete=False, days_to_keep=days_to_keep, batch_size=batch_size
         )
-=======
-    await PrefectTask.delete_flow_runs(
-        states=STALE_FLOW_RUN_STATES, delete=False, days_to_keep=days_to_keep, batch_size=batch_size
-    )
->>>>>>> origin/stable
