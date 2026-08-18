@@ -397,3 +397,38 @@ The counters have to start after the branch edits. Editing twenty peers on a bra
 and legitimately fans out per node; counting from before those edits attributes forty runs to the
 merge that did not come from it. The first pass at this gate reported 42 for that reason alone,
 and only 2 of them were the merge.
+
+
+## Re-measured after the widening fix (T061, second pass)
+
+Everything above the widening fix was measured on code that no longer exists. Re-taken here.
+
+| 1000 changed nodes, precise read set | Before the fix (two runs) | After |
+|---|---|---|
+| Recompute flow runs | 4, 4 | 4 |
+| Nodes written | 1000, 1000 | 1000 |
+| Recompute window | 102.1 s, 88.2 s | 134.8 s |
+| Merge critical path | 121.0 s, 62.9 s | 128.3 s |
+
+The run count and the node count are unchanged, which is the result that matters here: the fix
+altered only what happens when the read set cannot answer, and this fixture's always can, so the
+path that already worked was not disturbed.
+
+The window and the critical path are inside the spread this hardware has already shown on
+identical code, 62.9 s to 121.0 s on the critical path alone. One post-fix sample cannot separate a
+real change from that spread, and the second run was interrupted. Treat the timing here as
+unconfirmed; the run counts stand.
+
+Against the original 498.2 s baseline the window is still roughly 3.7x better.
+
+| Gates, both legs | Result |
+|---|---|
+| Imprecise read set, 20 changed nodes | widened 0, batches 2 |
+| Merge dispatches batches, 20 changed nodes | pass |
+| Rebase dispatches batches, 20 changed nodes | pass |
+
+The rebase leg is the one the production report measured as three times slower. It now passes the
+same run-count gate as the merge leg.
+
+Still outstanding: a second 1000-node run to put an interval around the window, and the same
+comparison against the private scenario that produced the original report.

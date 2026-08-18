@@ -46,6 +46,7 @@ from tests.helpers.merge_recompute.dataset import (
     build_transform_schema_dict,
 )
 from tests.helpers.merge_recompute.metrics import CostCenterTiming
+from tests.helpers.merge_recompute.seeding import wait_for_seed
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -81,35 +82,6 @@ async def _wait_idle(client: InfrahubClient, *, max_wait: int = 3600) -> None:
             return
         await sleep(1)
     raise TimeoutError("background tasks did not drain within the timeout")
-
-
-async def _wait_for_seed(
-    client: InfrahubClient, *, kind: str, attribute: str, expected: int, max_wait: int = 300
-) -> None:
-    """Wait for the transform to have run for every seeded node, nudging it once if it has not.
-
-    The node-input automations are reconciled asynchronously after the repository import, so nodes
-    created inside that window raise no event anyone is listening for. Draining the task queue
-    cannot detect it, because no task was ever created. Saving the nodes again once the automations
-    exist produces the event they missed.
-
-    Raises:
-        AssertionError: if the value is still missing after the second attempt.
-
-    """
-    for attempt in range(2):
-        deadline = time.monotonic() + max_wait
-        while time.monotonic() < deadline:
-            nodes = await client.all(kind=kind, branch="main")
-            if sum(1 for node in nodes if getattr(node, attribute).value) == expected:
-                return
-            await sleep(2)
-        if attempt == 0:
-            for node in await client.all(kind=kind, branch="main"):
-                node.name.value = f"{node.name.value}."
-                await node.save()
-            await _wait_idle(client)
-    raise AssertionError(f"{attribute} was not computed for all {expected} nodes of {kind}")
 
 
 async def _recompute_count(client: InfrahubClient, *, branch: str) -> int:
@@ -362,7 +334,7 @@ class TestImpreciseReadSetDoesNotWiden(TestInfrahubDockerClient):
             await owner.save()
 
         await _wait_idle(client)
-        await _wait_for_seed(
+        await wait_for_seed(
             client, kind=TRANSFORM_OWNER_KIND, attribute=TRANSFORM_IMPRECISE_ATTRIBUTE, expected=changed_nodes
         )
 

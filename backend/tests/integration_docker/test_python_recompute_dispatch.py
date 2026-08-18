@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from asyncio import sleep
 from typing import TYPE_CHECKING
 
 import pytest
@@ -18,6 +17,7 @@ from tests.helpers.merge_recompute.dataset import (
     TRANSFORM_REPO_NAME,
     build_transform_schema_dict,
 )
+from tests.helpers.merge_recompute.seeding import wait_for_seed, wait_idle
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,18 +26,6 @@ if TYPE_CHECKING:
 
 CHANGED_NODES = 20
 PROCESS_TRANSFORM = "computed_attribute_process_transform"
-
-
-async def _drain(client: InfrahubClient, *, max_wait: int = 1800) -> None:
-    while max_wait > 0:
-        pending = await client.task.count(
-            filters=TaskFilter(state=[TaskState.PENDING, TaskState.RUNNING, TaskState.SCHEDULED])
-        )
-        if pending == 0:
-            return
-        await sleep(1)
-        max_wait -= 1
-    raise TimeoutError("background tasks did not drain within the timeout")
 
 
 @pytest.mark.skipif(
@@ -79,12 +67,9 @@ class TestPythonRecomputeDispatch(TestInfrahubDockerClient):
                 kind=TRANSFORM_OWNER_KIND, data={"name": f"dispatch-shirt-{index:05d}", "color": peer_ids[index]}
             )
             await owner.save()
-        await _drain(client)
+        await wait_idle(client)
 
-        seeded = await client.all(kind=TRANSFORM_OWNER_KIND, branch="main")
-        assert sum(1 for owner in seeded if owner.pitch.value) == CHANGED_NODES, (
-            "the transform had not run for every owner before the operation under test"
-        )
+        await wait_for_seed(client, kind=TRANSFORM_OWNER_KIND, attribute="pitch", expected=CHANGED_NODES)
         return peer_ids
 
     @staticmethod
@@ -109,9 +94,9 @@ class TestPythonRecomputeDispatch(TestInfrahubDockerClient):
             obj = await client.get(kind=TRANSFORM_PEER_KIND, id=peer_id, branch=branch.name)
             obj.description.value = f"shade {index:05d} merged"
             await obj.save()
-        await _drain(client)
+        await wait_idle(client)
         assert await client.branch.merge(branch_name=branch.name)
-        await _drain(client)
+        await wait_idle(client)
 
         dispatched = await self._transform_runs(client, branch="main") - before
         owners = await client.all(kind=TRANSFORM_OWNER_KIND, branch="main")
@@ -135,10 +120,10 @@ class TestPythonRecomputeDispatch(TestInfrahubDockerClient):
             obj = await client.get(kind=TRANSFORM_PEER_KIND, id=peer_id, branch="main")
             obj.description.value = f"shade {index:05d} rebased"
             await obj.save()
-        await _drain(client)
+        await wait_idle(client)
 
         await client.branch.rebase(branch_name=branch.name)
-        await _drain(client)
+        await wait_idle(client)
 
         dispatched = await self._transform_runs(client, branch=branch.name) - before
         owners = await client.all(kind=TRANSFORM_OWNER_KIND, branch=branch.name)
