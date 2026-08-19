@@ -218,11 +218,16 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                     continue
 
             error_msg = self._message_builder.build(node_schema=node.get_schema(), fields=violation.fields)
-            raise UniquenessViolationError(error_msg)
+            raise UniquenessViolationError(error_msg, node_kind=node.get_schema().kind, fields=violation.fields)
 
         if hfid_violation:
             error_msg = self._message_builder.build(node_schema=node.get_schema(), fields=hfid_violation.fields)
-            raise HFIDViolatedError(error_msg, matching_nodes_ids=hfid_violation.nodes_ids)
+            raise HFIDViolatedError(
+                error_msg,
+                node_kind=node.get_schema().kind,
+                fields=hfid_violation.fields,
+                matching_nodes_ids=hfid_violation.nodes_ids,
+            )
 
     def _should_implicitly_check_uniqueness(self, attr_schema: AttributeSchema, schema_filters: list[str]) -> bool:
         """Decide whether an attribute must be validated for uniqueness despite being absent from the user-provided filters.
