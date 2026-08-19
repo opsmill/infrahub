@@ -4,6 +4,7 @@ from typing import Awaitable, Callable
 import pytest
 
 from infrahub.core.branch.models import Branch
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -203,6 +204,32 @@ CREATE (a)-[:$(type(child)) {branch: $branch_name, branch_level: $branch_level, 
     )
 
 
+async def _mark_attribute_agnostic_without_moving_edges(db: InfrahubDatabase, car: Node, person: Node) -> None:
+    """Declare one attribute branch-agnostic while its edges stay on the branch that wrote them."""
+    query = """
+MATCH (n:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE {status: "active"}]->(a:Attribute {name: "name"})
+WHERE hae.to IS NULL
+WITH a LIMIT 1
+SET a.branch_support = $agnostic
+    """
+    await db.execute_query(query=query, params={"node_id": car.id, "agnostic": BranchSupportType.AGNOSTIC.value})
+
+
+async def _move_aware_attribute_edges_to_global(db: InfrahubDatabase, car: Node, person: Node) -> None:
+    """Move a branch-aware attribute's live edges onto the global branch."""
+    query = """
+MATCH (n:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE {status: "active"}]->(a:Attribute {name: "name"})
+WHERE hae.to IS NULL
+WITH a, hae LIMIT 1
+SET hae.branch = $global_branch, hae.branch_level = 1
+WITH a
+MATCH (a)-[prop]->()
+WHERE prop.status = "active" AND prop.to IS NULL
+SET prop.branch = $global_branch, prop.branch_level = 1
+    """
+    await db.execute_query(query=query, params={"node_id": car.id, "global_branch": GLOBAL_BRANCH_NAME})
+
+
 @dataclass
 class GraphDamageCase:
     name: str
@@ -264,6 +291,24 @@ GRAPH_DAMAGE_CASES = [
         name="edges_after_node_delete",
         check=GraphCheck.EDGES_AFTER_NODE_DELETE,
         damage=_add_edge_after_node_delete,
+        expected_violations=1,
+        scoped_violations=1,
+        included_kinds=["TestCar"],
+        excluded_kinds=["TestPerson"],
+    ),
+    GraphDamageCase(
+        name="agnostic_attribute_edges_off_global_branch",
+        check=GraphCheck.ATTRIBUTE_EDGE_BRANCH,
+        damage=_mark_attribute_agnostic_without_moving_edges,
+        expected_violations=1,
+        scoped_violations=1,
+        included_kinds=["TestCar"],
+        excluded_kinds=["TestPerson"],
+    ),
+    GraphDamageCase(
+        name="aware_attribute_edges_on_global_branch",
+        check=GraphCheck.ATTRIBUTE_EDGE_BRANCH,
+        damage=_move_aware_attribute_edges_to_global,
         expected_violations=1,
         scoped_violations=1,
         included_kinds=["TestCar"],

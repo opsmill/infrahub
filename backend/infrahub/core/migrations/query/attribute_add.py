@@ -29,6 +29,7 @@ class AttributeAddQuery(Query):
         attribute_name: str,
         attribute_kind: str,
         branch_support: str,
+        node_branch_support: str,
         default_value: Any | None = None,
         uuids: list[str] | None = None,
         **kwargs: Any,
@@ -37,9 +38,18 @@ class AttributeAddQuery(Query):
         self.attribute_name = attribute_name
         self.attribute_kind = attribute_kind
         self.branch_support = branch_support
+        self.node_branch_support = node_branch_support
         self.default_value = default_value
         self.uuids = uuids
         super().__init__(**kwargs)
+
+    def _writes_on_global_branch(self) -> bool:
+        if self.branch_support == BranchSupportType.AGNOSTIC.value:
+            return True
+        return (
+            self.branch_support == BranchSupportType.LOCAL.value
+            and self.node_branch_support == BranchSupportType.AGNOSTIC.value
+        )
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -60,7 +70,7 @@ class AttributeAddQuery(Query):
 
         self.params["user_id"] = self.user_id
 
-        if self.branch_support == BranchSupportType.AGNOSTIC.value:
+        if self._writes_on_global_branch():
             edge_branch_name = GLOBAL_BRANCH_NAME
             edge_branch_level = 1
         else:

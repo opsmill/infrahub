@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.utils import InfrahubStringEnum
 
 if TYPE_CHECKING:
@@ -18,6 +18,7 @@ class GraphCheck(InfrahubStringEnum):
     ORPHANED_ACTIVE_EDGES = "orphaned_active_edges"
     RELATIONSHIP_EDGE_COUNTS = "relationship_edge_counts"
     DUPLICATE_ATTRIBUTES = "duplicate_attributes"
+    ATTRIBUTE_EDGE_BRANCH = "attribute_edge_branch"
 
 
 @dataclass(frozen=True)
@@ -459,6 +460,66 @@ RETURN n.uuid AS node_id, branch, field_name, num_fields
     return violations
 
 
+async def _check_attribute_edge_branch(db: InfrahubDatabase, kinds: list[str] | None) -> list[GraphViolation]:
+    """Verify that an Attribute's live edges sit on the branch its branch support implies.
+
+    A branch-agnostic attribute, and a branch-local attribute of a branch-agnostic node, are stored once
+    on the global branch so that every branch reads the same value; anything else is stored on a branch.
+    Only open, active edges are judged: a deleted branch-agnostic attribute is deliberately tombstoned
+    at branch level, and the closed edges of same-uuid node copies are history rather than current state.
+    """
+    query = """
+MATCH (n:%(node_labels)s)-[owning:HAS_ATTRIBUTE]->(a:Attribute)
+WHERE owning.status = "active" AND owning.to IS NULL
+WITH n, a, owning,
+    (a.branch_support = $agnostic OR (a.branch_support = $local AND n.branch_support = $agnostic)) AS expects_global
+OPTIONAL MATCH (a)-[prop]->()
+WHERE prop.status = "active" AND prop.to IS NULL
+WITH n, a, owning, expects_global, collect(prop) AS props
+UNWIND [owning] + props AS e
+WITH n, a, expects_global, e,
+    CASE WHEN (e.branch = $global_branch) <> expects_global THEN "branch" ELSE "branch_level" END AS reason
+WHERE (e.branch = $global_branch) <> expects_global
+   OR (e.branch = $global_branch AND e.branch_level <> 1)
+RETURN n.uuid AS node_id, a.name AS field_name, a.branch_support AS branch_support, expects_global,
+       e.branch AS branch, e.branch_level AS branch_level, reason,
+       collect(DISTINCT type(e)) AS edge_types, count(*) AS num_edges
+    """ % {"node_labels": _node_labels(kinds)}
+    results = await db.execute_query(
+        query=query,
+        params={
+            "global_branch": GLOBAL_BRANCH_NAME,
+            "agnostic": BranchSupportType.AGNOSTIC.value,
+            "local": BranchSupportType.LOCAL.value,
+        },
+    )
+    violations = []
+    for result in results:
+        node_id = result.get("node_id")
+        field_name = result.get("field_name")
+        branch_support = result.get("branch_support")
+        branch = result.get("branch")
+        branch_level = result.get("branch_level")
+        num_edges = result.get("num_edges")
+        edge_types = ",".join(sorted(result.get("edge_types")))
+        if result.get("reason") == "branch_level":
+            problem = f"on {branch=} with {branch_level=}, expected branch_level 1"
+        elif result.get("expects_global"):
+            problem = f"on {branch=}, expected '{GLOBAL_BRANCH_NAME}'"
+        else:
+            problem = f"on {branch=}, expected a branch of its own"
+        violations.append(
+            GraphViolation(
+                check=GraphCheck.ATTRIBUTE_EDGE_BRANCH,
+                message=(
+                    f"Attribute {field_name=} of node '{node_id}' with {branch_support=}"
+                    f" has {num_edges} active {edge_types} edge(s) {problem}"
+                ),
+            )
+        )
+    return violations
+
+
 async def collect_graph_violations(db: InfrahubDatabase, kinds: list[str] | None = None) -> list[GraphViolation]:
     """Run every graph-integrity check and return all violations found.
 
@@ -474,6 +535,7 @@ async def collect_graph_violations(db: InfrahubDatabase, kinds: list[str] | None
     violations.extend(await _check_edges_after_node_delete(db=db, kinds=kinds))
     violations.extend(await _check_orphaned_active_edges(db=db, kinds=kinds))
     violations.extend(await _check_relationship_edge_counts(db=db, kinds=kinds))
+    violations.extend(await _check_attribute_edge_branch(db=db, kinds=kinds))
     return violations
 
 
