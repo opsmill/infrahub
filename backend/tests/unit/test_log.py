@@ -50,11 +50,7 @@ def test_decorator_registers_type_in_the_shared_registry() -> None:
 
 
 def test_startup_installs_the_filter_on_the_prefect_run_loggers() -> None:
-    """Importing infrahub.log configures logging for the process, which is what installs the filter.
-
-    Asserting on that import rather than calling configure_logging again keeps the wiring covered
-    without a test reconfiguring logging for every test that follows it in the worker.
-    """
+    """Importing infrahub.log configures logging for the process, which is what installs the filter."""
     installed_on = [
         name
         for name in PREFECT_RUN_LOGGERS
