@@ -51,7 +51,9 @@ It prints a JSON report to stdout and writes everything under
 - `runs.jsonl` — every `pull_request` workflow run created in the window
 - `failed_jobs_with_tests.json` — failed jobs of the interesting run-attempts, with extracted
   failing tests, systemic-bucket tags, and a `recovered_same_run` flag
-- `report-data.json` — headline numbers, ranked per-test table, and the ledger's weekly history
+- `report-data.json` — headline numbers, ranked per-test table, per-bucket incident counts
+  (`bucket_incidents`: distinct jobs/runs/PRs per systemic bucket), and the ledger's weekly
+  history
 - `joblogs/<job_id>.log` — raw logs (ANSI intact; strip with `sed 's/\x1b\[[0-9;]*m//g'`)
 
 Notes the script already accounts for — don't re-derive them:
@@ -101,7 +103,8 @@ For each test in the ranked table, classify:
   explicitly; do not bury it in the flake list. Cross-check: does the test fail on any PR that
   does not contain the suspect change?
 - **Systemic bucket** — tests whose only failures carry a bucket tag are casualties, not causes.
-  Report the bucket (with incident count), not the individual tests.
+  Report the bucket (with the incident count from `bucket_incidents` in `report-data.json`), not
+  the individual tests.
 
 Different tests failing on successive attempts of the same run = two independent flakes, not a
 regression.
