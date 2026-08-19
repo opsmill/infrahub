@@ -264,3 +264,15 @@ async def remove_attribute_on_branch(
             "at": at.to_string(),
         },
     )
+
+
+async def pool_reservation_edges(db: InfrahubDatabase, pool_id: str, identifier: str) -> list[EdgeState]:
+    """Every reservation edge a pool holds under one identifier, on any branch."""
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $pool_id})-[e:IS_RESERVED {identifier: $identifier}]->(:AttributeValue)
+        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status, e.to AS to_time
+        """,
+        params={"pool_id": pool_id, "identifier": identifier},
+    )
+    return [EdgeState(**dict(result)) for result in results]

@@ -16,10 +16,11 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode
@@ -29,8 +30,10 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.query import QueryType
+    from infrahub.core.schema.schema_branch import SchemaBranch
 
 from tests.helpers.agnostic_edges import (
+    EdgeState,
     attribute_global_edges,
     attribute_owning_edges,
     edge_summary,
@@ -38,6 +41,7 @@ from tests.helpers.agnostic_edges import (
     expected_closed_at,
     open_edge_types,
     open_edges,
+    pool_reservation_edges,
     relationship_global_edges,
     remove_attribute_on_branch,
 )
@@ -47,6 +51,9 @@ from tests.helpers.schema.agnostic_retirement import (
     RELATIONSHIP_IDENTIFIER,
     WIDGET_KIND,
 )
+
+SERIAL_POOL_START = 9001
+SERIAL_POOL_END = 9002
 
 
 class RetirementFailureError(Exception):
@@ -106,6 +113,32 @@ class TestAgnosticRetirementOnDelete:
     @pytest.fixture(scope="class")
     async def agnostic_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         registry.schema.register_schema(schema=AGNOSTIC_RETIREMENT_SCHEMA, branch=default_branch.name)
+
+    @pytest.fixture(scope="class")
+    async def serial_pool(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        agnostic_schema: None,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> CoreNumberPool:
+        """A pool of two numbers backing the widget's branch-agnostic serial.
+
+        Two rather than one so that an allocation which fails to reuse the freed value still succeeds,
+        and reports the number it handed out instead of an exhausted pool.
+        """
+        registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+        pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+        await pool.new(
+            db=db,
+            name="agnostic-serial-pool",
+            node=WIDGET_KIND,
+            node_attribute="serial",
+            start_range=SERIAL_POOL_START,
+            end_range=SERIAL_POOL_END,
+        )
+        await pool.save(db=db)
+        return pool
 
     async def test_a_field_created_and_deleted_on_the_same_user_branch_is_closed_by_the_delete(
         self,
@@ -355,3 +388,42 @@ class TestAgnosticRetirementOnDelete:
         still_there = await NodeManager.get_one(db=db, id=widget.id, branch=default_branch)
         assert still_there is not None
         assert still_there.get_attribute(name="serial").value == 700
+
+    async def test_a_value_freed_by_retirement_is_allocatable_again_from_its_pool(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        agnostic_schema: None,
+        serial_pool: CoreNumberPool,
+    ) -> None:
+        """Deleting the object holding a pooled value returns that value to the pool."""
+        holder = await Node.init(db=db, schema=WIDGET_KIND, branch=default_branch)
+        await holder.new(db=db, name="holds-a-pooled-serial", serial={"from_pool": {"id": serial_pool.id}})
+        await holder.save(db=db)
+
+        assert holder.get_attribute(name="serial").value == SERIAL_POOL_START
+        assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
+
+        before = await attribute_global_edges(db=db, node_id=holder.id, attribute_name="serial")
+        assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED", "HAS_SOURCE"}
+        reserved_before = await pool_reservation_edges(db=db, pool_id=serial_pool.id, identifier=holder.id)
+        assert reserved_before == [
+            EdgeState(edge_type="IS_RESERVED", branch=GLOBAL_BRANCH_NAME, status="active", to_time=None)
+        ]
+
+        deleted_at = Timestamp()
+        await _delete(db=db, node_id=holder.id, branch=default_branch, at=deleted_at)
+
+        after = await attribute_global_edges(db=db, node_id=holder.id, attribute_name="serial")
+        assert edge_summary(after) == expected_closed_at(before, deleted_at)
+        assert await pool_reservation_edges(db=db, pool_id=serial_pool.id, identifier=holder.id) == reserved_before, (
+            "the reservation is never cleaned up on delete, and does not need to be"
+        )
+        assert await serial_pool.get_used(db=db, branch=default_branch) == []
+
+        reallocated = await Node.init(db=db, schema=WIDGET_KIND, branch=default_branch)
+        await reallocated.new(db=db, name="takes-the-freed-serial", serial={"from_pool": {"id": serial_pool.id}})
+        await reallocated.save(db=db)
+
+        assert reallocated.get_attribute(name="serial").value == SERIAL_POOL_START
+        assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
