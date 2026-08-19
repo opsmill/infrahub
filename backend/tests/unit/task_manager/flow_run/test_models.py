@@ -9,6 +9,7 @@ class TestRelatedNodesInfo:
         flow_id = uuid4()
 
         info.add_node(flow_id=flow_id, node_id="node-1")
+        info.nodes["node-1"].kind = "TestThing"
 
         assert info.get_related_nodes(flow_id=flow_id) == [info.nodes["node-1"]]
         assert info.nodes["node-1"].id == "node-1"
@@ -18,6 +19,8 @@ class TestRelatedNodesInfo:
         flow_id = uuid4()
 
         info.add_nodes(flow_id=flow_id, node_ids=["node-1", "node-2"])
+        info.nodes["node-1"].kind = "TestThing"
+        info.nodes["node-2"].kind = "TestThing"
 
         assert [node.id for node in info.get_related_nodes(flow_id=flow_id)] == ["node-1", "node-2"]
 
@@ -28,6 +31,7 @@ class TestRelatedNodesInfo:
 
         info.add_node(flow_id=flow_a, node_id="shared")
         info.add_node(flow_id=flow_b, node_id="shared")
+        info.nodes["shared"].kind = "TestThing"
 
         assert info.get_unique_related_node_ids() == ["shared"]
         assert info.get_related_nodes(flow_id=flow_a)[0] is info.get_related_nodes(flow_id=flow_b)[0]
@@ -38,6 +42,7 @@ class TestRelatedNodesInfo:
 
         info.add_node(flow_id=flow_id, node_id="node-1")
         info.add_node(flow_id=flow_id, node_id="node-1")
+        info.nodes["node-1"].kind = "TestThing"
 
         assert info.get_unique_related_node_ids() == ["node-1"]
         assert len(info.get_related_nodes(flow_id=flow_id)) == 1
@@ -51,6 +56,8 @@ class TestRelatedNodesInfo:
         info = RelatedNodesInfo()
         flow_id = uuid4()
         info.add_nodes(flow_id=flow_id, node_ids=["first", "second"])
+        info.nodes["first"].kind = "TestThing"
+        info.nodes["second"].kind = "TestThing"
 
         first = info.get_first_related_node(flow_id=flow_id)
 
@@ -74,3 +81,27 @@ class TestRelatedNodesInfo:
         info = RelatedNodesInfo()
 
         assert info.get_related_nodes_as_dict(flow_id=uuid4()) == []
+
+    def test_get_related_nodes_omits_unresolvable_kind(self) -> None:
+        """A stale flow-run tag can name a node that no longer resolves, leaving its kind unset.
+
+        The non-nullable ``TaskRelatedNode.kind`` GraphQL field cannot render such an entry, so the
+        accessors omit it and the task is returned without it rather than failing outright.
+        """
+        info = RelatedNodesInfo()
+        flow_id = uuid4()
+        info.add_nodes(flow_id=flow_id, node_ids=["resolved", "stale"])
+        info.nodes["resolved"].kind = "TestThing"
+
+        assert [node.id for node in info.get_related_nodes(flow_id=flow_id)] == ["resolved"]
+        assert info.get_related_nodes_as_dict(flow_id=flow_id) == [{"id": "resolved", "kind": "TestThing"}]
+        assert info.get_first_related_node(flow_id=flow_id) is info.nodes["resolved"]
+
+    def test_get_unique_related_node_ids_keeps_unresolved_kind(self) -> None:
+        """Enrichment resolves kinds from this list, so it must stay unfiltered."""
+        info = RelatedNodesInfo()
+        flow_id = uuid4()
+        info.add_nodes(flow_id=flow_id, node_ids=["resolved", "stale"])
+        info.nodes["resolved"].kind = "TestThing"
+
+        assert info.get_unique_related_node_ids() == ["resolved", "stale"]
