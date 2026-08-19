@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import time
 from asyncio import sleep
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from infrahub_sdk.task.models import TaskFilter, TaskState
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
+    from infrahub_sdk.node import Attribute
 
 
 async def wait_idle(client: InfrahubClient, *, max_wait: int = 3600) -> None:
@@ -53,7 +54,8 @@ async def wait_for_seed(
             await sleep(2)
         if attempt == 0:
             for node in await client.all(kind=kind, branch="main"):
-                node.name.value = f"{node.name.value}."
+                name = cast("Attribute", node.name)
+                name.value = f"{name.value}."
                 await node.save()
             await wait_idle(client)
     raise AssertionError(f"{attribute} was not computed for all {expected} nodes of {kind}")

@@ -90,6 +90,12 @@ def widen(target: AffectedTarget, *, reason: str) -> AffectedTarget:
     return replace(target, precise=False, whole_kind=True, reader_lookups=frozenset())
 
 
+def _read_summary(read_set: TransformReadSet | None) -> dict[str, frozenset[str]]:
+    if read_set is None:
+        return {}
+    return {kind: read_set.read_fields.get(kind, frozenset()) for kind in read_set.read_kinds}
+
+
 def _node_count(target: AffectedTarget) -> int:
     return len({node_id for lookup in target.reader_lookups for node_id in lookup.source_node_ids})
 
@@ -296,6 +302,25 @@ class NarrowingPythonTargetResolver:
         )
         if not selected:
             return None
+
+        if recompute_depth > 0:
+            # A chained level selects on the fields the previous level wrote. When it selects a
+            # target the change cannot affect, this line says whether the field filter ran and
+            # what it compared.
+            log.info(
+                "COALESCED_PYTHON chained selection",
+                kind=target.target_kind,
+                attribute=target.attribute_name,
+                depth=recompute_depth,
+                field_filter_applied=can_filter_on_fields(read_set),
+                changed=sorted(
+                    {f"{change.kind}[{','.join(sorted(change.changed_fields)) or 'none'}]" for change in selected}
+                )[:10],
+                reads=sorted(
+                    f"{kind}[{','.join(sorted(fields)) or 'kind-only'}]"
+                    for kind, fields in _read_summary(read_set).items()
+                )[:10],
+            )
 
         # A node that holds the attribute is a target in its own right, which is the only way a
         # created node is reached: it subscribes to no query group until its transform first runs.
