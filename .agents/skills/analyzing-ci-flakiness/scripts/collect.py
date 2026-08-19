@@ -21,7 +21,7 @@ Outputs (under <cache>/<owner>-<name>/):
   windows/<since>_<until>/         this invocation's window
     runs.jsonl                     all pull_request runs created in the window
     failed_jobs_with_tests.json    failed jobs of interesting attempts + tests
-    report-data.json               ranked frequency table + headline numbers
+    report-data.json               ranked frequency table, per-bucket incident counts + headline numbers
     joblogs/<job_id>.log           raw logs of failed jobs (ANSI intact; empty = expired)
 """
 
@@ -46,8 +46,11 @@ API_RESULT_CAP = 1000
 PW_SEP = "\u203a"
 
 # Known systemic failure signatures. When one matches a job log, the job is
-# tagged with the bucket so per-test counts don't mistake an infra cascade for
-# N independent flaky tests. Keep in sync with the table in SKILL.md.
+# tagged with the bucket. The tags feed the report's per-bucket incident counts
+# (``bucket_incidents``) and the judgment step (SKILL.md Step 4), which reports
+# a bucketed cascade as one incident rather than N flaky tests; the per-test
+# table still lists every test, annotated with its buckets, so casualties can
+# be discounted. Keep in sync with the table in SKILL.md.
 BUCKETS: list[tuple[str, str]] = [
     ("stack-readiness", r"ServerNotResponsiveError: Unable to read from '[^']*/api/schema/load"),
     ("vitest-mock-corruption", r"TypeError: (?:vi\.mocked\(\.\.\.\)|\w+)\.mock\w+ is not a function"),
@@ -305,6 +308,19 @@ def ranked_tests(jobs_out: list[dict]) -> list[dict]:
     return table
 
 
+def bucket_incidents(jobs_out: list[dict]) -> dict[str, dict[str, int]]:
+    """Count distinct jobs/runs/PRs per systemic bucket, so a cascade reads as one incident."""
+    jobs: dict[str, set[int]] = defaultdict(set)
+    runs: dict[str, set[int]] = defaultdict(set)
+    prs: dict[str, set[int]] = defaultdict(set)
+    for e in jobs_out:
+        for b in e["buckets"]:
+            jobs[b].add(e["job_id"])
+            runs[b].add(e["run"])
+            prs[b].update(p["number"] for p in e["prs"])
+    return {b: {"jobs": len(jobs[b]), "runs": len(runs[b]), "prs": len(prs[b])} for b in sorted(jobs)}
+
+
 def weekly_history(ledger_path: Path) -> dict[str, dict[str, int]]:
     hist: dict[str, dict[str, int]] = {}
     if ledger_path.exists():
@@ -365,6 +381,7 @@ def main() -> int:
         "runs_failed_final": sum(1 for r in matched if r["conclusion"] == "failure"),
         "failed_jobs": len(jobs_out),
         "ranked_tests": ranked_tests(jobs_out),
+        "bucket_incidents": bucket_incidents(jobs_out),
         "weekly_history": weekly_history(repo_dir / "ledger.jsonl"),
         "new_ledger_records": new_records,
     }
