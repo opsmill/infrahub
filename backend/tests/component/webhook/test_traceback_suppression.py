@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 import httpx
 import pytest
 from prefect import flow, task
 
-from infrahub.log import configure_logging
+from infrahub.log import PREFECT_RUN_LOGGERS, install_traceback_suppression_filter
 from infrahub.webhook.classifier import (
     EXPECTED_DELIVERY_ERRORS,
     ClassifiedFailure,
@@ -14,6 +15,9 @@ from infrahub.webhook.classifier import (
     WebhookDeliveryError,
     WebhookFailureClassifier,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 CLASSIFIED_MESSAGE = "The target responded with HTTP 404."
 
@@ -46,12 +50,25 @@ async def _send_classifying_in_task() -> None:
 
 
 @pytest.fixture
-def configured_logging() -> None:
-    # Register the traceback filter on the Prefect run loggers, as production startup does.
-    configure_logging(production=False, log_level="DEBUG")
+def traceback_suppression_installed() -> Generator[None, None, None]:
+    """Register the traceback filter on the Prefect run loggers, as production startup does, then remove it.
+
+    Only the filter is installed, not the whole of configure_logging: that startup routine also raises
+    the root log level, replaces the root handler and reconfigures structlog, none of which these
+    assertions need and none of which it undoes. Called from a fixture it would leak that state into
+    every test that follows in the same worker — overriding the WARNING root level the suite pins in
+    pytest_configure, so unrelated tests drown in DEBUG records from the database driver and the HTTP
+    client.
+    """
+    traceback_filter = install_traceback_suppression_filter()
+    yield
+    for prefect_logger_name in PREFECT_RUN_LOGGERS:
+        logging.getLogger(prefect_logger_name).removeFilter(traceback_filter)
 
 
-async def test_classified_failure_logs_no_traceback(configured_logging: None, caplog: pytest.LogCaptureFixture) -> None:
+async def test_classified_failure_logs_no_traceback(
+    traceback_suppression_installed: None, caplog: pytest.LogCaptureFixture
+) -> None:
     with (
         caplog.at_level(logging.INFO, logger="prefect.flow_runs"),
         pytest.raises(WebhookDeliveryError, match=r"^The target responded with HTTP 404\.$"),
@@ -66,7 +83,7 @@ async def test_classified_failure_logs_no_traceback(configured_logging: None, ca
 
 
 async def test_classified_failure_from_task_logs_no_traceback(
-    configured_logging: None, caplog: pytest.LogCaptureFixture
+    traceback_suppression_installed: None, caplog: pytest.LogCaptureFixture
 ) -> None:
     # The transport error is caught and classified inside the task, so the failure the engine records
     # for the task run is a delivery error whose traceback is dropped — not the raw transport stacktrace.
@@ -84,7 +101,7 @@ async def test_classified_failure_from_task_logs_no_traceback(
 
 
 async def test_unclassified_failure_logs_a_traceback(
-    configured_logging: None, caplog: pytest.LogCaptureFixture
+    traceback_suppression_installed: None, caplog: pytest.LogCaptureFixture
 ) -> None:
     with (
         caplog.at_level(logging.INFO, logger="prefect.flow_runs"),
