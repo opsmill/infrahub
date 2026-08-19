@@ -184,3 +184,62 @@ async def test_node_mutation_to_group_event(
     assert len(orphan_group_event.members) == 1
     assert EventNode(id=person_id, kind="TestPerson") in orphan_group_event.members
     assert len(orphan_group_event.ancestors) == 0
+
+
+async def test_group_enrolled_into_group_only_emits_event_for_enclosing_group(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    node_group_schema: None,
+    standard_group_schema: None,
+    session_first_account: AccountSession,
+) -> None:
+    """Enrolling a group into another group reports the enclosing group as the one that gained a member.
+
+    The enrolled group gains nothing, so it must not be reported as having gained a member itself.
+    """
+    enclosing_group = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)
+    await enclosing_group.new(db=db, name="enclosing_group")
+    await enclosing_group.save(db=db)
+    enrolled_group = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)
+    await enrolled_group.new(db=db, name="enrolled_group")
+    await enrolled_group.save(db=db)
+
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, service=service, account_session=session_first_account
+    )
+
+    update_query = """
+    mutation($group: String!, $member: String!) {
+        CoreStandardGroupUpdate(data:
+            {
+                id: $group,
+                members: [{id: $member}]
+            }
+        ) {
+            ok
+        }
+    }
+    """
+    result = await graphql(
+        schema=gql_params.schema,
+        source=update_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"group": enclosing_group.get_id(), "member": enrolled_group.get_id()},
+    )
+
+    assert not result.errors
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    member_added_events = [event for event in memory_event.events if isinstance(event, GroupMemberAddedEvent)]
+    assert [event.node_id for event in member_added_events] == [enclosing_group.get_id()]
+    assert member_added_events[0].members == [EventNode(id=enrolled_group.get_id(), kind="CoreStandardGroup")]
+
+    assert len(memory_event.events) == 2
+    group_updated = memory_event.events[0]
+    assert isinstance(group_updated, NodeUpdatedEvent)
+    assert group_updated.node_id == enclosing_group.get_id()
