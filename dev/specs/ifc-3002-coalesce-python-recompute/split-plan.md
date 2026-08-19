@@ -39,6 +39,11 @@ Each targets the previous branch. Risk is concentrated in PR4, which is delibera
   generated configuration page.
 - `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/` from `96a227dd6` and `de94c326b`.
 
+**Boundary moved after review.** The `python_attribute` family literal and its submission routing
+started in PR1 and were moved to PR3. The routing passes `coalesced` and `recompute_depth`, and the
+two target flows only accept those after PR3 changes their signatures. Shipping the routing first
+left a path that would raise at run time if anything reached it.
+
 Reviewer question: does this change any behaviour? No.
 Standalone value: the subscriber lookup was duplicated between regeneration and computed
 attributes. This is also the answer to "why not reuse the post-merge regeneration work" — it does.
@@ -61,6 +66,8 @@ break anything.
 
 ### PR 3 (IFC-3018) — Activate. Work happens twice, nothing is missed.
 
+- The `python_attribute` family literal and the submission routing, moved out of PR1, together with
+  `coalesced` and `recompute_depth` on `process_transform` and `trigger_update_python_computed_attributes`
 - `576974d17` builder derivation
 - `46cafe2e7` the wiring, and the `process_transform` changes
 - The schema-convergence wait, which has to be **split out of** `2db2a3c79`
@@ -105,6 +112,12 @@ Reviewer question: is the measured win real, and can we roll back? Both answers 
   the last package of a long run are the environment, not the code.
 - **Sweep stacks before and after.** An orphan holds the ports and the next run fails in 13 s with
   every app container stuck in `Created`.
+- **A new `config.py` setting makes four files stale, and `/pre-ci` catches only two.** It runs
+  `codegen:graphql`, never `codegen:openapi`, and never `release.validate-dockercomposeenv`. PR1
+  passed the whole local pre-CI and still failed two CI jobs in under a minute. Also regenerate
+  `frontend/app/src/shared/api/rest/types.generated.ts` and the root `docker-compose.yml`.
+- **The changelog fragment is `.changed.md`, not `.fixed.md`.** This is a behaviour and performance
+  change; the sibling IFC-2761 work shipped as `+ifc-2761-coalesce-merge-recompute.changed.md`.
 - **Never `git add <directory>`.** The tree carries untracked work in progress from other branches;
   a directory add commits it. This happened three times.
 - Integration tests are gated behind `INFRAHUB_PROFILE_TIMING`, `INFRAHUB_PARITY` and
