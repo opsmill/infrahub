@@ -538,3 +538,22 @@ async def test_a_change_to_the_kind_read_through_a_derived_field_still_selects()
     )
 
     assert {target.target_kind for target in result.targets} == {OWNER_KIND}
+
+
+async def test_a_change_to_a_field_the_query_does_read_still_selects() -> None:
+    """The other side of the narrowing: a real dependency must survive it.
+
+    The same query reads the owner's name. Narrowing the derived read must not take the named
+    read with it, or a rename stops refreshing the nodes that display it.
+    """
+    resolver, _ = _resolver(
+        index={KEY: TransformReadSet.from_read_fields({PEER_KIND: {"human_friendly_id"}, OWNER_KIND: {"name"}})},
+        readers={OWNER_KIND: frozenset({"shirt-1", "shirt-2"})},
+    )
+    changes = [MergeChange(node_id="shirt-9", kind=OWNER_KIND, action=UPDATED, changed_fields=frozenset({"name"}))]
+
+    result = await resolver.resolve(
+        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None
+    )
+
+    assert {target.target_kind for target in result.targets} == {OWNER_KIND}

@@ -470,3 +470,57 @@ are exact.
 What this means for the success criteria: the honest claim is that the work scales with the number
 of derived values affected rather than with the changed-node count. A merge that changes little
 will not get faster, and should not be expected to.
+
+
+## The many-readers shape, measured properly, and the bug it exposed
+
+The section above called this shape "parity" from run counts on the internal harness. A run on the
+AI-DC dataset, which changes one device type and fans out to a hundred devices, disagreed:
+
+| Merge, 100 devices | Base | Branch, before the fix |
+|---|---|---|
+| `process_transform` flows | 1 | 5 |
+| Window, the drain | ~26 s | 73 s, and 181 s with the log collector on |
+| Critical path, inline | 8-14 s | 20-40 s |
+| Readers refreshed | 100 | 100 |
+
+The output was never wrong. The extra work was.
+
+**What it was.** A transform query that reads one derived field, `hfid` or `display_label`, used to
+collapse its *whole* read set to imprecise. `DcimInterfaceL3.description` reads a circuit's `hfid`
+and a device's `name`, so its read set carried no fields at all and the field filter never ran for
+it, at any depth. At depth 0 that went unnoticed because the subscriber lookup returned nobody. At
+depth 1 the change set was the hundred recomputed devices, which those interfaces do subscribe to
+through `device.name`, so a thousand of them were selected and recomputed. They wrote nothing: the
+attribute that changed was the device description, which their query does not read.
+
+Four of the five flows and the whole drain were that.
+
+**How it was found.** `COALESCED_PYTHON chained selection` reported `field_filter_applied=False` and
+`reads=[]` on three identical selections of `DcimInterfaceL3.description`. `reads=[]` renders the
+same for a missing read set and an imprecise one, which the log could not separate; the analyzer
+settled it, mapping the GraphQL `hfid` to the schema name `human_friendly_id`, which is in
+`IMPRECISE_READ_FIELDS`.
+
+**After the fix**, on the same workload:
+
+| Merge, 100 devices | Base | Branch, fixed |
+|---|---|---|
+| `process_transform` flows | 1 | 1 |
+| Window, the drain | ~26 s | 30.1 s |
+| Critical path, inline | 8-14 s | 20.8 s |
+| Readers refreshed | 100 | 100 |
+| Chained over-selections | n/a | 0 |
+
+Rebase stayed at 2 flows throughout, which is correct chunking of 300 devices and never showed the
+over-selection.
+
+**So the parity claim was right, for the wrong reason, and only after this was fixed.** On the drain
+the two paths are now equal within noise. What remains is the inline cost: the coalesced pass is
+awaited inside the merge, so roughly six seconds of derivation and reader lookups land on the
+critical path that the base defers to its automations. That is IFC-3015 and it is filed separately.
+
+**What the gate missed.** `TestImpreciseReadSetDoesNotWiden` asserts `widened == 0` and
+`batches < changed_nodes`. Through all of the above: `widened=0`, `batches=5 < 100`. It passed.
+Widening is not the only way this pass can recompute too much, and the gate only ever checked
+widening. The unit gates added with the fix cover the selection side.
