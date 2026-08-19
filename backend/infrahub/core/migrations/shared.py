@@ -15,6 +15,7 @@ from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema, SchemaRoot, internal_schema
 from infrahub.core.timestamp import Timestamp
+from infrahub.database import is_retriable_db_error, retry_db_transaction
 
 from .query import MigrationBaseQuery  # noqa: TC001
 
@@ -109,6 +110,16 @@ class MigrationInput:
     console: Console = field(default_factory=get_migration_console)
 
 
+def _should_propagate(db: InfrahubDatabase, exc: BaseException) -> bool:
+    """Whether a query error must bubble out to be retried rather than recorded as a failure.
+
+    A replayable error inside a transaction must reach the transaction owner: recording it would
+    leave the commit to fail with a non-retryable TransactionError and the replay would never happen.
+    Outside a transaction there is no owner, so the error is recorded as a migration failure instead.
+    """
+    return db.is_transaction and is_retriable_db_error(exc)
+
+
 class SchemaMigration(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., description="Name of the migration")
@@ -155,12 +166,15 @@ class SchemaMigration(BaseModel):
                 await query.execute(db=migration_input.db)
                 result.nbr_migrations_executed += query.get_nbr_migrations_executed()
             # Per-query failures become result errors so the runner reports them instead of crashing
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
+                if _should_propagate(db=migration_input.db, exc=exc):
+                    raise
                 result.errors.append(str(exc))
                 return result
 
         return result
 
+    @retry_db_transaction(name="schema_migration")
     async def execute(
         self,
         migration_input: MigrationInput,
@@ -232,6 +246,7 @@ class GraphMigration(BaseMigration):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     queries: Sequence[type[Query]] = Field(..., description="List of queries to execute for this migration")
 
+    @retry_db_transaction(name="graph_migration")
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         async with migration_input.db.start_transaction() as ts:
             txn_migration_input = MigrationInput(db=ts, at=migration_input.at, console=migration_input.console)
@@ -244,7 +259,9 @@ class GraphMigration(BaseMigration):
                 query = await migration_query.init(db=migration_input.db, at=migration_input.at)
                 await query.execute(db=migration_input.db)
             # Per-query failures become result errors so the runner reports them instead of crashing
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
+                if _should_propagate(db=migration_input.db, exc=exc):
+                    raise
                 result.errors.append(str(exc))
                 return result
 
@@ -257,7 +274,7 @@ class InternalSchemaMigration(BaseMigration):
 
     @staticmethod
     def get_internal_schema() -> SchemaBranch:
-        from infrahub.core.schema.schema_branch import SchemaBranch
+        from infrahub.core.schema.schema_branch import SchemaBranch  # noqa: PLC0415  # avoid circular import
 
         # load the internal schema from
         schema = SchemaRoot(**internal_schema)

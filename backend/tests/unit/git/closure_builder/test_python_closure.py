@@ -1,26 +1,36 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from git import Repo
-from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig, InfrahubPythonTransformConfig
+from infrahub_sdk.schema.repository import (
+    InfrahubGeneratorDefinitionConfig,
+    InfrahubPythonTransformConfig,
+    InfrahubWatchConfig,
+)
 
 from infrahub.git.closure_builder.python_closure import PythonClosure
+from infrahub.git.closure_builder.watch import union_watch_files
 
 
-def _config(*, name: str, file_path: str) -> InfrahubPythonTransformConfig:
+def _config(*, name: str, file_path: str, watch: InfrahubWatchConfig | None = None) -> InfrahubPythonTransformConfig:
     return InfrahubPythonTransformConfig(
         name=name,
         file_path=Path(file_path),
+        watch=watch,
     )
 
 
-def _generator_config(*, name: str, file_path: str) -> InfrahubGeneratorDefinitionConfig:
+def _generator_config(
+    *, name: str, file_path: str, watch: InfrahubWatchConfig | None = None
+) -> InfrahubGeneratorDefinitionConfig:
     return InfrahubGeneratorDefinitionConfig(
         name=name,
         file_path=Path(file_path),
         query="some_query",
         targets="some_group",
+        watch=watch,
     )
 
 
@@ -45,25 +55,24 @@ def _track(repo: Repo, *rels: str) -> None:
     repo.index.commit("seed")
 
 
-def test_package_directory_floor_includes_all_python_siblings(tmp_path: Path) -> None:
-    """All `.py` files under the transform's package directory are included in the closure.
+def test_closure_is_the_entry_file_only(tmp_path: Path) -> None:
+    """Files sitting next to the transform's source file stay out of its closure.
 
-    The package-directory floor catches the common transform-plus-sibling-helpers
-    pattern at zero user cost. AST-precise import analysis was rejected because
-    runtime imports (`importlib`, `__import__`, in-function imports) are invisible
-    to it and missing one silently violates the correctness invariant.
+    A transform directory routinely holds several unrelated transforms with their own
+    queries and helpers, so co-location is no evidence of a dependency. Auto-detection
+    claims only the file the config points at; anything else is the author's to declare.
     """
     repo = _init_repo(tmp_path)
     _write(tmp_path, "transforms/network/main.py", "# entry\n")
     _write(tmp_path, "transforms/network/helpers.py", "# helper\n")
+    _write(tmp_path, "transforms/network/other.gql", "query {}\n")
     _write(tmp_path, "transforms/network/sub/inner.py", "# inner\n")
-    _write(tmp_path, "transforms/other/unrelated.py", "# unrelated\n")
     _track(
         repo,
         "transforms/network/main.py",
         "transforms/network/helpers.py",
+        "transforms/network/other.gql",
         "transforms/network/sub/inner.py",
-        "transforms/other/unrelated.py",
     )
 
     result = PythonClosure().build(
@@ -71,85 +80,13 @@ def test_package_directory_floor_includes_all_python_siblings(tmp_path: Path) ->
         worktree_root=tmp_path,
     )
 
-    assert "transforms/network/main.py" in result.dependencies
-    assert "transforms/network/helpers.py" in result.dependencies
-    assert "transforms/network/sub/inner.py" in result.dependencies
-    assert "transforms/other/unrelated.py" not in result.dependencies
+    assert result.dependencies == ("transforms/network/main.py",)
     assert result.complete is True
     assert result.unresolved == ()
 
 
-def test_pyc_files_are_excluded(tmp_path: Path) -> None:
-    """Bytecode artifacts must not appear in the stored closure.
-
-    `.pyc` files are not source inputs to the rendered output; including them
-    would create false positives in the regeneration gate when Python touches
-    its cache.
-    """
-    repo = _init_repo(tmp_path)
-    _write(tmp_path, "transforms/network/main.py", "")
-    _write(tmp_path, "transforms/network/cached.pyc", "")
-    _track(repo, "transforms/network/main.py", "transforms/network/cached.pyc")
-
-    result = PythonClosure().build(
-        transform_config=_config(name="net", file_path="transforms/network/main.py"),
-        worktree_root=tmp_path,
-    )
-
-    assert "transforms/network/cached.pyc" not in result.dependencies
-
-
-def test_pycache_directory_is_excluded(tmp_path: Path) -> None:
-    """The `__pycache__/` directory is excluded from the closure regardless of git tracking.
-
-    `__pycache__/` is a runtime artifact directory and should never feed the
-    regeneration decision.
-    """
-    repo = _init_repo(tmp_path)
-    _write(tmp_path, "transforms/network/main.py", "")
-    _write(tmp_path, "transforms/network/__pycache__/main.cpython-313.pyc", "")
-    _track(
-        repo,
-        "transforms/network/main.py",
-        "transforms/network/__pycache__/main.cpython-313.pyc",
-    )
-
-    result = PythonClosure().build(
-        transform_config=_config(name="net", file_path="transforms/network/main.py"),
-        worktree_root=tmp_path,
-    )
-
-    assert not any("__pycache__" in entry for entry in result.dependencies)
-
-
-def test_gitignored_files_are_excluded(tmp_path: Path) -> None:
-    """Files matched by `.gitignore` do not enter the closure.
-
-    The closure must match what git considers part of the repository so that
-    the read-side intersection against `repo_diff.files_*` cannot diverge from
-    the write-side dependency list.
-    """
-    repo = _init_repo(tmp_path, gitignore="transforms/network/secret.py\n")
-    _write(tmp_path, "transforms/network/main.py", "")
-    _write(tmp_path, "transforms/network/secret.py", "")
-    _track(repo, "transforms/network/main.py")
-
-    result = PythonClosure().build(
-        transform_config=_config(name="net", file_path="transforms/network/main.py"),
-        worktree_root=tmp_path,
-    )
-
-    assert "transforms/network/secret.py" not in result.dependencies
-
-
-def test_repo_root_transform_collapses_to_entry_file(tmp_path: Path) -> None:
-    """A transform at the repository root must not pull every tracked file into its closure.
-
-    The package-directory floor has no parent to bound below the entry file when
-    the transform sits at the root, so the closure collapses to the entry file
-    only. Including the whole repository would defeat the precise-regeneration
-    gate entirely for any root-level transform.
-    """
+def test_repo_root_transform_closure_is_the_entry_file(tmp_path: Path) -> None:
+    """A transform at the repository root behaves like any other: only its own file."""
     repo = _init_repo(tmp_path)
     _write(tmp_path, "root_transform.py", "")
     _write(tmp_path, "unrelated/sibling.py", "")
@@ -165,14 +102,11 @@ def test_repo_root_transform_collapses_to_entry_file(tmp_path: Path) -> None:
     assert result.complete is True
 
 
-def test_git_enumeration_failure_flips_complete_false(tmp_path: Path) -> None:
-    """When git cannot enumerate tracked files, the closure falls back with `complete=False`.
+def test_closure_is_computed_without_a_git_repository(tmp_path: Path) -> None:
+    """Naming the entry file needs no git enumeration, so a non-git worktree is not a failure.
 
-    The package-directory floor relies on `git ls-files` to enumerate. If the
-    worktree is not a git repository (or the command fails), returning a trusted
-    one-file closure would cause the regeneration gate to silently skip
-    regenerations for any real sibling change. Flipping the trust bit forces the
-    pipeline to fall back to the coarser file-change gate.
+    The closure no longer depends on `git ls-files`, so there is nothing left that can
+    fail here and drop the result to `complete=False`.
     """
     _write(tmp_path, "transforms/network/main.py", "")
 
@@ -182,73 +116,159 @@ def test_git_enumeration_failure_flips_complete_false(tmp_path: Path) -> None:
     )
 
     assert result.dependencies == ("transforms/network/main.py",)
-    assert result.complete is False
-    assert any(
-        ref.file == "transforms/network/main.py" and ref.location == "git enumeration failed"
-        for ref in result.unresolved
-    )
+    assert result.complete is True
+    assert result.unresolved == ()
 
 
-def test_dependencies_are_sorted(tmp_path: Path) -> None:
-    """Returned dependencies are lexicographically sorted for byte-stable storage."""
-    repo = _init_repo(tmp_path)
-    _write(tmp_path, "transforms/network/main.py", "")
-    _write(tmp_path, "transforms/network/zeta.py", "")
-    _write(tmp_path, "transforms/network/alpha.py", "")
-    _track(
-        repo,
-        "transforms/network/main.py",
-        "transforms/network/zeta.py",
-        "transforms/network/alpha.py",
-    )
+def test_entry_path_is_canonicalized(tmp_path: Path) -> None:
+    """A config path written with a leading `./` is stored in canonical repo-relative form.
 
+    The stored closure is intersected against git's diff output, so both sides have to
+    agree on the spelling of a path.
+    """
     result = PythonClosure().build(
-        transform_config=_config(name="net", file_path="transforms/network/main.py"),
+        transform_config=_config(name="net", file_path="./transforms/network/main.py"),
         worktree_root=tmp_path,
     )
 
-    expected_subset = ["transforms/network/alpha.py", "transforms/network/main.py", "transforms/network/zeta.py"]
-    deps = list(result.dependencies)
-    assert deps == sorted(deps)
-    for entry in expected_subset:
-        assert entry in deps
+    assert result.dependencies == ("transforms/network/main.py",)
 
 
 def test_supports_generator_definition_config() -> None:
     """The Python closure builder claims generator definitions, not just transforms.
 
-    Generators share the package-directory floor model with Python transforms, so
-    the same builder must dispatch for them; otherwise the aggregator would have no
-    builder to compute a generator's closure and the import would persist none.
+    Generators are Python sources with the same `file_path` shape, so the same builder
+    must dispatch for them; otherwise the aggregator would have no builder to compute a
+    generator's closure and the import would persist none.
     """
     assert PythonClosure().supports(_generator_config(name="gen", file_path="generators/widget/main.py")) is True
 
 
-def test_generator_definition_package_directory_floor(tmp_path: Path) -> None:
-    """A generator's closure is the package-directory floor built from its entry file and name.
-
-    The builder reads only `file_path` and `name`, both present on a generator
-    config, so the package-directory floor that catches sibling helpers applies to
-    generators identically to Python transforms.
-    """
+def test_generator_closure_is_the_entry_file_only(tmp_path: Path) -> None:
+    """A generator's closure excludes its siblings exactly as a Python transform's does."""
     repo = _init_repo(tmp_path)
     _write(tmp_path, "generators/widget/main.py", "# entry\n")
     _write(tmp_path, "generators/widget/helpers.py", "# helper\n")
-    _write(tmp_path, "generators/other/unrelated.py", "# unrelated\n")
-    _track(
-        repo,
-        "generators/widget/main.py",
-        "generators/widget/helpers.py",
-        "generators/other/unrelated.py",
-    )
+    _track(repo, "generators/widget/main.py", "generators/widget/helpers.py")
 
     result = PythonClosure().build(
         transform_config=_generator_config(name="widget", file_path="generators/widget/main.py"),
         worktree_root=tmp_path,
     )
 
-    assert "generators/widget/main.py" in result.dependencies
-    assert "generators/widget/helpers.py" in result.dependencies
-    assert "generators/other/unrelated.py" not in result.dependencies
+    assert result.dependencies == ("generators/widget/main.py",)
     assert result.complete is True
     assert result.unresolved == ()
+
+
+def test_watching_the_containing_directory_readmits_the_siblings(tmp_path: Path) -> None:
+    """Declaring the transform's own directory in `watch.files` brings every sibling back.
+
+    This is the escape hatch for the transform-plus-helper-modules layout: auto-detection
+    no longer assumes it, so the author asks for it by naming the directory.
+    """
+    repo = _init_repo(tmp_path)
+    _write(tmp_path, "transforms/network/main.py", "# entry\n")
+    _write(tmp_path, "transforms/network/helpers.py", "# helper\n")
+    _write(tmp_path, "transforms/network/sub/inner.py", "# inner\n")
+    _write(tmp_path, "transforms/other/unrelated.py", "# unrelated\n")
+    _track(
+        repo,
+        "transforms/network/main.py",
+        "transforms/network/helpers.py",
+        "transforms/network/sub/inner.py",
+        "transforms/other/unrelated.py",
+    )
+    transform_config = _config(
+        name="net",
+        file_path="transforms/network/main.py",
+        watch=InfrahubWatchConfig(files=["transforms/network/"]),
+    )
+
+    result = union_watch_files(
+        result=PythonClosure().build(transform_config=transform_config, worktree_root=tmp_path),
+        transform_config=transform_config,
+        worktree_root=tmp_path,
+        logger=logging.getLogger(__name__),
+    )
+
+    assert result.dependencies == (
+        "transforms/network/helpers.py",
+        "transforms/network/main.py",
+        "transforms/network/sub/inner.py",
+    )
+    assert result.complete is True
+
+
+def test_watching_a_single_sibling_admits_only_that_sibling(tmp_path: Path) -> None:
+    """A `watch.files` entry naming one file adds that file and nothing else beside it.
+
+    Declaring one helper must not drag in the rest of the directory, otherwise narrowing
+    the auto-detected closure would buy nothing for anyone who uses `watch` at all.
+    """
+    repo = _init_repo(tmp_path)
+    _write(tmp_path, "transforms/network/main.py", "# entry\n")
+    _write(tmp_path, "transforms/network/helpers.py", "# helper\n")
+    _write(tmp_path, "transforms/network/noise.gql", "query {}\n")
+    _track(
+        repo,
+        "transforms/network/main.py",
+        "transforms/network/helpers.py",
+        "transforms/network/noise.gql",
+    )
+    transform_config = _config(
+        name="net",
+        file_path="transforms/network/main.py",
+        watch=InfrahubWatchConfig(files=["transforms/network/helpers.py"]),
+    )
+
+    result = union_watch_files(
+        result=PythonClosure().build(transform_config=transform_config, worktree_root=tmp_path),
+        transform_config=transform_config,
+        worktree_root=tmp_path,
+        logger=logging.getLogger(__name__),
+    )
+
+    assert result.dependencies == (
+        "transforms/network/helpers.py",
+        "transforms/network/main.py",
+    )
+    assert result.complete is True
+
+
+def test_watched_directory_excludes_bytecode_and_gitignored_files(tmp_path: Path) -> None:
+    """Re-admitting a directory through `watch.files` still drops bytecode and ignored files.
+
+    `.pyc`, `__pycache__/` and Git-ignored paths are not source inputs; letting them in
+    would fire the regeneration gate whenever Python touches its cache.
+    """
+    repo = _init_repo(tmp_path, gitignore="transforms/network/secret.py\n")
+    _write(tmp_path, "transforms/network/main.py", "")
+    _write(tmp_path, "transforms/network/helpers.py", "")
+    _write(tmp_path, "transforms/network/cached.pyc", "")
+    _write(tmp_path, "transforms/network/__pycache__/main.cpython-313.pyc", "")
+    _write(tmp_path, "transforms/network/secret.py", "")
+    _track(
+        repo,
+        "transforms/network/main.py",
+        "transforms/network/helpers.py",
+        "transforms/network/cached.pyc",
+        "transforms/network/__pycache__/main.cpython-313.pyc",
+    )
+    transform_config = _config(
+        name="net",
+        file_path="transforms/network/main.py",
+        watch=InfrahubWatchConfig(files=["transforms/network/"]),
+    )
+
+    result = union_watch_files(
+        result=PythonClosure().build(transform_config=transform_config, worktree_root=tmp_path),
+        transform_config=transform_config,
+        worktree_root=tmp_path,
+        logger=logging.getLogger(__name__),
+    )
+
+    assert result.dependencies == (
+        "transforms/network/helpers.py",
+        "transforms/network/main.py",
+    )

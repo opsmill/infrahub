@@ -13,6 +13,7 @@ export default defineConfig({
   },
   plugins: ["oxc", "typescript", "react", "react-perf", "jsx-a11y", "vitest", "unicorn"],
   rules: {
+    "eslint/one-var": "off",
     "eslint/no-console": ["error", { allow: ["error"] }],
     // The React Compiler memoizes; inline values as props are not a re-render hazard here.
     "react-perf/jsx-no-new-array-as-prop": "off",

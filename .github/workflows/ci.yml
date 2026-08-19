@@ -64,7 +64,7 @@ jobs:
         with:
           submodules: true
       - name: Check for file changes
-        uses: dorny/paths-filter@v4.0.2
+        uses: dorny/paths-filter@v4.0.3
         id: changes
         with:
           token: ${{ github.token }}
@@ -1532,7 +1532,7 @@ jobs:
 
       - name: Run all benchmarks
         if: contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@v4
+        uses: CodSpeedHQ/action@v5
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation
@@ -1541,7 +1541,7 @@ jobs:
       - name: Run non-intensive benchmarks
         if: |
           !contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@v4
+        uses: CodSpeedHQ/action@v5
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation

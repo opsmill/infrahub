@@ -42,8 +42,8 @@ export const DateDisplay = ({
     return wrap(tooltipMessage);
   }
 
-  // > 7 days old → preferred date; recent → "x ago".
-  if (differenceInDays(new Date(), dateData) > 7) {
+  // Beyond a week either side of now a relative phrase loses the precision the reader needs.
+  if (Math.abs(differenceInDays(new Date(), dateData)) > 7) {
     return wrap(formatDate(dateData, "date"));
   }
 

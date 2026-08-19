@@ -183,6 +183,12 @@ Two consequences worth remembering:
   releases — scopes are sorted largest-first, so which modules run concurrently can change on an
   upgrade. Tests must not depend on what else is or is not running.
 
+Within a single module or class, however, pytest runs tests in definition order and
+`--dist loadscope` keeps the whole scope on one worker — so the sequential, stateful `test_stepNN`
+pattern used across `backend/tests/integration/` (and in component migration suites) is deliberate
+and safe. Do not rewrite step tests to be order-independent; the rule above is about dependence
+*across* modules, not within one.
+
 ### Base Test Classes
 
 Located in `backend/tests/helpers/test_app.py`:
@@ -280,6 +286,7 @@ Test data and fixture files:
 | `test_client.py` | HTTP test client wrapper |
 | `utils.py` | Container utilities |
 | `constants.py` | Port numbers, image names |
+| `file_repo.py` | Builds throwaway on-disk Git "remote" repos from `repos/` fixtures (`FileRepo`). The remotes accept pushes to their checked-out branch, so tests exercise push and write-back like a hosted remote would. |
 
 ### Test Data (`backend/tests/test_data/`)
 
@@ -323,6 +330,12 @@ Container (session)
 | `car_person_schema_unregistered` | Unregistered version for custom modifications |
 | `car_person_schema_branch_local` | Schema with branch-local support |
 | `register_core_models_schema` | Core Infrahub models only |
+| `register_core_models_schema_scope_class` | Class-scoped variant of the above |
+
+When several tests share an expensive schema/data load, group them in a class and use the
+`_scope_class` variant with `@pytest.fixture(scope="class")` fixtures for the data; methods run in
+definition order and may build on accumulated state. See `TestNumberPoolAllocation` in
+`backend/tests/component/core/resource_manager/test_number_pool.py`.
 
 **When to use existing fixtures:**
 

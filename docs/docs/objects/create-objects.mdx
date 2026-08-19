@@ -1,0 +1,177 @@
+---
+title: Create objects
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+There are three ways to add objects to Infrahub. Which one you need depends on how many objects you are creating and where their definition comes from:
+
+- **[Directly](#create-objects-directly)** — create objects one at a time through the web interface, `infrahubctl`, the Python SDK, or GraphQL. Use this for a single device, a few prefixes, or any change small enough to enter manually or in a short script.
+- **[From a file](#create-objects-from-a-file)** — declare many objects in a YAML file kept in Git, then load them together. Use this to populate a new instance, or for data that someone should review before it changes.
+- **[From a workflow](#create-objects-from-a-workflow)** — configure a Generator or Infrahub Sync once, then objects are created and updated as the underlying data changes. Use this when a rule determines what should exist, or when another system is already the source.
+
+## Create objects directly
+
+There are four ways to create an object one at a time, and all four produce the same result: the same object, validated against the same schema constraints, on the branch you are working in. Choose based on where you are already working — a browser, a terminal, a Python program, or a GraphQL client.
+
+The example below creates a device named `atl1-edge1` at site `atl1`. On `InfraDevice`, `name` and `type` are required and `site` is a relationship.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web interface" default>
+
+Use the web interface for a single object, and for the first object of a kind you have not created before. The form is built from the schema, so it shows every field the kind defines, marks which ones are required, and validates values as you type — which also tells you what a script will need to supply later.
+
+1. Open the Device list from the left menu.
+2. Select **Add Device**. The **Create Device** panel opens.
+3. Fill in the name and type.
+4. Select a site, then save.
+
+In the web form you can also choose an Object Template, assign Profiles, and allocate from a resource pool while filling in the object. The other three accept the same values as fields.
+
+</TabItem>
+
+  <TabItem value="infrahubctl" label="infrahubctl">
+
+Use `infrahubctl` for interactive work and for scripting one object at a time — onboarding a device during a maintenance window, or a shell script that creates a few objects as one step in a longer task.
+
+```bash
+infrahubctl object create InfraDevice \
+  --set name=atl1-edge1 \
+  --set type=7280R3 \
+  --set site=atl1
+```
+
+Relationship values resolve by name, so `site=atl1` looks up the site and links it.
+
+[Manage objects with infrahubctl](./manage-from-cli.mdx) covers querying, updating, and deleting.
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+Use the Python SDK for custom scripts and integrations — when a program decides what to create rather than a person. The SDK handles authentication, query construction, and serialization, so your code works with objects rather than HTTP requests. Transformations, Generators, and checks run against this same client, so a script you write standalone runs unchanged inside Infrahub's pipeline.
+
+```python
+from infrahub_sdk import InfrahubClientSync
+
+client = InfrahubClientSync(address="http://localhost:8000")
+
+device = client.create(
+    kind="InfraDevice",
+    name="atl1-edge1",
+    type="7280R3",
+    site="atl1",
+)
+device.save()
+```
+
+To create many objects in one run, group the calls into a batch with a concurrency limit. Use the synchronous client for scripting, and the async client for work with concurrent I/O.
+
+See the [Python SDK]($(base_url)python-sdk/introduction) documentation.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+Use the GraphQL API to create objects from any language or tool that can send an HTTP request — Go, TypeScript, or a shell script using `curl`. It is also where to write from when you are already reading data over GraphQL and want both in the same place.
+
+```graphql
+mutation {
+  InfraDeviceCreate(
+    data: {
+      name: { value: "atl1-edge1" }
+      type: { value: "7280R3" }
+      site: { hfid: ["atl1"] }
+    }
+  ) {
+    ok
+    object {
+      id
+      hfid
+    }
+  }
+}
+```
+
+Infrahub generates four mutations for every model in your schema, named from its namespace and name — `InfraDeviceCreate`, `InfraDeviceUpdate`, `InfraDeviceUpsert`, and `InfraDeviceDelete`. Use `Upsert` when the object may already exist and you want one call to cover both cases. To create the object on a branch, post to `/graphql/<branch_name>`.
+
+See [Queries & mutations](../development-resources/graphql/queries-and-mutations.mdx).
+
+</TabItem>
+</Tabs>
+
+## Create objects from a file
+
+An object file declares a set of objects in YAML: which kind they are and what values they carry. Keeping that file in a Git repository makes the data reproducible — you can rebuild an instance from it, promote the same dataset from development to production, and review a change to your data in a pull request before it reaches Infrahub.
+
+Use object files for the reference data your instance is built on and that rarely changes afterwards — sites, roles, platforms, device types, standard tags — and for the dataset that populates a new instance.
+
+```yaml
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: InfraDevice
+  data:
+    - name: atl1-edge1
+      type: 7280R3
+      site: atl1
+    - name: atl1-edge2
+      type: 7280R3
+      site: atl1
+```
+
+There are two ways to load a file, and they differ in what happens afterwards. `infrahubctl object load` imports the file once, and Infrahub keeps no link to it. Declaring the file under `objects:` in a repository's `.infrahub.yml` means Infrahub tracks it, so removing a record from the file deletes the object on the next import.
+
+[Load data using YAML file](./load-from-yaml.mdx) covers the file format, nested objects, and load order.
+
+## Create objects from a workflow
+
+Some objects exist because other data does, and they have to stay correct as that data changes. Maintaining them manually means repeating the same work every time something upstream changes.
+
+Configure a Generator or an Infrahub Sync project once, and it creates those objects and updates them when the source data changes. A Generator works from data already in Infrahub. Infrahub Sync works from data in another system.
+
+### Generators
+
+Use a Generator when the objects you need are determined by data Infrahub already holds — an IP address for every new interface, or the circuits required by a service definition. You describe the rule once, and it applies to every target, including targets added later.
+
+A Generator has three parts: a GraphQL query that collects the data, the Python that acts on the results, and a target Group that lists the objects it runs against. Infrahub creates one run per member of that group, so a Generator targeting a group of ten racks produces ten independent runs, each reading only its own rack's data.
+
+Objects are created when a run executes. A run starts when you:
+
+- Open a Proposed Change that affects the targets, where the Generator runs as one of the CI checks.
+- Run the definition from the UI under **Actions > Generator Definitions**.
+- Trigger it with an Event rule you configured.
+- Run it locally with `infrahubctl` while developing.
+
+Each run also deletes objects it created earlier that the current data no longer requires.
+
+See [Generators](../generators/overview.mdx).
+
+### Infrahub Sync
+
+Use Infrahub Sync when another system holds data you need in Infrahub and stays the system of record for it. Sync moves infrastructure data between Infrahub and external systems — NetBox, Nautobot, IP Fabric, Slurp'it, Cisco ACI, Peering Manager, and any system with a REST API. Sync also runs in the other direction, publishing Infrahub data into monitoring, observability, or CMDB systems.
+
+Define a sync project in YAML that maps the source system's models onto your schema. Three commands run it: `generate` builds the adapter code from that mapping, `diff` shows what would change without applying it, and `sync` applies the changes. Objects are created in Infrahub on the `sync` run, for every record in the source with no match in Infrahub. Each run calculates a fresh diff and applies only the deltas, so a run that fails partway can be repeated safely.
+
+Sync runs as a CLI, so you schedule it with the tooling you already use — cron, a CI job, or Prefect.
+
+See [Infrahub Sync]($(base_url)sync) for adapters, mapping rules, and configuration.
+
+## After an object is created
+
+A new object exists on the branch it was created on. On a branch other than the default, it remains isolated until that branch merges through a [proposed change](../proposed-changes/overview.mdx).
+
+Every attribute records how its value was set, which you can read back through [metadata and lineage](./metadata.mdx). You either entered the value while creating the object, or you set it up in advance so the object receives it on creation:
+
+- Choose an [Object Template](../object-templates/overview.mdx) to start the object with a set of components already in place.
+- Assign a [Profile](../profiles/overview.mdx) to give the object attribute values it inherits, and override any of them on the object itself.
+- Allocate from a [Resource Manager](../resource-manager/overview.mdx) pool to take the next free IP address or VLAN ID.
+
+Templates, Profiles, and pools apply whichever of the three ways you used to create the object — directly, from a file, or from a workflow.
+
+## Related
+
+- [Objects](./overview.mdx) — what an object is and how it relates to schema nodes
+- [Convert object kind](./convert-object-kind.mdx) — change the schema kind of an existing object

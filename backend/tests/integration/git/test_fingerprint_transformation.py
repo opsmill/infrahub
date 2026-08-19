@@ -60,9 +60,9 @@ class TestFingerprintTransformation(FingerprintImportTestBase):
         # Neither transform declares a watch, and the commit below touches neither of them.
         # person_with_cars is a Jinja2 transform whose template includes nothing, so parsing it
         # found every file that affects the output and the fingerprint can ignore the commit id.
-        # CarSpecMarkdown is a Python transform: its dependencies are just the files next to it
-        # on disk, which could always be missing an import from another directory, so its
-        # fingerprint keeps following the commit id.
+        # CarSpecMarkdown is a Python transform: its dependencies are just its own source file,
+        # which could always be missing something it imports, so its fingerprint keeps following
+        # the commit id.
         jinja2_before = (await client.get(kind=CoreTransformJinja2, name__value="person_with_cars")).fingerprint.value
         python_before = (await client.get(kind=CoreTransformPython, name__value="CarSpecMarkdown")).fingerprint.value
         assert jinja2_before

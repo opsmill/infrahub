@@ -20,6 +20,7 @@ from infrahub.workflows.catalogue import (
     DISPLAY_LABELS_PROCESS_JINJA2,
     HFID_PROCESS,
 )
+from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.workflow import WorkflowRecorder
 
 if TYPE_CHECKING:
@@ -150,3 +151,19 @@ async def test_submit_skips_a_failing_submission_and_keeps_the_rest() -> None:
     # The first submission failed; the other two were still dispatched and returned.
     assert len(recorder.submit_calls) == 2
     assert len(submitted) == 2
+
+
+async def test_every_submission_carries_the_branch_tag() -> None:
+    """Without it the run is invisible to every branch-scoped task query.
+
+    A tag added from inside a run does not reach the filter, so it has to be set at creation.
+    An untagged recompute still does its work, which is why this went unnoticed until a
+    branch-filtered count came back zero while the values had plainly been refreshed.
+    """
+    recorder = WorkflowRecorder()
+
+    await CoalescedRecomputeSubmitter(workflow=recorder).submit(coalesced=_coalesced(), context=_event_context())
+
+    assert recorder.submit_calls, "expected the coalesced pass to submit something"
+    for call in recorder.submit_calls:
+        assert call["tags"] == [WorkflowTag.BRANCH.render(identifier="main")], call["workflow"].name

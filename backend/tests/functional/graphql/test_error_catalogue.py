@@ -124,6 +124,30 @@ class TestErrorCatalogue(TestInfrahubApp):
             assert data["node_kind"] == "TestingCar"
             assert error["path"][-1] == data["field_name"], error["path"]
 
+    async def test_uniqueness_violation_on_duplicate_create(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        query = """
+        mutation {
+            TestingTagCreate(data: { name: { value: "duplicate-tag" } }) { ok }
+        }
+        """
+        first = await _post_graphql(client=test_client, query=query, headers=_admin_headers(api_admin_token))
+        assert first["data"]["TestingTagCreate"]["ok"] is True
+
+        body = await _post_graphql(client=test_client, query=query, headers=_admin_headers(api_admin_token))
+
+        assert body["data"] == {"TestingTagCreate": None}
+        assert len(body["errors"]) == 1
+        error = body["errors"][0]
+        assert error["extensions"]["code"] == "UNIQUENESS_VIOLATION"
+        assert error["extensions"]["http_status"] == 422
+        assert error["extensions"]["data"] == {"node_kind": "TestingTag", "fields": ["name"]}
+        assert error["path"] == ["TestingTagCreate"]
+
     async def test_undefined_error_falls_back_for_uncatalogued_exception(
         self,
         initial_dataset: str,

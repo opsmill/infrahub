@@ -12,6 +12,8 @@ from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.creator import BranchCreator
+from infrahub.core.branch.data_deleter import BranchDataDeleter
+from infrahub.core.branch.delete_coordinator import BranchDeleteOrchestrator
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
 from infrahub.core.constants import MutationAction
@@ -50,7 +52,6 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.branch_action import (
-    BranchDeletedEvent,
     BranchMigratedEvent,
     BranchRebasedEvent,
 )
@@ -69,10 +70,8 @@ from infrahub.workers.dependencies import (
     get_workflow,
 )
 from infrahub.workflows.catalogue import (
-    BRANCH_CANCEL_PROPOSED_CHANGES,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
-    GIT_REPOSITORIES_DELETE_BRANCH,
     IPAM_RECONCILIATION,
 )
 from infrahub.workflows.constants import WorkflowPriority
@@ -223,9 +222,6 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
 
-        # Use the branch-creation (common-ancestor) schema as the migration baseline: it still contains
-        # any element removed on either side, so remove migrations can resolve what to close.
-        pre_rebase_schema = (await schema_analyzer.get_common_ancestor_schema()).duplicate()
         migrations = []
         async with lock.registry.global_graph_lock():
             async with db.start_transaction() as dbt:
@@ -237,11 +233,14 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 # Schema nodes were already written by the rebase, so load that schema and apply only
                 # the migrations it implies.
                 log.info("Running migrations")
+                migration_baseline_schema = (await schema_analyzer.get_common_ancestor_schema()).duplicate()
+                pre_rebase_schema = registry.schema.get_schema_branch(name=user_branch.name).duplicate()
                 rebased_schema = await registry.schema.load_schema_from_db(db=db, branch=user_branch)
                 migrations = await schema_analyzer.calculate_migrations(target_schema=rebased_schema)
                 await schema_update_coordinator.execute(
                     branch=user_branch,
-                    origin_schema=pre_rebase_schema,
+                    origin_schema=migration_baseline_schema,
+                    rollback_schema=pre_rebase_schema,
                     candidate_schema=rebased_schema,
                     at=rebase_at,
                     context=context,
@@ -386,40 +385,31 @@ async def delete_branch(
 ) -> None:
     await add_tags(branches=[branch], nodes=[proposed_change_id] if proposed_change_id else None)
     database = await get_database()
-
-    low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
-
+    workflow = get_workflow()
+    event_service = await get_event_service()
     async with database.start_session() as db:
-        obj = await Branch.get_by_name(db=db, name=str(branch))
+        # ignore_deleting=False so that a delete which failed part way through can be run again:
+        obj = await Branch.get_by_name(db=db, name=str(branch), ignore_deleting=False)
 
         component_registry = get_component_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
-        await diff_repository.freeze_diffs_for_branch(branch_name=branch)
 
-        await obj.delete(db=db)
-
-        event_context = context.to_event_context()
-        event = BranchDeletedEvent(
-            branch_name=branch,
-            branch_id=str(obj.uuid),
-            sync_with_git=obj.sync_with_git,
-            meta=EventMeta.from_context(context=event_context, branch=registry.get_global_branch()),
-            proposed_change_id=proposed_change_id,
+        log = get_run_logger()
+        orchestrator = BranchDeleteOrchestrator(
+            data_deleter=BranchDataDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit, log=log),
+            diff_freezer=diff_repository,
+            event_service=event_service,
+            workflow=workflow,
+            log=log,
+            global_branch=registry.get_global_branch(),
+            delete_git_branch_after_merge=config.SETTINGS.git.delete_git_branch_after_merge,
         )
-
-        await get_workflow().submit_workflow(
-            workflow=BRANCH_CANCEL_PROPOSED_CHANGES, context=low_context, parameters={"branch_name": branch}
-        )
-
-        event_service = await get_event_service()
-        await event_service.send(event=event)
-
-    should_delete_git = (config.SETTINGS.git.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git
-    if should_delete_git:
-        await get_workflow().submit_workflow(
-            workflow=GIT_REPOSITORIES_DELETE_BRANCH,
+        low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
+        await orchestrator.delete(
+            branch=obj,
             context=low_context,
-            parameters={"branch": branch},
+            delete_from_git=delete_from_git,
+            proposed_change_id=proposed_change_id,
         )
 
 

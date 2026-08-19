@@ -5,21 +5,19 @@ import type { Dropdown } from "@/shared/api/graphql/generated/types";
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { classNames, getTextColor } from "@/shared/utils/common";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 
-export type GitRepositoryData = {
-  id: string;
-  display_label?: string | null;
+export interface GitRepositoryData extends NodeCore {
   sync_status?: Dropdown | null;
-};
+}
 
 export const GitRepositoryItem = ({ repository }: { repository: GitRepositoryData }) => {
-  const { id, display_label, sync_status } = repository;
+  const { id, __typename, display_label, sync_status } = repository;
 
   return (
     <ListBoxItem
-      href={getObjectDetailsUrl(GENERIC_REPOSITORY_KIND, id)}
+      href={getObjectDetailsUrl(__typename, id)}
       className={classNames(
         focusVisibleStyle,
         "flex items-center justify-between p-4 text-sm",
