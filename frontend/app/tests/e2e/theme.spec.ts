@@ -15,6 +15,12 @@ const setDarkThemeFlag = (page: Page, enabled: boolean) =>
 const htmlTheme = (page: Page) =>
   page.evaluate(() => (document.documentElement.classList.contains("dark") ? "dark" : "light"));
 
+// Retries. The class lands in a layout effect, so it is applied in the same commit the markup
+// arrives in, but a visibility wait can still return between the two. Use this everywhere except
+// the earliest-observable checks below, which must sample once to mean anything.
+const expectHtmlTheme = (page: Page, expected: "dark" | "light") =>
+  expect.poll(() => htmlTheme(page)).toBe(expected);
+
 const openAccountMenu = async (page: Page) => {
   await page.getByTestId("unauthenticated-menu-trigger").click();
 };
@@ -28,12 +34,13 @@ test.describe("theme", () => {
     await page.goto("/");
     await expect(page.getByTestId("sidebar")).toBeVisible();
 
-    expect(await htmlTheme(page)).toBe("dark");
+    await expectHtmlTheme(page, "dark");
 
     await openAccountMenu(page);
+    // Offers the way back out, untagged — only the step *into* the pre-release theme is tagged.
     const switchItem = page.getByRole("menuitem", { name: "Light theme" });
     await expect(switchItem).toBeVisible();
-    await expect(switchItem).toContainText("alpha");
+    await expect(switchItem).not.toContainText("alpha");
   });
 
   test("switching to light applies instantly and survives a reload without flashing", async ({
@@ -46,15 +53,20 @@ test.describe("theme", () => {
 
     await openAccountMenu(page);
     await page.getByRole("menuitem", { name: "Light theme" }).click();
-    expect(await htmlTheme(page)).toBe("light");
+    await expectHtmlTheme(page, "light");
 
     // The pre-paint script must deliver the choice before the app boots, so the document is
-    // already light at the earliest observable moment of the next load.
+    // already light at the earliest observable moment of the next load. Sampled once on purpose:
+    // retrying here would also accept the class arriving later from React, which is the very
+    // regression this asserts against.
     await page.goto("/", { waitUntil: "domcontentloaded" });
     expect(await htmlTheme(page)).toBe("light");
 
     await expect(page.getByTestId("sidebar")).toBeVisible();
-    expect(await htmlTheme(page)).toBe("light");
+    await expectHtmlTheme(page, "light");
+
+    await openAccountMenu(page);
+    await expect(page.getByRole("menuitem", { name: "Dark theme" })).toContainText("alpha");
   });
 
   test("a deployment with the theme off renders light and offers no switch", async ({ page }) => {
@@ -73,7 +85,7 @@ test.describe("theme", () => {
     expect(await htmlTheme(page)).toBe("light");
 
     await expect(page.getByTestId("sidebar")).toBeVisible();
-    expect(await htmlTheme(page)).toBe("light");
+    await expectHtmlTheme(page, "light");
 
     await openAccountMenu(page);
     await expect(page.getByRole("menuitem", { name: "About Infrahub" })).toBeVisible();

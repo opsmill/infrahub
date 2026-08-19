@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useLayoutEffect, useMemo, useState } from "react";
 
 import { applyTheme, type ResolvedTheme } from "./resolved-theme";
 import { ThemeContext } from "./theme-context";
@@ -29,7 +29,10 @@ export function ThemeProvider({ canChoose, defaultTheme, children }: ThemeProvid
 
   const theme: ResolvedTheme = canChoose ? (choice ?? defaultTheme) : defaultTheme;
 
-  useEffect(() => {
+  // Before paint, not after: the pre-paint script can only replay a theme this browser has already
+  // resolved once, so a first-time visitor starts with no class at all. A passive effect would let
+  // that first commit paint in the wrong palette and then snap.
+  useLayoutEffect(() => {
     applyTheme(theme);
     mirrorResolvedTheme(theme);
   }, [theme]);

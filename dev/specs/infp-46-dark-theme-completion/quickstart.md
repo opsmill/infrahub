@@ -142,13 +142,17 @@ document.documentElement.classList.contains("dark")
 2. Confirm no application component paints a fixed surface palette:
 
    ```bash
-   git grep -nE 'bg-(white|gray-(50|100))\b' -- 'frontend/app/src/**/*.tsx'
+   git grep -nP '(?<!dark:)\bbg-(white|gray-(50|100))\b' -- 'frontend/app/src/**/*.tsx'
    ```
 
-   Expect no output. ⚠ Counting `dark:` occurrences is the wrong metric in both directions: a
-   `dark:` variant renders correctly (merely unmaintainable, and legitimate for categorical ramps
-   and asset swaps), while the files that are actually broken carry no variant at all — the defect
-   is the *absence* of one on a fixed palette. ⚠ `rtk` reformats grep output and an empty piped
+   Expect no output. ⚠ `-P`, not `-E`: git's ERE does not implement `\b` on every platform, and
+   where it does not, the pattern matches *nothing* — the check passes while seeing no files at
+   all. ⚠ The lookbehind is what makes the empty result meaningful: `dark:bg-white/5` and friends
+   are legitimate translucent overlays, and without excluding them this reports five standing
+   false positives. Counting `dark:` occurrences is the wrong metric in both directions: a `dark:`
+   variant renders correctly (merely unmaintainable, and legitimate for categorical ramps and
+   asset swaps), while the files that are actually broken carry no variant at all — the defect is
+   the *absence* of one on a fixed palette. ⚠ `rtk` reformats grep output and an empty piped
    result is not proof — run this through plain `git grep`.
 3. In light, compare the same pages against the pre-change build: no visual difference.
 
