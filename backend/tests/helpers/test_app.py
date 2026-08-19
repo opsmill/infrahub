@@ -96,20 +96,28 @@ class TestInfrahubAppBase(TestInfrahub):
         # Creating another service object to get service correctly initialized is a hack.
         # We should either reuse `service` fixture (leading to circular fixture dependencies issue atm),
         # or ideally properly patch production code responsible for Bus instantiation instead
+        original = config.OVERRIDE.message_bus
         bus = BusSimulator()
         _ = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution(), message_bus=bus)
         config.OVERRIDE.message_bus = bus
-        with dependency_provider.scope(build_message_bus, lambda: bus):
-            yield bus
+        try:
+            with dependency_provider.scope(build_message_bus, lambda: bus):
+                yield bus
+        finally:
+            config.OVERRIDE.message_bus = original
 
     @pytest.fixture(scope="class")
     async def memory_cache(
         self, db: InfrahubDatabase, dependency_provider: Provider
     ) -> AsyncGenerator[MemoryCache, None]:
+        original = config.OVERRIDE.cache
         cache = MemoryCache()
         config.OVERRIDE.cache = cache
-        with dependency_provider.scope(build_cache, lambda: cache):
-            yield cache
+        try:
+            with dependency_provider.scope(build_cache, lambda: cache):
+                yield cache
+        finally:
+            config.OVERRIDE.cache = original
 
     @pytest.fixture(scope="class")
     async def register_internal_schema(self, db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
