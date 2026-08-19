@@ -395,9 +395,14 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         expected_direction = relationship.direction.neighbor_direction
 
         for candidate in self.get_relationships_by_identifier(id=relationship.get_identifier()):
-            if candidate.direction != expected_direction:
-                continue
-            if candidate.direction == RelationshipDirection.BIDIR and candidate.name == relationship.name:
+            # A peer has to point the opposite way, which rules out every candidate on the same side.
+            # Both sides of a bidirectional pair share BIDIR, so there the name is the only thing that
+            # separates a real peer from the relationship we started on: an identical name means two
+            # kinds inherited the same relationship from a common generic (CoreGroup.members on both
+            # CoreStandardGroup and CoreGeneratorGroup), not two sides of one relationship.
+            if candidate.direction != expected_direction or (
+                candidate.direction == RelationshipDirection.BIDIR and candidate.name == relationship.name
+            ):
                 continue
             return candidate
 
