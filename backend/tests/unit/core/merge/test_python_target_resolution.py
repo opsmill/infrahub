@@ -40,6 +40,7 @@ KEY = (OWNER_KIND, ATTRIBUTE)
 def _read_set(
     read_kinds: frozenset[str] | None = None,
     read_fields: dict[str, frozenset[str]] | None = None,
+    imprecise_kinds: frozenset[str] = frozenset(),
     depends_on_everything: bool = False,
 ) -> TransformReadSet:
     return TransformReadSet(
@@ -47,6 +48,7 @@ def _read_set(
         read_fields={OWNER_KIND: frozenset({"name"}), PEER_KIND: frozenset({"description"})}
         if read_fields is None
         else read_fields,
+        imprecise_kinds=imprecise_kinds,
         depends_on_everything=depends_on_everything,
     )
 
@@ -494,3 +496,45 @@ async def test_targets_asking_the_same_question_share_one_lookup() -> None:
 
     assert len(result.targets) == 2, "both attributes still resolve"
     assert lookup.calls == [LookupCall(node_ids=frozenset({"color-1"}), at=None)], "one lookup, not one per target"
+
+
+async def test_a_derived_read_on_one_kind_still_rejects_an_unread_field_on_another() -> None:
+    """The case that made a merge recompute a thousand nodes it could not have changed.
+
+    The transform reads a peer's human-friendly id and the owner's name. A change to some other
+    owner field must not select it. Marking the whole read set imprecise for the derived read
+    turned every owner change into a match, and the subscriber lookup then returned every node
+    that reads the owner.
+    """
+    resolver, lookup = _resolver(
+        index={KEY: TransformReadSet.from_read_fields({PEER_KIND: {"human_friendly_id"}, OWNER_KIND: {"name"}})},
+        readers={OWNER_KIND: frozenset({"shirt-1", "shirt-2"})},
+    )
+    changes = [MergeChange(node_id="shirt-9", kind=OWNER_KIND, action=UPDATED, changed_fields=frozenset({"badge"}))]
+
+    result = await resolver.resolve(
+        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None
+    )
+
+    assert result.targets == frozenset()
+    assert not lookup.calls, "a change the read set rejects must not reach the subscriber lookup"
+
+
+async def test_a_change_to_the_kind_read_through_a_derived_field_still_selects() -> None:
+    """The other half: imprecision is kept where it was earned, so that kind selects on any field."""
+    resolver, _ = _resolver(
+        index={
+            KEY: _read_set(
+                read_fields={OWNER_KIND: frozenset({"name"})},
+                imprecise_kinds=frozenset({PEER_KIND}),
+            )
+        },
+        readers={OWNER_KIND: frozenset({"shirt-1"})},
+    )
+    changes = [MergeChange(node_id="color-1", kind=PEER_KIND, action=UPDATED, changed_fields=frozenset({"anything"}))]
+
+    result = await resolver.resolve(
+        coalesced=_coalesced(_python_target()), changes=changes, branch="main", deleted_at=None
+    )
+
+    assert {target.target_kind for target in result.targets} == {OWNER_KIND}

@@ -56,6 +56,22 @@ attributes. This is also the answer to "why not reuse the post-merge regeneratio
 - `1442cfb43` the index cache and the per-pass lookup memo
 - Unit tests in final state, plus the test doubles
 
+**Per-kind imprecision, found by measurement after the plan was written.** A transform query that
+reads one derived field (`hfid`, `display_label`) used to collapse its *whole* read set to
+imprecise, discarding every other kind's field list. The field filter then never ran for that
+attribute, at any depth. Measured cost on the AI-DC dataset: a rename of `DcimDeviceType.part_number`
+selected 1000 `DcimInterfaceL3` nodes on the chained level and wrote nothing, which was 4 of the 5
+dispatched flows and the whole 73-181 s drain. `from_read_fields` now marks only the kind that reads
+the derived field, via a new `imprecise_kinds` field, and `selects_change` honours it.
+
+The schema-change scoper still escalates on any imprecise kind. It decides on a schema change and
+has no changed node to test against, so the finer distinction buys it nothing. That is one explicit
+line in `scoping.py`, and it keeps that path's behaviour identical.
+
+The gate is `test_a_derived_read_on_one_kind_still_rejects_an_unread_field_on_another`. It builds
+the read set through `from_read_fields`, so it fails against the old global collapse. Verified both
+ways before committing.
+
 Includes the change to `TransformReadSet.from_read_fields` so a kind read without any field stays a
 kind-level dependency. **That is shared with the schema-change scoper**, so call it out: a kind add
 or remove still selects, a field edit on a field-less kind no longer does. It is also the same
@@ -118,6 +134,9 @@ Reviewer question: is the measured win real, and can we roll back? Both answers 
   `frontend/app/src/shared/api/rest/types.generated.ts` and the root `docker-compose.yml`.
 - **The changelog fragment is `.changed.md`, not `.fixed.md`.** This is a behaviour and performance
   change; the sibling IFC-2761 work shipped as `+ifc-2761-coalesce-merge-recompute.changed.md`.
+- **`TestImpreciseReadSetDoesNotWiden` does not catch over-selection.** It asserts `widened == 0`
+  and `batches < changed_nodes`, and both held while an imprecise read set selected ten times the
+  correct node count. Widening is not the only way this pass can recompute too much.
 - **Never `git add <directory>`.** The tree carries untracked work in progress from other branches;
   a directory add commits it. This happened three times.
 - Integration tests are gated behind `INFRAHUB_PROFILE_TIMING`, `INFRAHUB_PARITY` and

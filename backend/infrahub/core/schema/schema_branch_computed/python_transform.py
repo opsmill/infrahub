@@ -34,12 +34,14 @@ class PythonDefinition:
 class TransformReadSet:
     """The schema elements a transform's GraphQL query reads.
 
-    ``depends_on_everything`` is set when the read set cannot be mapped precisely
-    (an unanalyzable query, or a read of a derived field such as the display label).
+    ``depends_on_everything`` is set when nothing about the query could be mapped.
+    ``imprecise_kinds`` holds the kinds read through a derived field, where any change to the
+    kind can move the value because the fields behind it cannot be named.
     """
 
     read_kinds: frozenset[str] = frozenset()
     read_fields: dict[str, frozenset[str]] = field(default_factory=dict)
+    imprecise_kinds: frozenset[str] = frozenset()
     depends_on_everything: bool = False
 
     @classmethod
@@ -50,23 +52,31 @@ class TransformReadSet:
     def from_read_fields(cls, read_fields_by_kind: Mapping[str, Iterable[str]]) -> TransformReadSet:
         """Build the read set from a kind to read-field-names mapping.
 
-        The whole set is imprecise only when a kind reads a derived field, whose backing fields
-        cannot be named. A kind the query reaches but reads no field from stays in ``read_kinds``
-        and is left out of ``read_fields``: its instances appearing or disappearing changes the
-        result, a field edit on one does not. Collapsing the whole set for that case throws the
-        distinction away and pushes every consumer to its widest behaviour.
+        A kind read through a derived field is imprecise on its own, not for the whole set. One
+        such read used to collapse every other kind's field list too, which left the reader with
+        no way to reject a change to a kind it reads one named field of.
+
+        A kind the query reaches but reads no field from stays in ``read_kinds`` and is left out
+        of ``read_fields``: its instances appearing or disappearing changes the result, a field
+        edit on one does not.
         """
         read_kinds: set[str] = set()
         read_fields: dict[str, frozenset[str]] = {}
+        imprecise_kinds: set[str] = set()
         for kind, names in read_fields_by_kind.items():
             fields = frozenset(names)
-            if fields & IMPRECISE_READ_FIELDS:
-                return cls.imprecise()
             read_kinds.add(kind)
+            if fields & IMPRECISE_READ_FIELDS:
+                imprecise_kinds.add(kind)
+                continue
             if fields:
                 read_fields[kind] = fields
 
-        return cls(read_kinds=frozenset(read_kinds), read_fields=read_fields)
+        return cls(
+            read_kinds=frozenset(read_kinds),
+            read_fields=read_fields,
+            imprecise_kinds=frozenset(imprecise_kinds),
+        )
 
 
 class PythonTransformRegistry:

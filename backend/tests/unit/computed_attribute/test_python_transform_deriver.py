@@ -122,17 +122,37 @@ def test_read_set_is_branch_specific() -> None:
     assert branch_deps.read_fields[OWNER_KIND] == frozenset({"color", ATTRIBUTE_NAME})
 
 
-def test_display_label_read_marks_imprecise() -> None:
+def test_display_label_read_marks_only_its_own_kind_imprecise() -> None:
     read_set = TransformReadSet.from_read_fields({OWNER_KIND: {"name"}, "TestPerson": {"display_label"}})
 
-    assert read_set.depends_on_everything is True
+    assert read_set.depends_on_everything is False
+    assert read_set.imprecise_kinds == frozenset({"TestPerson"})
+    assert read_set.read_fields == {OWNER_KIND: frozenset({"name"})}
 
 
-def test_hfid_read_marks_imprecise() -> None:
+def test_hfid_read_marks_only_its_own_kind_imprecise() -> None:
     # The analyzer reports the schema name, not the hfid query spelling.
-    read_set = TransformReadSet.from_read_fields({OWNER_KIND: {"human_friendly_id"}})
+    read_set = TransformReadSet.from_read_fields({OWNER_KIND: {"name"}, "TestPerson": {"human_friendly_id"}})
 
-    assert read_set.depends_on_everything is True
+    assert read_set.depends_on_everything is False
+    assert read_set.imprecise_kinds == frozenset({"TestPerson"})
+    assert read_set.read_kinds == frozenset({OWNER_KIND, "TestPerson"})
+    assert read_set.read_fields == {OWNER_KIND: frozenset({"name"})}
+
+
+def test_a_derived_read_on_one_kind_keeps_the_other_kinds_filterable() -> None:
+    """One hfid read used to disable the field filter for every kind the query read.
+
+    A transform reading a circuit's hfid and a device's name was selected by any device change
+    at all, including one to an attribute it never reads.
+    """
+    read_set = TransformReadSet.from_read_fields(
+        {"InfraCircuit": {"human_friendly_id"}, "DcimDevice": {"name"}, OWNER_KIND: {"role"}}
+    )
+
+    assert read_set.depends_on_everything is False
+    assert read_set.imprecise_kinds == frozenset({"InfraCircuit"})
+    assert read_set.read_fields == {"DcimDevice": frozenset({"name"}), OWNER_KIND: frozenset({"role"})}
 
 
 def test_from_read_fields_precise() -> None:

@@ -145,6 +145,8 @@ def selects_change(change: MergeChange, read_set: TransformReadSet) -> bool:
     """
     if change.kind not in read_set.read_kinds:
         return False
+    if change.kind in read_set.imprecise_kinds:
+        return True
     if change.action in (CREATED, DELETED):
         return True
     if not change.changed_fields:

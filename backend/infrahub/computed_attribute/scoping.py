@@ -205,7 +205,9 @@ class PythonTransformDependencyDeriver:
         own_field = {owner_kind: frozenset({attribute_name})}
 
         read_set = self._read_sets.get((computed_attribute.branch, owner_kind, attribute_name))
-        if read_set is None or read_set.depends_on_everything:
+        # A per-kind imprecise read still escalates here. The reader path can act on the
+        # distinction; this one decides on a schema change and has no changed node to test.
+        if read_set is None or read_set.depends_on_everything or read_set.imprecise_kinds:
             return DependencySet(
                 owner_kind=owner_kind,
                 attribute_name=attribute_name,
