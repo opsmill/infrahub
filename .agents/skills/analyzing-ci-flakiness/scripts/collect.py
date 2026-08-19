@@ -22,7 +22,7 @@ Outputs (under <cache>/<owner>-<name>/):
     runs.jsonl                     all pull_request runs created in the window
     failed_jobs_with_tests.json    failed jobs of interesting attempts + tests
     report-data.json               ranked frequency table + headline numbers
-    joblogs/<job_id>.log           raw logs of failed jobs (ANSI codes intact)
+    joblogs/<job_id>.log           raw logs of failed jobs (ANSI intact; empty = expired)
 """
 
 from __future__ import annotations
@@ -90,6 +90,29 @@ def gh(args: list[str], *, check: bool = True) -> str:
 def gh_json_lines(args: list[str]) -> list[dict]:
     out = gh(args)
     return [json.loads(line) for line in out.splitlines() if line.strip()]
+
+
+def fetch_job_log(repo: str, job_id: int, log_path: Path) -> None:
+    """Download one job log, distinguishing gone from transiently unavailable.
+
+    On success the log is written to ``log_path``. On HTTP 404/410 (the log
+    expired or was deleted on GitHub's side) an empty file is written as a
+    durable sentinel so the job is never re-fetched. On any other failure
+    (rate limit, network) nothing is written, so the next collection retries.
+    """
+    res = subprocess.run(  # noqa: S603
+        ["gh", "api", f"repos/{repo}/actions/jobs/{job_id}/logs"],  # noqa: S607
+        capture_output=True,
+        text=True,
+        errors="replace",
+        check=False,
+    )
+    if res.returncode == 0:
+        log_path.write_text(res.stdout, encoding="utf-8")
+    elif "HTTP 404" in res.stderr or "HTTP 410" in res.stderr:
+        log_path.write_text("", encoding="utf-8")
+    else:
+        print(f"[collect] WARN log {job_id}: {res.stderr.strip()[:300]}", file=sys.stderr)
 
 
 def list_prs(repo: str, since: dt.date, base_globs: list[str]) -> list[dict]:
@@ -212,10 +235,9 @@ def collect_failed_jobs(
             continue
         for job in jobs:
             log_path = win_dir / "joblogs" / f"{job['id']}.log"
-            if not log_path.exists() or log_path.stat().st_size == 0:
-                # empty file = log expired/unavailable on GitHub's side
-                log_path.write_text(gh(["api", f"repos/{repo}/actions/jobs/{job['id']}/logs"], check=False))
-            text = ANSI.sub("", log_path.read_text(errors="replace"))
+            if not log_path.exists():
+                fetch_job_log(repo, job["id"], log_path)
+            text = ANSI.sub("", log_path.read_text(errors="replace")) if log_path.exists() else ""
             jobs_out.append(
                 {
                     "run": r["id"],
