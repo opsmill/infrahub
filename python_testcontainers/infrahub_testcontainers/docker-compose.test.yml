@@ -3,6 +3,12 @@
 # The following environment variables are part of the Infrahub configuration options.
 # For detailed information on these configuration options, please refer to the Infrahub documentation:
 # https://docs.infrahub.app/reference/configuration
+# Identifies which CI run and job owns a container, for leftover-container triage on the runners.
+# JOB_NAME is the workflow-provided override, GITHUB_JOB the value GitHub sets in every job.
+x-ci-labels: &ci-labels
+  com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
+  com.github.job: "${JOB_NAME:-${GITHUB_JOB:-unknown}}"
+
 services:
   message-queue:
     image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:4.2.1-management}
@@ -17,6 +23,8 @@ services:
       retries: 50
     ports:
       - ${INFRAHUB_TESTING_MESSAGE_QUEUE_PORT:-0}:15692
+    labels:
+      <<: *ci-labels
 
   cache:
     image: ${CACHE_DOCKER_IMAGE:-redis:8.4.0}
@@ -26,6 +34,8 @@ services:
       interval: 1s
       timeout: 1s
       retries: 15
+    labels:
+      <<: *ci-labels
 
   infrahub-server-lb:
     image: haproxy:3.1-alpine
@@ -41,6 +51,8 @@ services:
       retries: 100
     ports:
       - ${INFRAHUB_TESTING_SERVER_PORT:-0}:8000
+    labels:
+      <<: *ci-labels
 
   database:
     deploy:
@@ -81,6 +93,8 @@ services:
       - ${INFRAHUB_TESTING_DATABASE_PORT:-0}:6362
       - ${INFRAHUB_TESTING_DATABASE_BOLT_PORT:-0}:7687
       - ${INFRAHUB_TESTING_DATABASE_UI_PORT:-0}:7474
+    labels:
+      <<: *ci-labels
 
   task-manager:
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
@@ -117,6 +131,8 @@ services:
       retries: 100
     ports:
       - ${INFRAHUB_TESTING_TASK_MANAGER_PORT:-0}:4200
+    labels:
+      <<: *ci-labels
 
   task-manager-background-svc:
     deploy:
@@ -160,6 +176,8 @@ services:
       PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_FLUSH_INTERVAL: ${INFRAHUB_TESTING_TASKMGR_TASK_RUN_RECORDER_FLUSH_INTERVAL:-5}
 
       PREFECT_SERVER_SERVICES_TRIGGERS_READ_BATCH_SIZE: ${INFRAHUB_TESTING_TASKMGR_TRIGGERS_READ_BATCH_SIZE:-1}
+    labels:
+      <<: *ci-labels
 
   task-manager-db:
     image: "${POSTGRES_DOCKER_IMAGE:-postgres:18-alpine}"
@@ -176,6 +194,8 @@ services:
       interval: 1s
       timeout: 1s
       retries: 50
+    labels:
+      <<: *ci-labels
 
   infrahub-server:
     deploy:
@@ -228,6 +248,8 @@ services:
       interval: 1s
       timeout: 1s
       retries: 100
+    labels:
+      <<: *ci-labels
 
   task-worker:
     deploy:
@@ -272,6 +294,8 @@ services:
     volumes:
       - "./${INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_REMOTE_GIT_DIRECTORY}"
     tty: true
+    labels:
+      <<: *ci-labels
 
   cadvisor:
     image: "${CADVISOR_DOCKER_IMAGE:-ghcr.io/google/cadvisor:v0.60.5}"
@@ -289,6 +313,8 @@ services:
       - /dev/disk/:/dev/disk:ro
     ports:
       - "${INFRAHUB_TESTING_CADVISOR_PORT:-0}:8080"
+    labels:
+      <<: *ci-labels
 
   scraper:
     image: "${SCRAPER_DOCKER_IMAGE:-victoriametrics/victoria-metrics:v1.110.0}"
@@ -304,6 +330,8 @@ services:
       interval: 1s
       timeout: 1s
       retries: 50
+    labels:
+      <<: *ci-labels
 
 volumes:
   database_data:
