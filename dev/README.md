@@ -47,6 +47,7 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 
 - **Repository Organization**: [guidelines/repository-organization.md](guidelines/repository-organization.md) - How to organize content in dev/
 - **Python Backend**: [guidelines/backend/python.md](guidelines/backend/python.md)
+- **GraphQL API**: [guidelines/backend/graphql.md](guidelines/backend/graphql.md) - Conventions for hand-written GraphQL queries and resolvers
 - **TypeScript Frontend**: [guidelines/frontend/typescript.md](guidelines/frontend/typescript.md)
 - **Git Workflow**: [guidelines/git-workflow.md](guidelines/git-workflow.md)
 - **Markdown Formatting**: [guidelines/markdown.md](guidelines/markdown.md)
@@ -61,6 +62,11 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [events.md](knowledge/backend/events.md) - Events system
 - [async-tasks.md](knowledge/backend/async-tasks.md) - Asynchronous tasks (Prefect)
 - [message-bus.md](knowledge/backend/message-bus.md) - Message bus system
+- [query-target-uniqueness.md](knowledge/backend/query-target-uniqueness.md) - How query targeting scopes artifact and generator regeneration
+
+## Current ADRs
+
+Architecture Decision Records in [adr/](adr/) - see the [ADR index](adr/README.md) for the full list.
 
 ## Current Guides
 

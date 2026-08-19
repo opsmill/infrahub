@@ -86,11 +86,61 @@ For step-by-step instructions, see [Composing artifact content](./content-compos
 
 An artifact is the cached output of a Transformation, so Infrahub regenerates it when its inputs change. Three kinds of change trigger regeneration:
 
-- **The target's data changes** — a node read by the artifact's GraphQL query is modified, so that target's artifact is regenerated.
+- **The target's data changes** — a node read by the artifact's GraphQL query is modified. Only the fields the query reads count, so a change to a field the query never selects regenerates nothing. How many artifacts are regenerated depends on how the query is written: see [How your query affects regeneration scope](#how-your-query-affects-regeneration-scope).
 - **A new target joins the group** — an artifact is generated for the new member; existing artifacts are left untouched.
 - **The definition's code or configuration changes** — when a proposed change commits to a linked repository, Infrahub regenerates an artifact only if the change touches that definition's GraphQL query, its Transformation's [dependency closure](../transformations/overview#dependency-tracking-and-regeneration), or the artifact definition itself. An unrelated commit — a README edit, or a helper no Transformation uses — regenerates nothing.
 
 Every regeneration decision during a proposed change is recorded in the pipeline's task log, naming the file, query, or field that triggered it. See [Understanding artifact regeneration](../proposed-changes/overview#understanding-artifact-regeneration).
+
+### How your query affects regeneration scope
+
+When a target's data changes, Infrahub regenerates only that target's artifact if it can tell which target the changed node belongs to. It can do that when the GraphQL query behind the definition returns a single object, a pattern Infrahub calls a [single-target query](../development-resources/graphql/single-target-queries). When the query can return any number of objects, Infrahub has no way to link a changed node to one target, so it regenerates every artifact under the definition instead. Both paths produce the same content. The difference is how long the pipeline takes on a large group.
+
+Two parts of your repository's [`.infrahub.yml`](../git-integration/infrahub-yml) decide this, and they are declared separately:
+
+- **The query.** An artifact definition does not reference a query directly. It names a Transformation, and that Transformation names a query declared under `queries`. This is where the filtering is written.
+- **The parameters.** The `parameters` of the artifact definition are the "information to extract from each target" listed in [High level design](#high-level-design) above. Each entry reads a value from the target object and passes it into the query as a variable.
+
+```yaml
+queries:
+  - name: device_config_query
+    file_path: "queries/device_config.gql"
+
+jinja2_transforms:
+  - name: device_config_transform
+    query: device_config_query
+    template_path: "templates/device_config.j2"
+
+artifact_definitions:
+  - name: "Device configuration file"
+    transformation: "device_config_transform"
+    targets: "DeviceGroup"
+    content_type: "text/plain"
+    parameters:
+      name: "name__value"
+```
+
+Here each target device passes its own name into `$name`, and the query uses it to select that one device:
+
+```graphql
+# queries/device_config.gql
+query DeviceConfig($name: String!) {
+  NetworkDevice(name__value: $name) {
+    edges {
+      node {
+        name { value }
+        description { value }
+      }
+    }
+  }
+}
+```
+
+This returns a single device, because `$name` is required and the schema marks `name` as unique.
+
+For the full criteria a single-target query has to meet, the patterns that break it, and how to check a query with `infrahubctl graphql query-report` before you deploy the definition, see [Single-target queries](../development-resources/graphql/single-target-queries).
+
+Generator definitions are scoped the same way, from the same `parameters` mapping. See [Query parameter mapping](../generators/overview#query-parameter-mapping) for how the extraction paths are resolved.
 
 ## How artifacts relate to other features
 

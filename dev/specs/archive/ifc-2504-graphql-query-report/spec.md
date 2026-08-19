@@ -3,7 +3,7 @@
 **Feature Branch**: `ifc-2504-graphql-query-report`
 **Jira**: IFC-2504
 **Created**: 2026-04-25
-**Status**: Draft
+**Status**: Extracted
 **Input**: Add InfrahubGraphQLQueryReport introspection query that reports how Infrahub will interpret a given GraphQL query, specifically whether it targets unique nodes for artifact regeneration purposes.
 
 ## User Scenarios & Testing *(mandatory)*
