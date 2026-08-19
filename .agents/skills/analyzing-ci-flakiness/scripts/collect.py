@@ -39,6 +39,9 @@ from pathlib import Path
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
+# The Actions list-runs API silently returns at most this many results per query.
+API_RESULT_CAP = 1000
+
 # Playwright's breadcrumb separator (U+203A) as it appears in job logs.
 PW_SEP = "\u203a"
 
@@ -52,6 +55,15 @@ BUCKETS: list[tuple[str, str]] = [
     ("neo4j-deadlock", r"Neo\.TransientError\.Transaction\.DeadlockDetected"),
     ("compose-boot-failure", r"'docker', 'compose'.*'up', '--wait'.*non-zero exit status"),
     ("sqlite-locked", r"sqlite3\.OperationalError\) database is locked"),
+    ("runner-oom", r"Process completed with exit code 137|exit code: 137"),
+    ("docker-network-pool-exhausted", r"all predefined address pools have been fully subnetted"),
+    ("actions-download-429", r"Failed to download action .*429"),
+    # pytest summary is green (no "N failed") yet the process exits 1: a
+    # session-teardown/plugin abort, e.g. the testcontainers result reporting.
+    (
+        "pytest-green-exit-1",
+        r"=+ \d+ passed(?:(?!\d+ failed)[^\n])*=+[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*Process completed with exit code 1\.",
+    ),
 ]
 
 LEDGER_FIELDS = (
@@ -116,21 +128,26 @@ def pr_head_shas(repo: str, numbers: list[int]) -> dict[str, set[int]]:
     return sha2pr
 
 
-def list_runs(repo: str, since: dt.date) -> list[dict]:
+def _runs_query(repo: str, created: str) -> str:
+    return f"repos/{repo}/actions/runs?event=pull_request&created={created}&per_page=100"
+
+
+def list_runs(repo: str, since: dt.date, until: dt.date) -> list[dict]:
+    """List runs in [since, until], splitting the date range to stay under the API's 1000-result cap."""
     jq = (
         ".workflow_runs[] | {id, name, head_branch, head_sha, run_attempt, "
         "conclusion, status, created_at, prs: [.pull_requests[] | "
         "{number, base: .base.ref}]}"
     )
-    return gh_json_lines(
-        [
-            "api",
-            f"repos/{repo}/actions/runs?event=pull_request&created=%3E%3D{since.isoformat()}&per_page=100",
-            "--paginate",
-            "--jq",
-            jq,
-        ]
-    )
+    created = f"{since.isoformat()}..{until.isoformat()}"
+    total = int(gh(["api", _runs_query(repo, created).replace("per_page=100", "per_page=1"), "--jq", ".total_count"]))
+    if total > API_RESULT_CAP and since < until:
+        mid = since + (until - since) // 2
+        print(f"[collect] {total} runs in {created} exceeds the API result cap; splitting", file=sys.stderr)
+        return list_runs(repo, since, mid) + list_runs(repo, mid + dt.timedelta(days=1), until)
+    if total > API_RESULT_CAP:
+        print(f"[collect] WARN {total} runs on {since} alone; the API returns only the newest results", file=sys.stderr)
+    return gh_json_lines(["api", _runs_query(repo, created), "--paginate", "--jq", jq])
 
 
 def failed_jobs_for_attempt(repo: str, run_id: int, attempt: int) -> list[dict]:
@@ -155,7 +172,7 @@ def extract_tests(job_name: str, text: str) -> list[str]:
     )
     # legacy TS Playwright — numbered entries of the failure report
     if "E2E-testing-playwright" in job_name:
-        for m in re.finditer(rf"\d+\)\s+\[\w+\]\s+{PW_SEP}\s+(tests/e2e/[^\n{PW_SEP}]+){PW_SEP}([^\n]+)", text):
+        for m in re.finditer(rf"\d+\)\s+\[[\w-]+\]\s+{PW_SEP}\s+(tests/e2e/[^\n{PW_SEP}]+){PW_SEP}([^\n]+)", text):
             spec = m.group(1).strip().split(":")[0]
             title = re.sub(r"\s+", " ", m.group(2)).strip()[:120]
             fails.add(f"PW {spec} {PW_SEP} {title}")
@@ -300,7 +317,7 @@ def main() -> int:
     pr_by_num = {p["number"]: p for p in list_prs(args.repo, since, args.base)}
     print(f"[collect] {len(pr_by_num)} PRs in scope (bases: {args.base or 'all'})", file=sys.stderr)
 
-    runs = list_runs(args.repo, since)
+    runs = list_runs(args.repo, since, today)
     (win_dir / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
     print(f"[collect] {len(runs)} pull_request runs since {since}", file=sys.stderr)
 
