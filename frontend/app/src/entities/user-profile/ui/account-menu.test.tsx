@@ -92,20 +92,26 @@ describe("AccountMenu", () => {
     );
   });
 
-  test("offers the theme switch, marked alpha, when the deployment enables it", async () => {
+  test("tags only the option that switches into the pre-release theme", async () => {
     vi.mocked(hasGlobalPermission).mockResolvedValue(false);
 
     const component = await renderAccountMenuWithTheme(true);
     await component.getByTestId("authenticated-menu-trigger").click();
 
-    // The default is dark, so the switch offers the way back out.
-    const menuItem = component.getByRole("menuitem", { name: /Light theme/ });
-    await expect.element(menuItem).toBeVisible();
-    await expect.element(menuItem).toHaveTextContent("alpha");
+    // The default is dark, so the switch offers the way back out — and leaving alpha is not itself
+    // an alpha step, so this item carries no tag.
+    const toLight = component.getByRole("menuitem", { name: /Light theme/ });
+    await expect.element(toLight).toBeVisible();
+    await expect.element(toLight).not.toHaveTextContent("alpha");
 
-    await menuItem.click();
-
+    await toLight.click();
     await expect.poll(() => document.documentElement.classList.contains("dark")).toBe(false);
+
+    // Now the switch offers the way in, which is the step that warrants the warning.
+    await component.getByTestId("authenticated-menu-trigger").click();
+    const toDark = component.getByRole("menuitem", { name: /Dark theme/ });
+    await expect.element(toDark).toBeVisible();
+    await expect.element(toDark).toHaveTextContent("alpha");
   });
 
   test("hides the theme switch when the deployment does not enable it", async () => {
