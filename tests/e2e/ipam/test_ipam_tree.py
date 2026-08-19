@@ -31,22 +31,22 @@ class TestIpamTree:
         await ipam_tree.get_by_role("button", name="Expand 10.0.0.0/8").click()
         await expect(ipam_tree.get_by_text("10.0.0.0/8")).to_be_visible()
         await expect(ipam_tree.get_by_text("10.1.0.0/16")).to_be_visible()
-        await expect(ipam_tree.get_by_text("10.1.0.12/31")).to_be_hidden()
+        await expect(ipam_tree.get_by_text("10.1.0.4/31")).to_be_hidden()
 
         # view children of a children prefix
         await ipam_tree.get_by_role("button", name="Expand 10.1.0.0/16").click()
         await expect(ipam_tree.get_by_text("10.0.0.0/8")).to_be_visible()
         await expect(ipam_tree.get_by_text("10.1.0.0/16")).to_be_visible()
-        await expect(ipam_tree.get_by_text("10.1.0.12/31")).to_be_visible()
+        await expect(ipam_tree.get_by_text("10.1.0.4/31")).to_be_visible()
 
         # on first load, the tree expands to the selected prefix position
-        await ipam_tree.get_by_text("10.1.0.12/31").click()
-        await expect(page.get_by_role("heading", name="10.1.0.12/31")).to_be_visible()
+        await ipam_tree.get_by_text("10.1.0.4/31").click()
+        await expect(page.get_by_role("heading", name="10.1.0.4/31")).to_be_visible()
         await page.reload()
         await expect(ipam_tree.get_by_text("10.0.0.0/8")).to_be_visible()
         await expect(ipam_tree.get_by_text("10.1.0.0/16")).to_be_visible()
-        await expect(ipam_tree.get_by_text("10.1.0.12/31")).to_be_visible()
-        await expect(ipam_tree.get_by_role("row", name="10.1.0.12/31")).to_contain_class("bg-neutral-100")
+        await expect(ipam_tree.get_by_text("10.1.0.4/31")).to_be_visible()
+        await expect(ipam_tree.get_by_role("row", name="10.1.0.4/31")).to_contain_class("bg-neutral-100")
 
     async def test_go_to_prefix_summary_on_click(self, page: Page, data_sites: SitesHandle) -> None:
         await page.goto("/ipam")

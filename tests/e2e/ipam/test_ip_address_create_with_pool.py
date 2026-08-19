@@ -1,8 +1,8 @@
 """Port of frontend/app/tests/e2e/ipam/ip-address-create-with-pool.spec.ts.
 
 Allocate an IP address from the seeded "Management addresses pool". Depends on
-data_sites: the asserted next-free address (172.16.0.31/16) assumes exactly the
-30 device management addresses are already consumed.
+data_sites: the asserted next-free address (172.16.0.13/16) assumes exactly the
+12 device management addresses (2 kept sites x 6 devices) are already consumed.
 """
 
 from __future__ import annotations
@@ -44,10 +44,10 @@ class TestAllocateIpAddressWithPool:
         await admin_page.get_by_label("Description").fill("address from pool")
         await admin_page.get_by_role("button", name="Save").click()
 
-        await expect(admin_page.get_by_text("IP Address 172.16.0.31/16 created")).to_be_visible()
+        await expect(admin_page.get_by_text("IP Address 172.16.0.13/16 created")).to_be_visible()
         await (
             admin_page.get_by_test_id("object-list-search-bar")
             .get_by_role("searchbox", name="Search")
-            .fill("172.16.0.31/16")
+            .fill("172.16.0.13/16")
         )
         await expect(admin_page.get_by_text("address from pool")).to_be_visible()

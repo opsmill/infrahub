@@ -91,7 +91,7 @@ tests/e2e/
   constants.py        # credentials, admin token, base-schema file list
   helpers.py          # login(), generate_random_branch_name(), BranchAPI, Deadline
   data/               # the demo dataset as composable async-SDK fixtures
-                      # (one module per slice + parity dump tool, see below)
+                      # (one module per slice, see below)
   test_login.py       # ported login.spec.ts
   branches/           # ported branches/*.spec.ts
   objects/            # ported objects/**/*.spec.ts
@@ -121,9 +121,8 @@ slices in `tests/e2e/data/`.
 | `infrahub_client` | session | — | Admin async `InfrahubClient` (all SDK calls are awaited). |
 | `schema_base` | session | `invoke dev.load-infra-schema` (schema) | Loads all `models/base/*.yml` as one set. |
 | `infrastructure_menu` | session | `invoke dev.load-infra-schema` (menu) | Loads `models/base_menu.yml` via the SDK `MenuFile` (what `infrahubctl menu load` calls). |
-| `infrastructure_data` | session | `invoke dev.load-infra-data` | The full demo dataset (medium profile: 5 sites, 6 devices/site, BGP mesh, 3 scenario branches) via the `tests/e2e/data/` SDK slices — parity with `models/infrastructure_edge.py` proven by a structural dump diff (`data/parity.py`). |
-| `data_rbac` / `data_locations` / `data_org_registry` / `data_profiles_groups` / `data_ipam_pools` / `data_patch_template` / `data_sites` / `data_topology` / `data_scenario_branches` | session | — | The individual dataset slices (each returns a typed handle, see `data/handles.py`); tests can depend on just the slice they need. |
-| `infrastructure_data_monolith` | session | — | The legacy `infrahubctl run models/infrastructure_edge.py` loader, kept ONLY as the reference for the parity dump (`INFRAHUB_E2E_PARITY=monolith`). |
+| `infrastructure_data` | session | `invoke dev.load-infra-data` | The demo dataset via the `tests/e2e/data/` SDK slices, slimmed to the 2 sites any test references (atl1 + den1; 6 devices/site, iBGP mesh, 3 scenario branches). See `data/sites.py` `KEPT_SITES`. |
+| `data_rbac` / `data_locations` / `data_org_registry` / `data_profiles_groups` / `data_ipam_pools` / `data_patch_template` / `data_site_atl1` / `data_sites` / `data_topology` / `data_scenario_branches` | session | — | The individual dataset slices (each returns a typed handle, see `data/handles.py`); tests depend on just the slice they need. `data_site_atl1` builds only atl1 — the lighter dependency for specs that touch atl1 alone (no den1, mesh, or 2-site count/next-free value); `data_sites` builds den1 on top of it for the full 2-site dataset. |
 | `demo_edge_repo` | session | `invoke dev.infra-git-import dev.infra-git-create` | Registers + syncs the `demo-edge` repo via the SDK `GitRepo` helper. |
 | `branch_api` | function | `tests/e2e/utils/graphql.ts` | Create/merge/delete throwaway branches via the API. |
 | `page` | function | anonymous Playwright page | Unauthenticated; base URL points at the stack. |
@@ -134,25 +133,31 @@ slices in `tests/e2e/data/`.
 The monolithic `models/infrastructure_edge.py` load is decomposed into
 session-scoped async-SDK fixtures, one module per slice, wired as pytest
 plugins from `conftest.py`. Slice DAG: `rbac` / `locations` / `org_registry` /
-`profiles_groups` / `ipam_pools` / `patch_template` (leaves) → `sites` →
-`topology` → `scenario_branches` (terminal — requesting it loads everything).
+`profiles_groups` / `ipam_pools` / `patch_template` (leaves) → `site_atl1`
+(atl1) → `sites` (adds den1) → `topology` → `scenario_branches` (terminal —
+requesting it loads everything).
 Each fixture returns a frozen handle of name→id maps replacing the script's
 in-process `client.store` state; every slice is idempotent and no-ops in
 pre-provisioned (`INFRAHUB_ADDRESS`) mode.
 
-Known, deliberate deviations from the script (all parity-diff verified):
+Known, deliberate deviations from the script:
 
+- only 2 of the 5 medium-profile sites are built — atl1 and den1, the only
+  sites any test references (see `data/sites.py` `KEPT_SITES`). This cuts ~60%
+  of the devices / interfaces / BGP mesh. Allocation order changes (den1 is the
+  2nd built site, not the 4th), so the handful of deterministic values tests
+  assert (management/external next-free, a loopback address, device/child
+  counts) were re-pinned to the 2-site dataset, and the backbone is rewritten
+  to a single atl1↔den1 pair (`data/topology.py` `_p2p_networks`),
 - the `ord1-add-upstream` and `jfk1-update-edge-ips` scenario branches are
-  dropped (no test references them); their resource-pool consumption is
-  replayed on main so deterministic allocations (e.g. `203.111.0.248/29`)
-  hold — the two ballast prefixes are visible on main,
+  dropped (no test references them, and their sites are no longer built),
 - circuit ids are deterministic (md5 of the script's seed string) instead of
   `PYTHONHASHSEED`-salted `hash()`.
 
-To re-check parity after changing a slice (or the script), dump both modes
-and diff (see `data/parity.py` for the exact commands):
-`INFRAHUB_E2E_PARITY=monolith|fixtures uv run pytest -c tests/e2e/pytest.ini
-tests/e2e/data/test_parity_dump.py`.
+The dataset was originally validated for exact structural parity against the
+monolithic `infrahubctl run models/infrastructure_edge.py` load; that parity
+harness (`infrastructure_data_monolith`, `data/parity.py`) was retired once the
+2-site slim diverged from the 5-site script by design.
 
 A test depends only on the fixtures it needs:
 

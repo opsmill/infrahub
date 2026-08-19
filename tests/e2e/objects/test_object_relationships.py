@@ -8,7 +8,7 @@ page.
 
 Serial handling: the whole flow shares one branch (a class-scoped fixture) and
 relies on prior tests' side effects (the Cisco IOS platform's device count goes
-10 -> 9 -> 10). Every test depends on the SAME `branch` fixture and the chain
+4 -> 3 -> 4 — 2 kept sites x 2 leaves). Every test depends on the SAME `branch` fixture and the chain
 relies on pytest's default definition-order collection (see the README's
 serial-specs gotcha). The suite runs single-process. The first and
 last tests run unauthenticated (default `page`); the middle tests run as Admin
@@ -61,7 +61,7 @@ class TestObjectRelationships:
         await expect(page.get_by_role("menuitem", name="Delete")).to_have_attribute("aria-disabled", "true")
         await page.keyboard.press("Escape")
 
-        await page.get_by_role("link", name="Devices 10").click()
+        await page.get_by_role("link", name="Devices 4").click()
         await expect(page.get_by_test_id("open-relationship-form-button")).to_be_disabled()
 
     # --- when logged in as Admin --------------------------------------------
@@ -69,7 +69,7 @@ class TestObjectRelationships:
         # Navigate to relationship tab of an object
         await admin_page.goto(f"/objects/InfraPlatform?branch={branch}")
         await admin_page.get_by_role("link", name="Cisco IOS", exact=True).click()
-        await admin_page.get_by_role("link", name="Devices 10").click()
+        await admin_page.get_by_role("link", name="Devices 4").click()
 
         # Delete the relationship
         await admin_page.get_by_test_id("actions-cell-atl1-leaf1").click()
@@ -86,13 +86,13 @@ class TestObjectRelationships:
         # Verify deletion of relationship
         await expect(admin_page.get_by_text("Association with atl1-leaf1")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="atl1-leaf1")).to_be_hidden()
-        await expect(admin_page.get_by_role("link", name="Devices 9")).to_be_visible()
+        await expect(admin_page.get_by_role("link", name="Devices 3")).to_be_visible()
 
     async def test_should_add_a_new_relationship(self, admin_page: Page, branch: str) -> None:
         # Navigate to relationship tab of an object
         await admin_page.goto(f"/objects/InfraPlatform?branch={branch}")
         await admin_page.get_by_role("link", name="Cisco IOS", exact=True).click()
-        await admin_page.get_by_role("link", name="Devices 9").click()
+        await admin_page.get_by_role("link", name="Devices 3").click()
         await expect(admin_page.get_by_role("link", name="atl1-leaf2")).to_be_visible()
 
         # Add a new relationship
@@ -103,7 +103,7 @@ class TestObjectRelationships:
 
         # Verify new relationship addition
         await expect(admin_page.get_by_text("Association with InfraDevice added")).to_be_visible()
-        await expect(admin_page.get_by_role("link", name="Devices 10")).to_be_visible()
+        await expect(admin_page.get_by_role("link", name="Devices 4")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="atl1-leaf1")).to_be_visible()
 
     async def test_should_edit_a_relationship(self, admin_page: Page, branch: str) -> None:
@@ -137,7 +137,7 @@ class TestObjectRelationships:
 
         # Navigates to the USA and checks the children
         await admin_page.get_by_role("link", name="United States of America").click()
-        await admin_page.get_by_text("Children5").click()
+        await admin_page.get_by_text("Children2").click()
         await expect(admin_page.get_by_role("link", name="atl1")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="den1")).to_be_visible()
         await expect(admin_page.get_by_text("Bailey Li")).to_be_visible()
@@ -165,7 +165,7 @@ class TestObjectRelationships:
         # Navigate to relationship tab of an object
         await page.goto(f"/objects/InfraPlatform?branch={branch}")
         await page.get_by_role("link", name="Cisco IOS", exact=True).click()
-        await page.get_by_role("link", name="Devices 10").click()
+        await page.get_by_role("link", name="Devices 4").click()
 
         await page.get_by_role("link", name="atl1", exact=True).first.click()
         await expect(page.get_by_test_id("object-details").get_by_text("Nameatl1")).to_be_visible()

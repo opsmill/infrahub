@@ -2,8 +2,9 @@
 
 Allocate an IP prefix from the seeded "External prefixes pool". Depends on
 data_scenario_branches (the full dataset): the asserted next-free prefix
-(203.111.0.248/29) assumes the 30 site /29s plus the dropped-scenario ballast
-/29 that slice replays — with sites alone the next-free would be .240/29.
+(203.111.0.96/29) assumes the 12 site /29s (2 kept sites x 6 upstream/peering
+allocations each). The dropped-scenario pool ballast was removed with the
+2-site slim (see data/scenario_branches.py).
 """
 
 from __future__ import annotations
@@ -47,10 +48,10 @@ class TestAllocateIpPrefixWithPool:
         await admin_page.get_by_role("textbox", name="Description").fill("prefix from pool")
         await admin_page.get_by_role("button", name="Save").click()
 
-        await expect(admin_page.get_by_text("IP Prefix 203.111.0.248/29 created")).to_be_visible()
+        await expect(admin_page.get_by_text("IP Prefix 203.111.0.96/29 created")).to_be_visible()
         await (
             admin_page.get_by_test_id("object-list-search-bar")
             .get_by_role("searchbox", name="Search")
-            .fill("203.111.0.248/29")
+            .fill("203.111.0.96/29")
         )
         await expect(admin_page.get_by_text("prefix from pool")).to_be_visible()
