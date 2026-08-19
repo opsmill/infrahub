@@ -82,7 +82,7 @@ For failed jobs with an empty `tests` list and no bucket tag, read the log yours
 | `prefect-setup-triggers-timeout` | `Setup triggers` task `ReadTimeout` | Prefect hang at session setup; downstream tests hit their own timeouts. |
 | `neo4j-deadlock` | `Neo.TransientError.Transaction.DeadlockDetected` | Concurrent-write deadlock, usually integration suites under xdist. |
 | `compose-boot-failure` | `docker compose … up --wait` non-zero exit | Stack never booted; job-level infra failure. |
-| `sqlite-locked` | `sqlite3.OperationalError: database is locked` | Prefect's sqlite under contention. |
+| `sqlite-locked` | `(sqlite3.OperationalError) database is locked` (also matches the raw `sqlite3.OperationalError:` form) | Prefect's sqlite under contention. |
 | `runner-oom` | `Process completed with exit code 137` | Runner OOM/SIGKILL; the mass test failures in the same job are casualties, not flakes. |
 | `docker-network-pool-exhausted` | `all predefined address pools have been fully subnetted` | Leaked compose networks exhausted the docker address pools on a self-hosted runner. |
 | `actions-download-429` | `Failed to download action … 429` | GitHub rate-limited its own action download; pure platform flake. |
