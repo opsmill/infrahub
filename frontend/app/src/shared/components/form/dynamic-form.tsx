@@ -3,6 +3,7 @@ import type React from "react";
 
 import { Row } from "@/shared/components/container";
 import BooleanField from "@/shared/components/form/fields/boolean.field";
+import BulkUpdateUniqueField from "@/shared/components/form/fields/bulk-update-unique.field";
 import ColorField from "@/shared/components/form/fields/color.field";
 import DatetimeField from "@/shared/components/form/fields/datetime.field";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
@@ -68,6 +69,12 @@ const DynamicForm = ({
 };
 
 export const DynamicField = (props: DynamicFieldProps) => {
+  // A unique attribute has no safe shared value in bulk update, so render it clear-only.
+  // Disabled fields fall through to the normal presentation, which suppresses the reset action.
+  if (props.isBulkUpdate && props.unique && !props.disabled) {
+    return <BulkUpdateUniqueField {...props} />;
+  }
+
   switch (props.type) {
     case ATTRIBUTE_KIND.DATETIME: {
       const { type, ...otherProps } = props;

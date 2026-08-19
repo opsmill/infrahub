@@ -682,9 +682,13 @@ describe("getFormFieldsFromSchema", () => {
     });
   });
 
-  it("removes unique fields when isBulkUpdate is true", () => {
+  it("removes unique required fields when isBulkUpdate is true", () => {
     // GIVEN
-    const uniqueAttribute = generateAttributeSchema({ name: "unique_field", unique: true });
+    const uniqueAttribute = generateAttributeSchema({
+      name: "unique_field",
+      unique: true,
+      optional: false,
+    });
     const notUniqueAttribute = generateAttributeSchema({ name: "non_unique_field", unique: false });
 
     const schema = {
@@ -697,6 +701,34 @@ describe("getFormFieldsFromSchema", () => {
     // THEN
     expect(fields.length).to.equal(1);
     expect(fields[0]?.name).to.equal("non_unique_field");
+  });
+
+  it("keeps unique optional attributes when isBulkUpdate is true so they can be set to null", () => {
+    // GIVEN
+    const uniqueOptionalAttribute = generateAttributeSchema({
+      name: "unique_optional_field",
+      unique: true,
+      optional: true,
+    });
+    const uniqueRequiredAttribute = generateAttributeSchema({
+      name: "unique_required_field",
+      unique: true,
+      optional: false,
+    });
+
+    const schema = {
+      attributes: [uniqueOptionalAttribute, uniqueRequiredAttribute],
+    } as ModelSchema;
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, isBulkUpdate: true });
+
+    // THEN
+    // A unique + optional attribute can safely be cleared to null across every selected row,
+    // so it must remain in the form (exposing the "Set empty" action). A unique + required
+    // attribute has no safe bulk action and stays removed.
+    expect(fields.length).to.equal(1);
+    expect(fields[0]?.name).to.equal("unique_optional_field");
   });
 
   it("removes required validation when isBulkUpdate is true", () => {
