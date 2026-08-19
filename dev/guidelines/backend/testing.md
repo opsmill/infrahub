@@ -129,8 +129,8 @@ example to learn from: it runs once at process start and owns the process when i
 root log level, replacing the root handler and reconfiguring structlog — so, being startup code, it has
 no counterpart that undoes any of that. Called from a fixture it silently reconfigures every later test
 in the worker. Install only the piece the test needs, extracting it from the startup routine when it is
-not already reusable, and undo it after the `yield` — see `traceback_suppression_installed` in
-`backend/tests/component/webhook/test_traceback_suppression.py`, which installs the traceback
+not already reusable, and undo it after the `yield` — see `traceback_suppression` in
+`backend/tests/helpers/log.py`, which the webhook suppression tests use to install the traceback
 suppression filter alone rather than calling `configure_logging`.
 
 Such a leak is invisible locally and expensive in CI. A root logger left at `DEBUG` overrides the

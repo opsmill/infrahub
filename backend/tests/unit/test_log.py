@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from infrahub.log import (
     _TRACEBACK_SUPPRESSED_TYPES,
@@ -9,6 +10,10 @@ from infrahub.log import (
     suppress_traceback_in_logs,
 )
 from infrahub.webhook.classifier import ClassifiedFailure, StatusClass, WebhookDeliveryError
+from tests.helpers.log import traceback_suppression
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def _record(exception: BaseException | None) -> logging.LogRecord:
@@ -57,3 +62,23 @@ def test_startup_installs_the_filter_on_the_prefect_run_loggers() -> None:
         if any(isinstance(log_filter, TracebackSuppressionFilter) for log_filter in logging.getLogger(name).filters)
     ]
     assert installed_on == list(PREFECT_RUN_LOGGERS)
+
+
+def _run_logger_filters() -> dict[str, Sequence[object]]:
+    # Logger.filters is a union of filter forms; the identity of what is attached is all that matters here.
+    return {name: list(logging.getLogger(name).filters) for name in PREFECT_RUN_LOGGERS}
+
+
+def test_traceback_suppression_leaves_logging_state_unchanged() -> None:
+    """The suppression context must hand logging back exactly as it found it."""
+    root_logger = logging.getLogger()
+    level_before, filters_before = root_logger.level, _run_logger_filters()
+
+    with traceback_suppression() as traceback_filter:
+        assert _run_logger_filters() == {
+            name: [*filters_before[name], traceback_filter] for name in PREFECT_RUN_LOGGERS
+        }
+        assert root_logger.level == level_before
+
+    assert _run_logger_filters() == filters_before
+    assert root_logger.level == level_before
