@@ -62,14 +62,35 @@ De-duplicated by value across the whole graph. Retirement **detaches** (closes t
 must never delete a vertex any other attribute still references (FR-017). Deleting one left with
 zero references is permitted but not required, and is not a deliverable.
 
-**Pool interaction — do not change without reading this.** A `NumberPool` reserves a value with a
-`(:NumberPool)-[:IS_RESERVED]->(:AttributeValueIndexed)` edge. Retirement deliberately **does not
-touch `IS_RESERVED`**. It does not need to: the used-value query requires `IS_RESERVED`,
-`HAS_VALUE` *and* `HAS_ATTRIBUTE` to all satisfy the branch filter simultaneously, so closing
-`HAS_VALUE` alone is enough to drop the value from the used set and make it allocatable again
-(SC-007). That is a three-edge dependency, and a future change to the pool queries could break
-SC-007 without touching a line of this feature — which is why an explicit allocate/delete/retire/
-reallocate component test exists.
+**Pool interaction — do not change without reading this.** Retirement never touches `IS_RESERVED`,
+and the reason is the vertex labels rather than any list of edge types. The closure matches only edges
+**incident to the field vertex** — the `:Attribute` or `:Relationship` the anchor bound — and every
+`IS_RESERVED` edge runs between two other vertices: `(:CoreNumberPool)->(:AttributeValueIndexed)` for a
+number pool, `(:CoreIPAddressPool)->(:BuiltinIPAddress)` and `(:CoreIPPrefixPool)->(:BuiltinIPPrefix)`
+for the IP pools. None of those endpoints is a field vertex, so none is reachable.
+
+Stating it by label matters because **the closure no longer enumerates edge types**. It closes every
+open, active global edge incident to the field vertex, whatever its type. That is a deliberate standing
+decision in favour of leaving nothing behind: an enumerated list drifts out of step with
+`DatabaseEdgeType` and silently leaks the type it omits, whereas a sweep cannot. The cost is that a new
+edge type attached to an `:Attribute` or `:Relationship` vertex on the global branch will be closed
+automatically, without anyone choosing that — so a type that must survive its field's retirement has to
+live on a vertex the field does not touch, as `IS_RESERVED` already does.
+
+The used-value query still requires `IS_RESERVED`, `HAS_VALUE` *and* `HAS_ATTRIBUTE` to satisfy the
+filter simultaneously, so closing `HAS_VALUE` does drop a value from the used set.
+
+Measured 2026-08-18, and not what the plan assumed: **the closure is not what frees the value on the
+delete path.** `BaseAttribute.get_branch_for_delete` (`core/attribute.py:396`) returns the *node's*
+branch for an agnostic attribute on an aware node, so an ordinary delete already writes branch-scoped
+`deleted` `HAS_VALUE` / `HAS_ATTRIBUTE` edges. The pool queries run with `branch_agnostic=True`, which
+collapses the filter to a pure time predicate with no branch condition (`branch/models.py:409`), so
+those tombstones are candidates, win the `from DESC` ordering, and the value drops out of the used set
+with no retirement involved. Neutralising the closure leaves re-allocation working.
+
+Two consequences. The three-edge dependency is real and still worth guarding, but SC-007 does not
+measure this feature. And a pool allocation adds a *fourth* global edge, `HAS_SOURCE`, carrying the
+pool id.
 
 ### `Branch`
 

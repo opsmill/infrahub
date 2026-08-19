@@ -226,15 +226,12 @@ polished, so a failed gate is discovered early rather than at the end.
 | `m076` fixtures | Component | Hand-built orphan shapes |
 | Enforcement points | Component (behaviour) | No separate unit suites per the PRD |
 
-**Existing asset**: `backend/tests/component/core/test_agnostic_attribute_fork_window.py` is an
-uncommitted working file in this tree that already builds the exact schema fixture (a
-branch-aware `TestWidget` with an agnostic `serial` attribute), asserts the pre-fix leak
-(`"deleting on the default branch is expected to leave the global value edge open today"`), and
-stubs retirement with a `_close_global_property_edges` helper whose docstring says to replace it
-once the real path exists. Its two fork-window tests cover the spec's fork-window edge case and
-FR-013's degraded-but-no-data-loss argument. **Adopt this file**: swap the stub for the real
-delete path and the assertions should hold unchanged. It is currently untracked and must be
-committed as part of this feature.
+**Existing asset** (withdrawn 2026-08-17): an uncommitted
+`test_agnostic_attribute_fork_window.py` in this tree builds the same fixture and stubs retirement with
+a closure helper, and the plan was to adopt it by swapping the stub for the real delete path. That is
+not possible — retirement closes only once no branch retains the field, so in its scenario the real
+path closes nothing and the state it explores cannot be produced by object deletion. The repair
+migration is the only producer of that state and writes its own tests.
 
 ## Query plans
 

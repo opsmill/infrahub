@@ -75,13 +75,25 @@ with the shared retention predicate extended only where a slice proves it must b
   body, caller-supplied stamp, no batching; wired into `Node.delete` after the existence tombstone,
   failures propagating. Tests in `backend/tests/component/query/test_node_agnostic_retirement_query.py`
   and `backend/tests/component/core/test_agnostic_retirement.py`.
+- [X] R02a **Pool re-allocation test (T035).** Allocate a branch-agnostic value from a pool, delete the
+  object, allocate again, and assert the same value comes back. Nothing yet exercises the
+  `IS_RESERVED` / `HAS_VALUE` / `HAS_ATTRIBUTE` dependency end to end, and this is the closest thing to
+  a proof that the feature does what the ticket asked for: allocation counts a value as used only while
+  all three edges pass the branch filter. **Done 2026-08-18, with a correction**: the delete already
+  writes branch-scoped `deleted` edges that the pool's `branch_agnostic=True` filter honours, so
+  re-allocation works without retirement and SC-007 was satisfied before this feature. The test keeps
+  its value through the graph assertions; the spec is amended.
 - [ ] R03 **Slice 2 — schema attribute and relationship removal.** Fold the closure into
   `AttributeRemoveQuery` (`backend/infrahub/core/migrations/query/attribute_remove.py`) and its
   relationship equivalent rather than calling retirement after them, which also removes the ordering
   problem in T030: once the removal query has closed the owning edge, an open-edge anchor can no
   longer see the candidate. Supersedes T029/T030. Carries T030a and T030b.
 - [ ] R04 **Slice 3 — branch merge and rebase.** Supersedes T025–T028. Both supply node uuids from
-  the diff they already compute.
+  the diff they already compute. **Carries T033 (FR-014)** — diff a branch that forked before the
+  deletion and assert no attribute or relationship change is reported for that node. It sits here
+  rather than with the delete slice because it is a claim about the diff, and this is the slice where
+  the diff machinery is already in hand. Every assertion written so far reads edges directly, so
+  nothing yet checks the claim at the layer a user would see it.
 - [ ] R05 **Slice 4 — branch deletion and the FR-018 timing gate.** Its own query, fork-point
   bounded. Supersedes T018–T020 and carries T038's measurement obligation.
 - [ ] R06 **Slice 5 — repair migration.** Blocked on T001. Supersedes Phase 4; C4 in
@@ -133,28 +145,28 @@ passed.
 
 ### Remaining enforcement points
 
-- [ ] T021 [P] [US1] Write component tests in `backend/tests/component/core/test_agnostic_retirement.py` for node deletion: delete on the default branch with no branch forked during the object's lifetime → closed; delete on `B` an object existing only on `B` → closed immediately; delete on one of two branches holding it → stays open, then closed after the second (FR-005, scenarios 1–3)
-- [ ] T022 [P] [US1] Write the **negative** component tests in the same file — these are what a naive implementation breaks: a branch forked between creation and deletion keeps the edges open, the value reserved, and the object readable on `B` (scenario 4); rebase or merge of a retaining branch on which the object survives leaves the edges open (scenario 6, FR-009)
-- [ ] T023 [US1] Invoke retirement from `Node.delete` in `backend/infrahub/core/node/__init__.py`, after `NodeDeleteQuery` writes the existence tombstone, stamped with `delete_at` (FR-005, FR-015)
-- [ ] T024 [US1] Verify the best-effort wrapper from T017 holds at this call site: a retirement failure must not fail the user's delete, and must not close anything (`dev/guidelines/backend/python.md` §"Best-effort side effects")
+- [X] T021 [P] [US1] Write component tests in `backend/tests/component/core/test_agnostic_retirement.py` for node deletion: delete on the default branch with no branch forked during the object's lifetime → closed; delete on `B` an object existing only on `B` → closed immediately; delete on one of two branches holding it → stays open, then closed after the second (FR-005, scenarios 1–3) — delivered by slice 1 (R02)
+- [X] T022 [P] [US1] Write the **negative** component tests in the same file — these are what a naive implementation breaks: a branch forked between creation and deletion keeps the edges open, the value reserved, and the object readable on `B` (scenario 4); rebase or merge of a retaining branch on which the object survives leaves the edges open (scenario 6, FR-009) — delivered by slice 1 (R02)
+- [X] T023 [US1] Invoke retirement from `Node.delete` in `backend/infrahub/core/node/__init__.py`, after `NodeDeleteQuery` writes the existence tombstone, stamped with `delete_at` (FR-005, FR-015) — delivered by slice 1 (R02)
+- [X] T024 [US1] Verify a retirement failure **fails the user's delete** at this call site: it is logged and re-raised, the caller's transaction rolls back, and the existence tombstone is never committed. *Inverted 2026-08-17 from "must not fail the user's delete", which the best-effort design of T017 assumed.* Retirement runs inside the caller's still-open transaction, before the commit, so `dev/guidelines/backend/python.md` §"Best-effort side effects" does not apply: its third condition forbids straddling the point of no return. Delivered by slice 1 (R02); see also the transaction wrap in `git/tasks.py`, since a caller deleting in session mode gets no rollback.
 - [ ] T025 [P] [US1] Write a component test for merge in `backend/tests/component/core/test_agnostic_retirement.py`: delete on a branch, merge it → closed (FR-006, scenario 5c)
 - [ ] T026 [US1] Invoke retirement from `DiffMerger.merge_graph` in `backend/infrahub/core/diff/merger/merger.py`, after the bulk merge queries complete, for the deleted nodes named by the merge diff, at the merge `at`
 - [ ] T027 [P] [US1] Write a component test for rebase: a node deleted on the default branch while a branch is open, rebase that branch → closed (FR-007, scenario 5b); plus scenario 11 — a node created and deleted on `B`, then `B` rebased, leaves no vertex with open global edges
 - [ ] T028 [US1] Invoke retirement from `rebase_branch` in `backend/infrahub/core/branch/tasks.py`, inside the existing `lock.registry.global_graph_lock()` and **before** `user_branch.rebase(...)` is applied, at `rebase_at`. Obtain the base-branch deletions via a second `DiffRepository` read under the existing tracking id (decided in plan.md §"Resolved during critique").
-- [ ] T029 [P] [US1] Write component tests for schema removal: a branch-agnostic attribute removed from the schema → closed; likewise a relationship; and with a branch that forked beforehand → deferred and still readable there (FR-010, scenarios 8–9)
-- [ ] T030 [US1] Invoke retirement from `NodeAttributeRemoveMigration` in `backend/infrahub/core/migrations/schema/node_attribute_remove.py` and `NodeRelationshipRemoveMigration` in `backend/infrahub/core/migrations/schema/node_relationship_remove.py`, after each existing removal query runs
+- [ ] T029 [P] [US1] Write component tests for schema removal: a branch-agnostic attribute removed from the schema → closed; likewise a relationship; and with a branch that forked beforehand → deferred and still readable there (FR-010, scenarios 8–9). **Belongs to slice 2 (R03)** and is written against the removal query rather than a separate retirement call. The deferral case is already covered from the delete side by slice 1's field-axis test, which builds the branch-level `deleted` owning edge by hand; these drive it through the real removal path.
+- [ ] T030 [US1] **Superseded by R03 — do not implement as written.** The original said to invoke retirement from `NodeAttributeRemoveMigration` and `NodeRelationshipRemoveMigration` *after* each existing removal query runs. That cannot work: the removal query has already closed the owning edge by then, so an open-edge anchor finds no candidate and retirement is a silent no-op. Instead fold the closure into `AttributeRemoveQuery` (`backend/infrahub/core/migrations/query/attribute_remove.py`) and its relationship equivalent, which already match the right vertices for the kind and already carry the branch filter.
 - [ ] T030a [US1] Write the cross-axis component test driven through the **real** removal migration: an object deleted on the default branch while a branch forked after its creation had the attribute removed from its schema. That branch retains the object but not the field, so nothing retains the value and the global edges must close. Deferred from the object-delete slice deliberately — the fixture is only faithful once the removal path is final, and a hand-built version could encode a shape the schema slice changes. The object-delete slice covers the same conjunction with a raw-Cypher fixture instead.
 - [ ] T030b [US1] Write the inverse of T030a: the attribute removed from the schema on the default branch while a branch forked beforehand deleted the object. That branch retains the field but not the object, so again nothing retains the value. Both directions prove the retention conjunction is per branch rather than a disjunction across axes.
 
 ### Cross-cutting correctness tests for US1
 
-- [ ] T031 [P] [US1] Write a regression test in `backend/tests/component/core/test_agnostic_retirement.py`: rename a kind, then run every enforcement point → the surviving vertex keeps its value (FR-011, scenario 10). Confirms same-UUID copies are excluded by the open-edge anchor rather than by luck.
-- [ ] T032 [P] [US1] Assert in the same file that a retired vertex is no longer a candidate on a second pass — re-run retirement over the same candidates and confirm it closes nothing and reports zero (the property that closing the owning edge buys)
-- [ ] T033 [P] [US1] Write a component test asserting retirement registers no change on a branch that forked before it — diff the pre-existing branch after a default-branch delete and assert no attribute or relationship change is reported for that node (FR-014)
-- [ ] T034 [US1] Adopt the currently-untracked `backend/tests/component/core/test_agnostic_attribute_fork_window.py`: replace its `_close_global_property_edges` stub with the real delete path and update the pre-fix assertion (`"expected to leave the global value edge open today"`). Both fork-window expectations must hold unchanged — that is the proof the time-close hedge of FR-013 works. **Commit the file together with the change that turns it green**, not before.
-- [ ] T035 [P] [US1] Write the pool re-allocation test in `backend/tests/component/core/test_agnostic_retirement.py`: allocate, delete, retire, allocate again → the same value is returned (SC-007, scenario 12). Guards the three-edge `IS_RESERVED`/`HAS_VALUE`/`HAS_ATTRIBUTE` dependency documented in data-model.md.
-- [ ] T036 [P] [US1] Write the late-branch-creation test: create a branch after candidate selection → the object stays readable on it. Bounds the residual race and locks in the degraded-read property that makes the time-close choice load-bearing.
-- [ ] T037 [P] [US1] Write the out-of-scope boundary test: deleting a truly branch-agnostic *node* closes its edges exactly once and retirement is a no-op. `Node.delete` resolves `branch` to the global branch for such nodes, so the enforcement point does run against them.
+- [X] T031 [P] [US1] Write a regression test in `backend/tests/component/core/test_agnostic_retirement.py`: rename a kind, then run every enforcement point → the surviving vertex keeps its value (FR-011, scenario 10). Confirms same-UUID copies are excluded by the open-edge anchor rather than by luck. — delivered by slice 1 (R02)
+- [X] T032 [P] [US1] Assert in the same file that a retired vertex is no longer a candidate on a second pass — re-run retirement over the same candidates and confirm it closes nothing and reports zero (the property that closing the owning edge buys) — delivered by slice 1 (R02)
+- [ ] T033 [P] [US1] Write a component test asserting retirement registers no change on a branch that forked before it — diff the pre-existing branch after a default-branch delete and assert no attribute or relationship change is reported for that node (FR-014) — **carried by R04, with the merge and rebase work**
+- ~~T034~~ **Withdrawn 2026-08-17.** The fork-window file was to be adopted by swapping its closure stub for the real delete path. That cannot be done: retirement only closes once no branch retains the field, so in that file's scenario — two branches forked before the deletion — the real path correctly closes nothing, and the state the tests explore is unreachable through object deletion by construction. The one path that does produce it is the repair migration, closing edges for pre-existing orphans that an old branch can still read; R06 writes its own tests for that rather than inheriting these.
+- [X] T035 [P] [US1] Write the pool re-allocation test in `backend/tests/component/core/test_agnostic_retirement.py`: allocate, delete, allocate again → the same value is returned. Guards the three-edge `IS_RESERVED`/`HAS_VALUE`/`HAS_ATTRIBUTE` dependency documented in data-model.md. **Written 2026-08-18, and it disproved its own premise**: re-allocation does not depend on retirement. It earns its place through the graph assertions, not through SC-007, which is amended accordingly.
+- ~~T036~~ **Withdrawn 2026-08-17.** It bounded the race between candidate selection and closure. Those are now one Cypher statement inside one transaction, so there is no window between them and no race to bound.
+- [X] T037 [P] [US1] Write the out-of-scope boundary test: deleting a truly branch-agnostic *node* closes its edges exactly once and retirement is a no-op. `Node.delete` resolves `branch` to the global branch for such nodes, so the enforcement point does run against them. — delivered by slice 1 (R02); its premise was wrong and is corrected in Phase 2R
 - [ ] T038 [US1] Measure FR-018 for node deletion, branch merge and branch rebase at both open-branch counts and record medians in `quickstart.md`. Gate: ≤ +10% at both.
 
 **Checkpoint**: User Story 1 is fully functional and independently testable. Deletes and schema removals no longer leak; SC-004 through SC-007 are demonstrable.
@@ -300,7 +312,7 @@ five integrations already assumed it passed. T020 is deliberately early and deli
 - Don't create empty `__init__.py` files as a step of their own; add one when it has content or
   when something requires it.
 - Don't commit a test that asserts pre-fix behaviour on its own. Land it with the change that turns
-  it green (T034).
+  it green.
 - No ticket IDs, issue numbers, or FR identifiers in source comments, docstrings, or test names
   (`.agents/rules/code-doc-style.md`). They belong in commit messages, the changelog, and these
   spec files.
