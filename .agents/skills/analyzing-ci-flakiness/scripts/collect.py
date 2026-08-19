@@ -101,7 +101,9 @@ def fetch_job_log(repo: str, job_id: int, log_path: Path) -> None:
     On success the log is written to ``log_path``. On HTTP 404/410 (the log
     expired or was deleted on GitHub's side) an empty file is written as a
     durable sentinel so the job is never re-fetched. On any other failure
-    (rate limit, network) nothing is written, so the next collection retries.
+    (rate limit, network) — including a successful call with an empty body,
+    which a real job log never has — nothing is written, so the next
+    collection retries.
     """
     res = subprocess.run(  # noqa: S603
         ["gh", "api", f"repos/{repo}/actions/jobs/{job_id}/logs"],  # noqa: S607
@@ -110,8 +112,10 @@ def fetch_job_log(repo: str, job_id: int, log_path: Path) -> None:
         errors="replace",
         check=False,
     )
-    if res.returncode == 0:
+    if res.returncode == 0 and res.stdout:
         log_path.write_text(res.stdout, encoding="utf-8")
+    elif res.returncode == 0:
+        print(f"[collect] WARN log {job_id}: empty response, leaving unfetched for retry", file=sys.stderr)
     elif "HTTP 404" in res.stderr or "HTTP 410" in res.stderr:
         log_path.write_text("", encoding="utf-8")
     else:
