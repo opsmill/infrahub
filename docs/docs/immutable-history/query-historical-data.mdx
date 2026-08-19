@@ -1,0 +1,156 @@
+---
+title: Query historical data
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Query historical data
+
+Every read in Infrahub happens at a point in time. By default that point is now. Add the `at` parameter to a read and Infrahub returns the data as it was at the time you name, on whichever branch you are querying.
+
+Use `at` when the current state cannot explain the present: a change was merged overnight and a device stopped forwarding traffic, an auditor asks which prefixes were assigned to a site on a given date, or you need to compare a configuration against the one it replaced.
+
+## Before you start
+
+Two things determine whether a first attempt returns data: the format of the time you pass, and how far back the branch can be read.
+
+### Time formats
+
+`at` accepts an absolute time or an offset from now.
+
+| Form | Example | Resolves to |
+|---|---|---|
+| ISO 8601 with a zone or offset | `2026-03-09T14:00:00Z`, `2026-03-09T15:00:00+01:00` | The instant you name |
+| ISO 8601 without a zone | `2026-03-09T14:00:00` | The same wall-clock time, read as UTC |
+| Date only | `2026-03-09` | 12:00 UTC on that day |
+| Offset from now | `30s`, `45m`, `6h`, `2h30m` | That much time before now |
+
+A date on its own resolves to midday, not midnight. Write the time out when the distinction matters.
+
+Offsets are limited to seconds, minutes, and hours — `s`, `sec`, `second`, `seconds`, `m`, `min`, `minute`, `minutes`, `h`, `hour`, `hours` — and combine in one string. Days and weeks have no offset form, so `7d` returns a `TimestampFormatError`. For anything beyond a few hours back, pass an absolute time.
+
+### How far back you can read
+
+A branch cannot be read from before it existed. On the default branch and the global branch, the earliest readable time is that branch's own creation time. On any other branch, the boundary is the creation time of the branch it came from, because the history before the branch point belongs to the origin branch.
+
+Ask for something earlier and Infrahub rejects the query:
+
+```text
+Requested time '2026-01-05T00:00:00Z' is before branch 'main' was created at '2026-02-01T09:14:22.481000Z'.
+```
+
+## Read data at a past time
+
+Pass `at` alongside the branch you are reading. The examples below all return the state of `ord1-edge1` at the same moment.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web interface" default>
+
+Select the time selector — the calendar and clock icon beside the branch selector — and choose a date and time in UTC. The control has no text label until you set a time, at which point the bar beside it reads **Current view time** with your selection.
+
+Every object you open while a time is set shows its state at that time. Select the **×** beside the displayed time to return to the present.
+
+The picker offers past times only.
+
+![The time selector, with a past time applied](../media/tutorial_2_historical.png)
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+`at` is a query-string parameter on the GraphQL endpoint, so the query itself is unchanged:
+
+```graphql # Read a device at a past time
+# Endpoint : http://localhost:8000/graphql/main?at=2026-03-09T14:00:00Z
+query DeviceAtTime {
+  InfraDevice(name__value: "ord1-edge1") {
+    edges {
+      node {
+        name { value }
+        description { value }
+        status { value }
+      }
+    }
+  }
+}
+```
+
+Because `at` is part of the endpoint rather than the query, the same stored query returns current or historical data depending on the URL you send it to.
+
+</TabItem>
+
+  <TabItem value="rest" label="REST API">
+
+The REST API applies `at` to stored GraphQL queries, artifacts, and transformations rather than to ad-hoc object reads. To read objects at a past time over REST, save the query as a `CoreGraphQLQuery` object and run it by name:
+
+```bash
+curl "http://localhost:8000/api/query/device-status?branch=main&at=2026-03-09T14:00:00Z" \
+  -H "X-INFRAHUB-KEY: $INFRAHUB_API_TOKEN"
+```
+
+The same parameter works on `/api/artifact/{artifact_id}` and on the transformation endpoints, so you can render an artifact from the data as it was rather than from current data.
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+`all()`, `get()`, `filters()`, and `execute_graphql()` each take an `at` argument:
+
+```python
+from infrahub_sdk import InfrahubClientSync
+from infrahub_sdk.timestamp import Timestamp
+
+client = InfrahubClientSync(address="http://localhost:8000")
+
+device = client.get(
+    kind="InfraDevice",
+    name__value="ord1-edge1",
+    at=Timestamp("2026-03-09T14:00:00Z"),
+)
+
+print(device.description.value)
+```
+
+`Timestamp` accepts every form in the table above, so `Timestamp("6h")` reads six hours back.
+
+</TabItem>
+</Tabs>
+
+## Compare two points in time
+
+To see what changed between two moments rather than the state at one of them, query `DiffTree` with `from_time` and `to_time`. Both take a timestamp, and the two times can be arbitrary — they do not have to correspond to a branch point or a proposed change.
+
+```graphql # What changed on main between two timestamps
+# Endpoint : http://localhost:8000/graphql/main
+query ChangesBetween {
+  DiffTree(
+    branch: "main"
+    from_time: "2026-03-09T00:00:00Z"
+    to_time: "2026-03-10T00:00:00Z"
+  ) {
+    num_added
+    num_updated
+    num_removed
+    nodes {
+      kind
+      label
+      status
+      attributes {
+        name
+        action
+      }
+    }
+  }
+}
+```
+
+Omit `from_time` and the comparison starts at the branch's creation; omit `to_time` and it ends at the current time. Add `filters` to restrict the result by kind, namespace, or status, and `limit` and `offset` to page through a large result. For a count without the node detail, query `DiffTreeSummary` with the same arguments.
+
+Two things to expect from the result. The base of the comparison is always the default branch, so naming a feature branch compares that branch against the default branch across the window, while naming the default branch compares it against itself. And where no diff covering the requested window is available, `DiffTree` returns `null` rather than an empty result.
+
+## Related
+
+- [Immutable history](./overview.mdx) — how Infrahub stores every past state, and why a historical read is a query rather than a reconstruction
+- [Branches](../branches/overview.mdx) — how branch creation and merging place the timestamps you query against
+- [Proposed Changes](../proposed-changes/overview.mdx) — review a diff scoped to a branch, rather than to two times you choose

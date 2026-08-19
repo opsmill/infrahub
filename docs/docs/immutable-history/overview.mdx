@@ -48,6 +48,16 @@ This capability extends across all interfaces:
 - **REST API**: Temporal query support for retrieving historical data
 - **Python SDK**: Time-aware methods to access past states
 
+For the syntax each one uses, the time formats they accept, and how far back a branch can be read, see [Query historical data](./query-historical-data.mdx).
+
+### Temporal queries and change logs
+
+A change log records the operations that were applied. Reading a past state from one means replaying those operations in order, and the result is only as complete as the log. Infrahub stores the resulting state at every point in time, so reading the past is a query against data that is already stored rather than a reconstruction from a record of what happened.
+
+### Multiple timelines at once
+
+Branches share the same immutable baseline and record only the values that diverge from it. Creating a branch stores a pointer to a base timestamp rather than a copy of the data, so a branch starts with the full history of its origin available to it and adds only what you change. This is what allows a query to name both a branch and a time: the two together identify one state out of every state the graph has recorded.
+
 ### Attribute-level change tracking
 
 Unlike systems that capture entire object snapshots, Infrahub's immutable history operates at the attribute level. This approach offers several advantages:
@@ -62,5 +72,9 @@ There is a timestamp associated with every change in the database. This timestam
 
 ## Related topics
 
-- [Proposed Changes](../proposed-changes/overview.mdx)
-- [Branches](../branches/overview.mdx)
+- [Branches](../branches/overview.mdx) — how branches isolate changes, and what merging does to the timeline
+- [Proposed Changes](../proposed-changes/overview.mdx) — review and validate a set of changes before they merge
+
+## In this section
+
+- [Query historical data](./query-historical-data.mdx) — Read the graph as it stood at any past time, from the web interface, GraphQL, REST, or the Python SDK
