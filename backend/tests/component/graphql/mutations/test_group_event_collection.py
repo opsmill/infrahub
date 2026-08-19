@@ -1,5 +1,6 @@
 from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -239,7 +240,14 @@ async def test_group_enrolled_into_group_only_emits_event_for_enclosing_group(
     assert [event.node_id for event in member_added_events] == [enclosing_group.get_id()]
     assert member_added_events[0].members == [EventNode(id=enrolled_group.get_id(), kind="CoreStandardGroup")]
 
+    node_updated_events = [event for event in memory_event.events if isinstance(event, NodeUpdatedEvent)]
+    assert [event.node_id for event in node_updated_events] == [enclosing_group.get_id()]
+
     assert len(memory_event.events) == 2
-    group_updated = memory_event.events[0]
-    assert isinstance(group_updated, NodeUpdatedEvent)
-    assert group_updated.node_id == enclosing_group.get_id()
+
+    reloaded_enclosing = await NodeManager.get_one(db=db, id=enclosing_group.get_id(), prefetch_relationships=True)
+    reloaded_enrolled = await NodeManager.get_one(db=db, id=enrolled_group.get_id(), prefetch_relationships=True)
+    assert list(await reloaded_enclosing.members.get_peers(db=db)) == [enrolled_group.get_id()]
+    # Both group kinds read the one stored membership through the same relationship, so it is visible
+    # from either side and cannot say which group gained a member: only the mutation says that.
+    assert list(await reloaded_enrolled.members.get_peers(db=db)) == [enclosing_group.get_id()]
