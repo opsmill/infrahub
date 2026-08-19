@@ -1,0 +1,27 @@
+---
+title: Release 1.10.9
+release_date: 2026-08-19
+release_type: patch
+description: "Fixes a crash on the Tasks page when a task references a related node whose kind can no longer be resolved, and an attribute rename on a branch leaving the old attribute open, which could duplicate paths to the renamed attribute after a rebase."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.10.9</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>August 19th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.10.9](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.10.9)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Fixed
+
+- Fixed a crash when loading the Tasks page where a task was tagged with a related node whose kind could no longer be resolved (for example a deleted definition or a stale tag). Such unresolvable related nodes are now omitted from the task instead of causing a GraphQL resolver error. ([#9662](https://github.com/opsmill/infrahub/issues/9662))
+- Renaming an attribute in a schema on a branch now correctly closes the old attribute instead of only opening a newer path to the new attribute. This issue would have been mostly invisible to the user unless an attribute was renamed on a user's branch and that branch was then rebased, in which case there could be duplicated paths to the new attribute which could result in unexpected behavior when updating its value.
