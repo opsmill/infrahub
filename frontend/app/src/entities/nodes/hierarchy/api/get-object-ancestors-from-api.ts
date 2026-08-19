@@ -18,10 +18,11 @@ export const getObjectAncestorsFromApi = async ({
   branchName,
   atDate,
 }: GetObjectAncestorsFromApiParams) => {
-  const query = getObjectAncestorsQuery({ objectKind, objectId });
+  const query = getObjectAncestorsQuery({ objectKind });
 
   return graphqlClient.query({
     query: gql(query),
+    variables: { ids: [objectId] },
     context: {
       branch: branchName,
       date: atDate,

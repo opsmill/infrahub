@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
@@ -22,20 +22,22 @@ export interface GetIpAddressListGraphQLQueryParams extends PaginationParams {
 }
 
 export function getIpAddressListWithAvailabilityGraphQLQuery({
-  limit,
-  offset,
   filters,
   objectKind,
   attributes,
   relationships,
-}: GetIpAddressListGraphQLQueryParams) {
+}: Omit<GetIpAddressListGraphQLQueryParams, "limit" | "offset">) {
   return jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${objectKind}`,
+      __variables: {
+        limit: "Int",
+        offset: "Int",
+      },
       [IP_ADDRESS_GENERIC]: {
         __args: {
-          limit,
-          offset,
+          limit: new VariableType("limit"),
+          offset: new VariableType("offset"),
           include_available: true,
           ...(objectKind !== IP_ADDRESS_GENERIC ? { kinds: [objectKind] } : {}),
           ...(filters ? addFiltersToRequest(filters) : {}),
@@ -72,22 +74,24 @@ export function getIpAddressListWithAvailabilityGraphQLQuery({
 }
 
 export function getIpAddressListWithoutAvailabilityGraphQLQuery({
-  limit,
-  offset,
   filters,
   objectKind,
   attributes,
   relationships,
-}: GetIpAddressListGraphQLQueryParams) {
+}: Omit<GetIpAddressListGraphQLQueryParams, "limit" | "offset">) {
   const cleanedFilters = dropIncludeAvailableWhenFalse(filters);
 
   return jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${objectKind}`,
+      __variables: {
+        limit: "Int",
+        offset: "Int",
+      },
       [objectKind]: {
         __args: {
-          limit,
-          offset,
+          limit: new VariableType("limit"),
+          offset: new VariableType("offset"),
           ...(cleanedFilters?.length ? addFiltersToRequest(cleanedFilters) : {}),
         },
         edges: {
@@ -111,12 +115,15 @@ export interface getIpAddressListFromApiParams
 export function getIpAddressListWithAvailabilityFromApi({
   branchName,
   atDate,
+  limit,
+  offset,
   ...params
 }: getIpAddressListFromApiParams) {
   const graphqlQuery = getIpAddressListWithAvailabilityGraphQLQuery(params);
 
   return graphqlClient.query({
     query: gql(graphqlQuery),
+    variables: { limit, offset },
     context: {
       branch: branchName,
       date: atDate,
@@ -127,12 +134,15 @@ export function getIpAddressListWithAvailabilityFromApi({
 export function getIpAddressListWithoutAvailabilityFromApi({
   branchName,
   atDate,
+  limit,
+  offset,
   ...params
 }: getIpAddressListFromApiParams) {
   const graphqlQuery = getIpAddressListWithoutAvailabilityGraphQLQuery(params);
 
   return graphqlClient.query({
     query: gql(graphqlQuery),
+    variables: { limit, offset },
     context: {
       branch: branchName,
       date: atDate,

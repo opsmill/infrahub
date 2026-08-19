@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { EnumType, jsonToGraphQLQuery } from "json-to-graphql-query";
+import { EnumType, jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
@@ -26,7 +26,7 @@ export interface ProposedChangesFromApiParams extends PaginationParams {
 export const getProposedChangesFromApi = async ({
   schema,
   limit = DEFAULT_PAGE_SIZE,
-  offset,
+  offset = 0,
   filters,
   getAttributesVisible = getAttributesVisibleInListView,
   getRelationshipsVisible = getRelationshipsVisibleInListView,
@@ -39,10 +39,14 @@ export const getProposedChangesFromApi = async ({
   const queryString = jsonToGraphQLQuery({
     query: {
       __name: `Get${PROPOSED_CHANGE_OBJECT}`,
+      __variables: {
+        limit: "Int",
+        offset: "Int",
+      },
       [schemaKindToQuery]: {
         __args: {
-          limit,
-          offset,
+          limit: new VariableType("limit"),
+          offset: new VariableType("offset"),
           order: {
             by: [{ field: "node_metadata__created_at", direction: new EnumType("DESC") }],
           },
@@ -87,5 +91,6 @@ export const getProposedChangesFromApi = async ({
   const query = gql(queryString);
   return graphqlClient.query({
     query,
+    variables: { limit, offset },
   });
 };

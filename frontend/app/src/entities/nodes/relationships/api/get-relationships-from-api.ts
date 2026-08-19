@@ -6,10 +6,10 @@ import type { ContextParams } from "@/shared/api/types";
 import {
   type GenerateRelationshipListQueryParams,
   generateRelationshipListQuery,
+  isIdFilter,
 } from "@/entities/nodes/relationships/api/generate-relationship-list.query";
 
-export type getRelationshipsFromApiParams = ContextParams &
-  Omit<GenerateRelationshipListQueryParams, "parent">;
+export type getRelationshipsFromApiParams = ContextParams & GenerateRelationshipListQueryParams;
 
 export const getRelationshipsFromApi = async ({
   peer,
@@ -20,10 +20,15 @@ export const getRelationshipsFromApi = async ({
   atDate,
   filterQuery,
 }: getRelationshipsFromApiParams) => {
-  const query = gql(generateRelationshipListQuery({ peer, limit, offset, search, filterQuery }));
+  const query = gql(generateRelationshipListQuery({ peer, filterQuery }));
+
+  const idFilterVariables = Object.fromEntries(
+    Object.entries(filterQuery ?? {}).filter(([filterName]) => isIdFilter(filterName))
+  );
 
   return graphqlClient.query({
     query,
+    variables: { limit, offset, search, ...idFilterVariables },
     context: {
       branch: branchName,
       date: atDate,

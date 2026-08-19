@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
@@ -12,17 +12,22 @@ export interface GetTreeNodesByParentQueryParams extends PaginationParams {
 export function GetTreeNodesByParentQuery({
   objectKind,
   parentObjectId,
-  limit,
-  offset,
-}: GetTreeNodesByParentQueryParams) {
+}: Omit<GetTreeNodesByParentQueryParams, "limit" | "offset">) {
   return jsonToGraphQLQuery({
     query: {
       __name: `GetTreeNodesByParent_${objectKind}`,
+      __variables: {
+        limit: "Int",
+        offset: "Int",
+        ...(parentObjectId ? { parentIds: "[ID]" } : {}),
+      },
       [objectKind]: {
         __args: {
-          limit,
-          offset,
-          ...(parentObjectId ? { parent__ids: parentObjectId } : { parent__isnull: true }),
+          limit: new VariableType("limit"),
+          offset: new VariableType("offset"),
+          ...(parentObjectId
+            ? { parent__ids: new VariableType("parentIds") }
+            : { parent__isnull: true }),
         },
         edges: {
           node: {
@@ -46,10 +51,17 @@ export interface GetTreeNodesByParentFromApiParams
 export function GetTreeNodesByParentFromApi({
   branchName,
   atDate,
+  limit,
+  offset,
   ...params
 }: GetTreeNodesByParentFromApiParams) {
   return graphqlClient.query({
     query: gql(GetTreeNodesByParentQuery(params)),
+    variables: {
+      limit,
+      offset,
+      ...(params.parentObjectId ? { parentIds: [params.parentObjectId] } : {}),
+    },
     context: {
       branch: branchName,
       date: atDate,

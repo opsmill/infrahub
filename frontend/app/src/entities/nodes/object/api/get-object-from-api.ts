@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -18,18 +18,20 @@ interface GetObjectQueryParams {
 
 const getObjectQuery = ({
   schemaKind,
-  objectId,
   attributes,
   relationships,
   relationshipFragment,
-}: GetObjectQueryParams) => {
+}: Omit<GetObjectQueryParams, "objectId">) => {
   return gql(
     jsonToGraphQLQuery({
       query: {
         __name: `GetObject${schemaKind}`,
+        __variables: {
+          ids: "[ID]",
+        },
         [schemaKind]: {
           __args: {
-            ids: [objectId],
+            ids: new VariableType("ids"),
           },
           edges: {
             node: {
@@ -61,11 +63,11 @@ export async function getObjectFromApi({
   return graphqlClient.query({
     query: getObjectQuery({
       schemaKind,
-      objectId,
       attributes,
       relationships,
       relationshipFragment,
     }),
+    variables: { ids: [objectId] },
     context: {
       branch: branchName,
       date: atDate,
