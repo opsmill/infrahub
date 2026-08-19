@@ -18,7 +18,7 @@ from infrahub.core.query.node import NodeListGetAttributeQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -715,5 +715,4 @@ DETACH DELETE attr
             db=db, branch=schema_update_branch, node_details_list=list(dataset_schema_update_on_branch.values())
         )
 
-        await verify_no_edges_added_after_node_delete(db=db)
-        await verify_no_duplicate_relationships(db=db)
+        await verify_graph(db=db)

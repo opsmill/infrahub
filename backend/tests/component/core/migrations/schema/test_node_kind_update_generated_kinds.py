@@ -23,7 +23,7 @@ from infrahub.core.schema.definitions.core.template import core_object_component
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
-from tests.helpers.db_validation import verify_graph
+from infrahub.database.validation import verify_graph
 
 GADGET_THING = GenericSchema(
     name="Thing",

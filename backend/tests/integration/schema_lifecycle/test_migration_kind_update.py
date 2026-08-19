@@ -10,9 +10,8 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 from infrahub.exceptions import SchemaNotFoundError
-from tests.helpers.db_validation import verify_no_duplicate_paths
 
 from ..shared import load_schema
 from .shared import TestSchemaLifecycleBase
@@ -412,7 +411,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         new_kind = schema_specific_one_new_kind["namespace"] + schema_specific_one_new_kind["name"]
         errors = await self.validate_duplicate_nodes(db=db, kind_update_map={old_kind: new_kind})
         assert errors == []
-        await verify_no_duplicate_paths(db=db)
+        await verify_graph(db=db)
 
         retrieved_specific_one = await NodeManager.get_one(
             db=db, branch=default_branch, id=initial_dataset["specific_one"].id
@@ -458,6 +457,4 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         assert [profile.id for profile in profiles] == [initial_dataset["specific_one_profile"].id]
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_paths(db=db)
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)

@@ -21,11 +21,12 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.timestamp import Timestamp
+from infrahub.database.validation import verify_graph
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.services.component import InfrahubComponent
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
-from tests.helpers.db_validation import count_branch_edges_at, get_node_metadata, verify_graph
+from tests.helpers.db_validation import count_branch_edges_at, get_node_metadata
 
 from .conftest import FailAtBranchResetRecoverer, build_recovery
 

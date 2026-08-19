@@ -30,13 +30,13 @@ from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from tests.component.core.migrations.schema.metadata_helpers import (
     VertexMetadata,
     branch_edge_fingerprint,
     branch_metadata_fingerprint,
     get_node_vertex_metadata,
 )
-from tests.helpers.db_validation import verify_graph
 
 
 async def _prepare_removal(branch: Branch, node_kind: str, relationship_name: str) -> NodeRelationshipRemoveMigration:
