@@ -1,4 +1,4 @@
-import { Button, type ButtonProps } from "@infrahub/ui";
+import { Button, type ButtonProps, Menu, MenuItem } from "@infrahub/ui";
 import { PlayIcon } from "lucide-react";
 import { useState } from "react";
 import { Text } from "react-aria-components";
@@ -6,19 +6,18 @@ import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Menu, MenuItem } from "@/shared/components/aria/menu";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-generator.mutation";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 export interface RunGeneratorActionProps {
   generatorId: string;

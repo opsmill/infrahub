@@ -4,14 +4,14 @@ import { queryClient } from "@/shared/api/rest/client";
 import { store } from "@/shared/stores";
 
 import { AddGroupForm } from "@/entities/groups/ui/add-group-form";
-import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
+import { getRelationships } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../tests/components/render";
 import { generateNodeSchema } from "../../../../tests/fake/schema";
 
-vi.mock("@/entities/nodes/relationships/domain/get-relationships/get-relationships");
+vi.mock("@/entities/nodes/relationships/domain/use-cases/get-relationships");
 
 describe("AddGroupForm", () => {
   const groupSchema = generateNodeSchema({ kind: "CoreGroup" });

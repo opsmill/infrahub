@@ -1,12 +1,12 @@
+import { Tooltip, type TooltipProps } from "@infrahub/ui";
 import * as ProgressPrimitive from "@radix-ui/react-progress";
 
-import { Tooltip, type TooltipProps } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 interface ProgressBarItemProps extends ProgressPrimitive.ProgressIndicatorProps {
   value: number;
   color?: string;
-  tooltip?: TooltipProps["content"];
+  tooltip?: TooltipProps["message"];
 }
 
 export interface MultipleProgressBarProps extends ProgressPrimitive.ProgressProps {
@@ -26,7 +26,7 @@ const MultipleProgressBar = ({ elements, className, ...props }: MultipleProgress
     >
       {elements.map(({ className, color, style, tooltip, value, ...props }, index) => {
         return (
-          <Tooltip key={index} content={tooltip} enabled={!!tooltip} className="max-w-48">
+          <Tooltip key={index} message={tooltip} className="max-w-48" nonInteractiveTrigger>
             <ProgressPrimitive.Indicator
               className={classNames("h-full transition-all", className)}
               style={{

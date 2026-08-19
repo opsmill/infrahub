@@ -38,3 +38,13 @@ def get_related_resource_budget() -> int:
     """
     maximum = get_prefect_max_related_resources()
     return max(1, maximum - max(MAX_RUN_CONTEXT_RESOURCES, maximum // 10))
+
+
+def get_submission_chunk_size() -> int:
+    """Return the maximum number of node ids to carry in one recompute submission.
+
+    A coalesced recompute passes the union of changed node ids as a flow-run parameter, which
+    Prefect caps at a fixed serialized size. Half the related-resource maximum keeps each
+    submission well under that cap and keeps the reader query it feeds small.
+    """
+    return max(1, get_prefect_max_related_resources() // 2)

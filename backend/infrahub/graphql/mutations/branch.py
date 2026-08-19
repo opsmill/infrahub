@@ -7,15 +7,17 @@ from opentelemetry import trace
 from typing_extensions import Self
 
 from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
+from infrahub.branch.status_checker import MERGE_RECOVERY_REQUIRED_MESSAGE, BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.protocols import CoreProposedChange
 from infrahub.database import retry_db_transaction
-from infrahub.exceptions import BranchNotFoundError, ValidationError
+from infrahub.exceptions import BranchNotFoundError, MergeRecoveryRequiredError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.context import ContextInput
@@ -28,6 +30,7 @@ from infrahub.workflows.catalogue import (
     BRANCH_REBASE,
     BRANCH_VALIDATE,
 )
+from infrahub.workflows.constants import WorkflowPriority
 
 from ..types import BranchType
 from ..types.task import TaskInfo
@@ -102,6 +105,7 @@ class BranchCreate(Mutation):
             workflow=BRANCH_CREATE,
             context=graphql_context.get_context(),
             parameters={"model": model},
+            priority=WorkflowPriority.HIGH,
         )
 
         # Retrieve created branch
@@ -148,8 +152,23 @@ class BranchDelete(Mutation):
         wait_until_completion: bool = True,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
-        # ignore_deleting=False so a delete that failed part way through can be retried: the first
+        # ignore_deleting=False so a delete that failed part way through can be retried
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name), ignore_deleting=False)
+
+        # A branch left in MERGE_FAILED by a died merge must not be deleted until an administrator has
+        # recovered it.
+        if obj.status == BranchStatus.MERGE_FAILED:
+            raise MergeRecoveryRequiredError(
+                identifier=obj.name, message=MERGE_RECOVERY_REQUIRED_MESSAGE, merging_branch=obj.name
+            )
+
+        # Branch deletes are exempt from the merge write gate, but must verify that the branch being deleted is
+        # not the one being merged
+        merge_write_blocker = MergeWriteBlocker(cache=graphql_context.active_service.cache)
+        await BranchStatusChecker(db=graphql_context.db, merge_write_blocker=merge_write_blocker).check_merging_status(
+            branch=obj
+        )
+
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         parameters = {
@@ -176,12 +195,17 @@ class BranchDelete(Mutation):
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters=parameters
+                workflow=BRANCH_DELETE,
+                context=graphql_context.get_context(),
+                parameters=parameters,
+                priority=WorkflowPriority.HIGH,
             )
             return cls(ok=True)
 
         workflow = await graphql_context.active_service.workflow.submit_workflow(
-            workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters=parameters
+            workflow=BRANCH_DELETE,
+            context=graphql_context.get_context(),
+            parameters=parameters,
         )
         return cls(ok=True, task={"id": str(workflow.id)})
 
@@ -252,6 +276,7 @@ class BranchRebase(Mutation):
                 workflow=BRANCH_REBASE,
                 context=graphql_context.get_context(),
                 parameters={"branch": obj.name},
+                priority=WorkflowPriority.HIGH,
             )
 
             # Pull the latest information about the branch from the database directly
@@ -302,6 +327,7 @@ class BranchValidate(Mutation):
                 workflow=BRANCH_VALIDATE,
                 context=graphql_context.get_context(),
                 parameters={"branch": obj.name},
+                priority=WorkflowPriority.HIGH,
             )
         else:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
@@ -357,6 +383,7 @@ class BranchMerge(Mutation):
                 workflow=BRANCH_MERGE_MUTATION,
                 context=graphql_context.get_context(),
                 parameters={"branch": branch_name},
+                priority=WorkflowPriority.HIGH,
             )
         else:
             workflow = await graphql_context.active_service.workflow.submit_workflow(

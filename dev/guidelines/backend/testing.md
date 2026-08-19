@@ -57,6 +57,8 @@ Skip tests that test the framework rather than our integration:
 
 A useful rule of thumb: if the test would still pass after we delete our implementation and reinstall the library, the test belongs to the library, not us.
 
+**The exception is a bound that encodes a domain invariant.** `Field(ge=1)` on a multiplier that must never shrink the value it scales is not arbitrary tuning — it is a rule about how the feature behaves, and deleting it changes behavior with nothing failing. Assert those, but write the test against the invariant rather than the mechanism: name it for the rule, not for the constraint (`test_<what must hold>`, not `test_field_rejects_zero`), cover the boundary value that must stay legal, and add a test that the **shipped defaults** satisfy the invariant. Cross-field `model_validator` logic is ours outright and always warrants a test.
+
 ## Async tests
 
 The project sets `asyncio_mode = "auto"` in `pyproject.toml`, so any `async def test_*` function is automatically driven by `pytest-asyncio`. **Do not** wrap async code in `asyncio.run(...)` inside synchronous tests — declare the test function `async` and `await` directly:
@@ -280,6 +282,8 @@ Instead of mocking, design code with explicit boundaries using adapters, interfa
 
 Both implement the same `InfrahubMessageBus` protocol. Tests inject the test adapter—no mocking required, and refactoring the RabbitMQ implementation won't silently break tests.
 
+Two doubles are worth writing for any injected collaborator. A **recording** double — like `BusRecorder` — keeps what crossed the boundary, in order, so the test asserts the exact calls and values rather than "was called". A **failing** double raises on every call, to test the path a `Mock` never exercises: that a broken collaborator is handled the way the code claims — the operation still completes, state is intact, and anything queued behind it still runs. Keep both in the shared adapters package or a `helpers.py` beside the test package rather than redefining them per file.
+
 ### When mocking seems necessary
 
 If you find yourself wanting to mock:
@@ -291,10 +295,44 @@ If you find yourself wanting to mock:
 ### Acceptable exceptions
 
 - External HTTP APIs with no test mode (use `responses` or `httpx_mock` sparingly)
-- Time-dependent behavior (`freezegun`)
 - Prefect's `get_run_logger` when calling a `.fn` outside a flow context — patch it to return a stdlib `logging.getLogger(...)` so `caplog` can capture output. See [Backend Testing — Logging](../../knowledge/backend/testing.md#logging-use-caplog-instead-of-mocking-get_run_logger) for the pattern.
 
 Even in these cases, prefer adapter patterns when the dependency is used widely.
+
+### Time: inject a clock, don't freeze one
+
+<!-- Extracted from specs/ifc-2886-priority-api-backpressure on 2026-07-26 -->
+
+Time-dependent logic takes its clock as a constructor argument — a `Callable[[], float]`
+defaulting to `time.monotonic` — and the test passes a fake it advances by hand. Do not reach for
+`freezegun` (it is not a project dependency) and never `sleep()` in a test to let time pass.
+
+```python
+class RetryAfterPolicy:
+    def __init__(self, *, clock: Callable[[], float] = time.monotonic) -> None:
+        self._clock = clock
+```
+
+```python
+class FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+    def advance(self, seconds: float) -> None:
+        self.now += seconds
+```
+
+This keeps the unit under test a pure function of `(input, clock)`, so a state machine whose
+behavior depends on elapsed time is tested exactly — cross an interval boundary, assert the
+transition — with no wall-clock flakiness and no patching. Duration is a parameter of the logic,
+not an ambient fact; treat it like any other injected collaborator (see
+[Backend Component Design](../../../.agents/rules/backend-component-design.md)).
+
+Use monotonic time for durations. Wall-clock time (`datetime.now`) is for timestamps that get
+stored or displayed, and it can jump backwards.
 
 ## Exception Testing
 
@@ -348,6 +386,30 @@ The exact-match principle above is not limited to error messages — it applies 
 - **Assert persistence from storage, not from the layer the code wrote.** When the contract is that state reaches (or is restored in) the database, reload it from the DB (e.g. `Branch.get_by_name` and check `active_schema_hash`) instead of reading back the in-memory registry/cache the code under test updated — that assertion is self-confirming and cannot detect a failure to persist.
 - **Pin literal expected values — don't derive them with the code's own dependencies.** Computing the expectation with the same serializer/formatter the implementation calls (`ujson.dumps`, `yaml.dump`, the function under test itself) makes the assertion a tautology: it passes even when the library's output changes. Write the raw expected string into the test.
 - **A "does not raise" test still needs an assertion.** When the contract is that an exception is swallowed, also assert a side effect that only the guarded path produces (state set before the raiser was called). With no assertion, a regression that returns early before the guard passes identically.
+
+## Graph integrity assertions
+
+Tests that write to the graph — migrations, merges, deletes, rebases — should assert that the graph is
+still structurally sound afterwards. `infrahub.database.validation` exposes a single entry point for that:
+
+```python
+from infrahub.database.validation import collect_graph_violations, verify_graph
+
+await verify_graph(db=db)                      # raises GraphValidationError listing every violation found
+await verify_graph(db=db, kinds=["TestCar"])   # only vertices carrying one of these labels
+```
+
+It runs every graph-integrity check (duplicate paths, duplicate relationships, duplicate attributes, edges
+added after a node delete, orphaned active edges under a deleted parent, relationship edge counts) and
+reports all violations together rather than stopping at the first failing check. Do not call the individual
+checks — a suite that picks a subset silently stops covering the rest.
+
+Use `kinds` to scope large-graph runs to the kinds a suite actually touches. Checks anchored on an
+`Attribute` or `Relationship` vertex resolve the label through the `Node` the vertex hangs off.
+
+When a test asserts that a damaged state *exists* (a migration's "before" state, for example), use
+`collect_graph_violations(...)`, which returns the violations instead of raising, and assert on the exact
+checks reported.
 
 ## See Also
 

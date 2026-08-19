@@ -111,6 +111,10 @@ class TestCoreGraphQLQueryDetails:
         await admin_page.get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_text("Metadata updated")).to_be_visible()
 
+        # dismiss the metadata popover so it stops overlaying the breadcrumb
+        await admin_page.get_by_test_id("metadata-tooltip").press("Escape")
+        await expect(admin_page.get_by_test_id("metadata-tooltip")).to_be_hidden()
+
         # return to list using breadcrumb
         await admin_page.get_by_test_id("breadcrumb-navigation").get_by_role("link", name="GraphQL Query").click()
         assert "/objects/CoreGraphQLQuery" in admin_page.url

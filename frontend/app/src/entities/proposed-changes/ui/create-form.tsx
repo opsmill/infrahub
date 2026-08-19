@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { LinkButton, Spinner } from "@infrahub/ui";
-import { Card, CardContent } from "@infrahub/ui/card";
+import { Card, CardContent, LinkButton, Spinner } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 import { useState } from "react";
@@ -22,13 +21,16 @@ import {
 } from "@/shared/components/ui/combobox";
 import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
-import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { branchesState } from "@/entities/branches/stores";
-import { branchesToSelectOptions } from "@/entities/branches/utils";
+import { branchesToSelectOptions } from "@/entities/branches/ui/branches-to-select-options";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { DRAFT_STATE, OPEN_STATE } from "@/entities/proposed-changes/constants";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
+import {
+  DRAFT_STATE,
+  OPEN_STATE,
+} from "@/entities/proposed-changes/domain/model/proposed-change-state";
 import { useCreateProposedChange } from "@/entities/proposed-changes/ui/queries/create-proposed-change.mutation";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -44,7 +46,7 @@ export const ProposedChangeCreateForm = () => {
   const navigate = useNavigate();
   const [state, setState] = useState(OPEN_STATE);
 
-  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGES_OBJECT);
+  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGE_OBJECT);
 
   const { mutateAsync: createProposedChange, error } = useCreateProposedChange();
 

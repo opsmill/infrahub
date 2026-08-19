@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { Popover, PopoverTrigger, Tooltip } from "@infrahub/ui";
 
 import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
@@ -6,10 +7,8 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { DurationDisplay } from "@/shared/components/display/duration-display";
 import { List } from "@/shared/components/table/list";
 import { Link } from "@/shared/components/ui/link";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
 import { ValidatorDetails } from "./validator-details";
 
@@ -23,14 +22,14 @@ const getValidatorState = (state?: string, conclusion?: string) => {
   switch (state) {
     case "queued": {
       return (
-        <Tooltip content="Queued" enabled>
+        <Tooltip message="Queued" nonInteractiveTrigger>
           <Icon icon={"mdi:timer-sand-complete"} className="text-yellow-500" />
         </Tooltip>
       );
     }
     case "in_progress": {
       return (
-        <Tooltip content="In progress" enabled>
+        <Tooltip message="In progress" nonInteractiveTrigger>
           <Icon icon={"mdi:clock-time-four-outline"} className="text-yellow-500" />
         </Tooltip>
       );
@@ -38,7 +37,7 @@ const getValidatorState = (state?: string, conclusion?: string) => {
     case "completed": {
       if (conclusion === "success") {
         return (
-          <Tooltip content="Success" enabled>
+          <Tooltip message="Success" nonInteractiveTrigger>
             <Icon
               icon={"mdi:check-circle-outline"}
               className="text-green-500"
@@ -50,14 +49,14 @@ const getValidatorState = (state?: string, conclusion?: string) => {
 
       if (conclusion === "failure") {
         return (
-          <Tooltip content="Failure" enabled>
+          <Tooltip message="Failure" nonInteractiveTrigger>
             <Icon icon={"mdi:warning"} className="text-red-500" />
           </Tooltip>
         );
       }
 
       return (
-        <Tooltip content="Unknown" enabled>
+        <Tooltip message="Unknown" nonInteractiveTrigger>
           <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500" />
         </Tooltip>
       );
@@ -130,7 +129,7 @@ export const Validator = ({ validator }: tValidatorProps) => {
       <DurationDisplay date={started_at.value} endDate={completed_at.value} />
 
       {artifactDefinition && (
-        <Tooltip content={`Open Artifact Definition: ${artifactDefinition.display_label}`} enabled>
+        <Tooltip message={`Open Artifact Definition: ${artifactDefinition.display_label}`}>
           <Link
             to={getObjectDetailsUrl("CoreArtifactDefinition", artifactDefinition.id)}
             onClick={(e) => e.stopPropagation()}
@@ -141,17 +140,13 @@ export const Validator = ({ validator }: tValidatorProps) => {
         </Tooltip>
       )}
 
-      <div className="flex grow justify-end">
-        <Popover>
-          <PopoverTrigger onClick={(e) => e.stopPropagation()} asChild>
-            <InfoButton />
-          </PopoverTrigger>
+      <PopoverTrigger>
+        <InfoButton className="ml-auto" />
 
-          <PopoverContent>
-            <List columns={columns} row={row} />
-          </PopoverContent>
+        <Popover>
+          <List columns={columns} row={row} />
         </Popover>
-      </div>
+      </PopoverTrigger>
     </div>
   );
 

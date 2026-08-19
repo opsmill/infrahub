@@ -1,5 +1,4 @@
-import { Button } from "@infrahub/ui";
-import { Card, CardContent, type CardProps } from "@infrahub/ui/card";
+import { Button, Card, CardContent, type CardProps } from "@infrahub/ui";
 
 import { Row } from "@/shared/components/container";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
@@ -11,7 +10,8 @@ import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 
 const RepositoryForm = ({
@@ -23,11 +23,13 @@ const RepositoryForm = ({
   ...props
 }: NodeFormProps) => {
   const auth = useAuth();
+  const { currentBranch } = useCurrentBranch();
   const { parentSchema, parentData } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
 
   const fields = getFormFieldsFromSchema({
     auth,
+    isDefaultBranch: !!currentBranch.is_default,
     initialObject: currentObject,
     schema,
     parentSchema,

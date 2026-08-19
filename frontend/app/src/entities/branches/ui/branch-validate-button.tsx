@@ -5,11 +5,11 @@ import { toast } from "react-toastify";
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import type { BranchDetail } from "@/entities/branches/domain/model/branch";
 import { useGetBranchActionState } from "@/entities/branches/ui/queries/get-branch-action-state.query";
 import { useValidateBranch } from "@/entities/branches/ui/queries/validate-branch.mutation";
-import { BRANCH_VALIDATE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
+import { BRANCH_VALIDATE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/domain/model/task";
 
 type BranchValidateButtonProps = {
   branch: BranchDetail;

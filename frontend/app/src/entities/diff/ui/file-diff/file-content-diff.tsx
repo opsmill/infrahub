@@ -5,14 +5,14 @@ import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
 import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+
+import type { FileDiffFile } from "@/entities/diff/domain/use-cases/get-files-diff";
+import { useGetFile } from "@/entities/diff/ui/queries/get-file.query";
+import { useGetFileContentDiff } from "@/entities/diff/ui/queries/get-file-content-diff.query";
 import {
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "@/shared/config/constants";
-
-import type { FileDiffFile } from "@/entities/diff/domain/get-files-diff";
-import { useGetFile } from "@/entities/diff/ui/queries/get-file.query";
-import { useGetFileContentDiff } from "@/entities/diff/ui/queries/get-file-content-diff.query";
+} from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 import "react-diff-view/style/index.css";
@@ -26,7 +26,7 @@ import { diffLines, formatLines } from "unidiff";
 import { Row } from "@/shared/components/container";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";

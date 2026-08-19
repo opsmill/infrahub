@@ -101,6 +101,11 @@ class GeneratedAttributeSchema(HashableModel):
         description="Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.",
         json_schema_extra={"update": "allowed"},
     )
+    ordered: bool = Field(
+        default=True,
+        description="Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+        json_schema_extra={"update": "allowed"},
+    )
     default_value: Any | None = Field(
         default=None, description="Default value of the attribute.", json_schema_extra={"update": "allowed"}
     )

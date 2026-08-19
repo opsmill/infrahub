@@ -10,6 +10,7 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.database import InfrahubDatabase
+from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from tests.adapters.event import MemoryInfrahubEvent
@@ -149,6 +150,11 @@ async def test_update_display_label_update(
     )
     assert not existing_node.errors
     assert existing_node.data
+
+    # The recompute write must emit live origin; a merge/rebase origin would be suppressed by the
+    # coalesced recompute, leaving dependent values stale.
+    assert len(event.events) == 1
+    assert event.events[0].get_resource()[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE.value
 
     gql_params = await prepare_graphql_params(
         db=db, branch=default_branch, account_session=session_first_account, service=service

@@ -5,13 +5,9 @@ from infrahub_sdk import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.diff_locker import DiffLocker
-from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
-from infrahub.core.merge import BranchMerger
-from infrahub.core.merge.constraints import MergeConstraintValidator
+from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
@@ -35,21 +31,17 @@ def _widget_schema(*attribute_names: str) -> dict[str, Any]:
     }
 
 
-async def _build_branch_merger(db: InfrahubDatabase, source_branch: Branch, destination_branch: Branch) -> BranchMerger:
+async def _build_schema_analyzer(
+    db: InfrahubDatabase, source_branch: Branch, destination_branch: Branch
+) -> MergeSchemaAnalyzer:
     component_registry = get_component_registry()
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
-    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=source_branch)
-    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=source_branch)
-    constraint_validator = MergeConstraintValidator(db=db, branch=source_branch, diff_repository=diff_repository)
-    return BranchMerger(
+    return MergeSchemaAnalyzer(
         db=db,
-        diff_coordinator=diff_coordinator,
-        diff_merger=diff_merger,
-        diff_repository=diff_repository,
         source_branch=source_branch,
         destination_branch=destination_branch,
-        diff_locker=DiffLocker(),
-        constraint_validator=constraint_validator,
+        diff_repository=diff_repository,
+        schema_manager=registry.schema,
     )
 
 
@@ -92,8 +84,8 @@ class TestSchemaRebase(TestInfrahubApp):
         was already on main when the branch was rebased and must not resurface as a branch change.
         """
         branch = await Branch.get_by_name(name=rebased_branch, db=db)
-        merger = await _build_branch_merger(db=db, source_branch=branch, destination_branch=default_branch)
-        diff_3way = await merger.get_3ways_diff_schema()
+        analyzer = await _build_schema_analyzer(db=db, source_branch=branch, destination_branch=default_branch)
+        diff_3way = await analyzer.get_3ways_diff_schema()
 
         assert WIDGET_KIND in diff_3way.changed
         widget_attr_diff = diff_3way.changed[WIDGET_KIND].changed.get("attributes")

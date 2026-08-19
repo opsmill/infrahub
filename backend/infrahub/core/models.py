@@ -157,6 +157,11 @@ class SchemaUpdateConstraintInfo(BaseModel):
     model_config = ConfigDict(extra="forbid")
     path: SchemaPath
     constraint_name: str
+    node_uuids: list[str] | None = None
+    """When set, restrict validation to these nodes; None means validate the full population.
+
+    node_uuids=None indicates that all possible matching objects must be checked
+    """
 
     @property
     def routing_key(self) -> str:

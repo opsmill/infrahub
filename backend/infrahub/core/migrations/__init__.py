@@ -1,12 +1,14 @@
+from infrahub.core.validators.enum import ConstraintIdentifier
+
 from .schema.attribute_kind_update import AttributeKindUpdateMigration
 from .schema.attribute_name_update import AttributeNameUpdateMigration
 from .schema.attribute_supports_generated_schema import AttributeSupportsGeneratedSchemaMigration
 from .schema.node_attribute_add import NodeAttributeAddMigration
 from .schema.node_attribute_remove import NodeAttributeRemoveMigration
 from .schema.node_kind_update import NodeKindUpdateMigration
+from .schema.node_relationship_remove import NodeRelationshipRemoveMigration
 from .schema.node_remove import NodeRemoveMigration
 from .schema.node_uniqueness_constraints_update import NodeUniquenessConstraintsUpdateMigration
-from .schema.placeholder_dummy import PlaceholderDummyMigration
 from .shared import SchemaMigration
 
 MIGRATION_MAP: dict[str, type[SchemaMigration] | None] = {
@@ -17,8 +19,8 @@ MIGRATION_MAP: dict[str, type[SchemaMigration] | None] = {
     "node.inherit_from.update": NodeKindUpdateMigration,
     "node.name.update": NodeKindUpdateMigration,
     "node.namespace.update": NodeKindUpdateMigration,
-    "node.relationship.remove": PlaceholderDummyMigration,
-    "node.uniqueness_constraints.update": NodeUniquenessConstraintsUpdateMigration,
+    "node.relationship.remove": NodeRelationshipRemoveMigration,
+    ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value: NodeUniquenessConstraintsUpdateMigration,
     "attribute.name.update": AttributeNameUpdateMigration,
     "attribute.branch.update": None,
     "attribute.kind.update": AttributeKindUpdateMigration,

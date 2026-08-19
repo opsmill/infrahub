@@ -1,18 +1,19 @@
 import { useState } from "react";
 
-import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { FormField } from "@/shared/components/ui/form";
-import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { getCurrentFilterCondition } from "@/entities/nodes/filters/ui/get-current-filter-condition";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
 import {
   FILTER_CONDITION,
   type FilterCondition,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import type { AttributeSchema } from "@/entities/schema/types";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 export type AttributeFilterFormProps = {
   attributeSchema: AttributeSchema;

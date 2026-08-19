@@ -1,5 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { Checkbox, Tooltip } from "@infrahub/ui";
 import { FileBoxIcon } from "lucide-react";
+import { Focusable } from "react-aria-components";
 import type { ControllerRenderProps } from "react-hook-form";
 import { Link } from "react-router";
 
@@ -13,16 +15,14 @@ import type {
   TemplateSource,
 } from "@/shared/components/form/type";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
-import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { Badge } from "@/shared/components/ui/badge";
 import { FormLabel } from "@/shared/components/ui/form";
 import type { LabelProps } from "@/shared/components/ui/label";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
-export const InputUniqueTips = ({ className }: { className: string }) => (
+export const InputUniqueTips = ({ className }: { className?: string }) => (
   <span className={classNames("text-gray-600 text-xs italic leading-3", className)}>
     must be unique
   </span>
@@ -47,16 +47,20 @@ export const LabelFormField = ({
   ...props
 }: LabelFormFieldProps) => {
   return (
-    <div className={classNames("flex h-4 items-center gap-1", className)}>
-      <FormLabel {...props}>
-        {label} {required && "*"}
-      </FormLabel>
-      {unique && <InputUniqueTips className="mb-px self-end" />}
-      {description && <QuestionMark message={description} className="ml-1" />}
+    <div className={classNames("flex flex-col gap-0.5", className)}>
+      <div className="flex min-h-4 flex-wrap items-center gap-1">
+        <FormLabel {...props}>
+          {label} {required && "*"}
+        </FormLabel>
+        {description && <QuestionMark message={description} className="ml-1" />}
 
-      {fieldData?.source?.type === "profile" && <ProfileSourceBadge source={fieldData.source} />}
-      {fieldData?.source?.type === "pool" && <PoolSourceBadge source={fieldData.source} />}
-      {fieldData?.source?.type === "template" && <TemplateSourceBadge source={fieldData.source} />}
+        {fieldData?.source?.type === "profile" && <ProfileSourceBadge source={fieldData.source} />}
+        {fieldData?.source?.type === "pool" && <PoolSourceBadge source={fieldData.source} />}
+        {fieldData?.source?.type === "template" && (
+          <TemplateSourceBadge source={fieldData.source} />
+        )}
+      </div>
+      {unique && <InputUniqueTips />}
     </div>
   );
 };
@@ -64,8 +68,7 @@ export const LabelFormField = ({
 const ProfileSourceBadge = ({ source }: { source: ProfileSource }) => {
   return (
     <Tooltip
-      enabled
-      content={
+      message={
         <div className="max-w-60" data-testid="source-profile-tooltip">
           <p>This value is set by a profile:</p>
           <Link
@@ -78,11 +81,11 @@ const ProfileSourceBadge = ({ source }: { source: ProfileSource }) => {
         </div>
       }
     >
-      <button type="button" className="ml-auto" data-testid="source-profile-badge">
-        <Badge variant="green">
+      <Focusable>
+        <Badge variant="green" className="ml-auto" data-testid="source-profile-badge">
           <Icon icon="mdi:shape-plus-outline" className="mr-1" /> {source?.label}
         </Badge>
-      </button>
+      </Focusable>
     </Tooltip>
   );
 };
@@ -90,12 +93,11 @@ const ProfileSourceBadge = ({ source }: { source: ProfileSource }) => {
 const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
   return (
     <Tooltip
-      enabled
-      content={
+      message={
         <div className="max-w-60">
           <p>This value is allocated from the pool:</p>
           <Link
-            to={getObjectDetailsUrl(source.kind!, source.id)}
+            to={getObjectDetailsUrl(source.kind, source.id)}
             className="inline-flex items-center gap-1 underline"
           >
             {source?.label} <Icon icon="mdi:open-in-new" />
@@ -104,11 +106,11 @@ const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
         </div>
       }
     >
-      <button type="button" className="ml-auto" data-testid="source-pool-badge">
-        <Badge variant="purple">
+      <Focusable>
+        <Badge variant="purple" className="ml-auto" data-testid="source-pool-badge">
           <Icon icon="mdi:view-grid-outline" className="mr-1" /> {source?.label}
         </Badge>
-      </button>
+      </Focusable>
     </Tooltip>
   );
 };
@@ -116,8 +118,7 @@ const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
 const TemplateSourceBadge = ({ source }: { source: TemplateSource }) => {
   return (
     <Tooltip
-      enabled
-      content={
+      message={
         <div className="max-w-60">
           <p>This value is from the following template:</p>
           <Link
@@ -130,11 +131,11 @@ const TemplateSourceBadge = ({ source }: { source: TemplateSource }) => {
         </div>
       }
     >
-      <button type="button" className="ml-auto" data-testid="source-template-badge">
-        <Badge variant="blue">
+      <Focusable>
+        <Badge variant="blue" className="ml-auto" data-testid="source-template-badge">
           <FileBoxIcon className="mr-1 size-3" /> {source?.label}
         </Badge>
-      </button>
+      </Focusable>
     </Tooltip>
   );
 };
@@ -146,35 +147,19 @@ interface ResetActionProps {
 
 export const ResetAction = ({ field, defaultValue }: ResetActionProps) => {
   return (
-    <div className="flex justify-end gap-2 text-gray-600 text-xs">
-      <label htmlFor={`reset_${field.name}`} className="flex cursor-pointer items-center gap-2">
-        <Checkbox
-          id={`reset_${field.name}`}
-          value={field.value?.source?.type === "user" && field.value?.value === null}
-          onClick={(event) => {
-            const value = event.target.checked;
-
-            if (value) {
-              return field.onChange(updateFormFieldValue(null));
-            }
-            return field.onChange(defaultValue);
-          }}
-        />
-        Set empty
-      </label>
-
-      {/* //TODO: Switch to aria component after fixing issue with scroll after checking the input
-          //TODO: Example available with Role and Remove Tags fields on Device */}
-      {/* <Checkbox
-        onChange={(value) => {
-          if (value) {
+    <div className="flex justify-end">
+      <Checkbox
+        isSelected={field.value?.source?.type === "user" && field.value?.value === null}
+        onChange={(isSelected) => {
+          if (isSelected) {
             return field.onChange(updateFormFieldValue(null));
           }
           return field.onChange(defaultValue);
         }}
+        className="font-normal text-gray-600 text-xs"
       >
         Set empty
-      </Checkbox> */}
+      </Checkbox>
     </div>
   );
 };

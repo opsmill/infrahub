@@ -20,6 +20,10 @@ compatibility: Requires the project to use Towncrier for changelog management â€
 
 When NOT to use: the project doesn't use Towncrier; pure internal refactors with no user-facing or maintenance impact; and changes the team has explicitly decided don't warrant an entry. (Most internal maintenance still gets a `housekeeping` fragment.)
 
+**Exception â€” unreleased features need no fragment.** A fix or follow-up to a feature that has not
+shipped in any release is not user-observable: the feature's own `added` fragment already covers
+everything a user will ever see, and a `fixed` entry for something never released is noise.
+
 ## Quick Reference
 
 ```bash

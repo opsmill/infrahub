@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { classNames } from "@/shared/utils/common";
 
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { SchemaViewer } from "@/entities/schema/ui/schema-viewer";
 
@@ -23,7 +23,7 @@ export function SchemaViewerModal({
   const [nestedKind, setNestedKind] = useState<string | null>(null);
 
   return (
-    <Modal aria-label="Schema viewer" className={classNames("w-150 p-0", className)} {...props}>
+    <Modal aria-label="Schema viewer" className={classNames("w-150", className)} {...props}>
       {({ close }) => (
         <>
           <SchemaViewer

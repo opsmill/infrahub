@@ -1,46 +1,40 @@
-import os
-from collections.abc import Iterator
+from typing import Any
 
-import pytest
-
-from infrahub.computed_attribute.tasks import (
-    _chunk_ids,
-    _get_submission_chunk_size,
-)
-
-ENV_VAR = "PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES"
+from infrahub.computed_attribute.tasks import _partition_transform_results
+from infrahub.core.recompute.bulk_write import AttributeValueWrite
 
 
-@pytest.fixture
-def configured_max(request: pytest.FixtureRequest) -> Iterator[str]:
-    value: str = request.param
-    original = os.environ.get(ENV_VAR)
-    os.environ[ENV_VAR] = value
-    yield value
-    if original is None:
-        os.environ.pop(ENV_VAR, None)
-    else:
-        os.environ[ENV_VAR] = original
+def _write(node_id: str, value: Any) -> AttributeValueWrite:
+    return AttributeValueWrite(node_id=node_id, field="desc", value=value)
 
 
-def test_chunk_ids_rejects_zero_chunk_size() -> None:
-    """A zero chunk size is invalid and must never reach the chunker."""
-    with pytest.raises(ValueError, match="must not be zero"):
-        _chunk_ids(["a", "b"], 0)
+def test_partition_transform_results_persists_only_string_values() -> None:
+    """A string value is persisted; a None or non-string value is skipped so the prior value stays."""
+    ok = _write("n1", "hello")
+    null_value = _write("n2", None)
+    wrong_type = _write("n3", 42)
+
+    writes, skipped = _partition_transform_results([("n1", ok), ("n2", null_value), ("n3", wrong_type)])
+
+    assert writes == [ok]
+    reasons = dict(skipped)
+    assert list(reasons) == ["n2", "n3"]
+    assert "NoneType" in reasons["n2"]
+    assert "int" in reasons["n3"]
 
 
-@pytest.mark.parametrize(
-    ("configured_max", "expected"),
-    [
-        ("1", 1),  # 1 // 2 == 0 without the floor, which would break batching
-        ("2", 1),
-        ("10", 5),
-        ("500", 250),
-    ],
-    indirect=["configured_max"],
-)
-def test_submission_chunk_size_is_floored_at_one(configured_max: str, expected: int) -> None:
-    chunk_size = _get_submission_chunk_size()
-    assert chunk_size == expected
-    # The computed size is always usable by the chunker, never zero.
-    assert _chunk_ids(["a", "b", "c"], chunk_size)
+def test_partition_transform_results_isolates_a_failed_node() -> None:
+    """A node whose transform raised is skipped without dropping the healthy nodes' writes."""
+    ok1 = _write("n1", "a")
+    ok2 = _write("n3", "b")
+
+    writes, skipped = _partition_transform_results([("n1", ok1), ("n2", RuntimeError("boom")), ("n3", ok2)])
+
+    assert writes == [ok1, ok2]
+    assert len(skipped) == 1
+    assert skipped[0][0] == "n2"
+    assert "boom" in skipped[0][1]
+
+
+def test_partition_transform_results_handles_empty() -> None:
+    assert _partition_transform_results([]) == ([], [])

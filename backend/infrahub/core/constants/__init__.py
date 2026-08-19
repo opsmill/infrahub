@@ -6,7 +6,14 @@ from infrahub.core.constants import infrahubkind as InfrahubKind  # noqa: N812
 from infrahub.exceptions import ValidationError
 from infrahub.utils import InfrahubNumberEnum, InfrahubStringEnum
 
-from .schema import FlagProperty, NodeProperty, SchemaElementPathType, UpdateSupport, UpdateValidationErrorType
+from .schema import (
+    FlagProperty,
+    NodeProperty,
+    SchemaElementPathType,
+    UpdateSupport,
+    UpdateValidationErrorType,
+    Visibility,
+)
 
 __all__ = [
     "FlagProperty",
@@ -16,6 +23,7 @@ __all__ = [
     "UpdateSupport",
     "UpdateValidationErrorType",
     "ValidationError",
+    "Visibility",
 ]
 
 
@@ -116,6 +124,7 @@ class GlobalPermissions(InfrahubStringEnum):
     REVIEW_PROPOSED_CHANGE = "review_proposed_change"
     MANAGE_SCHEMA = "manage_schema"
     MANAGE_ACCOUNTS = "manage_accounts"
+    MANAGE_GLOBAL_PREFERENCES = "manage_global_preferences"
     MANAGE_PERMISSIONS = "manage_permissions"
     MANAGE_REPOSITORIES = "manage_repositories"
     OVERRIDE_CONTEXT = "override_context"
@@ -398,6 +407,9 @@ class MetadataOptions(Flag):
     USER_TIMESTAMPS = TIMESTAMPS | USERS
 
 
+PROFILE_NAMESPACE = "Profile"
+TEMPLATE_NAMESPACE = "Template"
+
 RESTRICTED_NAMESPACES: list[str] = [
     "Account",
     "Branch",
@@ -409,8 +421,8 @@ RESTRICTED_NAMESPACES: list[str] = [
     "Internal",
     "Lineage",
     "Schema",
-    "Profile",
-    "Template",
+    PROFILE_NAMESPACE,
+    TEMPLATE_NAMESPACE,
 ]
 
 NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"

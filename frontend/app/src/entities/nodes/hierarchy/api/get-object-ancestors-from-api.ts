@@ -1,16 +1,62 @@
-import { gql } from "@apollo/client";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
 
-import {
-  type GetObjectAncestorsQueryParams,
-  getObjectAncestorsQuery,
-} from "@/entities/nodes/hierarchy/api/get-object-ancestors.query";
+export interface GetObjectAncestorsFromApiParams extends ContextParams {
+  objectKind: string;
+  objectId: string;
+}
 
-export interface GetObjectAncestorsFromApiParams
-  extends GetObjectAncestorsQueryParams,
-    ContextParams {}
+function getObjectAncestorsQuery({
+  objectKind,
+  objectId,
+}: Pick<GetObjectAncestorsFromApiParams, "objectKind" | "objectId">): string {
+  return jsonToGraphQLQuery({
+    query: {
+      __name: `Get${objectKind}Ancestors`,
+      [objectKind]: {
+        __args: {
+          ids: [objectId],
+        },
+        edges: {
+          node: {
+            id: true,
+            hfid: true,
+            display_label: true,
+            __typename: true,
+            parent: {
+              node: {
+                id: true,
+                hfid: true,
+                display_label: true,
+                __typename: true,
+              },
+            },
+            ancestors: {
+              edges: {
+                node: {
+                  id: true,
+                  hfid: true,
+                  display_label: true,
+                  __typename: true,
+                  parent: {
+                    node: {
+                      id: true,
+                      hfid: true,
+                      display_label: true,
+                      __typename: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+}
 
 export const getObjectAncestorsFromApi = async ({
   objectKind,
@@ -21,7 +67,7 @@ export const getObjectAncestorsFromApi = async ({
   const query = getObjectAncestorsQuery({ objectKind, objectId });
 
   return graphqlClient.query({
-    query: gql(query),
+    query: graphql(query),
     context: {
       branch: branchName,
       date: atDate,

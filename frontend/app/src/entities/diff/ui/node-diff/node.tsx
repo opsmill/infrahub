@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Card, CardContent } from "@infrahub/ui/card";
+import { Card, CardContent } from "@infrahub/ui";
 import { useEffect, useRef } from "react";
 import { Link, useLocation, useParams } from "react-router";
 
@@ -10,7 +10,7 @@ import { classNames } from "@/shared/utils/common";
 
 import type { DiffNode as DiffNodeType, PropertyType } from "@/entities/diff/ui/node-diff/types";
 import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { DiffNodeAttribute } from "./node-attribute";

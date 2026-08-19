@@ -1,0 +1,1 @@
+Artifact generation no longer deletes artifacts that a narrowed run never examined. A run limited to specific members was treated as having evaluated the whole target group, so the stale-artifact cleanup could remove artifacts whose target was still a member. The cleanup now runs only for a pass that examined every member.

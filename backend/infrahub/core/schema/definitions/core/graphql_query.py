@@ -30,6 +30,12 @@ core_graphql_query = NodeSchema(
         Attr(name="name", kind="Text", unique=True),
         Attr(name="description", kind="Text", optional=True),
         Attr(name="query", kind="TextArea", description="The GraphQL query string"),
+        Attr(
+            name="fingerprint",
+            kind="Text",
+            description="Content hash of the definition's inputs, recomputed on each import",
+            optional=True,
+        ),
         Attr(name="variables", kind="JSON", description="variables in use in the query", optional=True, read_only=True),
         Attr(
             name="operations",

@@ -7,9 +7,8 @@ from infrahub.core.migrations.graph.m029_duplicates_cleanup import Migration029
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships
+from infrahub.database.validation import verify_graph
 from tests.db_snapshot import DbSnapshotterDeduplicated
-from tests.helpers.db_validation import verify_no_duplicate_paths
 
 
 class TestMigration029:
@@ -51,8 +50,7 @@ CALL () {
         execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not execution_result.errors
 
-        await verify_no_duplicate_paths(db=db)
-        await verify_no_duplicate_relationships(db=db)
+        await verify_graph(db=db)
         after_snapshot = await snapshotter.snapshot()
 
         before_snapshot.assert_equal(other=after_snapshot)

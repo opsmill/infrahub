@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from infrahub.config import (
     SETTINGS,
+    ApiSettings,
     DatabaseSettings,
     GitSettings,
     MainSettings,
@@ -20,6 +21,7 @@ from infrahub.config import (
     Settings,
     StorageSettings,
     UserInfoMethod,
+    default_cors_allow_headers,
     load,
 )
 from tests.conftest import TestHelper
@@ -42,6 +44,81 @@ def test_load_sso_config(helper: TestHelper) -> None:
     assert oauth_provider2.userinfo_method == UserInfoMethod.GET
     assert oidc_provider1.userinfo_method == UserInfoMethod.POST
     assert oidc_provider2.userinfo_method == UserInfoMethod.GET
+
+
+def test_default_cors_allow_headers_includes_x_priority() -> None:
+    """The shipped CORS allow-list lets cross-origin browsers send the X-Priority header."""
+    assert "x-priority" in default_cors_allow_headers()
+
+
+# no inf/nan values allowed for backpressure settings
+_NON_FINITE_BACKPRESSURE_FIELDS = [
+    "backpressure_codel_target_seconds",
+    "backpressure_codel_interval_seconds",
+    "backpressure_high_target_multiplier",
+    "backpressure_stress_window_seconds",
+    "backpressure_shed_low_stress_ratio",
+    "backpressure_shed_medium_stress_ratio",
+    "backpressure_shed_high_stress_ratio",
+    "backpressure_backstop_low_multiplier",
+    "backpressure_backstop_high_multiplier",
+    "backpressure_max_concurrency_factor",
+    "backpressure_significant_load_stress_ratio",
+    "backpressure_sustained_load_warn_seconds",
+    "backpressure_sustained_load_high_seconds",
+]
+
+
+@pytest.mark.parametrize("field", _NON_FINITE_BACKPRESSURE_FIELDS)
+def test_backpressure_floats_reject_non_finite_values(field: str) -> None:
+    for value in (float("inf"), float("-inf"), float("nan")):
+        with pytest.raises(ValidationError):
+            ApiSettings.model_validate({field: value})
+
+
+def test_backstop_multipliers_keep_the_caps_ordered_by_priority() -> None:
+    # MEDIUM's cap is the unscaled base, so a high multiplier below 1 or a low multiplier above 1
+    # would leave a higher-priority class with less waiter room than a lower-priority one.
+    with pytest.raises(ValidationError):
+        ApiSettings(backpressure_backstop_high_multiplier=0.5)
+    with pytest.raises(ValidationError):
+        ApiSettings(backpressure_backstop_low_multiplier=2.0)
+
+    # A cap equal to the base is the boundary and stays legal for both classes.
+    settings = ApiSettings(backpressure_backstop_high_multiplier=1.0, backpressure_backstop_low_multiplier=1.0)
+    assert settings.backpressure_backstop_high_multiplier == 1.0
+    assert settings.backpressure_backstop_low_multiplier == 1.0
+
+
+def test_shed_stress_ratios_must_be_ordered_by_priority() -> None:
+    message = re.escape("so lower-priority traffic sheds first")
+    # HIGH triggering before LOW would shed interactive traffic first — the inverse of the feature.
+    with pytest.raises(ValidationError, match=message):
+        ApiSettings(backpressure_shed_low_stress_ratio=100.0, backpressure_shed_high_stress_ratio=5.0)
+    # MEDIUM may not overtake HIGH either.
+    with pytest.raises(ValidationError, match=message):
+        ApiSettings(backpressure_shed_medium_stress_ratio=200.0)
+
+
+def test_shed_stress_ratios_may_be_equal() -> None:
+    # Collapsing the triggers makes every class shed together, which is degenerate but coherent.
+    settings = ApiSettings(
+        backpressure_shed_low_stress_ratio=20.0,
+        backpressure_shed_medium_stress_ratio=20.0,
+        backpressure_shed_high_stress_ratio=20.0,
+    )
+    assert settings.backpressure_shed_medium_stress_ratio == 20.0
+
+
+def test_shipped_backpressure_defaults_satisfy_the_priority_ordering() -> None:
+    settings = ApiSettings()
+
+    assert (
+        settings.backpressure_shed_low_stress_ratio
+        < settings.backpressure_shed_medium_stress_ratio
+        < settings.backpressure_shed_high_stress_ratio
+    )
+    assert settings.backpressure_backstop_low_multiplier <= 1 <= settings.backpressure_backstop_high_multiplier
 
 
 def test_valid_git_settings__sync_branch_names() -> None:

@@ -3,13 +3,21 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from infrahub.core.schema import AttributeSchema  # noqa: TC001
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
     from infrahub.core.schema import NodeSchema
+
+# Reads of these computed/derived fields cannot be mapped back to a precise set of
+# backing schema elements, so an attribute that reads them must be recomputed on any
+# schema change: editing a display_label template moves every label with no data change.
+# Data-change triggers do filter on them by name. Schema names, not the GraphQL spelling.
+IMPRECISE_READ_FIELDS = frozenset({"display_label", "human_friendly_id"})
 
 
 @dataclass
@@ -20,6 +28,47 @@ class PythonDefinition:
     @property
     def key_name(self) -> str:
         return f"{self.kind}_{self.attribute.name}"
+
+
+@dataclass(frozen=True)
+class TransformReadSet:
+    """The schema elements a transform's GraphQL query reads.
+
+    ``depends_on_everything`` is set when the read set cannot be mapped precisely
+    (an unanalyzable query, or a read of a derived field such as the display label).
+    """
+
+    read_kinds: frozenset[str] = frozenset()
+    read_fields: dict[str, frozenset[str]] = field(default_factory=dict)
+    depends_on_everything: bool = False
+
+    @classmethod
+    def imprecise(cls) -> TransformReadSet:
+        return cls(depends_on_everything=True)
+
+    @classmethod
+    def from_read_fields(cls, read_fields_by_kind: Mapping[str, Iterable[str]]) -> TransformReadSet:
+        """Build the read set from a kind to read-field-names mapping.
+
+        The whole set is imprecise when any kind reads a derived field. An imprecise set is
+        recomputed on every schema change.
+
+        A kind the query reaches but reads no field from stays in ``read_kinds`` and is left
+        out of ``read_fields``: adding or removing that kind still triggers, a field change
+        on it does not. Traversing a relationship to a generic reports every member kind,
+        including the ones the query reads nothing from.
+        """
+        read_kinds: set[str] = set()
+        read_fields: dict[str, frozenset[str]] = {}
+        for kind, names in read_fields_by_kind.items():
+            fields = frozenset(names)
+            if fields & IMPRECISE_READ_FIELDS:
+                return cls.imprecise()
+            read_kinds.add(kind)
+            if fields:
+                read_fields[kind] = fields
+
+        return cls(read_kinds=frozenset(read_kinds), read_fields=read_fields)
 
 
 class PythonTransformRegistry:

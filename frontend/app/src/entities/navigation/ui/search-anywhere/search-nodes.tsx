@@ -1,27 +1,28 @@
 import { Icon } from "@iconify-icon/react";
 import { Command, useCommandState } from "cmdk";
-import { format } from "date-fns";
 import { useAtomValue } from "jotai";
 import type { ReactElement } from "react";
 
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
-import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import type { ObjectResult } from "@/entities/navigation/domain/search-anywhere";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
+import type { ObjectResult } from "@/entities/navigation/domain/use-cases/search-anywhere";
 import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-case-sensitive.atom";
 import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { getSchemaObjectColumns } from "@/entities/nodes/object/ui/object-table/get-schema-object-columns";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import type { NodeCore } from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export const SearchNodes = () => {
   const query = useCommandState((state) => state.search);
@@ -155,6 +156,8 @@ type NodeAttributeProps = {
 };
 
 const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
+  const { formatDate } = useFormatDate();
+
   const formatValue = (): string | number | boolean | ReactElement | null => {
     if ("node" in value && value.node) {
       return value.node ? getNodeLabel(value.node) : null;
@@ -177,7 +180,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           );
         case ATTRIBUTE_KIND.DATETIME: {
           const date = typeof value.value === "string" ? new Date(value.value) : new Date();
-          return format(date, "yyyy/MM/dd HH:mm");
+          return formatDate(date, "datetime");
         }
         case ATTRIBUTE_KIND.DROPDOWN: {
           if (!("color" in value)) return value.value;

@@ -1,17 +1,17 @@
 import { Icon } from "@iconify-icon/react";
 import { LinkButton } from "@infrahub/ui";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type {
   NodeCore,
   NodeRelationship,
   NodeRelationshipMany,
   NodeRelationshipOne,
-} from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { RelationshipSchema } from "@/entities/schema/types";
+} from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
 export interface TableRelationshipCellProps {
   relationshipSchema: RelationshipSchema;

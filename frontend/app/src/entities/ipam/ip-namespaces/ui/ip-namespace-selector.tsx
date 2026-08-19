@@ -1,10 +1,9 @@
-import { LinkButton, Spinner } from "@infrahub/ui";
+import { LinkButton, Popover, PopoverTrigger, Spinner } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
 import React from "react";
 import { Button as AriaButton } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import {
@@ -16,10 +15,10 @@ import {
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames, debounce } from "@/shared/utils/common";
 
-import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
+import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/use-cases/get-ip-namespace-list";
 import { useCurrentIpNamespace } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/ui/queries/get-ip-namespace-list.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 
 interface IpNamespaceSelectorProps {
   className?: string;

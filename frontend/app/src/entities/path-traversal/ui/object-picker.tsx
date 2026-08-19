@@ -6,10 +6,10 @@ import { PeerInput } from "@/shared/components/inputs/peer";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { ModelSchema } from "@/entities/schema/types";
 
-import { isVisibleNamespace } from "./utils";
+import { isVisibleNamespace } from "../domain/rules/visible-namespace";
 
 type ObjectPickerProps = {
   label: string;

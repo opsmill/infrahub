@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from typing import Any
 
 from infrahub.core.constants import DiffAction
@@ -8,20 +9,28 @@ from ..model.path import NodeDiffFieldSummary, TrackingId
 
 
 class EnrichedDiffNodeFieldSummaryQuery(Query):
-    """Get node kind and names of all altered attributes and relationships for each kind."""
+    """Get the names of all altered attributes and relationships for one page of changed nodes.
+
+    Pagination is over the changed nodes, strictly ordered, with each row carrying every altered
+    field name of one node; aggregating the fields of every node in one transaction does not scale
+    with large diffs.
+    """
 
     name = "enriched_diff_node_field_summary"
     type = QueryType.READ
+    insert_limit = False
 
     def __init__(
         self,
         diff_branch_name: str,
+        limit: int,
         tracking_id: TrackingId | None = None,
         diff_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.diff_branch_name = diff_branch_name
+        self.limit = limit
         self.tracking_id = tracking_id
         self.diff_id = diff_id
 
@@ -33,6 +42,8 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
             "diff_branch": self.diff_branch_name,
             "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,
             "diff_id": self.diff_id,
+            "node_offset": self.offset or 0,
+            "node_limit": self.limit,
         }
         query = """
         MATCH (diff_root:DiffRoot)
@@ -42,35 +53,40 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
         AND (diff_root.uuid = $diff_id OR $diff_id IS NULL)
         OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(n:DiffNode)
         WHERE n.action <> $unchanged_str
-        WITH DISTINCT diff_root, n.kind AS kind
-        CALL (diff_root, kind) {
-            OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(n:DiffNode {kind: kind})-[:DIFF_HAS_ATTRIBUTE]->(a:DiffAttribute)
-            WHERE n.action <> $unchanged_str
-            AND a.action <> $unchanged_str
-            WITH DISTINCT a.name AS attr_name
-            RETURN collect(attr_name) AS attr_names
+        WITH n
+        ORDER BY n.uuid, elementId(n)
+        SKIP $node_offset
+        LIMIT $node_limit
+        CALL (n) {
+            OPTIONAL MATCH (n)-[:DIFF_HAS_ATTRIBUTE]->(a:DiffAttribute)
+            WHERE a.action <> $unchanged_str
+            RETURN collect(DISTINCT a.name) AS attr_names
         }
-        WITH diff_root, kind, attr_names
-        CALL (diff_root, kind) {
-            OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(n:DiffNode {kind: kind})-[:DIFF_HAS_RELATIONSHIP]->(r:DiffRelationship)
-            WHERE n.action <> $unchanged_str
-            AND r.action <> $unchanged_str
-            WITH DISTINCT r.name AS rel_name
-            RETURN collect(rel_name) AS rel_names
+        CALL (n) {
+            OPTIONAL MATCH (n)-[:DIFF_HAS_RELATIONSHIP]->(r:DiffRelationship)
+            WHERE r.action <> $unchanged_str
+            RETURN collect(DISTINCT r.name) AS rel_names
         }
         """
         self.add_to_query(query=query)
-        self.order_by = ["kind"]
-        self.return_labels = ["kind", "attr_names", "rel_names"]
+        self.return_labels = ["n.kind AS kind", "n.uuid AS node_uuid", "attr_names", "rel_names"]
 
-    async def get_field_summaries(self) -> list[NodeDiffFieldSummary]:
-        field_summaries = []
+    def get_node_field_rows(self) -> Generator[NodeDiffFieldSummary, None, None]:
+        """Yield a single-node field summary for each changed node in this page.
+
+        A node whose fields are all unchanged still yields a summary (with empty field maps) so the
+        caller can count the nodes consumed from this page. A diff root with no changed nodes at all
+        produces one node-less row instead; it is skipped here, which is safe for the caller's
+        consumed-node count because null nodes sort after every real node.
+        """
         for result in self.get_results():
-            kind = result.get_as_type(label="kind", return_type=str)
-            attr_names = result.get_as_type(label="attr_names", return_type=list[str])
-            rel_names = result.get_as_type(label="rel_names", return_type=list[str])
-            if attr_names or rel_names:
-                field_summaries.append(
-                    NodeDiffFieldSummary(kind=kind, attribute_names=set(attr_names), relationship_names=set(rel_names))
-                )
-        return field_summaries
+            kind = result.get_as_str("kind")
+            node_uuid = result.get_as_str("node_uuid")
+            if not kind or not node_uuid:
+                continue
+            summary = NodeDiffFieldSummary(kind=kind)
+            for attr_name in result.get_as_list_of_type(label="attr_names", return_type=str):
+                summary.add_attribute_node_uuid(name=attr_name, node_uuid=node_uuid)
+            for rel_name in result.get_as_list_of_type(label="rel_names", return_type=str):
+                summary.add_relationship_node_uuid(name=rel_name, node_uuid=node_uuid)
+            yield summary

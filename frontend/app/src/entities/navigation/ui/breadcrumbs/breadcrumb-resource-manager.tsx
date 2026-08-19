@@ -1,24 +1,25 @@
 import {
+  Autocomplete,
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbItemError,
   BreadcrumbItemLoading,
   Breadcrumbs,
   Button,
+  ListBox,
+  ListBoxItem,
+  MenuTrigger,
+  Popover,
+  PopoverDialog,
 } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
-import { ListLayout, Virtualizer } from "react-aria-components";
 import { Link, useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
-import { MenuTrigger } from "@/shared/components/aria/menu";
-import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
 
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
-import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
 import { useGetPoolUtilization } from "@/entities/resource-manager/ui/queries/get-pool-utilization.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -91,22 +92,17 @@ function ResourceSelector({
             <PopoverDialog>
               {({ close }) => (
                 <Autocomplete>
-                  <Virtualizer
-                    layout={ListLayout}
-                    layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
-                  >
-                    <ListBox items={resources} onAction={close}>
-                      {(resource) => (
-                        <ListBoxItem
-                          href={constructPath(
-                            `/resource-manager/${resourcePoolId}/resources/${resource.id}`
-                          )}
-                        >
-                          {resource.display_label}
-                        </ListBoxItem>
-                      )}
-                    </ListBox>
-                  </Virtualizer>
+                  <ListBox virtualized items={resources} onAction={close}>
+                    {(resource) => (
+                      <ListBoxItem
+                        href={constructPath(
+                          `/resource-manager/${resourcePoolId}/resources/${resource.id}`
+                        )}
+                      >
+                        {resource.display_label}
+                      </ListBoxItem>
+                    )}
+                  </ListBox>
                 </Autocomplete>
               )}
             </PopoverDialog>

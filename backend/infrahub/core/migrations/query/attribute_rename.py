@@ -171,8 +171,17 @@ class AttributeRenameQuery(Query):
             CALL (new_attr, active_node) {
                 WITH new_attr, active_node
                 WHERE $set_metadata
+                // The renamed Attribute vertex is created here, so it has no prior metadata to snapshot
                 SET new_attr.created_at = $current_time, new_attr.created_by = $user_id
                 SET new_attr.updated_at = $current_time, new_attr.updated_by = $user_id
+                SET active_node.previous_updated_at = CASE
+                        WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
+                        ELSE active_node.previous_updated_at
+                    END,
+                    active_node.previous_updated_by = CASE
+                        WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
+                        ELSE active_node.previous_updated_by
+                    END
                 SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
             }
             RETURN DISTINCT new_attr

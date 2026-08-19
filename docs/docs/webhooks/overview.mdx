@@ -8,7 +8,7 @@ import FastapiWebhookReciever from '!!raw-loader!../media/fastapi_webhook_receiv
 
 # What are webhooks?
 
-Webhooks are HTTP callbacks that deliver data to external systems in real-time when an [event](../events/event-system) occurs within Infrahub. They allow you to:
+Webhooks push data to external systems each time a matching [event](../events/event-system) occurs in Infrahub. Use them to:
 
 - Notify external systems about changes in your infrastructure (for example new configuration generated)
 - Trigger automated workflows in CI/CD pipelines
@@ -16,15 +16,15 @@ Webhooks are HTTP callbacks that deliver data to external systems in real-time w
 - Build custom integrations with your existing toolchain
 
 :::info
-The **Webhook System** also powers the [Activity Log](../deploy-manage/run-observe/activity-log).
+The [Activity Log](../deploy-manage/run-observe/activity-log) is built on the same webhook system.
 :::
 
 ## Configuring webhooks
 
-Infrahub supports two different types of webhooks:
+Infrahub supports two types of webhooks:
 
 - `Standard Webhook` sends event information to an external endpoint. See [Create a webhook](./create.mdx) for setup.
-- `Custom Webhook` allows the ability to tie events to a [Transformation](../transformations/overview) to configure the payload being sent to an external endpoint. See [Webhook with custom Transformation](./custom-transformation.mdx) for the full walkthrough.
+- `Custom Webhook` connects events to a [Transformation](../transformations/overview) so you can shape the payload sent to an external endpoint. See [Webhook with custom Transformation](./custom-transformation.mdx) for the full walkthrough.
 
 :::note
 
@@ -41,7 +41,7 @@ Webhooks can be configured to trigger on specific event types, such as:
 - `infrahub.branch.merged`
 - `infrahub.node.updated`
 
-This allows you to tailor webhooks for specific use cases.
+Tailor a webhook to a specific use case by choosing the events it triggers on.
 
 ### Configuring branch types
 
@@ -268,7 +268,7 @@ Custom headers are defined as reusable **key-value pair** entities that can be s
 1. Create a key-value pair via the UI or GraphQL API, specifying a **name** (human-friendly identifier), a **key** (the HTTP header field name), and a **value**.
 2. Associate the key-value pair with one or more webhooks using the **headers** relationship on the webhook.
 
-A single key-value pair can be linked to multiple webhooks (many-to-many relationship). When the key-value pair is updated, all linked webhooks automatically pick up the new value on their next trigger.
+A single key-value pair can be linked to multiple webhooks (many-to-many relationship). When the key-value pair is updated, all linked webhooks use the new value on their next trigger.
 
 ### Header merge behavior
 
@@ -283,12 +283,41 @@ When a webhook fires, headers are merged in this order:
 For environment-variable-based headers, the value is resolved from `os.environ` on the Prefect worker at send time:
 
 - If the environment variable exists, its value is used as the header value.
-- If the environment variable is **not found**, the header is skipped, a warning is logged, and all remaining headers are still sent.
+- If the environment variable is **not found**, the delivery fails with a configuration error that names the webhook and the header, rather than sending the request without that header.
 
 :::note
 Authentication header values must include the full value including any type prefix. For example, for Bearer token authentication, set the value to `Bearer eyJhbGci...` (not only the token).
 :::
 
+### Header and payload logging
+
+Every delivery attempt is logged with the target URL, the request headers, and the payload, so you can see what was sent from the delivery's task logs. Secret-bearing header values are masked as `***` in that log: environment-sourced values, the `webhook-signature`, and well-known credential headers (`Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`) — matched case-insensitively, regardless of whether the header was configured as static or environment-sourced. The payload is truncated in the log, with the full body available only at debug level.
+
+:::warning
+A static header value is logged verbatim unless its name is one of the well-known credential headers listed above. To keep a secret out of the delivery logs when it is not sent under one of those names, store it as an **Environment Variable Key-Value** header — environment-sourced values are always masked.
+:::
+
+### When a delivery fails
+
+A failed delivery reports a short classified reason with a remediation hint in its task logs — a connection problem, a TLS problem, a timeout, a client-side 4xx, a server-side 5xx, or a configuration error — instead of a raw Python traceback. While retries remain, the log also records when the next attempt will run, so you can tell whether to wait for an automatic retry or step in. An unexpected error that is not a delivery failure still surfaces with its full traceback, so a genuine crash remains distinguishable from an expected failure.
+
 ## Custom webhook transformation
 
 The `data` object from the payloads above is passed to the `transform` method of your custom Transformation. For the full setup walkthrough, see [Webhook with custom Transformation](./custom-transformation.mdx).
+
+## Retrying and cancelling deliveries
+
+Each webhook delivery runs as a task. Open a webhook and select a delivery from its related tasks to act on it from the task detail page.
+
+| Action | When it is available | What it does |
+|--------|----------------------|--------------|
+| Retry | The delivery has finished, or is being cancelled | Re-sends the original payload as a new delivery and leaves the original record unchanged. Useful when a delivery failed because the target was temporarily unavailable or misconfigured. |
+| Cancel | The delivery is still running or waiting to retry | Stops the delivery, including one waiting to be retried, so no further attempts are made. A request already in flight to the target cannot be recalled. |
+
+The Retry and Cancel actions appear only when they apply to the delivery's current state. Retrying creates a new delivery with the same settings and leaves the original unchanged; the new delivery re-computes its signature and runs against the current webhook configuration. Retry is available on any finished delivery, including one that already succeeded, so you can re-deliver an event on demand.
+
+## Writing a reliable receiver
+
+- **Return a `2xx` status quickly.** The response acknowledges receipt; an endpoint slower than the delivery timeout is treated as a failed attempt.
+- **Make the receiver idempotent.** Transient failures — connection errors, timeouts, and `5xx` responses — are retried automatically, and a delivery can also be retried manually, so the same event can arrive more than once. Use the `webhook-id` header to detect duplicates.
+- **Verify the signature before trusting a payload.** When a shared key is configured, check the `webhook-signature` header against it — see [Shared key for security](#shared-key-for-security).

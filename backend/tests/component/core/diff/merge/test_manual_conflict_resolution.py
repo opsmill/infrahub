@@ -19,9 +19,9 @@ from infrahub.core.metadata.query.node_metadata import NodeMetadataDefaultBranch
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from infrahub.exceptions import NodeNotFoundError
 from tests.component.core.diff.get_one_node import get_one_diff_node
-from tests.helpers.db_validation import verify_graph
 
 from .conftest import get_diff_coordinator, get_diff_merger
 
@@ -162,7 +162,7 @@ async def test_branch_delete_with_added_base_relationship(
     assert alfred_meta.updated_by == "main-user-2"
     assert before_owner_rel_resolved < alfred_meta.updated_at < after_owner_rel_resolved
 
-    await diff_merger.rollback(at=merge_at)
+    await diff_merger.rollback(merge_started_at=merge_at)
 
     rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id, include_metadata=MetadataOptions.OWNER)
     owner_rel = await rolled_back_car.owner.get(db=db)
@@ -309,7 +309,7 @@ async def test_base_delete_with_added_branch_relationship(
     alfred_rels_to_car = [r for r in alfred_meta.relationships if r.peer_uuid == car_accord_main.id]
     assert len(alfred_rels_to_car) == 0
 
-    await diff_merger.rollback(at=merge_at)
+    await diff_merger.rollback(merge_started_at=merge_at)
 
     # validate that car remains deleted after rollback (no change expected)
     rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id)

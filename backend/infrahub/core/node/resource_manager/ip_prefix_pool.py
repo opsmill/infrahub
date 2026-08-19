@@ -16,6 +16,7 @@ from infrahub.exceptions import ValidationError
 
 from .. import Node
 from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
+from .reservation import validate_reserved_prefix_length
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -32,11 +33,15 @@ class CoreIPPrefixPool(Node):
         identifier: str | None = None,
         data: dict[str, Any] | None = None,
         prefixlen: int | None = None,
+        size: int | None = None,
         member_type: str | None = None,
         prefix_type: str | None = None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
     ) -> Node:
+        # TODO(IFC-2945): drop this alias once the public `size` input field is renamed to `prefixlen`.
+        if prefixlen is None:
+            prefixlen = size
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # Check if there is already a resource allocated with this identifier
             # if not, pull all existing prefixes and allocated the next available
@@ -49,6 +54,13 @@ class CoreIPPrefixPool(Node):
                     # TODO add support for branch, if the node is reserved with this id in another branch we should return an error
                     node = await registry.manager.get_one(db=db, id=prefix.get("uuid"), branch=branch)
                     if node:
+                        validate_reserved_prefix_length(
+                            pool_kind="IPPrefixPool",
+                            pool_name=str(self.get_attribute("name").value),
+                            reserved_value=node.get_attribute("prefix").value,
+                            prefixlen=prefixlen,
+                            data=data,
+                        )
                         return node
 
             ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]

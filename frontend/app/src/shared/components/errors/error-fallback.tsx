@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
-import { Card, CardContent } from "@infrahub/ui/card";
+import { Button, Card, CardContent } from "@infrahub/ui";
 import { useEffect, useState } from "react";
 
 import { Col, Row } from "@/shared/components/container";

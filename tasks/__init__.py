@@ -2,7 +2,7 @@
 
 from invoke import Collection, Context, task
 
-from . import backend, bundle, demo, dev, docs, frontend, main, performance, release, schema, sdk
+from . import backend, demo, dev, docs, frontend, main, performance, release, schema, sdk
 from .utils import ESCAPED_REPO_PATH
 
 ns = Collection()
@@ -12,7 +12,6 @@ ns.add_collection(docs)
 ns.add_collection(performance)
 ns.add_collection(backend)
 ns.add_collection(frontend)
-ns.add_collection(bundle)
 ns.add_collection(demo)
 ns.add_collection(main)
 ns.add_collection(schema)
