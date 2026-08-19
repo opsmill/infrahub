@@ -1,10 +1,24 @@
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
+
+from infrahub.core.constants import infrahubkind
+from infrahub.core.manager import NodeManager
 
 from ..query import MigrationQuery
 from ..query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
-from ..shared import SchemaMigration
+from ..shared import MigrationInput, MigrationResult, SchemaMigration
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+
+
+# Pool kinds and their text attributes that store node kind references
+POOL_NODE_KIND_ATTRIBUTES: list[tuple[str, str]] = [
+    (infrahubkind.NUMBERPOOL, "node"),
+    (infrahubkind.IPADDRESSPOOL, "default_address_type"),
+    (infrahubkind.IPPREFIXPOOL, "default_prefix_type"),
+]
 
 
 class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):
@@ -38,3 +52,56 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):
 class NodeKindUpdateMigration(SchemaMigration):
     name: str = "node.kind.update"
     queries: Sequence[type[MigrationQuery]] = [NodeKindUpdateMigrationQuery01]  # type: ignore[assignment]
+
+    async def execute_post_queries(
+        self,
+        migration_input: MigrationInput,
+        result: MigrationResult,
+        branch: Branch,
+    ) -> MigrationResult:
+        """Update pool nodes that reference the renamed node kind."""
+        old_kind = self.previous_schema.kind
+        new_kind = self.new_schema.kind
+
+        # Skip if kind hasn't actually changed (e.g., only inherit_from changed)
+        if old_kind == new_kind:
+            return result
+
+        db = migration_input.db
+
+        for pool_kind, attr_name in POOL_NODE_KIND_ATTRIBUTES:
+            # Skip if the pool schema isn't registered (e.g., in test environments)
+            if not db.schema.has(name=pool_kind, branch=branch.name):
+                continue
+
+            # Query for pool nodes where the attribute value matches the old kind
+            pools = await NodeManager.query(
+                db=db,
+                branch=branch,
+                schema=pool_kind,
+                filters={attr_name: {"value": old_kind}},
+            )
+
+            for pool in pools:
+                fields_to_save = [attr_name]
+
+                # Update the kind reference attribute
+                attr = pool.get_attribute(name=attr_name)
+                attr.value = new_kind
+
+                # Update the pool name if it follows the auto-generated pattern
+                try:
+                    name_attr = pool.get_attribute(name="name")
+                except ValueError:
+                    pass
+                else:
+                    old_prefix = f"{old_kind}."
+                    new_prefix = f"{new_kind}."
+                    if name_attr.value.startswith(old_prefix):
+                        name_attr.value = name_attr.value.replace(old_prefix, new_prefix, 1)
+                        fields_to_save.append("name")
+
+                await pool.save(db=db, fields=fields_to_save, at=migration_input.at)
+                result.nbr_migrations_executed += 1
+
+        return result
