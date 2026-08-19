@@ -12,6 +12,9 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.node import Node
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
+from infrahub.trigger.constants import NAME_SEPARATOR
+from infrahub.trigger.models import TriggerType
+from infrahub.trigger.setup import gather_all_automations
 from infrahub.webhook.tasks import process
 from infrahub.workflows.catalogue import (
     WEBHOOK_CONFIGURE,
@@ -99,6 +102,23 @@ async def initial_dataset(
 async def prefect_client(prefect_test_fixture: None) -> AsyncGenerator[PrefectClient, None]:
     async with get_client(sync_client=False) as client:
         yield client
+
+
+@pytest.fixture(scope="class", autouse=True)
+async def delete_webhook_automations(prefect_client: PrefectClient) -> AsyncGenerator[None, None]:
+    """Delete the webhook automations a test class registered, once the class is done with them.
+
+    The Prefect test server is session-scoped, so an automation outlives the class that created it
+    while the webhook node behind it is dropped with the class database. A surviving all-branches
+    automation then turns every event any later test emits in this session into a scheduled
+    webhook-process run that no worker ever executes, filling the server's database and pushing the
+    run count past the API's 200-row page size.
+    """
+    yield
+    webhook_prefix = f"{TriggerType.WEBHOOK.value}{NAME_SEPARATOR}"
+    for automation in await gather_all_automations(client=prefect_client):
+        if automation.id and automation.name.startswith(webhook_prefix):
+            await prefect_client.delete_automation(automation_id=automation.id)
 
 
 @pytest.fixture(scope="class")
