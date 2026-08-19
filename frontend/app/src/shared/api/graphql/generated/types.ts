@@ -3179,6 +3179,8 @@ export type CoreArtifactValidatorChecksArgs = {
   conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   conclusion__value?: InputMaybe<Scalars['String']['input']>;
   conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -4822,6 +4824,8 @@ export type CoreDataValidatorChecksArgs = {
   conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   conclusion__value?: InputMaybe<Scalars['String']['input']>;
   conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -6903,6 +6907,8 @@ export type CoreGeneratorValidatorChecksArgs = {
   conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   conclusion__value?: InputMaybe<Scalars['String']['input']>;
   conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12062,6 +12068,8 @@ export type CoreProposedChangeThreadsArgs = {
 
 /** Metadata related to a proposed change */
 export type CoreProposedChangeValidationsArgs = {
+  completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12085,6 +12093,8 @@ export type CoreProposedChangeValidationsArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
+  started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -13380,6 +13390,8 @@ export type CoreRepositoryValidatorChecksArgs = {
   conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   conclusion__value?: InputMaybe<Scalars['String']['input']>;
   conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -13901,6 +13913,8 @@ export type CoreSchemaValidatorChecksArgs = {
   conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   conclusion__value?: InputMaybe<Scalars['String']['input']>;
   conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -16049,6 +16063,8 @@ export type CoreUserValidatorChecksArgs = {
   conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   conclusion__value?: InputMaybe<Scalars['String']['input']>;
   conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -16276,6 +16292,8 @@ export type CoreValidatorChecksArgs = {
   conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   conclusion__value?: InputMaybe<Scalars['String']['input']>;
   conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -26616,6 +26634,8 @@ export type QueryCoreArtifactCheckArgs = {
   conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   conclusion__value?: InputMaybe<Scalars['String']['input']>;
   conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -26714,6 +26734,8 @@ export type QueryCoreArtifactCheckArgs = {
   subscriber_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -26734,6 +26756,8 @@ export type QueryCoreArtifactCheckArgs = {
   validator__label__source__id?: InputMaybe<Scalars['ID']['input']>;
   validator__label__value?: InputMaybe<Scalars['String']['input']>;
   validator__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -27182,6 +27206,8 @@ export type QueryCoreArtifactValidatorArgs = {
   checks__conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__conclusion__value?: InputMaybe<Scalars['String']['input']>;
   checks__conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  checks__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  checks__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   checks__created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   checks__created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   checks__created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -27222,6 +27248,8 @@ export type QueryCoreArtifactValidatorArgs = {
   checks__severity__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__severity__value?: InputMaybe<Scalars['String']['input']>;
   checks__severity__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -27341,6 +27369,8 @@ export type QueryCoreArtifactValidatorArgs = {
   proposed_change__total_comments__source__id?: InputMaybe<Scalars['ID']['input']>;
   proposed_change__total_comments__value?: InputMaybe<Scalars['BigInt']['input']>;
   proposed_change__total_comments__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -27664,6 +27694,8 @@ export type QueryCoreCheckArgs = {
   conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   conclusion__value?: InputMaybe<Scalars['String']['input']>;
   conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -27750,6 +27782,8 @@ export type QueryCoreCheckArgs = {
   subscriber_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -27770,6 +27804,8 @@ export type QueryCoreCheckArgs = {
   validator__label__source__id?: InputMaybe<Scalars['ID']['input']>;
   validator__label__value?: InputMaybe<Scalars['String']['input']>;
   validator__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -28355,6 +28391,8 @@ export type QueryCoreDataCheckArgs = {
   conflicts__source__id?: InputMaybe<Scalars['ID']['input']>;
   conflicts__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   conflicts__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -28453,6 +28491,8 @@ export type QueryCoreDataCheckArgs = {
   subscriber_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -28473,6 +28513,8 @@ export type QueryCoreDataCheckArgs = {
   validator__label__source__id?: InputMaybe<Scalars['ID']['input']>;
   validator__label__value?: InputMaybe<Scalars['String']['input']>;
   validator__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -28497,6 +28539,8 @@ export type QueryCoreDataValidatorArgs = {
   checks__conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__conclusion__value?: InputMaybe<Scalars['String']['input']>;
   checks__conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  checks__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  checks__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   checks__created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   checks__created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   checks__created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -28537,6 +28581,8 @@ export type QueryCoreDataValidatorArgs = {
   checks__severity__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__severity__value?: InputMaybe<Scalars['String']['input']>;
   checks__severity__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -28626,6 +28672,8 @@ export type QueryCoreDataValidatorArgs = {
   proposed_change__total_comments__source__id?: InputMaybe<Scalars['ID']['input']>;
   proposed_change__total_comments__value?: InputMaybe<Scalars['BigInt']['input']>;
   proposed_change__total_comments__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -28750,6 +28798,8 @@ export type QueryCoreFileCheckArgs = {
   conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   conclusion__value?: InputMaybe<Scalars['String']['input']>;
   conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -28842,6 +28892,8 @@ export type QueryCoreFileCheckArgs = {
   subscriber_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -28862,6 +28914,8 @@ export type QueryCoreFileCheckArgs = {
   validator__label__source__id?: InputMaybe<Scalars['ID']['input']>;
   validator__label__value?: InputMaybe<Scalars['String']['input']>;
   validator__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29384,6 +29438,8 @@ export type QueryCoreGeneratorCheckArgs = {
   conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   conclusion__value?: InputMaybe<Scalars['String']['input']>;
   conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29476,6 +29532,8 @@ export type QueryCoreGeneratorCheckArgs = {
   subscriber_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29496,6 +29554,8 @@ export type QueryCoreGeneratorCheckArgs = {
   validator__label__source__id?: InputMaybe<Scalars['ID']['input']>;
   validator__label__value?: InputMaybe<Scalars['String']['input']>;
   validator__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29990,6 +30050,8 @@ export type QueryCoreGeneratorValidatorArgs = {
   checks__conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__conclusion__value?: InputMaybe<Scalars['String']['input']>;
   checks__conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  checks__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  checks__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   checks__created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   checks__created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   checks__created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -30030,6 +30092,8 @@ export type QueryCoreGeneratorValidatorArgs = {
   checks__severity__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__severity__value?: InputMaybe<Scalars['String']['input']>;
   checks__severity__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -30164,6 +30228,8 @@ export type QueryCoreGeneratorValidatorArgs = {
   proposed_change__total_comments__source__id?: InputMaybe<Scalars['ID']['input']>;
   proposed_change__total_comments__value?: InputMaybe<Scalars['BigInt']['input']>;
   proposed_change__total_comments__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33550,6 +33616,8 @@ export type QueryCoreProposedChangeArgs = {
   total_comments__source__id?: InputMaybe<Scalars['ID']['input']>;
   total_comments__value?: InputMaybe<Scalars['BigInt']['input']>;
   total_comments__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  validations__completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validations__completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validations__completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validations__completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validations__completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33570,6 +33638,8 @@ export type QueryCoreProposedChangeArgs = {
   validations__label__source__id?: InputMaybe<Scalars['ID']['input']>;
   validations__label__value?: InputMaybe<Scalars['String']['input']>;
   validations__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validations__started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validations__started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validations__started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validations__started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validations__started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34400,6 +34470,8 @@ export type QueryCoreRepositoryValidatorArgs = {
   checks__conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__conclusion__value?: InputMaybe<Scalars['String']['input']>;
   checks__conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  checks__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  checks__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   checks__created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   checks__created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   checks__created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34440,6 +34512,8 @@ export type QueryCoreRepositoryValidatorArgs = {
   checks__severity__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__severity__value?: InputMaybe<Scalars['String']['input']>;
   checks__severity__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34564,6 +34638,8 @@ export type QueryCoreRepositoryValidatorArgs = {
   repository__sync_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__sync_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__sync_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34676,6 +34752,8 @@ export type QueryCoreSchemaCheckArgs = {
   conflicts__source__id?: InputMaybe<Scalars['ID']['input']>;
   conflicts__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   conflicts__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34768,6 +34846,8 @@ export type QueryCoreSchemaCheckArgs = {
   subscriber_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34788,6 +34868,8 @@ export type QueryCoreSchemaCheckArgs = {
   validator__label__source__id?: InputMaybe<Scalars['ID']['input']>;
   validator__label__value?: InputMaybe<Scalars['String']['input']>;
   validator__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34812,6 +34894,8 @@ export type QueryCoreSchemaValidatorArgs = {
   checks__conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__conclusion__value?: InputMaybe<Scalars['String']['input']>;
   checks__conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  checks__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  checks__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   checks__created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   checks__created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   checks__created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34852,6 +34936,8 @@ export type QueryCoreSchemaValidatorArgs = {
   checks__severity__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__severity__value?: InputMaybe<Scalars['String']['input']>;
   checks__severity__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34941,6 +35027,8 @@ export type QueryCoreSchemaValidatorArgs = {
   proposed_change__total_comments__source__id?: InputMaybe<Scalars['ID']['input']>;
   proposed_change__total_comments__value?: InputMaybe<Scalars['BigInt']['input']>;
   proposed_change__total_comments__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34981,6 +35069,8 @@ export type QueryCoreStandardCheckArgs = {
   conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   conclusion__value?: InputMaybe<Scalars['String']['input']>;
   conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35067,6 +35157,8 @@ export type QueryCoreStandardCheckArgs = {
   subscriber_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35087,6 +35179,8 @@ export type QueryCoreStandardCheckArgs = {
   validator__label__source__id?: InputMaybe<Scalars['ID']['input']>;
   validator__label__value?: InputMaybe<Scalars['String']['input']>;
   validator__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validator__started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  validator__started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   validator__started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   validator__started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   validator__started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36458,6 +36552,8 @@ export type QueryCoreUserValidatorArgs = {
   checks__conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__conclusion__value?: InputMaybe<Scalars['String']['input']>;
   checks__conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  checks__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  checks__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   checks__created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   checks__created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   checks__created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36498,6 +36594,8 @@ export type QueryCoreUserValidatorArgs = {
   checks__severity__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__severity__value?: InputMaybe<Scalars['String']['input']>;
   checks__severity__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36622,6 +36720,8 @@ export type QueryCoreUserValidatorArgs = {
   repository__sync_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__sync_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__sync_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36661,6 +36761,8 @@ export type QueryCoreValidatorArgs = {
   checks__conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__conclusion__value?: InputMaybe<Scalars['String']['input']>;
   checks__conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  checks__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  checks__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   checks__created_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   checks__created_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
   checks__created_at__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36701,6 +36803,8 @@ export type QueryCoreValidatorArgs = {
   checks__severity__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__severity__value?: InputMaybe<Scalars['String']['input']>;
   checks__severity__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  completed_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  completed_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36790,6 +36894,8 @@ export type QueryCoreValidatorArgs = {
   proposed_change__total_comments__source__id?: InputMaybe<Scalars['ID']['input']>;
   proposed_change__total_comments__value?: InputMaybe<Scalars['BigInt']['input']>;
   proposed_change__total_comments__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  started_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  started_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;

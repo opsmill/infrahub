@@ -1526,7 +1526,60 @@ input CoreArtifactUpsertInput {
 
 """A validator related to the artifacts"""
 type CoreArtifactValidator implements CoreNode & CoreValidator {
-  checks(conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, kind__is_protected: Boolean, kind__owner__id: ID, kind__source__id: ID, kind__value: String, kind__values: [String], label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, message__is_protected: Boolean, message__owner__id: ID, message__source__id: ID, message__value: String, message__values: [String], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String], severity__is_protected: Boolean, severity__owner__id: ID, severity__source__id: ID, severity__value: String, severity__values: [String]): NestedPaginatedCoreCheck!
+  checks(
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
+    created_at__is_protected: Boolean
+    created_at__owner__id: ID
+    created_at__source__id: ID
+    created_at__value: DateTime
+    created_at__values: [DateTime]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    ids: [ID]
+    isnull: Boolean
+    kind__is_protected: Boolean
+    kind__owner__id: ID
+    kind__source__id: ID
+    kind__value: String
+    kind__values: [String]
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    message__is_protected: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    name__is_protected: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    offset: Int
+    order: OrderInput
+    origin__is_protected: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
+    severity__is_protected: Boolean
+    severity__owner__id: ID
+    severity__source__id: ID
+    severity__value: String
+    severity__values: [String]
+  ): NestedPaginatedCoreCheck!
   """Timestamp when the validator finished"""
   completed_at: TextAttribute
   """Final outcome of the validation"""
@@ -2297,7 +2350,60 @@ input CoreDataCheckUpsertInput {
 
 """A check to validate the data integrity between two branches"""
 type CoreDataValidator implements CoreNode & CoreValidator {
-  checks(conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, kind__is_protected: Boolean, kind__owner__id: ID, kind__source__id: ID, kind__value: String, kind__values: [String], label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, message__is_protected: Boolean, message__owner__id: ID, message__source__id: ID, message__value: String, message__values: [String], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String], severity__is_protected: Boolean, severity__owner__id: ID, severity__source__id: ID, severity__value: String, severity__values: [String]): NestedPaginatedCoreCheck!
+  checks(
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
+    created_at__is_protected: Boolean
+    created_at__owner__id: ID
+    created_at__source__id: ID
+    created_at__value: DateTime
+    created_at__values: [DateTime]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    ids: [ID]
+    isnull: Boolean
+    kind__is_protected: Boolean
+    kind__owner__id: ID
+    kind__source__id: ID
+    kind__value: String
+    kind__values: [String]
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    message__is_protected: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    name__is_protected: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    offset: Int
+    order: OrderInput
+    origin__is_protected: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
+    severity__is_protected: Boolean
+    severity__owner__id: ID
+    severity__source__id: ID
+    severity__value: String
+    severity__values: [String]
+  ): NestedPaginatedCoreCheck!
   """Timestamp when the validator finished"""
   completed_at: TextAttribute
   """Final outcome of the validation"""
@@ -3351,7 +3457,60 @@ input CoreGeneratorInstanceUpsertInput {
 
 """A validator related to generators"""
 type CoreGeneratorValidator implements CoreNode & CoreValidator {
-  checks(conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, kind__is_protected: Boolean, kind__owner__id: ID, kind__source__id: ID, kind__value: String, kind__values: [String], label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, message__is_protected: Boolean, message__owner__id: ID, message__source__id: ID, message__value: String, message__values: [String], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String], severity__is_protected: Boolean, severity__owner__id: ID, severity__source__id: ID, severity__value: String, severity__values: [String]): NestedPaginatedCoreCheck!
+  checks(
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
+    created_at__is_protected: Boolean
+    created_at__owner__id: ID
+    created_at__source__id: ID
+    created_at__value: DateTime
+    created_at__values: [DateTime]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    ids: [ID]
+    isnull: Boolean
+    kind__is_protected: Boolean
+    kind__owner__id: ID
+    kind__source__id: ID
+    kind__value: String
+    kind__values: [String]
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    message__is_protected: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    name__is_protected: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    offset: Int
+    order: OrderInput
+    origin__is_protected: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
+    severity__is_protected: Boolean
+    severity__owner__id: ID
+    severity__source__id: ID
+    severity__value: String
+    severity__values: [String]
+  ): NestedPaginatedCoreCheck!
   """Timestamp when the validator finished"""
   completed_at: TextAttribute
   """Final outcome of the validation"""
@@ -5457,7 +5616,49 @@ type CoreProposedChange implements CoreNode & CoreTaskTarget {
   threads(ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, offset: Int, order: OrderInput, resolved__is_protected: Boolean, resolved__owner__id: ID, resolved__source__id: ID, resolved__value: Boolean, resolved__values: [Boolean]): NestedPaginatedCoreThread!
   """Total number of comments on this proposed change"""
   total_comments: NumberAttribute
-  validations(completed_at__is_protected: Boolean, completed_at__owner__id: ID, completed_at__source__id: ID, completed_at__value: DateTime, completed_at__values: [DateTime], conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, offset: Int, order: OrderInput, started_at__is_protected: Boolean, started_at__owner__id: ID, started_at__source__id: ID, started_at__value: DateTime, started_at__values: [DateTime], state__is_protected: Boolean, state__owner__id: ID, state__source__id: ID, state__value: String, state__values: [String]): NestedPaginatedCoreValidator!
+  validations(
+    """Filter where completed_at is strictly after this timestamp"""
+    completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    completed_at__before: DateTime
+    completed_at__is_protected: Boolean
+    completed_at__owner__id: ID
+    completed_at__source__id: ID
+    completed_at__value: DateTime
+    completed_at__values: [DateTime]
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    ids: [ID]
+    isnull: Boolean
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    offset: Int
+    order: OrderInput
+    """Filter where started_at is strictly after this timestamp"""
+    started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    started_at__before: DateTime
+    started_at__is_protected: Boolean
+    started_at__owner__id: ID
+    started_at__source__id: ID
+    started_at__value: DateTime
+    started_at__values: [DateTime]
+    state__is_protected: Boolean
+    state__owner__id: ID
+    state__source__id: ID
+    state__value: String
+    state__values: [String]
+  ): NestedPaginatedCoreValidator!
 }
 
 """Metadata related to a proposed change"""
@@ -5945,7 +6146,60 @@ input CoreRepositoryUpsertInput {
 
 """A Validator related to a specific repository"""
 type CoreRepositoryValidator implements CoreNode & CoreValidator {
-  checks(conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, kind__is_protected: Boolean, kind__owner__id: ID, kind__source__id: ID, kind__value: String, kind__values: [String], label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, message__is_protected: Boolean, message__owner__id: ID, message__source__id: ID, message__value: String, message__values: [String], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String], severity__is_protected: Boolean, severity__owner__id: ID, severity__source__id: ID, severity__value: String, severity__values: [String]): NestedPaginatedCoreCheck!
+  checks(
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
+    created_at__is_protected: Boolean
+    created_at__owner__id: ID
+    created_at__source__id: ID
+    created_at__value: DateTime
+    created_at__values: [DateTime]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    ids: [ID]
+    isnull: Boolean
+    kind__is_protected: Boolean
+    kind__owner__id: ID
+    kind__source__id: ID
+    kind__value: String
+    kind__values: [String]
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    message__is_protected: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    name__is_protected: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    offset: Int
+    order: OrderInput
+    origin__is_protected: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
+    severity__is_protected: Boolean
+    severity__owner__id: ID
+    severity__source__id: ID
+    severity__value: String
+    severity__values: [String]
+  ): NestedPaginatedCoreCheck!
   """Timestamp when the validator finished"""
   completed_at: TextAttribute
   """Final outcome of the validation"""
@@ -6209,7 +6463,60 @@ input CoreSchemaCheckUpsertInput {
 
 """A validator related to the schema"""
 type CoreSchemaValidator implements CoreNode & CoreValidator {
-  checks(conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, kind__is_protected: Boolean, kind__owner__id: ID, kind__source__id: ID, kind__value: String, kind__values: [String], label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, message__is_protected: Boolean, message__owner__id: ID, message__source__id: ID, message__value: String, message__values: [String], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String], severity__is_protected: Boolean, severity__owner__id: ID, severity__source__id: ID, severity__value: String, severity__values: [String]): NestedPaginatedCoreCheck!
+  checks(
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
+    created_at__is_protected: Boolean
+    created_at__owner__id: ID
+    created_at__source__id: ID
+    created_at__value: DateTime
+    created_at__values: [DateTime]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    ids: [ID]
+    isnull: Boolean
+    kind__is_protected: Boolean
+    kind__owner__id: ID
+    kind__source__id: ID
+    kind__value: String
+    kind__values: [String]
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    message__is_protected: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    name__is_protected: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    offset: Int
+    order: OrderInput
+    origin__is_protected: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
+    severity__is_protected: Boolean
+    severity__owner__id: ID
+    severity__source__id: ID
+    severity__value: String
+    severity__values: [String]
+  ): NestedPaginatedCoreCheck!
   """Timestamp when the validator finished"""
   completed_at: TextAttribute
   """Final outcome of the validation"""
@@ -7230,7 +7537,60 @@ input CoreTriggerRuleUpdateInput {
 """A Validator related to a user defined checks in a repository"""
 type CoreUserValidator implements CoreNode & CoreValidator {
   check_definition: NestedEdgedCoreCheckDefinition!
-  checks(conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, kind__is_protected: Boolean, kind__owner__id: ID, kind__source__id: ID, kind__value: String, kind__values: [String], label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, message__is_protected: Boolean, message__owner__id: ID, message__source__id: ID, message__value: String, message__values: [String], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String], severity__is_protected: Boolean, severity__owner__id: ID, severity__source__id: ID, severity__value: String, severity__values: [String]): NestedPaginatedCoreCheck!
+  checks(
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
+    created_at__is_protected: Boolean
+    created_at__owner__id: ID
+    created_at__source__id: ID
+    created_at__value: DateTime
+    created_at__values: [DateTime]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    ids: [ID]
+    isnull: Boolean
+    kind__is_protected: Boolean
+    kind__owner__id: ID
+    kind__source__id: ID
+    kind__value: String
+    kind__values: [String]
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    message__is_protected: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    name__is_protected: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    offset: Int
+    order: OrderInput
+    origin__is_protected: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
+    severity__is_protected: Boolean
+    severity__owner__id: ID
+    severity__source__id: ID
+    severity__value: String
+    severity__values: [String]
+  ): NestedPaginatedCoreCheck!
   """Timestamp when the validator finished"""
   completed_at: TextAttribute
   """Final outcome of the validation"""
@@ -7335,7 +7695,60 @@ input CoreUserValidatorUpsertInput {
 
 """A validator that runs checks against a proposed change"""
 interface CoreValidator {
-  checks(conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, kind__is_protected: Boolean, kind__owner__id: ID, kind__source__id: ID, kind__value: String, kind__values: [String], label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, message__is_protected: Boolean, message__owner__id: ID, message__source__id: ID, message__value: String, message__values: [String], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String], severity__is_protected: Boolean, severity__owner__id: ID, severity__source__id: ID, severity__value: String, severity__values: [String]): NestedPaginatedCoreCheck!
+  checks(
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
+    created_at__is_protected: Boolean
+    created_at__owner__id: ID
+    created_at__source__id: ID
+    created_at__value: DateTime
+    created_at__values: [DateTime]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    ids: [ID]
+    isnull: Boolean
+    kind__is_protected: Boolean
+    kind__owner__id: ID
+    kind__source__id: ID
+    kind__value: String
+    kind__values: [String]
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    message__is_protected: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    name__is_protected: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    offset: Int
+    order: OrderInput
+    origin__is_protected: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
+    severity__is_protected: Boolean
+    severity__owner__id: ID
+    severity__source__id: ID
+    severity__value: String
+    severity__values: [String]
+  ): NestedPaginatedCoreCheck!
   """Timestamp when the validator finished"""
   completed_at: TextAttribute
   """Final outcome of the validation"""
@@ -14133,6 +14546,10 @@ type Query {
     conclusion__source__id: ID
     conclusion__value: String
     conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
     created_at__is_protected: Boolean
     created_at__isnull: Boolean
     created_at__owner__id: ID
@@ -14241,6 +14658,10 @@ type Query {
     subscriber_of_groups__label__values: [String]
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    validator__completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    validator__completed_at__before: DateTime
     validator__completed_at__is_protected: Boolean
     validator__completed_at__owner__id: ID
     validator__completed_at__source__id: ID
@@ -14261,6 +14682,10 @@ type Query {
     validator__label__source__id: ID
     validator__label__value: String
     validator__label__values: [String]
+    """Filter where started_at is strictly after this timestamp"""
+    validator__started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    validator__started_at__before: DateTime
     validator__started_at__is_protected: Boolean
     validator__started_at__owner__id: ID
     validator__started_at__source__id: ID
@@ -14731,6 +15156,10 @@ type Query {
     checks__conclusion__source__id: ID
     checks__conclusion__value: String
     checks__conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    checks__created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    checks__created_at__before: DateTime
     checks__created_at__is_protected: Boolean
     checks__created_at__owner__id: ID
     checks__created_at__source__id: ID
@@ -14771,6 +15200,10 @@ type Query {
     checks__severity__source__id: ID
     checks__severity__value: String
     checks__severity__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    completed_at__before: DateTime
     completed_at__is_protected: Boolean
     completed_at__isnull: Boolean
     completed_at__owner__id: ID
@@ -14900,6 +15333,10 @@ type Query {
     proposed_change__total_comments__source__id: ID
     proposed_change__total_comments__value: BigInt
     proposed_change__total_comments__values: [BigInt]
+    """Filter where started_at is strictly after this timestamp"""
+    started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    started_at__before: DateTime
     started_at__is_protected: Boolean
     started_at__isnull: Boolean
     started_at__owner__id: ID
@@ -15245,6 +15682,10 @@ type Query {
     conclusion__source__id: ID
     conclusion__value: String
     conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
     created_at__is_protected: Boolean
     created_at__isnull: Boolean
     created_at__owner__id: ID
@@ -15341,6 +15782,10 @@ type Query {
     subscriber_of_groups__label__values: [String]
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    validator__completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    validator__completed_at__before: DateTime
     validator__completed_at__is_protected: Boolean
     validator__completed_at__owner__id: ID
     validator__completed_at__source__id: ID
@@ -15361,6 +15806,10 @@ type Query {
     validator__label__source__id: ID
     validator__label__value: String
     validator__label__values: [String]
+    """Filter where started_at is strictly after this timestamp"""
+    validator__started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    validator__started_at__before: DateTime
     validator__started_at__is_protected: Boolean
     validator__started_at__owner__id: ID
     validator__started_at__source__id: ID
@@ -15976,6 +16425,10 @@ type Query {
     conflicts__source__id: ID
     conflicts__value: GenericScalar
     conflicts__values: [GenericScalar]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
     created_at__is_protected: Boolean
     created_at__isnull: Boolean
     created_at__owner__id: ID
@@ -16084,6 +16537,10 @@ type Query {
     subscriber_of_groups__label__values: [String]
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    validator__completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    validator__completed_at__before: DateTime
     validator__completed_at__is_protected: Boolean
     validator__completed_at__owner__id: ID
     validator__completed_at__source__id: ID
@@ -16104,6 +16561,10 @@ type Query {
     validator__label__source__id: ID
     validator__label__value: String
     validator__label__values: [String]
+    """Filter where started_at is strictly after this timestamp"""
+    validator__started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    validator__started_at__before: DateTime
     validator__started_at__is_protected: Boolean
     validator__started_at__owner__id: ID
     validator__started_at__source__id: ID
@@ -16126,6 +16587,10 @@ type Query {
     checks__conclusion__source__id: ID
     checks__conclusion__value: String
     checks__conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    checks__created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    checks__created_at__before: DateTime
     checks__created_at__is_protected: Boolean
     checks__created_at__owner__id: ID
     checks__created_at__source__id: ID
@@ -16166,6 +16631,10 @@ type Query {
     checks__severity__source__id: ID
     checks__severity__value: String
     checks__severity__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    completed_at__before: DateTime
     completed_at__is_protected: Boolean
     completed_at__isnull: Boolean
     completed_at__owner__id: ID
@@ -16265,6 +16734,10 @@ type Query {
     proposed_change__total_comments__source__id: ID
     proposed_change__total_comments__value: BigInt
     proposed_change__total_comments__values: [BigInt]
+    """Filter where started_at is strictly after this timestamp"""
+    started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    started_at__before: DateTime
     started_at__is_protected: Boolean
     started_at__isnull: Boolean
     started_at__owner__id: ID
@@ -16395,6 +16868,10 @@ type Query {
     conclusion__source__id: ID
     conclusion__value: String
     conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
     created_at__is_protected: Boolean
     created_at__isnull: Boolean
     created_at__owner__id: ID
@@ -16497,6 +16974,10 @@ type Query {
     subscriber_of_groups__label__values: [String]
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    validator__completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    validator__completed_at__before: DateTime
     validator__completed_at__is_protected: Boolean
     validator__completed_at__owner__id: ID
     validator__completed_at__source__id: ID
@@ -16517,6 +16998,10 @@ type Query {
     validator__label__source__id: ID
     validator__label__value: String
     validator__label__values: [String]
+    """Filter where started_at is strictly after this timestamp"""
+    validator__started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    validator__started_at__before: DateTime
     validator__started_at__is_protected: Boolean
     validator__started_at__owner__id: ID
     validator__started_at__source__id: ID
@@ -17069,6 +17554,10 @@ type Query {
     conclusion__source__id: ID
     conclusion__value: String
     conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
     created_at__is_protected: Boolean
     created_at__isnull: Boolean
     created_at__owner__id: ID
@@ -17171,6 +17660,10 @@ type Query {
     subscriber_of_groups__label__values: [String]
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    validator__completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    validator__completed_at__before: DateTime
     validator__completed_at__is_protected: Boolean
     validator__completed_at__owner__id: ID
     validator__completed_at__source__id: ID
@@ -17191,6 +17684,10 @@ type Query {
     validator__label__source__id: ID
     validator__label__value: String
     validator__label__values: [String]
+    """Filter where started_at is strictly after this timestamp"""
+    validator__started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    validator__started_at__before: DateTime
     validator__started_at__is_protected: Boolean
     validator__started_at__owner__id: ID
     validator__started_at__source__id: ID
@@ -17707,6 +18204,10 @@ type Query {
     checks__conclusion__source__id: ID
     checks__conclusion__value: String
     checks__conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    checks__created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    checks__created_at__before: DateTime
     checks__created_at__is_protected: Boolean
     checks__created_at__owner__id: ID
     checks__created_at__source__id: ID
@@ -17747,6 +18248,10 @@ type Query {
     checks__severity__source__id: ID
     checks__severity__value: String
     checks__severity__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    completed_at__before: DateTime
     completed_at__is_protected: Boolean
     completed_at__isnull: Boolean
     completed_at__owner__id: ID
@@ -17891,6 +18396,10 @@ type Query {
     proposed_change__total_comments__source__id: ID
     proposed_change__total_comments__value: BigInt
     proposed_change__total_comments__values: [BigInt]
+    """Filter where started_at is strictly after this timestamp"""
+    started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    started_at__before: DateTime
     started_at__is_protected: Boolean
     started_at__isnull: Boolean
     started_at__owner__id: ID
@@ -21493,6 +22002,10 @@ type Query {
     total_comments__source__id: ID
     total_comments__value: BigInt
     total_comments__values: [BigInt]
+    """Filter where completed_at is strictly after this timestamp"""
+    validations__completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    validations__completed_at__before: DateTime
     validations__completed_at__is_protected: Boolean
     validations__completed_at__owner__id: ID
     validations__completed_at__source__id: ID
@@ -21513,6 +22026,10 @@ type Query {
     validations__label__source__id: ID
     validations__label__value: String
     validations__label__values: [String]
+    """Filter where started_at is strictly after this timestamp"""
+    validations__started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    validations__started_at__before: DateTime
     validations__started_at__is_protected: Boolean
     validations__started_at__owner__id: ID
     validations__started_at__source__id: ID
@@ -22361,6 +22878,10 @@ type Query {
     checks__conclusion__source__id: ID
     checks__conclusion__value: String
     checks__conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    checks__created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    checks__created_at__before: DateTime
     checks__created_at__is_protected: Boolean
     checks__created_at__owner__id: ID
     checks__created_at__source__id: ID
@@ -22401,6 +22922,10 @@ type Query {
     checks__severity__source__id: ID
     checks__severity__value: String
     checks__severity__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    completed_at__before: DateTime
     completed_at__is_protected: Boolean
     completed_at__isnull: Boolean
     completed_at__owner__id: ID
@@ -22535,6 +23060,10 @@ type Query {
     repository__sync_status__source__id: ID
     repository__sync_status__value: String
     repository__sync_status__values: [String]
+    """Filter where started_at is strictly after this timestamp"""
+    started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    started_at__before: DateTime
     started_at__is_protected: Boolean
     started_at__isnull: Boolean
     started_at__owner__id: ID
@@ -22653,6 +23182,10 @@ type Query {
     conflicts__source__id: ID
     conflicts__value: GenericScalar
     conflicts__values: [GenericScalar]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
     created_at__is_protected: Boolean
     created_at__isnull: Boolean
     created_at__owner__id: ID
@@ -22755,6 +23288,10 @@ type Query {
     subscriber_of_groups__label__values: [String]
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    validator__completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    validator__completed_at__before: DateTime
     validator__completed_at__is_protected: Boolean
     validator__completed_at__owner__id: ID
     validator__completed_at__source__id: ID
@@ -22775,6 +23312,10 @@ type Query {
     validator__label__source__id: ID
     validator__label__value: String
     validator__label__values: [String]
+    """Filter where started_at is strictly after this timestamp"""
+    validator__started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    validator__started_at__before: DateTime
     validator__started_at__is_protected: Boolean
     validator__started_at__owner__id: ID
     validator__started_at__source__id: ID
@@ -22797,6 +23338,10 @@ type Query {
     checks__conclusion__source__id: ID
     checks__conclusion__value: String
     checks__conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    checks__created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    checks__created_at__before: DateTime
     checks__created_at__is_protected: Boolean
     checks__created_at__owner__id: ID
     checks__created_at__source__id: ID
@@ -22837,6 +23382,10 @@ type Query {
     checks__severity__source__id: ID
     checks__severity__value: String
     checks__severity__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    completed_at__before: DateTime
     completed_at__is_protected: Boolean
     completed_at__isnull: Boolean
     completed_at__owner__id: ID
@@ -22936,6 +23485,10 @@ type Query {
     proposed_change__total_comments__source__id: ID
     proposed_change__total_comments__value: BigInt
     proposed_change__total_comments__values: [BigInt]
+    """Filter where started_at is strictly after this timestamp"""
+    started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    started_at__before: DateTime
     started_at__is_protected: Boolean
     started_at__isnull: Boolean
     started_at__owner__id: ID
@@ -22974,6 +23527,10 @@ type Query {
     conclusion__source__id: ID
     conclusion__value: String
     conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    created_at__before: DateTime
     created_at__is_protected: Boolean
     created_at__isnull: Boolean
     created_at__owner__id: ID
@@ -23070,6 +23627,10 @@ type Query {
     subscriber_of_groups__label__values: [String]
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    validator__completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    validator__completed_at__before: DateTime
     validator__completed_at__is_protected: Boolean
     validator__completed_at__owner__id: ID
     validator__completed_at__source__id: ID
@@ -23090,6 +23651,10 @@ type Query {
     validator__label__source__id: ID
     validator__label__value: String
     validator__label__values: [String]
+    """Filter where started_at is strictly after this timestamp"""
+    validator__started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    validator__started_at__before: DateTime
     validator__started_at__is_protected: Boolean
     validator__started_at__owner__id: ID
     validator__started_at__source__id: ID
@@ -24539,6 +25104,10 @@ type Query {
     checks__conclusion__source__id: ID
     checks__conclusion__value: String
     checks__conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    checks__created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    checks__created_at__before: DateTime
     checks__created_at__is_protected: Boolean
     checks__created_at__owner__id: ID
     checks__created_at__source__id: ID
@@ -24579,6 +25148,10 @@ type Query {
     checks__severity__source__id: ID
     checks__severity__value: String
     checks__severity__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    completed_at__before: DateTime
     completed_at__is_protected: Boolean
     completed_at__isnull: Boolean
     completed_at__owner__id: ID
@@ -24713,6 +25286,10 @@ type Query {
     repository__sync_status__source__id: ID
     repository__sync_status__value: String
     repository__sync_status__values: [String]
+    """Filter where started_at is strictly after this timestamp"""
+    started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    started_at__before: DateTime
     started_at__is_protected: Boolean
     started_at__isnull: Boolean
     started_at__owner__id: ID
@@ -24750,6 +25327,10 @@ type Query {
     checks__conclusion__source__id: ID
     checks__conclusion__value: String
     checks__conclusion__values: [String]
+    """Filter where created_at is strictly after this timestamp"""
+    checks__created_at__after: DateTime
+    """Filter where created_at is strictly before this timestamp"""
+    checks__created_at__before: DateTime
     checks__created_at__is_protected: Boolean
     checks__created_at__owner__id: ID
     checks__created_at__source__id: ID
@@ -24790,6 +25371,10 @@ type Query {
     checks__severity__source__id: ID
     checks__severity__value: String
     checks__severity__values: [String]
+    """Filter where completed_at is strictly after this timestamp"""
+    completed_at__after: DateTime
+    """Filter where completed_at is strictly before this timestamp"""
+    completed_at__before: DateTime
     completed_at__is_protected: Boolean
     completed_at__isnull: Boolean
     completed_at__owner__id: ID
@@ -24889,6 +25474,10 @@ type Query {
     proposed_change__total_comments__source__id: ID
     proposed_change__total_comments__value: BigInt
     proposed_change__total_comments__values: [BigInt]
+    """Filter where started_at is strictly after this timestamp"""
+    started_at__after: DateTime
+    """Filter where started_at is strictly before this timestamp"""
+    started_at__before: DateTime
     started_at__is_protected: Boolean
     started_at__isnull: Boolean
     started_at__owner__id: ID

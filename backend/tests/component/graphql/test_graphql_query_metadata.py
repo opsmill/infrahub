@@ -1280,3 +1280,142 @@ async def test_graphql_metadata_filter_with_non_utc_timezone_offset(
     assert result.data["TestCriticality"]["count"] == 1
     names = {e["node"]["name"]["value"] for e in result.data["TestCriticality"]["edges"]}
     assert names == {"tz-second"}
+
+
+# ============================================================================
+# DateTime Attribute Filter Tests
+# ============================================================================
+
+
+class TestDateTimeAttributeFilter:
+    """Test class for DateTime attribute filtering (time__after / time__before, used independently and combined).
+
+    These tests target the GraphQL filter inputs `<attr>__after` and `<attr>__before`
+    for node attributes of kind `DateTime`, mirroring the existing
+    `node_metadata__created_at__after` / `node_metadata__updated_at__after` filters.
+    """
+
+    async def _run_query(
+        self, db: InfrahubDatabase, query_str: str, branch: Branch, variables: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Execute a GraphQL query and return the data."""
+        gql_params = await prepare_graphql_params(db=db, branch=branch)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query_str,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values=variables or {},
+        )
+        assert result.errors is None, f"GraphQL errors: {result.errors}"
+        assert result.data
+        return result.data
+
+    def _get_names(self, data: dict[str, Any], query_name: str = "TestCriticality") -> set[str]:
+        """Extract node names from query result."""
+        return {e["node"]["name"]["value"] for e in data[query_name]["edges"]}
+
+    async def test_attribute_time_after(
+        self, db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+    ) -> None:
+        """Test that <attr>__after filters DateTime attribute values strictly greater than the cutoff."""
+        early = await Node.init(db=db, schema=criticality_schema)
+        await early.new(db=db, name="early", level=1, time="2026-01-01T00:00:00Z")
+        await early.save(db=db)
+
+        late = await Node.init(db=db, schema=criticality_schema)
+        await late.new(db=db, name="late", level=2, time="2026-06-01T00:00:00Z")
+        await late.save(db=db)
+
+        query = """
+        query($cutoff: DateTime!) {
+            TestCriticality(time__after: $cutoff) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        data = await self._run_query(db, query, default_branch, {"cutoff": "2026-03-01T00:00:00Z"})
+        assert data["TestCriticality"]["count"] == 1
+        assert self._get_names(data) == {"late"}
+
+    async def test_attribute_time_before(
+        self, db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+    ) -> None:
+        """Test that <attr>__before filters DateTime attribute values strictly less than the cutoff."""
+        early = await Node.init(db=db, schema=criticality_schema)
+        await early.new(db=db, name="early", level=1, time="2026-01-01T00:00:00Z")
+        await early.save(db=db)
+
+        late = await Node.init(db=db, schema=criticality_schema)
+        await late.new(db=db, name="late", level=2, time="2026-06-01T00:00:00Z")
+        await late.save(db=db)
+
+        query = """
+        query($cutoff: DateTime!) {
+            TestCriticality(time__before: $cutoff) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        data = await self._run_query(db, query, default_branch, {"cutoff": "2026-03-01T00:00:00Z"})
+        assert data["TestCriticality"]["count"] == 1
+        assert self._get_names(data) == {"early"}
+
+    async def test_attribute_time_range(
+        self, db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+    ) -> None:
+        """Test that combining <attr>__after and <attr>__before bounds the result set on both sides."""
+        feb = await Node.init(db=db, schema=criticality_schema)
+        await feb.new(db=db, name="february", level=1, time="2026-02-01T00:00:00Z")
+        await feb.save(db=db)
+
+        apr = await Node.init(db=db, schema=criticality_schema)
+        await apr.new(db=db, name="april", level=2, time="2026-04-01T00:00:00Z")
+        await apr.save(db=db)
+
+        aug = await Node.init(db=db, schema=criticality_schema)
+        await aug.new(db=db, name="august", level=3, time="2026-08-01T00:00:00Z")
+        await aug.save(db=db)
+
+        query = """
+        query($after: DateTime!, $before: DateTime!) {
+            TestCriticality(time__after: $after, time__before: $before) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        data = await self._run_query(
+            db,
+            query,
+            default_branch,
+            {"after": "2026-03-01T00:00:00Z", "before": "2026-06-01T00:00:00Z"},
+        )
+        assert data["TestCriticality"]["count"] == 1
+        assert self._get_names(data) == {"april"}
+
+    async def test_attribute_time_isnull_unaffected(
+        self, db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+    ) -> None:
+        """Regression baseline: existing time__isnull filter must keep working."""
+        with_time = await Node.init(db=db, schema=criticality_schema)
+        await with_time.new(db=db, name="has_time", level=1, time="2026-01-01T00:00:00Z")
+        await with_time.save(db=db)
+
+        without_time = await Node.init(db=db, schema=criticality_schema)
+        await without_time.new(db=db, name="no_time", level=2)
+        await without_time.save(db=db)
+
+        query = """
+        query($isnull: Boolean!) {
+            TestCriticality(time__isnull: $isnull) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        data = await self._run_query(db, query, default_branch, {"isnull": True})
+        assert data["TestCriticality"]["count"] == 1
+        assert self._get_names(data) == {"no_time"}

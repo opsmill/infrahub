@@ -143,6 +143,21 @@ class DateTime(InfrahubDataType):
     graphql_filter = graphene.DateTime
     infrahub = "DateTime"
 
+    @classmethod
+    def get_graphql_filters(
+        cls, name: str, include_properties: bool = True, include_isnull: bool = False
+    ) -> dict[str, typing.Any]:
+        filters = super().get_graphql_filters(
+            name=name, include_properties=include_properties, include_isnull=include_isnull
+        )
+        filters[f"{name}__after"] = graphene.DateTime(
+            description=f"Filter where {name} is strictly after this timestamp"
+        )
+        filters[f"{name}__before"] = graphene.DateTime(
+            description=f"Filter where {name} is strictly before this timestamp"
+        )
+        return filters
+
 
 class Email(InfrahubDataType):
     label: str = "Email"

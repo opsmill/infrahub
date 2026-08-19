@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import AttributeDBNodeType
@@ -381,6 +382,29 @@ LIMIT 1
         return None
 
 
+def _datetime_range_filter_clause(
+    filter_name: str,
+    filter_value: Any,
+    attribute_value_label: str,
+    param_prefix: str,
+) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
+    """Build subquery clauses for a DateTime attribute __after / __before filter.
+
+    Filter values arriving as datetime objects are normalized to canonical UTC
+    ISO strings: lexicographic Cypher comparison of stored values is only correct
+    when both sides share canonical form. Mirrors the metadata path in
+    _build_metadata_filter_requirement for node_metadata__*__before/after.
+    """
+    operator = ">" if filter_name == "after" else "<"
+    if isinstance(filter_value, datetime):
+        filter_value = Timestamp(filter_value.isoformat()).to_string()
+    return (
+        [QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]), QueryNode(name="av", labels=[attribute_value_label])],
+        {f"{param_prefix}_{filter_name}": filter_value},
+        [f"av.value {operator} ${param_prefix}_{filter_name}"],
+    )
+
+
 async def default_attribute_query_filter(
     name: str,
     filter_name: str,
@@ -407,7 +431,7 @@ async def default_attribute_query_filter(
     query_params: dict[str, Any] = {}
     query_where: list[str] = []
 
-    if filter_value and not isinstance(filter_value, str | bool | int | list):
+    if filter_value and not isinstance(filter_value, str | bool | int | list | datetime):
         raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")
 
     if isinstance(filter_value, list) and not all(isinstance(value, str | bool | int) for value in filter_value):
@@ -478,6 +502,17 @@ async def default_attribute_query_filter(
                 )
             )
             query_params[f"{param_prefix}_{filter_name}"] = filter_value
+
+    elif filter_name in ("before", "after") and filter_value is not None:
+        new_filter, new_params, new_where = _datetime_range_filter_clause(
+            filter_name=filter_name,
+            filter_value=filter_value,
+            attribute_value_label=attribute_value_label,
+            param_prefix=param_prefix,
+        )
+        query_filter.extend(new_filter)
+        query_params.update(new_params)
+        query_where.extend(new_where)
 
     elif filter_name in [v.value for v in FlagProperty] and filter_value is not None:
         query_filter.append(QueryRel(labels=[filter_name.upper()]))
