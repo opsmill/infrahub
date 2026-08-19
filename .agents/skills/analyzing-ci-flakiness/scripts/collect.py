@@ -54,7 +54,7 @@ BUCKETS: list[tuple[str, str]] = [
     ("prefect-setup-triggers-timeout", r"'Setup triggers'.*ReadTimeout|Task run encountered an exception ReadTimeout"),
     ("neo4j-deadlock", r"Neo\.TransientError\.Transaction\.DeadlockDetected"),
     ("compose-boot-failure", r"'docker', 'compose'.*'up', '--wait'.*non-zero exit status"),
-    ("sqlite-locked", r"sqlite3\.OperationalError\) database is locked"),
+    ("sqlite-locked", r"sqlite3\.OperationalError[):] database is locked"),
     ("runner-oom", r"Process completed with exit code 137|exit code: 137"),
     ("docker-network-pool-exhausted", r"all predefined address pools have been fully subnetted"),
     ("actions-download-429", r"Failed to download action .*429"),
