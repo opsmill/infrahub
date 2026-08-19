@@ -37,11 +37,24 @@ Before proceeding, verify:
    ```
    Report how many fragments exist. If none, warn the user but allow proceeding (they may want to release without new changes).
 
-2. **Show current branch** (informational):
+2. **Confirm the base branch and create the dedicated release branch** (do this
+   before any of the edits in Steps 3-7, so those edits land on the right branch
+   cut from the right base):
    ```bash
    git branch --show-current
    ```
-   Inform the user which branch they're on.
+   Releases are PR'd into `stable`, so the release branch must be cut from
+   `stable` (never commit release changes to `stable` or `develop` directly). If
+   the current branch is not `stable`, tell the user and switch first
+   (`git switch stable && git pull`) unless they intend a different base. Then
+   create the dedicated branch:
+   ```bash
+   git switch -c chore/release-<version>
+   ```
+   Do NOT name that branch `release-<version>` or anything matching `release-*`:
+   GitHub branch protection on `release-*` blocks follow-up pushes, which patch
+   releases often need when extra commits are added after the first. Prefer a
+   non-matching name such as `chore/release-<version>`.
 
 3. **Preview towncrier output**:
    ```bash
@@ -178,10 +191,11 @@ Present a summary of changes made:
 - Files modified/created
 - Number of changelog entries included
 
-Suggest next steps (DO NOT execute these automatically):
+Suggest next steps (DO NOT execute these automatically). These land on the
+dedicated `chore/release-<version>` branch created in Step 2:
 1. Review the changes: `git diff`
 2. Stage and commit: `git add -A && git commit -m "chore: release <version>"`
-3. Push the branch: `git push -u origin <branch_name>`
+3. Push the branch: `git push -u origin chore/release-<version>`
 4. Open a PR targeting `stable`
 5. Merge the PR
 6. Create a GitHub release at https://github.com/opsmill/infrahub/releases/new with tag `infrahub-v<version>`
