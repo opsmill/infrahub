@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import PermissionAction, PermissionDecision
+from infrahub.core.constants import ComputedAttributeKind, PermissionAction, PermissionDecision
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
@@ -96,3 +97,73 @@ async def test_update_computed_attribute_sends_node_updated_event(
     # The display label of the node within the event must include the correct label
     # even if the display label contains a related node
     assert event.changelog.display_label == "Ocean Blue"
+
+
+async def test_update_computed_attribute_rejects_invalid_datetime(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    default_permission_backend: None,
+    session_first_account: AccountSession,
+    first_account: Node,
+) -> None:
+    """UpdateComputedAttribute rejects an invalid DateTime value for a DateTime computed attribute."""
+    TASK = NodeSchema(
+        name="Task",
+        namespace="Testing",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(
+                name="due_date",
+                kind="DateTime",
+                read_only=True,
+                computed_attribute=ComputedAttribute(
+                    kind=ComputedAttributeKind.JINJA2,
+                    jinja2_template="{{ name__value }}",
+                ),
+            ),
+        ],
+    )
+
+    await load_schema(db, schema=SchemaRoot(nodes=[TASK]))
+
+    await define_permissions(
+        account=first_account,
+        db=db,
+        object_permissions=[
+            ObjectPermission(
+                namespace=TASK.namespace,
+                name=TASK.name,
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            ),
+        ],
+    )
+
+    task = await Node.init(db=db, schema=TASK.kind, branch=default_branch)
+    await task.new(db=db, name="2026-06-11T00:00:00Z")
+    await task.save(db=db)
+
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, service=service, account_session=session_first_account
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=UPDATE_COMPUTED_ATTRIBUTE_MUTATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "id": task.id,
+            "kind": TASK.kind,
+            "attribute": "due_date",
+            "value": "123",
+        },
+    )
+
+    assert result.errors is not None
+    assert len(result.errors) == 1
+    assert "is not a valid DateTime" in str(result.errors[0])

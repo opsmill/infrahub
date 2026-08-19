@@ -427,3 +427,83 @@ async def test_schema_computed_attribute_violations(schema_root: SchemaRoot, exp
         schema.process()
 
     assert str(exc.value) == expected_error
+
+
+async def test_schema_computed_attribute_datetime_jinja2() -> None:
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Person",
+                    namespace="Testing",
+                    attributes=[
+                        AttributeSchema(
+                            name="start_date",
+                            kind="DateTime",
+                        ),
+                        AttributeSchema(
+                            name="end_date",
+                            kind="DateTime",
+                            read_only=True,
+                            computed_attribute=ComputedAttribute(
+                                kind=ComputedAttributeKind.JINJA2,
+                                jinja2_template="{{ start_date__value }}",
+                            ),
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    )
+
+    schema.process()
+
+    node = schema.get_node(name="TestingPerson")
+    end_date = node.get_attribute(name="end_date")
+    assert end_date.kind == "DateTime"
+    assert end_date.read_only is True
+    assert end_date.computed_attribute is not None
+    assert end_date.computed_attribute.kind == ComputedAttributeKind.JINJA2
+    assert end_date.computed_attribute.jinja2_template == "{{ start_date__value }}"
+
+
+async def test_schema_computed_attribute_datetime_transform() -> None:
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Person",
+                    namespace="Testing",
+                    attributes=[
+                        AttributeSchema(
+                            name="start_date",
+                            kind="DateTime",
+                        ),
+                        AttributeSchema(
+                            name="end_date",
+                            kind="DateTime",
+                            read_only=True,
+                            optional=True,
+                            computed_attribute=ComputedAttribute(
+                                kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+                                transform="my_transform",
+                            ),
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    )
+
+    schema.process()
+
+    node = schema.get_node(name="TestingPerson")
+    end_date = node.get_attribute(name="end_date")
+    assert end_date.kind == "DateTime"
+    assert end_date.read_only is True
+    assert end_date.optional is True
+    assert end_date.computed_attribute is not None
+    assert end_date.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON
+    assert end_date.computed_attribute.transform == "my_transform"
