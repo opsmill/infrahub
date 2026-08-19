@@ -484,7 +484,7 @@ This code carries no `data` payload; `data` is always `{}`.
 
 ### UNIQUENESS_VIOLATION
 
-The submitted values collide with an existing node on a uniqueness constraint. The constraint members may be relationships as well as attributes.
+The submitted values collide with an existing object on a uniqueness constraint. The constraint members may be relationships as well as attributes.
 
 - **Stability**: `evolving`
 - **HTTP status**: `422`
@@ -503,7 +503,7 @@ The submitted values collide with an existing node on a uniqueness constraint. T
   "data": null,
   "errors": [
     {
-      "message": "The submitted values collide with an existing node on a uniqueness constraint. The constraint members may be relationships as well as attributes.",
+      "message": "The submitted values collide with an existing object on a uniqueness constraint. The constraint members may be relationships as well as attributes.",
       "extensions": {
         "code": "UNIQUENESS_VIOLATION",
         "http_status": 422,

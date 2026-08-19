@@ -130,9 +130,6 @@ class TestErrorCatalogue(TestInfrahubApp):
         test_client: InfrahubTestClient,
         api_admin_token: str,
     ) -> None:
-        # TestingTag.name is unique, so the second create collides. The constraint is evaluated
-        # deep inside save(), so `path` stops at the mutation field and `data.fields` carries the
-        # colliding members instead.
         query = """
         mutation {
             TestingTagCreate(data: { name: { value: "duplicate-tag" } }) { ok }

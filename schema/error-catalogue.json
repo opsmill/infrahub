@@ -201,7 +201,7 @@
       }
     },
     "UNIQUENESS_VIOLATION": {
-      "description": "The submitted values collide with an existing node on a uniqueness constraint. The constraint members may be relationships as well as attributes.",
+      "description": "The submitted values collide with an existing object on a uniqueness constraint. The constraint members may be relationships as well as attributes.",
       "stability": "evolving",
       "http_status": 422,
       "data_schema": {

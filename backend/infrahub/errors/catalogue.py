@@ -126,7 +126,7 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
             "UNIQUENESS_VIOLATION",
             CatalogueEntry(
                 description=(
-                    "The submitted values collide with an existing node on a uniqueness constraint. "
+                    "The submitted values collide with an existing object on a uniqueness constraint. "
                     "The constraint members may be relationships as well as attributes."
                 ),
                 stability="evolving",
