@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import logging
 
-from infrahub.log import _TRACEBACK_SUPPRESSED_TYPES, TracebackSuppressionFilter, suppress_traceback_in_logs
+from infrahub.log import (
+    _TRACEBACK_SUPPRESSED_TYPES,
+    PREFECT_RUN_LOGGERS,
+    TracebackSuppressionFilter,
+    suppress_traceback_in_logs,
+)
 from infrahub.webhook.classifier import ClassifiedFailure, StatusClass, WebhookDeliveryError
 
 
@@ -42,3 +47,17 @@ def test_decorator_registers_type_in_the_shared_registry() -> None:
 
     # The production filter is wired to this shared registry, so a decorated type is suppressed.
     assert TracebackSuppressionFilter(_TRACEBACK_SUPPRESSED_TYPES).filter(_record(_ExpectedFailureError())) is False
+
+
+def test_startup_installs_the_filter_on_the_prefect_run_loggers() -> None:
+    """Importing infrahub.log configures logging for the process, which is what installs the filter.
+
+    Asserting on that import rather than calling configure_logging again keeps the wiring covered
+    without a test reconfiguring logging for every test that follows it in the worker.
+    """
+    installed_on = [
+        name
+        for name in PREFECT_RUN_LOGGERS
+        if any(isinstance(log_filter, TracebackSuppressionFilter) for log_filter in logging.getLogger(name).filters)
+    ]
+    assert installed_on == list(PREFECT_RUN_LOGGERS)
