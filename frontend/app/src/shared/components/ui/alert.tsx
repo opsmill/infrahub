@@ -91,11 +91,11 @@ export const Alert = (props: AlertProps) => {
       }
       default: {
         return {
-          container: "bg-gray-50 text-foreground",
+          container: "bg-content-muted text-foreground",
           bg: "",
           text: "text-foreground",
           button:
-            "bg-gray-50 p-1.5 text-subtle-muted hover:bg-gray-100 focus:ring-gray-600 focus:ring-offset-gray-50",
+            "bg-content-muted p-1.5 text-subtle-muted hover:bg-content-strong focus:ring-ring focus:ring-offset-content-muted",
         };
       }
     }

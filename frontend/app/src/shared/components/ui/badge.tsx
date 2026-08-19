@@ -8,8 +8,8 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        white: "border-transparent bg-white text-foreground dark:bg-white/5",
-        gray: "border-transparent bg-gray-100 text-foreground dark:bg-white/10",
+        white: "border-transparent bg-content text-foreground dark:bg-white/5",
+        gray: "border-transparent bg-content-strong text-foreground",
         "dark-gray": "border-transparent bg-gray-300 text-foreground dark:bg-white/20",
         green:
           "border-transparent bg-green-700/10 text-green-900 dark:bg-green-400/20 dark:text-green-300",
@@ -19,12 +19,12 @@ const badgeVariants = cva(
           "border-transparent bg-yellow-100 text-yellow-900 dark:bg-yellow-400/20 dark:text-yellow-300",
         purple:
           "border-transparent bg-purple-100 text-purple-800 dark:bg-purple-400/20 dark:text-purple-300",
-        "gray-outline": "border-border-strong bg-white text-foreground-muted dark:bg-transparent",
-        "lightgray-outline": "bg-white text-subtle-muted dark:bg-transparent",
+        "gray-outline": "border-border-strong bg-content text-foreground-muted dark:bg-transparent",
+        "lightgray-outline": "bg-content text-subtle-muted dark:bg-transparent",
         "blue-outline":
-          "border-custom-blue-700 bg-white text-custom-blue-700 dark:border-custom-blue-500 dark:bg-transparent dark:text-custom-blue-300",
+          "border-custom-blue-700 bg-content text-custom-blue-700 dark:border-custom-blue-500 dark:bg-transparent dark:text-custom-blue-300",
         "yellow-outline":
-          "border-yellow-100 bg-white text-yellow-900 dark:border-yellow-400/30 dark:bg-transparent dark:text-yellow-300",
+          "border-yellow-100 bg-content text-yellow-900 dark:border-yellow-400/30 dark:bg-transparent dark:text-yellow-300",
         "green-outline": "border-2 border-green-500 text-green-700 dark:text-green-400",
         "red-outline": "border-2 border-danger text-danger",
       },

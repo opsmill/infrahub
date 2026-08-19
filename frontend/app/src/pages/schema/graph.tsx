@@ -1,3 +1,4 @@
+import { useResolvedTheme } from "@infrahub/ui";
 import { SchemaVisualizer, type SchemaVisualizerData } from "infrahub-schema-visualizer";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
@@ -17,6 +18,7 @@ function SchemaGraph() {
   const profiles = useAtomValue(profileSchemasAtom);
   const templates = useAtomValue(templateSchemasAtom);
   const [highlightNodeId, setHighlightNodeId] = useQueryState(QSP.HIGHLIGHT);
+  const theme = useResolvedTheme();
 
   const schemaData: SchemaVisualizerData = { nodes, generics, profiles, templates };
 
@@ -25,6 +27,7 @@ function SchemaGraph() {
       <SchemaVisualizer
         data={schemaData}
         className="flex-1"
+        theme={theme}
         highlightNodeId={highlightNodeId}
         onClearHighlight={() => setHighlightNodeId(null)}
       />

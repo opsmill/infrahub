@@ -990,6 +990,13 @@ class AnalyticsSettings(BaseSettings):
 class ExperimentalFeaturesSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_EXPERIMENTAL_")
     graphql_enums: bool = False
+    # Four generated artifacts record this default: the root compose file, the OpenAPI schema, the
+    # configuration reference, and the frontend REST types. The frontend one is regenerated from the
+    # OpenAPI schema rather than from this file, so it is the easy one to miss when this changes.
+    dark_theme: bool = Field(
+        default=False,
+        description="Offer the dark theme in the web interface. Alpha: some surfaces still render incorrectly.",
+    )
     value_db_index: bool = Field(
         default=False,
         deprecated="This setting has no effect and will be removed in a future version.",

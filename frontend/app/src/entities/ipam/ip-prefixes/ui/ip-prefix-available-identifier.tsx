@@ -47,7 +47,7 @@ export function IpPrefixAvailableIdentifier({
 
           <Row className="gap-2.5">
             {[...Array(ancestorsCount)].map((_, i) => (
-              <div className="size-1 rounded-full bg-neutral-300" key={i} />
+              <div className="size-1 rounded-full bg-border-strong" key={i} />
             ))}
             {ipPrefixNode.display_label}
           </Row>

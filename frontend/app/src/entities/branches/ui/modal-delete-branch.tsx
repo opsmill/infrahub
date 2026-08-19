@@ -143,7 +143,7 @@ export function ModalDeleteBranch({
         </RadioGroup>
       </Col>
 
-      <Row className="justify-end bg-gray-50 p-3 dark:bg-white/5">
+      <Row className="justify-end bg-content-muted p-3">
         <Button variant="outline" onPress={() => handleOpenChange(false)} isDisabled={isLoading}>
           Cancel
         </Button>

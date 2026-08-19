@@ -75,9 +75,7 @@ export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => 
               </Badge>
             </div>
           }
-          leftClassName={classNames(
-            "font-normal group-hover:bg-gray-100 dark:group-hover:bg-white/10 transition-all"
-          )}
+          leftClassName={classNames("font-normal group-hover:bg-content-strong transition-all")}
           right={
             <div className="flex items-center gap-2">
               {branchChange?.previous}
@@ -87,9 +85,7 @@ export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => 
               </Badge>
             </div>
           }
-          rightClassName={classNames(
-            "font-normal group-hover:bg-gray-50 dark:group-hover:bg-white/5 transition-all"
-          )}
+          rightClassName={classNames("font-normal group-hover:bg-content-muted transition-all")}
         />
       </Link>
     </div>

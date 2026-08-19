@@ -43,7 +43,7 @@ test.describe("Object hierarchy- Navigation", () => {
       await expect(page.getByText("NameUnited States of America")).toBeVisible();
       await expect(
         objectHierarchyTree.getByRole("row", { name: "United States of America" })
-      ).toContainClass("bg-neutral-100");
+      ).toContainClass("bg-selected");
       await expect(
         objectHierarchyTree.getByRole("button", { name: "Expand United States of" })
       ).toBeVisible();
@@ -71,7 +71,7 @@ test.describe("Object hierarchy- Navigation", () => {
         objectHierarchyTree.getByRole("button", { name: "Expand United States of" })
       ).toBeVisible();
       await expect(objectHierarchyTree.getByRole("row", { name: "North America" })).toContainClass(
-        "bg-neutral-100"
+        "bg-selected"
       );
     });
   });

@@ -56,7 +56,7 @@ export function GlobalPermissionsTable() {
   return (
     <InfiniteScroll
       scrollX
-      className="dark:bg-table-frame"
+      className="bg-table-frame"
       hasNextPage={hasNextPage}
       onLoadMore={fetchNextPage}
     >

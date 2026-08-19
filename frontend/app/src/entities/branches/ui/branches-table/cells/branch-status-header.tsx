@@ -36,7 +36,7 @@ export function BranchStatusHeader() {
           icon="mdi:filter-variant"
           className={classNames(
             "ml-auto text-lg",
-            currentColumnFilters ? "text-indigo-700" : "invisible"
+            currentColumnFilters ? "text-active" : "invisible"
           )}
         />
       </PopoverTrigger>

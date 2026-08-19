@@ -44,7 +44,7 @@ export function ModalDanger({
         {description && <div className="px-8 text-foreground-muted text-sm">{description}</div>}
       </Col>
 
-      <Row className="justify-end bg-gray-50 p-3 dark:bg-white/5">
+      <Row className="justify-end bg-content-muted p-3">
         <Button variant="outline" onPress={() => onOpenChange(false)} isDisabled={isLoading}>
           {cancelLabel}
         </Button>

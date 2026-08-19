@@ -36,7 +36,7 @@ export function DecisionColumnHeader({
         <span className="mr-2 truncate">{attributeSchema.label ?? attributeSchema.name}</span>
         <Icon
           icon="mdi:filter-variant"
-          className={classNames("ml-auto text-lg", currentFilter ? "text-indigo-700" : "invisible")}
+          className={classNames("ml-auto text-lg", currentFilter ? "text-active" : "invisible")}
         />
       </PopoverTrigger>
 

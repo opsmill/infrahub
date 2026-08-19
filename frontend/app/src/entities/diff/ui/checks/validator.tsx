@@ -157,11 +157,7 @@ export const Validator = ({ validator }: tValidatorProps) => {
   );
 
   return (
-    <Accordion
-      title={title}
-      className="rounded-md bg-white p-2 dark:bg-stone-900"
-      data-testid="validator"
-    >
+    <Accordion title={title} className="rounded-md bg-content p-2" data-testid="validator">
       <ValidatorDetails id={id} />
     </Accordion>
   );

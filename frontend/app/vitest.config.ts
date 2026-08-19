@@ -35,6 +35,10 @@ export default mergeConfig(
         "dagre",
         "@radix-ui/react-progress",
         "html-to-image",
+        // mermaid pulls its diagram renderers (flowDiagram, pie, …) in via dynamic import,
+        // which only a pre-bundle makes reachable before the mid-run re-optimization.
+        "mermaid",
+        "rehype-mermaid",
         "react-paginate",
         "react-diff-view",
         "recharts",

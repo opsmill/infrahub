@@ -93,3 +93,8 @@ export {
   type TreeItemProps,
 } from "./components/tree/tree";
 export { DismissGuardContext, useDismissGuard } from "./hooks/use-dissmiss-guard";
+export { applyTheme, type ResolvedTheme, useResolvedTheme } from "./theme/resolved-theme";
+export { ThemeContext, type ThemeControl, useThemeControl } from "./theme/theme-context";
+export { ThemeProvider, type ThemeProviderProps } from "./theme/theme-provider";
+export { mirrorResolvedTheme, readStoredChoice, storeChoice } from "./theme/theme-storage";
+export { ThemeSwitchMenuItem } from "./theme/theme-switch-menu-item";
