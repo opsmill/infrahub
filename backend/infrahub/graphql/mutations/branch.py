@@ -47,13 +47,18 @@ class BranchCreateInput(InputObjectType):
     name = String(required=True)
     description = String(required=False)
     origin_branch = InputField(
-        String(required=False), deprecation_reason="Branches can only be created from the default branch"
+        String(required=False),
+        deprecation_reason="Branches can only be created from the default branch. Will be removed after version 1.12.",
     )
     branched_from = InputField(
-        String(required=False), deprecation_reason="branched_from is set by the server and cannot be provided"
+        String(required=False),
+        deprecation_reason="branched_from is set by the server and cannot be provided. Will be removed after version 1.12.",
     )
     sync_with_git = Boolean(required=False)
-    is_isolated = InputField(Boolean(required=False), deprecation_reason="Non isolated mode is not supported anymore")
+    is_isolated = InputField(
+        Boolean(required=False),
+        deprecation_reason="Non-isolated mode is not supported anymore. Will be removed after version 1.12.",
+    )
 
 
 class BranchCreate(Mutation):
