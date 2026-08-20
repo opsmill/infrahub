@@ -2,95 +2,89 @@
 title: Immutable history
 ---
 
-Infrahub keeps every state your infrastructure data has held. Query the graph as it was at any
-point in the past — yesterday's routes, last week's VLAN definitions, the ACL a rollout replaced —
-using the same queries you run against current data.
+Infrahub preserves previous values and relationships as your infrastructure data changes. Earlier
+versions remain available for queries, so you can inspect what existed at a specific time, compare
+changes across a period, and trace how an object or relationship changed.
 
-## Why it matters
+This is useful for troubleshooting incidents, reviewing the effect of a change, answering audit
+questions, and understanding how topology or dependencies evolved. When you specify a timestamp,
+Infrahub returns the values and relationships that were valid at that time.
 
-Debugging a change means comparing what is true now with what was true before it. A data model
-that stores only current values answers the first half and loses the second: once a rollout has
-overwritten the configuration that worked, the comparison you need is gone.
+## What you can do with immutable history
 
-That gap turns up in ordinary work:
+- Query objects and relationships as they existed at a specific point in time.
+- Compare two timestamps to identify which objects, attributes, or relationships changed.
+- Trace each change to the account that made it and the time it happened.
+- Preserve the history available before a branch was created while recording changes made on that
+  branch.
+- Use previous infrastructure data for troubleshooting, audits, security investigations, and
+  post-incident analysis.
 
-- A deployment breaks connectivity, and you need the exact configuration it replaced rather than
-  an approximation of it.
-- Something has drifted from design intent, and the useful question is when it diverged.
-- An audit asks which interfaces changed between two dates.
-- A schema change is coming, and you want to know what it does to data that already exists.
-- An automation behaved correctly in testing and incorrectly in production, and you want to run it
-  against the data as it stood at the time.
+For example, you can answer questions such as:
 
-Because Infrahub records the state of the graph at every point in time, each of these is a query
-rather than an investigation.
+- Which devices, interfaces, and relationships existed for this site during last night's incident?
+- Which interface attributes changed between the last known-good timestamp and now?
+- Which services and circuits were related before this topology change?
 
-## How Infrahub stores history
+## Historical data and the Activity log answer different questions
 
-Nothing in the database is modified in place. Updating an attribute adds a new value with its own
-timestamp; the previous value stays where it is, still carrying the timestamps that say when it
-was current. The same applies to relationships, so both the objects and the connections between
-them are timestamped.
+The Activity log records operations: which objects were affected, when a change occurred, who made
+it, and the sequence of actions.
 
-A graph recorded this way is a **temporal graph**: it holds not only how objects relate, but when
-each of those relationships was valid. Naming a time in a query selects the values that were
-current then, which is what makes "the topology before Tuesday's pipeline run" a question the
-database can answer directly.
+Immutable history preserves the versions of data produced by those changes. If you need to know who
+changed an interface and when, use the [Activity
+log](../deploy-manage/run-observe/activity-log.mdx). If you need to know which interfaces,
+addresses, and relationships existed at 14:00 during an incident, query the data for that timestamp.
 
-Two properties follow from storing history this way:
+Infrahub returns the relevant values and relationships for the time you specify, so you query that
+data directly rather than reconstructing it from a backup and the changes recorded after it.
 
-- **Change tracking is per attribute, not per object.** An update stores the value that changed
-  rather than a fresh copy of the whole object, and a diff can say which field moved rather than
-  only that the object was touched.
-- **History cannot be rewritten.** Because values are added rather than replaced, a past state
-  cannot be edited after the fact, and the record of who changed what remains attached to it.
+## How Infrahub preserves history
 
-## Temporal history and change logs
+Each change in Infrahub creates a new version instead of modifying the previous value in place.
+Every version is associated with a timestamp, and earlier values remain available for queries that
+specify an earlier time.
 
-A change log records events: what changed, when, and by whom. Reconstructing a past state from one
-means finding an earlier snapshot and replaying the events on top of it, and the result is only as
-complete as the log.
+History is tracked at the attribute level. When one field changes, Infrahub records the new value
+for that field alone. This makes it possible to identify the specific attributes that changed
+between two timestamps.
 
-Infrahub stores the resulting state at every point in time instead of the operations that produced
-it. Reading the past is therefore a query against data that is already there, and it returns
-objects in the same shape as a query against current data — the same fields, the same filters, the
-same client code.
+Relationships are versioned as well. A query for a specific timestamp therefore returns both the
+attribute values and the object relationships that were valid at that time. This is important for
+topology and dependency questions where the connections between objects are part of the answer.
 
-Both are useful for different questions. Use the [activity
-log](../deploy-manage/run-observe/activity-log) to see the sequence of operations someone
-performed; query a past time to see the state those operations produced.
+A graph that stores validity times for both its values and its relationships is a **temporal
+graph**. The period during which each value and connection applied is part of the stored data, which
+is why you can answer a question about past topology with a query.
 
-## Branches are parallel timelines
+Deleting a branch is the exception. Infrahub removes the data and history recorded on that branch,
+and that history is not recoverable. Versions on the default branch are unaffected.
 
-A branch is a second timeline over the same history. Creating one stores a pointer to the moment
-it diverged rather than a copy of the data, so the branch starts with the full history of its
-origin available to it and records only the values you change on it.
+## How branches use immutable history
 
-That is why a query names both a branch and a time: together they identify one state out of every
-state the graph has recorded. A branch created last week can be read as it was on Monday, and the
-default branch can be read as it was before that branch merged into it.
+When you create a branch, it starts from the data and history available on the default branch at its
+branch point. Changes made on that branch create new versions there without changing the data on the
+default branch.
 
-## Where you can use it
+You can therefore develop and review multiple changes independently while retaining the history
+needed to compare and merge them. See [Branches](../branches/overview.mdx) for the branch creation,
+diff, and merge workflow.
 
-| Surface | Access |
-|---|---|
-| Web interface | The time selector beside the branch selector; every object you open reflects the selected time |
-| GraphQL API | `at` on the endpoint — see [Query historical data](./query-historical-data.mdx) |
-| REST API | `at` on stored queries, artifacts, and transformations |
-| Python SDK | `at` on `all()`, `get()`, `filters()`, and `execute_graphql()` |
+## Query data at a specific time
 
-To compare two moments rather than read one, query `DiffTree` with a start and end time. A
-[Proposed Change](../proposed-changes/overview.mdx) does the same comparison scoped to a branch,
-which is the right tool when the two states you care about are a branch and its base.
+By default, queries return the latest data on the selected branch. Set a time when you need the
+values and relationships that were valid at an earlier timestamp. You can specify a time through the
+web interface, GraphQL API, REST API, and Python SDK.
 
-## Related topics
+See [Query historical data](./query-historical-data.mdx) for the available interfaces, comparing two
+timestamps, supported time formats, and branch history limits.
 
-- [Branches](../branches/overview.mdx) — how branches isolate changes, and what merging does to
-  the timeline
-- [Proposed Changes](../proposed-changes/overview.mdx) — review and validate a set of changes
-  before they merge
+## Related
 
-## In this section
-
-- [Query historical data](./query-historical-data.mdx) — Read the graph as it stood at a past
-  time from any interface, and compare two moments to see what changed
+- [Query historical data](./query-historical-data.mdx) — read the graph at an earlier timestamp,
+  and compare two timestamps to see what changed
+- [Branches](../branches/overview.mdx) — how branches diverge, share history, and merge
+- [Proposed Changes](../proposed-changes/overview.mdx) — compare a branch with its base, with
+  review, validation, and checks
+- [Activity log](../deploy-manage/run-observe/activity-log.mdx) — which operations occurred, when,
+  and by whom

@@ -5,80 +5,64 @@ title: Query historical data
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Attach a time to any read and Infrahub returns the data as it stood then. The query is the one you
-already use — same fields, same filters, same client code — with a point in time added to it.
+Infrahub lets you query infrastructure data at previous points in time and compare how it changed
+between them. Use queries with a timestamp to investigate incidents, verify changes during a period,
+answer audit questions, and inspect how objects and relationships differed at an earlier time.
 
-This is the tool for questions that current state cannot answer: which interfaces changed between
-two dates, what the topology looked like before a pipeline ran, or what a device's configuration
-was at the moment an alert fired. [Immutable history](./overview.mdx) covers why those states are
-still available to query; this guide covers how to ask for them.
+To query a specific point, specify a branch and timestamp. Infrahub returns the values and
+relationships that were valid at that time through the same interfaces you use for current data. To
+compare changes, specify two timestamps.
 
-Three things carry most of the work: choosing the point in time, knowing how far back the branch
-you are querying can be read, and picking the interface that fits what you are doing.
+## Specify a branch and a time
 
-## Choose a point in time
+Each query is evaluated for a branch and a point in time. Infrahub uses those two inputs to select
+which versions of objects and relationships it returns. If you do not set either one, Infrahub
+returns the current data from the default branch.
 
-Two kinds of question need two kinds of timestamp, and `at` accepts both.
-
-While you are working backwards from a problem, the useful reference is now — "what did this look
-like an hour ago" — and a relative offset says that without arithmetic. An audit question, a
-post-incident writeup, or anything two people need to agree on requires a fixed moment that still
-means the same thing next week, which is an absolute time.
-
-| Form | Example | Resolves to |
+| State to read | Branch | Time |
 |---|---|---|
-| ISO 8601 with a zone or offset | `2026-03-09T14:00:00Z`, `2026-03-09T15:00:00+01:00` | The instant you name |
-| ISO 8601 without a zone | `2026-03-09T14:00:00` | The same wall-clock time, read as UTC |
-| Date only | `2026-03-09` | 12:00 UTC on that day |
-| Offset from now | `30s`, `45m`, `6h`, `2h30m` | That much time before now |
+| Production as it stands | default | now |
+| Production during last night's incident | default | a time within the incident |
+| The change someone is proposing | their branch | now |
+| The default branch just before that change merged | default | a time before the merge |
 
-Two limits are worth knowing before they surprise you. A date on its own resolves to midday rather
-than midnight, so an audit question about "the 9th" is not the same request as `2026-03-09` — write
-the time out when the boundary of a day matters. And offsets stop at hours: seconds, minutes, and
-hours combine in one string, but there is no day or week form, so `7d` returns a
-`TimestampFormatError`. For anything further back than a few hours, pass an absolute time.
+Queries for earlier data therefore use the same read interfaces as current queries. The difference
+is that you specify the time to evaluate the data.
 
-## How far back a branch can be read
+## How historical queries work
 
-A branch's history starts where the branch does. Creating a branch stores a pointer to the moment
-it diverged rather than a copy of the data, so what a branch can be read from is the history it
-inherited, plus the changes you have made on it since.
+When you add a timestamp to a query, Infrahub evaluates each requested object using the attribute
+values and relationships that were valid at that time. You use the same query structure as you do
+for current data; the timestamp changes which versions Infrahub returns.
 
-That inheritance is what puts the boundary where it is. On the default branch and the global
-branch, the earliest readable time is that branch's own creation. On any other branch, the boundary
-is the creation time of the branch it came from, because everything before the divergence point is
-the origin branch's history and that is where the branch reads it from.
+Infrahub can return those versions because changes create new attribute values and relationship
+versions instead of replacing the previous ones. History is tracked per attribute and relationship,
+so a comparison can identify the specific fields or connections that changed, including the previous
+values.
 
-Ask for anything earlier and Infrahub rejects the query rather than returning a partial answer:
+Later changes do not modify versions that were already recorded. See [Immutable
+history](./overview.mdx) for more detail on how Infrahub preserves those versions and how immutable
+history relates to branches and the Activity log.
 
-```text
-Requested time '2026-01-05T00:00:00Z' is before branch 'main' was created at '2026-02-01T09:14:22.481000Z'.
-```
+## Query data at a specific time
 
-If you need history from before a branch existed, query the branch it came from.
+Use a timestamp when you need the values and relationships that existed at a known point — for
+example, during an incident or before a change.
 
-## Read data at a past time
-
-Each interface suits a different moment. Use the web interface while you are still working out
-what changed, when moving the time and re-reading objects is the fastest way to find it. Use
-GraphQL for a specific question you can express as a query. Use the REST API when something
-scheduled or external needs the answer. Use the Python SDK when you are comparing states in code
-rather than reading them.
-
-The examples below all return the state of `ord1-edge1` at the same moment.
+You can specify a time when viewing or querying Infrahub data through the web interface, GraphQL,
+REST API, or Python SDK. Use the web interface for interactive investigation and the APIs or SDK
+when you need a repeatable or programmatic query.
 
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
 Select the time selector — the calendar and clock icon beside the branch selector — and choose a
-date and time in UTC. The control carries no text label until you set a time, at which point the
-bar beside it reads **Current view time** with your selection.
+date and time in UTC. Until you set a time, the selector displays only the icon; once you set one,
+the bar beside it displays **Current view time** with your selection.
 
-The selected time then applies to everything you open, so you can move through related objects
-without setting it again. Select the **×** beside the displayed time to return to the present.
-
-Because the picker offers past times only, it is the one interface that cannot be pointed at a
-future timestamp.
+The selected time remains applied as you navigate, so objects and relationships are displayed using
+the values valid at that timestamp. Select the × beside the displayed time to return to the current
+time.
 
 ![The time selector, with a past time applied](../media/tutorial_2_historical.png)
 
@@ -86,9 +70,12 @@ future timestamp.
 
   <TabItem value="graphql" label="GraphQL">
 
-`at` is a query-string parameter on the endpoint, so the query itself is unchanged:
+Apply the historical time to the same GraphQL query you use for current data. Use this when you can
+already state the data you need and want a repeatable query.
 
-```graphql # Read a device at a past time
+`at` is a query-string parameter on the endpoint, so the query document itself is unchanged:
+
+```graphql # Read a device as it existed at an earlier time
 # Endpoint : http://localhost:8000/graphql/main?at=2026-03-09T14:00:00Z
 query DeviceAtTime {
   InfraDevice(name__value: "ord1-edge1") {
@@ -103,64 +90,49 @@ query DeviceAtTime {
 }
 ```
 
-Keeping the time out of the query body means a query you have already written and saved works
-against any point in time — the endpoint you send it to decides which one. That is what makes a
-stored query reusable for both monitoring current state and answering a question about the past.
-
 </TabItem>
 
   <TabItem value="rest" label="REST API">
 
-The REST API applies `at` to stored GraphQL queries, artifacts, and transformations rather than to
-ad-hoc object reads. To read objects at a past time over REST, save the query as a
-`CoreGraphQLQuery` object and run it by name:
+Use the REST API when an external tool, scheduled process, or integration needs data for a specific
+timestamp. `at` applies to stored GraphQL queries, artifacts, and Transformations rather than to
+ad-hoc object reads, so save the query as a `CoreGraphQLQuery` and execute it by name:
 
 ```bash
 curl "http://localhost:8000/api/query/device-status?branch=main&at=2026-03-09T14:00:00Z" \
   -H "X-INFRAHUB-KEY: $INFRAHUB_API_TOKEN"
 ```
 
-The same parameter works on `/api/artifact/{artifact_id}` and on the transformation endpoints,
-which renders an artifact from the data as it stood rather than from current data — useful for
-producing the configuration a device was given at a particular time and comparing it with what is
-on the device now.
+The same parameter applies to `/api/artifact/{artifact_id}` and the transformation endpoints, where
+Infrahub renders the artifact from the data that was valid at that timestamp.
 
 </TabItem>
 
   <TabItem value="sdk" label="Python SDK">
 
-`all()`, `get()`, `filters()`, and `execute_graphql()` each take an `at` argument, so a script can
-read two moments and compare them:
+Pass the `at` argument to the SDK query methods when you need a node or set of nodes as they existed
+at a specific time. `all()`, `get()`, and `filters()` take a `Timestamp`; `execute_graphql()` also
+accepts a string.
 
 ```python
-from infrahub_sdk import InfrahubClientSync
 from infrahub_sdk.timestamp import Timestamp
 
-client = InfrahubClientSync(address="http://localhost:8000")
-
-before = client.get(
+device = await client.get(
     kind="InfraDevice",
     name__value="ord1-edge1",
     at=Timestamp("2026-03-09T14:00:00Z"),
 )
-now = client.get(kind="InfraDevice", name__value="ord1-edge1")
-
-print(before.description.value, "->", now.description.value)
 ```
-
-`Timestamp` accepts every form in the table above, so `Timestamp("6h")` reads six hours back.
-Pointing a script at a past state is also how you test an automation against the data it ran on,
-rather than against data that has moved on since.
 
 </TabItem>
 </Tabs>
 
-## Compare two points in time
+## Compare changes between two timestamps
 
-Reading one state answers "what was it then". To answer "what changed between these two moments",
-query `DiffTree` with `from_time` and `to_time`. The two times are yours to choose — they do not
-have to line up with a branch point or a proposed change, which is what makes this usable for a
-window like "the four hours around the incident".
+Use a diff when you need to identify which objects or attributes changed between two timestamps.
+`DiffTree` compares the data at `from_time` with the data at `to_time`. The timestamps do not need
+to align with a branch point or Proposed Change, so you can compare any useful period, such as the
+four hours around an incident.
 
 ```graphql # What changed on main between two timestamps
 # Endpoint : http://localhost:8000/graphql/main
@@ -186,26 +158,72 @@ query ChangesBetween {
 }
 ```
 
-Omit `from_time` and the comparison starts at the branch's creation; omit `to_time` and it ends at
-the current time. Add `filters` to restrict the result by kind, namespace, or status, and `limit`
-and `offset` to page through a large result. For counts without the node detail, query
-`DiffTreeSummary` with the same arguments.
+Behavior to expect:
 
-Two things to expect from the result. The base of the comparison is always the default branch, so
-naming a feature branch compares that branch against the default branch across the window, while
-naming the default branch compares it against itself over time. And where no diff covering the
-requested window is available, `DiffTree` returns `null` rather than an empty result — so treat a
-null as "not calculated", not as "nothing changed".
+- Omit `from_time` and the comparison starts at the branch's `branched_from` timestamp.
+- Omit `to_time` and the comparison runs to the present.
+- Use `filters` to narrow the result by kind, namespace, or status.
+- Use `limit` and `offset` to page through results.
+- Use `DiffTreeSummary` when you only need counts rather than the full set of changed nodes.
+- The base of the comparison is the default branch. Name a feature branch to compare it with the
+  default branch across the requested period, or name the default branch to compare it with itself
+  over time.
+- If no diff covering the requested period is available, the query returns `null` rather than an
+  empty result. Treat `null` as "not calculated," not "nothing changed."
 
-When the two states you want to compare are a branch and its base, a
-[Proposed Change](../proposed-changes/overview.mdx) gives you the same comparison with review and
-validation attached.
+`DiffTree` retrieves a diff that has already been calculated. To calculate one for a period, send
+the `DiffUpdate` mutation first with the `branch` and, when you need a period other than the
+default, `from_time` and `to_time`. This is why a request for an arbitrary period can return `null`
+on the first attempt.
+
+In the web interface, a branch's Branch view shows its diff and lets you refresh it, whether or not
+a Proposed Change exists for that branch. When you are comparing a branch with its base and also
+need review, validation, and checks, use a [Proposed Change](../proposed-changes/overview.mdx).
+
+## Choose an absolute timestamp or relative offset
+
+Use a relative offset when you are investigating from the current time. Use an absolute timestamp
+when the query needs to resolve to the same time each time it runs — for example, for an audit
+answer, post-incident report, or reproducible analysis.
+
+| Form | Example | Resolves to |
+|---|---|---|
+| ISO 8601 with a zone or offset | `2026-03-09T14:00:00Z` or `2026-03-09T15:00:00+01:00` | The specified instant |
+| ISO 8601 without a zone | `2026-03-09T14:00:00` | The same wall-clock time, interpreted as UTC |
+| Date only | `2026-03-09` | 12:00 UTC on that day |
+| Offset from now | `30s`, `45m`, `6h`, `2h30m` | That interval before the current time |
+
+A date without a time resolves to midday rather than midnight, so include an explicit time when a
+day boundary matters. Relative offsets support seconds, minutes, and hours, including combined
+values such as `2h30m`. They do not support day or week units; use an absolute timestamp for those
+intervals.
+
+## Understand branch history limits
+
+Each branch has an earliest timestamp you can query. If the requested time is earlier than the
+history available to that branch, Infrahub rejects the query rather than returning partial data.
+
+When you create a branch, Infrahub records where it diverged rather than copying the entire dataset.
+You can query the history available through the default branch, plus the changes recorded on the
+branch after it diverged.
+
+On the default branch and the global branch, the earliest available time is that branch's creation.
+On any other branch, the boundary is the creation time of the default branch.
+
+```text
+Requested time '2026-01-05T00:00:00Z' is before branch 'main' was created at '2026-02-01T09:14:22.481000Z'.
+```
+
+If you need data from an earlier timestamp than the branch allows, query the default branch instead.
+
+Rebasing a branch moves the timestamps of changes made on it up to the rebase time, so a change
+recorded on the branch before a rebase is no longer readable at its original timestamp.
 
 ## Related
 
-- [Immutable history](./overview.mdx) — how Infrahub stores every past state, and why reading one
-  is a query rather than a reconstruction
-- [Branches](../branches/overview.mdx) — how branch creation and merging place the timestamps you
-  query against
-- [Activity log](../deploy-manage/run-observe/activity-log.mdx) — the sequence of operations
-  someone performed, where a past state tells you what those operations produced
+- [Immutable history](./overview.mdx) — how Infrahub preserves previous values and relationships
+- [Branches](../branches/overview.mdx) — how branches diverge, share history, and merge
+- [Activity log](../deploy-manage/run-observe/activity-log.mdx) — which operations occurred, when,
+  and by whom
+- [Proposed Changes](../proposed-changes/overview.mdx) — compare a branch with its base with review,
+  validation, and checks
