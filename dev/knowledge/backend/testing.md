@@ -441,6 +441,20 @@ async def test_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
 
 This matches the pattern used in `test_webhook_header.py` and `test_models.py`.
 
+### Prefect Server State Outlives the Test Class
+
+The Prefect test server is session-scoped — one per xdist worker — while the database and the
+fixtures that populate it are class-scoped, so whatever a class registers on that server survives
+it. Two rules follow:
+
+- Delete the automations a class created at its teardown. A surviving all-branches webhook
+  automation turns every event any later test emits into a scheduled flow run — no worker runs in
+  the functional suite, so nothing executes them — filling the server's SQLite database.
+- Never assert on a flow-run count. `read_flow_runs()` returns at most `PREFECT_API_DEFAULT_LIMIT`
+  (200) rows and the API rejects a larger `limit`, so once that page is full a before/after
+  comparison saturates and can never be true again. Read newest-first
+  (`FlowRunSort.EXPECTED_START_TIME_DESC`) and identify the run by its id or parameters instead.
+
 ### Functional Tests with `TestInfrahubApp`
 
 `TestInfrahubApp` provides a `memory_cache` fixture (class-scoped) that injects a `MemoryCache` via `dependency_provider.scope(build_cache, ...)`. Use it in functional tests to pre-fill and assert on cache state:
