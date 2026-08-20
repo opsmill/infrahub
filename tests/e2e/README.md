@@ -327,4 +327,9 @@ all three are now fixed and enabled:
 Trace/video capture for authenticated tests is wired: the `admin_page` /
 `read_*_page` fixtures build their context via pytest-playwright's `new_context`
 factory (not `browser.new_context`), so failures produce a trace/video/screenshot
-under `--output` (`test-results/`).
+under `--output` (`test-results/`). Open a captured trace with the Playwright
+trace viewer (the Python package ships the same CLI):
+
+```bash
+uv run playwright show-trace test-results/<test-dir>/trace.zip
+```

@@ -1101,6 +1101,11 @@ jobs:
     runs-on:
       group: huge-runners
     timeout-minutes: 60
+    # ci.yml has no top-level permissions block; a job-level one restricts this job
+    # to exactly what is listed, so contents: read (checkout) must be explicit.
+    permissions:
+      contents: read
+      checks: write # Publish e2e results (junit check run)
     strategy:
       fail-fast: false
       matrix:
@@ -1129,10 +1134,18 @@ jobs:
         run: uv run playwright install --with-deps chromium
       - name: Install tini
         run: apt-get update && apt-get install -y tini
-      - name: Set job name
-        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
-      - name: "Store start time"
-        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+      # The testcontainers compose file passes these through to infrahub-server and
+      # task-worker; they resolve from the process environment (create_env_file does
+      # not write them), so $GITHUB_ENV is all the wiring needed.
+      - name: Enable tracing
+        if: github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
+        run: echo "INFRAHUB_TRACE_ENABLE=true" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: |
+          echo "INFRAHUB_TRACE_INSECURE=false" >> $GITHUB_ENV
+          echo "INFRAHUB_TRACE_EXPORTER_TYPE=otlp" >> $GITHUB_ENV
+          echo "INFRAHUB_TRACE_EXPORTER_ENDPOINT=${{ secrets.TRACING_ENDPOINT }}" >> $GITHUB_ENV
+          echo "OTEL_RESOURCE_ATTRIBUTES=github.run_id=${GITHUB_RUN_ID},ci.shard=${{ matrix.shard }}" >> $GITHUB_ENV
       - name: "Set environment variables"
         run: |
           RUNNER_NAME=$(echo "${{ runner.name }}" | grep -o 'ghrunner[0-9]\+' | sed 's/ghrunner\([0-9]\+\)/ghrunner_\1/')
@@ -1161,7 +1174,7 @@ jobs:
       - name: Run tutorial Playwright tests
         if: matrix.shard == 'tutorial'
         run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/tutorial
-      - name: playwright-report
+      - name: e2e-artifacts
         if: always()
         uses: actions/upload-artifact@v7
         with:
@@ -1169,6 +1182,16 @@ jobs:
           path: |
             test-results/
             playwright-junit.xml
+      - name: Publish e2e results
+        if: always() && github.event.pull_request.head.repo.fork == false
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: playwright-junit.xml
+          check_name: "E2E pytest (${{ matrix.shard }})"
+          include_passed: false
+          detailed_summary: true
+          fail_on_failure: false # pytest already fails the job; only annotate
+      # Leftover containers here mean the session-fixture teardown did not run.
       - name: Containers after tests
         if: always()
         run: docker ps -a
