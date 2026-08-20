@@ -285,7 +285,7 @@ class Migration013AddInternalStatusData(AttributeAddQuery):
             attribute_name="internal_status",
             attribute_kind="Dropdown",
             branch_support=BranchSupportType.LOCAL.value,
-            node_branch_support=BranchSupportType.AWARE.value,
+            node_branch_support=BranchSupportType.AGNOSTIC.value,
             default_value=RepositoryInternalStatus.ACTIVE.value,
             branch=default_branch,
             **kwargs,

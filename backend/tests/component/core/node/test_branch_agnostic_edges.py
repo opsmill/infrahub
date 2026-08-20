@@ -16,13 +16,13 @@ from infrahub.database import InfrahubDatabase
 
 
 async def assert_no_global_edges_with_wrong_branch_level(db: InfrahubDatabase) -> None:
-    """Assert that all edges on the global branch have branch_level = 1.
+    """Assert that every edge on the global branch has branch_level = 1.
 
-    Fails the test if any edges on the global branch have branch_level != 1.
+    Fails the test if any edge on the global branch has a branch_level other than 1, or none at all.
     """
     query = """
         MATCH ()-[e {branch: $global_branch_name}]->()
-        WHERE e.branch_level <> 1
+        WHERE e.branch_level IS NULL OR e.branch_level <> 1
         RETURN count(*) AS num_edges
     """
     params = {"global_branch_name": GLOBAL_BRANCH_NAME}
@@ -30,7 +30,7 @@ async def assert_no_global_edges_with_wrong_branch_level(db: InfrahubDatabase) -
 
     num_edges = records[0]["num_edges"] if records else 0
     if num_edges > 0:
-        pytest.fail(f"Found {num_edges} edges on the global branch with branch_level != 1")
+        pytest.fail(f"Found {num_edges} edges on the global branch without branch_level 1")
 
 
 async def assert_no_global_edges_with_branch_level_zero(db: InfrahubDatabase) -> None:

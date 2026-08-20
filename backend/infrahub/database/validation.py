@@ -480,7 +480,7 @@ UNWIND [owning] + props AS e
 WITH n, a, expects_global, e,
     CASE WHEN (e.branch = $global_branch) <> expects_global THEN "branch" ELSE "branch_level" END AS reason
 WHERE (e.branch = $global_branch) <> expects_global
-   OR (e.branch = $global_branch AND e.branch_level <> 1)
+   OR (e.branch = $global_branch AND (e.branch_level IS NULL OR e.branch_level <> 1))
 RETURN n.uuid AS node_id, a.name AS field_name, a.branch_support AS branch_support, expects_global,
        e.branch AS branch, e.branch_level AS branch_level, reason,
        collect(DISTINCT type(e)) AS edge_types, count(*) AS num_edges
