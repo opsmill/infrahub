@@ -16,17 +16,20 @@ export default mergeConfig(
     // Every entry MUST also be resolvable from this package's root, i.e. declared in
     // the app's own (dev)dependencies — pnpm's strict layout hides the linked packages'
     // deps, and Vite silently skips unresolvable entries ("Failed to resolve dependency"
-    // at startup), which re-opens the mid-run reload this list exists to prevent.
+    // at startup), which re-opens the mid-run reload this list exists to prevent. The
+    // entries tagged with an owning package below exist in the app's devDependencies
+    // solely to satisfy that rule; knip enforces the coupling (removing an entry here
+    // flags its devDependency as unused).
     optimizeDeps: {
       include: [
         "@date-fns/tz",
         "react-aria-components",
         "lucide-react",
-        "tailwind-variants",
+        "tailwind-variants", // owned by @infrahub/ui + @infrahub/graph
         "tailwind-merge",
         "@radix-ui/react-dropdown-menu",
-        "@radix-ui/react-scroll-area",
-        "react-resizable-panels",
+        "@radix-ui/react-scroll-area", // owned by @infrahub/ui
+        "react-resizable-panels", // owned by @infrahub/ui
         "@graphiql/plugin-explorer",
         "@tanstack/react-query-devtools",
         "graphiql",
@@ -36,10 +39,10 @@ export default mergeConfig(
         "react-error-boundary",
         "react-scan",
         "@headlessui/react",
-        "@dagrejs/dagre",
+        "@dagrejs/dagre", // owned by infrahub-schema-visualizer
         "dagre",
         "@radix-ui/react-progress",
-        "html-to-image",
+        "html-to-image", // owned by infrahub-schema-visualizer
         "react-paginate",
         "react-diff-view",
         "recharts",
