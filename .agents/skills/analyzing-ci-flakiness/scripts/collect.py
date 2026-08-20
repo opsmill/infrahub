@@ -36,6 +36,7 @@ import subprocess  # noqa: S404
 import sys
 from collections import defaultdict
 from pathlib import Path
+from typing import TypedDict
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -291,12 +292,22 @@ def append_ledger(ledger_path: Path, jobs_out: list[dict], repo: str, today: dt.
     return added
 
 
-def ranked_tests(jobs_out: list[dict]) -> list[dict]:
+class RankedTest(TypedDict):
+    test: str
+    distinct_runs: int
+    distinct_prs: int
+    attempts: int
+    recovered_on_retry: int
+    buckets: list[str]
+    prs: list[int]
+
+
+def ranked_tests(jobs_out: list[dict]) -> list[RankedTest]:
     freq: dict[str, list[dict]] = defaultdict(list)
     for e in jobs_out:
         for t in e["tests"]:
             freq[t].append(e)
-    table = [
+    table: list[RankedTest] = [
         {
             "test": test,
             "distinct_runs": len({e["run"] for e in entries}),
