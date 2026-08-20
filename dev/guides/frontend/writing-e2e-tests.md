@@ -395,7 +395,8 @@ async def test_flow(self, admin_page: Page) -> None:
 
 ## Running Tests
 
-Always pass `-c tests/e2e/pytest.ini` (it isolates the suite from the root pytest config) and run
+Run every command below from the **repository root** (not `frontend/app`). Always pass
+`-c tests/e2e/pytest.ini` (it isolates the suite from the root pytest config) and run
 single-process — the stack is a session fixture. Full invocations, including the
 `INFRAHUB_TESTING_IMAGE_VER` / `INFRAHUB_ADDRESS` modes and response-delay runs, are in the
 [suite README](../../../tests/e2e/README.md#running).
