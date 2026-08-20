@@ -29,6 +29,7 @@ class DeriveCase:
     expected_depends_on_everything: bool
     expected_read_kinds: set[str] = field(default_factory=set)
     expected_read_fields: dict[str, set[str]] = field(default_factory=dict)
+    expected_imprecise_kinds: set[str] = field(default_factory=set)
 
 
 DERIVE_CASES = [
@@ -57,6 +58,18 @@ DERIVE_CASES = [
         expected_read_fields={OWNER_KIND: {"name", "owner", ATTRIBUTE_NAME}, "TestPerson": {"name"}},
     ),
     DeriveCase(
+        name="derived_read_is_carried_per_kind",
+        read_sets={
+            (BRANCH, OWNER_KIND, ATTRIBUTE_NAME): TransformReadSet.from_read_fields(
+                {OWNER_KIND: {"name"}, "TestPerson": {"human_friendly_id"}}
+            )
+        },
+        expected_depends_on_everything=False,
+        expected_read_kinds={OWNER_KIND, "TestPerson"},
+        expected_read_fields={OWNER_KIND: {"name", ATTRIBUTE_NAME}},
+        expected_imprecise_kinds={"TestPerson"},
+    ),
+    DeriveCase(
         name="unanalyzable_query_depends_on_everything",
         read_sets={(BRANCH, OWNER_KIND, ATTRIBUTE_NAME): TransformReadSet.imprecise()},
         expected_depends_on_everything=True,
@@ -83,6 +96,7 @@ def test_derive(case: DeriveCase) -> None:
     if not case.expected_depends_on_everything:
         assert set(dependencies.read_kinds) == case.expected_read_kinds
         assert {kind: set(fields) for kind, fields in dependencies.read_fields.items()} == case.expected_read_fields
+        assert set(dependencies.imprecise_kinds) == case.expected_imprecise_kinds
 
 
 def test_own_definition_always_in_read_fields() -> None:
@@ -122,17 +136,23 @@ def test_read_set_is_branch_specific() -> None:
     assert branch_deps.read_fields[OWNER_KIND] == frozenset({"color", ATTRIBUTE_NAME})
 
 
-def test_display_label_read_marks_imprecise() -> None:
+def test_display_label_read_marks_only_its_own_kind_imprecise() -> None:
     read_set = TransformReadSet.from_read_fields({OWNER_KIND: {"name"}, "TestPerson": {"display_label"}})
 
-    assert read_set.depends_on_everything is True
+    assert read_set.depends_on_everything is False
+    assert set(read_set.imprecise_kinds) == {"TestPerson"}
+    assert set(read_set.read_kinds) == {OWNER_KIND, "TestPerson"}
+    assert {kind: set(fields) for kind, fields in read_set.read_fields.items()} == {OWNER_KIND: {"name"}}
 
 
-def test_hfid_read_marks_imprecise() -> None:
+def test_hfid_read_marks_only_its_own_kind_imprecise() -> None:
     # The analyzer reports the schema name, not the hfid query spelling.
     read_set = TransformReadSet.from_read_fields({OWNER_KIND: {"human_friendly_id"}})
 
-    assert read_set.depends_on_everything is True
+    assert read_set.depends_on_everything is False
+    assert set(read_set.imprecise_kinds) == {OWNER_KIND}
+    assert set(read_set.read_kinds) == {OWNER_KIND}
+    assert read_set.read_fields == {}
 
 
 def test_from_read_fields_precise() -> None:

@@ -27,8 +27,9 @@ if TYPE_CHECKING:
 
 
 # ``computed_desc_python`` reads only TestCar.name via transform01.
-# ``computed_desc_python_opaque`` reads display_label via transform_opaque, so its read set
-# is imprecise and the attribute always recomputes (the conservative, opaque case).
+# ``computed_desc_python_opaque`` reads display_label via transform_opaque. The fields behind
+# that label cannot be named, so any change to TestCar recomputes it, while a change to a kind
+# its query never reaches does not.
 PYTHON_CASES = [
     ScopedRecomputeCase(
         name="unrelated_field_skips_scoped_keeps_opaque",
@@ -39,6 +40,11 @@ PYTHON_CASES = [
         name="related_field_recomputes_scoped_and_opaque",
         changed_elements=ChangedElementsPayload(changed_fields={"TestCar": ["name"]}),
         expected_submitted={"computed_desc_python", "computed_desc_python_opaque"},
+    ),
+    ScopedRecomputeCase(
+        name="unread_kind_skips_scoped_and_opaque",
+        changed_elements=ChangedElementsPayload(changed_fields={"TestPerson": ["name"]}),
+        expected_submitted=set(),
     ),
 ]
 
