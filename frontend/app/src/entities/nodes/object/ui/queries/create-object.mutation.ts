@@ -6,7 +6,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type CreateObjectParams,
   createObject,
-} from "@/entities/nodes/object/domain/create-object";
+} from "@/entities/nodes/object/domain/use-cases/create-object";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 export function useCreateObjectMutation() {

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { createAccountToken } from "@/entities/user-profile/domain/create-account-token";
+import { createAccountToken } from "@/entities/user-profile/domain/use-cases/create-account-token";
 import { accountQueryKeys } from "@/entities/user-profile/ui/queries/account-query.keys";
 
 export function useCreateAccountTokenMutation() {

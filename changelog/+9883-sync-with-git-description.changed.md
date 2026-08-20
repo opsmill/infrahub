@@ -1,0 +1,1 @@
+Added an explanation to the branch "Sync with Git" flag (in both the branch details view and the create-branch form) clarifying that it controls whether an Infrahub-created branch is propagated to Git, and does not indicate whether the branch originated from Git. ([#9883](https://github.com/opsmill/infrahub/issues/9883))

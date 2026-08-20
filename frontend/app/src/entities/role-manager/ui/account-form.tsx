@@ -13,11 +13,11 @@ import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/util
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { ACCOUNT_GROUP_OBJECT, ACCOUNT_OBJECT } from "@/shared/config/constants";
 
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
+import { ACCOUNT_GROUP_OBJECT, ACCOUNT_OBJECT } from "@/entities/role-manager/domain/model/account";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface AccountFormProps {
@@ -98,11 +98,23 @@ export const AccountForm = ({ currentObject, onSuccess, onCancel }: AccountFormP
   }
 
   return (
-    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
-      <Form form={form} onSubmit={handleSubmit}>
+    <Form form={form} onSubmit={handleSubmit}>
+      <InputField
+        name="name"
+        label="Name"
+        rules={{
+          required: true,
+          validate: {
+            required: isRequired,
+          },
+        }}
+      />
+
+      {!currentObject && (
         <InputField
-          name="name"
-          label="Name"
+          name="password"
+          label="Password"
+          type="password"
           rules={{
             required: true,
             validate: {
@@ -110,45 +122,31 @@ export const AccountForm = ({ currentObject, onSuccess, onCancel }: AccountFormP
             },
           }}
         />
+      )}
 
-        {!currentObject && (
-          <InputField
-            name="password"
-            label="Password"
-            type="password"
-            rules={{
-              required: true,
-              validate: {
-                required: isRequired,
-              },
-            }}
-          />
+      <InputField name="description" label="Description" />
+
+      <RelationshipManyField
+        name="member_of_groups"
+        label="Groups"
+        relationship={{
+          name: "member_of_groups",
+          peer: ACCOUNT_GROUP_OBJECT,
+          cardinality: "many",
+        }}
+        schema={schema}
+        defaultValue={memberDefaultValue}
+      />
+
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
         )}
 
-        <InputField name="description" label="Description" />
-
-        <RelationshipManyField
-          name="member_of_groups"
-          label="Groups"
-          relationship={{
-            name: "member_of_groups",
-            peer: ACCOUNT_GROUP_OBJECT,
-            cardinality: "many",
-          }}
-          schema={schema}
-          defaultValue={memberDefaultValue}
-        />
-
-        <Row className="justify-end">
-          {onCancel && (
-            <Button variant="outline" onPress={onCancel}>
-              Cancel
-            </Button>
-          )}
-
-          <FormSubmit>Save</FormSubmit>
-        </Row>
-      </Form>
-    </div>
+        <FormSubmit>Save</FormSubmit>
+      </Row>
+    </Form>
   );
 };

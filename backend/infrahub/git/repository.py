@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from cachetools import TTLCache
 from cachetools.keys import hashkey
@@ -312,7 +312,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return True
 
-    async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> bool:
+    async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> str | Literal[False]:
         """Merge the source branch into the destination branch.
 
         After the rebase we need to resync the data
@@ -350,7 +350,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return str(commit_after)
 
-    async def rebase(self, branch_name: str, source_branch: str = "main", push_remote: bool = True) -> bool:
+    async def rebase(
+        self, branch_name: str, source_branch: str = "main", push_remote: bool = True
+    ) -> str | Literal[False]:
         """Rebase the current branch with main.
 
         Technically we are not doing a Git rebase because it will change the git history

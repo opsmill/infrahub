@@ -110,7 +110,7 @@ test.describe("Event Rules and Actions", () => {
   //       .getByRole("textbox", { name: "Name *" })
   //       .fill("added-to-provisioning-circuits-group");
   //     await page
-  //       .getByTestId("side-panel-container")
+  //       .getByLabel('sheet')
   //       .locator("div")
   //       .filter({ hasText: "Group *?Kind ?" })
   //       .getByLabel("Kind")
@@ -119,7 +119,7 @@ test.describe("Event Rules and Actions", () => {
   //     await page.getByRole("combobox", { name: "Standard Group *" }).click();
   //     await page.getByText("provisioning_circuits").click();
   //     await page
-  //       .getByTestId("side-panel-container")
+  //       .getByLabel('sheet')
   //       .locator("div")
   //       .filter({ hasText: "Action *?Kind ?" })
   //       .getByLabel("Kind")

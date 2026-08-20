@@ -122,6 +122,12 @@ core_artifact_definition = NodeSchema(
             description="MIME type of the generated artifacts",
             enum=ContentType.available_types(),
         ),
+        Attr(
+            name="fingerprint",
+            kind="Text",
+            description="Content hash of the definition's inputs, recomputed on each import",
+            optional=True,
+        ),
     ],
     relationships=[
         Rel(

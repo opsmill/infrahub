@@ -7,37 +7,44 @@ import { GenericObjectForm } from "@/shared/components/form/generic-object-form"
 import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form";
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
+import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/object/domain/model/node";
+import { FILE_OBJECT_KIND } from "@/entities/nodes/object/domain/model/object-kinds";
+import type { ProfileData } from "@/entities/nodes/profiles/domain/model/profile";
+import {
+  GLOBAL_PERMISSION_OBJECT,
+  OBJECT_PERMISSION_OBJECT,
+} from "@/entities/permission/domain/model/permission";
+import {
+  READONLY_REPOSITORY_KIND,
+  REPOSITORY_KIND,
+} from "@/entities/repository/domain/model/repository";
+import {
+  IP_ADDRESS_POOL,
+  IP_PREFIX_POOL,
+  NUMBER_POOL_KIND,
+} from "@/entities/resource-manager/domain/model/pool";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
+import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
+import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
+import { NumberPoolForm } from "@/entities/resource-manager/ui/number-pool-form";
 import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
   ACCOUNT_ROLE_OBJECT,
-  FILE_OBJECT_KIND,
-  GLOBAL_PERMISSION_OBJECT,
-  NUMBER_POOL_OBJECT,
-  OBJECT_PERMISSION_OBJECT,
-  READONLY_REPOSITORY_KIND,
-  REPOSITORY_KIND,
-} from "@/shared/config/constants";
-
-import type { ProfileData } from "@/entities/nodes/profiles/types";
-import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
-import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
-import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
-import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
-import { NumberPoolForm } from "@/entities/resource-manager/ui/number-pool-form";
-import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
+} from "@/entities/role-manager/domain/model/account";
 import { AccountForm } from "@/entities/role-manager/ui/account-form";
 import { AccountGroupForm } from "@/entities/role-manager/ui/account-group-form";
 import { AccountRoleForm } from "@/entities/role-manager/ui/account-role-form";
 import { GlobalPermissionForm } from "@/entities/role-manager/ui/global-permissions-form";
 import { ObjectPermissionForm } from "@/entities/role-manager/ui/object-permissions-form";
+import { getTemplateRelationshipFromSchema } from "@/entities/schema/domain/rules/get-template-relationship-from-schema";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { getTemplateRelationshipFromSchema } from "@/entities/schema/utils/get-template-relationship-from-schema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import {
   NODE_TRIGGER_ATTRIBUTE_MATCH,
   NODE_TRIGGER_RELATIONSHIP_MATCH,
-} from "@/entities/triggers/constants";
+} from "@/entities/triggers/domain/model/trigger";
 import { NodeAttributeMatchForm } from "@/entities/triggers/ui/node-attribute-match-form";
 import { NodeRelationshipMatchForm } from "@/entities/triggers/ui/node-relationship-match-form";
 
@@ -46,7 +53,7 @@ export type { ProfileData };
 const IpPrefixForm = lazy(() => import("@/entities/ipam/ip-prefixes/ui/ipam-creation-form"));
 const RepositoryForm = lazy(() => import("@/entities/repository/ui/repository-form"));
 const ObjectTemplateForm = lazy(
-  () => import("@/entities/nodes/object-template/object-template-form")
+  () => import("@/entities/nodes/object/ui/object-template/object-template-form")
 );
 
 export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
@@ -93,7 +100,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     );
   }
 
-  if (kind === NUMBER_POOL_OBJECT) {
+  if (kind === NUMBER_POOL_KIND) {
     return <NumberPoolForm {...props} />;
   }
 

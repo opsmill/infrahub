@@ -3,8 +3,6 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from dataclasses import dataclass, field
-from enum import Enum, IntFlag
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -36,7 +34,6 @@ from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import merge_branch
 from infrahub.core.constants import (
     CheckType,
-    DiffAction,
     GeneratorInstanceStatus,
     InfrahubKind,
     RepositoryInternalStatus,
@@ -51,9 +48,24 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge.constraints import build_merge_constraint_result, gather_conflicted_fields
 from infrahub.core.protocols import CoreDataCheck, CoreGenericAccount, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
+from infrahub.core.regeneration.definitions import GATHER_ARTIFACT_DEFINITIONS, parse_artifact_definitions
+from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
+from infrahub.core.regeneration.members import (
+    map_subscriber_ids_by_member,
+    run_generator,
+    should_render_artifact,
+)
+from infrahub.core.regeneration.models import DefinitionSelect
+from infrahub.core.regeneration.predicates import (
+    definition_changed,
+    query_changed,
+    repo_diff_or_none,
+    transform_changed,
+)
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.checks_runner import run_checks_and_update_validator
-from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
+from infrahub.core.validators.constraint_merge import build_constraint_info_merger
+from infrahub.core.validators.determiner import build_constraint_validator_determiner
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
@@ -65,21 +77,15 @@ from infrahub.exceptions import (
     SchemaNotFoundError,
     ValidationError,
 )
-from infrahub.generators.models import ProposedChangeGeneratorDefinition
+from infrahub.generators.models import build_generator_definition
 from infrahub.git.base import extract_repo_file_information
-from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.git.utils import fetch_artifact_definition_targets, fetch_proposed_change_generator_definition_targets
-from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
-from infrahub.graphql.execution import cached_parse
-from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.log import get_logger
 from infrahub.message_bus.types import (
-    ProposedChangeArtifactDefinition,
     ProposedChangeBranchDiff,
     ProposedChangeRepository,
-    ProposedChangeSubscriber,
 )
 from infrahub.proposed_change.branch_diff import (
     GitRepositoryFileDiffer,
@@ -124,9 +130,6 @@ from .branch_diff import get_diff_summary_cache, get_modified_kinds
 from .checker import verify_proposed_change_is_mergeable
 
 if TYPE_CHECKING:
-    import logging
-    from uuid import UUID
-
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
@@ -401,7 +404,9 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
 async def run_generators(model: RequestProposedChangeRunGenerators, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
+    log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     generators = await client.filters(
         kind=CoreGeneratorDefinition,
@@ -411,41 +416,42 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
     )
 
     generator_definitions = [
-        ProposedChangeGeneratorDefinition(
-            definition_id=generator.id,
-            definition_name=generator.name.value,
-            class_name=generator.class_name.value,
-            file_path=generator.file_path.value,
-            query_name=generator.query.peer.name.value,
-            query_models=generator.query.peer.models.value,
-            query_payload=generator.query.peer.query.value,
-            repository_id=generator.repository.peer.id,
-            parameters=generator.parameters.value,
-            group_id=generator.targets.peer.id,
-            convert_query_response=generator.convert_query_response.value,
-            execute_in_proposed_change=generator.execute_in_proposed_change.value,
-            execute_after_merge=generator.execute_after_merge.value,
-        )
-        for generator in generators
-        if generator.execute_in_proposed_change.value
+        build_generator_definition(generator) for generator in generators if generator.execute_in_proposed_change.value
     ]
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
     modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
 
     for generator_definition in generator_definitions:
-        # Request generator definitions if the source branch that is managed in combination
-        # to the Git repository containing modifications which could indicate changes to the transforms
-        # in code
-        # Alternatively if the queries used touches models that have been modified in the path
-        # impacted artifact definitions will be included for consideration
-
+        # Select a generator definition when its query node or definition node was modified, when a
+        # file inside its stored dependency closure changed, or when the diff touches a data kind the
+        # query reads. The closure-based file gate replaces the previous "any file changed in a synced
+        # repository" heuristic so an unrelated commit no longer re-runs every generator.
         select = DefinitionSelect.NONE
-        select = select.add_flag(
-            current=select,
-            flag=DefinitionSelect.FILE_CHANGES,
-            condition=model.source_branch_sync_with_git and model.branch_diff.has_file_modifications,
+        for outcome, flag in (
+            (
+                query_changed(definition=generator_definition, diff_summary=diff_summary),
+                DefinitionSelect.QUERY_CHANGED,
+            ),
+            (
+                definition_changed(definition=generator_definition, diff_summary=diff_summary),
+                DefinitionSelect.DEFINITION_CHANGED,
+            ),
+        ):
+            select = select.add_flag(current=select, flag=flag, condition=outcome.matched)
+            if outcome.reason is not None:
+                log.info(outcome.reason)
+
+        repo_diff_for_definition = repo_diff_or_none(
+            branch_diff=model.branch_diff, repository_id=generator_definition.repository_id
         )
+        if repo_diff_for_definition is not None:
+            transform_outcome = transform_changed(definition=generator_definition, repo_diff=repo_diff_for_definition)
+            select = select.add_flag(
+                current=select, flag=DefinitionSelect.FILE_CHANGES, condition=transform_outcome.matched
+            )
+            if transform_outcome.reason is not None:
+                log.info(transform_outcome.reason)
 
         for changed_model in modified_kinds:
             select = select.add_flag(
@@ -504,6 +510,8 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
+    database = await get_database()
+
     source_schema = registry.schema.get_schema_branch(name=model.source_branch).duplicate()
     dest_schema = registry.schema.get_schema_branch(name=model.destination_branch).duplicate()
 
@@ -517,7 +525,6 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
         parts = error_msg.split(":", 1)
         kind = parts[0].strip() if len(parts) > 1 and parts[0].strip() else "Unknown"
         schema_path = f"schema/{kind}"
-        database = await get_database()
         async with database.start_transaction() as db:
             object_conflict_validator_recorder = _build_schema_integrity_validator_recorder(db=db)
             await object_conflict_validator_recorder.record_conflicts(
@@ -540,11 +547,13 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     validation_result = dest_schema.validate_update(other=candidate_schema, diff=schema_diff)
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
+    source_branch = registry.get_branch_from_registry(branch=model.source_branch)
     constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
-        schema=candidate_schema, diff_summary=diff_summary
+        db=database, schema=candidate_schema, diff_summary=diff_summary, branch=source_branch
     )
     constraints_from_schema_diff = validation_result.constraints
-    constraints = set(constraints_from_data_diff + constraints_from_schema_diff)
+    merger = build_constraint_info_merger()
+    constraints = merger.merge(candidate_schema, constraints_from_data_diff, constraints_from_schema_diff)
 
     if not constraints:
         return
@@ -552,15 +561,13 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     # ----------------------------------------------------------
     # Validate if the new schema is valid with the content of the database
     # ----------------------------------------------------------
-    source_branch = registry.get_branch_from_registry(branch=model.source_branch)
     responses = await schema_validate_migrations(
         message=SchemaValidateMigrationData(
-            branch=source_branch, schema_branch=candidate_schema, constraints=list(constraints)
+            branch=source_branch, schema_branch=candidate_schema, constraints=constraints
         )
     )
 
     component_registry = get_component_registry()
-    database = await get_database()
     async with database.start_session() as db:
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
         conflicted_fields = await gather_conflicted_fields(
@@ -580,7 +587,7 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
 
 
 async def _get_proposed_change_schema_integrity_constraints(
-    schema: SchemaBranch, diff_summary: list[NodeDiff]
+    db: InfrahubDatabase, schema: SchemaBranch, diff_summary: list[NodeDiff], branch: Branch
 ) -> list[SchemaUpdateConstraintInfo]:
     node_diff_field_summary_map: dict[str, NodeDiffFieldSummary] = {}
 
@@ -589,18 +596,22 @@ async def _get_proposed_change_schema_integrity_constraints(
         if node_kind not in node_diff_field_summary_map:
             node_diff_field_summary_map[node_kind] = NodeDiffFieldSummary(kind=node_kind)
         field_summary = node_diff_field_summary_map[node_kind]
+        node_id = node_diff["id"]
         for element in node_diff["elements"]:
             element_name = element["name"]
             # The SDK diff summary reports element_type using the DiffElementType member name
             # (e.g. "RELATIONSHIP_ONE"), not its value ("RelationshipOne").
             element_type = element["element_type"]
             if element_type in (DiffElementType.RELATIONSHIP_MANY.name, DiffElementType.RELATIONSHIP_ONE.name):
-                field_summary.relationship_names.add(element_name)
+                field_summary.add_relationship_node_uuid(name=element_name, node_uuid=node_id)
             elif element_type == DiffElementType.ATTRIBUTE.name:
-                field_summary.attribute_names.add(element_name)
+                field_summary.add_attribute_node_uuid(name=element_name, node_uuid=node_id)
 
-    determiner = ConstraintValidatorDeterminer(schema_branch=schema)
-    return await determiner.get_constraints(node_diffs=list(node_diff_field_summary_map.values()))
+    async with db.start_session(read_only=True) as session_db:
+        determiner = build_constraint_validator_determiner(db=session_db, branch=branch)
+        return await determiner.get_constraints(
+            schema_branch=schema, node_diffs=list(node_diff_field_summary_map.values())
+        )
 
 
 @flow(name="proposed-changed-repository-checks", flow_run_name="Process user defined checks")
@@ -729,103 +740,6 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
             log.info(msg=f"repository_tests_completed return_code={return_code}")
 
 
-class ImpactScope(Enum):
-    """How a data change maps onto the subscribers (artifacts or generator instances) to process."""
-
-    ALL = "all"  # the change cannot be mapped to specific targets; every target must be processed
-    NONE = "none"  # no queried field changed; no target needs processing
-    SPECIFIC = "specific"  # only the subscribers in `ids` are affected
-
-
-@dataclass
-class ImpactedSubscribers:
-    scope: ImpactScope
-    ids: list[str] = field(default_factory=list)
-
-
-def _relevant_node_changes(
-    diff_summary: list[NodeDiff], source_branch: str, readable_fields_by_kind: dict[str, set[str]]
-) -> list[str]:
-    """Return ids of nodes whose modified fields intersect the fields a query reads.
-
-    A change is relevant only when at least one modified field is also read by the query, so a
-    node whose only change is to a field the query ignores -- or whose kind the query never reads
-    -- is excluded. `readable_fields_by_kind` maps each kind the query reads to the set of its
-    attribute and relationship names that the query selects.
-    """
-    relevant_node_ids: list[str] = []
-    for node_diff in diff_summary:
-        if node_diff["branch"] != source_branch:
-            continue
-        readable_fields = readable_fields_by_kind.get(node_diff["kind"])
-        if not readable_fields:
-            continue
-        updated_fields = {element["name"] for element in node_diff["elements"]}
-        if updated_fields & readable_fields:
-            relevant_node_ids.append(node_diff["id"])
-    return relevant_node_ids
-
-
-async def get_field_level_impacted_subscribers(
-    query_payload: str,
-    source_branch: str,
-    pipeline_id: UUID,
-    subscriber_kind: str,
-    client: InfrahubClient,
-) -> ImpactedSubscribers:
-    """Map data changes in a branch to the subscribers a GraphQL query actually depends on.
-
-    A change is relevant only when at least one field that was modified is also read by the
-    query. This lets us skip regeneration when, for example, only a `description` field changed
-    but the query only reads `name` and `color`.
-
-    Returns an `ImpactedSubscribers` whose scope is:
-        SPECIFIC -- the query guarantees unique targets, so `ids` lists exactly the subscribers of
-                    `subscriber_kind` linked to the changed nodes (possibly empty).
-        ALL      -- the query does not guarantee unique targets but a relevant field changed, so the
-                    caller cannot map the change to specific targets and must process every target.
-        NONE     -- no node of a queried kind had any of its queried fields modified; nothing to do.
-    """
-    source_schema_branch = registry.schema.get_schema_branch(name=source_branch)
-    source_branch_obj = registry.get_branch_from_registry(branch=source_branch)
-
-    graphql_params = await prepare_graphql_params(db=await get_database(), branch=source_branch)
-    query_report = InfrahubGraphQLQueryAnalyzer(
-        query=query_payload,
-        branch=source_branch_obj,
-        schema_branch=source_schema_branch,
-        schema=graphql_params.schema,
-        document=cached_parse(query_payload),
-    ).query_report
-
-    diff_summary = await get_diff_summary_cache(pipeline_id=pipeline_id)
-    readable_fields_by_kind = {kind: access.fields for kind, access in query_report.requested_read.items()}
-    changed_node_ids = _relevant_node_changes(
-        diff_summary=diff_summary, source_branch=source_branch, readable_fields_by_kind=readable_fields_by_kind
-    )
-
-    # only_has_unique_targets is True when the query is guaranteed to return results for a
-    # specific set of nodes -- e.g. it uses an `ids` argument or a uniqueness constraint. When
-    # False, the query may return any number of nodes and we cannot map a changed node back to a
-    # specific subscriber without re-processing every target.
-    if query_report.only_has_unique_targets:
-        # The query targets specific nodes by id or unique constraint, so we can look up exactly
-        # which subscribers are linked to the changed nodes and limit processing to only those.
-        subscribers = await _get_subscribers_for_nodes(node_ids=changed_node_ids, branch=source_branch, client=client)
-        ids = [subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == subscriber_kind]
-        return ImpactedSubscribers(scope=ImpactScope.SPECIFIC, ids=ids)
-
-    if changed_node_ids:
-        # The query does not guarantee unique targets, so we cannot determine which specific
-        # subscribers are affected. At least one relevant field changed, so the caller must fall
-        # back to processing all targets to be safe.
-        return ImpactedSubscribers(scope=ImpactScope.ALL)
-
-    # No node of a queried kind had any of its queried fields modified, so no subscriber can be
-    # stale regardless of query targeting capability.
-    return ImpactedSubscribers(scope=ImpactScope.NONE)
-
-
 @flow(
     name="artifacts-generation-validation",
     flow_run_name="Validating generation of artifacts for {model.artifact_definition.definition_name}",
@@ -882,47 +796,43 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         client=client, branch=model.source_branch, definition=artifact_definition
     )
 
-    artifacts_by_member = _map_artifacts_by_member(
-        existing_artifacts=existing_artifacts,
+    artifacts_by_member = map_subscriber_ids_by_member(
+        existing_subscribers=existing_artifacts,
         definition_name=model.artifact_definition.definition_name,
         log=log,
     )
 
     repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
 
-    impacted = await get_field_level_impacted_subscribers(
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
+    selection = await get_field_level_impacted_subscribers(
         query_payload=model.artifact_definition.query_payload,
-        source_branch=model.source_branch,
-        pipeline_id=model.branch_diff.pipeline_id,
+        diff_summary=diff_summary,
+        query_branch=model.source_branch,
         subscriber_kind=InfrahubKind.ARTIFACT,
+        every_target=list(artifacts_by_member.values()),
         client=client,
     )
-    if impacted.scope is ImpactScope.ALL:
-        # The query does not guarantee unique targets but a relevant field changed, so we must
-        # fall back to regenerating all artifacts for this definition to be safe.
-        impacted_artifacts = list(artifacts_by_member.values())
+    impacted_artifacts = selection.ids
+    if selection.widened:
         log.warning(
             f"Artifact definition {artifact_definition.name.value} query does not guarantee unique targets. All targets will be processed."
         )
-    elif impacted.scope is ImpactScope.NONE:
-        # No node of a queried kind had any of its queried fields modified.
-        impacted_artifacts = []
+    elif not impacted_artifacts:
         log.info(
-            f"Artifact definition {artifact_definition.name.value} has no applicable node changes. Existing artifacts will not be re-rendered."
+            f"Artifact definition {artifact_definition.name.value} has no applicable node changes. "
+            "Existing artifacts will not be re-rendered."
         )
-    else:
-        impacted_artifacts = impacted.ids
 
-    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    repo_diff_for_definition = _repo_diff_or_none(
+    repo_diff_for_definition = repo_diff_or_none(
         branch_diff=model.branch_diff, repository_id=model.artifact_definition.repository_id
     )
     managed_branch = (
-        _query_changed(definition=model.artifact_definition, diff_summary=diff_summary).matched
-        or _definition_changed(definition=model.artifact_definition, diff_summary=diff_summary).matched
+        query_changed(definition=model.artifact_definition, diff_summary=diff_summary).matched
+        or definition_changed(definition=model.artifact_definition, diff_summary=diff_summary).matched
         or (
             repo_diff_for_definition is not None
-            and _transform_changed(definition=model.artifact_definition, repo_diff=repo_diff_for_definition).matched
+            and transform_changed(definition=model.artifact_definition, repo_diff=repo_diff_for_definition).matched
         )
     )
     if managed_branch:
@@ -933,9 +843,9 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     for relationship in group.members.peers:
         member = relationship.peer
         artifact_id = artifacts_by_member.get(member.id)
-        if _should_render_artifact(
+        if should_render_artifact(
             artifact_id=artifact_id,
-            managed_branch=managed_branch,
+            regenerate_all_members=managed_branch,
             impacted_artifacts=impacted_artifacts,
         ):
             log.info(f"Trigger Artifact processing for {member.display_label}")
@@ -968,6 +878,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             checks.append(
                 get_workflow().execute_workflow(
                     workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
+                    context=context,
                     parameters={"model": check_model},
                     expected_return=ValidatorConclusion,
                 )
@@ -980,49 +891,6 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         proposed_change_id=model.proposed_change,
         context=context,
     )
-
-
-def _map_artifacts_by_member(
-    existing_artifacts: list[InfrahubNode],
-    definition_name: str,
-    log: logging.Logger | logging.LoggerAdapter,
-) -> dict[str, str]:
-    """Map each member id to its existing artifact id, skipping artifacts whose.
-
-    `object` peer cannot be resolved. Such orphan rows can appear when a target
-    node has been removed via a path that does not cascade-delete artifacts.
-
-    """
-    artifacts_by_member: dict[str, str] = {}
-    for artifact in existing_artifacts:
-        object_id = artifact.object.id
-        if object_id is None:
-            log.warning(
-                f"Skipping orphan artifact {artifact.id} for definition {definition_name}: object peer unresolvable"
-            )
-            continue
-        artifacts_by_member[object_id] = artifact.id
-    return artifacts_by_member
-
-
-def _should_render_artifact(
-    artifact_id: str | None,
-    managed_branch: bool,
-    impacted_artifacts: list[str],
-) -> bool:
-    """Returns a boolean to indicate if an artifact should be generated or not.
-
-    Will return true if:
-        * The artifact_id wasn't set which could be that it's a new object that doesn't have a previous artifact
-        * The source branch is synced with git and has file modifications (managed_branch)
-        * The artifact_id exists in the impacted_artifacts list
-    Will return false if:
-        * The artifact_id exists and is not in the impacted list.
-    """
-    if not artifact_id or managed_branch:
-        return True
-
-    return artifact_id in impacted_artifacts
 
 
 @flow(
@@ -1226,37 +1094,47 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     repository = model.branch_diff.get_repository(repository_id=model.generator_definition.repository_id)
     requested_instances = 0
 
-    impacted = await get_field_level_impacted_subscribers(
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
+    selection = await get_field_level_impacted_subscribers(
         query_payload=model.generator_definition.query_payload,
-        source_branch=model.source_branch,
-        pipeline_id=model.branch_diff.pipeline_id,
+        diff_summary=diff_summary,
+        query_branch=model.source_branch,
         subscriber_kind=InfrahubKind.GENERATORINSTANCE,
+        every_target=list(instance_by_member.values()),
         client=client,
     )
     definition_name = model.generator_definition.definition_name
-    if impacted.scope is ImpactScope.ALL:
-        # The query does not guarantee unique targets but a relevant field changed, so we cannot
-        # map the change to specific instances and must run every existing instance to be safe.
-        impacted_instances = list(instance_by_member.values())
+    impacted_instances = selection.ids
+    if selection.widened:
         log.warning(
             f"Generator definition {definition_name} query does not guarantee unique targets. All targets will be processed."
         )
-    elif impacted.scope is ImpactScope.NONE:
-        # No node of a queried kind had any of its queried fields modified.
-        impacted_instances = []
+    elif not impacted_instances:
         log.info(
             f"Generator definition {definition_name} has no applicable node changes. Existing instances will not be re-run."
         )
-    else:
-        impacted_instances = impacted.ids
+
+    repo_diff_for_definition = repo_diff_or_none(
+        branch_diff=model.branch_diff, repository_id=model.generator_definition.repository_id
+    )
+    managed_branch = (
+        query_changed(definition=model.generator_definition, diff_summary=diff_summary).matched
+        or definition_changed(definition=model.generator_definition, diff_summary=diff_summary).matched
+        or (
+            repo_diff_for_definition is not None
+            and transform_changed(definition=model.generator_definition, repo_diff=repo_diff_for_definition).matched
+        )
+    )
+    if managed_branch:
+        log.info("Query, definition or repository file change detected, all instances will be processed")
 
     check_generator_run_models: list[RunGeneratorAsCheckModel] = []
     for relationship in group.members.peers:
         member = relationship.peer
         generator_instance = instance_by_member.get(member.id)
-        if _run_generator(
+        if run_generator(
             instance_id=generator_instance,
-            managed_branch=model.source_branch_sync_with_git,
+            regenerate_all_members=managed_branch,
             impacted_instances=impacted_instances,
         ):
             requested_instances += 1
@@ -1298,231 +1176,10 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     )
 
 
-def _run_generator(instance_id: str | None, managed_branch: bool, impacted_instances: list[str]) -> bool:
-    """Returns a boolean to indicate if a generator instance needs to be executed.
-
-    Will return true if:
-        * The instance_id wasn't set which could be that it's a new object that doesn't have a previous generator instance
-        * The source branch is set to sync with Git which would indicate that it could contain updates in git to the generator
-        * The instance_id exists in the impacted_instances list
-    Will return false if:
-        * The source branch is a not one that syncs with git and the instance_id exists and is not in the impacted list.
-
-    """
-    if not instance_id or managed_branch:
-        return True
-    return instance_id in impacted_instances
-
-
-_TRIGGERING_DIFF_ACTIONS = {DiffAction.ADDED.value, DiffAction.UPDATED.value}
-
-
-def _is_triggering_action(action: str) -> bool:
-    """Return True for diff actions that should trigger artifact regeneration.
-
-    ``get_diff_summary`` serialises a node/element action as the GraphQL enum *name*
-    (uppercase, e.g. ``"UPDATED"``/``"ADDED"``), whereas ``DiffAction.*.value`` is
-    lowercase. The comparison must therefore be case-insensitive: a literal
-    ``action in _TRIGGERING_DIFF_ACTIONS`` silently never matches real diff data.
-    """
-    return action.lower() in _TRIGGERING_DIFF_ACTIONS
-
-
-@dataclass(frozen=True, kw_only=True, slots=True)
-class PredicateOutcome:
-    """The verdict of a regeneration predicate plus the diagnostic explaining it.
-
-    ``matched`` drives the selection gate; ``reason`` carries the human-readable
-    line the gate emits to the task log when the predicate fires. Keeping the
-    explanation on the verdict lets the predicate stay a pure function - it is
-    computed where the triggering field/file is known - while logging is the
-    caller's responsibility.
-    """
-
-    matched: bool
-    reason: str | None = None
-
-
-def _query_changed(
-    definition: ProposedChangeArtifactDefinition,
-    diff_summary: list[NodeDiff],
-) -> PredicateOutcome:
-    """Match when the definition's GraphQL query node is modified in the diff.
-
-    The SDK inlines every fragment body into the stored query text before persisting,
-    so any edit to the primary ``.gql`` file or any transitively referenced fragment
-    surfaces as a single ``CoreGraphQLQuery`` node modification. A node-id match is
-    therefore sufficient.
-
-    Entries with ``action=unchanged`` are ignored because the diff system enriches
-    the tree with parent context nodes that are not themselves modified, and entries
-    with ``action=removed`` are ignored because a query deleted on the source branch
-    leaves the definition broken and there is nothing to regenerate against.
-    """
-    matched = any(
-        entry["id"] == definition.query_id and _is_triggering_action(entry["action"]) for entry in diff_summary
-    )
-    if not matched:
-        return PredicateOutcome(matched=False)
-
-    return PredicateOutcome(
-        matched=True,
-        reason=(
-            f"Definition {definition.definition_name} ({definition.definition_id}): "
-            f"GraphQL query {definition.query_name} ({definition.query_id}) was modified - "
-            f"all artifacts of this definition will regenerate."
-        ),
-    )
-
-
-def _definition_changed(
-    definition: ProposedChangeArtifactDefinition,
-    diff_summary: list[NodeDiff],
-) -> PredicateOutcome:
-    """Match when the ``CoreArtifactDefinition`` node itself is modified in the diff.
-
-    Any attribute change or relationship repoint (``targets``, ``transformation``,
-    ``query``) on the definition surfaces as a modification of the definition's own
-    node id, so a single id-based check covers every shape of definition-level
-    change uniformly. The reason names the changed attributes or relationships read
-    from the matching entry's per-field detail.
-
-    Entries with ``action=unchanged`` are ignored because the diff system enriches
-    the tree with parent context nodes that are not themselves modified, and entries
-    with ``action=removed`` cannot occur in practice here because the definition list
-    is fetched from the source branch's current state.
-    """
-    matched_entry = next(
-        (
-            entry
-            for entry in diff_summary
-            if entry["id"] == definition.definition_id and _is_triggering_action(entry["action"])
-        ),
-        None,
-    )
-    if matched_entry is None:
-        return PredicateOutcome(matched=False)
-
-    changed_fields = ", ".join(
-        element["name"] for element in matched_entry["elements"] if _is_triggering_action(element["action"])
-    )
-    detail = f"definition node was modified ({changed_fields})" if changed_fields else "definition node was modified"
-    return PredicateOutcome(
-        matched=True,
-        reason=(
-            f"Definition {definition.definition_name} ({definition.definition_id}): {detail} - "
-            f"all artifacts of this definition will regenerate."
-        ),
-    )
-
-
-def _transform_changed(
-    definition: ProposedChangeArtifactDefinition,
-    repo_diff: ProposedChangeRepository,
-) -> PredicateOutcome:
-    """Match when the transform's stored dependency closure intersects this repo's file diff.
-
-    Falls back to "any file changed in the repository" when the closure cannot
-    be trusted. On the precise path, both sides are canonicalized before the
-    set intersection so the comparison matches git's diff output regardless
-    of input separator or leading prefix.
-
-    The two fallback paths are distinguished so each reports the reason it could
-    not use the precise closure: a pre-feature node (``dependencies=null``)
-    self-heals on its next re-import, while an incomplete closure
-    (``dependencies_complete=False``) names the cause as the safety fallback. The
-    precise path names the intersecting file(s).
-    """
-    if definition.dependencies is None:
-        legacy_reason = (
-            f"Definition {definition.definition_name}: transform was imported before this feature deployed "
-            f"(dependencies=null) - falling back to regenerate-on-any-file-change. The next re-import of this "
-            f"transform will populate its dependency closure."
-        )
-        return PredicateOutcome(
-            matched=repo_diff.has_modifications,
-            reason=legacy_reason if repo_diff.has_modifications else None,
-        )
-
-    if definition.dependencies_complete is not True:
-        incomplete_reason = (
-            f"Definition {definition.definition_name}: transform dependency closure is incomplete "
-            f"(dependencies_complete=False) - falling back to regenerate-on-any-file-change."
-        )
-        return PredicateOutcome(
-            matched=repo_diff.has_modifications,
-            reason=incomplete_reason if repo_diff.has_modifications else None,
-        )
-
-    if not definition.dependencies:
-        return PredicateOutcome(matched=False)
-
-    closure = {canonicalize_path(entry) for entry in definition.dependencies}
-    changed_files: set[str] = set()
-    for raw in (*repo_diff.files_added, *repo_diff.files_changed, *repo_diff.files_removed):
-        try:
-            changed_files.add(canonicalize_path(raw))
-        except ValueError:
-            continue
-
-    intersection = closure & changed_files
-    if not intersection:
-        return PredicateOutcome(matched=False)
-
-    files = ", ".join(sorted(intersection))
-    return PredicateOutcome(
-        matched=True,
-        reason=(
-            f"Definition {definition.definition_name}: file {files} changed and is in this transform's "
-            f"dependency closure - all artifacts will regenerate."
-        ),
-    )
-
-
-def _repo_diff_or_none(branch_diff: ProposedChangeBranchDiff, repository_id: str) -> ProposedChangeRepository | None:
-    try:
-        return branch_diff.get_repository(repository_id)
-    except NodeNotFoundError:
-        return None
-
-
-class DefinitionSelect(IntFlag):
-    NONE = 0
-    MODIFIED_KINDS = 1
-    FILE_CHANGES = 2
-    QUERY_CHANGED = 4
-    DEFINITION_CHANGED = 8
-
-    @staticmethod
-    def add_flag(current: DefinitionSelect, flag: DefinitionSelect, condition: bool) -> DefinitionSelect:
-        if condition:
-            return current | flag
-        return current
-
-    @property
-    def log_line(self) -> str:
-        change_types = []
-        if DefinitionSelect.MODIFIED_KINDS in self:
-            change_types.append("data changes within relevant object kinds")
-
-        if DefinitionSelect.QUERY_CHANGED in self:
-            change_types.append("changes to the GraphQL query")
-
-        if DefinitionSelect.DEFINITION_CHANGED in self:
-            change_types.append("changes to the artifact definition")
-
-        if DefinitionSelect.FILE_CHANGES in self:
-            change_types.append("file changes affecting the transform's dependencies")
-
-        if self:
-            return f"Requesting generation due to {' and '.join(change_types)}"
-
-        return "Doesn't require changes due to no relevant modified kinds or file changes in Git"
-
-
 @flow(name="proposed-changed-pipeline", flow_run_name="Execute proposed changed pipeline")
 async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, context: InfrahubContext) -> None:
     client = get_client()
+    client.request_context = context.to_request_context()
     repositories = await _get_proposed_change_repositories(model=model, client=client)
 
     if model.source_branch_sync_with_git and await _validate_repository_merge_conflicts(
@@ -1558,6 +1215,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
         )
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     diff_summary = await client.get_diff_summary(branch=model.source_branch)
     await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=await get_cache())
@@ -1665,12 +1323,13 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
     log = get_run_logger()
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     definition_information = await client.execute_graphql(
         query=GATHER_ARTIFACT_DEFINITIONS,
         branch_name=model.source_branch,
     )
-    artifact_definitions = _parse_artifact_definitions(
+    artifact_definitions = parse_artifact_definitions(
         definitions=definition_information[InfrahubKind.ARTIFACTDEFINITION]["edges"]
     )
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
@@ -1679,9 +1338,9 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
     for artifact_definition in artifact_definitions:
         select = DefinitionSelect.NONE
         for outcome, flag in (
-            (_query_changed(definition=artifact_definition, diff_summary=diff_summary), DefinitionSelect.QUERY_CHANGED),
+            (query_changed(definition=artifact_definition, diff_summary=diff_summary), DefinitionSelect.QUERY_CHANGED),
             (
-                _definition_changed(definition=artifact_definition, diff_summary=diff_summary),
+                definition_changed(definition=artifact_definition, diff_summary=diff_summary),
                 DefinitionSelect.DEFINITION_CHANGED,
             ),
         ):
@@ -1689,11 +1348,11 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
             if outcome.reason is not None:
                 log.info(outcome.reason)
 
-        repo_diff_for_definition = _repo_diff_or_none(
+        repo_diff_for_definition = repo_diff_or_none(
             branch_diff=model.branch_diff, repository_id=artifact_definition.repository_id
         )
         if repo_diff_for_definition is not None:
-            transform_outcome = _transform_changed(definition=artifact_definition, repo_diff=repo_diff_for_definition)
+            transform_outcome = transform_changed(definition=artifact_definition, repo_diff=repo_diff_for_definition)
             select = select.add_flag(
                 current=select, flag=DefinitionSelect.FILE_CHANGES, condition=transform_outcome.matched
             )
@@ -1701,17 +1360,10 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
                 log.info(transform_outcome.reason)
 
         for changed_model in modified_kinds:
-            condition = False
-            if (changed_model in artifact_definition.query_models) or (
-                changed_model.startswith("Profile")
-                and changed_model.replace("Profile", "", 1) in artifact_definition.query_models
-            ):
-                condition = True
-
             select = select.add_flag(
                 current=select,
                 flag=DefinitionSelect.MODIFIED_KINDS,
-                condition=condition,
+                condition=artifact_definition.reads_kind(changed_model),
             )
 
         if select:
@@ -1730,96 +1382,6 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
                 parameters={"model": request_artifacts_definitions_model},
                 context=context,
             )
-
-
-GATHER_ARTIFACT_DEFINITIONS = """
-query GatherArtifactDefinitions {
-  CoreArtifactDefinition {
-    edges {
-      node {
-        id
-        name {
-          value
-        }
-        artifact_name {
-          value
-        }
-        content_type {
-            value
-        }
-        transformation {
-          node {
-            __typename
-            timeout {
-                value
-            }
-            dependencies {
-              value
-            }
-            dependencies_complete {
-              value
-            }
-            query {
-              node {
-                id
-                models {
-                  value
-                }
-                name {
-                  value
-                }
-                query {
-                  value
-                }
-              }
-            }
-            ... on CoreTransformJinja2 {
-              template_path {
-                value
-              }
-            }
-            ... on CoreTransformPython {
-              class_name {
-                value
-              }
-              file_path {
-                value
-              }
-              convert_query_response {
-                value
-              }
-            }
-            repository {
-              node {
-                id
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-"""
-
-GATHER_GRAPHQL_QUERY_SUBSCRIBERS = """
-query GatherGraphQLQuerySubscribers($members: [ID!]) {
-  CoreGraphQLQueryGroup(members__ids: $members) {
-    edges {
-      node {
-        subscribers {
-          edges {
-            node {
-              id
-              __typename
-            }
-          }
-        }
-      }
-    }
-  }
-}
-"""
 
 
 DESTINATION_ALLREPOSITORIES = """
@@ -1970,42 +1532,6 @@ def _parse_repositories(repositories: list[dict]) -> list[Repository]:
     return parsed
 
 
-def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeArtifactDefinition]:
-    """This function assumes that definitions is a list of the edges.
-
-    The edge should be of type CoreArtifactDefinition from the query
-    * GATHER_ARTIFACT_DEFINITIONS
-    """
-    parsed = []
-    for definition in definitions:
-        transformation = definition["node"]["transformation"]["node"]
-        artifact_definition = ProposedChangeArtifactDefinition(
-            definition_id=definition["node"]["id"],
-            definition_name=definition["node"]["name"]["value"],
-            artifact_name=definition["node"]["artifact_name"]["value"],
-            content_type=definition["node"]["content_type"]["value"],
-            timeout=transformation["timeout"]["value"],
-            query_name=transformation["query"]["node"]["name"]["value"],
-            query_id=transformation["query"]["node"]["id"],
-            query_models=transformation["query"]["node"]["models"]["value"] or [],
-            query_payload=transformation["query"]["node"]["query"]["value"],
-            repository_id=transformation["repository"]["node"]["id"],
-            transform_kind=transformation["__typename"],
-            dependencies=transformation["dependencies"]["value"],
-            dependencies_complete=transformation["dependencies_complete"]["value"],
-        )
-        if artifact_definition.transform_kind == InfrahubKind.TRANSFORMJINJA2:
-            artifact_definition.template_path = transformation["template_path"]["value"]
-        elif artifact_definition.transform_kind == InfrahubKind.TRANSFORMPYTHON:
-            artifact_definition.class_name = transformation["class_name"]["value"]
-            artifact_definition.file_path = transformation["file_path"]["value"]
-            artifact_definition.convert_query_response = transformation["convert_query_response"]["value"]
-
-        parsed.append(artifact_definition)
-
-    return parsed
-
-
 async def _get_proposed_change_repositories(
     model: RequestProposedChangePipeline, client: InfrahubClient
 ) -> list[ProposedChangeRepository]:
@@ -2054,20 +1580,3 @@ async def _validate_repository_merge_conflicts(
                     log.info(f"no conflict identified for {repo.repository_name}")
 
     return conflicts
-
-
-async def _get_subscribers_for_nodes(
-    node_ids: list[str], branch: str, client: InfrahubClient
-) -> list[ProposedChangeSubscriber]:
-    result = await client.execute_graphql(
-        query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS,
-        branch_name=branch,
-        variables={"members": node_ids},
-    )
-    subscribers = []
-    for group in result[InfrahubKind.GRAPHQLQUERYGROUP]["edges"]:
-        for subscriber in group["node"]["subscribers"]["edges"]:
-            subscribers.append(
-                ProposedChangeSubscriber(subscriber_id=subscriber["node"]["id"], kind=subscriber["node"]["__typename"])
-            )
-    return subscribers

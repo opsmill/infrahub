@@ -1,21 +1,20 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Row } from "@/shared/components/container";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
-import type { GroupData } from "@/entities/groups/domain/types";
+import type { GroupData } from "@/entities/groups/domain/model/group";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useRemoveRelationships } from "@/entities/nodes/relationships/ui/queries/remove-relationships.mutation";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface ObjectGroupsListProps {
@@ -114,10 +113,10 @@ function RemoveGroupButton({ objectId, group }: ObjectGroupItemProps) {
         </Button>
       </Tooltip>
 
-      <ModalDelete
+      <ModalDanger
         title="Leave Group"
         description={`Are you sure you want to leave group ${getNodeLabel(group)}?`}
-        onDelete={handleRemoveGroup}
+        onConfirm={handleRemoveGroup}
         isOpen={showDeleteModal}
         onOpenChange={setShowDeleteModal}
         isLoading={isPending}

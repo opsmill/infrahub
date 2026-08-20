@@ -11,8 +11,8 @@ PORT_HTTP_NEO4J = 7474
 PORT_BOLT_NEO4J = 7687
 PORT_MEMGRAPH = 7687
 PORT_PREFECT = 4200
-NEO4J_COMMUNITY_IMAGE = "neo4j:2025.10.1-community"
-NEO4J_ENTERPRISE_IMAGE = "neo4j:2025.10.1-enterprise"
+NEO4J_COMMUNITY_IMAGE = "neo4j:2026.05.0-community"
+NEO4J_ENTERPRISE_IMAGE = "neo4j:2026.05.0-enterprise"
 NEO4J_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", NEO4J_ENTERPRISE_IMAGE)
 
 # Upper bound in seconds when polling for Prefect events and their side effects
@@ -20,11 +20,17 @@ NEO4J_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", NEO4J_ENTERPRISE_IMAGE)
 PREFECT_EVENT_WAIT_SECONDS = 60
 
 # The crash-zombie-flows automation crashes flow runs whose heartbeats stop arriving within
-# a 90 second window, and the flow engine always emits an initial heartbeat when a flow
+# its no-heartbeat window, and the flow engine always emits an initial heartbeat when a flow
 # starts regardless of the configured frequency. The frequency must therefore stay well
 # below that window (production uses 30s); stretching it to "disable" heartbeats only
 # silences the follow-up beats and gets healthy long-running flows crashed.
 PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS = "30"
+
+# The server evaluates proactive automations (the crash-zombie-flows detector) on this cadence,
+# given as an ISO 8601 duration (one second). The tests scale the detection window down to
+# Prefect's 10s minimum, so evaluation must be finer than that window for a scaled run to be
+# judged promptly and predictably.
+PREFECT_EVENTS_PROACTIVE_GRANULARITY = "PT1S"
 
 # The test Prefect servers (ephemeral subprocess and the prefect container fixture) run
 # every background service in-process against a single SQLite database. SQLite serializes

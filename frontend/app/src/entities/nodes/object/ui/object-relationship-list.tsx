@@ -1,18 +1,17 @@
 import { Icon } from "@iconify-icon/react";
+import { ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@infrahub/ui";
 import { Collection } from "react-aria-components";
 
-import { ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@/shared/components/aria/list-box";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { classNames } from "@/shared/utils/common";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import {
   type UseObjectRelationshipsParams,
   useObjectRelationships,
 } from "@/entities/nodes/relationships/ui/queries/get-object-relationships.query";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 interface ObjectRelationshipListProps extends UseObjectRelationshipsParams {
   className?: string;
@@ -42,7 +41,7 @@ export function ObjectRelationshipList({
   return (
     <ListBox
       aria-label="object relationship list"
-      className={classNames("p-1", className)}
+      className={className}
       emptyMessage="No result found"
     >
       <Collection items={flatData}>

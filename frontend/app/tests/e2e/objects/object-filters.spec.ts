@@ -259,7 +259,8 @@ test.describe("Object filters", () => {
 
       await test.step("filter by attribute with 'contains' condition via column header", async () => {
         await page.getByRole("button", { name: "Role" }).click();
-        await expect(page.getByText("Filter by Role")).toBeVisible();
+        await page.getByRole("menuitem", { name: "Filter" }).click();
+        await expect(page.getByTestId("attribute-filter-form")).toBeVisible();
 
         await page.getByRole("option", { name: "Edge Router" }).click();
         await page.getByRole("button", { name: "Apply" }).click();
@@ -272,6 +273,7 @@ test.describe("Object filters", () => {
 
       await test.step("update attribute filter via column header", async () => {
         await page.getByTestId("object-items").getByRole("button", { name: "Role" }).click();
+        await page.getByRole("menuitem", { name: "Filter" }).click();
         await expect(page.getByTestId("attribute-filter-form")).toContainText("Edge Router");
 
         await page.getByRole("option", { name: "Core Router" }).click();
@@ -288,6 +290,7 @@ test.describe("Object filters", () => {
 
       await test.step("filter by attribute with 'is empty' condition via column header", async () => {
         await page.getByRole("button", { name: "Role" }).click();
+        await page.getByRole("menuitem", { name: "Filter" }).click();
 
         await page.getByRole("button", { name: /select a condition/ }).click();
         await page.getByRole("option", { name: "is empty" }).click();
@@ -302,6 +305,7 @@ test.describe("Object filters", () => {
 
       await test.step("filter by attribute with 'is not empty' condition via column header", async () => {
         await page.getByRole("button", { name: "Role" }).click();
+        await page.getByRole("menuitem", { name: "Filter" }).click();
 
         await page.getByRole("button", { name: /select a condition/ }).click();
         await page.getByRole("option", { name: "is not empty" }).click();
@@ -316,7 +320,8 @@ test.describe("Object filters", () => {
 
       await test.step("filter by relationship with 'is any of' condition via column header", async () => {
         await page.getByRole("button", { name: "Site" }).click();
-        await expect(page.getByText("Filter by Site")).toBeVisible();
+        await page.getByRole("menuitem", { name: "Filter" }).click();
+        await expect(page.getByTestId("relationship-filter-form")).toBeVisible();
 
         await page.getByRole("option", { name: "atl1" }).click();
         await page
@@ -335,6 +340,7 @@ test.describe("Object filters", () => {
 
       await test.step("filter by relationship with 'is empty' condition via column header", async () => {
         await page.getByRole("button", { name: "Tags" }).click();
+        await page.getByRole("menuitem", { name: "Filter" }).click();
 
         await page.getByRole("button", { name: /select a condition/ }).click();
         await page.getByRole("option", { name: "is empty" }).click();
@@ -352,6 +358,7 @@ test.describe("Object filters", () => {
 
       await test.step("filter by relationship with 'is not empty' condition via column header", async () => {
         await page.getByRole("button", { name: "Tags" }).click();
+        await page.getByRole("menuitem", { name: "Filter" }).click();
 
         await page.getByRole("button", { name: /select a condition/ }).click();
         await page.getByRole("option", { name: "is not empty" }).click();
@@ -435,6 +442,7 @@ test.describe("Object filters", () => {
     await expect(page.getByTestId("object-items")).toContainText("INTERNAL");
 
     await page.getByRole("button", { name: "Type" }).click();
+    await page.getByRole("menuitem", { name: "Filter" }).click();
     await expect(page.getByPlaceholder("Filter...")).toBeFocused();
     await expect(page.getByRole("option", { name: "EXTERNAL" })).toBeVisible();
     await expect(page.getByRole("option", { name: "INTERNAL" })).toBeVisible();
@@ -447,8 +455,13 @@ test.describe("Object filters", () => {
     await expect(page.getByTestId("object-items")).not.toContainText("INTERNAL");
 
     await page.getByTestId("object-items").getByRole("button", { name: "Type" }).click();
+    await page.getByRole("menuitem", { name: "Filter" }).click();
     await expect(page.getByRole("combobox").filter({ hasText: "EXTERNAL" })).toBeVisible();
+    // Focus inside the popover before Escape: on slow runners the form's autofocus
+    // may not have landed yet, leaving Escape on the body where the popover never receives it.
+    await page.getByRole("combobox").filter({ hasText: "EXTERNAL" }).focus();
     await page.keyboard.press("Escape");
+    await expect(page.getByTestId("attribute-filter-form")).not.toBeVisible();
 
     await page.getByRole("button", { name: "Remove Type contains EXTERNAL" }).click();
     await expect(page.getByTestId("object-items")).toContainText("EXTERNAL");

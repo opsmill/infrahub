@@ -11,6 +11,7 @@ from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
 from infrahub.graphql.types.task import TaskInfo
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_RUN
+from infrahub.workflows.constants import WorkflowPriority
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -63,6 +64,7 @@ class GeneratorDefinitionRequestRun(Mutation):
                 class_name=generator_definition.class_name.value,
                 file_path=generator_definition.file_path.value,
                 query_name=query.name.value,
+                query_id=query.id,
                 query_models=query.models.value or [],
                 query_payload=query.query.value,
                 repository_id=repository.id,
@@ -96,5 +98,6 @@ class GeneratorDefinitionRequestRun(Mutation):
             workflow=REQUEST_GENERATOR_DEFINITION_RUN,
             context=graphql_context.get_context(),
             parameters={"model": request_model},
+            priority=WorkflowPriority.HIGH,
         )
         return cls(ok=True)

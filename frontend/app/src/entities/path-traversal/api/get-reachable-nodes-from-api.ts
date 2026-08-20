@@ -1,12 +1,11 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 import type {
   GetReachableNodesParams,
   ReachableNodesResponse,
-} from "@/entities/path-traversal/domain/path-traversal.types";
+} from "@/entities/path-traversal/domain/model/path-traversal";
 
 const nodeFields = {
   id: true,
@@ -68,7 +67,7 @@ export async function getReachableNodesFromApi(params: GetReachableNodesParams) 
   });
 
   return graphqlClient.query<{ InfrahubReachableNodes: ReachableNodesResponse }>({
-    query: gql(queryString),
+    query: graphql(queryString),
     context: { branch: branchName, date: atDate },
   });
 }

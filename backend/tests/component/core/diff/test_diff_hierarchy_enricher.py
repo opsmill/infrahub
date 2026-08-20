@@ -5,8 +5,8 @@ from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from tests.helpers.diff_factories import EnrichedNodeFactory, EnrichedRelationshipGroupFactory, EnrichedRootFactory
 
-from .factories import EnrichedNodeFactory, EnrichedRelationshipGroupFactory, EnrichedRootFactory
 from .get_one_node import get_one_diff_node
 
 

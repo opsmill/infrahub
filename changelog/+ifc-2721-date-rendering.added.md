@@ -1,0 +1,1 @@
+The web interface now renders dates and times using your effective preferences — your personal `date_format` and `timezone`, falling back to the organisation default and then to your browser's locale and timezone when neither is set. Preferences affect display only; stored values are unchanged.

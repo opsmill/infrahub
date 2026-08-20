@@ -18,10 +18,10 @@ import { useDebounce } from "@/shared/hooks/useDebounce";
 import { classNames } from "@/shared/utils/common";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
-import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
 
 export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value" | "onChange"> {
   className?: string;

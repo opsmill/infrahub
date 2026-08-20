@@ -1,20 +1,20 @@
 import { Icon } from "@iconify-icon/react";
+import { MenuItem, MenuSection } from "@infrahub/ui";
 import { ArrowUpRightIcon } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { MenuItem, MenuSection } from "@/shared/components/aria/menu";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
-import { READONLY_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import { READONLY_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 interface RepositoryMenuSectionProps {
   repositoryId: string;

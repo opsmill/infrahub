@@ -10,17 +10,17 @@ import { diffLines, formatLines } from "unidiff";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+
+import { useGetArtifactFile } from "@/entities/artifacts/ui/queries/get-artifact-file.query";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { useGetArtifactContentDiff } from "@/entities/diff/ui/queries/get-artifact-content-diff.query";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 import {
   PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "@/shared/config/constants";
-
-import { useGetArtifactFile } from "@/entities/artifacts/ui/queries/get-artifact-file.query";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useGetArtifactContentDiff } from "@/entities/diff/ui/queries/get-artifact-content-diff.query";
-import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
+} from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 
@@ -309,7 +309,7 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
   });
 
   return (
-    <div className={"pr-2 pb-2"} data-cy="artifact-content-diff">
+    <div className={"pr-2 pb-2"}>
       <div className="flex">
         <div className="flex-1">
           {itemPrevious?.storage_id && (

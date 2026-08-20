@@ -13,7 +13,7 @@ from typing_extensions import Self
 
 from infrahub import __version__
 
-from .constants import TAG_NAMESPACE, WorkflowTag, WorkflowType
+from .constants import TAG_NAMESPACE, WorkflowPriority, WorkflowTag, WorkflowType
 
 TASK_RESULT_STORAGE_NAME = "infrahub-storage"
 
@@ -47,6 +47,7 @@ class WorkflowDefinition(BaseModel):
     module: str
     function: str
     cron: str | None = None
+    default_priority: WorkflowPriority = WorkflowPriority.MEDIUM
     tags: list[WorkflowTag] = Field(default_factory=list)
     concurrency_limit: int | None = Field(
         default=None,
@@ -73,6 +74,7 @@ class WorkflowDefinition(BaseModel):
             "entrypoint": self.entrypoint,
             "tags": self.get_tags(),
             "concurrency_limit": self.concurrency_limit,
+            "work_queue_name": self.default_priority.queue_name,
         }
         if self.concurrency_limit_strategy:
             payload["concurrency_options"] = {"collision_strategy": self.concurrency_limit_strategy}

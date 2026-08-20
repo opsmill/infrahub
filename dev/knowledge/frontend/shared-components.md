@@ -2,7 +2,7 @@
 
 > Part of: `dev/knowledge/frontend/`
 
-A discovery map of reusable building blocks. **Look here before building a new picker, combobox, kind selector, or form input.** Most "new" UI in this codebase already has a shared primitive — see PR #9099 for an example where a 200+ line custom object picker and a hand-rolled `gql` UUID resolver were written because this map didn't exist.
+A discovery map of reusable building blocks. **Look here before building a new picker, combobox, kind selector, or form input.** Most "new" UI in this codebase already has a shared primitive — before this map existed, a 200+ line custom object picker and a hand-rolled `gql` UUID resolver were built for UI that already had one.
 
 The dependency rule still applies: `app → pages → entities → shared`. Cross-entity reuse goes through another entity's `domain/` or `ui/` — never `api/`.
 
@@ -25,9 +25,10 @@ The dependency rule still applies: `app → pages → entities → shared`. Cros
 
 | Need | Use | Location |
 |------|-----|----------|
-| Select a single schema kind | `NodeKindField` | `shared/components/form/fields/node-kind.field.tsx` |
-| Multi-select kinds (chips) | None yet — extract one if you need this | Candidate: `shared/components/form/fields/node-kind-multi.field.tsx` |
-| Filter system namespaces from a kind list | Use the schema metadata — **do not** hardcode `["Core", "Internal", ...]` on the client; the backend already filters |
+| Select a single schema kind in a form | `NodeKindField` | `shared/components/form/fields/node-kind.field.tsx` |
+| Select a single schema kind outside a form | `NodeKindSelect` | `shared/components/inputs/node-kind-select.tsx` |
+| Multi-select kinds (chips) | `KindMultiSelect` | `shared/components/inputs/kind-multi-select.tsx` |
+| Filter system namespaces from a kind list | Use the schema metadata — **do not** hardcode `["Core", "Internal", ...]` on the client | The backend already filters |
 
 ### Picking primitive values
 
@@ -40,7 +41,7 @@ The dependency rule still applies: `app → pages → entities → shared`. Cros
 | Color picker | `ColorPicker` | `shared/components/inputs/color-picker.tsx` |
 | Search input | `SearchInput` | `shared/components/inputs/search-input.tsx` |
 | Pool select | `PoolSelect` | `shared/components/inputs/pool-select.tsx` |
-| Enum select | `EnumInput` | `shared/components/inputs/enum.tsx` |
+| Enum select | `Enum` (plus `EnumAddAction`, `EnumDeleteButton`) | `shared/components/inputs/enum.tsx` |
 
 ### Form fields (`react-hook-form` integration)
 
@@ -52,6 +53,7 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 | `number.field.tsx` | Numeric input |
 | `textarea.field.tsx` | Multi-line text |
 | `password-input.field.tsx` | Password with show/hide |
+| `boolean.field.tsx` | Boolean (checkbox card) |
 | `checkbox.field.tsx` | Boolean |
 | `select.field.tsx` | Single-value dropdown |
 | `enum.field.tsx` | Enum value |
@@ -63,7 +65,9 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 | `list.field.tsx` | List of values |
 | `peer.field.tsx` | Single relationship |
 | `node-kind.field.tsx` | Schema kind selector |
-| `relationships/relationship.field.tsx` | Generic relationship dispatcher |
+| `relationships/relationship.field.tsx` | Dispatcher — picks generic or regular relationship field |
+| `relationships/generic-relationship.field.tsx` | Relationship to a generic kind |
+| `relationships/regular-relationship.field.tsx` | Relationship to a concrete node kind |
 | `relationships/relationship-many.field.tsx` | Many-cardinality relationship |
 | `relationships/relationship-hierarchical.field.tsx` | Hierarchical relationship |
 
@@ -76,7 +80,7 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 | Tab item (active styling, optional scroll-on-active) | `LinkTab` | `shared/components/ui/link.tsx` |
 | Whole tab-bar pattern (parent layout + Outlet + LinkTab) | See [route-architecture.md](../../guidelines/frontend/route-architecture.md) | — |
 
-`LinkTab` derives active state from the URL via `useMatch({ path: href, end: true })`; styling, focus ring, and the optional `scrollIntoViewOnActive` flag live inside the component. Wrap the row of `LinkTab`s in `<nav aria-label="Tabs">` for accessibility and E2E selector stability.
+`LinkTab` derives active state from the URL via `useMatch({ path: to, end: true })`; styling, focus ring, and the optional `scrollIntoViewOnActive` flag live inside the component. Wrap the row of `LinkTab`s in `<nav aria-label="Tabs">` for accessibility and E2E selector stability.
 
 When you wrap `LinkTab` for a feature (e.g. `ProposedChangeTab`), keep the prop name `to` — matching react-router's `NavLink`/`Link`. Don't rename to `href` (that's the rendered DOM attribute, not a prop).
 
@@ -86,9 +90,9 @@ Every detail page that has tabs exposes its parent-loaded data via a typed `useO
 
 | Family | Hook | Location |
 |---|---|---|
-| Generic objects | `useObjectDetailsOutlet()` | `entities/nodes/object/ui/object-details/use-object-details-outlet.ts` |
-| Branches | `useBranchDetailsOutlet()` | `entities/branches/ui/use-branch-details-outlet.ts` |
-| Proposed changes | `useProposedChangeOutlet()` | `entities/proposed-changes/ui/use-proposed-change-outlet.ts` |
+| Generic objects | `useObjectDetailsOutlet()` | `entities/nodes/object/ui/routing/use-object-details-outlet.ts` |
+| Branches | `useBranchDetailsOutlet()` | `entities/branches/ui/routing/use-branch-details-outlet.ts` |
+| Proposed changes | `useProposedChangeOutlet()` | `entities/proposed-changes/ui/routing/use-proposed-change-outlet.ts` |
 
 Each hook throws if used outside its parent route's `<Outlet>`, so misuse fails loudly during dev. The producer side uses `<Outlet context={... satisfies <Context>} />` to keep producer/consumer in lockstep.
 
@@ -96,9 +100,9 @@ Each hook throws if used outside its parent route's `<Outlet>`, so misuse fails 
 
 | Family | Helper | Location |
 |---|---|---|
-| Generic objects (incl. IPAM, resource manager) | `getObjectDetailsUrl(kind, id, overrideParams?, tabSegment?)` | `entities/nodes/utils.ts` |
-| Branches | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` | `entities/branches/utils.ts` |
-| Proposed changes | `getProposedChangeDetailsUrl(id, tab?, overrideParams?)` | `entities/proposed-changes/utils.ts` |
+| Generic objects (incl. IPAM, resource manager) | `getObjectDetailsUrl(kind, id?, overrideParams?, tabSegment?)` | `entities/nodes/object/ui/routing/object-urls.ts` |
+| Branches | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` | `entities/branches/ui/routing/branch-urls.ts` |
+| Proposed changes | `getProposedChangeDetailsUrl(id, tab?, overrideParams?)` | `entities/proposed-changes/ui/routing/proposed-change-urls.ts` |
 
 The `tab` argument on each helper is a string-literal union (e.g. `BranchDetailsTab = "data" | "files" | …`) so callers can't pass an unknown tab.
 
@@ -106,11 +110,11 @@ The `tab` argument on each helper is a string-literal union (e.g. `BranchDetails
 
 | Need | Use | Location |
 |------|-----|----------|
-| Horizontal flex layout | `Row` | `shared/components/container/` |
-| Vertical flex layout | `Col` | `shared/components/container/` |
-| Resizable panels | `ResizablePanelGroup` | `shared/components/ui/resizable.tsx` |
+| Horizontal flex layout | `Row` | `shared/components/container.tsx` |
+| Vertical flex layout | `Col` | `shared/components/container.tsx` |
+| Resizable panels | `ResizablePanelGroup` | `@infrahub/ui` |
 | Scrollable area | `ScrollArea` | `@infrahub/ui` |
-| Tooltip | `Tooltip` | `shared/components/ui/tooltip.tsx` |
+| Tooltip | `Tooltip` | `@infrahub/ui` |
 | Popover | `Popover` | `shared/components/ui/popover.tsx` |
 | Accordion | `Accordion` | `shared/components/ui/accordion.tsx` |
 | Badge | `Badge` | `shared/components/ui/badge.tsx` |
@@ -122,18 +126,18 @@ The `tab` argument on each helper is a string-literal union (e.g. `BranchDetails
 | Button | `Button`, `LinkButton` | `@infrahub/ui` |
 | Spinner | `Spinner` | `@infrahub/ui` |
 
+More primitives (`Sheet`, `Tree`, `Menu`, `Select`, `ListBox`, `Autocomplete`, `SortableList`, `Checkbox`, `Popover`, `useDismissGuard`, …) live in `@infrahub/ui` — check `frontend/packages/ui/src/index.ts` first; `design-system.md` owns that inventory.
+
 ### Hooks
 
 | Need | Use | Location |
 |------|-----|----------|
 | Read route params the route guarantees | `useRequiredParams("foo", "bar")` | `shared/hooks/use-required-params.ts` |
-| URL query-param sync | `useFilters` (or `nuqs` directly for typed params) | `shared/hooks/useFilters.ts` |
+| URL query-param sync | `nuqs` directly (typed params). For filters, `useFilters` / `useSearch` from `entities/nodes/filters/ui/hooks/` | `nuqs` |
 | Debounced value | `useDebounce` | `shared/hooks/useDebounce.ts` |
 | Pagination state | `usePagination` | `shared/hooks/usePagination.ts` |
 | Local-storage state | `useLocalStorage` | `shared/hooks/useLocalStorage.ts` |
 | Copy to clipboard | `useCopyToClipboard` | `shared/hooks/useCopyToClipboard.ts` |
-| Previous value | `usePrevious` | `shared/hooks/usePrevious.ts` |
-| Search input state | `useSearch` | `shared/hooks/useSearch.ts` |
 | Page title | `useTitle` | `shared/hooks/useTitle.ts` |
 | Branch context | `useCurrentBranch` | (entity hook) |
 | Date context | `useAtomValue(datetimeAtom)` | `shared/stores/` |
@@ -144,7 +148,7 @@ Import another entity's `domain/` types and async functions, or its `ui/` hooks/
 
 | Source entity | Useful exports |
 |---|---|
-| `entities/schema` | `useGetSchema`, `SchemaNode` types |
+| `entities/schema` | `useSchema` (`ui/hooks/useSchema.ts`), `useGetSchemaHash` (`ui/queries/get-schema-hash.query.ts`), `NodeSchema`/`GenericSchema`/`ModelSchema` types (`domain/model/schema.ts`) |
 | `entities/branches` | `useGetBranches`, `BranchListItem` |
 | `entities/nodes/object` | `useGetObject` from `ui/queries/get-object.query.ts` |
 | `entities/nodes/relationships` | `RelationshipComboboxList`, `AddRelationshipAction` |

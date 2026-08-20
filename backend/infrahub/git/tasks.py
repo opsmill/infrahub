@@ -495,7 +495,9 @@ async def git_branch_delete(
 async def generate_artifact_definition(branch: str, context: InfrahubContext) -> None:
     await add_branch_tag(branch_name=branch)
 
-    artifact_definitions = await get_client().all(kind=CoreArtifactDefinition, branch=branch, include=["id"])
+    client = get_client()
+    client.request_context = context.to_request_context()
+    artifact_definitions = await client.all(kind=CoreArtifactDefinition, branch=branch, include=["id"])
 
     for artifact_definition in artifact_definitions:
         model = RequestArtifactDefinitionGenerate(
@@ -512,8 +514,10 @@ async def generate_artifact_definition(branch: str, context: InfrahubContext) ->
 async def generate_artifact(model: RequestArtifactGenerate) -> None:
     await add_tags(branches=[model.branch_name], nodes=[model.target_id])
     log = get_run_logger()
+    client = get_client()
+    client.request_context = model.context.to_request_context()
     repo = await get_initialized_repo(
-        client=get_client(),
+        client=client,
         repository_id=model.repository_id,
         name=model.repository_name,
         repository_kind=model.repository_kind,
@@ -544,6 +548,7 @@ async def generate_request_artifact_definition(
     await add_tags(branches=[model.branch])
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     # Needs to be fetched before fetching group members otherwise `object` relationship would override
     # existing node in client store without the `name` attribute due to #521
@@ -563,9 +568,12 @@ async def generate_request_artifact_definition(
     current_members = [member.id for member in group.members.peers]
 
     artifacts_by_member = {}
+    stale_artifacts = []
     for artifact in existing_artifacts:
         if artifact.object.id in current_members:
             artifacts_by_member[artifact.object.peer.id] = artifact.id
+        else:
+            stale_artifacts.append(artifact)
 
     await artifact_definition.transformation.fetch()
     transformation_repository = artifact_definition.transformation.peer.repository
@@ -594,7 +602,7 @@ async def generate_request_artifact_definition(
     for relationship in group.members.peers:
         member = relationship.peer
         artifact_id = artifacts_by_member.get(member.id)
-        if model.limit and artifact_id not in model.limit:
+        if not model.selects_member(member_id=member.id, artifact_id=artifact_id):
             continue
 
         request_artifact_generate_model = RequestArtifactGenerate(
@@ -630,6 +638,27 @@ async def generate_request_artifact_definition(
 
     async for _, _ in batch.execute():
         pass
+
+    # A full pass over the definition also cleans up artifacts whose target is no
+    # longer a member of the target group; a limited run only regenerates the
+    # requested artifacts and must not delete anything else. The cleanup runs
+    # after the regeneration is dispatched and tolerates individual failures:
+    # a stale artifact that cannot be deleted must not block the regeneration
+    # of current members.
+    if model.evaluates_every_member:
+        log = get_run_logger()
+        for artifact in stale_artifacts:
+            try:
+                await artifact.delete()
+                log.info(
+                    f"Deleted artifact {artifact.id} ({artifact.name.value}) on branch {model.branch}: "
+                    f"its target {artifact.object.id} is no longer a member of the definition's targets"
+                )
+            except Exception:
+                log.warning(
+                    f"Failed to delete stale artifact {artifact.id} ({artifact.name.value}) on branch {model.branch}",
+                    exc_info=True,
+                )
 
 
 @flow(name="git-repository-pull-read-only", flow_run_name="Pull latest commit on {model.repository_name}")
@@ -841,6 +870,7 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
 
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     definition = await client.get(kind=CoreCheckDefinition, id=model.check_definition_id, branch=model.branch_name)
     proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
@@ -928,7 +958,10 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
     workflow = get_workflow()
     checks_coroutines = [
         workflow.execute_workflow(
-            workflow=GIT_REPOSITORY_USER_CHECK_RUN, parameters={"model": model}, expected_return=ValidatorConclusion
+            workflow=GIT_REPOSITORY_USER_CHECK_RUN,
+            context=context,
+            parameters={"model": model},
+            expected_return=ValidatorConclusion,
         )
         for model in check_models
     ]
@@ -953,6 +986,7 @@ async def trigger_user_checks(model: TriggerRepositoryUserChecks, context: Infra
 
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     repository = await client.get(
         kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id, branch=model.source_branch, fragment=True
@@ -991,6 +1025,7 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, contex
 
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     repository = await client.get(kind=InfrahubKind.GENERICREPOSITORY, id=model.repository, branch=model.source_branch)
     proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
@@ -1040,6 +1075,7 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, contex
 
     check_coroutine = get_workflow().execute_workflow(
         workflow=GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
+        context=context,
         parameters={"model": check_merge_conflict_model},
         expected_return=ValidatorConclusion,
     )

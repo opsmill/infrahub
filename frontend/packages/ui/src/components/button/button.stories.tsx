@@ -30,13 +30,17 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const ColumnLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="font-medium text-[10px] text-neutral-400 uppercase tracking-wider">
-    {children}
-  </div>
-);
+function ColumnLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-[10px] font-medium tracking-wider text-neutral-400 uppercase">
+      {children}
+    </div>
+  );
+}
 
-const Divider = () => <div className="h-9 w-px self-center bg-neutral-200" />;
+function Divider() {
+  return <div className="h-9 w-px self-center bg-neutral-200" />;
+}
 
 export const AllVariants: Story = {
   argTypes: {
@@ -52,7 +56,7 @@ export const AllVariants: Story = {
       rowProps: Partial<ButtonProps> = {},
     ) => (
       <div key={label} className="contents">
-        <div className="font-medium text-neutral-700 text-sm">{label}</div>
+        <div className="text-sm font-medium text-neutral-700">{label}</div>
 
         <div className="flex flex-wrap items-center gap-2">
           {SIZES.map((size) => (

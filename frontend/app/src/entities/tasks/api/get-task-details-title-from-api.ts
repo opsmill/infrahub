@@ -1,6 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 
 const GET_TASK_DETAILS_TITLE = graphql(`
   query GET_TASK_DETAILS_TITLE_QUERY($ids: [String!]) {
@@ -8,7 +6,14 @@ const GET_TASK_DETAILS_TITLE = graphql(`
       count
       edges {
         node {
+          id
           title
+          state
+          available_actions {
+            action
+            available
+            unavailability_reason
+          }
         }
       }
     }

@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
 import { store } from "@/shared/stores";
 
-import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
+import { getRelationships } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { TestForm } from "../../../../../tests/components/form.story";
@@ -12,7 +12,7 @@ import { render } from "../../../../../tests/components/render";
 import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
 import RelationshipManyField from "./relationships/relationship-many.field";
 
-vi.mock("@/entities/nodes/relationships/domain/get-relationships/get-relationships");
+vi.mock("@/entities/nodes/relationships/domain/use-cases/get-relationships");
 
 describe("RelationshipMany - Field", () => {
   const relationshipSchema = generateRelationshipSchema();

@@ -1,0 +1,1 @@
+Writes to the default branch and to the source branch are now blocked for the full duration of a branch merge, and a new merge or rebase is refused while a merge is in progress. Blocked writes receive a transient message asking the caller to retry shortly, and the protection is lifted automatically once the merge completes (or is rolled back).

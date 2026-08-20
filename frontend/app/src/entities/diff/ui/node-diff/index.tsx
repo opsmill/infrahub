@@ -5,11 +5,10 @@ import { useEffect } from "react";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { useBranchExists } from "@/entities/branches/ui/hooks/use-branch-exists";
-import type { GetDiffSummaryParams } from "@/entities/diff/domain/get-diff-summary";
+import type { GetDiffSummaryParams } from "@/entities/diff/domain/use-cases/get-diff-summary";
 import {
   DiffBranchNotFound,
   isBranchNotFoundError,
@@ -24,7 +23,7 @@ import { DiffNode } from "@/entities/diff/ui/node-diff/node";
 import { DIFF_STATUS, type DiffNode as DiffNodeType } from "@/entities/diff/ui/node-diff/types";
 import { buildFilters } from "@/entities/diff/ui/node-diff/utils";
 import { useDiffTreeInfiniteQuery } from "@/entities/diff/ui/queries/get-diff-tree.query";
-import { MERGE_STATE } from "@/entities/proposed-changes/constants";
+import { MERGE_STATE } from "@/entities/proposed-changes/domain/model/proposed-change-state";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
 
@@ -76,7 +75,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
     return (
       <DiffComputing
         sourceBranch={branchName}
-        destinationBranch={proposedChangesDetails?.destination_branch?.value ?? DEFAULT_BRANCH_NAME}
+        destinationBranch={proposedChangesDetails?.destination_branch?.value ?? ""}
         hideActions={isMerged}
       />
     );
@@ -94,11 +93,22 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
   }
 
   // UNCHANGED nodes are kept: the backend returns them (include_parents) so the tree
-  // can nest changed nodes under their unchanged parents as hierarchy context
-  const allNodes =
-    data.pages
-      .flatMap((page) => page?.nodes)
-      .flatMap((node) => (node ? [node as unknown as DiffNodeType] : [])) ?? [];
+  // can nest changed nodes under their unchanged parents as hierarchy context.
+  // Pages re-ship ancestors, so dedupe by uuid (duplicates crash the tree
+  // collection), preferring a node's changed entry over an UNCHANGED placeholder.
+  const nodesByUuid = new Map<string, DiffNodeType>();
+  for (const node of data.pages.flatMap((page) => page?.nodes ?? [])) {
+    if (!node) continue;
+    const diffNode = node as unknown as DiffNodeType;
+    const existing = nodesByUuid.get(diffNode.uuid);
+    if (
+      !existing ||
+      (existing.status === DIFF_STATUS.UNCHANGED && diffNode.status !== DIFF_STATUS.UNCHANGED)
+    ) {
+      nodesByUuid.set(diffNode.uuid, diffNode);
+    }
+  }
+  const allNodes = [...nodesByUuid.values()];
 
   // The CONFLICT filter is client-side only (buildFilters excludes it from the backend
   // status filter) and contains_conflict never propagates to ancestor nodes, so the
@@ -108,7 +118,8 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
 
   const changedNodes = nodes.filter(
     (node) =>
-      node.status !== "UNCHANGED" && (qspStatus !== DIFF_STATUS.CONFLICT || node.contains_conflict)
+      node.status !== DIFF_STATUS.UNCHANGED &&
+      (qspStatus !== DIFF_STATUS.CONFLICT || node.contains_conflict)
   );
 
   return (

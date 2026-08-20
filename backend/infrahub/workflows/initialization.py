@@ -18,6 +18,7 @@ from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import setup_triggers
 
 from .catalogue import WORKER_POOLS, get_workflows
+from .constants import WorkflowPriority
 from .models import TASK_RESULT_STORAGE_NAME
 
 
@@ -74,6 +75,24 @@ async def setup_worker_pools(client: PrefectClient) -> None:
             log.warning(f"Work pool {worker.name} already present ")
 
 
+@task(name="task-manager-setup-work-queues", task_run_name="Setup Work queues", cache_policy=NONE)
+async def setup_work_queues(client: PrefectClient) -> None:
+    log = get_run_logger()
+    for pool in WORKER_POOLS:
+        for priority in WorkflowPriority:
+            try:
+                await client.create_work_queue(
+                    name=priority.queue_name,
+                    priority=priority.queue_priority,
+                    work_pool_name=pool.name,
+                )
+                log.info(f"Work queue {priority.queue_name} created successfully on pool {pool.name} ... ")
+            except ObjectAlreadyExists:
+                work_queue = await client.read_work_queue_by_name(name=priority.queue_name, work_pool_name=pool.name)
+                await client.update_work_queue(id=work_queue.id, priority=priority.queue_priority)
+                log.info(f"Work queue {priority.queue_name} already present on pool {pool.name}, priority updated ")
+
+
 @task(name="task-manager-setup-deployments", task_run_name="Setup Deployments", cache_policy=NONE)
 async def setup_deployments(client: PrefectClient) -> None:
     log = get_run_logger()
@@ -108,6 +127,7 @@ async def setup_task_manager() -> None:
     async with get_client(sync_client=False) as client:
         await setup_blocks()
         await setup_worker_pools(client=client)
+        await setup_work_queues(client=client)
         await setup_deployments(client=client)
         await setup_triggers(
             client=client, triggers=builtin_triggers, trigger_type=TriggerType.BUILTIN, force_update=True

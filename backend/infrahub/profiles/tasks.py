@@ -87,7 +87,7 @@ async def profile_refresh_process(
     branch_name: str,
     profile_kind: str,
     profile_id: str,
-    context: EventContext,  # noqa: ARG001
+    context: EventContext,
 ) -> None:
     """Process profile refresh when a profile's attributes or relationships change.
 
@@ -96,6 +96,7 @@ async def profile_refresh_process(
     """
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     await add_tags(branches=[branch_name])
 
@@ -111,5 +112,5 @@ async def profile_refresh_process(
     for node_id in related_nodes.peer_ids:
         log.info(f"Requesting profile refresh for {node_id}")
         await get_workflow().submit_workflow(
-            workflow=PROFILE_REFRESH, parameters={"branch_name": branch_name, "node_id": node_id}
+            workflow=PROFILE_REFRESH, context=context, parameters={"branch_name": branch_name, "node_id": node_id}
         )

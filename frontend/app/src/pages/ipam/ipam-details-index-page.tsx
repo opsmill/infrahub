@@ -3,10 +3,10 @@ import { Navigate, useParams } from "react-router";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 
-import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { constructPathForIpam } from "@/entities/ipam/utils";
-import type { NodeAttribute } from "@/entities/nodes/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import { constructPathForIpam } from "@/entities/ipam/ip-namespaces/ui/routing/ipam-urls";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
+import type { NodeAttribute } from "@/entities/nodes/object/domain/model/node";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 const IpamDetailsIndexPage = () => {
   const { objectKind, objectId } = useParams();

@@ -19,6 +19,9 @@ if TYPE_CHECKING:
 
 
 class NodeInheritFromChecker(ConstraintCheckerInterface):
+    # Only fires when a generic is removed from a node schema's inherit_from list.
+    triggered_by_data_change = False
+
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
         self.branch = branch

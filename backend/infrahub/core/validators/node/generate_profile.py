@@ -60,6 +60,9 @@ class NodeGenerateProfileValidatorQuery(SchemaValidatorQuery):
 
 class NodeGenerateProfileChecker(ConstraintCheckerInterface):
     query_classes = [NodeGenerateProfileValidatorQuery]
+    # Only fires when generate_profile is turned off while profiles still exist; instance data
+    # changes cannot flip that schema flag, so a data diff can never trigger it.
+    triggered_by_data_change = False
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db

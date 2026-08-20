@@ -1,11 +1,11 @@
 import uuid
+from dataclasses import dataclass
 
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
-    SYSTEM_USER_ID,
     BranchSupportType,
     HashableModelState,
     InfrahubKind,
@@ -13,8 +13,8 @@ from infrahub.core.constants import (
     NumberPoolType,
     SchemaPathType,
 )
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.migrations.schema.node_attribute_add import (
     NodeAttributeAddMigration,
     NodeAttributeAddMigrationQuery01,
@@ -27,6 +27,8 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
+from infrahub.core.query.rollback import RollbackScope
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.definitions.core.template import core_object_template
@@ -34,6 +36,14 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
+from tests.component.core.migrations.schema.metadata_helpers import (
+    VertexMetadata,
+    branch_edge_fingerprint,
+    branch_metadata_fingerprint,
+    get_attribute_vertex_metadata,
+    get_node_vertex_metadata,
+)
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.db_validation import verify_graph
 from tests.helpers.edge_timestamps import assert_edge_timestamps
@@ -238,53 +248,166 @@ async def test_migration(
     assert_edge_timestamps(before_snapshot, after_snapshot, at_str)
 
 
-async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, branch: Branch) -> None:
-    """Test that vertex metadata is set correctly when adding an attribute."""
-    schema = registry.schema.get_schema_branch(name=branch.name)
-    car_schema = schema.get_node(name="TestCar")
+MIGRATION_USER_ID = "migration_user"
 
-    # Remove the color attribute first so we can re-add it
-    remove_migration = NodeAttributeRemoveMigration(
-        previous_node_schema=car_schema,
-        new_node_schema=car_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
-    )
-    await remove_migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=branch)
 
-    test_user_id = "test-metadata-user"
+@dataclass
+class _AttributeAdd:
+    """State captured around a single ``color`` attribute-add migration on one branch."""
+
+    branch: Branch
+    node_id: str
+    migration_time: Timestamp
+    user_id: str
+    node_before: VertexMetadata
+    pre_migration_fingerprint: list[tuple]
+    pre_migration_metadata: list[tuple]
+
+
+async def _run_attribute_add_migration(db: InfrahubDatabase, branch: Branch, node_uuid: str) -> _AttributeAdd:
+    """Add a brand-new ``doors`` attribute on ``branch``."""
+    node_before = await get_node_vertex_metadata(db=db, node_uuid=node_uuid)
+    pre_migration_fingerprint = await branch_edge_fingerprint(db=db, branch_name=branch.name)
+    pre_migration_metadata = await branch_metadata_fingerprint(db=db, branch_name=branch.name)
+
+    user_id = MIGRATION_USER_ID
     migration_time = Timestamp()
+
+    candidate_schema = registry.schema.get_schema_branch(name=branch.name).duplicate()
+    car_schema = candidate_schema.get(name="TestCar")
+    car_schema.attributes.append(AttributeSchema(name="doors", kind="Number", optional=True))
+    candidate_schema.set(name="TestCar", schema=car_schema)
+    candidate_schema.process()
+    car_schema = candidate_schema.get(name="TestCar")
 
     migration = NodeAttributeAddMigration(
         new_node_schema=car_schema,
         previous_node_schema=car_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="doors"),
     )
     execution_result = await migration.execute(
-        migration_input=MigrationInput(db=db, at=migration_time, user_id=test_user_id), branch=branch
+        migration_input=MigrationInput(db=db, at=migration_time, user_id=user_id), branch=branch
     )
     assert not execution_result.errors
 
-    nodes = await NodeManager.get_many(
-        db=db,
-        ids=[car_accord_main.id],
+    return _AttributeAdd(
         branch=branch,
-        include_metadata=MetadataQueryOptions(
-            node_level=MetadataOptions.USER_TIMESTAMPS,
-            attribute_level=MetadataOptions.USER_TIMESTAMPS,
-        ),
+        node_id=node_uuid,
+        migration_time=migration_time,
+        user_id=user_id,
+        node_before=node_before,
+        pre_migration_fingerprint=pre_migration_fingerprint,
+        pre_migration_metadata=pre_migration_metadata,
     )
-    node = nodes[car_accord_main.id]
-    assert node._get_created_at() < migration_time
-    assert node._get_created_by() == SYSTEM_USER_ID
-    assert node._get_updated_at() == migration_time
-    assert node._get_updated_by() == test_user_id
 
-    # Verify attribute metadata via the Node object
-    attr = node.color
-    assert attr._get_created_at() == migration_time
-    assert attr._get_created_by() == test_user_id
-    assert attr._get_updated_at() == migration_time
-    assert attr._get_updated_by() == test_user_id
+
+async def _assert_migration_metadata(db: InfrahubDatabase, context: _AttributeAdd) -> None:
+    """Assert the add's metadata effect, which differs by branch.
+
+    Vertex metadata is maintained only on the default/global branch, so only there does the add bump
+    ``updated_at``/``by`` on the pre-existing node (snapshotting the prior values into ``previous_*``) and
+    stamp the freshly-created attribute vertex. On a user branch the shared node is left untouched and the
+    new attribute vertex is created without vertex metadata.
+    """
+    node_after = await get_node_vertex_metadata(db=db, node_uuid=context.node_id)
+    attr_after = await get_attribute_vertex_metadata(
+        db=db, node_uuid=context.node_id, attribute_name="doors", edge_from=context.migration_time.to_string()
+    )
+    if context.branch.is_default or context.branch.is_global:
+        # The pre-existing node is bumped and its prior values snapshotted so a rollback can restore them.
+        assert node_after.updated_at == context.migration_time.to_string()
+        assert node_after.updated_by == context.user_id
+        assert node_after.previous_updated_at == context.node_before.updated_at
+        assert node_after.previous_updated_by == context.node_before.updated_by
+        # The attribute vertex is created here, so it is stamped but has no prior value to snapshot.
+        assert attr_after.updated_at == context.migration_time.to_string()
+        assert attr_after.updated_by == context.user_id
+        assert attr_after.previous_updated_at is None
+    else:
+        # A user-branch add leaves the shared node untouched and creates the attribute without metadata.
+        assert node_after == context.node_before
+        assert node_after.previous_updated_at is None
+        assert attr_after == VertexMetadata()
+        assert attr_after == VertexMetadata()
+
+
+class TestNodeAttributeAddMetadata:
+    """On the default branch, adding an attribute stamps vertex metadata and a rollback removes it.
+
+    A class-scoped fixture runs the migration once; the metadata and rollback tests share it and run in
+    order (the rollback test reverts the state the metadata test observed).
+    """
+
+    @pytest.fixture(scope="class")
+    async def context(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+        car_person_schema_scope_class: SchemaBranch,
+    ) -> _AttributeAdd:
+        person = await Node.init(db=db, schema="TestPerson", branch=default_branch_scope_class)
+        await person.new(db=db, name="John", height=180)
+        await person.save(db=db)
+        car = await Node.init(db=db, schema="TestCar", branch=default_branch_scope_class)
+        await car.new(db=db, name="accord", color="#123456", owner=person.id)
+        await car.save(db=db)
+
+        return await _run_attribute_add_migration(db=db, branch=default_branch_scope_class, node_uuid=car.id)
+
+    async def test_migration_metadata(self, db: InfrahubDatabase, context: _AttributeAdd) -> None:
+        """The add stamps the node and the new attribute vertex and snapshots the node's prior values."""
+        await _assert_migration_metadata(db=db, context=context)
+
+    async def test_migration_rollback(self, db: InfrahubDatabase, context: _AttributeAdd) -> None:
+        """A range rollback undoes the migration: the added attribute is deleted and the node restored, idempotently."""
+
+        async def _run_rollback() -> None:
+            await GraphRollbacker(db=db).rollback(
+                target_branch=context.branch,
+                at=context.migration_time,
+                scope=RollbackScope.SINCE_TIMESTAMP,
+                restore_metadata=True,
+            )
+
+        await _run_rollback()
+        await verify_graph(db=db)
+
+        # The branch edges and vertex metadata are restored exactly to the pristine pre-setup state.
+        assert (
+            await branch_edge_fingerprint(db=db, branch_name=context.branch.name) == context.pre_migration_fingerprint
+        )
+        assert (
+            await branch_metadata_fingerprint(db=db, branch_name=context.branch.name) == context.pre_migration_metadata
+        )
+
+        # The node metadata is restored to its pre-setup values and the snapshot is cleared.
+        node_after = await get_node_vertex_metadata(db=db, node_uuid=context.node_id)
+        assert node_after.updated_at == context.node_before.updated_at
+        assert node_after.updated_by == context.node_before.updated_by
+        assert node_after.previous_updated_at is None
+        assert node_after.previous_updated_by is None
+
+        # Running the rollback again is a no-op: nothing remains in the window to revert.
+        await _run_rollback()
+        await verify_graph(db=db)
+        assert (
+            await branch_edge_fingerprint(db=db, branch_name=context.branch.name) == context.pre_migration_fingerprint
+        )
+        assert (
+            await branch_metadata_fingerprint(db=db, branch_name=context.branch.name) == context.pre_migration_metadata
+        )
+        node_again = await get_node_vertex_metadata(db=db, node_uuid=context.node_id)
+        assert node_again == node_after
+
+
+async def test_migration_metadata_non_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node
+) -> None:
+    """On a user branch the add is reflected through edges but records no vertex-metadata snapshot."""
+    branch = await create_branch(branch_name="branch-attr-add-meta", db=db)
+    context = await _run_attribute_add_migration(db=db, branch=branch, node_uuid=car_accord_main.id)
+    await _assert_migration_metadata(db=db, context=context)
 
 
 async def test_migration_skips_inherited_attribute_by_default(

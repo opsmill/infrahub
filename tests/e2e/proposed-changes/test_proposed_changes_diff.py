@@ -67,7 +67,7 @@ class TestProposedChangesDiff:
             admin_page.get_by_text("Choose the branch to resolve the conflict:mainden1-maintenance-conflict")
         ).to_be_visible()
         await save_screenshot_for_docs(admin_page, "topics/proposed_change/pc_conflict_resolution")
-        await admin_page.get_by_role("checkbox", name="main", exact=True).click()
+        await admin_page.get_by_test_id("conflict-resolution").get_by_text("main", exact=True).click()
         await expect(admin_page.get_by_text("Conflict marked as resolved")).to_be_visible()
 
     async def test_should_comment_a_proposed_changes(self, admin_page: Page, demo_edge_repo: None) -> None:
@@ -94,7 +94,7 @@ class TestProposedChangesDiff:
         await save_screenshot_for_docs(admin_page, "topics/proposed_change/pc_comments")
 
         await expect(admin_page.get_by_label("Resolve thread")).not_to_be_checked()
-        await admin_page.get_by_label("Resolve thread").click()
+        await admin_page.get_by_text("Resolve thread").click()
         await admin_page.get_by_role("button", name="Confirm", exact=True).click()
         await expect(admin_page.get_by_label("Resolved")).to_be_checked()
 

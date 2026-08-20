@@ -91,11 +91,11 @@ async def test_delete_runs_post_delete_work(context: InfrahubContext) -> None:
     assert diff_freezer.frozen == [branch.name]
     assert data_deleter.deleted == [branch.name]
     assert [type(event) for event in events.events] == [BranchDeletedEvent]
-    assert workflow.get_submit_calls_for(BRANCH_CANCEL_PROPOSED_CHANGES) == [
-        {"workflow": BRANCH_CANCEL_PROPOSED_CHANGES, "parameters": {"branch_name": branch.name}}
+    assert [call["parameters"] for call in workflow.get_submit_calls_for(BRANCH_CANCEL_PROPOSED_CHANGES)] == [
+        {"branch_name": branch.name}
     ]
-    assert workflow.get_submit_calls_for(GIT_REPOSITORIES_DELETE_BRANCH) == [
-        {"workflow": GIT_REPOSITORIES_DELETE_BRANCH, "parameters": {"branch": branch.name}}
+    assert [call["parameters"] for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_DELETE_BRANCH)] == [
+        {"branch": branch.name}
     ]
 
 
@@ -119,8 +119,8 @@ async def test_delete_from_git_survives_losing_the_race(context: InfrahubContext
 
     await orchestrator.delete(branch=branch, context=context, delete_from_git=True)
 
-    assert workflow.get_submit_calls_for(GIT_REPOSITORIES_DELETE_BRANCH) == [
-        {"workflow": GIT_REPOSITORIES_DELETE_BRANCH, "parameters": {"branch": branch.name}}
+    assert [call["parameters"] for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_DELETE_BRANCH)] == [
+        {"branch": branch.name}
     ]
     # Still nothing that belongs to the winning attempt.
     assert events.events == []
@@ -146,6 +146,6 @@ async def test_delete_git_branch_after_merge_setting_deletes_without_an_explicit
 
     await orchestrator.delete(branch=branch, context=context, delete_from_git=False)
 
-    assert workflow.get_submit_calls_for(GIT_REPOSITORIES_DELETE_BRANCH) == [
-        {"workflow": GIT_REPOSITORIES_DELETE_BRANCH, "parameters": {"branch": branch.name}}
+    assert [call["parameters"] for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_DELETE_BRANCH)] == [
+        {"branch": branch.name}
     ]

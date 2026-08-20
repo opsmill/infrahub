@@ -7,13 +7,18 @@ from prefect.client.schemas.objects import StateType
 
 from infrahub import config
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
-from infrahub.task_manager.task import PrefectTask
+from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
+from infrahub.task_manager.flow_run.retention import FlowRunRetention
 from infrahub.tasks.dummy import DUMMY_FLOW, DummyInput
 from infrahub.workers.dependencies import build_tls_registry
 from infrahub.workflows.initialization import setup_task_manager
 from infrahub.workflows.models import WorkerPoolDefinition
 
 app = AsyncTyper()
+
+# States a flow run can be stuck in: RUNNING for a worker that died mid-flow, PENDING for one
+# that was picked up but never got to start.
+STALE_FLOW_RUN_STATES = [StateType.RUNNING, StateType.PENDING]
 
 
 @app.command()
@@ -74,10 +79,11 @@ async def flow_runs(
 
     config.load_and_exit(config_file_name=config_file)
 
-    await PrefectTask.delete_flow_runs(
-        days_to_keep=days_to_keep,
-        batch_size=batch_size,
-    )
+    async with get_client(sync_client=False) as client:
+        await FlowRunRetention(client=PrefectClientAdapter(client)).purge(
+            days_to_keep=days_to_keep,
+            batch_size=batch_size,
+        )
 
 
 @flush_app.command()
@@ -87,13 +93,14 @@ async def stale_runs(
     days_to_keep: int = 2,
     batch_size: int = 100,
 ) -> None:
-    """Flush stale task runs."""
+    """Flush stale task runs, marking long RUNNING or PENDING flow runs as crashed."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
 
     config.load_and_exit(config_file_name=config_file)
 
-    await PrefectTask.delete_flow_runs(
-        states=[StateType.RUNNING], delete=False, days_to_keep=days_to_keep, batch_size=batch_size
-    )
+    async with get_client(sync_client=False) as client:
+        await FlowRunRetention(client=PrefectClientAdapter(client)).purge(
+            states=STALE_FLOW_RUN_STATES, delete=False, days_to_keep=days_to_keep, batch_size=batch_size
+        )

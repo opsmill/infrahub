@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
-from tests.helpers.db_validation import verify_graph
+from infrahub.database.validation import verify_graph
 
 from ._matrix_setup import stage_all_change_types
 from ._migrations import migrate_testcar_to_test2newcar
@@ -112,6 +112,6 @@ async def test_target_branch_migration(
 
     await verify_graph(db=db)
 
-    await merger.rollback(at=merge_at)
+    await merger.rollback(merge_started_at=merge_at)
     await validate_all_rolled_back(db=db, branch=default_branch, contexts=contexts)
     await verify_graph(db=db)

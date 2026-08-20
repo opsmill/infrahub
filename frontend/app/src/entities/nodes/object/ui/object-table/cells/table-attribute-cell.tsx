@@ -2,13 +2,13 @@ import type { Dropdown, TextAttribute } from "@/shared/api/graphql/generated/typ
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
+import type { NodeAttribute } from "@/entities/nodes/object/domain/model/node";
 import { ColorCell } from "@/entities/nodes/object/ui/object-table/cells/color-cell";
 import { DropdownCell } from "@/entities/nodes/object/ui/object-table/cells/dropdown-cell";
 import { NodeKindCell } from "@/entities/nodes/object/ui/object-table/cells/node-kind-cell";
 import { UrlCell } from "@/entities/nodes/object/ui/object-table/cells/url-cell";
-import type { NodeAttribute } from "@/entities/nodes/types";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import type { AttributeKind, AttributeSchema } from "@/entities/schema/types";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import type { AttributeKind, AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 export interface TableAttributeCellProps {
   attributeSchema: AttributeSchema;
@@ -28,9 +28,10 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
       return <DropdownCell dropdown={attributeData as Dropdown} />;
     }
     case ATTRIBUTE_KIND.DATETIME: {
+      // A datetime *data* attribute: show the user's full preferred format+timezone inline.
       return (
         <span className="truncate">
-          <DateDisplay date={attributeData.value as string | null} />
+          <DateDisplay date={attributeData.value as string | null} fullTimestamp />
         </span>
       );
     }
@@ -47,6 +48,7 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
     case ATTRIBUTE_KIND.FILE:
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
+    case ATTRIBUTE_KIND.IP_ADDRESS:
     case ATTRIBUTE_KIND.NODE_KIND:
     case ATTRIBUTE_KIND.TEXTAREA: {
       if (attributeSchema.name === "node_kind") {

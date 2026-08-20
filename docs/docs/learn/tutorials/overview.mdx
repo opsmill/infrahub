@@ -1,0 +1,37 @@
+---
+title: Tutorials
+---
+
+# Tutorials
+
+The most direct way to learn a specific Infrahub workflow is to run a tutorial. Each one walks you through a real task end to end — modeling a schema, writing a check, building a Generator — against your own Infrahub instance, using the same GraphQL, Python, and schema snippets you'd write in production. You follow the steps directly in these docs, at your own pace, with no external platform involved.
+
+What you take away is a working example you built yourself, not a copy-pasted snippet: each tutorial explains why each step matters, so you leave with the concepts as well as the commands.
+
+Use a tutorial when:
+
+- You already have Infrahub running and want a guided, hands-on introduction to a specific feature
+- You learn best by building something real rather than reading a conceptual overview
+- You want a working example you can adapt for your own use case
+
+## Schema
+
+- **[Build your first schema](./build-your-first-schema)** — model network devices and interfaces (nodes, attributes, relationships, and generics), then load each version into a branch. Take this tutorial first if you're new to schema design.
+
+## Creating objects
+
+- **[Organize objects with groups](./groups)** — create a group, add objects to it, and query the result end to end. Take this tutorial before using groups to target checks, Generators, or other automation.
+
+## Data validation
+
+- **[Build a check](./build-a-check)** — build, deploy, and validate a custom check that enforces a naming convention, from GraphQL query to proposed change. Take this tutorial once you have a schema in place and want to enforce data-quality rules on it.
+
+## Transformations
+
+- **[Build a Jinja2 Transformation](./transformations/build-a-jinja2-transformation)** — render a device configuration snippet from a GraphQL query, test it locally, and call it through the render API.
+- **[Build a Python Transformation](./transformations/build-a-python-transformation)** — implement a Transformation class that returns JSON, test it locally, and call it through the REST API. Take this tutorial to see the Python and Jinja2 approaches side by side and pick the one that fits your use case.
+
+## Generators
+
+- **[Build your first generator](./generators/build-your-first-generator)** — model two object kinds, write a GraphQL query, and implement a Generator that creates objects automatically whenever a change is proposed.
+- **[Build chained generators](./generators/build-chained-generators)** — wire two layers of modular Generators together with a checksum attribute so a downstream Generator only runs once its upstream dependency has finished. Take this tutorial once you're comfortable with a single Generator and need to model a multi-stage pipeline.

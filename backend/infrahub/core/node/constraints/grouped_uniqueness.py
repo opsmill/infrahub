@@ -14,7 +14,7 @@ from infrahub.core.validators.uniqueness.model import (
     QueryRelationshipPathValued,
 )
 from infrahub.core.validators.uniqueness.query import UniquenessValidationQuery
-from infrahub.exceptions import HFIDViolatedError, ValidationError
+from infrahub.exceptions import HFIDViolatedError, UniquenessViolationError
 
 from .interface import NodeConstraintInterface
 
@@ -218,7 +218,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                     continue
 
             error_msg = self._message_builder.build(node_schema=node.get_schema(), fields=violation.fields)
-            raise ValidationError(error_msg)
+            raise UniquenessViolationError(error_msg)
 
         if hfid_violation:
             error_msg = self._message_builder.build(node_schema=node.get_schema(), fields=hfid_violation.fields)

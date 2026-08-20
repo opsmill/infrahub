@@ -15,17 +15,26 @@ from infrahub.errors.payloads import (
     AttributeInvalidTypeData,
     AttributeRequiredData,
     AuthenticationRequiredData,
+    BranchAlreadyMergedData,
+    BranchNeedsRebaseData,
     BranchNotFoundData,
+    MergeInProgressData,
+    MergeRecoveryRequiredData,
     NodeNotFoundData,
     PermissionDeniedData,
     SchemaNotFoundData,
     TokenExpiredData,
     UndefinedErrorData,
 )
+from infrahub.errors.validation import MultiFieldValidationError
 from infrahub.exceptions import (
     AuthorizationError,
+    BranchAlreadyMergedError,
+    BranchNeedsRebaseError,
     BranchNotFoundError,
     Error,
+    MergeInProgressError,
+    MergeRecoveryRequiredError,
     NodeNotFoundError,
     SchemaNotFoundError,
 )
@@ -76,6 +85,14 @@ def _build_payload(exc: BaseException | None, code: str) -> dict[str, Any]:
             )
         case "BRANCH_NOT_FOUND" if isinstance(exc, BranchNotFoundError):
             payload = BranchNotFoundData(branch_name=exc.identifier)
+        case "BRANCH_ALREADY_MERGED" if isinstance(exc, BranchAlreadyMergedError):
+            payload = BranchAlreadyMergedData(branch_name=exc.identifier)
+        case "BRANCH_NEEDS_REBASE" if isinstance(exc, BranchNeedsRebaseError):
+            payload = BranchNeedsRebaseData(branch_name=exc.identifier)
+        case "MERGE_IN_PROGRESS" if isinstance(exc, MergeInProgressError):
+            payload = MergeInProgressData(branch_name=exc.identifier, merging_branch=exc.merging_branch)
+        case "MERGE_RECOVERY_REQUIRED" if isinstance(exc, MergeRecoveryRequiredError):
+            payload = MergeRecoveryRequiredData(branch_name=exc.identifier, merging_branch=exc.merging_branch)
         case "SCHEMA_NOT_FOUND" if isinstance(exc, SchemaNotFoundError):
             payload = SchemaNotFoundData(kind=exc.identifier)
     return payload.model_dump(mode="json")
@@ -149,8 +166,6 @@ def catalogue_error_formatter(error: GraphQLError) -> GraphQLFormattedError:
 
 def format_graphql_errors(errors: list[GraphQLError]) -> list[GraphQLFormattedError]:
     """Format a list of GraphQL errors, expanding any ``MultiFieldValidationError`` fan-outs."""
-    from infrahub.errors.validation import MultiFieldValidationError
-
     out: list[GraphQLFormattedError] = []
     for error in errors:
         original = error.original_error

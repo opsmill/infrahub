@@ -1,11 +1,19 @@
 import { type APIRequestContext, expect } from "@playwright/test";
 
+import { ERROR_CODES, parseCatalogueError } from "../../../src/shared/api/errors";
+
 const API_URL = process.env.CI ? process.env.INFRAHUB_ADDRESS : "http://localhost:8000";
 const API_KEY = "06438eb2-8019-4776-878c-0941b1f1d1ec";
 
+// A merging branch blocks writes to the default branch. Retry until blocking merge is complete or time is up
+const MERGE_RETRY_TIMEOUT_MS = 120_000;
+const MERGE_RETRY_DELAY_MS = 2000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 interface GraphQLResponse<T = any> {
   data?: T;
-  errors?: Array<{ message: string }>;
+  errors?: Array<{ message: string; extensions?: unknown }>;
 }
 
 async function executeGraphQLMutation<T>(
@@ -13,22 +21,34 @@ async function executeGraphQLMutation<T>(
   query: string,
   variables: Record<string, any>
 ): Promise<T> {
-  const response = await request.post(`${API_URL}/graphql`, {
-    headers: { "X-INFRAHUB-KEY": API_KEY },
-    data: { query, variables },
-  });
+  const deadline = Date.now() + MERGE_RETRY_TIMEOUT_MS;
 
-  expect(response.ok()).toBeTruthy();
-  const result: GraphQLResponse<T> = await response.json();
+  for (;;) {
+    const response = await request.post(`${API_URL}/graphql`, {
+      headers: { "X-INFRAHUB-KEY": API_KEY },
+      data: { query, variables },
+    });
 
-  if (result.errors) {
+    expect(response.ok()).toBeTruthy();
+    const result: GraphQLResponse<T> = await response.json();
+
+    if (!result.errors) {
+      return result.data as T;
+    }
+
+    const isMergeInProgress = result.errors.some(
+      (error) => parseCatalogueError(error.extensions).code === ERROR_CODES.MERGE_IN_PROGRESS
+    );
+    if (isMergeInProgress && Date.now() < deadline) {
+      await sleep(MERGE_RETRY_DELAY_MS);
+      continue;
+    }
+
     result.errors.forEach((error) => {
       console.error(error.message);
     });
     throw new Error(`GraphQL Error: ${result.errors[0]?.message}`);
   }
-
-  return result.data as T;
 }
 
 export const createBranchAPI = async (request: APIRequestContext, name: string) => {

@@ -52,13 +52,13 @@ class TestObjectUpdate:
         await admin_page.get_by_label("Name *").fill("atl1-core1-new-name")
         await admin_page.get_by_label("Description").fill("New description")
 
-        await admin_page.get_by_test_id("side-panel-container").get_by_label("Status").click()
+        await admin_page.get_by_label("sheet").get_by_label("Status").click()
         await admin_page.get_by_role("option", name="Maintenance").click()
 
-        await admin_page.get_by_test_id("side-panel-container").get_by_label("Role").click()
+        await admin_page.get_by_label("sheet").get_by_label("Role").click()
         await admin_page.get_by_role("option", name="Edge Router").click()
 
-        await admin_page.get_by_test_id("side-panel-container").get_by_label("Asn").click()
+        await admin_page.get_by_label("sheet").get_by_label("Asn").click()
         await admin_page.get_by_role("option", name="AS174 174").click()
 
         await admin_page.get_by_label("Tags").click()
@@ -72,7 +72,7 @@ class TestObjectUpdate:
         # assert the updates
         # Verify the alert and the closed panel
         await expect(admin_page.get_by_text("Device updated")).to_be_visible()
-        await expect(admin_page.get_by_test_id("side-panel-background")).not_to_be_visible()
+        await expect(admin_page.get_by_label("sheet")).to_be_hidden()
 
         # Verify updates in view
         await expect(admin_page.get_by_text("Nameatl1-core1-new-name")).to_be_visible()
@@ -95,7 +95,7 @@ class TestObjectUpdate:
         await expect(admin_page.get_by_label("Role")).to_have_text("Edge Router")
         await expect(admin_page.get_by_label("Asn")).to_have_text("AS174 174")
 
-        tab_input = admin_page.get_by_test_id("side-panel-container").get_by_text("green×red×")
+        tab_input = admin_page.get_by_label("sheet").get_by_text("green×red×")
         await tab_input.scroll_into_view_if_needed()
         await expect(tab_input).to_be_visible()
 
@@ -112,13 +112,13 @@ class TestObjectUpdate:
         # edit object values
         await admin_page.get_by_test_id("edit-button").click()
 
-        await admin_page.get_by_test_id("side-panel-container").get_by_label("Status").click()
+        await admin_page.get_by_label("sheet").get_by_label("Status").click()
         await admin_page.get_by_role("option", name="Active").click()
 
-        await admin_page.get_by_test_id("side-panel-container").get_by_label("Role").click()
+        await admin_page.get_by_label("sheet").get_by_label("Role").click()
         await admin_page.get_by_role("option", name="Leaf Switch").click()
 
-        await admin_page.get_by_test_id("side-panel-container").get_by_label("Asn").click()
+        await admin_page.get_by_label("sheet").get_by_label("Asn").click()
         await admin_page.get_by_role("option", name="AS64496 64496").click()
 
         await admin_page.get_by_role("button", name="Save").click()

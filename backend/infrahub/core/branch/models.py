@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 
 
 class Branch(StandardNode):
+    # Persisted nullable fields must use `Optional[X]`` rather than `X | None` until we move to
+    # Python 3.14 b/c of how StandardNode.guess_field_type works
     name: str = Field(
         max_length=250, min_length=3, description="Name of the branch (git ref standard)", validate_default=True
     )
@@ -43,7 +45,9 @@ class Branch(StandardNode):
     is_isolated: bool = True
     schema_changed_at: Optional[str] = None
     schema_hash: Optional[SchemaBranchHash] = None
-    graph_version: int | None = None
+    graph_version: Optional[int] = None
+    merge_started_at: Optional[str] = None
+    pre_merge_destination_schema_changed_at: Optional[str] = None
 
     _exclude_attrs: list[str] = ["id", "uuid", "owner"]
 
@@ -83,6 +87,13 @@ class Branch(StandardNode):
     def set_branched_from(cls, value: str) -> str:
         return Timestamp(value).to_string()
 
+    @field_validator("merge_started_at", mode="before")
+    @classmethod
+    def set_merge_started_at(cls, value: Timestamp | str | None) -> str | None:
+        if value is None:
+            return None
+        return Timestamp(value).to_string()
+
     def get_branched_from(self) -> str:
         if not self.branched_from:
             raise RuntimeError(f"branched_from not set for branch {self.name}")
@@ -105,7 +116,7 @@ class Branch(StandardNode):
         raise InitializationError("The schema_hash has not been loaded for this branch")
 
     @property
-    def has_schema_changes(self) -> bool:
+    def schema_differs_from_default_branch(self) -> bool:
         if not self.schema_hash:
             return False
 
@@ -117,6 +128,10 @@ class Branch(StandardNode):
             return True
 
         return False
+
+    @property
+    def has_schema_changes(self) -> bool:
+        return self.schema_differs_from_default_branch
 
     def update_schema_hash(self, at: Timestamp | str | None = None) -> bool:
         latest_schema = registry.schema.get_schema_branch(name=self.name)
@@ -196,6 +211,9 @@ class Branch(StandardNode):
         partial_match: bool = False,
         branch_filters: BranchListFilters | None = None,
         node_ordering: StandardNodeOrdering | None = None,
+        exclude_global: bool = False,
+        exclude_default: bool = False,
+        exclude_terminal: bool = False,
         **_kwargs: Any,
     ) -> int:
         if branch_filters is None:
@@ -211,7 +229,9 @@ class Branch(StandardNode):
             node_class=cls,
             branch_filters=branch_filters,
             limit=limit,
-            exclude_global=True,
+            exclude_global=exclude_global,
+            exclude_default=exclude_default,
+            exclude_terminal=exclude_terminal,
             node_ordering=node_ordering,
         )
         return await query.count(db=db)

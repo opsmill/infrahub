@@ -19,9 +19,9 @@ test.describe("/objects/:objectKind - Bulk edit some rows", () => {
   test("should be able to update multiple objects at once", async ({ page }) => {
     await test.step("navigate to objects page and select items", async () => {
       await page.goto(`/objects/InfraDevice?branch=${BRANCH_NAME}`);
-      await page.getByTestId("identifier-checkbox-cell").nth(0).click();
-      await page.getByTestId("identifier-checkbox-cell").nth(1).click();
-      await page.getByTestId("identifier-checkbox-cell").nth(2).click();
+      await page.getByTestId("identifier-cell").nth(0).locator("label").click();
+      await page.getByTestId("identifier-cell").nth(1).locator("label").click();
+      await page.getByTestId("identifier-cell").nth(2).locator("label").click();
       await page.getByTestId("object-table-toolbar").getByRole("button", { name: "Edit" }).click();
     });
 

@@ -3,7 +3,7 @@ import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import type { InfiniteQueryConfig } from "@/shared/api/types";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
-import { type GetEventsParams, getEvents } from "@/entities/events/domain/get-events";
+import { type GetEventsParams, getEvents } from "@/entities/events/domain/use-cases/get-events";
 
 interface GetEventsQueryOptions extends GetEventsParams {}
 

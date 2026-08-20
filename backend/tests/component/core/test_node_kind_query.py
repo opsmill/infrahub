@@ -29,8 +29,9 @@ async def test_node_get_kind_query_with_migrated_nodes_on_branch(
     migration_query = await NodeDuplicateQuery.init(
         db=db,
         branch=branch,
-        previous_node=SchemaNodeInfo(name="Person", namespace="Test", labels=["TestPerson"], kind="TestPerson"),
-        new_node=SchemaNodeInfo(name="Being", namespace="Test", labels=["TestBeing"], kind="TestBeing"),
+        kind_updates_map={
+            "TestPerson": SchemaNodeInfo(name="Being", namespace="Test", labels=["TestBeing"], kind="TestBeing")
+        },
     )
     await migration_query.execute(db=db)
 
@@ -76,8 +77,9 @@ async def test_node_get_kind_query_with_migrated_nodes_on_branch(
     migration_query = await NodeDuplicateQuery.init(
         db=db,
         branch=default_branch,
-        previous_node=SchemaNodeInfo(name="Person", namespace="Test", labels=["TestPerson"], kind="TestPerson"),
-        new_node=SchemaNodeInfo(name="Being", namespace="Test", labels=["TestBeing"], kind="TestBeing"),
+        kind_updates_map={
+            "TestPerson": SchemaNodeInfo(name="Being", namespace="Test", labels=["TestBeing"], kind="TestBeing")
+        },
     )
     await migration_query.execute(db=db)
 

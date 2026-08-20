@@ -8,6 +8,7 @@ from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.workers.dependencies import get_installation_type
 from infrahub.workflows import catalogue
 from infrahub.workflows.catalogue import get_workflows
+from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.models import WorkflowDefinition
 
 
@@ -23,6 +24,12 @@ def test_workflow_definition_matches(workflow: WorkflowDefinition) -> None:
     flow = workflow.load_function()
     assert hasattr(flow, "name")
     assert workflow.name == flow.name
+
+
+@pytest.mark.parametrize("workflow", [pytest.param(workflow, id=workflow.name) for workflow in get_workflows()])
+def test_workflow_definition_default_priority(workflow: WorkflowDefinition) -> None:
+    """Validate that each workflow carries a valid default priority."""
+    assert isinstance(workflow.default_priority, WorkflowPriority)
 
 
 def test_workflow_definition_flow_names() -> None:

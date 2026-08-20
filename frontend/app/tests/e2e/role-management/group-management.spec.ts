@@ -66,8 +66,8 @@ test.describe("/role-management/groups - Group CRUD", () => {
     });
 
     await test.step("bulk edit both groups", async () => {
-      await getDataTableRow(page, "test group").getByTestId("identifier-checkbox-cell").click();
-      await getDataTableRow(page, "test group 2").getByTestId("identifier-checkbox-cell").click();
+      await getDataTableRow(page, "test group").locator("label").click();
+      await getDataTableRow(page, "test group 2").locator("label").click();
       await page.getByRole("button", { name: "Edit" }).click();
       await page.getByRole("textbox", { name: "Description" }).fill("bulk edited");
       await page.getByRole("button", { name: "Save" }).click();

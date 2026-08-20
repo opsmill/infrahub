@@ -314,7 +314,7 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["rel_prop"] = self.get_relationship_properties_dict(
             status=RelationshipStatus.ACTIVE, user_id=self.user_id
         )
-        arrows = self.schema.get_query_arrows()
+        arrows = self.get_query_arrows(direction=self.schema.direction)
         r1 = f"{arrows.left.start}[r1:IS_RELATED $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:IS_RELATED $rel_prop ]{arrows.right.end}"
 
@@ -585,7 +585,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         self.params["at"] = self.at.to_string()
         self.params.update(rel_params)
 
-        arrows = self.schema.get_query_arrows()
+        arrows = self.get_query_arrows(direction=self.schema.direction)
         r1 = f"{arrows.left.start}[r1:IS_RELATED $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:IS_RELATED $rel_prop ]{arrows.right.end}"
 
@@ -966,7 +966,7 @@ RETURN updated_at, updated_by
         self.params["peer_kind"] = self.schema.peer
         self.params["source_kind"] = self.source_kind
 
-        arrows = self.schema.get_query_arrows()
+        arrows = self.get_query_arrows(direction=self.schema.direction)
 
         path_str = f"{arrows.left.start}[r1:IS_RELATED]{arrows.left.end}(rl){arrows.right.start}[r2:IS_RELATED]{arrows.right.end}"
 
@@ -1381,10 +1381,15 @@ class RelationshipDeleteAllQuery(Query):
 
         for arrow_left, arrow_right in (("<-", "-"), ("-", "->")):
             for edge_type in edge_types:
+                # Resolve the latest edge to each peer and close it
                 sub_query = """
                     CALL (rl) {
                         MATCH (rl)%(arrow_left)s[active_edge:%(edge_type)s]%(arrow_right)s(n)
-                        WHERE %(active_rel_filter)s AND active_edge.status ="active"
+                        WHERE %(active_rel_filter)s
+                        WITH rl, active_edge, n
+                        ORDER BY %(id_func)s(rl), %(id_func)s(n), active_edge.from DESC
+                        WITH rl, n, head(collect(active_edge)) AS active_edge
+                        WHERE active_edge.status = "active"
                         CREATE (rl)%(arrow_left)s[deleted_edge:%(edge_type)s $rel_prop]%(arrow_right)s(n)
                         SET deleted_edge.hierarchy = active_edge.hierarchy
                         WITH active_edge, n
@@ -1396,6 +1401,7 @@ class RelationshipDeleteAllQuery(Query):
                     "arrow_right": arrow_right,
                     "active_rel_filter": active_rel_filter,
                     "edge_type": edge_type,
+                    "id_func": db.get_id_function_name(),
                 }
 
                 self.add_to_query(sub_query)

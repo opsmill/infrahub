@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-testcontainers"
-version = "1.10.6"
+dynamic = ["version"]
 requires-python = ">=3.10"
 
 description = "Testcontainers instance for Infrahub to easily build integration tests"
@@ -105,6 +105,18 @@ include = [
     "infrahub_testcontainers/prometheus.yml",
 ]
 
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.0.dev0"  # static sentinel for tag-less checkouts; identical on every branch so releases never touch it (no stable/develop merge conflicts); publish-guarded in release.yml
+
+[tool.hatch.version.raw-options]
+root = ".."
+# No --dirty: the Docker build resolves the version against a work tree that .dockerignore strips of
+# tracked files (.gitignore, .gitmodules, .gitattributes, .github/), which git would report as
+# "-dirty". setuptools-scm would then bump an on-tag build to {next}.devN+g<node>.d<date> on every
+# image instead of the clean tag. Version comes from committed state only. See INFP-566.
+git_describe_command = ["git", "describe", "--tags", "--long", "--match", "infrahub-v*"]
+
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"

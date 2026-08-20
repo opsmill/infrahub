@@ -94,7 +94,7 @@ test.describe("/proposed-changes", () => {
           await page.getByTestId("edit-button").click();
           await page.getByLabel("Name").fill(pcNameEdit);
           await page
-            .getByTestId("side-panel-container")
+            .getByLabel("sheet")
             .getByTestId("codemirror-editor")
             .getByRole("textbox")
             .fill("My description edit");

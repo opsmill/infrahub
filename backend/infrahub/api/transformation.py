@@ -24,6 +24,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.utils import extract_data
 from infrahub.transformations.models import TransformJinjaTemplateData, TransformPythonData
 from infrahub.workflows.catalogue import TRANSFORM_JINJA2_RENDER, TRANSFORM_PYTHON_RENDER
+from infrahub.workflows.constants import WorkflowPriority
 
 if TYPE_CHECKING:
     from infrahub.auth.session import AccountSession
@@ -92,7 +93,10 @@ async def transform_python(
     )
 
     response = await service.workflow.execute_workflow(
-        workflow=TRANSFORM_PYTHON_RENDER, context=context, parameters={"message": message}
+        workflow=TRANSFORM_PYTHON_RENDER,
+        context=context,
+        parameters={"message": message},
+        priority=WorkflowPriority.HIGH,
     )
     return JSONResponse(content=response)
 
@@ -156,6 +160,10 @@ async def transform_jinja2(
     service: InfrahubServices = request.app.state.service
 
     response = await service.workflow.execute_workflow(
-        workflow=TRANSFORM_JINJA2_RENDER, context=context, expected_return=str, parameters={"message": message}
+        workflow=TRANSFORM_JINJA2_RENDER,
+        context=context,
+        expected_return=str,
+        parameters={"message": message},
+        priority=WorkflowPriority.HIGH,
     )
     return PlainTextResponse(content=response)

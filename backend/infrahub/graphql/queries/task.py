@@ -3,17 +3,97 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphene import Field, Int, List, NonNull, ObjectType, String
+from prefect.client.orchestration import get_client
 from prefect.client.schemas.objects import StateType
 
+from infrahub.core.constants import TaskConclusion
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.queries.task_actions import TaskActionGenerator
 from infrahub.graphql.types.task import TaskNodes, TaskState
-from infrahub.task_manager.task import PrefectTask
+from infrahub.task_manager.flow_run.constants import CONCLUSION_STATE_MAPPING, LOG_LEVEL_MAPPING
+from infrahub.task_manager.flow_run.models import (
+    EnrichedFlowRun,
+    FlowRunFetchOptions,
+    FlowRunQueryCriteria,
+    FlowRunQueryResult,
+)
+from infrahub.task_manager.flow_run.service import build_prefect_task_service
+from infrahub.utils import get_nested_dict
 from infrahub.workflows.constants import WorkflowTag
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.graphql.initialization import GraphqlContext
+
+
+class FlowRunConnectionSerializer:
+    """Render flow-run query results into the GraphQL connection shape."""
+
+    def __init__(self) -> None:
+        self._action_generator = TaskActionGenerator()
+
+    def serialize(self, result: FlowRunQueryResult) -> dict[str, Any]:
+        return {
+            "count": result.count,
+            "edges": [{"node": self._serialize_node(run)} for run in result.runs],
+        }
+
+    def _serialize_node(self, run: EnrichedFlowRun) -> dict[str, Any]:
+        flow = run.flow_run
+        related_node = run.related_nodes[0] if run.related_nodes else None
+        http = run.http or {}
+        logs = [
+            {
+                "node": {
+                    "message": log.message,
+                    "severity": LOG_LEVEL_MAPPING.get(log.level, "error"),
+                    "timestamp": log.timestamp.isoformat(),
+                }
+            }
+            for log in run.logs
+        ]
+        return {
+            "title": flow.name,
+            "conclusion": CONCLUSION_STATE_MAPPING.get(str(flow.state_name), TaskConclusion.UNKNOWN).value,
+            "state": flow.state_type,
+            "progress": run.progress,
+            "parameters": flow.parameters,
+            "branch": run.branch,
+            "tags": flow.tags,
+            "workflow": run.workflow_name,
+            "available_actions": self._action_generator.generate(run.workflow_name, flow.state_type),
+            "related_node": related_node.id if related_node else None,
+            "related_node_kind": related_node.kind if related_node else None,
+            "related_nodes": [node.model_dump() for node in run.related_nodes],
+            "created_at": flow.created.isoformat() if flow.created else None,
+            "updated_at": flow.updated.isoformat() if flow.updated else None,
+            "start_time": flow.start_time.isoformat() if flow.start_time else None,
+            "id": flow.id,
+            "logs": {"edges": logs, "count": len(logs)},
+            "error": http.get("error"),
+            "http_request": http.get("request"),
+            "http_response": http.get("response"),
+        }
+
+
+def _build_fetch_options(fields: dict[str, Any], log_limit: int | None, log_offset: int | None) -> FlowRunFetchOptions:
+    node_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node"]) or {}
+    log_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node", "logs"])
+    return FlowRunFetchOptions(
+        include_count="count" in fields,
+        include_runs=bool(node_fields),
+        include_logs=bool(log_fields),
+        include_progress="progress" in node_fields,
+        include_related_nodes=any(key in node_fields for key in ("related_nodes", "related_node", "related_node_kind")),
+        include_http=any(key in node_fields for key in ("http_request", "http_response", "error")),
+        # The workflow name is the concrete-type discriminant, and the type of every returned node is
+        # resolved regardless of which fields are selected (an inline fragment can request only common
+        # fields), so the name must be fetched whenever runs are.
+        include_workflow=bool(node_fields),
+        log_limit=log_limit,
+        log_offset=log_offset,
+    )
 
 
 class Tasks(ObjectType):
@@ -81,26 +161,23 @@ class Tasks(ObjectType):
         graphql_context: GraphqlContext = info.context
         fields = extract_graphql_fields(info=info)
 
-        prefect_tasks = await PrefectTask.query(
-            db=graphql_context.db,
-            fields=fields,
+        criteria = FlowRunQueryCriteria(
             q=q,
             ids=ids,
-            branch=branch,
+            related_nodes=related_nodes,
             statuses=statuses,
             workflows=workflows,
             tags=tags,
-            related_nodes=related_nodes,
+            branch=branch,
             limit=limit,
             offset=offset,
-            log_limit=log_limit,
-            log_offset=log_offset,
         )
-        prefect_count = prefect_tasks.get("count", None)
-        return {
-            "count": prefect_count or 0,
-            "edges": prefect_tasks.get("edges", []),
-        }
+        options = _build_fetch_options(fields=fields, log_limit=log_limit, log_offset=log_offset)
+
+        async with get_client(sync_client=False) as client:
+            service = await build_prefect_task_service(db=graphql_context.db, client=client)
+            result = await service.query(criteria=criteria, options=options)
+        return FlowRunConnectionSerializer().serialize(result=result)
 
 
 Task = Field(

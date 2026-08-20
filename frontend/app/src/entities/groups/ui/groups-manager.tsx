@@ -10,8 +10,8 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { AddGroupTriggerButton } from "@/entities/groups/ui/add-group-trigger-button";
 import { ObjectGroupsList } from "@/entities/groups/ui/object-groups-list";
 import { useGetGroups } from "@/entities/groups/ui/queries/get-groups.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { ModelSchema } from "@/entities/schema/types";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface GroupsManagerProps {
   className?: string;
@@ -54,7 +54,7 @@ export function GroupsManager({ className, schema, objectId }: GroupsManagerProp
   );
 
   return (
-    <Col className={className}>
+    <Col className={className} data-testid="group-manager">
       <Row>
         <SearchInput onChange={setQuery} placeholder="filter groups..." />
 
@@ -78,11 +78,7 @@ export function GroupsManager({ className, schema, objectId }: GroupsManagerProp
         </Button>
       )}
 
-      <ObjectGroupsList
-        objectId={objectId}
-        groups={filteredVisibleGroups}
-        className="grow overflow-auto"
-      />
+      <ObjectGroupsList objectId={objectId} groups={filteredVisibleGroups} />
     </Col>
   );
 }

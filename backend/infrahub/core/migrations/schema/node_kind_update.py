@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
+<<<<<<< HEAD
 
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.path import SchemaPath
+=======
+>>>>>>> origin/stable
 
 from ..query import MigrationQuery
 from ..query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
@@ -16,6 +19,19 @@ if TYPE_CHECKING:
 
     from ..query import MigrationBaseQuery
 
+if TYPE_CHECKING:
+    from infrahub.core.schema import MainSchemaTypes
+
+
+def _schema_node_info(schema: MainSchemaTypes) -> SchemaNodeInfo:
+    return SchemaNodeInfo(
+        name=schema.name,
+        namespace=schema.namespace,
+        branch_support=schema.branch.value,
+        labels=schema.get_labels(),
+        kind=schema.kind,
+    )
+
 
 class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):
     name = "migration_node_kind_update_01"
@@ -25,21 +41,19 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):
         migration: SchemaMigration,
         **kwargs: Any,
     ) -> None:
-        new_node = SchemaNodeInfo(
-            name=migration.new_schema.name,
-            namespace=migration.new_schema.namespace,
-            branch_support=migration.new_schema.branch.value,
-            labels=migration.new_schema.get_labels(),
-            kind=migration.new_schema.kind,
-        )
-        previous_node = SchemaNodeInfo(
-            name=migration.previous_schema.name,
-            namespace=migration.previous_schema.namespace,
-            branch_support=migration.previous_schema.branch.value,
-            labels=migration.previous_schema.get_labels(),
-            kind=migration.previous_schema.kind,
-        )
-        super().__init__(migration=migration, new_node=new_node, previous_node=previous_node, **kwargs)
+        super().__init__(migration=migration, kind_updates_map=self._build_kind_updates(migration=migration), **kwargs)
+
+    def _build_kind_updates(self, migration: SchemaMigration) -> dict[str, SchemaNodeInfo]:
+        kind_updates = {migration.previous_schema.kind: _schema_node_info(schema=migration.new_schema)}
+
+        # The generated Profile/Template kinds never appear in the schema diff, so their vertices
+        # are only relabelled as extra populations of the source kind's own migration
+        for derived in migration.derived_schemas:
+            if derived.previous.kind == derived.new.kind and derived.previous.get_labels() == derived.new.get_labels():
+                continue
+            kind_updates[derived.previous.kind] = _schema_node_info(schema=derived.new)
+
+        return kind_updates
 
     def get_nbr_migrations_executed(self) -> int:
         return self.stats.get_counter(name="nodes_created")

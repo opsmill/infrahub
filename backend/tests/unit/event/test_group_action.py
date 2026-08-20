@@ -17,11 +17,11 @@ from infrahub.events.group_action import (
     GroupAutoCreateRejectedEvent,
     GroupMemberAddedEvent,
 )
-from infrahub.events.limits import get_prefect_max_related_resources
+from infrahub.events.limits import get_related_resource_budget
 from infrahub.events.models import EventMeta, EventNode
 from infrahub.external_protocols import ExternalAuthProtocol
-from infrahub.task_manager.event import PrefectEventData
-from infrahub.task_manager.models import InfrahubEventFilter
+from infrahub.task_manager.event.models import InfrahubEventFilter
+from infrahub.task_manager.event.query import PrefectEventData
 
 
 def _make_meta(account_id: str = "acct-123") -> EventMeta:
@@ -295,20 +295,20 @@ def test_group_member_added_get_related_consolidates_member_and_ancestor_entries
 
 def test_group_member_added_related_resources_stay_within_prefect_maximum() -> None:
     """A member add of any size keeps its event: the related list is capped."""
-    max_related = get_prefect_max_related_resources()
-    members = [EventNode(id=str(uuid4()), kind="TestPerson") for _ in range(max_related + 50)]
+    budget = get_related_resource_budget()
+    members = [EventNode(id=str(uuid4()), kind="TestPerson") for _ in range(budget + 50)]
     event = _make_member_added_event(node_id=str(uuid4()), members=members)
 
     related = event.get_related()
 
-    assert len(related) == max_related
+    assert len(related) == budget
 
 
 def test_group_member_added_cap_keeps_fixed_and_group_scoped_entries() -> None:
     """Truncation drops overflow members, never the fixed or group-scoped entries."""
     group_id = str(uuid4())
-    max_related = get_prefect_max_related_resources()
-    members = [EventNode(id=str(uuid4()), kind="TestPerson") for _ in range(max_related + 50)]
+    budget = get_related_resource_budget()
+    members = [EventNode(id=str(uuid4()), kind="TestPerson") for _ in range(budget + 50)]
     event = _make_member_added_event(node_id=group_id, members=members)
 
     related = event.get_related()
@@ -317,7 +317,7 @@ def test_group_member_added_cap_keeps_fixed_and_group_scoped_entries() -> None:
         item["prefect.resource.id"] for item in related if item["prefect.resource.role"] == "infrahub.related.node"
     ]
     assert related_node_ids == [group_id]
-    assert len(related) == max_related
+    assert len(related) == budget
 
 
 def test_related_node_filter_matches_old_and_new_group_event_formats() -> None:

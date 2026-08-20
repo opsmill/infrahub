@@ -1,0 +1,295 @@
+# Performance Validation Plan (live application)
+
+**Feature**: IFC-2704 incremental merge regeneration · **Spec**: [spec.md](./spec.md) ·
+**Success criteria**: SC-001, SC-002, SC-003, SC-004, SC-005
+
+Validates that selective post-merge regeneration reduces dispatched work versus the current
+blanket regeneration, without under-executing. The method is a same-build A/B: measure the
+current blanket path, then measure the selective path, on the same dataset and scenarios.
+
+The baseline (before) run is executed now against the current build, whose
+`post_process_branch_merge` submits `TRIGGER_ARTIFACT_DEFINITION_GENERATE` and
+`TRIGGER_GENERATOR_DEFINITION_RUN` unconditionally. The retest (after) run is executed once the
+feature lands, with `selective_execution_after_merge` toggled. Dispatched-task count is
+build-independent, so the baseline captured now is directly comparable to the retest later.
+
+## Metric
+
+| Metric | Definition | Trustworthiness |
+|---|---|---|
+| Dispatched-task count | Count of post-merge generator/artifact flow runs (see Instrumentation) in the follow-up window | Headline. Deterministic, build-independent, directly comparable across runs and builds |
+| Time-to-usable / recompute window | Wall-clock from merge commit to drained follow-up queue | Directional only. Build-dependent; compare within one build, never across builds (a published image vs a source build is not comparable) |
+| Under-execution count | Definitions/members whose input changed but were not regenerated | Correctness gate. Must be zero (SC-003) |
+
+## Environment
+
+| Run | Build | How |
+|---|---|---|
+| Baseline (before) | Current blanket behavior | Any build without the feature: current `stable`/base image, or this branch's base commit. `uv run invoke demo.start` is acceptable for the baseline because the baseline is the unmodified behavior |
+| Retest (after) | This branch built locally | Rebuild from source; `demo.start` runs the published image, not local code, and `dev.build` alone can run stale code. Rebuild and wipe the workflow database before the retest. See [[project_infrahub_local_image_testing]] |
+
+Both runs use the same dataset, the same scenario definitions, and inline/awaited follow-up so
+the dispatched set is fully observable before teardown.
+
+## Datasets
+
+| Dataset | Shape | Used for |
+|---|---|---|
+| Representative | Multiple kinds; several artifact and generator definitions with realistic `query_models`; groups with tens of members | Scenario matrix (functional A/B) |
+| Scale | One large group (hundreds to low thousands of members) targeted by multiple definitions, approximating the IFC-2306 report (thousands of post-merge tasks, multi-minute unusable window) | Scale run (SC-004 headline reduction) |
+
+The scaled profiling harness reportedly lives in a dedicated dataset repository (per IFC-2761,
+IFC-2889). Reuse it for the scale dataset if available rather than authoring a new generator.
+
+## Instrumentation
+
+1. **Enumerate the flow set once.** On the first baseline merge, list the distinct flow names
+   spawned in the follow-up window by querying the Prefect API (task manager, `:4200/api`):
+
+   ```bash
+   PROJECT=$(docker ps --format '{{.Label "com.docker.compose.project"}}' | grep -m1 infrahub)
+   PREFECT=$(docker compose -p "$PROJECT" port task-manager 4200)   # host:port
+   # flow runs created after a timestamp, newest first
+   curl -s -X POST "http://$PREFECT/api/flow_runs/filter" \
+     -H 'Content-Type: application/json' \
+     -d '{"flow_runs":{"start_time":{"after_":"<merge_commit_iso8601>"}},"sort":"START_TIME_DESC","limit":200}' \
+     | jq -r '.[].name' | sort | uniq -c
+   ```
+
+   The blanket path produces `trigger-artifact-definition-generate` and
+   `trigger-generator-definition-run`, each fanning out to `request-artifact-definition-generate`
+   / `request-generator-definition-run` per definition and then per member. Record the exact
+   names observed; they are the count target for every subsequent run.
+
+2. **Count per merge.** Use `/api/flow_runs/count` with the same filter plus a name filter for
+   the recorded flow set and a start-time bound at the merge commit. This count is the
+   dispatched-task metric.
+
+3. **Window.** Record merge commit time and the time the last follow-up flow run reaches a
+   terminal state (`/api/flow_runs/filter`, max `end_time`). Report as directional only.
+
+4. **Correctness probe.** After the follow-up drains, assert every artifact/generator whose
+   input changed in the scenario has a regenerated output (compare stored value or
+   `updated_at`), and that unrelated outputs are untouched. Any changed-input output left stale
+   is an under-execution failure (SC-003).
+
+### Counting caveat (validated 2026-07-13)
+
+A naive "count every flow run started after the merge watermark" is polluted and does not
+converge. Two sources of noise must be excluded:
+
+- **Recurring background deployments** sit perpetually in `SCHEDULED` with a null or future
+  `start_time` (periodic git sync, deadlock cleanup, diff maintenance). The `after_` filter
+  sweeps them in and they never drain, so total appears to grow forever.
+- **Periodic maintenance flows** (`Sync Git Repositories`, `Clean up deadlocks`) occasionally
+  execute inside the measurement window but are unrelated to the merge.
+
+Correct metric: restrict to flow runs in a terminal state with `start_time` inside
+`[watermark, watermark + drain]`, filtered to the regeneration flow-name families:
+`^Generate artifact `, `^Run generator `, `^Update GraphQLQuery Group`, plus the orchestration
+wrappers (`Run all generators`, `Generate all artifacts`, `Trigger Generation of Artifacts`,
+`Execute generator`). The headline count is the regeneration leaf flows (artifact generations
++ generator-member runs + GraphQL-query-group updates). The retest must apply the identical
+name filter so the before/after numbers are comparable.
+
+## Procedure
+
+### Baseline (before), executed now
+
+1. Start the baseline environment; load the representative dataset.
+2. For each scenario in the matrix: perform the merge, capture dispatched-task count, window,
+   and the correctness probe. Record under "Baseline" in Results log with the build commit and
+   date.
+3. Repeat on the scale dataset for the scale run.
+4. Commit the filled Results log so the numbers are versioned.
+
+### Retest (after), executed post-implementation
+
+1. Rebuild this branch from source and wipe the workflow database (see Environment).
+2. Repeat every scenario twice: `selective_execution_after_merge=false` (must reproduce the
+   baseline counts) and `=true` (selective).
+3. Fill the "Retest" columns. Compute the reduction versus baseline.
+
+## Scenario matrix
+
+Source scenarios: [quickstart.md](./quickstart.md). Expectation columns are dispatched-task
+count relative to the blanket baseline for that scenario.
+
+| # | Scenario | Merge action | Baseline (flag off / current) | Selective (flag on) | SC |
+|---|---|---|---|---|---|
+| 1 | Single-kind change | Change one object of one kind | All definitions x all members | Only definitions reading that kind, only affected members | SC-001 |
+| 2 | No-op read | Change nothing any definition reads | All definitions x all members | Zero | SC-001 |
+| 3 | New target | Add a new object to a targeted group | All | Affected definitions, including the new member | SC-001 |
+| 4 | Membership-only | Add an existing object to a targeted group | All | Affected definitions, including the added member | SC-001 |
+| 5 | Repo-code change | Merge a transform-file change | All | Only definitions whose fingerprint changed | SC-001 |
+| 6 | Edit-then-revert | Edit then revert a transform file (net zero) | All | Zero | SC-005 |
+| 7 | Cache-miss fallback | Force the summary cache absent or unreadable | All | All (blanket fallback, no under-execution) | SC-003 |
+| 8 | Direct-merge cascade | Direct merge dispatching >=1 `execute_after_merge` generator | All | Selective generators, then artifacts sequenced after generator completion, not stale | SC-003 |
+
+### Scale run
+
+On the scale dataset, run scenario 1 (single small change) and a typical small multi-kind
+merge. Baseline reproduces the IFC-2306 magnitude (thousands of tasks, multi-minute window).
+Selective must reduce the count to the affected set and remove the multi-minute unusable
+window (SC-002, SC-004).
+
+## Acceptance thresholds
+
+| Criterion | Threshold |
+|---|---|
+| SC-001 | Selective count for scenarios 1, 3, 4, 5 scales with the affected set, not instance size |
+| SC-002 | No multi-minute unresponsive window on the scale run under selective |
+| SC-003 | Zero under-execution across all scenarios, including fallbacks (7) and cascade (8) |
+| SC-004 | Scale run shows a substantial count reduction; flag-off reproduces the baseline count exactly |
+| SC-005 | Scenario 6 dispatches zero |
+
+## Reproduction (turnkey)
+
+Exact commands used for the 2026-07-13 baseline. The retest reruns these on the feature build.
+Container/project names are per-worktree (`docker ps` to find them); below use `$WK` for the
+compose project and `$WORKER` for a task-worker container.
+
+**1. Environment.**
+
+- Baseline (blanket): `uv run invoke demo.start` is fine (it runs the published image, which has
+  the blanket behavior).
+- Retest (selective): the branch code must be in the image. `demo.start` alone runs the
+  *published* image, and a plain `dev.build` can leave stale code, so build the branch image and
+  bring the stack up on it with a **fresh workflow database** (see [[project_infrahub_local_image_testing]]).
+  Then toggle `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE` for the off/on runs.
+- One Infrahub stack per host binds the default ports (DB `6362`). Stop other worktree stacks
+  first: `docker stop $(docker ps -q --filter label=com.docker.compose.project=<other-project>)`.
+
+**2. Dataset.**
+
+```bash
+uv run invoke demo.load-infra-schema
+uv run invoke demo.load-infra-data
+TOKEN="$(docker exec $WORKER printenv INFRAHUB_API_TOKEN)"          # pull into env, never print
+INFRAHUB_ADDRESS=http://localhost:8000 INFRAHUB_API_TOKEN="$TOKEN" \
+  uv run infrahubctl repository add demo-edge \
+  https://github.com/opsmill/infrahub-demo-edge.git --read-only
+```
+
+Yields ~48 devices, 2 artifact definitions (20 artifacts), 4 generator definitions. Confirm
+with a GraphQL count of `CoreArtifactDefinition` / `CoreGeneratorDefinition` / `CoreArtifact`.
+
+**3. Access.**
+
+- GraphQL: `curl -s http://localhost:8000/graphql/main -H "X-INFRAHUB-KEY: $TOKEN"`.
+- Prefect is **not** host-mapped; query it from inside a worker (it has `PREFECT_API_URL`):
+  `docker exec $WORKER python -c "import httpx,os; ..."`. Prefect `flow_runs/filter` caps
+  `limit` at 200, so paginate with `offset`.
+
+**4. Scenario merge (scenario 1).**
+
+```bash
+INFRAHUB_ADDRESS=http://localhost:8000 INFRAHUB_API_TOKEN="$TOKEN" \
+  uv run infrahubctl branch create perf-run-N
+# device id: curl .../graphql/main -d '{"query":"{ InfraDevice(limit:1){edges{node{id}}} }"}'
+# change it on the branch:
+curl -s http://localhost:8000/graphql/perf-run-N -H "X-INFRAHUB-KEY: $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"mutation{ InfraDeviceUpdate(data:{id:\"<DEV_ID>\",description:{value:\"perf test\"}}){ok}}"}'
+WM=$(date -u +%FT%T)     # watermark; append Z when filtering
+INFRAHUB_ADDRESS=http://localhost:8000 INFRAHUB_API_TOKEN="$TOKEN" \
+  uv run infrahubctl branch merge perf-run-N
+```
+
+**5. Counting recipe (the comparable metric).** Run inside a worker, passing the watermark into
+the container with `-e WM` (`PREFECT_API_URL` is already set there; `WM` is a host variable and
+is *not* inherited by `docker exec` unless passed explicitly). Append the `Z` (UTC) suffix here.
+Filter to the regeneration families, terminal state, `start_time` in the window; exclude
+recurring noise. This is the number to compare before vs after:
+
+```bash
+docker exec -i -e WM="${WM}Z" "$WORKER" python - <<'PY'
+import httpx, os, re, collections
+from datetime import datetime, timezone
+base = os.environ['PREFECT_API_URL'].rstrip('/'); wm = os.environ['WM']  # e.g. 2026-07-13T13:42:40Z
+flt = {'flow_runs': {'start_time': {'after_': wm}}}
+total = httpx.post(base+'/flow_runs/count', json=flt).json()
+runs=[]; off=0
+while off < total:
+    b = httpx.post(base+'/flow_runs/filter', json={**flt,'limit':200,'offset':off}).json()
+    if not b: break
+    runs += b; off += len(b)
+now = datetime.now(timezone.utc)
+REGEN = re.compile(r'^(Generate artifact |Run generator |Update GraphQLQuery Group|'
+                   r'Run all generators|Generate all artifacts|Trigger Generation of Artifacts|'
+                   r'Execute generator)')
+NOISE = ('Sync Git Repositories', 'Clean up deadlocks')
+def started(r):
+    s = r.get('start_time'); return s and datetime.fromisoformat(s) <= now
+regen = [r for r in runs if started(r) and REGEN.match(r.get('name') or '')
+         and not any(r['name'].startswith(n) for n in NOISE)]
+print('regeneration flows dispatched:', len(regen))
+print(collections.Counter(re.sub(r"'[^']*'", "'X'", r['name']) for r in regen))
+# window: measured over the SAME regeneration set (not all in-window flows), so count and
+# time come from one filter. Directional only; compare flag-off vs flag-on on ONE build.
+starts = [datetime.fromisoformat(r['start_time']) for r in regen if r.get('start_time')]
+ends   = [datetime.fromisoformat(r['end_time'])   for r in regen if r.get('end_time')]
+if starts and ends:
+    print('regeneration window seconds:', round((max(ends) - min(starts)).total_seconds(), 1))
+print('non-terminal regen flows still running:',
+      sum(1 for r in regen if r.get('state_type') not in ('COMPLETED','FAILED','CRASHED','CANCELLED')))
+PY
+```
+
+Measure the window only after `non-terminal regen flows still running` reaches `0` (fully
+drained), otherwise it undercounts. Time is a **directional secondary** signal: it is only
+comparable flag-off vs flag-on on the *same* build, never across builds. The deterministic
+regeneration-flow **count** is the headline metric.
+
+**6. Baseline number to beat.** Single-device merge, blanket path = **~80 regeneration flows**
+(40 GraphQL-query-group + 20 artifact + 20 generator-member). Selective (flag on) must reduce
+this to the affected set; flag off must reproduce ~80.
+
+## Results log
+
+Fill and commit after each run. One row per scenario per dataset.
+
+### Baseline (before)
+
+- Build: published demo image (pre-feature blanket path) · Date: 2026-07-13 ·
+  Dataset: `infrahub-demo-edge` (read-only repo) on the base infra demo: ~48 devices,
+  2 artifact definitions (20 artifacts), 4 generator definitions.
+- Scenario run: single-kind change (`InfraDevice.description` on one device, `atl1-edge1`),
+  merged to `main`. The blanket path is scenario-independent: it regenerates every definition
+  for every member regardless of what changed, so scenarios 1-6 and 8 produce the same count by
+  construction. Only scenario 1 was executed; the others are marked accordingly.
+- The `~78` second windows below are **approximate**: computed over all in-window flows
+  (including orchestration and recurring noise) mid-drain, not cleanly over the regeneration
+  set, and on the published image. Treat them as directional only. A clean regeneration-window
+  comes from the retest same-build A/B using the step-5 recipe (which now measures the window
+  over the same filtered regeneration set as the count).
+
+| # | Dispatched count | Window (s) | Under-execution | Notes |
+|---|---|---|---|---|
+| 1 | 80 regen (40 query-group + 20 artifact + 20 generator-member) + ~18 merge/orchestration | ~78 | N/A (blanket) | Measured. None needed for a one-device change |
+| 2 | = #1 | ~78 | N/A | Blanket ignores that nothing relevant changed |
+| 3 | = #1 | ~78 | N/A | Blanket path is scenario-independent |
+| 4 | = #1 | ~78 | N/A | Blanket path is scenario-independent |
+| 5 | = #1 | ~78 | N/A | Blanket path is scenario-independent |
+| 6 | = #1 | ~78 | N/A | Blanket regenerates even on a net-zero edit |
+| 7 | n/a | | | Fallback exists only in the feature; no baseline analogue |
+| 8 | = #1 | ~78 | N/A | Blanket already regenerates artifacts after generators |
+| scale-1 | deferred | | | Needs the profiling-harness scale dataset |
+| scale-multi | deferred | | | Needs the profiling-harness scale dataset |
+
+### Retest (after)
+
+- Build commit: `__________`  Date: `__________`  Dataset: `__________`
+
+| # | Count flag off | Count flag on | Reduction | Window flag on (s) | Under-execution | Notes |
+|---|---|---|---|---|---|---|
+| 1 | | | | | | |
+| 2 | | | | | | |
+| 3 | | | | | | |
+| 4 | | | | | | |
+| 5 | | | | | | |
+| 6 | | | | | | |
+| 7 | | | | | | |
+| 8 | | | | | | |
+| scale-1 | | | | | | |
+| scale-multi | | | | | | |

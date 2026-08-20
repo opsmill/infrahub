@@ -411,7 +411,11 @@ class DiffError(Error):
         self.message = message
 
 
-class HFIDViolatedError(ValidationError):
+class UniquenessViolationError(ValidationError):
+    """Raised when a node's uniqueness constraint is violated."""
+
+
+class HFIDViolatedError(UniquenessViolationError):
     matching_nodes_ids: set[str]
 
     def __init__(self, input_value: str | dict | list, matching_nodes_ids: set[str]) -> None:
@@ -483,6 +487,34 @@ class BranchAlreadyMergedError(BranchStatusError): ...
 
 
 class BranchNeedsRebaseError(BranchStatusError): ...
+
+
+class MergeInProgressError(BranchStatusError):
+    """Write rejected because a merge is in progress on `merging_branch`."""
+
+    HTTP_CODE: int = 423
+
+    def __init__(self, identifier: str, message: str, merging_branch: str) -> None:
+        self.merging_branch = merging_branch
+        super().__init__(identifier=identifier, message=message)
+
+
+class MergeRecoveryRequiredError(BranchStatusError):
+    """Write rejected because a failed merge needs operator recovery.
+
+    `merging_branch` is the source branch that was being merged (the one whose merge died);
+    `identifier` is the branch the rejected write targeted (the source branch itself or the
+    default branch).
+
+    Deliberately a sibling of MergeInProgressError, not a subclass: an in-progress merge is
+    transient and retryable, while this indicates recovery is required.
+    """
+
+    HTTP_CODE: int = 423
+
+    def __init__(self, identifier: str, message: str, merging_branch: str) -> None:
+        self.merging_branch = merging_branch
+        super().__init__(identifier=identifier, message=message)
 
 
 class EnterpriseRequiredError(Error):

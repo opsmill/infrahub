@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
-from tests.helpers.db_validation import verify_graph
+from infrahub.database.validation import verify_graph
 
 from ._matrix_setup import stage_all_change_types
 from ._validators import validate_all_applied, validate_all_rolled_back
@@ -72,6 +72,6 @@ async def test_clean_merge_covers_all_change_types(
     await validate_all_applied(db=db, branch=default_branch, contexts=contexts, merge_at=merge_at)
     await verify_graph(db=db)
 
-    await merger.rollback(at=merge_at)
+    await merger.rollback(merge_started_at=merge_at)
     await validate_all_rolled_back(db=db, branch=default_branch, contexts=contexts)
     await verify_graph(db=db)

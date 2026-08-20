@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { LOGIN_ERRORS } from "@/entities/authentication/constants";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { LOGIN_ERRORS } from "@/entities/authentication/domain/model/login-error";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 
 import { render } from "../../../../tests/components/render";
 import { CredentialsForm } from "./credentials-form";
 
-vi.mock("@/entities/authentication/ui/useAuth");
+vi.mock("@/entities/authentication/ui/auth-provider");
 
 const setToken = vi.fn();
 

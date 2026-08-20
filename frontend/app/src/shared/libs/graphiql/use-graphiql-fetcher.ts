@@ -1,6 +1,7 @@
 import type { Fetcher } from "@graphiql/toolkit";
 import { useAtomValue } from "jotai";
 
+import { DEFAULT_PRIORITY, PRIORITY_HEADER } from "@/shared/api/priority";
 import { CONFIG } from "@/shared/config/config";
 import { getParallelQueryConfig } from "@/shared/libs/graphiql/parallel-query-mode";
 import {
@@ -11,19 +12,21 @@ import {
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { waitFor } from "@/shared/utils/common";
 
-import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
+import { getAccessToken } from "@/entities/authentication/api/token-storage";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getObjectsCountFromApi } from "@/entities/nodes/object/api/get-objects-count-from-api";
 
-const createBaseFetcher =
+export const createBaseFetcher =
   (url: string): Fetcher =>
   async (graphQLParams) => {
-    const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const accessToken = getAccessToken();
     const data = await fetch(url, {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
+        // Sandbox bypasses our graphql client, so it must set priority here too → high.
+        [PRIORITY_HEADER]: DEFAULT_PRIORITY,
         ...(accessToken && {
           authorization: `Bearer ${accessToken}`,
         }),

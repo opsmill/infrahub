@@ -1,15 +1,30 @@
 import typer
+from infrahub_sdk import InfrahubClient
 from infrahub_sdk.async_typer import AsyncTyper
 
 from infrahub import config
+from infrahub.components import ComponentType
+from infrahub.core.branch import Branch
 from infrahub.core.initialization import initialization
+from infrahub.core.manager import NodeManager
+from infrahub.core.registry import registry
+from infrahub.dependencies.registry import build_component_registry
+from infrahub.lock import initialize_lock
+from infrahub.services import InfrahubServices
 
-from ..workers.dependencies import get_database
+from ..workers.dependencies import (
+    get_cache,
+    get_component,
+    get_database,
+    get_http,
+    get_workflow,
+    set_component_type,
+)
 from .context import CliContext
 from .db import app as db_app
 from .dev import app as dev_app
 from .events import app as events_app
-from .git_agent import app as git_app
+from .recover import app as recover_app
 from .server import app as server_app
 from .tasks import app as tasks_app
 from .upgrade import upgrade_cmd
@@ -24,12 +39,12 @@ def common(ctx: typer.Context) -> None:
 
 
 app.add_typer(server_app, name="server")
-app.add_typer(git_app, name="git-agent", hidden=True)
 app.add_typer(db_app, name="db")
 app.add_typer(events_app, name="events", help="Interact with the events system.", hidden=True)
 app.add_typer(tasks_app, name="tasks", hidden=True)
 app.add_typer(dev_app, name="dev", help="Internal development commands.")
 app.command(name="upgrade")(upgrade_cmd)
+app.add_typer(recover_app, name="recover", help="Recover from failed operations.")
 
 
 async def _init_shell(config_file: str) -> None:
@@ -45,27 +60,10 @@ async def _init_shell(config_file: str) -> None:
 @app.command()
 def shell() -> None:
     """Start a python shell within Infrahub context (requires IPython)."""
-    from infrahub_sdk import InfrahubClient
-    from IPython import start_ipython
-    from traitlets.config import Config
-
-    from infrahub import config
-    from infrahub.components import ComponentType
-    from infrahub.core.branch import Branch
-    from infrahub.core.initialization import initialization
-    from infrahub.core.manager import NodeManager
-    from infrahub.core.registry import registry
-    from infrahub.dependencies.registry import build_component_registry
-    from infrahub.lock import initialize_lock
-    from infrahub.services import InfrahubServices
-    from infrahub.workers.dependencies import (
-        get_cache,
-        get_component,
-        get_database,
-        get_http,
-        get_workflow,
-        set_component_type,
-    )
+    # IPython and traitlets are optional dependencies, imported lazily so the rest of
+    # the CLI keeps working when they are not installed.
+    from IPython import start_ipython  # noqa: PLC0415
+    from traitlets.config import Config  # noqa: PLC0415
 
     async def initialize_service() -> InfrahubServices:
         config.load_and_exit()

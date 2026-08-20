@@ -8,7 +8,7 @@ Style: be direct and substantive. No filler, preamble, or pleasantries. Challeng
 
 ## Tech Stack
 
-- **Backend:** Python 3.13, FastAPI 0.131.0, Neo4j 2025.10 (driver 6.0), Pydantic 2.12
+- **Backend:** Python 3.14, FastAPI 0.131.0, Neo4j 2026.05 (driver 6.2), Pydantic 2.12
 - **Frontend:** TypeScript 5.9, React 19.2, Vite 8.0, Tailwind CSS 4.2
 - **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.60
 - **Linting:** ruff 0.15, mypy 1.15, Biome 2.4
@@ -19,12 +19,12 @@ Style: be direct and substantive. No filler, preamble, or pleasantries. Challeng
 
 - `backend/` – Python backend (FastAPI, GraphQL, core logic) - see [backend/AGENTS.md](backend/AGENTS.md)
 - `frontend/app/` – React frontend - see [frontend/app/AGENTS.md](frontend/app/AGENTS.md)
-- `docs/` – Docusaurus documentation - see [docs/AGENTS.md](docs/AGENTS.md)
+- `docs/` – External customers documentation by Docusaurus, deployed at https://docs.infrahub.app/ - see [docs/AGENTS.md](docs/AGENTS.md)
+- `dev/` – Internal developer documentation - see [dev/README.md](dev/README.md)
 - `python_sdk/` – Python SDK (Git submodule)
 - `tasks/` – Invoke task definitions
 - `schema/` – JSON/GraphQL schema definitions
 - `changelog/` – Towncrier changelog fragments
-- `dev/` – Internal developer documentation - see [dev/README.md](dev/README.md)
 
 ## Commands
 
@@ -44,6 +44,10 @@ cd frontend/app && pnpm test          # Frontend unit tests
 cd frontend/app && pnpm test:e2e      # Frontend E2E tests (legacy TS suite)
 uv run pytest -c tests/e2e/pytest.ini tests/e2e  # E2E tests (pytest, testcontainers)
 ```
+
+Component tests (`backend/tests/component/`) start their backing services via testcontainers, so
+they need a running Docker daemon (set `INFRAHUB_USE_TEST_CONTAINERS=false` to reuse an
+already-running database instead).
 
 #### Debugging e2e tests with `--pdb`
 
@@ -103,9 +107,31 @@ cd frontend/app && pnpm build         # Build frontend
 cd docs && npm run build              # Build documentation
 ```
 
+## Submodules
+
+- `python_sdk/` → [opsmill/infrahub-sdk-python](https://github.com/opsmill/infrahub-sdk-python)
+- `frontend/packages/schema-visualizer/` → [opsmill/infrahub-schema-visualizer](https://github.com/opsmill/infrahub-schema-visualizer)
+
+The `python_sdk` submodule tracks the SDK branch **named after** the current
+Infrahub branch, not the SDK's own same-named branch:
+
+- Infrahub `develop` → SDK `infrahub-develop`
+- Infrahub `stable` → SDK `stable`
+
+The SDK repo also has its own `develop` branch. It is **not** the counterpart of
+Infrahub `develop` — do not use it to update the submodule. When updating
+`python_sdk` from Infrahub `develop`, pin `origin/infrahub-develop`.
+
+You can modify code inside a submodule, but the changes live in a separate
+repository. Before opening a PR on this repository, push the submodule commit
+upstream and open a separate PR on the submodule repo first. Only once that is
+merged (or the commit is otherwise available upstream) should the submodule
+pointer bump land here — a pointer to an unpushed commit breaks every other
+checkout.
+
 ## Coding Standards
 
-- Backend: `dev/guidelines/backend/python.md`
+- Backend: `dev/guidelines/backend/python.md` (load before writing backend Python — typing, exception handling) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
 - Frontend: `frontend/app/AGENTS.md`
 - Git workflow: `dev/guidelines/git-workflow.md`
 - Markdown: `dev/guidelines/markdown.md`

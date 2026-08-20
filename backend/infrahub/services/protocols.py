@@ -1,6 +1,12 @@
 from typing import Any, Protocol
 
 
+class WorkerLiveness(Protocol):
+    async def list_active_worker_ids(self) -> set[str]:
+        """Return the ids of the workers currently reporting an active heartbeat."""
+        ...
+
+
 class InfrahubLogger(Protocol):
     def debug(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
         """Send a debug event."""

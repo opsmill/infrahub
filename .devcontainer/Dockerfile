@@ -1,4 +1,4 @@
-FROM python:3.13.11
+FROM python:3.14.3
 
 RUN apt-get remove -yq docker.io docker-doc docker-compose podman-docker containerd runc 2>&1 || true
 

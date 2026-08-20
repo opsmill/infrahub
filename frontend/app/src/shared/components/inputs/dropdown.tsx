@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Sheet } from "@infrahub/ui";
 import React from "react";
 
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { isRequired } from "@/shared/components/form/utils/validation";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
@@ -18,7 +18,7 @@ import {
 import type { CommandItem } from "@/shared/components/ui/command";
 import { classNames, getTextColor } from "@/shared/utils/common";
 
-import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
 import { useAddDropdownMutation } from "@/entities/schema/ui/queries/add-dropdown.mutation";
 import { useRemoveDropdownMutation } from "@/entities/schema/ui/queries/remove-dropdown.mutation";
@@ -97,7 +97,7 @@ export const DropdownItem = ({
             <Icon icon="mdi:trash-can-outline" />
           </Button>
 
-          <ModalDelete
+          <ModalDanger
             title="Delete"
             description={
               <>
@@ -120,7 +120,7 @@ export const DropdownItem = ({
             }
             isOpen={showDeleteModal}
             onOpenChange={setShowDeleteModal}
-            onDelete={async () => {
+            onConfirm={async () => {
               if (!schema.kind) return;
               try {
                 await removeDropdownOption({
@@ -164,19 +164,13 @@ export const DropdownAddAction = ({ schema, field, addOption }: DropdownAddActio
         </Button>
       )}
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel={field?.label ?? ""}
-            title="Add a new option"
-            subtitle={field?.description}
-          />
-        }
-        open={open}
-        setOpen={setOpen}
-        offset={1}
-      >
+      <Sheet isOpen={open} onOpenChange={setOpen}>
+        <SlideOverTitle
+          schema={schema}
+          currentObjectLabel={field?.label ?? ""}
+          title="Add a new option"
+          subtitle={field?.description}
+        />
         <DynamicForm
           fields={[
             {
@@ -220,9 +214,8 @@ export const DropdownAddAction = ({ schema, field, addOption }: DropdownAddActio
             setOpen(false);
           }}
           onCancel={() => setOpen(false)}
-          className="p-4"
         />
-      </SlideOver>
+      </Sheet>
     </div>
   );
 };
