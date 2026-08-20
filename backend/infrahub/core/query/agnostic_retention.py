@@ -13,22 +13,25 @@ A `:Relationship` needs two qualifying field edges rather than one, because a re
 peer is not a relationship. A `:Relationship` must also have two distinct active peers to be
 considered active.
 
+The winner lookups are OPTIONAL CALL subqueries and the peers are counted conditionally rather than
+filtered so that a field with no live edge on a branch reaches the end of the predicate carrying a
+count of zero -- a plain CALL or MATCH would drop its row instead.
+
 Assumption: every branch forks from the default branch. A branch-of-branch feature would not extend
 this logic.
 """
 
-# Expects `field` in scope, one row per candidate vertex, plus the `$global_branch_name` and `$at`
-# parameters. Emits the candidates no branch retains, with `field` as the only variable in scope.
+# Expects `agnostic_candidates` in scope: a list of the candidate `:Attribute` / `:Relationship`
+# vertices, plus the `$global_branch_name` and `$at` parameters. Emits one row per candidate that no
+# branch retains, with `field` as the only variable in scope.
 UNRETAINED_AGNOSTIC_FIELD_PREDICATE = """
-WITH collect(field) AS candidates
-
 // ----------------------
 // The branches are read once for the whole run and carried as a list.
 // ----------------------
 MATCH (branch:Branch)
 WHERE branch.name <> $global_branch_name
 WITH
-    candidates,
+    agnostic_candidates,
     collect({
         name: branch.name,
         origin_name: CASE WHEN branch.is_default THEN NULL ELSE branch.origin_branch END,
@@ -39,49 +42,56 @@ WITH
         END
     }) AS branch_windows
 
-UNWIND candidates AS field
+UNWIND agnostic_candidates AS field
+WITH DISTINCT field, branch_windows
+// ----------------------
+// Quick filter to remove all fields with no active edges on the global branch, covers most fields
+// ----------------------
+WHERE EXISTS {
+    MATCH (field)-[global_edge]-()
+    WHERE global_edge.branch = $global_branch_name
+      AND global_edge.status = "active"
+      AND global_edge.to IS NULL
+}
 WITH field, branch_windows, CASE WHEN field:Relationship THEN 2 ELSE 1 END AS required_live_peers
 
-CALL (field, branch_windows) {
-    UNWIND branch_windows AS branch_window
-    WITH
-        field,
-        branch_window.name AS branch_name,
-        branch_window.origin_name AS origin_name,
-        branch_window.origin_at AS origin_at
+// ----------------------
+// Get all the possible peer :Nodes for each field. Usually 1 for :Attribute and 2 for :Relationship
+// ----------------------
+OPTIONAL MATCH (node:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(field)
+WITH DISTINCT field, branch_windows, required_live_peers, node
 
-    // ----------------------
-    // Count this `field`'s  active links to :Node vertices on this branch
-    // ----------------------
-    MATCH (node:Node)-[field_edge:HAS_ATTRIBUTE|IS_RELATED]-(field)
+UNWIND branch_windows AS branch_window
+WITH
+    field,
+    required_live_peers,
+    node,
+    branch_window.name AS branch_name,
+    branch_window.origin_name AS origin_name,
+    branch_window.origin_at AS origin_at
+
+// ----------------------
+// Resolve the status of this peer's latest edge to the field on this branch.
+// ----------------------
+OPTIONAL CALL (field, node, branch_name, origin_name, origin_at) {
+    MATCH (node)-[field_edge:HAS_ATTRIBUTE|IS_RELATED]-(field)
     WHERE (field_edge.branch IN [$global_branch_name, branch_name]
            AND field_edge.from <= $at
            AND (field_edge.to IS NULL OR field_edge.to > $at))
        OR (field_edge.branch = origin_name
            AND field_edge.from <= origin_at
            AND (field_edge.to IS NULL OR field_edge.to > origin_at))
-    WITH
-        branch_name,
-        origin_name,
-        origin_at,
-        node,
-        field_edge.branch_level AS field_edge_level,
-        field_edge.from AS field_edge_from,
-        field_edge.status AS field_edge_status
-    ORDER BY field_edge_level DESC, field_edge_from DESC, field_edge_status ASC
-    WITH
-        branch_name,
-        origin_name,
-        origin_at,
-        node,
-        collect(field_edge_status)[0] AS winning_field_edge_status
-    WHERE winning_field_edge_status = "active"
+    RETURN field_edge.status AS latest_field_edge_status
+    ORDER BY field_edge.branch_level DESC, field_edge.from DESC, field_edge.status ASC
+    LIMIT 1
+}
 
-    // ----------------------
-    // Check that each linked :Node vertex is active on this branch.
-    // The global branch stays in the existence match so that an owner which is itself branch-agnostic
-    // reads as live on every branch and is therefore retained.
-    // ----------------------
+// ----------------------
+// Resolve whether this peer exists on this branch.
+// The global branch stays in the existence match so that an owner which is itself branch-agnostic
+// reads as live on every branch and is therefore retained.
+// ----------------------
+OPTIONAL CALL (node, branch_name, origin_name, origin_at) {
     MATCH (node)-[existence:IS_PART_OF]->(:Root)
     WHERE (existence.branch IN [$global_branch_name, branch_name]
            AND existence.from <= $at
@@ -89,24 +99,24 @@ CALL (field, branch_windows) {
        OR (existence.branch = origin_name
            AND existence.from <= origin_at
            AND (existence.to IS NULL OR existence.to > origin_at))
-    WITH
-        branch_name,
-        node,
-        existence.branch_level AS existence_level,
-        existence.from AS existence_from,
-        existence.status AS existence_status
-    ORDER BY existence_level DESC, existence_from DESC, existence_status ASC
-    WITH branch_name, node, collect(existence_status)[0] AS winning_existence
-    WHERE winning_existence = "active"
-
-    // ----------------------
-    // Peers are counted by uuid. Kind/inheritance migration leaves multiple Node vertices with
-    // the same uuid for a single entity
-    // ----------------------
-    WITH branch_name, count(DISTINCT node.uuid) AS live_peer_count
-    RETURN max(live_peer_count) AS most_live_peers
+    RETURN existence.status AS latest_existence
+    ORDER BY existence.branch_level DESC, existence.from DESC, existence.status ASC
+    LIMIT 1
 }
 
-WITH field, required_live_peers, coalesce(most_live_peers, 0) AS live_peers
-WHERE live_peers < required_live_peers
+// ----------------------
+// Peers are counted by uuid. Kind/inheritance migration leaves multiple Node vertices with
+// the same uuid for a single entity.
+// ----------------------
+WITH
+    field,
+    required_live_peers,
+    branch_name,
+    count(DISTINCT CASE
+        WHEN latest_field_edge_status = "active" AND latest_existence = "active" THEN node.uuid
+    END) AS live_peer_count
+
+WITH field, required_live_peers, max(live_peer_count) AS most_live_peers
+WHERE most_live_peers < required_live_peers
+WITH field
 """

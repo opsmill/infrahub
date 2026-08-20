@@ -29,7 +29,7 @@ WHERE anchor.branch = $global_branch_name
   AND anchor.status = "active"
   AND anchor.from <= $at
   AND anchor.to IS NULL
-WITH DISTINCT field
+WITH collect(DISTINCT field) AS agnostic_candidates
 %(unretained_predicate)s
 
 MATCH (field)-[e]-()
