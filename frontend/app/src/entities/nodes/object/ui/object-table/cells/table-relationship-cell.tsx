@@ -47,12 +47,12 @@ export function RelationshipNodeDisplay({ node }: { node: NodeCore }) {
 
   return (
     <LinkButton
-      variant="outline"
+      variant="input"
       size="sm"
       href={getObjectDetailsUrl(node.__typename, node.id)}
-      className="truncate rounded-full pr-2.5 hover:border-custom-blue-700 hover:underline"
+      className="truncate rounded-full border-border pr-2.5 hover:border-ring hover:underline dark:border-white/10 dark:bg-white/5 dark:shadow-none dark:hover:border-ring"
     >
-      <Icon icon={getSchemaIcon(schema)} className="text-custom-blue-800" />
+      <Icon icon={getSchemaIcon(schema)} className="text-accent" />
       {getNodeLabel(node)}
     </LinkButton>
   );

@@ -68,7 +68,7 @@ export function IpamTree({ className, currentNodeId, search }: IpamTreeProps) {
       aria-label="IPAM tree"
       defaultExpandedKeys={defaultExpandedKeys}
       renderEmptyState={() => (
-        <Row className="justify-center py-2 text-foreground-muted">No ip prefix</Row>
+        <Row className="justify-center py-2 text-subtle-muted">No ip prefix</Row>
       )}
       className={className}
     >
@@ -129,7 +129,10 @@ function IpamTreeItem({
       id={treeItemId}
       textValue={nodeLabel}
       href={getObjectDetailsUrl(node.__typename, node.id)}
-      className={classNames(currentNodeId === node.id && "bg-neutral-100")}
+      className={classNames(
+        currentNodeId === node.id &&
+          "bg-selected text-selected-foreground shadow-selected hover:bg-selected-highlight"
+      )}
     >
       <TreeItemContent onExpandedChange={() => setIsExpanded((prev) => !prev)}>
         <Icon icon={getSchemaIcon(nodeSchema)} className="mr-2" />

@@ -26,6 +26,10 @@ class NodeDuplicateQuery(Query):
     Creates a copy of each affected Node and sets the new kind/inheritance.
     Adds duplicate edges to the new Node that match all the active edges on the old Node.
     Sets all the edges on the old Node to deleted.
+
+    ``kind_updates_map`` maps each kind being migrated to the schema its vertices should end
+    up with. A kind and the Profile/Template kinds generated from it are disjoint vertex
+    populations that must move together, so they are migrated in a single execution.
     """
 
     name = "node_duplicate"
@@ -34,36 +38,34 @@ class NodeDuplicateQuery(Query):
 
     def __init__(
         self,
-        previous_node: SchemaNodeInfo,
-        new_node: SchemaNodeInfo,
+        kind_updates_map: dict[str, SchemaNodeInfo],
         **kwargs: Any,
     ) -> None:
-        self.previous_node = previous_node
-        self.new_node = new_node
+        if not kind_updates_map:
+            raise ValueError("At least one kind is required to duplicate nodes")
+        self.kind_updates_map = kind_updates_map
         super().__init__(**kwargs)
 
+    @property
+    def previous_kinds(self) -> str:
+        """The kinds to migrate, as a Neo4j label disjunction."""
+        return "|".join(self.kind_updates_map)
+
     def render_match(self) -> str:
-        labels_str = ":".join(self.previous_node.labels)
         return """
         // Find all the active nodes
-        MATCH (node:%(labels_str)s)
-        WITH DISTINCT node
+        MATCH (node:%(previous_kinds)s)
+        WITH DISTINCT node, $kind_map[node.kind] AS target
         // ----------------
         // Filter out nodes that have already been migrated
         // ----------------
-        CALL (node) {
-            WITH labels(node) AS node_labels
-            UNWIND node_labels AS n_label
-            ORDER BY n_label ASC
-            WITH collect(n_label) AS sorted_labels
-
-            RETURN (
-                node.kind = $new_node.kind AND
-                sorted_labels = $new_sorted_labels
-            ) AS already_migrated
-        }
-        WITH node WHERE already_migrated = FALSE
-        """ % {"labels_str": labels_str}
+        WHERE target IS NOT NULL
+        AND NOT (
+            node.kind = target.new_kind
+            AND size(labels(node)) = size(target.new_all_labels)
+            AND all(node_label IN labels(node) WHERE node_label IN target.new_all_labels)
+        )
+        """ % {"previous_kinds": self.previous_kinds}
 
     @staticmethod
     def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, rel_dir: GraphRelDirection) -> str:
@@ -127,14 +129,21 @@ class NodeDuplicateQuery(Query):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["new_node"] = self.new_node.model_dump()
-        self.params["previous_node"] = self.previous_node.model_dump()
-        self.params["new_sorted_labels"] = sorted(self.new_node.labels + ["Node"])
+        self.params["kind_map"] = {
+            previous_kind: {
+                "new_kind": new_node.kind,
+                "new_labels": sorted(set(new_node.labels)),
+                "new_namespace": new_node.namespace,
+                "new_branch_support": new_node.branch_support,
+                # Neo4j always adds the Node label, so it belongs in the already-migrated comparison
+                "new_all_labels": sorted(set(new_node.labels) | {"Node"}),
+            }
+            for previous_kind, new_node in self.kind_updates_map.items()
+        }
 
         self.params["current_time"] = self.at.to_string()
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
-        self.params["branch_support"] = self.new_node.branch_support
 
         self.params["user_id"] = self.user_id
 
@@ -166,10 +175,10 @@ class NodeDuplicateQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH active_node
+        WITH target, active_node, is_active
         WHERE is_active = TRUE
-        CREATE (new_node:Node:%(labels)s {
-            uuid: active_node.uuid, kind: $new_node.kind, namespace: $new_node.namespace, branch_support: $new_node.branch_support
+        CREATE (new_node:Node:$(target.new_labels) {
+            uuid: active_node.uuid, kind: target.new_kind, namespace: target.new_namespace, branch_support: target.new_branch_support
         })
         WITH active_node, new_node
         // Set metadata on new Node vertex
@@ -238,7 +247,6 @@ class NodeDuplicateQuery(Query):
         RETURN DISTINCT new_node
         """ % {
             "branch_filter": branch_filter,
-            "labels": ":".join(self.new_node.labels),
             "sub_query_out": sub_query_out,
             "sub_query_in": sub_query_in,
             "sub_query_out_args": sub_query_out_args,

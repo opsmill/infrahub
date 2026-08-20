@@ -18,11 +18,13 @@ from infrahub.exceptions import (
     BranchNeedsRebaseError,
     BranchNotFoundError,
     Error,
+    HFIDViolatedError,
     MergeInProgressError,
     MergeRecoveryRequiredError,
     NodeNotFoundError,
     PermissionDeniedError,
     SchemaNotFoundError,
+    UniquenessViolationError,
 )
 from infrahub.graphql.error_formatter import (
     UNDEFINED_ERROR_CODE,
@@ -111,6 +113,34 @@ CASES = [
             "constraint": "regex",
             "detail": "value must match ^[a-z]+$",
         },
+    ),
+    CodeCase(
+        name="uniqueness_violation_single_field",
+        exc=UniquenessViolationError("Violates uniqueness constraint 'name'", node_kind="BuiltinTag", fields=["name"]),
+        expected_code="UNIQUENESS_VIOLATION",
+        expected_http_status=422,
+        expected_data={"node_kind": "BuiltinTag", "fields": ["name"]},
+    ),
+    CodeCase(
+        name="uniqueness_violation_composite_constraint",
+        exc=UniquenessViolationError(
+            "Violates uniqueness constraint 'name-owner'", node_kind="TestCar", fields=["name", "owner"]
+        ),
+        expected_code="UNIQUENESS_VIOLATION",
+        expected_http_status=422,
+        expected_data={"node_kind": "TestCar", "fields": ["name", "owner"]},
+    ),
+    CodeCase(
+        name="hfid_violated_resolves_via_parent_class",
+        exc=HFIDViolatedError(
+            "Violates uniqueness constraint 'name'",
+            node_kind="BuiltinTag",
+            fields=["name"],
+            matching_nodes_ids={"abc-123"},
+        ),
+        expected_code="UNIQUENESS_VIOLATION",
+        expected_http_status=422,
+        expected_data={"node_kind": "BuiltinTag", "fields": ["name"]},
     ),
     CodeCase(
         name="branch_not_found",

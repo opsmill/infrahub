@@ -28,41 +28,45 @@ const buttonVariants = tv({
   variants: {
     variant: {
       primary: [
-        "border-cyan-800 bg-gradient-to-b from-cyan-800 to-cyan-700 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
+        "border-cyan-800 bg-gradient-to-b from-cyan-900 to-cyan-900/80 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       "primary-outline": [
-        "border-cyan-700 bg-gradient-to-b from-stone-100 to-white text-cyan-700 inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
+        "border-cyan-700 bg-gradient-to-b from-stone-100 to-white text-cyan-800 inset-shadow-[0_1px_0_rgba(255,255,255,0.9)] dark:text-cyan-600",
         "data-hovered:from-neutral-100",
+        "dark:from-stone-500/15 dark:to-stone-500/5 dark:inset-shadow-[0_1px_0_rgba(255,255,255,0.12)]",
+        "dark:data-hovered:from-stone-500/25",
       ],
       danger: [
-        "border-rose-700 bg-gradient-to-b from-rose-700 to-rose-600 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
+        "border-rose-700 bg-gradient-to-b from-rose-700 to-rose-700/70 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       "danger-outline": [
-        "border-rose-200 bg-gradient-to-b from-stone-100 to-white text-rose-600 inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
+        "border-rose-700 bg-gradient-to-b from-stone-100 to-white text-rose-500 inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
         "data-hovered:from-rose-50",
+        "dark:border-rose-600/30 dark:from-stone-500/15 dark:to-stone-500/5 dark:inset-shadow-[0_1px_0_rgba(255,255,255,0.12)]",
+        "dark:data-hovered:from-rose-500/15",
       ],
       warning: [
-        "border-amber-600 bg-gradient-to-b from-amber-600 to-amber-500 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
+        "border-amber-600 bg-gradient-to-b from-amber-600 to-amber-700/70 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       active: [
-        "border-emerald-700 bg-gradient-to-b from-emerald-700 to-emerald-700 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
+        "border-emerald-700 bg-gradient-to-b from-emerald-700 to-emerald-800/70 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       outline: [
         "bg-gradient-to-b from-stone-100 to-white text-foreground inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
-        "data-hovered:from-neutral-100",
+        "dark:border-stone-700 dark:from-stone-700/70 dark:to-stone-900 dark:inset-shadow-[0_1px_0_rgba(255,255,255,0.07)]",
+        "data-hovered:from-neutral-100 dark:data-hovered:from-stone-700",
       ],
       ghost: [
         "border-transparent text-foreground shadow-none",
         "data-hovered:bg-neutral-600/10",
-        "data-pressed:bg-neutral-200",
+        "data-pressed:bg-border",
       ],
       input: [
-        "bg-white text-foreground",
-        "shadow-[0_2px_4px_rgba(0,0,0,0.04)]",
+        "border-input-border bg-input text-foreground shadow-input",
         "data-pressed:scale-100",
       ],
     },

@@ -47,7 +47,7 @@ export const ExpirationDate = ({ date }: { date?: string | null }) => {
   }
 
   return (
-    <Row className="text-gray-500">
+    <Row className="text-foreground-muted">
       <ClockFadingIcon className="size-4" /> Expires {formatDate(date, "datetime")}
     </Row>
   );

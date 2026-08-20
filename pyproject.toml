@@ -29,7 +29,7 @@ dependencies = [
     "typer==0.19.2",
     "click>=8.3,<9",
     "prefect==3.7.5",
-    "prefect-redis==0.2.12",
+    "prefect-redis==0.2.14",
     "ujson>=5,<6",
     "Jinja2>=3,<4",
     "gitpython>=3.1.50,<4",
@@ -114,6 +114,9 @@ dev = [
     "semver>=3.0.2,<4",
     "ruamel-yaml==0.18.6",
     "pytest-httpx>=0.33",
+    # No upper bound, so a prefect upgrade is never blocked by this pin. The floor is the version
+    # whose validation messages the schema tests assert verbatim.
+    "jsonschema>=4.26",
     "docker==7.1.0",
     "psutil==6.1.0",
     "jwcrypto==1.5.7",
@@ -579,7 +582,6 @@ allow-dunder-method-names = [
     "PERF401",  # Use a list comprehension to create a transformed list
     "PGH003",   # Use specific rule codes when ignoring type issues
     "PGH004",   # Use specific rule codes when using `noqa`
-    "PLC0415",  # `import` should be at the top-level of a file
     "PLR0904",  # Too many public methods
     "PLR0912",  # Too many branches
     "PLR0913",  # Too many arguments in function definition
@@ -844,7 +846,6 @@ allow-dunder-method-names = [
     "INP001",   # File is part of an implicit namespace package
     "N806",     # Variable in function should be lowercase
     "PGH003",   # Use specific rule codes when ignoring type issues
-    "PLC0415",  # `import` should be at the top-level of a file
     "PLC2701",  # Private name import from external module
     "PLR0904",  # Too many public methods
     "PLR0913",  # Too many arguments in function definition
@@ -873,7 +874,6 @@ allow-dunder-method-names = [
     "FIX",      # flake8-fixme
     "INP001",   # File is part of an implicit namespace package
     "PERF401",  # Use a list comprehension to create a transformed list
-    "PLC0415",  # `import` should be at the top-level of a file
     "PLR0904",  # Too many public methods
     "PLR0913",  # Too many arguments in function definition
     "PLR0914",  # Too many local variables
@@ -947,7 +947,6 @@ allow-dunder-method-names = [
     "PERF401",  # Use a list comprehension to create a transformed list
     "PGH003",   # Use specific rule codes when ignoring type issues
     "PGH004",   # Use specific rule codes when using `noqa`
-    "PLC0415",  # `import` should be at the top-level of a file
     "PLC2701",  # Private name import from external module
     "PLR0904",  # Too many public methods
     "PLR0912",  # Too many branches

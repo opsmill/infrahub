@@ -28,7 +28,7 @@ export function getQueryStateOverlay({
   }
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-md bg-white/80 p-4 text-gray-500 shadow-sm backdrop-blur-sm">
+      <div className="flex flex-col items-center gap-3 rounded-md bg-white/80 p-4 text-subtle-muted shadow-sm backdrop-blur-sm">
         <Spinner />
         <span className="text-sm">{loadingMessage}</span>
       </div>
@@ -36,7 +36,7 @@ export function getQueryStateOverlay({
   }
   if (isEmpty) {
     return (
-      <div className="rounded-md bg-white/80 px-4 py-2 text-gray-400 text-sm shadow-sm backdrop-blur-sm">
+      <div className="rounded-md bg-white/80 px-4 py-2 text-sm text-subtle-muted shadow-sm backdrop-blur-sm">
         {hasRun ? emptyMessage : idleMessage}
       </div>
     );

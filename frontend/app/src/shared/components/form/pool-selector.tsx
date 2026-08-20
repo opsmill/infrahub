@@ -120,7 +120,7 @@ export function PoolPopoverTrigger({ className, ...props }: PopoverTriggerProps)
     <Tooltip message="select a pool">
       <PopoverTrigger asChild {...props}>
         <Button variant="input" shape="square" className={classNames("size-10", className)}>
-          <Icon icon="mdi:view-grid-outline" className="text-neutral-500" />
+          <Icon icon="mdi:view-grid-outline" className="text-subtle-muted" />
         </Button>
       </PopoverTrigger>
     </Tooltip>

@@ -1,0 +1,1 @@
+Fixed stray style names being written onto every row of a tree or a list. Internal state names from the underlying component library were passed through as if they were style names, which changed nothing visually but could have collided with a real style name added later.

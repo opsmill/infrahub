@@ -17,8 +17,8 @@ import { Popover, type PopoverProps } from "../popover/popover";
 export const selectTriggerVariants = tv({
   base: [
     "flex w-full items-center gap-2 rounded-lg border border-border-strong outline-none",
-    "bg-white text-sm placeholder:text-neutral-400",
-    "disabled:cursor-not-allowed disabled:bg-neutral-100",
+    "bg-input text-sm placeholder:text-subtle-muted",
+    "disabled:cursor-not-allowed disabled:opacity-60",
     focusVisibleStyle,
   ],
   variants: {
@@ -41,7 +41,7 @@ export function SelectTrigger({ className, size, ...props }: SelectTriggerProps)
       className={composeAriaClassName(className, selectTriggerVariants({ size }))}
       {...props}
     >
-      <AriaSelectValue className="truncate data-placeholder:text-neutral-400" />
+      <AriaSelectValue className="truncate data-placeholder:text-subtle-muted" />
       <ChevronDownIcon className="ml-auto size-4" />
     </AriaButton>
   );

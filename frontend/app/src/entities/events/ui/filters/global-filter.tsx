@@ -61,7 +61,7 @@ export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagPr
           {(currentFilter?.value === undefined || currentFilter?.value === null) && (
             <Icon
               icon="mdi:plus-circle-outline"
-              className="mx-1 text-base text-gray-400 transition-all group-hover:text-custom-blue-700"
+              className="mx-1 text-base text-subtle-muted transition-all group-hover:text-custom-blue-700"
             />
           )}
 
@@ -79,7 +79,7 @@ export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagPr
 
               <Icon
                 icon="mdi:close-circle-outline"
-                className="text-base text-gray-400 transition-all group-hover:text-custom-blue-700"
+                className="text-base text-subtle-muted transition-all group-hover:text-custom-blue-700"
               />
             </div>
           )}

@@ -39,10 +39,12 @@ query GetPythonDevice($ids: [ID!]!) {
 }
 """
 
-# The closure the integrator would store at import time for each transform. The Jinja2
-# closure carries a transitively-included partial; the Python closure carries a sibling
-# helper picked up by the package-directory floor. The repository manifest is part of
-# every closure.
+# The stored closure for each transform, set by hand rather than built by an import: these
+# scenarios drive the selection gate, and the closure builder has its own tests. The Jinja2
+# closure carries a transitively-included partial; the Python one carries a sibling helper,
+# which a real import would only put there because the transform declared its directory in
+# `watch.files` - auto-detection stops at the source file. The repository manifest is part
+# of every closure.
 JINJA_DEPENDENCIES = [".infrahub.yml", "partials/header.j2", "templates/device.j2"]
 PYTHON_DEPENDENCIES = [
     ".infrahub.yml",
@@ -242,7 +244,7 @@ class TestArtifactRegenSelection(ArtifactRegenTestBase):
         )
         assert selected == ["artifact-python"]
 
-    async def test_sibling_helper_edit_selects_via_package_floor(
+    async def test_helper_in_stored_closure_selects_definition(
         self,
         dataset: dict[str, Any],
         default_branch: Branch,
@@ -250,10 +252,11 @@ class TestArtifactRegenSelection(ArtifactRegenTestBase):
         memory_cache: MemoryCache,
         workflow_recorder: WorkflowRecorder,
     ) -> None:
-        """A sibling file in the transform's package directory selects the owning definition.
+        """A closure member that is not the transform's own source file selects the owning definition.
 
-        The Python closure includes every sibling under the transform's directory, so a
-        helper edit that the source file never imports still drives regeneration.
+        The gate treats every path in the stored closure alike, so a helper beside the source
+        drives regeneration once it is in there. Whether it gets in there is the closure
+        builder's decision, covered by its own tests and by the end-to-end import scenarios.
         """
         selected = await self._selected_definitions(
             dataset=dataset,

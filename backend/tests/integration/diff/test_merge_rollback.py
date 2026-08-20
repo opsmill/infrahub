@@ -14,8 +14,8 @@ from infrahub.core.merge.rollback_handler import MergeRollbackHandler, PreMergeS
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
+from infrahub.database.validation import verify_graph
 from tests.constants import TestKind
-from tests.helpers.db_validation import verify_graph
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 

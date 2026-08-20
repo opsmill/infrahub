@@ -36,11 +36,11 @@ def fold_commit_id(
     When the list is complete, how far that can be trusted depends on how it was built, which
     the caller states through `watch_required`:
 
-    - `watch_required=True` - the list is a directory listing rather than a real dependency
-      scan: every tracked file that happens to sit next to the entry point. "Complete" only
-      means the listing succeeded, so a helper imported from another directory is missing from
-      the list without anything noticing. Only a `watch` declaration, where the author names
-      the extra files by hand, is trusted to close the list; without one the commit id goes in.
+    - `watch_required=True` - the list names the entry point only, with no dependency scan
+      behind it. "Complete" merely means the entry point was resolved, so a helper the source
+      imports is missing from the list without anything noticing. Only a `watch` declaration,
+      where the author names the extra files by hand, is trusted to close the list; without
+      one the commit id goes in.
     - `watch_required=False` - the list was built by parsing the source and following every
       reference it declares, and any reference that could not be followed already set
       `closure_complete=False`. A complete list is therefore trustworthy by itself, and no
@@ -163,9 +163,9 @@ class FingerprintComposer:
             case PythonTransformationFingerprintInput():
                 terms.append(f"class_name={inputs.class_name}")
                 terms.append(f"convert_query_response={inputs.convert_query_response}")
-                # A Python transform's dependencies are the files sitting next to its source
-                # file, so an import from anywhere else is absent from the list: the author has
-                # to name those files in `watch` before the fingerprint can drop the commit id.
+                # A Python transform's dependencies are auto-detected as its source file alone,
+                # so anything it imports is absent from the list: the author has to name those
+                # files in `watch` before the fingerprint can drop the commit id.
                 watch_required = True
             case Jinja2TransformationFingerprintInput():
                 terms.append(f"template_path={inputs.template_path}")

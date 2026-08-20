@@ -407,6 +407,9 @@ class MetadataOptions(Flag):
     USER_TIMESTAMPS = TIMESTAMPS | USERS
 
 
+PROFILE_NAMESPACE = "Profile"
+TEMPLATE_NAMESPACE = "Template"
+
 RESTRICTED_NAMESPACES: list[str] = [
     "Account",
     "Branch",
@@ -418,8 +421,8 @@ RESTRICTED_NAMESPACES: list[str] = [
     "Internal",
     "Lineage",
     "Schema",
-    "Profile",
-    "Template",
+    PROFILE_NAMESPACE,
+    TEMPLATE_NAMESPACE,
 ]
 
 NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"

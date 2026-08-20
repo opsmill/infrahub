@@ -13,10 +13,10 @@ export const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attribut
         {attributes.map(({ action, name, value, value_previous }) => {
           return (
             <React.Fragment key={`${action}_${name}`}>
-              <div className="mr-2 truncate text-left text-gray-600">{name}</div>
+              <div className="mr-2 truncate text-left text-subtle">{name}</div>
 
               <div className="flex items-center gap-2 overflow-hidden">
-                <div className="text-gray-400">{value_previous ?? "-"}</div>
+                <div className="text-subtle-muted">{value_previous ?? "-"}</div>
 
                 <ChevronRightIcon className="size-3 text-custom-blue-500" />
 

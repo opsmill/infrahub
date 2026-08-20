@@ -29,7 +29,7 @@ export function GraphControls({ edgeStyle, onEdgeStyleChange, onLayout }: GraphC
           shape="square"
           aria-label="Zoom out"
           onPress={() => zoomOut()}
-          className="text-foreground-muted"
+          className="text-subtle-muted"
         >
           <Icon icon="mdi:minus" className="text-lg" />
         </Button>
@@ -41,7 +41,7 @@ export function GraphControls({ edgeStyle, onEdgeStyleChange, onLayout }: GraphC
           shape="square"
           aria-label="Fit to screen"
           onPress={() => fitView({ padding: 0.2 })}
-          className="text-foreground-muted"
+          className="text-subtle-muted"
         >
           <Icon icon="mdi:fit-to-screen" className="text-lg" />
         </Button>
@@ -53,7 +53,7 @@ export function GraphControls({ edgeStyle, onEdgeStyleChange, onLayout }: GraphC
           shape="square"
           aria-label="Zoom in"
           onPress={() => zoomIn()}
-          className="text-foreground-muted"
+          className="text-subtle-muted"
         >
           <Icon icon="mdi:plus" className="text-lg" />
         </Button>
@@ -65,7 +65,7 @@ export function GraphControls({ edgeStyle, onEdgeStyleChange, onLayout }: GraphC
           size="sm"
           aria-label="Toggle edge style"
           onPress={() => onEdgeStyleChange(edgeStyle === "bezier" ? "smoothstep" : "bezier")}
-          className="text-foreground-muted"
+          className="text-subtle-muted"
         >
           <Icon
             icon={edgeStyle === "bezier" ? "mdi:vector-curve" : "mdi:vector-polyline"}
@@ -82,7 +82,7 @@ export function GraphControls({ edgeStyle, onEdgeStyleChange, onLayout }: GraphC
           shape="square"
           aria-label="Auto-layout horizontal"
           onPress={() => onLayout("LR")}
-          className="text-foreground-muted"
+          className="text-subtle-muted"
         >
           <Icon icon="mdi:arrow-right" className="text-lg" />
         </Button>
@@ -94,7 +94,7 @@ export function GraphControls({ edgeStyle, onEdgeStyleChange, onLayout }: GraphC
           shape="square"
           aria-label="Auto-layout vertical"
           onPress={() => onLayout("TB")}
-          className="text-foreground-muted"
+          className="text-subtle-muted"
         >
           <Icon icon="mdi:arrow-down" className="text-lg" />
         </Button>

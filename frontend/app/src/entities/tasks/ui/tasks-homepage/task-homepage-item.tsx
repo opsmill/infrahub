@@ -56,11 +56,11 @@ export const TaskHomepageItem = ({
         </div>
       )}
 
-      <span className="flex items-center gap-1 text-gray-500">
+      <span className="flex items-center gap-1 text-foreground-muted">
         <Icon icon={"mdi:source-branch"} />
         <span className="truncate">{branch}</span>
       </span>
-      <DateDisplay date={updated_at} className="text-gray-500" />
+      <DateDisplay date={updated_at} className="text-foreground-muted" />
     </div>
   );
 };

@@ -24,6 +24,8 @@ Choose the right base class in `backend/infrahub/core/migrations/shared.py`:
 - **`ArbitraryMigration`** — Implements a custom `execute()` method. Use when you need Python logic (e.g., JSON parsing, conditional branching, batching decisions driven by fetched data).
 - **`InternalSchemaMigration`** — Modifies internal schema definitions. Rarely used directly.
 
+`SchemaMigration` is a separate family under `backend/infrahub/core/migrations/schema/`, registered in `MIGRATION_MAP` and selected by the schema diff rather than by `GRAPH_VERSION`. Steps 1-3 below do not apply to it, but the retry rule does.
+
 ## Steps
 
 ### Step 1: Create the Migration File
@@ -65,6 +67,10 @@ class Migration070(ArbitraryMigration):
 ```
 
 Set `minimum_version` to the current `GRAPH_VERSION` (the migration runs when upgrading from that version).
+
+**Transient database errors.** `SchemaMigration` and `GraphMigration` own their transaction and carry `retry_db_transaction`, so a transient error (a deadlock, or an entity a concurrent migration removed) is replayed on a fresh transaction with backoff and jitter instead of failing the migration; their inner query loops let those errors propagate to the transaction owner. This matters when migrations of the same kind run concurrently (schema path migrations execute as a batch). The catch-all `except` shown above belongs to `ArbitraryMigration`/`execute` overrides that run serially during upgrade and record every error as a failed `MigrationResult`; if you override `execute` to own a transaction on a concurrent path, add `retry_db_transaction` and do not catch retriable errors inside the transaction. See [Database Schema — Transaction Retry](../../knowledge/backend/database-schema.md#transaction-retry).
+
+**Overriding `execute` discards the decorator.** A `SchemaMigration` subclass that overrides `execute` to open its own transaction must reapply `@retry_db_transaction(name="schema_migration")` — `node_relationship_remove.py` is the worked example. A subclass that only guards a condition and then delegates to `super().execute(...)` is already covered by the base and must not add it again, or the two retries nest.
 
 ### Step 2: Bump `GRAPH_VERSION`
 

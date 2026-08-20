@@ -55,7 +55,7 @@ function NestedModal({ depth = ROOT_DEPTH }: { depth?: number }) {
         aria-label={`Modal level ${depth + NEXT_LEVEL}`}
       >
         <div className="flex flex-col gap-3 p-3">
-          <p className="text-sm text-neutral-700">Level {depth + NEXT_LEVEL}</p>
+          <p className="text-sm text-foreground-muted">Level {depth + NEXT_LEVEL}</p>
           <NestedModal depth={depth + NEXT_LEVEL} />
         </div>
       </Modal>

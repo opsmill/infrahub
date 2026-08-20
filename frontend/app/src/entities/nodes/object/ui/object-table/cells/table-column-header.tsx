@@ -4,7 +4,11 @@ import React from "react";
 import { Button } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
-import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
+import {
+  cellHeaderInteractiveStyle,
+  cellHeaderStyle,
+  cellsStyle,
+} from "@/shared/components/table/style";
 import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
 import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
@@ -225,7 +229,10 @@ function ColumnHeaderMenu({
   return (
     <>
       <MenuTrigger>
-        <Button ref={triggerRef} className={classNames(cellsStyle, cellHeaderStyle, className)}>
+        <Button
+          ref={triggerRef}
+          className={classNames(cellsStyle, cellHeaderStyle, cellHeaderInteractiveStyle, className)}
+        >
           <FieldSchemaIcon fieldSchema={columnSchema} />
 
           <span className="mr-2 truncate">{label}</span>

@@ -169,7 +169,7 @@ When in doubt, ask: *would this sentence read better with the qualifier removed?
 **Hub + spokes** (Groups / Profiles precedent):
 
 - Hub at `docs/docs/<feature>/index.mdx` — topic content only. **Do NOT add a "Common tasks" or "Deeper concepts" link list** — the spokes already appear in the sidebar when the user is on the hub, so a body link list is redundant clutter. A "Learn by doing" body link to an Academy tutorial is OK because the tutorial lives in a different sidebar section.
-- Spokes at `docs/docs/<feature>/<task>.mdx` — one per task. Each spoke should have a brief "Next" or "Related" section at the bottom pointing to adjacent spokes.
+- Spokes at `docs/docs/<feature>/<task>.mdx` — one per task. Each spoke ends with a brief `## Next` section pointing to adjacent spokes (always `Next`, not `Related` — mixed heading names across a spoke set is a recurring review comment).
 - Optional concept spoke at `docs/docs/<feature>/<concept>.mdx` for substantial deep-dive content (e.g. priority and inheritance) when it's a frequently-referenced topic and would otherwise bloat the hub.
 - Optional Academy tutorial at `docs/docs/academy/tutorials/<feature>.mdx`
 
@@ -299,7 +299,7 @@ Pattern: <single-page merge / hub + spokes / tutorial extraction / split / secti
 
 Most of this PR is preserved content with cross-link updates. The actual NEW prose to review is small:
 
-- **`<file>:<lines>` — <one-line description of new section/prose>.** <Brief rationale or where it came from — e.g. "Sourced from the Confluence net-new content draft" or "Standard spoke 'Related' closer matching Generators/Transformations precedent.">
+- **`<file>:<lines>` — <one-line description of new section/prose>.** <Brief rationale or where it came from — e.g. "Sourced from the Confluence net-new content draft" or "Standard spoke `## Next` closer matching Generators/Transformations precedent.">
 
 Everything else (~XX% of the lines changed) is verbatim from the source legacy files with only cross-link path updates — safe to skim.
 

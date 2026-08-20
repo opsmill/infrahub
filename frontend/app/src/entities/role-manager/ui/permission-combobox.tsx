@@ -70,7 +70,7 @@ export function PermissionCombobox({
                   onPress={() => {
                     onChange(value.filter((item) => item.id !== node.id));
                   }}
-                  className="h-4 w-4 text-gray-500 data-hovered:text-foreground"
+                  className="h-4 w-4 text-subtle-muted data-hovered:text-foreground"
                   aria-label="Remove"
                   data-testid="remove-option"
                 >
@@ -82,7 +82,7 @@ export function PermissionCombobox({
 
           <button
             type="button"
-            className="h-3.5 w-3.5 text-foreground-muted outline-hidden"
+            className="h-3.5 w-3.5 text-subtle-muted outline-hidden"
             onClick={() => setOpen(!open)}
             {...props}
           >

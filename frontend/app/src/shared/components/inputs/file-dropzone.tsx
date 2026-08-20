@@ -63,11 +63,11 @@ export function FileDropzone({ onFileSelect, className, ...props }: FileDropzone
 function DropzoneIdleContent() {
   return (
     <Col className="items-center">
-      <CloudUploadIcon className="size-9 text-gray-400" />
+      <CloudUploadIcon className="size-9 text-subtle-muted" />
       <Col className="gap-0.5">
-        <p className="text-gray-600 text-sm">Drag and drop a file here, or click to select</p>
-        <p className="text-gray-400 text-xs">PDF, YAML, JSON, TXT, CSV, images, and more</p>
-        <p className="text-gray-400 text-xs">Max file size: 10MB</p>
+        <p className="text-sm text-subtle">Drag and drop a file here, or click to select</p>
+        <p className="text-subtle-muted text-xs">PDF, YAML, JSON, TXT, CSV, images, and more</p>
+        <p className="text-subtle-muted text-xs">Max file size: 10MB</p>
       </Col>
     </Col>
   );
@@ -77,7 +77,7 @@ function DropzoneActiveContent() {
   return (
     <Col className="items-center">
       <FileUpIcon className="size-6 text-custom-blue-500" />
-      <p className="text-gray-600 text-sm">Drop the file here...</p>
+      <p className="text-sm text-subtle">Drop the file here...</p>
     </Col>
   );
 }

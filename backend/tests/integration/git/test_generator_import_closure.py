@@ -21,30 +21,26 @@ if TYPE_CHECKING:
 
     from infrahub.database import InfrahubDatabase
 
-# Every generator in the fixture lives in the `generators/` package, so each one's
-# closure is the package-directory floor (every tracked file under that directory)
-# plus the repository config file, which the aggregator includes for every definition.
-GENERATOR_PACKAGE_CLOSURE = {
-    ".infrahub.yml",
-    "generators/__init__.py",
-    "generators/cartags.gql",
-    "generators/cartags.py",
-    "generators/cartags_convert_response.py",
-    "generators/cartags_title.py",
-    "generators/cartags_upper.py",
+# No generator in the fixture declares `watch.files`, so each one's closure is its own
+# source file plus the repository config file, which the aggregator includes for every
+# definition. The four generators share the `generators/` directory and its query, and
+# none of that reaches any of their closures.
+CLOSURE_BY_GENERATOR = {
+    "cartags": {".infrahub.yml", "generators/cartags.py"},
+    "cartags_convert_response": {".infrahub.yml", "generators/cartags_convert_response.py"},
+    "cartags_title": {".infrahub.yml", "generators/cartags_title.py"},
+    "cartags_upper": {".infrahub.yml", "generators/cartags_upper.py"},
 }
-
-GENERATOR_NAMES = {"cartags", "cartags_convert_response", "cartags_title", "cartags_upper"}
 
 
 class TestGeneratorImportClosure(TestInfrahubApp):
     """Importing a repository builds and persists a dependency closure on every generator definition.
 
-    Each generator's closure is the package-directory floor of its source file. A
-    re-import after the stored closure has drifted from the worktree must rewrite it:
-    the closure comparison is the one behavior this carries that the legacy import
-    gate did not, so a content change altering only the closure still triggers an
-    update.
+    Each generator's closure is its own source file, so four generators sharing one directory
+    end up with four disjoint closures rather than one shared listing. A re-import after the
+    stored closure has drifted from the worktree must rewrite it: the closure comparison is the
+    one behavior this carries that the legacy import gate did not, so a content change altering
+    only the closure still triggers an update.
     """
 
     @pytest.fixture(scope="class")
@@ -85,9 +81,9 @@ class TestGeneratorImportClosure(TestInfrahubApp):
     ) -> None:
         generators = {gen.name.value: gen for gen in await client.all(kind=CoreGeneratorDefinition)}
 
-        assert set(generators) == GENERATOR_NAMES
-        for generator in generators.values():
-            assert set(generator.dependencies.value) == GENERATOR_PACKAGE_CLOSURE
+        assert set(generators) == set(CLOSURE_BY_GENERATOR)
+        for name, generator in generators.items():
+            assert set(generator.dependencies.value) == CLOSURE_BY_GENERATOR[name]
             assert generator.dependencies_complete.value is True
 
     async def test_reimport_rewrites_drifted_closure(
@@ -110,12 +106,12 @@ class TestGeneratorImportClosure(TestInfrahubApp):
         # Drift the stored closure away from the worktree while leaving every other
         # compared field intact, so only the closure comparison can trigger the update.
         stale = (await client.filters(kind=CoreGeneratorDefinition, name__value="cartags"))[0]
-        stale.dependencies.value = ["generators/cartags.py"]
+        stale.dependencies.value = ["generators/stale_path.py"]
         stale.dependencies_complete.value = False
         await stale.save()
 
         await repo.import_generator_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         refreshed = (await client.filters(kind=CoreGeneratorDefinition, name__value="cartags"))[0]
-        assert set(refreshed.dependencies.value) == GENERATOR_PACKAGE_CLOSURE
+        assert set(refreshed.dependencies.value) == CLOSURE_BY_GENERATOR["cartags"]
         assert refreshed.dependencies_complete.value is True

@@ -7,8 +7,8 @@ and never a hardcoded pattern.
 ## Use one of these
 
 - **Rendering JSX → `<DateDisplay date={…} />`** (`shared/components/display/date-display.tsx`).
-  - Default: relative "x ago" for recent dates, a compact date otherwise; the **tooltip** shows the
-    user's full preferred datetime, rendered in their preferred timezone.
+  - Default: relative ("x ago" / "in x") within a week either side of now, a compact date beyond;
+    the **tooltip** shows the user's full preferred datetime, rendered in their preferred timezone.
   - `fullTimestamp`: render the user's full preferred datetime inline, in their preferred
     timezone (use for a site that shows a full timestamp).
   - The value renders *in* the preferred timezone, but an offset/label only shows when the chosen
@@ -18,6 +18,15 @@ and never a hardcoded pattern.
 - **Need a date *string* in code → `useFormatDate()`** (`shared/context/date-preferences-context.tsx`):
   `const { formatDate } = useFormatDate();` then `formatDate(date, variant?)` with
   `variant ∈ "datetime" (default) | "date" | "relative"`.
+- **Previewing preferences that are not the active ones → `formatWithPreferences()`** (same
+  module): the hook's underlying pure function, for the rare caller that must render against an
+  explicit `{ pattern, timezone }` pair — e.g. the preferences forms' "Example:", which previews the
+  unsaved form values. Anything rendering against the *viewer's* preferences uses the hook, never this.
+- **Rendering against preferences that are *not* the viewer's active ones → `formatWithPreferences`**
+  (same module, backs the hook). Only the preferences editor needs this: its "Example:" preview and
+  source tooltip must render the pattern *and zone* currently held in the form, including unsaved
+  edits, so the preview matches what the timestamps will become. An editor of the org-wide default
+  must not reach for the hook — that would preview everyone's default in the admin's own zone.
 
 ## How it's wired (feature-sliced-design safe)
 
@@ -33,7 +42,7 @@ and never a hardcoded pattern.
   falls back to the **browser locale + zone** (`toLocaleString`) — never a hardcoded pattern. So
   `DateDisplay`/`useFormatDate` are always safe to use, including in tests/stories.
 - Timezone rendering uses date-fns v4 + the first-party **`@date-fns/tz`** (`TZDate`). The semantic
-  `date_format` key → date-fns pattern mapping is `patternForKey`
+  `date_format` key → date-fns pattern mapping is `dateFormatPattern`
   (`entities/preferences/domain/rules/date-format.ts`); the `date` variant derives a date-only
   pattern by stripping the preferred pattern at its first time token.
 

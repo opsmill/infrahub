@@ -14,7 +14,7 @@ export function FilterSuggestionTag({ label, className, ...props }: FilterSugges
       className={classNames(
         focusVisibleStyle,
         "inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-strong pr-1.5 pl-2 text-foreground text-sm",
-        "group border-dashed text-stone-400",
+        "group border-dashed text-subtle-muted",
         "hover:border-stone-600 hover:bg-stone-100 hover:text-foreground-muted",
         className
       )}

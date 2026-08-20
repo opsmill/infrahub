@@ -16,7 +16,7 @@ from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from tests.helpers.db_validation import verify_graph
+from infrahub.database.validation import verify_graph
 
 
 async def _get_pool_labels(db: InfrahubDatabase) -> dict[str, list[str]]:

@@ -60,10 +60,10 @@ export function Combobox({
         aria-describedby={ariaDescribedBy}
         className={classNames("w-full justify-between font-normal", className)}
       >
-        <span className={classNames("truncate", currentLabel ? "" : "text-gray-400")}>
+        <span className={classNames("truncate", currentLabel ? "" : "text-subtle-muted")}>
           {currentLabel ?? placeholder}
         </span>
-        <ChevronsUpDownIcon className="ml-2 size-3.5 shrink-0 text-gray-400" />
+        <ChevronsUpDownIcon className="ml-2 size-3.5 shrink-0 text-subtle-muted" />
       </Button>
 
       <Popover placement="bottom start" width="trigger">

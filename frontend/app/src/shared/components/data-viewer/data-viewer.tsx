@@ -118,7 +118,7 @@ function DataViewerContent({
       }
 
       return (
-        <div className="flex grow flex-col items-center justify-center gap-2 rounded-lg border p-8 text-neutral-400">
+        <div className="flex grow flex-col items-center justify-center gap-2 rounded-lg border p-8 text-foreground-muted">
           <EyeOffIcon className="size-8" />
           <p>This file can&#39;t be previewed</p>
           <p className="text-sm">{contentType}</p>
