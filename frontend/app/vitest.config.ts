@@ -13,6 +13,10 @@ export default mergeConfig(
     //   as SOURCE (live symlinks), so Vite treats their imports as app source;
     // - the app's own lazily-imported deps (React.lazy / dynamic import), which the
     //   initial scan cannot see and CI's cold cache discovers mid-run.
+    // Every entry MUST also be resolvable from this package's root, i.e. declared in
+    // the app's own (dev)dependencies — pnpm's strict layout hides the linked packages'
+    // deps, and Vite silently skips unresolvable entries ("Failed to resolve dependency"
+    // at startup), which re-opens the mid-run reload this list exists to prevent.
     optimizeDeps: {
       include: [
         "@date-fns/tz",
