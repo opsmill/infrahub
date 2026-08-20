@@ -389,7 +389,13 @@ sets remove any need for a marker or worklist.
   event empties it.
 - **SC-006**: A branch-agnostic relationship is retired when either of its peers becomes
   unreachable on every branch.
-- **SC-007**: A value freed by retirement becomes allocatable again from its pool.
+- **SC-007**: A value whose holder is gone is allocatable again from its pool, and retirement does
+  not stand in the way of that. *Amended 2026-08-18: originally "a value freed by retirement becomes
+  allocatable again", which measurement disproved. Deleting the object already frees the value without
+  retirement — `BaseAttribute.get_branch_for_delete` writes branch-scoped `deleted` edges for an
+  agnostic attribute on an aware node, and the pool's used-value queries run `branch_agnostic=True`,
+  a pure time filter under which those tombstones win. This criterion was satisfied before the feature
+  existed; what retirement fixes is the uniqueness-validation leak, which reads the graph differently.*
 - **SC-008**: Node deletion, branch merge, branch rebase, and branch deletion show no median
   duration increase above 10% against current timings on the same dataset, at both a low and a
   realistic-high open-branch count.

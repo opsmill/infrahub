@@ -110,11 +110,13 @@ get_data() -> NodeAgnosticRetirementResult
 - Anchors on the node's open, active global `HAS_ATTRIBUTE` / `IS_RELATED` edges. Anchors on the
   `:Node`, `:Attribute`, `:Relationship` labels, never on schema kinds, so profiles and templates are
   covered without being enumerated.
-- Closes every open, active global edge of each unretained field vertex — the four property edges and
-  the owning edge(s) — in one undirected match over the named types. `IS_RESERVED` is excluded by
-  naming the types: it carries `branch: -global-`, `status: "active"` and no `to`, so an untyped
-  match would sweep it up, and closing `HAS_VALUE`/`HAS_ATTRIBUTE` already frees a pooled value
-  because allocation requires all three edges to pass the branch filter.
+- Closes **every** open, active global edge incident to each unretained field vertex, whatever its
+  type — one undirected match, no enumeration. An enumerated list drifts out of step with
+  `DatabaseEdgeType` and silently leaks whatever it omits; a sweep cannot. The consequence is that a new
+  edge type hung off an `:Attribute` or `:Relationship` vertex is closed automatically, so a type that
+  must outlive its field has to sit on a vertex the field does not touch. `IS_RESERVED` already does:
+  every one runs pool-to-value or pool-to-address, never through a field vertex. See data-model.md
+  §"Pool interaction".
 - Never writes a `deleted`-status edge. Retirement is a time-close (FR-013).
 - Never deletes a vertex or an `AttributeValue` (FR-017).
 - Idempotent: a second run closes nothing and reports zero.

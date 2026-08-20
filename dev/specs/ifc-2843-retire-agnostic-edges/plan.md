@@ -160,7 +160,6 @@ backend/infrahub/core/
 
 backend/tests/component/
 ├── core/
-│   ├── test_agnostic_attribute_fork_window.py       # ADOPT existing untracked file
 │   └── test_agnostic_retirement.py        # enforcement-point behaviour               (new)
 ├── query/test_node_agnostic_retirement_query.py     # graph shape, per-query          (new)
 └── migrations/test_m076_retire_agnostic_property_edges.py                             (new)
@@ -355,8 +354,9 @@ correct when the predicate is right and fail in opposite directions when it is w
 retaining branch under a time-close leaves that branch reading through its fork window —
 degraded, no data loss, self-correcting on its next rebase. The same miss under a global status
 tombstone strips the field from a live object immediately and everywhere. This is a deliberate
-hedge against predicate bugs, not a correctness requirement, and the existing fork-window test
-file already encodes the degraded-read behaviour it buys.
+hedge against predicate bugs, not a correctness requirement. The degraded read it buys is worth a
+test where it is actually reachable: only the repair migration closes edges a branch can still read,
+since the runtime paths close only once no branch retains the field.
 
 ### Implementation sequencing (risk-first)
 
@@ -390,25 +390,27 @@ deviation no longer exists.
 
 ## Test plan additions
 
-Beyond the tiers assigned in research R10, four tests exist because a reviewer asked what would
+Beyond the tiers assigned in research R10, these tests exist because a reviewer asked what would
 catch a specific silent failure:
 
-- **Pool re-allocation** (component) — allocate, delete, retire, allocate again, assert the same
-  value comes back. SC-007 and acceptance scenario 12 are otherwise unowned by any module in this
-  plan. Verified as satisfiable: `NumberPoolGetUsed` requires `IS_RESERVED`, `HAS_VALUE` and
+- **Pool re-allocation** (component) — allocate, delete, allocate again, assert the same value comes
+  back. Written, and it disproved the assumption behind it: re-allocation does not depend on
+  retirement, because the ordinary delete already writes branch-scoped `deleted` edges that the pool's
+  `branch_agnostic=True` filter honours. The test earns its place through its graph assertions rather
+  than through SC-007. See data-model.md §"Pool interaction". Original reasoning follows:
+  `NumberPoolGetUsed` requires `IS_RESERVED`, `HAS_VALUE` and
   `HAS_ATTRIBUTE` to *all* pass the branch filter, so closing `HAS_VALUE` drops the value from
   the used set — but by a three-edge interaction with the pool-side `IS_RESERVED` edge left
   untouched, which is subtle enough to break under an unrelated pool change with nothing to catch
   it.
-- **Branch created late** (component) — create a branch after candidate selection and assert the
-  object stays readable on it. Bounds the race window that survives even with the branch list
-  read from the database, and locks in the degraded-read property that makes the time-close choice
-  load-bearing rather than stylistic. Without it, a future switch to a status tombstone would pass
-  every other test while silently removing the hedge.
-- **Branch-agnostic node no-op** (component) — deleting a truly branch-agnostic node closes its
-  edges exactly once and retirement is a no-op. `Node.delete` resolves `branch` to the global
-  branch for such nodes, so the enforcement point *will* run against them; this pins the
-  out-of-scope boundary the spec asserts must not regress.
+- ~~**Branch created late**~~ — withdrawn 2026-08-18. It bounded the race between candidate selection
+  and closure; those are now one Cypher statement in one transaction, so the window it guarded does not
+  exist. The degraded-read property it also claimed to lock in is only reachable through the repair
+  migration, which closes edges a branch can still read.
+- **Branch-agnostic node no-op** (component, written) — deleting a truly branch-agnostic node is a
+  retirement no-op, and for a reason the plan had wrong: the ordinary agnostic delete already both
+  tombstones the global edges and stamps `to` on the superseded active ones, so nothing is left to
+  close. The enforcement point does run against such nodes; it simply finds nothing.
 - **`m076` re-run** (component) — running the migration twice is safe and the second run reports
   zero. An interrupted upgrade must be resumable, as `m075` is.
 

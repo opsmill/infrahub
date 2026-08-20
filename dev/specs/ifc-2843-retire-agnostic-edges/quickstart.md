@@ -27,17 +27,13 @@ TestWidget          branch: aware
   serial  Number    branch: agnostic
 ```
 
-This fixture already exists in
-`backend/tests/component/core/test_agnostic_attribute_fork_window.py` (currently untracked in
-this tree — adopt it, do not rewrite it).
-
 ## The assertion that matters
 
 Assert the **graph shape**, not the API response. The bug is a graph-shape bug that the API
 hides: a leaked value is invisible through `NodeManager.get_one` and only surfaces later as a
 uniqueness violation naming a UUID that resolves to nothing.
 
-The canonical probe, already written in the fork-window test file:
+The canonical probe:
 
 ```cypher
 MATCH (n:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
@@ -70,7 +66,6 @@ uv run pytest backend/tests/unit/core/agnostic/
 
 # Component — query graph shape, enforcement points, migration fixtures
 uv run pytest -x -v backend/tests/component/core/test_agnostic_retirement.py
-uv run pytest -x -v backend/tests/component/core/test_agnostic_attribute_fork_window.py
 uv run pytest -x -v backend/tests/component/query/test_agnostic_retirement_query.py
 uv run pytest -x -v backend/tests/component/migrations/test_m076_retire_agnostic_property_edges.py
 
@@ -105,8 +100,7 @@ Four further checks exist to catch specific silent failures:
 
 | Check | Expected |
 |---|---|
-| Allocate → delete → retire → allocate again | The same value is returned (SC-007). Guards a three-edge pool dependency that no other test covers. |
-| Create a branch *after* candidate selection | Object stays readable on the late branch — the bounded race window, and the property that makes the time-close choice load-bearing |
+| Allocate → delete → allocate again | The same value is returned. Guards a three-edge pool dependency no other test covers — though re-allocation turns out not to depend on retirement; see data-model.md §"Pool interaction" |
 | Delete a truly branch-agnostic *node* | Edges closed exactly once; retirement is a no-op. Pins the out-of-scope boundary |
 | Run `m076` twice | Second run reports zero; an interrupted upgrade is resumable |
 
@@ -184,4 +178,7 @@ The failure this fixes is reachable from a single create/delete cycle:
 3. Create a second object requesting the same value.
 
 **Before**: the second create fails with a uniqueness violation naming a node UUID that resolves
-to nothing. **After**: it succeeds (SC-007).
+to nothing. **After**: it succeeds.
+
+Note this smoke check passes on the *uniqueness* path, which is what the feature fixes. Pool
+re-allocation on its own already worked before the feature — see data-model.md §"Pool interaction".
