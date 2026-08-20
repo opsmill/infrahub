@@ -59,6 +59,22 @@ class TracebackSuppressionFilter(logging.Filter):
         return type(exception) not in self._suppressed_types
 
 
+def install_traceback_suppression_filter() -> TracebackSuppressionFilter:
+    """Install the traceback suppression filter on the Prefect run loggers and return it.
+
+    Prefect ships flow/task run logs to its API; drop tracebacks for failures that are reported as a
+    clean classified reason rather than a crash to debug. The filter reads the shared registry that
+    each expected-failure type opts into via suppress_traceback_in_logs.
+
+    The installed filter is returned so a caller that must leave logging state as it found it can
+    remove it again from every logger in PREFECT_RUN_LOGGERS.
+    """
+    traceback_filter = TracebackSuppressionFilter(_TRACEBACK_SUPPRESSED_TYPES)
+    for prefect_logger_name in PREFECT_RUN_LOGGERS:
+        logging.getLogger(prefect_logger_name).addFilter(traceback_filter)
+    return traceback_filter
+
+
 def clear_log_context() -> None:
     structlog.contextvars.clear_contextvars()
 
@@ -86,13 +102,8 @@ def configure_logging(production: bool, log_level: str) -> None:
     # the infrahub logger
     importlib.import_module("prefect.main")
 
-    # Prefect ships flow/task run logs to its API; drop tracebacks for failures that
-    # are reported as a clean classified reason rather than a crash to debug. Installed after the
-    # prefect.main import above so it survives Prefect's logging reset; reads the shared registry that
-    # each expected-failure type opts into via suppress_traceback_in_logs.
-    traceback_filter = TracebackSuppressionFilter(_TRACEBACK_SUPPRESSED_TYPES)
-    for prefect_logger_name in PREFECT_RUN_LOGGERS:
-        logging.getLogger(prefect_logger_name).addFilter(traceback_filter)
+    # Installed after the prefect.main import above so it survives Prefect's logging reset.
+    install_traceback_suppression_filter()
 
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,

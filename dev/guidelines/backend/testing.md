@@ -111,6 +111,33 @@ The module provides individual node/generic schemas (`CAR`, `DEVICE`, `TAG`, `PE
 
 `config.SETTINGS` is populated from `INFRAHUB_*` environment variables at process start, so values exported in the developer's shell leak into the test process. Any test whose behavior depends on a settings field must pin it in a save/restore fixture (set the value, `yield`, restore the original) — see `import_every_remote_branch` in `backend/tests/integration/git/conftest.py`. Never assume a field holds its default.
 
+## Leave process-global state as you found it
+
+Under `pytest-xdist` every test in a worker shares one interpreter, so whatever a test changes outside
+its own fixtures stays changed for every test that follows it there. Touch global state only through a
+save/restore fixture (change it, `yield`, restore the original). Pinning a setting, above, is one case
+of that rule; it also covers:
+
+- the `logging` module — root and per-logger levels, handlers, filters
+- `structlog` configuration
+- module-level registries, caches and singletons
+- environment variables (prefer `monkeypatch.setenv`, which restores on teardown)
+- `sys.path`, `sys.modules`, warning filters
+
+**Never call an application startup routine from a test.** `infrahub.log.configure_logging` is the
+example to learn from: it runs once at process start and owns the process when it does — setting the
+root log level, replacing the root handler and reconfiguring structlog — so, being startup code, it has
+no counterpart that undoes any of that. Called from a fixture it silently reconfigures every later test
+in the worker. Install only the piece the test needs, extracting it from the startup routine when it is
+not already reusable, and undo it after the `yield` — see `traceback_suppression` in
+`backend/tests/helpers/log.py`, which the webhook suppression tests use to install the traceback
+suppression filter alone rather than calling `configure_logging`.
+
+Such a leak is invisible locally and expensive in CI. A root logger left at `DEBUG` overrides the
+`WARNING` level `pytest_configure` pins, and the Neo4j driver then logs a line per Bolt message for
+every test that follows in that worker: one job produced 185k lines of driver output and pushed three
+unrelated tests past their 300s timeout.
+
 ## Dataclass Test Case Pattern
 
 For parametrized tests with multiple scenarios, use dataclasses to define test cases. This pattern provides type safety, readable test IDs, and clear separation between test data and test logic.

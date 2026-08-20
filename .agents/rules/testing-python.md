@@ -63,6 +63,10 @@ Skip tests that only exercise library behavior: plain `Enum` value/round-trip ch
 
 If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them.
 
+## Don't leak process-global state
+
+Every test in an xdist worker shares one interpreter. Change `logging` levels/handlers/filters, `structlog` config, module-level registries/singletons, `sys.path`/`sys.modules` or env vars only through a save/restore fixture (change it, `yield`, restore it), or `monkeypatch` where it applies. Never call an application startup routine such as `infrahub.log.configure_logging` from a test — it owns the whole process and undoes nothing, so it reconfigures every later test in the worker. Install only the piece under test and remove it after the `yield`. See `dev/guidelines/backend/testing.md` §"Leave process-global state as you found it".
+
 ## Test file placement
 
 Test files mirror source structure: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
