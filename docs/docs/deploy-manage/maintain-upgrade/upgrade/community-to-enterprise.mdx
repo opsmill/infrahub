@@ -31,6 +31,7 @@ The data layers — Neo4j, Redis, RabbitMQ or NATS, the Prefect PostgreSQL datab
 | Task worker type | `infrahubasync` | `infrahubentasync` |
 | Work pool name | `infrahub-worker` | `infrahub-worker` (unchanged) |
 | Neo4j edition (bundled deployment only) | community | enterprise |
+| Neo4j store format | `aligned` | `block`, after the [store format migration](#migrate-the-neo4j-store-to-the-block-format) |
 | `/api/config` `installation_type` | `community` | `enterprise` |
 
 ### How the work pool is switched
@@ -283,6 +284,8 @@ Review the dry-run output for:
 
 Expect 5–10 minutes of API unavailability while the Infrahub server containers are recreated. If you run the bundled Neo4j, it also restarts to switch editions during this window.
 
+Add time for the [Neo4j store format migration](#migrate-the-neo4j-store-to-the-block-format) if you convert the store in the same window. That conversion is offline and its duration scales with the size of the graph, so measure it against a copy of your data before committing to a window length.
+
 ### Run the swap
 
 <Tabs groupId="deployment" queryString>
@@ -349,11 +352,66 @@ Wait until all `infrahub-server-*`, `infrahub-task-worker-*`, and `prefect-serve
 </TabItem>
 </Tabs>
 
+## Migrate the Neo4j store to the block format
+
+Neo4j Community stores data in the `aligned` format. The `block` format is available only on Neo4j Enterprise, where it is the format new databases are created with.
+
+An existing store keeps the format it was created with when an Enterprise binary opens it, so the edition swap on its own leaves the graph on `aligned`. Converting the store is a separate, explicit step.
+
+Run the conversion after the edition swap — it needs the Enterprise binary — and treat it as part of the migration rather than as an optional follow-up: an Enterprise deployment left on an `aligned` store does not get the storage and read performance characteristics the Enterprise edition is tuned for.
+
+:::danger This step is one-way
+
+A `block` store cannot be opened by a Neo4j Community binary, and cannot be converted back to `aligned`. Once you convert, the dump taken during the [prerequisites](#prerequisites) is the only route back to Community. Verify that the dump restores before you start.
+
+:::
+
+### Check the current store format
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="docker" label="Docker Compose" default>
+
+```bash
+docker compose -p infrahub exec database \
+  cypher-shell -u neo4j -d system "SHOW DATABASES YIELD name, store"
+```
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+```bash
+kubectl -n <namespace> exec -it <neo4j-pod> -- \
+  cypher-shell -u neo4j -d system "SHOW DATABASES YIELD name, store"
+```
+
+</TabItem>
+</Tabs>
+
+A `store` value starting with `record-aligned` means the `neo4j` database is still on the Community format. A value starting with `block` means the conversion is done.
+
+### Convert the store
+
+The [`infrahub-backup` CLI](https://docs.infrahub.app/backup/) is the supported path. Restoring a backup recreates the databases, and the tool exposes an option on `restore` that migrates the Neo4j store format as part of that restore, so the conversion rides along with a backup you should be taking anyway:
+
+```bash
+# Take a fresh backup of the migrated Enterprise deployment
+./infrahub-backup create
+
+# Restore it, converting the Neo4j store to the block format
+./infrahub-backup restore infrahub_backup_<timestamp>.tar.gz
+```
+
+Pass the store format migration option to `restore`, and on Kubernetes add `--k8s-namespace <namespace>`. See the [infrahub-backup CLI reference](https://docs.infrahub.app/backup/) for the exact flags. The tool stops the application containers, restores PostgreSQL and Neo4j, and restarts the services in order — see [Backup and restore](../database-backup/backup-and-restore.mdx) for what a restore covers, including object storage, which the tool does not yet handle.
+
+Converting the store in place with `neo4j-admin database migrate --to-format=block` against a stopped database is the alternative when you cannot run a restore. It works on the same store rather than on a copy, which leaves no intact fallback if it fails partway, so take the dump first either way. Consult the [Neo4j store formats documentation](https://neo4j.com/docs/operations-manual/current/database-internals/store-formats/) for the constraints that apply to your Neo4j version.
+
+Re-run the `SHOW DATABASES YIELD name, store` query above once the deployment is back up, and confirm the `neo4j` database reports a `block` store.
+
 ## External Neo4j edition switch
 
 :::note
 
-The steps below apply only when your Neo4j runs outside the Infrahub deployment. If you use the bundled Neo4j — the setup recommended by OpsMill — Infrahub Enterprise switches Neo4j to Enterprise edition for you during the swap and no further action is needed.
+The steps below apply only when your Neo4j runs outside the Infrahub deployment. If you use the bundled Neo4j — the setup recommended by OpsMill — Infrahub Enterprise switches Neo4j to Enterprise edition for you during the swap, and the only remaining database work is the [store format migration](#migrate-the-neo4j-store-to-the-block-format).
 
 :::
 
@@ -369,6 +427,7 @@ The procedure is:
 3. Provision the Enterprise instance with a valid Neo4j Enterprise license.
 4. Restore the dumps into the Enterprise instance with `neo4j-admin database load`.
 5. Point Infrahub at the new endpoint via `INFRAHUB_DB_ADDRESS`.
+6. Convert the store to the `block` format, as described in [Migrate the Neo4j store to the block format](#migrate-the-neo4j-store-to-the-block-format). A restored store keeps the `aligned` format it had on Community.
 
 This can happen before, simultaneously with, or after the edition swap — Infrahub Enterprise runs against Neo4j Community. The performance and high-availability benefits of Infrahub Enterprise that depend on Neo4j Enterprise features (online backups, causal clustering, and advanced indexing) only apply once Neo4j is also on the Enterprise edition.
 
@@ -438,12 +497,14 @@ helm history <release-name> -n <namespace>
 </TabItem>
 </Tabs>
 
+Finally, confirm the Neo4j store reports a `block` format, as described in [Migrate the Neo4j store to the block format](#migrate-the-neo4j-store-to-the-block-format).
+
 ## Roll back
 
 Reverting the images and configuration returns the application layer to Community. Whether that is enough depends on the database:
 
 - **Neo4j still on the Community edition** (external Neo4j you have not switched yet): reverting the configuration is sufficient. The `installation_type` field changes back to `community`.
-- **Neo4j switched to the Enterprise edition** (the bundled deployment always does this): reverting the configuration is not sufficient, because the Neo4j Enterprise store cannot be read by a Neo4j Community binary. Restore the dump taken during the [prerequisites](#prerequisites).
+- **Neo4j switched to the Enterprise edition** (the bundled deployment always does this): reverting the configuration is not sufficient, because the Neo4j Enterprise store cannot be read by a Neo4j Community binary. Restore the dump taken during the [prerequisites](#prerequisites). This is definitive once the store has been [converted to the block format](#migrate-the-neo4j-store-to-the-block-format), a format Neo4j Community cannot open at all.
 
 <Tabs groupId="deployment" queryString>
 <TabItem value="docker" label="Docker Compose" default>
