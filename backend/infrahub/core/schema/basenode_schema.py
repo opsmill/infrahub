@@ -509,6 +509,30 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
             fields.update(self.convert_path_to_graphql_fields(path=item))
         return fields
 
+    def get_derived_field_paths(self, field_name: str) -> list[str] | None:
+        """Return the schema paths a derived field is built from.
+
+        ``None`` means the field has no path definition on this kind, so its value comes from
+        somewhere other than a declared path.
+
+        Raises:
+            ValueError: When ``field_name`` is not a derived node property.
+
+        """
+        if field_name not in NODE_PROPERTY_ATTRIBUTES:
+            raise ValueError(f"{field_name} is not a derived node property of {self.kind}")
+
+        if field_name == "human_friendly_id":
+            return list(self.human_friendly_id) if self.human_friendly_id else None
+
+        if self.display_labels:
+            return list(self.display_labels)
+        if not self.display_label:
+            return None
+        if "{{" in self.display_label:
+            return list(InfrahubJinja2Template(template=self.display_label).get_variables())
+        return [self.display_label]
+
     @field_validator("name")
     @classmethod
     def name_is_not_keyword(cls, value: str) -> str:

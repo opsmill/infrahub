@@ -229,8 +229,15 @@ DERIVED_READ_ATTRIBUTE = "interface_description"
 
 
 def _derived_read_scoper() -> RecomputeScoper:
-    """Scoper for a transform query reading a circuit's hfid and a device's name."""
-    read_set = TransformReadSet.from_read_fields({CIRCUIT_KIND: {"human_friendly_id"}, DEVICE_KIND: {"name"}})
+    """Scoper for a transform query reading a circuit's hfid and a device's name.
+
+    The circuit's hfid is built from its own attributes, so the read can be held against that
+    one kind. A hfid crossing a relationship cannot, and collapses the whole read set instead.
+    """
+    read_set = TransformReadSet.from_read_fields(
+        {CIRCUIT_KIND: {"human_friendly_id"}, DEVICE_KIND: {"name"}},
+        scopable_derived_kinds={CIRCUIT_KIND},
+    )
     return RecomputeScoper(
         derivers={
             ComputedAttributeKind.TRANSFORM_PYTHON: PythonTransformDependencyDeriver(

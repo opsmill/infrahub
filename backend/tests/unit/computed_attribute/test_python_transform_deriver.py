@@ -1,12 +1,20 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import pytest
 
 from infrahub.computed_attribute.scoping import ComputedAttributeRef, PythonTransformDependencyDeriver
 from infrahub.core.constants import ComputedAttributeKind
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
+from infrahub.core.schema.schema_branch_computed.python_transform import derived_read_is_scopable
+from tests.helpers.schema.car import CAR
+from tests.helpers.schema.person import PERSON
+
+if TYPE_CHECKING:
+    from infrahub.core.schema import NodeSchema
 
 BRANCH = "main"
 OWNER_KIND = "TestCar"
@@ -61,7 +69,8 @@ DERIVE_CASES = [
         name="derived_read_is_carried_per_kind",
         read_sets={
             (BRANCH, OWNER_KIND, ATTRIBUTE_NAME): TransformReadSet.from_read_fields(
-                {OWNER_KIND: {"name"}, "TestPerson": {"human_friendly_id"}}
+                {OWNER_KIND: {"name"}, "TestPerson": {"human_friendly_id"}},
+                scopable_derived_kinds={"TestPerson"},
             )
         },
         expected_depends_on_everything=False,
@@ -137,7 +146,9 @@ def test_read_set_is_branch_specific() -> None:
 
 
 def test_display_label_read_marks_only_its_own_kind_imprecise() -> None:
-    read_set = TransformReadSet.from_read_fields({OWNER_KIND: {"name"}, "TestPerson": {"display_label"}})
+    read_set = TransformReadSet.from_read_fields(
+        {OWNER_KIND: {"name"}, "TestPerson": {"display_label"}}, scopable_derived_kinds={"TestPerson"}
+    )
 
     assert read_set.depends_on_everything is False
     assert set(read_set.imprecise_kinds) == {"TestPerson"}
@@ -147,12 +158,33 @@ def test_display_label_read_marks_only_its_own_kind_imprecise() -> None:
 
 def test_hfid_read_marks_only_its_own_kind_imprecise() -> None:
     # The analyzer reports the schema name, not the hfid query spelling.
-    read_set = TransformReadSet.from_read_fields({OWNER_KIND: {"human_friendly_id"}})
+    read_set = TransformReadSet.from_read_fields(
+        {OWNER_KIND: {"human_friendly_id"}}, scopable_derived_kinds={OWNER_KIND}
+    )
 
     assert read_set.depends_on_everything is False
     assert set(read_set.imprecise_kinds) == {OWNER_KIND}
     assert set(read_set.read_kinds) == {OWNER_KIND}
     assert read_set.read_fields == {}
+
+
+def test_derived_read_on_an_unscopable_kind_collapses_the_whole_set() -> None:
+    # A derived definition that crosses a relationship reads a peer's attribute, so a change to
+    # that peer moves the value with nothing changing on the kind itself.
+    read_set = TransformReadSet.from_read_fields({OWNER_KIND: {"name"}, "TestPerson": {"human_friendly_id"}})
+
+    assert read_set.depends_on_everything is True
+    assert set(read_set.imprecise_kinds) == set()
+    assert read_set.read_fields == {}
+
+
+def test_one_unscopable_derived_read_collapses_a_scopable_one_too() -> None:
+    read_set = TransformReadSet.from_read_fields(
+        {OWNER_KIND: {"display_label"}, "TestPerson": {"human_friendly_id"}},
+        scopable_derived_kinds={OWNER_KIND},
+    )
+
+    assert read_set.depends_on_everything is True
 
 
 def test_from_read_fields_precise() -> None:
@@ -184,3 +216,86 @@ def test_kind_with_no_mapped_fields_is_kind_only() -> None:
         "TestPerson": {"name", "cars"},
         "TestElectricCar": {"nbr_engine"},
     }
+
+
+def _car_with(**overrides: object) -> NodeSchema:
+    car = deepcopy(CAR)
+    for name, value in overrides.items():
+        setattr(car, name, value)
+    return car
+
+
+@dataclass
+class ScopableCase:
+    name: str
+    node_schema: NodeSchema
+    field_name: str
+    expected: bool
+
+
+SCOPABLE_CASES = [
+    ScopableCase(
+        name="display_label_template_reads_own_attributes",
+        node_schema=CAR,
+        field_name="display_label",
+        expected=True,
+    ),
+    ScopableCase(
+        name="display_label_plain_path_reads_own_attribute",
+        node_schema=PERSON,
+        field_name="display_label",
+        expected=True,
+    ),
+    ScopableCase(
+        name="hfid_reads_own_attribute",
+        node_schema=_car_with(human_friendly_id=["name__value"]),
+        field_name="human_friendly_id",
+        expected=True,
+    ),
+    ScopableCase(
+        name="hfid_crossing_a_relationship",
+        node_schema=_car_with(human_friendly_id=["owner__name__value", "name__value"]),
+        field_name="human_friendly_id",
+        expected=False,
+    ),
+    ScopableCase(
+        name="display_labels_crossing_a_relationship",
+        node_schema=_car_with(display_labels=["owner__name__value"]),
+        field_name="display_label",
+        expected=False,
+    ),
+    ScopableCase(
+        name="display_label_template_crossing_a_relationship",
+        node_schema=_car_with(display_label="{{ owner__name__value }}"),
+        field_name="display_label",
+        expected=False,
+    ),
+    ScopableCase(
+        name="hfid_without_a_definition",
+        node_schema=CAR,
+        field_name="human_friendly_id",
+        expected=False,
+    ),
+    ScopableCase(
+        name="display_label_without_a_definition",
+        node_schema=_car_with(display_label=None, display_labels=None),
+        field_name="display_label",
+        expected=False,
+    ),
+    ScopableCase(
+        name="path_naming_no_known_field",
+        node_schema=_car_with(human_friendly_id=["not_a_field__value"]),
+        field_name="human_friendly_id",
+        expected=False,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", SCOPABLE_CASES, ids=[c.name for c in SCOPABLE_CASES])
+def test_derived_read_is_scopable(case: ScopableCase) -> None:
+    assert derived_read_is_scopable(node_schema=case.node_schema, field_name=case.field_name) is case.expected
+
+
+def test_derived_read_is_scopable_rejects_a_plain_field() -> None:
+    with pytest.raises(ValueError, match=r"^name is not a derived node property of TestingCar$"):
+        derived_read_is_scopable(node_schema=CAR, field_name="name")

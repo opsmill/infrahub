@@ -29,7 +29,8 @@ if TYPE_CHECKING:
 # ``computed_desc_python`` reads only TestCar.name via transform01.
 # ``computed_desc_python_opaque`` reads display_label via transform_opaque. The fields behind
 # that label cannot be named, so any change to TestCar recomputes it, while a change to a kind
-# its query never reaches does not.
+# its query never reaches does not. That holds because TestCar's label is built from its own
+# attributes; a label crossing a relationship recomputes on any schema change instead.
 PYTHON_CASES = [
     ScopedRecomputeCase(
         name="unrelated_field_skips_scoped_keeps_opaque",
