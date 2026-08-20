@@ -220,15 +220,17 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
 
-        # Both baselines have to be resolved here b/c rebasing moves the branch's branched_from
-        migration_baseline_schema: SchemaBranch | None = None
-        pre_rebase_schema: SchemaBranch | None = None
-        if user_branch.schema_differs_from_default_branch:
-            migration_baseline_schema = (await schema_analyzer.get_common_ancestor_schema()).duplicate()
-            pre_rebase_schema = registry.schema.get_schema_branch(name=user_branch.name).duplicate()
-
         migrations = []
         async with lock.registry.global_graph_lock():
+            # Both baselines are resolved under the lock and before the rebase: the common ancestor
+            # resolves against branched_from, which the rebase advances, and the rollback snapshot
+            # must not predate a schema update that landed while the pre-lock validation ran.
+            migration_baseline_schema: SchemaBranch | None = None
+            pre_rebase_schema: SchemaBranch | None = None
+            if user_branch.schema_differs_from_default_branch:
+                migration_baseline_schema = (await schema_analyzer.get_common_ancestor_schema()).duplicate()
+                pre_rebase_schema = registry.schema.get_schema_branch(name=user_branch.name).duplicate()
+
             async with db.start_transaction() as dbt:
                 await user_branch.rebase(db=dbt, user_id=context.account.account_id, at=rebase_at)
                 log.info("Branch graph rebased")
