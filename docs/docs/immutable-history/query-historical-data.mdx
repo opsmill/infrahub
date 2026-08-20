@@ -210,8 +210,8 @@ intervals.
 
 ## Understand branch history limits
 
-Each branch has an earliest timestamp you can query. If the requested time is earlier than the
-history available to that branch, Infrahub rejects the query rather than returning partial data.
+You can query a branch back to the point where its history begins. If you request a time earlier
+than that, Infrahub rejects the query rather than returning partial data.
 
 When you create a branch, Infrahub records where it diverged rather than copying the entire dataset.
 You can query the history available through the default branch, plus the changes recorded on the
