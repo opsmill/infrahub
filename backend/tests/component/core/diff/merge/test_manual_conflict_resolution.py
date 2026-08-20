@@ -19,9 +19,9 @@ from infrahub.core.metadata.query.node_metadata import NodeMetadataDefaultBranch
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from infrahub.exceptions import NodeNotFoundError
 from tests.component.core.diff.get_one_node import get_one_diff_node
-from tests.helpers.db_validation import verify_graph
 
 from .conftest import get_diff_coordinator, get_diff_merger
 

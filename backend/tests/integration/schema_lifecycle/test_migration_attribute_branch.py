@@ -12,7 +12,7 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 from infrahub.exceptions import InitializationError
 from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 
@@ -396,7 +396,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert {"name": "firstname", "value": "Jane"} in janes_event["attributes"]
         assert {"name": "description", "value": "The famous Jane Doe"} in janes_event["attributes"]
 
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)
 
     async def test_merge(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset: dict[str, str]) -> None:
         branch = await client.branch.merge(branch_name=self.branch1.name)
@@ -420,8 +420,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert not hasattr(jane, "name")
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)
 
 
 QUERY_EVENT = """

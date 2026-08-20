@@ -161,9 +161,11 @@ const sidebars: SidebarsConfig = {
           label: 'IPAM',
           link: { type: 'doc', id: 'ipam/overview' },
           items: [
-            'ipam/ip-namespaces',
-            'ipam/building-your-schema',
-            'ipam/automate-with-resource-manager',
+            'ipam/build-your-ipam-schema',
+            'ipam/use-namespaces',
+            'ipam/allocate-ips-and-prefixes',
+            'ipam/query-ipam-data',
+            'ipam/plan-changes-on-a-branch',
           ],
         },
         {
@@ -491,6 +493,7 @@ const sidebars: SidebarsConfig = {
             },
             // Managing API Tokens (PR 14)
             { type: 'doc', id: 'deploy-manage/user-management/managing-api-tokens', label: 'Managing API tokens' },
+            { type: 'doc', id: 'deploy-manage/user-management/managing-preferences', label: 'Managing preferences' },
           ],
         },
       ],

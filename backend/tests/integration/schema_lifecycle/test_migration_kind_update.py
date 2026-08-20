@@ -1,3 +1,4 @@
+import copy
 from typing import Any
 
 import pytest
@@ -9,17 +10,22 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 from infrahub.exceptions import SchemaNotFoundError
-from tests.helpers.db_validation import verify_no_duplicate_paths
 
 from ..shared import load_schema
 from .shared import TestSchemaLifecycleBase
 
 GENERIC_KIND = "TestingGeneric"
+GENERIC_TWO_KIND = "TestingGenericTwo"
 SPECIFIC_ONE_KIND = "TestingSpecificOne"
 SPECIFIC_ONE_KIND_UPDATED = "TestingSpecificOneNew"
 THING_KIND = "TestingThing"
+PROFILE_KIND = f"Profile{SPECIFIC_ONE_KIND}"
+PROFILE_KIND_UPDATED = f"Profile{SPECIFIC_ONE_KIND_UPDATED}"
+TEMPLATE_KIND = f"Template{SPECIFIC_ONE_KIND}"
+TEMPLATE_KIND_UPDATED = f"Template{SPECIFIC_ONE_KIND_UPDATED}"
+TEMPLATE_GENERIC_TWO_KIND = f"Template{GENERIC_TWO_KIND}"
 BRANCH_ONE = "branch-one"
 
 
@@ -73,6 +79,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
             "name": "SpecificOne",
             "namespace": "Testing",
             "inherit_from": ["TestingGeneric"],
+            "generate_template": True,
         }
 
     @pytest.fixture(scope="class")
@@ -119,11 +126,21 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         await deleted_specific_one.save(db=db)
         await deleted_specific_one.delete(db=db)
 
+        specific_one_profile = await Node.init(schema=PROFILE_KIND, db=db)
+        await specific_one_profile.new(db=db, profile_name="specific-one-profile", generic_attr_text="Profiled")
+        await specific_one_profile.save(db=db)
+
+        specific_one_template = await Node.init(schema=TEMPLATE_KIND, db=db)
+        await specific_one_template.new(db=db, template_name="specific-one-template", generic_attr_text="Templated")
+        await specific_one_template.save(db=db)
+
         return {
             "thing_one": thing_one,
             "thing_two": thing_two,
             "thing_three": thing_three,
             "specific_one": specific_one,
+            "specific_one_profile": specific_one_profile,
+            "specific_one_template": specific_one_template,
         }
 
     @pytest.fixture(scope="class")
@@ -132,6 +149,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
             "name": "SpecificOneNew",
             "namespace": "Testing",
             "inherit_from": ["TestingGeneric"],
+            "generate_template": True,
         }
 
     @pytest.fixture(scope="class")
@@ -145,6 +163,33 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
             "version": "1.0",
             "generics": [schema_generic_base],
             "nodes": [schema_specific_one_new_kind, schema_thing],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_generic_two(self) -> dict[str, Any]:
+        return {
+            "name": "GenericTwo",
+            "namespace": "Testing",
+            "attributes": [
+                {"name": "generic_two_attr", "kind": "Text", "optional": True},
+            ],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_step_04(
+        self,
+        schema_generic_base: dict[str, Any],
+        schema_generic_two: dict[str, Any],
+        schema_specific_one_new_kind: dict[str, Any],
+        schema_thing: dict[str, Any],
+    ) -> dict[str, Any]:
+        """The renamed kind starts inheriting a second generic, which brings its own object template."""
+        specific_one = copy.deepcopy(schema_specific_one_new_kind)
+        specific_one["inherit_from"] = [GENERIC_KIND, GENERIC_TWO_KIND]
+        return {
+            "version": "1.0",
+            "generics": [schema_generic_base, schema_generic_two],
+            "nodes": [specific_one, schema_thing],
         }
 
     @pytest.fixture(scope="class")
@@ -196,6 +241,12 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         specific_ones = await registry.manager.query(db=db, schema=SPECIFIC_ONE_KIND)
         assert len(specific_ones) == 1
 
+        profiles = await registry.manager.query(db=db, schema=PROFILE_KIND)
+        assert [profile.id for profile in profiles] == [initial_dataset["specific_one_profile"].id]
+
+        templates = await registry.manager.query(db=db, schema=TEMPLATE_KIND)
+        assert [template.id for template in templates] == [initial_dataset["specific_one_template"].id]
+
     async def test_step02_check_change_node_kind(
         self,
         db: InfrahubDatabase,
@@ -216,7 +267,22 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         assert response == {
             "diff": {
                 "added": {},
-                "changed": {SPECIFIC_ONE_KIND_UPDATED: {"added": {}, "changed": {"name": None}, "removed": {}}},
+                "changed": {
+                    SPECIFIC_ONE_KIND_UPDATED: {
+                        "added": {},
+                        "changed": {
+                            "name": None,
+                            # the object_template relationship points at the generated template kind,
+                            # whose name is derived from this kind and so is renamed alongside it
+                            "relationships": {
+                                "added": {},
+                                "changed": {"object_template": {"added": {}, "changed": {"peer": None}, "removed": {}}},
+                                "removed": {},
+                            },
+                        },
+                        "removed": {},
+                    }
+                },
                 "removed": {},
             },
             "warnings": [],
@@ -253,6 +319,35 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         updated_specific_one_schema = updated_schema_branch.get(name=SPECIFIC_ONE_KIND_UPDATED, duplicate=False)
         main_specific_one_schema = registry.schema.get(name=SPECIFIC_ONE_KIND, branch=branch_one, duplicate=False)
         assert updated_specific_one_schema.get_id() == main_specific_one_schema.get_id()
+
+    async def test_step02_generated_kinds_follow_the_rename(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, Node],
+        branch_one: Branch,
+        specific_one_update_01: Node,
+    ) -> None:
+        """The Profile/Template instances created before the rename must answer to the renamed kinds."""
+        profiles = await registry.manager.query(db=db, branch=branch_one, schema=PROFILE_KIND_UPDATED)
+        assert [profile.id for profile in profiles] == [initial_dataset["specific_one_profile"].id]
+
+        templates = await registry.manager.query(db=db, branch=branch_one, schema=TEMPLATE_KIND_UPDATED)
+        assert [template.id for template in templates] == [initial_dataset["specific_one_template"].id]
+
+        retrieved_profile = await NodeManager.get_one(
+            db=db, branch=branch_one, id=initial_dataset["specific_one_profile"].id
+        )
+        assert retrieved_profile.get_kind() == PROFILE_KIND_UPDATED
+
+        retrieved_template = await NodeManager.get_one(
+            db=db, branch=branch_one, id=initial_dataset["specific_one_template"].id
+        )
+        assert retrieved_template.get_kind() == TEMPLATE_KIND_UPDATED
+
+        # the default branch keeps the pre-rename kinds until the branch is merged
+        main_profiles = await registry.manager.query(db=db, schema=PROFILE_KIND)
+        assert [profile.id for profile in main_profiles] == [initial_dataset["specific_one_profile"].id]
 
     async def test_step02_update_migrated_node(
         self,
@@ -316,7 +411,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         new_kind = schema_specific_one_new_kind["namespace"] + schema_specific_one_new_kind["name"]
         errors = await self.validate_duplicate_nodes(db=db, kind_update_map={old_kind: new_kind})
         assert errors == []
-        await verify_no_duplicate_paths(db=db)
+        await verify_graph(db=db)
 
         retrieved_specific_one = await NodeManager.get_one(
             db=db, branch=default_branch, id=initial_dataset["specific_one"].id
@@ -329,6 +424,37 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         assert len(updated_things_rels) == 1
         assert retrieved_things_rels[0].get_peer_id() == updated_things_rels[0].get_peer_id()
 
+    async def test_step03_generated_kinds_follow_the_merge(
+        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: dict[str, Node]
+    ) -> None:
+        """After the merge the renamed generated kinds are the ones answering on the default branch."""
+        profiles = await registry.manager.query(db=db, branch=default_branch, schema=PROFILE_KIND_UPDATED)
+        assert [profile.id for profile in profiles] == [initial_dataset["specific_one_profile"].id]
+
+        templates = await registry.manager.query(db=db, branch=default_branch, schema=TEMPLATE_KIND_UPDATED)
+        assert [template.id for template in templates] == [initial_dataset["specific_one_template"].id]
+
+    async def test_step04_template_joins_newly_inherited_generic(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        client: InfrahubClient,
+        initial_dataset: dict[str, Node],
+        schema_step_04: dict[str, Any],
+    ) -> None:
+        """A template created before its kind inherited a generic must join that generic's template kind."""
+        response = await client.schema.load(schemas=[schema_step_04])
+        assert not response.errors
+
+        templates = await registry.manager.query(db=db, branch=default_branch, schema=TEMPLATE_GENERIC_TWO_KIND)
+        assert [template.id for template in templates] == [initial_dataset["specific_one_template"].id]
+
+        # the node itself joins the new generic too, and its profile is unaffected by inheritance
+        specifics = await registry.manager.query(db=db, branch=default_branch, schema=GENERIC_TWO_KIND)
+        assert [specific.id for specific in specifics] == [initial_dataset["specific_one"].id]
+
+        profiles = await registry.manager.query(db=db, branch=default_branch, schema=PROFILE_KIND_UPDATED)
+        assert [profile.id for profile in profiles] == [initial_dataset["specific_one_profile"].id]
+
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)
