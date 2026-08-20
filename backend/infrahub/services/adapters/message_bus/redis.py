@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import ssl
 import time
 from dataclasses import dataclass
 from fnmatch import fnmatch
@@ -203,8 +204,6 @@ class RedisMessageBus(InfrahubMessageBus):
         """Initialize Redis connection and streams."""
         ssl_context = None
         if self.settings.tls_enabled:
-            import ssl
-
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
             if self.settings.tls_ca_file:
                 ssl_context.load_verify_locations(cafile=self.settings.tls_ca_file)

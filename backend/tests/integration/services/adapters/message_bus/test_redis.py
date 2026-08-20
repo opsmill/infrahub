@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import ssl
 import time
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -95,8 +96,6 @@ class RedisManager:
         if self._connection is None:
             ssl_context = None
             if self.settings.tls_enabled:
-                import ssl
-
                 ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
                 if self.settings.tls_ca_file:
                     ssl_context.load_verify_locations(cafile=self.settings.tls_ca_file)
