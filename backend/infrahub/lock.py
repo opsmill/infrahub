@@ -318,7 +318,7 @@ class InfrahubLockRegistry:
         if not local_only:
             if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
                 # Imported lazily to avoid a startup import cycle through the services package.
-                from infrahub.services.adapters.cache.connection import build_redis_connection
+                from infrahub.services.adapters.cache.connection import build_redis_connection  # noqa: PLC0415
 
                 self.connection = build_redis_connection(config.SETTINGS.cache)
             else:
