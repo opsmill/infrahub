@@ -49,8 +49,10 @@ pnpm test:coverage
 
 ### E2E tests
 
+E2E tests live in `tests/e2e/` at the repository root and run from there:
+
 ```shell
-pnpm test:e2e
+uv run pytest -c tests/e2e/pytest.ini tests/e2e
 ```
 
 All tests should succeed. For more information on testing, read [Running & Writing Tests](testing-guidelines.mdx).

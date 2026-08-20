@@ -41,7 +41,6 @@ cd frontend/app && pnpm install       # Install frontend dependencies
 uv run invoke backend.test-unit       # Backend unit tests
 uv run invoke backend.test-integration # Backend integration tests
 cd frontend/app && pnpm test          # Frontend unit tests
-cd frontend/app && pnpm test:e2e      # Frontend E2E tests (legacy TS suite)
 uv run pytest -c tests/e2e/pytest.ini tests/e2e  # E2E tests (pytest, testcontainers)
 ```
 

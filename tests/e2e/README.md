@@ -1,8 +1,9 @@
 <!-- markdownlint-disable MD013 -->
 # Infrahub e2e suite (pytest-playwright + infrahub-testcontainers)
 
-This is the Python e2e suite that is replacing the legacy TypeScript Playwright
-suite (`frontend/app/tests/e2e/`). It drives the same browser flows with
+This is the Python e2e suite that replaced the legacy TypeScript Playwright
+suite (formerly `frontend/app/tests/e2e/`, removed once this suite reached
+parity). It drives the same browser flows with
 [`pytest-playwright`](https://playwright.dev/python/docs/test-runners) but:
 
 - spins up Infrahub with **infrahub-testcontainers** instead of

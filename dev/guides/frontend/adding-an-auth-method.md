@@ -19,7 +19,7 @@ The steps below use LDAP as the running example.
 - [ ] Register the method in `AUTH_METHODS`
 - [ ] Add tests for the new `resolve` branch and any new render logic
 - [ ] Update or add a `LoginErrorCode` if the method needs a distinct error message
-- [ ] Run `pnpm biome:fix && pnpm test && pnpm test:e2e -- login`
+- [ ] Run `pnpm biome:fix && pnpm test`, then the login e2e tests (see step 7)
 
 ## 1. Extend the `AuthMethod` union
 
@@ -203,7 +203,7 @@ Resist adding bespoke error mappers per-method. The shared classifier is what ke
 ```bash
 cd frontend/app && pnpm biome:fix
 cd frontend/app && pnpm test
-cd frontend/app && pnpm test:e2e -- login
+uv run pytest -c tests/e2e/pytest.ini tests/e2e/test_login.py  # from the repo root
 ```
 
 Run a manual smoke test of the picker in `pnpm dev`: confirm (a) the toggle shows when the method is enabled, (b) it hides when disabled, (c) the last-used selection persists across reloads.

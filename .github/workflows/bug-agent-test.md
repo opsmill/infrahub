@@ -176,7 +176,7 @@ guidelines relevant to the bug:
 - Frontend bugs -- read ALL of these:
   - `dev/guides/frontend/writing-unit-tests.md`
   - `dev/guides/frontend/writing-component-tests.md`
-  - `dev/guides/frontend/writing-e2e-tests.md`
+  - `tests/e2e/README.md` (E2E, pytest-playwright)
 
 ### Step 2: Read conftest files
 
@@ -206,7 +206,7 @@ Use the "When to use" / "When NOT to use" guidance in
   functional (`backend/tests/functional/`), integration docker (`backend/tests/integration_docker/`).
   Use existing schema fixtures and helpers when available.
 - **Frontend:** Vitest for unit/component tests (colocated with source as `.test.ts`),
-  Playwright for E2E (`frontend/app/tests/e2e/`).
+  pytest-playwright for E2E (`tests/e2e/` at the repo root, see its README).
   Use BDD GIVEN/WHEN/THEN structure. Use factories from `tests/fake/`.
 
 ### Step 6: Write the test
