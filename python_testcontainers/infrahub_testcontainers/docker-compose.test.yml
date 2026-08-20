@@ -17,7 +17,10 @@ services:
       RABBITMQ_DEFAULT_USER: infrahub
       RABBITMQ_DEFAULT_PASS: infrahub
     healthcheck:
-      test: rabbitmq-diagnostics -q check_port_connectivity
+      # raw TCP probe instead of rabbitmq-diagnostics: each diagnostics call
+      # boots a full Erlang VM (~2s CPU), which at a 1s interval pegs two
+      # cores per broker for the life of the stack
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/5672"]
       interval: 1s
       timeout: 1s
       retries: 50

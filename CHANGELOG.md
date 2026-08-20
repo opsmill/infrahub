@@ -584,6 +584,13 @@ docker compose restart
   - Restructured the node stages of `development/Dockerfile` (shared node base, frontend, docs) with BuildKit cache mounts, enabling parallel builds and much better layer-cache reuse; `pnpm install` only re-runs when a manifest changes.
 - Significantly reduced the size of the Infrahub container image: the build toolchain now lives in a dedicated build stage that is excluded from the runtime image, and the `numpy` and `pyarrow` dependencies are no longer installed by default (`pyarrow` remains available via the `object-transfer` extra for `infrahubctl object load`).
 
+## [Infrahub - v1.10.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.9) - 2026-08-19
+
+### Fixed
+
+- Fixed a crash when loading the Tasks page where a task was tagged with a related node whose kind could no longer be resolved (for example a deleted definition or a stale tag). Such unresolvable related nodes are now omitted from the task instead of causing a GraphQL resolver error. ([#9662](https://github.com/opsmill/infrahub/issues/9662))
+- Renaming an attribute in a schema on a branch now correctly closes the old attribute instead of only opening a newer path to the new attribute. This issue would have been mostly invisible to the user unless an attribute was renamed on a user's branch and that branch was then rebased, in which case there could be duplicated paths to the new attribute which could result in unexpected behavior when updating its value.
+
 ## [Infrahub - v1.10.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.8) - 2026-08-14
 
 ### Fixed
