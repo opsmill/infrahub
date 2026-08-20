@@ -26,6 +26,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from tests.component.core.migrations.schema.metadata_helpers import (
     VertexMetadata,
     branch_edge_fingerprint,
@@ -34,7 +35,6 @@ from tests.component.core.migrations.schema.metadata_helpers import (
     get_node_vertex_metadata,
 )
 from tests.db_snapshot import DbSnapshotter
-from tests.helpers.db_validation import verify_graph
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 
 
@@ -126,6 +126,81 @@ async def test_query_branch1(
 
     assert await count_nodes(db=db, label="Attribute") == count_attr_node + 3
     assert await count_relationships(db=db) == count_rels + 18
+
+
+async def _get_has_attribute_edges(
+    db: InfrahubDatabase, node_uuid: str, attr_name: str, branch_name: str
+) -> list[tuple[str, bool]]:
+    """Return (status, is_closed) for every HAS_ATTRIBUTE edge to ``attr_name`` written on ``branch_name``."""
+    records = await db.execute_query(
+        query=(
+            "MATCH (n:Node {uuid: $node_uuid})-[r:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name}) "
+            "WHERE r.branch = $branch_name "
+            "RETURN r.status AS status, r.to IS NOT NULL AS is_closed ORDER BY status"
+        ),
+        params={"node_uuid": node_uuid, "attr_name": attr_name, "branch_name": branch_name},
+    )
+    return [(record.get("status"), record.get("is_closed")) for record in records]
+
+
+async def test_query_branch1_node_created_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, person_john_main: Node
+) -> None:
+    """A rename must close the old-name edge it owns, instead of shadowing it with a deleted edge.
+
+    A node created on the branch holds its HAS_ATTRIBUTE edge on that same branch, so the rename can end
+    it directly. Leaving it open and adding a deleted edge beside it puts two conflicting edges for one
+    attribute on one branch.
+    """
+    branch1 = await create_branch(db=db, branch_name="branch1", isolated=True)
+
+    car = await Node.init(db=db, schema="TestCar", branch=branch1)
+    await car.new(db=db, name="branch-car", nbr_seats=4, is_electric=False, owner=person_john_main.id)
+    await car.save(db=db)
+
+    schema = registry.schema.get_schema_branch(name=branch1.name)
+    prev_car_schema = schema.get(name="TestCar")
+    prev_attr = prev_car_schema.get_attribute(name="color")
+    prev_attr.id = str(uuid.uuid4())
+    candidate_schema = schema.duplicate()
+    new_car_schema = candidate_schema.get(name="TestCar")
+    new_attr = new_car_schema.get_attribute(name="color")
+    new_attr.name = "new-color"
+    new_attr.id = prev_attr.id
+
+    migration = AttributeNameUpdateMigration(
+        previous_node_schema=prev_car_schema,
+        new_node_schema=new_car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="new-color"),
+    )
+    query = await AttributeNameUpdateMigrationQuery01.init(db=db, branch=branch1, migration=migration)
+    await query.execute(db=db)
+
+    assert await _get_has_attribute_edges(db=db, node_uuid=car.id, attr_name="color", branch_name=branch1.name) == [
+        ("active", True)
+    ]
+    assert await _get_has_attribute_edges(db=db, node_uuid=car.id, attr_name="new-color", branch_name=branch1.name) == [
+        ("active", False)
+    ]
+    await verify_graph(db=db)
+
+    count_attr_node_after = await count_nodes(db=db, label="Attribute")
+    count_rels_after = await count_relationships(db=db)
+
+    # Re-execute the query once to ensure that it won't change anything
+    query = await AttributeNameUpdateMigrationQuery01.init(db=db, branch=branch1, migration=migration)
+    await query.execute(db=db)
+    assert query.get_nbr_migrations_executed() == 0
+
+    assert await count_nodes(db=db, label="Attribute") == count_attr_node_after
+    assert await count_relationships(db=db) == count_rels_after
+    assert await _get_has_attribute_edges(db=db, node_uuid=car.id, attr_name="color", branch_name=branch1.name) == [
+        ("active", True)
+    ]
+    assert await _get_has_attribute_edges(db=db, node_uuid=car.id, attr_name="new-color", branch_name=branch1.name) == [
+        ("active", False)
+    ]
+    await verify_graph(db=db)
 
 
 async def test_migration(

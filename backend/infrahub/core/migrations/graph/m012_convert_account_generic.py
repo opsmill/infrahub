@@ -113,14 +113,15 @@ class Migration012AddLabelData(NodeDuplicateQuery):
 
         kwargs.pop("branch", None)
 
-        super().__init__(new_node=new_node, previous_node=previous_node, branch=branch, **kwargs)
+        super().__init__(kind_updates_map={previous_node.kind: new_node}, branch=branch, **kwargs)
 
     def render_match(self) -> str:
-        return f"""
+        return """
         // Find all the active nodes
-        MATCH (node:{self.previous_node.kind})
+        MATCH (node:%(previous_kinds)s)
         WHERE NOT "CoreGenericAccount" IN LABELS(node)
-        """
+        WITH node, $kind_map[node.kind] AS target
+        """ % {"previous_kinds": self.previous_kinds}
 
 
 class Migration012RenameTypeAttributeSchema(SchemaAttributeUpdateQuery):

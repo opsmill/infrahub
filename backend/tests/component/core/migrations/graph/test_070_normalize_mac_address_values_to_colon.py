@@ -13,7 +13,7 @@ from infrahub.core.migrations.graph.m070_normalize_mac_address_values_to_colon i
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
-from tests.helpers.db_validation import verify_graph
+from infrahub.database.validation import verify_graph
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:

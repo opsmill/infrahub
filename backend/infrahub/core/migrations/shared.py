@@ -120,6 +120,14 @@ def _should_propagate(db: InfrahubDatabase, exc: BaseException) -> bool:
     return db.is_transaction and is_retriable_db_error(exc)
 
 
+class DerivedSchemaPair(BaseModel):
+    """A Profile or Template schema generated from a node, before and after a schema update."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    previous: MainSchemaTypes
+    new: MainSchemaTypes
+
+
 class SchemaMigration(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., description="Name of the migration")
@@ -129,6 +137,10 @@ class SchemaMigration(BaseModel):
 
     new_node_schema: MainSchemaTypes | None = None
     previous_node_schema: MainSchemaTypes | None = None
+    derived_schemas: list[DerivedSchemaPair] = Field(
+        default_factory=list,
+        description="Profile/Template schemas generated from the node",
+    )
     schema_path: SchemaPath
 
     async def execute_pre_queries(

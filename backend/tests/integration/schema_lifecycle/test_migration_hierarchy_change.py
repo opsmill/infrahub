@@ -9,7 +9,7 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 from tests.helpers.test_app import TestInfrahubApp
 
 PERSON_KIND = "TestingPerson"
@@ -198,5 +198,4 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         assert site_schema.children == ""  # noqa: PLC1901
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)

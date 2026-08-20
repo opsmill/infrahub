@@ -21,8 +21,8 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
+from infrahub.database.validation import verify_graph
 from infrahub.dependencies.registry import get_component_registry
-from tests.helpers.db_validation import verify_no_duplicate_paths
 
 from .get_one_node import get_one_diff_node
 
@@ -96,4 +96,4 @@ class TestDiffAndMergeAgnosticNodeAwareAttr:
             f"after merge, got '{updated_repo.get_attribute('ref').value}'"
         )
 
-        await verify_no_duplicate_paths(db=db)
+        await verify_graph(db=db)

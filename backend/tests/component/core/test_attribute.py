@@ -26,9 +26,9 @@ from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
-from tests.helpers.db_validation import verify_no_duplicate_paths
 
 
 async def test_init(
@@ -778,7 +778,7 @@ async def test_attribute_properties_and_metadata_on_branch(
         updated_by="fourth-update",
     )
 
-    await verify_no_duplicate_paths(db=db)
+    await verify_graph(db=db)
 
 
 async def test_attribute_value_and_metadata_on_branch(
@@ -958,7 +958,7 @@ async def test_attribute_value_and_metadata_on_branch(
         updated_by="second-update",
     )
 
-    await verify_no_duplicate_paths(db=db)
+    await verify_graph(db=db)
 
 
 async def test_attribute_is_protected_flag_and_metadata_on_branch(
@@ -1144,7 +1144,7 @@ async def test_attribute_is_protected_flag_and_metadata_on_branch(
         updated_by="second-update",
     )
 
-    await verify_no_duplicate_paths(db=db)
+    await verify_graph(db=db)
 
 
 async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branch: Branch) -> None:

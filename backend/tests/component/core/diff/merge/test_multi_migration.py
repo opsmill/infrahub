@@ -22,8 +22,8 @@ from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError
-from tests.helpers.db_validation import verify_graph
 from tests.node_creation import create_and_save
 
 from .conftest import get_diff_coordinator, get_diff_merger
