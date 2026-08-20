@@ -5,9 +5,9 @@ title: Query historical data
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Infrahub lets you query infrastructure data at previous points in time and compare how it changed
-between them. Use queries with a timestamp to investigate incidents, verify changes during a period,
-answer audit questions, and inspect how objects and relationships differed at an earlier time.
+You can query infrastructure data at previous points in time and compare how it changed between
+them. Use queries with a timestamp to investigate incidents, verify changes during a period, answer
+audit questions, and inspect how objects and relationships differed at an earlier time.
 
 To query a specific point, specify a branch and timestamp. Infrahub returns the values and
 relationships that were valid at that time through the same interfaces you use for current data. To
@@ -39,6 +39,13 @@ Infrahub can return those versions because changes create new attribute values a
 versions instead of replacing the previous ones. History is tracked per attribute and relationship,
 so a comparison can identify the specific fields or connections that changed, including the previous
 values.
+
+The schema is evaluated for the same point in time. If the schema changed after the timestamp you
+request, Infrahub loads the schema as it was then, so the query sees the attributes and relationships
+that existed at that point rather than the current ones.
+
+A timestamp applies to reads only. If a query document contains a mutation, Infrahub ignores the
+timestamp and applies the mutation at the current time.
 
 Later changes do not modify versions that were already recorded. See [Immutable
 history](./overview.mdx) for more detail on how Infrahub preserves those versions and how immutable
@@ -115,7 +122,10 @@ at a specific time. `all()`, `get()`, and `filters()` take a `Timestamp`; `execu
 accepts a string.
 
 ```python
+from infrahub_sdk import InfrahubClient
 from infrahub_sdk.timestamp import Timestamp
+
+client = InfrahubClient(address="http://localhost:8000")
 
 device = await client.get(
     kind="InfraDevice",

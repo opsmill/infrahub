@@ -14,7 +14,8 @@ Infrahub returns the values and relationships that were valid at that time.
 
 - Query objects and relationships as they existed at a specific point in time.
 - Compare two timestamps to identify which objects, attributes, or relationships changed.
-- Trace each change to the account that made it and the time it happened.
+- Trace a change to the account that made it and the time it happened, through [object
+  metadata](../objects/metadata.mdx).
 - Preserve the history available before a branch was created while recording changes made on that
   branch.
 - Use previous infrastructure data for troubleshooting, audits, security investigations, and
@@ -52,6 +53,10 @@ between two timestamps.
 Relationships are versioned as well. A query for a specific timestamp therefore returns both the
 attribute values and the object relationships that were valid at that time. This is important for
 topology and dependency questions where the connections between objects are part of the answer.
+
+The schema is versioned the same way. If the schema changed after the timestamp you request,
+Infrahub loads the schema as it was at that point, so the query sees the attributes and
+relationships the schema defined then rather than the ones it defines now.
 
 A graph that stores validity times for both its values and its relationships is a **temporal
 graph**. The period during which each value and connection applied is part of the stored data, which
