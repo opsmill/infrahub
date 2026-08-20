@@ -10,12 +10,8 @@ from prefect.logging import get_run_logger
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations import MIGRATION_MAP
-<<<<<<< HEAD
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
-from infrahub.core.migrations.shared import MigrationInput
-=======
 from infrahub.core.migrations.shared import DerivedSchemaPair, MigrationInput
->>>>>>> origin/stable
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
 from infrahub.core.timestamp import Timestamp
@@ -37,12 +33,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-<<<<<<< HEAD
-def split_migrations_by_phase(
-    migrations: Sequence[SchemaUpdateMigrationInfo],
-) -> tuple[list[SchemaUpdateMigrationInfo], list[SchemaUpdateMigrationInfo]]:
-    """Split migrations into (kind-update migrations, everything else), preserving relative order.
-=======
 def get_derived_schema_pairs(
     previous_schema_branch: SchemaBranch,
     new_schema_branch: SchemaBranch,
@@ -74,11 +64,10 @@ def get_derived_schema_pairs(
     return [pair for pair in pairs if pair is not None]
 
 
-@flow(name="schema_apply_migrations", flow_run_name="Apply schema migrations", persist_result=True)
-async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str]:
-    await add_branch_tag(branch_name=message.branch.name)
-    log = get_run_logger()
->>>>>>> origin/stable
+def split_migrations_by_phase(
+    migrations: Sequence[SchemaUpdateMigrationInfo],
+) -> tuple[list[SchemaUpdateMigrationInfo], list[SchemaUpdateMigrationInfo]]:
+    """Split migrations into (kind-update migrations, everything else), preserving relative order.
 
     Kind-update migrations duplicate node vertices with a new label set. Every other migration
     must only see the duplicated vertices, so the first group has to complete before the second

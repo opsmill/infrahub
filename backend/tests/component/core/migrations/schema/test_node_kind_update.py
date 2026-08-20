@@ -23,15 +23,11 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.node import NodeGetHierarchyQuery
-<<<<<<< HEAD
+from infrahub.core.query.rollback import RollbackScope
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import AttributeSchema, GenericSchema, MainSchemaTypes, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
-=======
-from infrahub.core.query.rollback import RollbackScope
-from infrahub.core.rollback import GraphRollbacker
-from infrahub.core.schema import SchemaRoot
->>>>>>> origin/stable
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
@@ -45,11 +41,7 @@ from tests.component.core.migrations.schema.metadata_helpers import (
 )
 from tests.constants import TestKind
 from tests.db_snapshot import DbSnapshotter
-<<<<<<< HEAD
-from tests.helpers.db_validation import validate_node_relationships, verify_graph, verify_no_duplicate_paths
-=======
 from tests.helpers.db_validation import validate_node_relationships
->>>>>>> origin/stable
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 from tests.helpers.schema import LOCATION_SCHEMA, load_schema
 
@@ -442,9 +434,92 @@ async def _assert_migration_metadata(db: InfrahubDatabase, update: _NodeKindUpda
             "migration_time": update.migration_time.to_string(),
         },
     )
-<<<<<<< HEAD
-    assert len(results) == 1, "Expected exactly one deleted edge on old node"
-    assert results[0]["from_user_id"] == test_user_id
+    assert len(old_edge_results) == 1, "Expected exactly one deleted edge on old node"
+    assert old_edge_results[0]["from_user_id"] == update.user_id
+
+    original_after = await _get_original_car_metadata(db=db, node_uuid=update.node_id, branch_name=update.branch.name)
+    if update.branch.is_default or update.branch.is_global:
+        # The kind change replaces the node with a new vertex; the original (now deleted) vertex keeps the
+        # pre-migration snapshot so a merge-failure rollback can restore it after deleting the new one.
+        assert original_after.updated_at == update.migration_time.to_string()
+        assert original_after.updated_by == update.user_id
+        assert original_after.previous_updated_at == update.node_before.updated_at
+        assert original_after.previous_updated_by == update.node_before.updated_by
+    else:
+        # A user-branch migration leaves the shared vertex untouched and records no snapshot.
+        assert original_after.previous_updated_at is None
+        assert original_after.previous_updated_by is None
+
+
+class TestNodeKindUpdateMetadata:
+    """On the default branch, updating a node's kind snapshots vertex metadata and a rollback restores it.
+
+    A class-scoped fixture runs the migration once; the metadata and rollback tests share it and run in
+    order (the rollback test reverts the state the metadata test observed).
+    """
+
+    @pytest.fixture(scope="class")
+    async def update(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+        car_person_schema_scope_class: SchemaBranch,
+    ) -> _NodeKindUpdate:
+        person = await Node.init(db=db, schema="TestPerson", branch=default_branch_scope_class)
+        await person.new(db=db, name="John", height=180)
+        await person.save(db=db)
+        car = await Node.init(db=db, schema="TestCar", branch=default_branch_scope_class)
+        await car.new(db=db, name="accord", nbr_seats=5, is_electric=False, owner=person.id)
+        await car.save(db=db)
+
+        return await _run_node_kind_update_migration(db=db, branch=default_branch_scope_class, node_uuid=car.id)
+
+    async def test_migration_metadata(self, db: InfrahubDatabase, update: _NodeKindUpdate) -> None:
+        """The kind change bumps updated_at/by on the surviving original vertex and snapshots the prior values."""
+        await _assert_migration_metadata(db=db, update=update)
+
+    async def test_migration_rollback(self, db: InfrahubDatabase, update: _NodeKindUpdate) -> None:
+        """A range rollback undoes the migration: the branch edges and vertex metadata are restored, idempotently."""
+
+        async def _run_rollback() -> None:
+            await GraphRollbacker(db=db).rollback(
+                target_branch=update.branch,
+                at=update.migration_time,
+                scope=RollbackScope.SINCE_TIMESTAMP,
+                restore_metadata=True,
+            )
+
+        await _run_rollback()
+        await verify_graph(db=db)
+
+        # The branch edges are restored exactly to their pre-migration state.
+        assert await branch_edge_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_fingerprint
+        assert await branch_metadata_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_metadata
+
+        # The rollback deletes the new Test2NewCar vertex and reopens the original, restoring its metadata.
+        node_after = await get_node_vertex_metadata(db=db, node_uuid=update.node_id)
+        assert node_after.updated_at == update.node_before.updated_at
+        assert node_after.updated_by == update.node_before.updated_by
+        assert node_after.previous_updated_at is None
+        assert node_after.previous_updated_by is None
+
+        # Running the rollback again is a no-op: nothing remains in the window to revert.
+        await _run_rollback()
+        await verify_graph(db=db)
+        assert await branch_edge_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_fingerprint
+        assert await branch_metadata_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_metadata
+        node_again = await get_node_vertex_metadata(db=db, node_uuid=update.node_id)
+        assert node_again == node_after
+
+
+async def test_migration_metadata_non_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node
+) -> None:
+    """On a user branch the kind change is reflected through edges but records no vertex-metadata snapshot."""
+    branch = await create_branch(branch_name="branch-kind-update-meta", db=db)
+    update = await _run_node_kind_update_migration(db=db, branch=branch, node_uuid=car_accord_main.id)
+    await _assert_migration_metadata(db=db, update=update)
 
 
 # -----------------------------------------------------------------------------
@@ -573,7 +648,7 @@ async def test_migration_newly_inherited_attributes(
     )
     assert [node.id for node in matches] == [car_camry.id]
 
-    await verify_no_duplicate_paths(db=db)
+    await verify_graph(db=db)
 
 
 async def test_migration_newly_inherited_numberpool(
@@ -772,91 +847,3 @@ async def test_migration_previous_schema_already_carrying_the_attributes_creates
     accord_repaired = await NodeManager.get_one(db=db, branch=default_branch, id=car.id)
     assert accord_repaired.get_attribute(name="audit_state").id is not None
     assert accord_repaired.get_attribute(name="audit_state").value == "unreviewed"
-=======
-    assert len(old_edge_results) == 1, "Expected exactly one deleted edge on old node"
-    assert old_edge_results[0]["from_user_id"] == update.user_id
-
-    original_after = await _get_original_car_metadata(db=db, node_uuid=update.node_id, branch_name=update.branch.name)
-    if update.branch.is_default or update.branch.is_global:
-        # The kind change replaces the node with a new vertex; the original (now deleted) vertex keeps the
-        # pre-migration snapshot so a merge-failure rollback can restore it after deleting the new one.
-        assert original_after.updated_at == update.migration_time.to_string()
-        assert original_after.updated_by == update.user_id
-        assert original_after.previous_updated_at == update.node_before.updated_at
-        assert original_after.previous_updated_by == update.node_before.updated_by
-    else:
-        # A user-branch migration leaves the shared vertex untouched and records no snapshot.
-        assert original_after.previous_updated_at is None
-        assert original_after.previous_updated_by is None
-
-
-class TestNodeKindUpdateMetadata:
-    """On the default branch, updating a node's kind snapshots vertex metadata and a rollback restores it.
-
-    A class-scoped fixture runs the migration once; the metadata and rollback tests share it and run in
-    order (the rollback test reverts the state the metadata test observed).
-    """
-
-    @pytest.fixture(scope="class")
-    async def update(
-        self,
-        db: InfrahubDatabase,
-        default_branch_scope_class: Branch,
-        register_core_models_schema_scope_class: SchemaBranch,
-        car_person_schema_scope_class: SchemaBranch,
-    ) -> _NodeKindUpdate:
-        person = await Node.init(db=db, schema="TestPerson", branch=default_branch_scope_class)
-        await person.new(db=db, name="John", height=180)
-        await person.save(db=db)
-        car = await Node.init(db=db, schema="TestCar", branch=default_branch_scope_class)
-        await car.new(db=db, name="accord", nbr_seats=5, is_electric=False, owner=person.id)
-        await car.save(db=db)
-
-        return await _run_node_kind_update_migration(db=db, branch=default_branch_scope_class, node_uuid=car.id)
-
-    async def test_migration_metadata(self, db: InfrahubDatabase, update: _NodeKindUpdate) -> None:
-        """The kind change bumps updated_at/by on the surviving original vertex and snapshots the prior values."""
-        await _assert_migration_metadata(db=db, update=update)
-
-    async def test_migration_rollback(self, db: InfrahubDatabase, update: _NodeKindUpdate) -> None:
-        """A range rollback undoes the migration: the branch edges and vertex metadata are restored, idempotently."""
-
-        async def _run_rollback() -> None:
-            await GraphRollbacker(db=db).rollback(
-                target_branch=update.branch,
-                at=update.migration_time,
-                scope=RollbackScope.SINCE_TIMESTAMP,
-                restore_metadata=True,
-            )
-
-        await _run_rollback()
-        await verify_graph(db=db)
-
-        # The branch edges are restored exactly to their pre-migration state.
-        assert await branch_edge_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_fingerprint
-        assert await branch_metadata_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_metadata
-
-        # The rollback deletes the new Test2NewCar vertex and reopens the original, restoring its metadata.
-        node_after = await get_node_vertex_metadata(db=db, node_uuid=update.node_id)
-        assert node_after.updated_at == update.node_before.updated_at
-        assert node_after.updated_by == update.node_before.updated_by
-        assert node_after.previous_updated_at is None
-        assert node_after.previous_updated_by is None
-
-        # Running the rollback again is a no-op: nothing remains in the window to revert.
-        await _run_rollback()
-        await verify_graph(db=db)
-        assert await branch_edge_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_fingerprint
-        assert await branch_metadata_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_metadata
-        node_again = await get_node_vertex_metadata(db=db, node_uuid=update.node_id)
-        assert node_again == node_after
-
-
-async def test_migration_metadata_non_default_branch(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node
-) -> None:
-    """On a user branch the kind change is reflected through edges but records no vertex-metadata snapshot."""
-    branch = await create_branch(branch_name="branch-kind-update-meta", db=db)
-    update = await _run_node_kind_update_migration(db=db, branch=branch, node_uuid=car_accord_main.id)
-    await _assert_migration_metadata(db=db, update=update)
->>>>>>> origin/stable

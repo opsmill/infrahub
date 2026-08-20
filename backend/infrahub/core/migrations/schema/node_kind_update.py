@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
-<<<<<<< HEAD
 
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.path import SchemaPath
-=======
->>>>>>> origin/stable
 
 from ..query import MigrationQuery
 from ..query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
@@ -15,12 +12,10 @@ from .node_attribute_add import NodeAttributeAddMigration
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.attribute_schema import AttributeSchema
 
     from ..query import MigrationBaseQuery
-
-if TYPE_CHECKING:
-    from infrahub.core.schema import MainSchemaTypes
 
 
 def _schema_node_info(schema: MainSchemaTypes) -> SchemaNodeInfo:
