@@ -47,7 +47,7 @@ that existed at that point rather than the current ones.
 A timestamp applies to reads only. If a query document contains a mutation, Infrahub ignores the
 timestamp and applies the mutation at the current time.
 
-Later changes do not modify versions that were already recorded. See [Immutable
+Once Infrahub records a version, a change made after it does not alter that version. See [Immutable
 history](./overview.mdx) for more detail on how Infrahub preserves those versions and how immutable
 history relates to branches and the Activity log.
 
