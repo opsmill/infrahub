@@ -49,7 +49,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'overview/next-steps', label: 'Next Steps' },
           ],
         },
-        { type: 'doc', id: 'overview/build-with-ai', label: 'Build with AI' },
+        { type: 'doc', id: 'overview/build-with-ai/index', label: 'Build with AI' },
         'faq/faq',
       ],
     },
