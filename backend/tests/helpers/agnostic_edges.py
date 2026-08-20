@@ -59,18 +59,9 @@ def edge_summary(edges: list[EdgeState]) -> list[tuple[str, str, str]]:
     return sorted((edge.edge_type, edge.status, edge.to_time or "") for edge in edges)
 
 
-def branch_summary(edges: list[EdgeState]) -> list[tuple[str, str, str]]:
-    """Order-independent view keyed on the branch, for the assertions where that is the point."""
-    return sorted((edge.branch, edge.status, edge.to_time or "") for edge in edges)
-
-
 def expected_closed_at(edges: list[EdgeState], at: Timestamp) -> list[tuple[str, str, str]]:
     """What `edge_summary` should return once every type present has been closed at `at`."""
     return sorted((edge_type, "active", at.to_string()) for edge_type in {edge.edge_type for edge in edges})
-
-
-def to_times(edges: list[EdgeState]) -> set[str | None]:
-    return {edge.to_time for edge in edges}
 
 
 async def attribute_global_edges(db: InfrahubDatabase, node_id: str, attribute_name: str) -> list[EdgeState]:
