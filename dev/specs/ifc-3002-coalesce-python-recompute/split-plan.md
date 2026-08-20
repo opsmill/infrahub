@@ -30,7 +30,7 @@ the same timing metric moved between 62.9 s and 121.0 s across identical runs on
 
 Each targets the previous branch. Risk is concentrated in PR4, which is deliberately tiny.
 
-### PR 1 (IFC-3016) — Shared plumbing and the switch. No behaviour change.
+### PR 1 (IFC-3016) — The shared subscriber lookup. Pure refactor.
 
 - `3e639d017` share the query-group subscriber lookup
 - The `whole_kind` field on `AffectedTarget` and its handling in `plan()`, plus the
@@ -38,6 +38,18 @@ Each targets the previous branch. Risk is concentrated in PR4, which is delibera
 - The feature switch in `config.py`, with `253ced50a` squashed in for `schema/openapi.json` and the
   generated configuration page.
 - `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/` from `96a227dd6` and `de94c326b`.
+
+**Scope cut again, deliberately.** PR1 is now the subscriber lookup and nothing else. The feature
+switch, the four generated files it made stale, the spec folder and the `whole_kind` flag all moved
+out. A reviewer sees one question: do the two call sites still ask the same thing.
+
+Dropping the switch also removed two CI jobs from the PR's surface. `codegen:openapi` and
+`release.validate-dockercomposeenv` only fire because a `config.py` setting changed, and both had
+failed on the first attempt.
+
+`whole_kind` and its test go to PR2, with the resolver that widens. The spec folder and the switch
+go to whichever PR first needs them, which is PR2 for the switch's default and PR4 for the
+measurements.
 
 **Boundary moved after review.** The `python_attribute` family literal and its submission routing
 started in PR1 and were moved to PR3. The routing passes `coalesced` and `recompute_depth`, and the
