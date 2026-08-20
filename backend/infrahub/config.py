@@ -556,7 +556,7 @@ class CacheSettings(BaseSettings):
                 f"remove: {', '.join(sorted(explicit))}"
             )
         # Imported lazily to keep this low-level settings module free of the services package.
-        from infrahub.services.adapters.cache.connection import parse_redis_url
+        from infrahub.services.adapters.cache.connection import parse_redis_url  # noqa: PLC0415
 
         try:
             parse_redis_url(self.url.get_secret_value())
