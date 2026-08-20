@@ -196,7 +196,7 @@ Resist adding bespoke error mappers per-method. The shared classifier is what ke
 - **`use-available-auth-methods.test.ts`** — one test per `resolve` outcome of the new method (enabled, disabled, edge cases).
 - **`<XxxCredentialsForm>.test.tsx`** — only if the wrapper has logic beyond passing `mutateAsync` to `<CredentialsForm>`. Otherwise the `CredentialsForm` suite already covers the behavior.
 - **`login-method-picker.test.tsx`** — add a test for the 3-method picker if the toggle ordering or default-selection logic needs to change.
-- **`tests/e2e/login.spec.ts`** — add a happy-path spec using the new toggle label.
+- **`tests/e2e/test_login.py`** (repo root) — add a happy-path pytest-playwright test using the new toggle label.
 
 ## 7. Verify
 

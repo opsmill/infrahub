@@ -12,9 +12,9 @@ parity). It drives the same browser flows with
 - loads the dataset through **composable pytest fixtures**, so every test
   declares exactly the data it needs.
 
-The two CI jobs (`E2E-testing-playwright` and `E2E-testing-pytest-playwright`)
-run side by side until this suite reaches parity; then the TypeScript job is
-removed.
+This suite runs in CI as the `E2E-testing-pytest-playwright` job. The legacy
+TypeScript job (`E2E-testing-playwright`) ran side by side until parity was
+reached and has since been removed.
 
 ## Running
 
@@ -62,8 +62,8 @@ CI builds and uses its own `local-<runner>-<sha>` tag.
 ### Response-delay mode
 
 Set `INFRAHUB_TESTING_RESPONSE_DELAY=1` to add a deliberate 1s delay to every
-GraphQL request, surfacing UI loading-state races — parity with the TS
-`E2E-testing-playwright` job. In CI it is applied to the main pytest run only on
+GraphQL request, surfacing UI loading-state races — parity with what the
+legacy TS suite's CI job did. In CI it is applied to the main pytest run only on
 PRs that touch `tests/e2e/**` (gated on the `e2e_pytest_tests` files-changed
 output); locally:
 

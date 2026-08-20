@@ -233,7 +233,7 @@ Write a single targeted test that reproduces the bug:
 **CRITICAL: Verify the test FAILS on the current code.** Run it:
 - Backend: `uv run pytest path/to/test_file.py::TestClass::test_name -x -v`
 - Frontend unit/component: `cd frontend/app && pnpm run test path/to/test`
-- Frontend E2E: `cd frontend/app && pnpm exec playwright test path/to/test`
+- Frontend E2E (from the repo root): `uv run pytest -c tests/e2e/pytest.ini tests/e2e/path/to/test.py -x -v`
 - If a test run takes more than 5 minutes, kill it and investigate why.
 - The test must fail with an **assertion error that directly relates to the root cause**.
 - If the test **PASSES**, your assertions are wrong -- flip them to assert what SHOULD happen.
