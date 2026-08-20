@@ -391,17 +391,17 @@ A `store` value starting with `record-aligned` means the `neo4j` database is sti
 
 ### Convert the store
 
-The [`infrahub-backup` CLI](https://docs.infrahub.app/backup/) is the supported path. Restoring a backup recreates the databases, and the tool exposes an option on `restore` that migrates the Neo4j store format as part of that restore, so the conversion rides along with a backup you should be taking anyway:
+The [`infrahub-backup` CLI](https://docs.infrahub.app/backup/) is the supported path. Restoring a backup recreates the databases, and the `--migrate-format` flag on `restore` migrates the Neo4j store format as part of that restore, so the conversion rides along with a backup you should be taking anyway:
 
 ```bash
 # Take a fresh backup of the migrated Enterprise deployment
 ./infrahub-backup create
 
 # Restore it, converting the Neo4j store to the block format
-./infrahub-backup restore infrahub_backup_<timestamp>.tar.gz
+./infrahub-backup restore --migrate-format infrahub_backup_<timestamp>.tar.gz
 ```
 
-Pass the store format migration option to `restore`, and on Kubernetes add `--k8s-namespace <namespace>`. See the [infrahub-backup CLI reference](https://docs.infrahub.app/backup/) for the exact flags. The tool stops the application containers, restores PostgreSQL and Neo4j, and restarts the services in order — see [Backup and restore](../database-backup/backup-and-restore.mdx) for what a restore covers, including object storage, which the tool does not yet handle.
+`--migrate-format` runs `neo4j-admin database migrate --to-format=block` inside the database container after the restore completes; without it the restored store keeps the `aligned` format. On Kubernetes, add `--k8s-namespace <namespace>` when the tool cannot auto-detect the namespace. The tool stops the application containers, restores PostgreSQL and Neo4j, and restarts the services in order — see [Backup and restore](../database-backup/backup-and-restore.mdx) for what a restore covers, including object storage, which the tool does not yet handle.
 
 Converting the store in place with `neo4j-admin database migrate --to-format=block` against a stopped database is the alternative when you cannot run a restore. It works on the same store rather than on a copy, which leaves no intact fallback if it fails partway, so take the dump first either way. Consult the [Neo4j store formats documentation](https://neo4j.com/docs/operations-manual/current/database-internals/store-formats/) for the constraints that apply to your Neo4j version.
 
