@@ -66,6 +66,22 @@ class ConnectionStringCase:
         ),
         pytest.param(
             ConnectionStringCase(
+                name="plain_bare_ipv6_address_bracketed",
+                cache_kwargs={"address": "::1", "database": 2},
+                expected_url="redis://[::1]:6379/2",
+            ),
+            id="plain_bare_ipv6_address_bracketed",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="plain_bracketed_ipv6_address_kept",
+                cache_kwargs={"address": "[2001:db8::2]", "password": "secret"},
+                expected_url="redis://:secret@[2001:db8::2]:6379/0",
+            ),
+            id="plain_bracketed_ipv6_address_kept",
+        ),
+        pytest.param(
+            ConnectionStringCase(
                 name="tls_defaults",
                 cache_kwargs={"address": "redis.internal", "tls_enabled": True},
                 expected_url="rediss://redis.internal:6379/0",
