@@ -42,7 +42,9 @@ def _redis_url(*, scheme: str, host: str, port: int, db: int, conn: dict[str, ob
             query["ssl_ca_certs"] = str(conn["ssl_ca_certs"])
 
     qs = f"?{urlencode(query)}" if query else ""
-    return f"{scheme}://{userinfo}{host}:{port}/{db}{qs}"
+    # A bare IPv6 address is valid as a redis.Redis(host=...) argument but must be bracketed in a URL.
+    host_part = f"[{host}]" if ":" in host and not host.startswith("[") else host
+    return f"{scheme}://{userinfo}{host_part}:{port}/{db}{qs}"
 
 
 def build_cache_connection_string(cache: CacheSettings) -> str:
