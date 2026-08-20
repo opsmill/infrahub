@@ -49,7 +49,15 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'overview/next-steps', label: 'Next Steps' },
           ],
         },
-        { type: 'doc', id: 'overview/build-with-ai/index', label: 'Build with AI' },
+        {
+          type: 'category',
+          label: 'Build with AI',
+          link: { type: 'doc', id: 'overview/build-with-ai/index' }, // hub
+          items: [
+            { type: 'doc', id: 'overview/build-with-ai/setup', label: 'Set up your AI assistant' },
+            { type: 'doc', id: 'overview/build-with-ai/working-with-ai', label: 'Work with your assistant' },
+          ],
+        },
         'faq/faq',
       ],
     },

@@ -1,26 +1,32 @@
 ---
 title: Build with AI
-description: Infrahub supports an AI-first path for building and running an implementation — what that changes for a team, and the tools that support it.
+description: Describe the network you want to model and have your assistant build the Infrahub schema, automation, and queries that represent it.
 ---
 
-Building an Infrahub implementation requires turning your network design into a data model, populating that model with your data, and building the checks, Generators, Transformations, and other automation that operate on it.
+You can describe the network you want to model in your own terms and have your assistant build the Infrahub resources that represent it — the schema that models your network, the automation that acts on your data as it changes, and the queries that answer questions about it.
 
-With an AI-first approach, you describe your requirements and business logic, and your assistant translates them into Infrahub resources — the schema that models your network, the automation that acts on it as data changes, and the queries that answer questions about your live data. It applies Infrahub's schema rules, file formats, and development conventions as it writes, so you stay on the design.
+Use this path to prototype a use case before you have learned Infrahub's schema model, to ship schema, Generators, and checks faster on an implementation you already run, or to answer a question about your live infrastructure without going through an engineer.
 
-Two tools provide that context:
+This is the recommended way to build an Infrahub implementation. You can also do each of these tasks by hand, and the sections below link the instructions for doing that.
 
-- **[Infrahub Skills](https://docs.infrahub.app/skills)** contain Infrahub's data model, conventions, and workflow patterns. Your assistant loads them and can apply that knowledge as you create schemas, objects, checks, Generators, Transformations, imports, menus, and other Infrahub resources.
-- **[The Infrahub MCP server](https://docs.infrahub.app/mcp)** connects your AI assistant to a running Infrahub instance. Through it, your assistant can discover your actual schema, query your data, make changes on isolated branches, and open Proposed Changes for review.
+## What your assistant needs to know
 
-You can use either independently. When you use them together, your assistant has both the Infrahub-specific knowledge for how to build and the instance-specific context for what you have already built. See [Set up your AI assistant](./setup.mdx) for installing either.
+Building an Infrahub implementation means turning your network design into a data model, populating that model with your data, and building the checks, Generators, Transformations, and other automation that operate on it. With an AI-first approach you describe the requirements and the business logic, and your assistant writes those resources, applying Infrahub's schema rules, file formats, and development conventions as it goes.
+
+That takes two kinds of context — Infrahub's conventions, and the state of your own instance. Each comes from a different tool:
+
+- **[Infrahub Skills](https://docs.infrahub.app/skills)** contain Infrahub's data model, conventions, and workflow patterns. Your assistant loads them and applies that knowledge as you create schemas, objects, checks, Generators, Transformations, imports, menus, and other Infrahub resources.
+- **[The Infrahub MCP server](https://docs.infrahub.app/mcp)** connects your AI assistant to a running Infrahub instance, where it can discover your schema, query your data, make changes on isolated branches, and open Proposed Changes for review.
+
+You can use either on its own. Together, your assistant has both the Infrahub-specific knowledge for how to build and the instance-specific context for what you have already built. Working with an LLM and neither tool installed is also a legitimate setup — see [Set up your AI assistant](./setup.mdx) for what you keep and what you give up, alongside the installation steps for both tools.
 
 ## Start with what you want to build
 
-You do not need to translate your network requirements into Infrahub syntax before you begin.
+The starting point is your network design, in the terms your team already uses for it.
 
-For example, you might describe a fabric with spine and leaf devices, the relationships between them, the addressing you need to allocate, and the configurations you eventually want to generate. Infrahub Skills give your assistant the conventions it needs to turn those requirements into Infrahub resources, including the correct schema structures, relationships, queries, Python or Jinja2 code, and [`.infrahub.yml`](../../git-integration/infrahub-yml.mdx) registrations.
+You might describe a fabric with spine and leaf devices, the relationships between them, the addressing you need to allocate, and the configurations you eventually want to generate. Your assistant reads the Infrahub Skills for the conventions that turn those requirements into Infrahub resources — schema structures, relationships, queries, Python or Jinja2 code, and [`.infrahub.yml`](../../git-integration/infrahub-yml.mdx) registrations.
 
-For a well-scoped task, you can describe what you want and let your assistant select the appropriate skill. For a larger implementation, you can use [Spec-Driven Development](https://docs.infrahub.app/skills/spec-driven-development) to work through the requirements and implementation plan before any files are generated. You review the plan, adjust the design, and then let the assistant build the individual components using the appropriate skills. [Work with your assistant](./working-with-ai.mdx) covers choosing between the two.
+For a well-scoped task, describe what you want and let your assistant select the appropriate skill. For a larger implementation, [Spec-Driven Development](https://docs.infrahub.app/skills/spec-driven-development) works through the requirements and the implementation plan before any files are generated: you review the plan, adjust the design, and then have the assistant build the individual components. See [Work with your assistant](./working-with-ai.mdx) to choose between them by the size and complexity of the change.
 
 You can learn Infrahub while working with your own network model: inspect what the assistant produces, ask why it chose a particular relationship or attribute type, and refine the implementation as your requirements evolve.
 
@@ -30,43 +36,47 @@ You can learn Infrahub while working with your own network model: inspect what t
 
 Describe the domain you need to represent — devices, locations, circuits, services, routing, or another part of your network — and your assistant can create or extend an Infrahub schema.
 
-The [Schema Manager](https://docs.infrahub.app/skills/skills-reference/managing-schemas) applies Infrahub conventions for node and attribute names, attribute types, relationships, [generics](../../schema/generics-and-inheritance.mdx), human-friendly IDs, [display labels](../../schema/display_label.mdx), [Profiles](../../profiles/overview.mdx), and [Object Templates](../../object-templates/overview.mdx). You can then validate the generated schema before loading it into Infrahub. See [Build your schema](../../schema/build-your-schema.mdx).
+Your assistant reads the [Schema Manager](https://docs.infrahub.app/skills/skills-reference/managing-schemas) skill for Infrahub's conventions on node and attribute names, attribute types, relationships, [generics](../../schema/generics-and-inheritance.mdx), human-friendly IDs, [display labels](../../schema/display_label.mdx), [Profiles](../../profiles/overview.mdx), and [Object Templates](../../object-templates/overview.mdx), and applies them to the schema it writes. You can then validate that schema before loading it into Infrahub. See [Build your schema](../../schema/build-your-schema.mdx).
 
 ### Bring in existing data
 
-If your network data already lives in spreadsheets, exports, or another source of truth, you can use AI to map it into your Infrahub model.
+When your network data is already held in spreadsheets, exports, or another source of truth, your assistant can map it into your Infrahub model.
 
-The [Data Importer](https://docs.infrahub.app/skills/skills-reference/importing-data) can take CSV or TSV data, inspect your Infrahub schema, map columns to the appropriate attributes and relationships, generate [object files](../../objects/load-from-yaml.mdx) in the correct load order, and validate and load them on a dedicated branch. When a source field cannot be mapped to your schema, it surfaces the gap for you to resolve instead of silently choosing a destination. See [Import data from CSV](../../objects/import-from-csv.mdx).
+Working from the [Data Importer](https://docs.infrahub.app/skills/skills-reference/importing-data) skill, your assistant takes CSV or TSV data, inspects your Infrahub schema, maps columns to the appropriate attributes and relationships, generates [object files](../../objects/load-from-yaml.mdx) in the correct load order, and validates and loads them on a dedicated branch. Where a source field has no destination in your schema, your assistant reports the gap for you to resolve instead of choosing one silently. See [Import data from CSV](../../objects/import-from-csv.mdx).
 
-When you are creating objects from a description rather than from a file, the [Object Manager](https://docs.infrahub.app/skills/skills-reference/managing-objects) can produce the same object-file format, with references and load order handled for you.
+When you are creating objects from a description rather than from a file, your assistant can produce the same object-file format using the [Object Manager](https://docs.infrahub.app/skills/skills-reference/managing-objects) skill, with references and load order handled for you.
 
 ### Build automation from your data
 
-Describe what should happen as your modeled data changes. For example, you can ask your assistant to:
+You can have your assistant build the automation that runs as your modeled data changes. For example, ask it to:
 
 - create BGP sessions from a topology design;
 - generate devices, interfaces, and IP addresses from a fabric definition;
 - render device configurations from Infrahub data;
 - build a validation check for a network design rule.
 
-The Infrahub Skills provide the Infrahub-specific patterns for each component. For a Generator, for example, the [Generator Manager](https://docs.infrahub.app/skills/skills-reference/managing-generators) creates the GraphQL query, Python Generator, and supporting registration needed to derive infrastructure objects from a design and keep them synchronized as that design evolves. See [Build a generator](../../generators/build.mdx), [Write a Jinja2 transformation](../../transformations/jinja2.mdx), and [Build a check](../../learn/tutorials/build-a-check.mdx) for the equivalent manual workflows, and the [Transform Manager](https://docs.infrahub.app/skills/skills-reference/managing-transforms) and [Check Manager](https://docs.infrahub.app/skills/skills-reference/managing-checks) references for what those skills produce.
+Each component has a skill carrying its Infrahub-specific patterns. For a Generator, your assistant uses the [Generator Manager](https://docs.infrahub.app/skills/skills-reference/managing-generators) to write the GraphQL query, the Python Generator, and the registration needed to derive infrastructure objects from a design and keep them synchronized as that design evolves. Your assistant works the same way from the [Transform Manager](https://docs.infrahub.app/skills/skills-reference/managing-transforms) for Transformations and the [Check Manager](https://docs.infrahub.app/skills/skills-reference/managing-checks) for checks. For the same work done by hand, see [Build a generator](../../generators/build.mdx), [Write a Jinja2 Transformation](../../transformations/jinja2.mdx), and [Build a check](../../learn/tutorials/build-a-check.mdx).
 
 ### Ask questions about your live network data
 
-Connect the MCP server when you want your assistant to work with the schema and data in a running Infrahub instance. You can ask questions such as:
+With the MCP server connected, your AI assistant can answer questions about the data in a running instance:
 
 - Which services depend on this circuit?
 - Which devices are missing a platform?
 - Which objects depend on this prefix?
 - Where does realized state differ from the design?
 
-The MCP server exposes your schema and data to the assistant through structured tools, so the assistant can discover the kinds and relationships that actually exist instead of relying on assumptions about your model. The [Data Analyzer](https://docs.infrahub.app/skills/skills-reference/analyzing-data) skill builds on that connection for cross-node analysis, dependency and change-impact questions, drift analysis, and data-quality audits. See [Analyze your data](../../schema/analyze-your-data.mdx).
+The MCP server exposes your schema and data through structured tools, so your assistant can discover the kinds and relationships that actually exist instead of relying on assumptions about your model. For cross-node analysis, dependency and change-impact questions, drift analysis, and data-quality audits, your assistant uses the [Data Analyzer](https://docs.infrahub.app/skills/skills-reference/analyzing-data) skill, which needs the MCP connection to reach live data. See [Analyze your data](../../schema/analyze-your-data.mdx).
 
 ### Maintain and improve your implementation
 
-You can also use the Skills as your Infrahub implementation grows.
+Once an implementation is running, you can use your assistant to audit it, shape its navigation, diagnose problems, and report what you find.
 
-The [Repo Auditor](https://docs.infrahub.app/skills/skills-reference/auditing-repo) reviews schema files, object files, Python components, `.infrahub.yml` registrations, and project structure against Infrahub conventions and reports what should be corrected and why. The [Menu Manager](https://docs.infrahub.app/skills/skills-reference/managing-menus) can create [navigation](../../menu/overview.mdx) that reflects how different people use your data. The [Diagnostics Collector](https://docs.infrahub.app/skills/skills-reference/collecting-diagnostics) can guide you through gathering the information OpsMill support needs when an Infrahub deployment is misbehaving. And when you hit a bug or want to request a feature, your assistant can work out which `opsmill/infrahub-*` repository it belongs in, check for existing duplicates, and draft the issue for your review — see [How do I get help with Infrahub?](../../faq/faq.mdx#how-do-i-get-help-with-infrahub).
+With the [Repo Auditor](https://docs.infrahub.app/skills/skills-reference/auditing-repo), your assistant reviews schema files, object files, Python components, `.infrahub.yml` registrations, and project structure against Infrahub conventions, and reports what should be corrected and why. With the [Menu Manager](https://docs.infrahub.app/skills/skills-reference/managing-menus), it can build [navigation](../../menu/overview.mdx) around the way different people use your data.
+
+When a deployment is misbehaving, your assistant reads the [Diagnostics Collector](https://docs.infrahub.app/skills/skills-reference/collecting-diagnostics) and runs `infrahub-collect` to gather the support bundle OpsMill needs. With the Diagnostics Analyzer, it triages a bundle you have already collected — tracebacks across the service logs, the incidents they correlate into, and any match against known issues in `opsmill/infrahub`.
+
+To report a bug or request a feature, your assistant uses the [Issue Reporter](https://docs.infrahub.app/skills/skills-reference/reporting-issues) to work out which `opsmill/infrahub-*` repository it belongs in, search for existing duplicates, and draft the issue for your review — see [How do I get help with Infrahub?](../../faq/faq.mdx#how-do-i-get-help-with-infrahub). Where a skill's own guidance was missing or unclear enough to cost you repeated retries, it can use the [Skill Gap Reporter](https://docs.infrahub.app/skills/skills-reference/reporting-skill-gaps) to report that friction against the skill itself.
 
 ### Where to start
 
@@ -74,10 +84,11 @@ The [Repo Auditor](https://docs.infrahub.app/skills/skills-reference/auditing-re
 |---|---|---|
 | Model a domain, and plan the migration when you change it later | [Build your schema](../../schema/build-your-schema.mdx) | [Schema Manager](https://docs.infrahub.app/skills/skills-reference/managing-schemas) |
 | Get data you already have into Infrahub | [Import data from CSV](../../objects/import-from-csv.mdx), [Load data using YAML file](../../objects/load-from-yaml.mdx) | [Data Importer](https://docs.infrahub.app/skills/skills-reference/importing-data), [Object Manager](https://docs.infrahub.app/skills/skills-reference/managing-objects) |
-| Generate objects from a design, render configuration, enforce a rule on every change | [Build a generator](../../generators/build.mdx), [Write a Jinja2 transformation](../../transformations/jinja2.mdx), [Build a check](../../learn/tutorials/build-a-check.mdx) | [Generator Manager](https://docs.infrahub.app/skills/skills-reference/managing-generators), [Transform Manager](https://docs.infrahub.app/skills/skills-reference/managing-transforms), [Check Manager](https://docs.infrahub.app/skills/skills-reference/managing-checks) |
+| Generate objects from a design, render configuration, enforce a rule on every change | [Build a generator](../../generators/build.mdx), [Write a Jinja2 Transformation](../../transformations/jinja2.mdx), [Build a check](../../learn/tutorials/build-a-check.mdx) | [Generator Manager](https://docs.infrahub.app/skills/skills-reference/managing-generators), [Transform Manager](https://docs.infrahub.app/skills/skills-reference/managing-transforms), [Check Manager](https://docs.infrahub.app/skills/skills-reference/managing-checks) |
 | Ask questions about live infrastructure | [Analyze your data](../../schema/analyze-your-data.mdx) | [Data Analyzer](https://docs.infrahub.app/skills/skills-reference/analyzing-data) |
 | Organize the web interface | [Menu customization](../../menu/overview.mdx) | [Menu Manager](https://docs.infrahub.app/skills/skills-reference/managing-menus) |
-| Audit a repository, collect diagnostics, or file an issue | [infrahub.yml configuration](../../git-integration/infrahub-yml.mdx), [Getting help](../../faq/faq.mdx#how-do-i-get-help-with-infrahub) | [Repo Auditor](https://docs.infrahub.app/skills/skills-reference/auditing-repo), [Diagnostics Collector](https://docs.infrahub.app/skills/skills-reference/collecting-diagnostics) |
+| Check a repository against Infrahub conventions | [infrahub.yml configuration](../../git-integration/infrahub-yml.mdx) | [Repo Auditor](https://docs.infrahub.app/skills/skills-reference/auditing-repo) |
+| Get help with a deployment that is misbehaving, or file an issue | [Getting help](../../faq/faq.mdx#how-do-i-get-help-with-infrahub) | [Diagnostics Collector](https://docs.infrahub.app/skills/skills-reference/collecting-diagnostics), [Issue Reporter](https://docs.infrahub.app/skills/skills-reference/reporting-issues) |
 
 ## How Infrahub Skills and MCP work together
 
@@ -89,30 +100,27 @@ The [Repo Auditor](https://docs.infrahub.app/skills/skills-reference/auditing-re
 
 Use both when your assistant needs to apply Infrahub conventions while also understanding the schema and data that already exist in your environment.
 
-Most Infrahub Skills can work without the MCP server. The Data Analyzer requires MCP because its job is to analyze live Infrahub data. With MCP connected, your assistant also has instance context in other development workflows, where that context is useful.
+Most Infrahub Skills work without the MCP server. The Data Analyzer is the exception, because the data it analyzes is live. With MCP connected, your assistant also has instance context in other development workflows, where that context is useful.
 
-## How AI changes are merged
+## How changes made through MCP are reviewed
 
-Giving an AI assistant access to a running source of truth does not require a separate change workflow.
+Changes made through the MCP server reach the default branch the way every other change does: on a branch, through a Proposed Change you review and merge.
 
-When the MCP server makes its first write, it automatically creates a session [branch](../../branches/overview.mdx). Additional writes in the same session stay on that branch. When the work is ready, the assistant can call `propose_changes` to open a [Proposed Change](../../proposed-changes/overview.mdx) against the default branch.
+When the MCP server makes its first write, it creates a session [branch](../../branches/overview.mdx). Additional writes in the same session stay on that branch. Session branches are named `mcp/session-{date}-{hex}` by default, and the pattern is configurable. When the work is ready, your assistant can call `propose_changes` to open a [Proposed Change](../../proposed-changes/overview.mdx) against the default branch.
 
-You review the diff and any configured checks in Infrahub before merging it. The MCP server has no tool that can merge the branch, so changes made through MCP do not reach the default branch until a person merges them.
+You review the diff and any configured checks in Infrahub before merging. The MCP server has no tool that merges a branch, so changes made through it do not reach the default branch until a person merges them.
 
-You can also control how much access the MCP server provides. A read-only deployment removes write tools entirely. For multi-user deployments, the available authentication modes let you control identity and access at the MCP and Infrahub layers. See [MCP authentication](https://docs.infrahub.app/mcp/references/authentication) for the deployment options.
+How much access the server has is yours to set. In a read-only deployment, the write tools are not offered to your assistant and GraphQL mutations are rejected. For a multi-user deployment, you choose how identity is established at the MCP and Infrahub layers — the default is a shared set of credentials, so a deployment several people connect to is worth configuring deliberately. See [MCP authentication](https://docs.infrahub.app/mcp/references/authentication) for the options.
 
 ## Review what your assistant produces
 
-AI can apply Infrahub conventions and run the validation appropriate to a task, but you still decide whether the result represents the network you intended to model.
+Your assistant applies Infrahub conventions and runs the validation appropriate to a task. Whether the result represents the network you intended to model is yours to decide.
 
-For example, a schema can pass `infrahubctl schema check` and still model the wrong relationship for your design. An imported object file can be structurally valid while containing a source mapping you do not want. Review the model, generated automation, and data changes with the same attention you would give code or infrastructure changes produced by another engineer.
+A schema can pass `infrahubctl schema check` and still model the wrong relationship for your design. An imported object file can be structurally valid while containing a source mapping you do not want. Review the model, the generated automation, and the data changes with the same attention you would give code or infrastructure changes produced by another engineer.
 
-Use Infrahub's validation mechanisms for requirements that should apply consistently. An AI-assisted analysis can answer a question such as "Which devices violate this naming convention?" for the data you have now. If that rule should apply to every future change, use the [Check Manager](https://docs.infrahub.app/skills/skills-reference/managing-checks) to turn it into a [check](../../checks/overview.mdx) that runs as part of your Proposed Change workflow.
+Where a requirement should apply consistently, use Infrahub's validation mechanisms. Your assistant can answer "Which devices violate this naming convention?" for the data you have now. Where that rule should hold for every future change, the [Check Manager](https://docs.infrahub.app/skills/skills-reference/managing-checks) turns it into a [check](../../checks/overview.mdx) that runs as part of your Proposed Change workflow.
 
-## Get started
+## In this section
 
-Install Infrahub Skills when you want your coding assistant to build Infrahub resources using Infrahub-specific conventions. For most supported assistants, the skills can be added to a project with a single installation command.
-
-Connect the Infrahub MCP server when you want your assistant to discover and work with the schema and data in a running Infrahub instance.
-
-Once they are connected, start with the network problem you want to solve: describe the model, data, or automation outcome you need, and build from there. [Set up your AI assistant](./setup.mdx) has the installation steps for both.
+- [Set up your AI assistant](./setup.mdx) — Install the Infrahub Skills, connect the MCP server, and choose the combination that fits how you work
+- [Work with your assistant](./working-with-ai.mdx) — Decide when to describe a change directly and when to plan it first, and what to check in what your assistant produces

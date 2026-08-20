@@ -1,6 +1,77 @@
 ---
 title: Work with your assistant
-description: When to describe a change directly and when to plan it first, prompts that work, and how to review what your assistant produces.
+description: Decide when to describe a change directly and when to plan it first, and what to check in what your assistant produces.
 ---
 
-Draft in progress.
+You make two decisions on any piece of work: whether to plan it before your assistant starts building, and what to check in the result.
+
+## Two ways of working
+
+Describe a change directly when you can state the outcome in a sentence or two and it touches one kind of resource. Plan it first when the work spans several resources, or when a decision early on constrains everything after it.
+
+| | Describe it directly | Plan it first |
+|---|---|---|
+| **Size** | One resource — a schema kind, one Generator, one check | Several resources that depend on each other |
+| **What you give** | The outcome you want | The requirements, then a review of the plan |
+| **When the design is settled** | Before you prompt | During the planning conversation |
+| **Example** | "Add a `monitored` boolean to the device kind" | "Model our data center fabric and generate device configurations from it" |
+| **What you review** | The files your assistant produces | The plan, then the files |
+
+For the second column, use [Spec-Driven Development](https://docs.infrahub.app/skills/spec-driven-development). Working that way, your assistant produces an implementation plan from the requirements before writing any files. You review that plan and adjust the design while changing it is still cheap — a relationship modeled the wrong way costs one paragraph at the plan stage and a schema migration once objects exist.
+
+The boundary is not a file count. A single schema change that alters a relationship every Generator reads is planning work; five independent attributes added to five kinds is not.
+
+## What your assistant checks, and what only you can
+
+Your assistant runs Infrahub's own validation before handing work back. That catches structural errors, and structural errors are not the ones that cost you time later.
+
+| Checked for you | Only you can judge |
+|---|---|
+| `infrahubctl schema check` — the schema is structurally valid and loads | Whether the model represents your network. A schema can pass this check and still put a relationship on the wrong kind, or model as an attribute something you will later need as a node |
+| The object-file rules and every relationship reference, before any server call, then `infrahubctl object validate` against the branch for schema-resolution errors | Whether the source data mapped to the right destination. A file can resolve cleanly and still carry a column mapped to an attribute that happens to accept it |
+| Local test runs for Generators, Transformations, and checks | Whether the logic implements your design rule, rather than the example it was derived from |
+| The Marketplace, searched for a published schema before one is modeled from scratch | Whether a published schema you could adapt fits your conventions closely enough to be worth adopting |
+
+Read what your assistant produces the way you would read a colleague's pull request. The question is not whether it is valid — it has already been checked for that — but whether it is what you intended.
+
+Ask your assistant why it chose a particular relationship cardinality or attribute type; the answer tells you which requirement it thought it was implementing, and that is where a misunderstanding shows up. And where a rule should hold for every future change rather than only this one, turn it into a [check](../../checks/overview.mdx) instead of re-verifying it by eye; your assistant can build one from the [Check Manager](https://docs.infrahub.app/skills/skills-reference/managing-checks).
+
+## One change, end to end
+
+The loop is the same for every change, whether you described it directly or planned it first. The example is a schema change, and the shape is the same for objects, Generators, Transformations, and checks.
+
+1. **Describe the outcome.** "Add a `monitored` boolean attribute to the device kind, defaulting to false." Your assistant reads the Schema Manager for Infrahub's conventions on attribute naming and types.
+2. **Review the file.** Your assistant writes the schema change and runs `infrahubctl schema check` against it. What you receive has already passed validation, so read it for intent: is `monitored` the right name for what you meant, and is a boolean the right type, or will you need a state with more than two values?
+3. **Load it on a branch.** Schema and data changes go onto a [branch](../../branches/overview.mdx), not the default branch:
+
+   ```bash
+   infrahubctl branch create add-device-monitored
+   infrahubctl schema load schemas/device.yml --branch add-device-monitored
+   ```
+
+4. **Open a Proposed Change.** From the branch, open a [Proposed Change](../../proposed-changes/overview.mdx) against the default branch. Infrahub runs the configured checks and shows the diff.
+5. **Review and merge.** You read the diff and the check results, and you merge. Nothing your assistant did reaches the default branch until this step.
+
+When your assistant works through the MCP server rather than on project files, steps 3 and 4 happen without you running commands: the first write creates a session branch, and your assistant can call `propose_changes` to open the Proposed Change. Step 5 does not change — the MCP server has no tool that merges a branch.
+
+## Where to go for more
+
+Per-skill detail is on the skills site, organised by what you are building:
+
+| To build | Skill reference |
+|---|---|
+| A schema for a domain, or a migration for a schema change | [Schema Manager](https://docs.infrahub.app/skills/skills-reference/managing-schemas) |
+| Object files, from a description or from CSV | [Object Manager](https://docs.infrahub.app/skills/skills-reference/managing-objects), [Data Importer](https://docs.infrahub.app/skills/skills-reference/importing-data) |
+| Objects derived from a design, and kept in step with it | [Generator Manager](https://docs.infrahub.app/skills/skills-reference/managing-generators) |
+| Rendered configuration or exported data | [Transform Manager](https://docs.infrahub.app/skills/skills-reference/managing-transforms) |
+| A rule enforced on every Proposed Change | [Check Manager](https://docs.infrahub.app/skills/skills-reference/managing-checks) |
+| Navigation for the web interface | [Menu Manager](https://docs.infrahub.app/skills/skills-reference/managing-menus) |
+| Answers about the data in a running instance | [Data Analyzer](https://docs.infrahub.app/skills/skills-reference/analyzing-data) |
+| A review of an existing repository | [Repo Auditor](https://docs.infrahub.app/skills/skills-reference/auditing-repo) |
+| A support bundle, or an issue | [Diagnostics Collector](https://docs.infrahub.app/skills/skills-reference/collecting-diagnostics), [Issue Reporter](https://docs.infrahub.app/skills/skills-reference/reporting-issues) |
+
+## Next
+
+- [Build your schema](../../schema/build-your-schema.mdx) — Model a domain and load it
+- [Import data from CSV](../../objects/import-from-csv.mdx) — Map a spreadsheet into your model
+- [Analyze your data](../../schema/analyze-your-data.mdx) — Ask questions about a running instance

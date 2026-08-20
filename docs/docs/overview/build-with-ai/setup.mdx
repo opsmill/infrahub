@@ -3,4 +3,116 @@ title: Set up your AI assistant
 description: Install the Infrahub Skills, connect the MCP server, and choose the combination that fits how you work.
 ---
 
-Draft in progress.
+Install the Infrahub Skills so your assistant writes Infrahub resources that follow Infrahub's conventions, and connect the MCP server so it can read and change the data in a running instance. You can install either on its own.
+
+Start with the comparison below to work out which parts apply to you.
+
+## Choose what to install
+
+Read down the table — each row can do what the row above it cannot. No row is a prerequisite for the next, so you can stop at any of them.
+
+| What you have | What your assistant can do | What it cannot do |
+|---|---|---|
+| An LLM on its own | Explain Infrahub concepts and read the documentation alongside you | Reliably produce schema or object files that load, because it has neither Infrahub's conventions nor your schema |
+| LLM + MCP server | Answer questions about the data in your instance, and make small changes you review | Build project resources to Infrahub's conventions — no Generator, check, or Transformation patterns |
+| LLM + Infrahub Skills | Build schemas, objects, checks, Generators, Transformations, imports, and menus against a local checkout | See your live schema or data, so it works from the files in your project |
+| LLM + Skills + MCP server | Build to Infrahub's conventions and check the result against the instance you are connected to | — |
+
+The last row is the recommended setup. If you are evaluating Infrahub and have no instance running yet, the Skills row is the one to start from.
+
+For what you keep and what you give up in the first row, see [Work with an LLM and no tools](#work-with-an-llm-and-no-tools) at the end of this page.
+
+## 1. Check the prerequisites
+
+| For | You need |
+|---|---|
+| Infrahub Skills | An AI coding assistant that supports the Agent Skills format — Claude Code, GitHub Copilot, Cursor, Windsurf, Amp, Cline, or Codex |
+| Infrahub Skills | Infrahub 1.7 or later, and `infrahubctl` |
+| MCP server | A running Infrahub instance, and an API token or one of the authentication modes in step 3 |
+| MCP server | [`uv`](https://docs.astral.sh/uv/), which provides the `uvx` command |
+
+Claude Code detects the skills and loads the relevant one on its own. On the other assistants, activation is passive: the skill's guidance is available, and you may need to name the task before your assistant uses it.
+
+## 2. Install the Infrahub Skills
+
+The installer copies the skills into your project, so run it from the repository where your Infrahub schema, object files, and Python components are kept.
+
+```bash
+npx skills add opsmill/infrahub-skills
+```
+
+In Claude Code, you can install them as a plugin instead:
+
+```text
+/plugin marketplace add opsmill/claude-marketplace
+/plugin install infrahub@opsmill
+```
+
+To copy them in manually:
+
+```bash
+git clone https://github.com/opsmill/infrahub-skills.git
+cp -r infrahub-skills/skills /path/to/your-project/
+rm -rf infrahub-skills
+```
+
+Keep `skills/infrahub-common/` whichever route you take. It holds the shared reference material the other skills depend on.
+
+## 3. Connect the MCP server
+
+Run the server with `uvx`, which fetches it on first use:
+
+```bash
+uvx infrahub-mcp
+```
+
+Point it at your instance with two environment variables:
+
+```bash
+export INFRAHUB_ADDRESS="http://localhost:8000"
+export INFRAHUB_API_TOKEN="<your-token>"
+```
+
+Then register the server with your assistant. The configuration file and its location differ per client, so follow your client's MCP documentation for where the entry goes.
+
+**Choose a transport.** Use stdio when the server runs on the same machine as your assistant, which is the local development case. Use streamable HTTP for a remote server, and for any of the per-user authentication modes below.
+
+**Choose how identity is established.** The default is `none`: every client shares one set of credentials, and Infrahub records the same identity for all of them. That is reasonable for a local stdio server, and worth changing for anything several people connect to.
+
+| `INFRAHUB_MCP_AUTH_MODE` | Identity | Requires |
+|---|---|---|
+| `none` (default) | Shared credentials, no per-user identity | Nothing beyond `INFRAHUB_API_TOKEN` |
+| `token-passthrough` | Each client sends its own Infrahub API token | Streamable HTTP. Fails closed when a token is missing |
+| `basic-passthrough` | Each client sends an Infrahub username and password | Streamable HTTP |
+| `oidc` | Your identity provider, with role-based access | Streamable HTTP, and OIDC discovery URL and client ID |
+
+To stop the server from changing anything, set `INFRAHUB_MCP_READ_ONLY=true`. The write tools are then not offered to your assistant, and GraphQL mutations are rejected. Use this for a deployment where people only ask questions about the data — see [Analyze your data](../../schema/analyze-your-data.mdx).
+
+See [MCP authentication](https://docs.infrahub.app/mcp/references/authentication) for the full configuration of each mode.
+
+## 4. Check that both are working
+
+Ask your assistant for something that needs the live schema and Infrahub's conventions at once:
+
+```text
+List the node kinds in my Infrahub instance, then add a boolean attribute
+called `monitored` to the device kind and validate the schema before loading it.
+```
+
+Reading the kinds back requires the MCP connection. Producing a valid schema file for the change, and validating it with `infrahubctl schema check`, requires the skills. If your assistant names your actual kinds but produces a schema file that fails validation, the MCP server is connected and the skills are not installed in this project.
+
+If your assistant reports no kinds, check `INFRAHUB_ADDRESS` and `INFRAHUB_API_TOKEN`, and that your instance is reachable from where the server runs.
+
+## Work with an LLM and no tools
+
+An LLM on its own is a legitimate way to work. It can explain Infrahub concepts, work through a design with you, and read these pages alongside you.
+
+What it cannot do is produce Infrahub files you can load. Without the skills it has no current source for Infrahub's schema conventions, file formats, or `.infrahub.yml` structure, and models trained before a change generate the older form of it. Without the MCP server it has no way to see your kinds, relationships, or the values already in your instance, so any file it writes is a guess about your model.
+
+The MCP server matters more in this setup than the skills do, because it replaces the largest missing piece: what actually exists in your instance. If you install one of the two, install that one.
+
+## Next
+
+- [Work with your assistant](./working-with-ai.mdx) — Decide when to describe a change directly and when to plan it first, and what to check in what your assistant produces
+- [Build your schema](../../schema/build-your-schema.mdx) — Model a domain and load it
+- [Analyze your data](../../schema/analyze-your-data.mdx) — Ask questions about a running instance
