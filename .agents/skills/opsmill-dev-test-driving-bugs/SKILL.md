@@ -118,7 +118,7 @@ conventions. Anchor on the `dev/` layout, falling back to detection:
   code package.
 - Backend testing docs, if present: `dev/knowledge/**/testing.md` and `dev/guidelines/**/testing.md`.
 - Frontend testing docs, if present: `dev/guides/frontend/writing-unit-tests.md`,
-  `writing-component-tests.md`; E2E: `tests/e2e/README.md`.
+  `writing-component-tests.md`, `writing-e2e-tests.md`.
 - **Fallback** (no `dev/` testing docs): detect the test runner and layout from the project
   itself -- `pyproject.toml` / `tox.ini` / `pytest.ini` (pytest), `package.json` scripts
   (vitest / jest / playwright), or a `Makefile` / `AGENTS.md` documenting the test command.

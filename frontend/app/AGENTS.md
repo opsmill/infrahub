@@ -59,5 +59,5 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 
 - `dev/guides/frontend/writing-unit-tests.md` - Unit tests for TypeScript functions
 - `dev/guides/frontend/writing-component-tests.md` - React component tests
-- `tests/e2e/README.md` (repo root) - E2E tests (pytest-playwright + testcontainers)
+- `dev/guides/frontend/writing-e2e-tests.md` - E2E tests (pytest-playwright)
 - `dev/guides/frontend/adding-an-auth-method.md` - Step-by-step recipe for adding a new login method

@@ -176,7 +176,7 @@ guidelines relevant to the bug:
 - Frontend bugs -- read ALL of these:
   - `dev/guides/frontend/writing-unit-tests.md`
   - `dev/guides/frontend/writing-component-tests.md`
-  - `tests/e2e/README.md` (E2E, pytest-playwright)
+  - `dev/guides/frontend/writing-e2e-tests.md`
 
 ### Step 2: Read conftest files
 
