@@ -32,7 +32,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
-from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.definitions.core.template import core_object_template
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -909,3 +909,85 @@ async def test_migration_agnostic_numberpool_attribute(
             ("IS_PROTECTED", GLOBAL_BRANCH_NAME, 1),
         ),
     )
+
+
+PROBE_GENERIC = GenericSchema(
+    name="Gen",
+    namespace="Mixed",
+    branch=BranchSupportType.AGNOSTIC,
+    attributes=[AttributeSchema(name="name", kind="Text", branch=BranchSupportType.AGNOSTIC)],
+)
+PROBE_AWARE_NODE = NodeSchema(
+    name="Aware",
+    namespace="Mixed",
+    branch=BranchSupportType.AWARE,
+    inherit_from=["MixedGen"],
+    attributes=[AttributeSchema(name="name", kind="Text", branch=BranchSupportType.AGNOSTIC)],
+)
+PROBE_AGNOSTIC_NODE = NodeSchema(
+    name="Agn",
+    namespace="Mixed",
+    branch=BranchSupportType.AGNOSTIC,
+    inherit_from=["MixedGen"],
+    attributes=[AttributeSchema(name="name", kind="Text", branch=BranchSupportType.AGNOSTIC)],
+)
+
+
+async def test_local_attribute_of_generic_follows_each_node_kind(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Verify an edge case involving a branch-agnostic generic and branch-local/agnostic inheritors.
+
+    If a branch-local attribute is added to a concrete node inheriting from a branch-agnostic generic
+    then the new branch-local attribute will
+    - be on the global branch if the inheriting schema is branch-agnostic
+    - be on the default/user branch if the inheriting schema is branch-aware
+    """
+    registry.schema.register_schema(
+        schema=SchemaRoot(generics=[PROBE_GENERIC], nodes=[PROBE_AWARE_NODE, PROBE_AGNOSTIC_NODE]),
+        branch=default_branch.name,
+    )
+    processed = registry.schema.get_schema_branch(name=default_branch.name)
+    previous_schema = processed.get(name="MixedGen", duplicate=False)
+    assert sorted(previous_schema.used_by) == ["MixedAgn", "MixedAware"]
+
+    aware_node = await Node.init(db=db, schema="MixedAware", branch=default_branch)
+    await aware_node.new(db=db, name="aware-1")
+    await aware_node.save(db=db)
+    agnostic_node = await Node.init(db=db, schema="MixedAgn", branch=default_branch)
+    await agnostic_node.new(db=db, name="agnostic-1")
+    await agnostic_node.save(db=db)
+
+    candidate = processed.duplicate()
+    generic_schema = candidate.get(name="MixedGen", duplicate=False)
+    generic_schema.attributes.append(
+        AttributeSchema(name="tag", kind="Text", optional=True, branch=BranchSupportType.LOCAL)
+    )
+    candidate.set(name="MixedGen", schema=generic_schema)
+    candidate.process()
+    registry.schema.set_schema_branch(name=default_branch.name, schema=candidate)
+
+    migration = NodeAttributeAddMigration(
+        new_node_schema=candidate.get(name="MixedGen", duplicate=False),
+        previous_node_schema=previous_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="MixedGen", field_name="tag"),
+    )
+    result = await migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=default_branch)
+    assert not result.errors
+    assert result.nbr_migrations_executed == 2
+
+    # The branch-aware kind keeps the attribute on its own branch...
+    assert await get_attribute_edge_branches(
+        db=db, node_uuid=aware_node.get_id(), attribute_name="tag"
+    ) == expected_edges_on(
+        branch_name=default_branch.name,
+        branch_level=default_branch.hierarchy_level,
+        branch_support=BranchSupportType.LOCAL.value,
+    )
+    # ...while the branch-agnostic kind stores it once, on the global branch.
+    assert await get_attribute_edge_branches(
+        db=db, node_uuid=agnostic_node.get_id(), attribute_name="tag"
+    ) == expected_edges_on(branch_name=GLOBAL_BRANCH_NAME, branch_level=1, branch_support=BranchSupportType.LOCAL.value)
+
+    await assert_no_global_edges_with_wrong_branch_level(db=db)
+    await verify_graph(db=db)

@@ -55,7 +55,6 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuer
             attribute_name=migration.new_attribute_schema.name,
             attribute_kind=migration.new_attribute_schema.kind,
             branch_support=migration.new_attribute_schema.get_branch().value,
-            node_branch_support=migration.new_schema.branch.value,
             default_value=migration.new_attribute_schema.default_value,
             **kwargs,
         )
