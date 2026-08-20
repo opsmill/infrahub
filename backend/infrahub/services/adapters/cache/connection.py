@@ -200,7 +200,7 @@ def _funnel_query_options(query: dict[str, list[str]], *, url: str) -> dict[str,
 
     # Imported lazily so parsing a URL (e.g. the startup settings validator) needs redis only when a
     # connection option is actually present.
-    from redis.asyncio.connection import parse_url
+    from redis.asyncio.connection import parse_url  # noqa: PLC0415
 
     encoded = urlencode([(key, value) for key, values in query.items() for value in values])
     try:
@@ -330,7 +330,7 @@ def _owned_sentinel_connection_pool() -> type:
     if _owned_sentinel_pool_class is not None:
         return _owned_sentinel_pool_class
 
-    from redis.asyncio.sentinel import SentinelConnectionPool
+    from redis.asyncio.sentinel import SentinelConnectionPool  # noqa: PLC0415
 
     class OwnedSentinelConnectionPool(SentinelConnectionPool):
         async def disconnect(self, inuse_connections: bool = True) -> None:
@@ -352,10 +352,11 @@ def build_redis_connection(settings: CacheSettings) -> redis.Redis:
     When ``settings.url`` is set it is authoritative and selects single-node or Sentinel mode from its
     scheme. Otherwise the scalar connection settings are used (single-node).
     """
-    import redis.asyncio as redis
-    from redis import UsernamePasswordCredentialProvider
-    from redis.backoff import ExponentialBackoff
-    from redis.retry import Retry
+    # Imported lazily to keep this module importable without pulling in redis.
+    import redis.asyncio as redis  # noqa: PLC0415
+    from redis import UsernamePasswordCredentialProvider  # noqa: PLC0415
+    from redis.backoff import ExponentialBackoff  # noqa: PLC0415
+    from redis.retry import Retry  # noqa: PLC0415
 
     if settings.url is None:
         credential_provider: UsernamePasswordCredentialProvider | None = None
