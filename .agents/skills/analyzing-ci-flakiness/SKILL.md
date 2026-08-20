@@ -9,6 +9,8 @@ description: >-
   until green → monitoring-pull-requests; diagnosing or fixing one specific failing test → the
   bug-analysis skills.
 argument-hint: "Optional base-branch glob(s) and window, e.g. `release-1.11 14` (default: all bases, last 7 days)"
+allowed-tools:
+  - Bash(python3 .agents/skills/analyzing-ci-flakiness/scripts/collect.py:*)
 compatibility: Requires the gh CLI authenticated against the repo. Python 3 (stdlib only). Writes a cache under ~/ci-cache.
 metadata:
   version: 0.1.0
