@@ -74,6 +74,28 @@ echo "Project directory: $PROJECT_DIR"
 cd "$PROJECT_DIR"
 
 # ------------------------------------------------------------------------------
+# Git Submodules
+# ------------------------------------------------------------------------------
+# Claude Code on the web clones without --recurse-submodules. Both submodules are
+# consumed as local paths, and neither installer errors on an empty directory, so
+# this must run first -- otherwise setup "succeeds" with no infrahub_sdk in the
+# venv and an unresolved schema-visualizer workspace package.
+echo ""
+echo "Initializing git submodules..."
+if ! git -C "$PROJECT_DIR" submodule update --init --recursive; then
+    echo "Error: failed to initialize git submodules" >&2
+    exit 1
+fi
+
+for manifest in "python_sdk/pyproject.toml" "frontend/packages/schema-visualizer/package.json"; do
+    if [ ! -f "$PROJECT_DIR/$manifest" ]; then
+        echo "Error: $manifest is missing after submodule initialization" >&2
+        exit 1
+    fi
+done
+echo "Submodules initialized"
+
+# ------------------------------------------------------------------------------
 # Python Dependencies
 # ------------------------------------------------------------------------------
 echo ""
