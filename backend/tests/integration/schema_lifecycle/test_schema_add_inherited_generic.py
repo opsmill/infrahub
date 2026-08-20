@@ -4,12 +4,10 @@ from typing import Any
 import pytest
 from infrahub_sdk import InfrahubClient
 
-from infrahub.core.branch.models import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships
-from tests.helpers.db_validation import validate_no_duplicate_attributes, verify_graph
+from infrahub.database.validation import verify_graph
 
 from ..shared import load_schema
 from .shared import TestSchemaLifecycleBase
@@ -252,8 +250,8 @@ class TestSchemaAddInheritedGeneric(TestSchemaLifecycleBase):
         assert refetched.get_attribute(name="owner").value == "infra-team"
         assert refetched.get_attribute(name="owner").is_default is False
 
-    async def test_step04_no_duplicate_attribute_rows(self, db: InfrahubDatabase, default_branch: Branch) -> None:
-        assert await validate_no_duplicate_attributes(db=db, branch=default_branch) == []
+    async def test_step04_no_duplicate_attribute_rows(self, db: InfrahubDatabase) -> None:
+        await verify_graph(db=db)
 
     async def test_step04_update_and_filter(self, db: InfrahubDatabase) -> None:
         switches = await NodeManager.query(db=db, schema=SWITCH_KIND, filters={"name__value": "switch-2"})
@@ -266,5 +264,4 @@ class TestSchemaAddInheritedGeneric(TestSchemaLifecycleBase):
         assert [node.id for node in matches] == [switch.id]
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
         await verify_graph(db=db)

@@ -12,8 +12,8 @@ from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, internal_schema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from tests.db_snapshot import DbSnapshotter
-from tests.helpers.db_validation import verify_graph
 
 from .conftest import (
     CAR_ATTRIBUTE_NAMES,

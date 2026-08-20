@@ -15,8 +15,8 @@ from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from tests.db_snapshot import DbSnapshotter
-from tests.helpers.db_validation import verify_graph
 
 from .conftest import (
     CAR_ATTRIBUTE_NAMES,

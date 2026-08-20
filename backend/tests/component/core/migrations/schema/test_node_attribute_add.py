@@ -45,7 +45,6 @@ from tests.component.core.migrations.schema.metadata_helpers import (
     get_node_vertex_metadata,
 )
 from tests.db_snapshot import DbSnapshotter
-from tests.helpers.db_validation import verify_graph
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 
 
