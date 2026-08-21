@@ -10,7 +10,9 @@ from infrahub.core.constants import RepositoryOperationalStatus
 from tests.helpers.fixtures import get_fixtures_dir
 
 
-class TestRepositoryOperationalStatus(TestInfrahubDockerClient):
+class TestRepositorySync(TestInfrahubDockerClient):
+    """Repository import behaviors sharing one stack; each test asserts only on its own repository."""
+
     @pytest.mark.parametrize(
         ("git_repo_type", "repo_kind", "repo_name"),
         [
@@ -43,12 +45,9 @@ class TestRepositoryOperationalStatus(TestInfrahubDockerClient):
         in_sync = await repo.wait_for_sync_to_complete(client=client)
         assert in_sync
 
-        repos = await client.all(kind=repo_kind)
-        assert len(repos) == 1
-        assert repos[0].operational_status.value == RepositoryOperationalStatus.ONLINE.value
+        repo_node = await client.get(kind=repo_kind, name__value=repo_name)
+        assert repo_node.operational_status.value == RepositoryOperationalStatus.ONLINE.value
 
-
-class TestSameRepoReferences(TestInfrahubDockerClient):
     async def test_same_repo_references_resolve_on_import(
         self,
         client: InfrahubClient,
