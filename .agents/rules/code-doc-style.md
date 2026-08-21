@@ -51,3 +51,4 @@ Where IDs *do* belong:
 - Documents the contract of a public function (inputs, outputs, errors raised) when it crosses a module boundary.
 - Stays silent by default. If code needs a comment to explain *what* it does, rename or extract until it doesn't. A comment that restates the code is worse than none — noise that rots the moment the code changes.
 - When a why-comment is warranted, one sentence. If the why needs a paragraph, it belongs in the function's docstring or a `dev/knowledge/` page, not inline. Reviewers repeatedly ask for multi-line inline comments to be condensed.
+- Never describe what the code does *not* do. Docstring paragraphs explaining the approach not taken or the calls deliberately avoided belong in the PR description; keep the one line stating what the code does. Reviewers repeatedly ask for these paragraphs to be deleted.

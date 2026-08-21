@@ -235,6 +235,9 @@ Implementation: `Branch.get_query_filter_path()` in `backend/infrahub/core/branc
 
 Outbound on `n1`, inbound on `n2`.
 
+A node is never its own relationship peer: instance-level self-loops (`n1` = `n2`) are unsupported.
+Same-kind relationships between two distinct nodes are the supported case (the unidirectional form).
+
 ### Node Existence
 
 ```cypher

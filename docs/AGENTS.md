@@ -91,6 +91,8 @@ Capitalize these Infrahub-specific terms when referring to the feature:
 
 **Never use "transform" or "transforms" as a noun.** Always use "Transformation" or "Transformations".
 
+**Say "object", not "node", in user-facing text** (docs, error messages, UI copy) — "node" is internal graph vocabulary.
+
 ## Documentation Workflow
 
 1. **Choose documentation type** using the table above (if not specified)
@@ -121,7 +123,7 @@ The `migrate-feature-page` skill documents the full workflow.
 - Include language tags on code blocks
 - Choose the appropriate documentation type (guide vs. topic)
 - Define technical terms on first use
-- Verify factual claims (attribute kinds, GraphQL fields, defaults) against the code on the branch the PR targets — docs PRs frequently target a release branch whose features differ from the development branch; this applies doubly before acting on a bot review claim that something "does not exist"
+- Verify factual claims (attribute kinds, GraphQL fields, defaults) against the code on the branch the PR targets — docs PRs frequently target a release branch whose features differ from the development branch; this applies doubly before acting on a bot review claim that something "does not exist". For `infrahubctl`/SDK features, the reference is the commit the `python_sdk` submodule pins (`git -C python_sdk show $(git rev-parse HEAD:python_sdk):<path>`), not an SDK branch tip — and never bump the pin just to make docs resolve
 - When documenting marketplace items, verify each item actually resolves in the live catalog at <https://marketplace.infrahub.app>; if an item is planned but unpublished, get an explicit decision on release timing before referencing it
 - Prefer plain Markdown/MDX over custom React components in doc pages; before adding anything to `docs/src/components/`, check the existing components for reuse, and give a genuinely new component typed props (the docs package typechecks with `tsc`)
 
