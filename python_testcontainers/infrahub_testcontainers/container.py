@@ -71,6 +71,16 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     # no-op for normal test runs; heavy dataset/perf runs override it via the environment to
     # avoid Neo.TransientError.Request.NoThreadsAvailable under a wide recompute fan-out.
     "INFRAHUB_TESTING_DB_BOLT_THREAD_POOL_MAX_SIZE": "400",
+    # Empty means Neo4j sizes its own memory — from the HOST's memory, so every stack claims
+    # ~25% of the machine. Runs that put several stacks on one host (CI runners, pytest-xdist)
+    # should set explicit bounds via the environment to avoid OOMing the host.
+    "INFRAHUB_TESTING_DB_HEAP_INITIAL_SIZE": "",
+    "INFRAHUB_TESTING_DB_HEAP_MAX_SIZE": "",
+    "INFRAHUB_TESTING_DB_PAGECACHE_SIZE": "",
+    # Shutdown grace period (seconds) passed to `docker compose down/stop`. Empty keeps
+    # compose's default (10s); throwaway CI stacks opt in to a short grace because their
+    # volumes are removed anyway and the database burns the whole grace on SIGTERM handling.
+    "INFRAHUB_TESTING_STOP_TIMEOUT": "",
 }
 
 
@@ -194,6 +204,26 @@ class InfrahubDockerCompose(DockerCompose):
         """
         cmd = self.compose_command_property[:]
         cmd += ["restart"]
+
+        if self.services:
+            cmd.extend(self.services)
+        self._run_command(cmd=cmd)
+
+    def stop(self, down: bool = True) -> None:
+        """Stop the stack, honoring the opt-in shutdown grace period.
+
+        When INFRAHUB_TESTING_STOP_TIMEOUT is set, it is passed to compose as the
+        shutdown timeout; otherwise compose's default grace period applies.
+        """
+        cmd = self.compose_command_property[:]
+        if down:
+            cmd += ["down", "--volumes"]
+        else:
+            cmd += ["stop"]
+
+        stop_timeout = self.env_vars.get("INFRAHUB_TESTING_STOP_TIMEOUT", "")
+        if stop_timeout:
+            cmd += ["--timeout", stop_timeout]
 
         if self.services:
             cmd.extend(self.services)
