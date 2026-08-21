@@ -294,22 +294,6 @@ importers:
       '@graphql-codegen/typescript':
         specifier: ^6.1.0
         version: 6.1.0(graphql@16.14.2)
-<<<<<<< HEAD
-      '@playwright/test':
-        specifier: 1.62.1
-        version: 1.62.1
-||||||| 97fd44bea
-      '@playwright/test':
-        specifier: 1.62.1
-        version: 1.62.1
-      '@radix-ui/react-scroll-area':
-        specifier: ^1.2.18
-        version: 1.2.18(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-=======
-      '@radix-ui/react-scroll-area':
-        specifier: ^1.2.18
-        version: 1.2.18(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
->>>>>>> origin/stable
       '@rolldown/plugin-babel':
         specifier: ^0.2.3
         version: 0.2.3(@babel/core@7.29.7)(@babel/runtime@8.0.0)(rolldown@1.2.3)(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -355,25 +339,9 @@ importers:
       openapi-typescript:
         specifier: ^7.13.0
         version: 7.13.0(typescript@5.9.3)
-<<<<<<< HEAD
-||||||| 97fd44bea
-      react-resizable-panels:
-        specifier: ^4.12.2
-        version: 4.12.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      tailwind-variants:
-        specifier: ^3.3.1
-        version: 3.3.1(tailwind-merge@3.6.0)(tailwindcss@4.3.3)
-=======
       playwright:
         specifier: 1.60.0
         version: 1.60.0
-      react-resizable-panels:
-        specifier: ^4.12.2
-        version: 4.12.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      tailwind-variants:
-        specifier: ^3.3.1
-        version: 3.3.1(tailwind-merge@3.6.0)(tailwindcss@4.3.3)
->>>>>>> origin/stable
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3
