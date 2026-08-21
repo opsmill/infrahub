@@ -18,8 +18,8 @@ from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedA
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  used in dataclass field
 from infrahub.server import app
 from infrahub.workers.dependencies import build_workflow
-from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.task_manager import setup_task_manager_once
 from tests.helpers.test_app import TestInfrahubAppBase
 
 if TYPE_CHECKING:
@@ -140,7 +140,7 @@ class ScopedRecomputeTestBase(TestInfrahubAppBase):
     ) -> AsyncGenerator[WorkflowRecorder, None]:
         original = config.OVERRIDE.workflow
         recorder = WorkflowRecorder()
-        await setup_task_manager()
+        await setup_task_manager_once()
         config.OVERRIDE.workflow = recorder
         with dependency_provider.scope(build_workflow, lambda: recorder):
             yield recorder
