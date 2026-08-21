@@ -1,1 +1,0 @@
-Webhook deliveries are now first-class, observable tasks. Each delivery runs as its own task, retries automatically on failure, reports a classified failure reason with a remediation hint instead of a raw stack trace for expected delivery errors, records the request it sent and the response it received, and can be retried or cancelled by an operator.
