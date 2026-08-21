@@ -9,7 +9,10 @@ import pytest
 from infrahub.computed_attribute.scoping import ComputedAttributeRef, PythonTransformDependencyDeriver
 from infrahub.core.constants import ComputedAttributeKind
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
-from infrahub.core.schema.schema_branch_computed.python_transform import derived_read_is_scopable
+from infrahub.core.schema.schema_branch_computed.python_transform import (
+    IMPRECISE_READ_FIELDS,
+    derived_read_is_scopable,
+)
 from tests.helpers.schema.car import CAR
 from tests.helpers.schema.person import PERSON
 
@@ -145,27 +148,16 @@ def test_read_set_is_branch_specific() -> None:
     assert branch_deps.read_fields[OWNER_KIND] == frozenset({"color", ATTRIBUTE_NAME})
 
 
-def test_display_label_read_marks_only_its_own_kind_imprecise() -> None:
+@pytest.mark.parametrize("derived_field", sorted(IMPRECISE_READ_FIELDS))
+def test_a_derived_read_marks_only_its_own_kind_imprecise(derived_field: str) -> None:
     read_set = TransformReadSet.from_read_fields(
-        {OWNER_KIND: {"name"}, "TestPerson": {"display_label"}}, scopable_derived_kinds={"TestPerson"}
+        {OWNER_KIND: {"name"}, "TestPerson": {derived_field}}, scopable_derived_kinds={"TestPerson"}
     )
 
     assert read_set.depends_on_everything is False
     assert set(read_set.imprecise_kinds) == {"TestPerson"}
     assert set(read_set.read_kinds) == {OWNER_KIND, "TestPerson"}
     assert {kind: set(fields) for kind, fields in read_set.read_fields.items()} == {OWNER_KIND: {"name"}}
-
-
-def test_hfid_read_marks_only_its_own_kind_imprecise() -> None:
-    # The analyzer reports the schema name, not the hfid query spelling.
-    read_set = TransformReadSet.from_read_fields(
-        {OWNER_KIND: {"human_friendly_id"}}, scopable_derived_kinds={OWNER_KIND}
-    )
-
-    assert read_set.depends_on_everything is False
-    assert set(read_set.imprecise_kinds) == {OWNER_KIND}
-    assert set(read_set.read_kinds) == {OWNER_KIND}
-    assert read_set.read_fields == {}
 
 
 def test_derived_read_on_an_unscopable_kind_collapses_the_whole_set() -> None:

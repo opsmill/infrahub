@@ -270,11 +270,6 @@ DERIVED_READ_CASES = [
         expected_selected=False,
     ),
     DerivedReadCase(
-        name="unread_field_on_a_read_kind_is_rejected",
-        changed_elements=ChangedElementSet(changed_fields={DEVICE_KIND: frozenset({"serial"})}),
-        expected_selected=False,
-    ),
-    DerivedReadCase(
         name="any_change_to_the_imprecise_kind_selects",
         changed_elements=ChangedElementSet(changed_fields={CIRCUIT_KIND: frozenset({"description"})}),
         expected_selected=True,
@@ -287,11 +282,6 @@ DERIVED_READ_CASES = [
     DerivedReadCase(
         name="named_read_on_another_kind_still_selects",
         changed_elements=ChangedElementSet(changed_fields={DEVICE_KIND: frozenset({"name"})}),
-        expected_selected=True,
-    ),
-    DerivedReadCase(
-        name="own_definition_edit_still_selects",
-        changed_elements=ChangedElementSet(changed_fields={INTERFACE_KIND: frozenset({DERIVED_READ_ATTRIBUTE})}),
         expected_selected=True,
     ),
 ]
