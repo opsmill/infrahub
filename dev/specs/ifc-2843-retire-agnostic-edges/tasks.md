@@ -83,11 +83,16 @@ with the shared retention predicate extended only where a slice proves it must b
   writes branch-scoped `deleted` edges that the pool's `branch_agnostic=True` filter honours, so
   re-allocation works without retirement and SC-007 was satisfied before this feature. The test keeps
   its value through the graph assertions; the spec is amended.
-- [ ] R03 **Slice 2 — schema attribute and relationship removal.** Fold the closure into
+- [X] R03 **Slice 2 — schema attribute and relationship removal.** Fold the closure into
   `AttributeRemoveQuery` (`backend/infrahub/core/migrations/query/attribute_remove.py`) and its
   relationship equivalent rather than calling retirement after them, which also removes the ordering
   problem in T030: once the removal query has closed the owning edge, an open-edge anchor can no
-  longer see the candidate. Supersedes T029/T030. Carries T030a and T030b.
+  longer see the candidate. Supersedes T029/T030. Carries T030a and T030b. **Done 2026-08-19**, as a
+  shared unit-subquery fragment, `CLOSE_UNRETAINED_AGNOSTIC_FIELDS` in
+  `backend/infrahub/core/query/agnostic_field_closure.py`, composed by both removal queries. It takes
+  the vertices the removal already matched as a collected list rather than re-selecting them, which is
+  what keeps the candidate set intact across the removal's own writes, and returns nothing, so both
+  queries keep their existing `RETURN` and their migration counts. T030a and T030b followed the same day.
 - [ ] R04 **Slice 3 — branch merge and rebase.** Supersedes T025–T028. Both supply node uuids from
   the diff they already compute. **Carries T033 (FR-014)** — diff a branch that forked before the
   deletion and assert no attribute or relationship change is reported for that node. It sits here
@@ -112,6 +117,17 @@ with the shared retention predicate extended only where a slice proves it must b
   opposite is now true and implemented: failures propagate so the transaction rolls back. See
   T017a.
 - **T030's ordering is moot** — the closure is part of the removal query rather than a call after it.
+  Implementing it (2026-08-19) also showed T030's stated reason was wrong, though its conclusion was
+  right. A removal does **not** close the global owning edge of a branch-agnostic field: both removal
+  queries only close an edge in place when its `branch` equals the migration branch, and a global edge
+  never does, so they shadow it with a branch-scoped `deleted` edge instead and leave the global one
+  open. This holds for the attribute removal as much as the relationship one: its peer match is
+  undirected, so the owning node is among the peers, and `HAS_ATTRIBUTE` is the first entry in
+  `GraphAttributeRelationships`, so the per-type shadow `CREATE` covers the owning edge too. An
+  open-edge anchor would therefore still have found the candidate. The fold earns its place
+  for two other reasons: the removal has already computed which vertices belong to the kind, including
+  the profile/template expansion and the still-declaring kinds to skip, and it is the removal's own
+  writes that make the field unretained — a later pass would have to re-derive both.
 - **T037's prediction was right and its reasoning was wrong.** Deleting a fully branch-agnostic
   object *is* a retirement no-op, but not because the enforcement point declines to act: the ordinary
   agnostic delete already both tombstones the global edges and stamps `to` on the superseded active
@@ -153,10 +169,10 @@ passed.
 - [ ] T026 [US1] Invoke retirement from `DiffMerger.merge_graph` in `backend/infrahub/core/diff/merger/merger.py`, after the bulk merge queries complete, for the deleted nodes named by the merge diff, at the merge `at`
 - [ ] T027 [P] [US1] Write a component test for rebase: a node deleted on the default branch while a branch is open, rebase that branch → closed (FR-007, scenario 5b); plus scenario 11 — a node created and deleted on `B`, then `B` rebased, leaves no vertex with open global edges
 - [ ] T028 [US1] Invoke retirement from `rebase_branch` in `backend/infrahub/core/branch/tasks.py`, inside the existing `lock.registry.global_graph_lock()` and **before** `user_branch.rebase(...)` is applied, at `rebase_at`. Obtain the base-branch deletions via a second `DiffRepository` read under the existing tracking id (decided in plan.md §"Resolved during critique").
-- [ ] T029 [P] [US1] Write component tests for schema removal: a branch-agnostic attribute removed from the schema → closed; likewise a relationship; and with a branch that forked beforehand → deferred and still readable there (FR-010, scenarios 8–9). **Belongs to slice 2 (R03)** and is written against the removal query rather than a separate retirement call. The deferral case is already covered from the delete side by slice 1's field-axis test, which builds the branch-level `deleted` owning edge by hand; these drive it through the real removal path.
+- [X] T029 [P] [US1] Write component tests for schema removal: a branch-agnostic attribute removed from the schema → closed; likewise a relationship; and with a branch that forked beforehand → deferred and still readable there (FR-010, scenarios 8–9). **Belongs to slice 2 (R03)** and is written against the removal query rather than a separate retirement call. The deferral case is already covered from the delete side by slice 1's field-axis test, which builds the branch-level `deleted` owning edge by hand; these drive it through the real removal path. Delivered 2026-08-19 in `backend/tests/component/core/migrations/schema/test_agnostic_field_removal.py` — four tests, both fields closed and both fields deferred, driven through `NodeAttributeRemoveMigration` / `NodeRelationshipRemoveMigration`. Placed with the other removal-migration component tests rather than in `core/test_agnostic_retirement.py`, whose class-scoped database is shared across its tests while these need the function-scoped `default_branch` reset. Mutation-checked twice: with the fragment emptied the two closure tests fail and the two deferral tests pass; with the retention predicate dropped from the fragment the two deferral tests fail and the two closure tests pass.
 - [ ] T030 [US1] **Superseded by R03 — do not implement as written.** The original said to invoke retirement from `NodeAttributeRemoveMigration` and `NodeRelationshipRemoveMigration` *after* each existing removal query runs. That cannot work: the removal query has already closed the owning edge by then, so an open-edge anchor finds no candidate and retirement is a silent no-op. Instead fold the closure into `AttributeRemoveQuery` (`backend/infrahub/core/migrations/query/attribute_remove.py`) and its relationship equivalent, which already match the right vertices for the kind and already carry the branch filter.
-- [ ] T030a [US1] Write the cross-axis component test driven through the **real** removal migration: an object deleted on the default branch while a branch forked after its creation had the attribute removed from its schema. That branch retains the object but not the field, so nothing retains the value and the global edges must close. Deferred from the object-delete slice deliberately — the fixture is only faithful once the removal path is final, and a hand-built version could encode a shape the schema slice changes. The object-delete slice covers the same conjunction with a raw-Cypher fixture instead.
-- [ ] T030b [US1] Write the inverse of T030a: the attribute removed from the schema on the default branch while a branch forked beforehand deleted the object. That branch retains the field but not the object, so again nothing retains the value. Both directions prove the retention conjunction is per branch rather than a disjunction across axes.
+- [X] T030a [US1] Write the cross-axis component test driven through the **real** removal migration: an object deleted on the default branch while a branch forked after its creation had the attribute removed from its schema. That branch retains the object but not the field, so nothing retains the value and the global edges must close. Deferred from the object-delete slice deliberately — the fixture is only faithful once the removal path is final, and a hand-built version could encode a shape the schema slice changes. The object-delete slice covers the same conjunction with a raw-Cypher fixture instead. Delivered 2026-08-19 as `test_an_attribute_removed_on_a_fork_is_closed_when_the_object_is_deleted_elsewhere` in `backend/tests/component/core/migrations/schema/test_agnostic_field_removal.py`. The removal is the real migration; the closure comes from the delete, since that is the enforcement point the surviving axis flips on.
+- [X] T030b [US1] Write the inverse of T030a: the attribute removed from the schema on the default branch while a branch forked beforehand deleted the object. That branch retains the field but not the object, so again nothing retains the value. Both directions prove the retention conjunction is per branch rather than a disjunction across axes. Delivered 2026-08-19 as `test_an_attribute_removed_from_the_schema_is_closed_when_the_only_fork_deleted_the_object` in the same file, closed by the removal query. Mutation-checked: with the field-edge axis dropped from the shared predicate, so that a live owner alone retains, both tests fail; with the closure fragment emptied, T030b fails and T030a passes, which is where each one's closure comes from. Dropping the existence axis instead leaves both passing, and that is a property of the real paths rather than a gap: an ordinary delete tombstones the field edge alongside the existence edge on its own branch, so no branch in either scenario holds a live field edge over a dead owner. Slice 1's raw-Cypher `tombstone_existence_only` fixture exists for exactly that shape.
 
 ### Cross-cutting correctness tests for US1
 
