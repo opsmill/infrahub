@@ -13,11 +13,13 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from tests.helpers.trigger import branches_covered_by
 
 TRANSFORM_NAME = "transform_person_cars"
 
@@ -182,8 +184,10 @@ async def test_gather_trigger_computed_attribute_jinja2_different_branch(
     assert set(triggers_by_name.keys()) == {name_main, name_branch_first, name_branch_second}
 
     trigger_main = triggers_by_name[name_main]
-    assert "infrahub.branch.name" in trigger_main.trigger.match
-    assert trigger_main.trigger.match["infrahub.branch.name"] == ["!branch2"]
+    assert "infrahub.branch.name" not in trigger_main.trigger.match
+    assert trigger_main.trigger.match_related[1:] == [
+        {"prefect.resource.role": "infrahub.branch", "infrahub.resource.label": "!branch2"}
+    ]
 
     trigger_branch = triggers_by_name[name_branch_first]
     assert "infrahub.branch.name" in trigger_branch.trigger.match
@@ -251,6 +255,48 @@ async def test_gather_trigger_computed_attribute_python_only_on_branch(
     trigger = triggers[0]
     assert trigger.name == "TestCar_computed_desc"
     assert trigger.branch == "branch_with_computed_attr"
+
+
+async def test_gather_trigger_computed_attribute_python_fires_once_per_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_computed_attr: None,
+    transform01: Node,
+) -> None:
+    """Each branch pinned to its own repository commit owns its automation.
+
+    The default-branch automation must skip both, and still cover a branch created later.
+    """
+    for index, branch_name in enumerate(["branch1", "branch2"], start=1):
+        branch = await create_branch(branch_name=branch_name, db=db)
+        repositories = await NodeManager.query(
+            db=db,
+            schema=InfrahubKind.READONLYREPOSITORY,
+            branch=branch,
+            filters={"name__value": "repo02"},
+        )
+        repositories[0].commit.value = f"commit-branch{index}"
+        await repositories[0].save(db=db)
+
+    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    expected_owners = {
+        "main": ["main"],
+        "branch1": ["branch1"],
+        "branch2": ["branch2"],
+        "branch-created-after-setup": ["main"],
+    }
+    branch_names = list(expected_owners.keys())
+
+    for definitions in (triggers, trigger_queries):
+        triggers_by_scope = {definition.branch: definition for definition in definitions}
+        assert set(triggers_by_scope) == {"main", "branch1", "branch2"}
+        assert (
+            branches_covered_by(
+                triggers_by_scope=triggers_by_scope, kind="TestCar", field="name", branch_names=branch_names
+            )
+            == expected_owners
+        )
 
 
 @dataclass

@@ -14,9 +14,10 @@ from pydantic import BaseModel, Field
 from infrahub import __version__
 from infrahub.workflows.models import WorkflowDefinition  # noqa: TC001
 
-from .constants import NAME_SEPARATOR
+from .constants import BRANCH_RESOURCE_LABEL, BRANCH_RESOURCE_ROLE, NAME_SEPARATOR
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from uuid import UUID
 
 T = TypeVar("T", bound="TriggerDefinition")
@@ -136,6 +137,23 @@ class EventTrigger(BaseModel):
     events: set = Field(default_factory=set)
     match: dict[str, Any] = Field(default_factory=dict)
     match_related: dict[str, Any] | list[dict[str, Any]] = Field(default_factory=_match_related_dict)
+
+    def exclude_branches(self, branch_names: Iterable[str]) -> None:
+        """Stop this trigger from matching events on the given branches.
+
+        Prefect ORs the patterns of one label, so a list of negations on the branch label excludes
+        nothing. It ANDs the entries of ``match_related``, so each branch needs its own entry.
+        Extends ``match_related``, so assign that first.
+        """
+        exclusions = [
+            {"prefect.resource.role": BRANCH_RESOURCE_ROLE, BRANCH_RESOURCE_LABEL: f"!{branch_name}"}
+            for branch_name in sorted(branch_names)
+        ]
+        if not exclusions:
+            return
+
+        existing = [self.match_related] if isinstance(self.match_related, dict) else list(self.match_related)
+        self.match_related = [specification for specification in existing if specification] + exclusions
 
     def get_prefect(self) -> PrefectEventTrigger:
         return PrefectEventTrigger(

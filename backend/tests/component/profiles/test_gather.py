@@ -141,8 +141,10 @@ async def test_gather_trigger_profile_refresh_different_branch(
     assert name_branch in triggers_by_name
 
     trigger_main = triggers_by_name[name_main]
-    assert "infrahub.branch.name" in trigger_main.trigger.match
-    assert trigger_main.trigger.match["infrahub.branch.name"] == ["!branch2"]
+    assert "infrahub.branch.name" not in trigger_main.trigger.match
+    assert trigger_main.trigger.match_related[1:] == [
+        {"prefect.resource.role": "infrahub.branch", "infrahub.resource.label": "!branch2"}
+    ]
 
     trigger_branch = triggers_by_name[name_branch]
     assert "infrahub.branch.name" in trigger_branch.trigger.match
