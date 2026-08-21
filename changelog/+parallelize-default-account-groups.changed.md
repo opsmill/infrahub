@@ -1,0 +1,1 @@
+Speed up creation of the default account groups, roles and permissions by creating independent permission nodes concurrently. This shortens first-time initialization and the `infrahub upgrade` path that rebuilds the default groups.

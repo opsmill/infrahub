@@ -1,5 +1,7 @@
+import asyncio
 import importlib
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
+from functools import partial
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
@@ -360,16 +362,52 @@ async def create_ipam_namespace(
     return obj
 
 
-async def create_super_administrator_role(db: InfrahubDatabase) -> CoreAccountRole:
+async def run_in_own_session[T](db: InfrahubDatabase, task: Callable[[InfrahubDatabase], Awaitable[T]]) -> T:
+    """Give a concurrent task its own database session — a shared session cannot serve concurrent queries."""
+    async with db.start_session() as session_db:
+        return await task(session_db)
+
+
+async def create_global_permission(db: InfrahubDatabase, action: GlobalPermissions, description: str) -> Node:
     permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await permission.new(
         db=db,
-        action=GlobalPermissions.SUPER_ADMIN.value,
+        action=action.value,
         decision=PermissionDecision.ALLOW_ALL.value,
-        description="Allow a user to do anything",
+        description=description,
     )
     await permission.save(db=db)
-    log.info(f"Created global permission: {GlobalPermissions.SUPER_ADMIN}")
+    log.info(f"Created global permission: {action}")
+
+    return permission
+
+
+async def create_object_permission(
+    db: InfrahubDatabase,
+    name: str,
+    namespace: str,
+    action: PermissionAction,
+    decision: PermissionDecision,
+    description: str,
+) -> Node:
+    permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await permission.new(
+        db=db,
+        name=name,
+        namespace=namespace,
+        action=action.value,
+        decision=decision.value,
+        description=description,
+    )
+    await permission.save(db=db)
+
+    return permission
+
+
+async def create_super_administrator_role(db: InfrahubDatabase) -> CoreAccountRole:
+    permission = await create_global_permission(
+        db=db, action=GlobalPermissions.SUPER_ADMIN, description="Allow a user to do anything"
+    )
 
     role_name = "Super Administrator"
     role = await Node.init(db=db, schema=CoreAccountRole)
@@ -381,65 +419,73 @@ async def create_super_administrator_role(db: InfrahubDatabase) -> CoreAccountRo
 
 
 async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
-    repo_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-    await repo_permission.new(
-        db=db,
-        action=GlobalPermissions.MANAGE_REPOSITORIES.value,
-        decision=PermissionDecision.ALLOW_ALL.value,
-        description="Allow a user to manage repositories",
+    # The permissions are independent nodes, so they are created concurrently to keep
+    # this frequently exercised bootstrap path fast.
+    (
+        repo_permission,
+        schema_permission,
+        proposed_change_permission,
+        view_permission,
+        modify_permission,
+    ) = await asyncio.gather(
+        run_in_own_session(
+            db,
+            lambda dbs: create_global_permission(
+                db=dbs, action=GlobalPermissions.MANAGE_REPOSITORIES, description="Allow a user to manage repositories"
+            ),
+        ),
+        run_in_own_session(
+            db,
+            lambda dbs: create_global_permission(
+                db=dbs, action=GlobalPermissions.MANAGE_SCHEMA, description="Allow a user to manage the schema"
+            ),
+        ),
+        run_in_own_session(
+            db,
+            lambda dbs: create_global_permission(
+                db=dbs,
+                action=GlobalPermissions.MERGE_PROPOSED_CHANGE,
+                description="Allow a user to merge proposed changes",
+            ),
+        ),
+        run_in_own_session(
+            db,
+            lambda dbs: create_object_permission(
+                db=dbs,
+                name="*",
+                namespace="*",
+                action=PermissionAction.VIEW,
+                decision=PermissionDecision.ALLOW_ALL,
+                description="Allow a user to view any object in any branch",
+            ),
+        ),
+        run_in_own_session(
+            db,
+            lambda dbs: create_object_permission(
+                db=dbs,
+                name="*",
+                namespace="*",
+                action=PermissionAction.ANY,
+                decision=PermissionDecision.ALLOW_OTHER,
+                description="Allow a user to change data in non-default branches",
+            ),
+        ),
     )
-    await repo_permission.save(db=db)
-
-    schema_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-    await schema_permission.new(
-        db=db,
-        action=GlobalPermissions.MANAGE_SCHEMA.value,
-        decision=PermissionDecision.ALLOW_ALL.value,
-        description="Allow a user to manage the schema",
-    )
-    await schema_permission.save(db=db)
-
-    proposed_change_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-    await proposed_change_permission.new(
-        db=db,
-        action=GlobalPermissions.MERGE_PROPOSED_CHANGE.value,
-        decision=PermissionDecision.ALLOW_ALL.value,
-        description="Allow a user to merge proposed changes",
-    )
-    await proposed_change_permission.save(db=db)
 
     # Other permissions, created to keep references of them from the start
-    for permission_action in (
-        GlobalPermissions.EDIT_DEFAULT_BRANCH,
-        GlobalPermissions.MANAGE_ACCOUNTS,
-        GlobalPermissions.MANAGE_GLOBAL_PREFERENCES,
-        GlobalPermissions.MANAGE_PERMISSIONS,
-        GlobalPermissions.MERGE_BRANCH,
-        GlobalPermissions.REBASE_BRANCH,
-    ):
-        await get_or_create_global_permission(db=db, permission=permission_action)
-
-    view_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
-    await view_permission.new(
-        db=db,
-        name="*",
-        namespace="*",
-        action=PermissionAction.VIEW.value,
-        decision=PermissionDecision.ALLOW_ALL.value,
-        description="Allow a user to view any object in any branch",
+    await asyncio.gather(
+        *(
+            run_in_own_session(db, partial(get_or_create_global_permission, permission=permission_action))
+            for permission_action in (
+                GlobalPermissions.EDIT_DEFAULT_BRANCH,
+                GlobalPermissions.MANAGE_ACCOUNTS,
+                GlobalPermissions.MANAGE_GLOBAL_PREFERENCES,
+                GlobalPermissions.MANAGE_PERMISSIONS,
+                GlobalPermissions.MERGE_BRANCH,
+                GlobalPermissions.REBASE_BRANCH,
+            )
+        )
     )
-    await view_permission.save(db=db)
-
-    modify_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
-    await modify_permission.new(
-        db=db,
-        name="*",
-        namespace="*",
-        action=PermissionAction.ANY.value,
-        decision=PermissionDecision.ALLOW_OTHER.value,
-        description="Allow a user to change data in non-default branches",
-    )
-    await modify_permission.save(db=db)
 
     role_name = "General Access"
     role = await Node.init(db=db, schema=CoreAccountRole)
@@ -461,23 +507,26 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
 
 
 async def create_proposed_change_reviewer_role(db: InfrahubDatabase) -> CoreAccountRole:
-    edit_default_branch_permission = await get_or_create_global_permission(
-        db=db, permission=GlobalPermissions.EDIT_DEFAULT_BRANCH
+    edit_default_branch_permission, reviewer_permission, proposed_change_update_permission = await asyncio.gather(
+        run_in_own_session(
+            db, lambda dbs: get_or_create_global_permission(db=dbs, permission=GlobalPermissions.EDIT_DEFAULT_BRANCH)
+        ),
+        run_in_own_session(
+            db,
+            lambda dbs: get_or_create_global_permission(db=dbs, permission=GlobalPermissions.REVIEW_PROPOSED_CHANGE),
+        ),
+        run_in_own_session(
+            db,
+            lambda dbs: create_object_permission(
+                db=dbs,
+                name="ProposedChange",
+                namespace="Core",
+                action=PermissionAction.UPDATE,
+                decision=PermissionDecision.ALLOW_ALL,
+                description="Allow a user to update proposed changes",
+            ),
+        ),
     )
-    reviewer_permission = await get_or_create_global_permission(
-        db=db, permission=GlobalPermissions.REVIEW_PROPOSED_CHANGE
-    )
-
-    proposed_change_update_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
-    await proposed_change_update_permission.new(
-        db=db,
-        name="ProposedChange",
-        namespace="Core",
-        action=PermissionAction.UPDATE.value,
-        decision=PermissionDecision.ALLOW_ALL.value,
-        description="Allow a user to update proposed changes",
-    )
-    await proposed_change_update_permission.save(db=db)
 
     role_name = "Proposed Change Reviewer"
     role = await Node.init(db=db, schema=CoreAccountRole)
@@ -523,12 +572,27 @@ async def create_accounts_group(
     await group.save(db=db)
     log.info(f"Created account group: {name}")
 
-    for account in accounts:
-        await group.members.add(db=db, data=account)  # type: ignore[arg-type]
+    if accounts:
+        await group.members.update(db=db, data=list(accounts))  # type: ignore[arg-type]
         await group.members.save(db=db)
-        log.info(f"Assigned account group: {name} to {account.name.value}")
+        for account in accounts:
+            log.info(f"Assigned account group: {name} to {account.name.value}")
 
     return group
+
+
+async def create_super_administrators_group(db: InfrahubDatabase, accounts: Sequence[CoreAccount]) -> None:
+    administrator_role = await create_super_administrator_role(db=db)
+    await create_accounts_group(db=db, name="Super Administrators", roles=[administrator_role], accounts=accounts)
+
+
+async def create_users_group(db: InfrahubDatabase, accounts: Sequence[CoreAccount]) -> None:
+    # These two roles get-or-create the same edit-default-branch permission, so they must not run concurrently.
+    default_role = await create_default_role(db=db)
+    proposed_change_reviewer_role = await create_proposed_change_reviewer_role(db=db)
+    await create_accounts_group(
+        db=db, name="Infrahub Users", roles=[default_role, proposed_change_reviewer_role], accounts=accounts
+    )
 
 
 async def create_default_account_groups(
@@ -536,15 +600,9 @@ async def create_default_account_groups(
     admin_accounts: Sequence[CoreAccount] | None = None,
     accounts: Sequence[CoreAccount] | None = None,
 ) -> None:
-    administrator_role = await create_super_administrator_role(db=db)
-    await create_accounts_group(
-        db=db, name="Super Administrators", roles=[administrator_role], accounts=admin_accounts or []
-    )
-
-    default_role = await create_default_role(db=db)
-    proposed_change_reviewer_role = await create_proposed_change_reviewer_role(db=db)
-    await create_accounts_group(
-        db=db, name="Infrahub Users", roles=[default_role, proposed_change_reviewer_role], accounts=accounts or []
+    await asyncio.gather(
+        run_in_own_session(db, partial(create_super_administrators_group, accounts=admin_accounts or [])),
+        run_in_own_session(db, partial(create_users_group, accounts=accounts or [])),
     )
 
 
