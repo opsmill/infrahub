@@ -9,6 +9,8 @@ from infrahub_sdk.testing.repository import GitRepo, GitRepoType
 from infrahub.core.constants import RepositoryOperationalStatus
 from tests.helpers.fixtures import get_fixtures_dir
 
+pytestmark = pytest.mark.shard_a
+
 
 class TestRepositorySync(TestInfrahubDockerClient):
     """Repository import behaviors sharing one stack; each test asserts only on its own repository."""

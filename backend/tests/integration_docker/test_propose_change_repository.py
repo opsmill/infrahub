@@ -37,6 +37,8 @@ from tests.helpers.fixtures import get_fixtures_dir
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
+pytestmark = pytest.mark.shard_b
+
 
 class TestingTag(BuiltinTag): ...
 
