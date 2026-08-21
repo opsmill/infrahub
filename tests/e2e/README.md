@@ -1,8 +1,9 @@
 <!-- markdownlint-disable MD013 -->
 # Infrahub e2e suite (pytest-playwright + infrahub-testcontainers)
 
-This is the Python e2e suite that is replacing the legacy TypeScript Playwright
-suite (`frontend/app/tests/e2e/`). It drives the same browser flows with
+This is the Python e2e suite that replaced the legacy TypeScript Playwright
+suite (formerly `frontend/app/tests/e2e/`, removed once this suite reached
+parity). It drives the same browser flows with
 [`pytest-playwright`](https://playwright.dev/python/docs/test-runners) but:
 
 - spins up Infrahub with **infrahub-testcontainers** instead of
@@ -11,9 +12,9 @@ suite (`frontend/app/tests/e2e/`). It drives the same browser flows with
 - loads the dataset through **composable pytest fixtures**, so every test
   declares exactly the data it needs.
 
-The two CI jobs (`E2E-testing-playwright` and `E2E-testing-pytest-playwright`)
-run side by side until this suite reaches parity; then the TypeScript job is
-removed.
+This suite runs in CI as the `E2E-testing-pytest-playwright` job. The legacy
+TypeScript job (`E2E-testing-playwright`) ran side by side until parity was
+reached and has since been removed.
 
 ## Running
 
@@ -61,8 +62,8 @@ CI builds and uses its own `local-<runner>-<sha>` tag.
 ### Response-delay mode
 
 Set `INFRAHUB_TESTING_RESPONSE_DELAY=1` to add a deliberate 1s delay to every
-GraphQL request, surfacing UI loading-state races — parity with the TS
-`E2E-testing-playwright` job. In CI it is applied to the main pytest run only on
+GraphQL request, surfacing UI loading-state races — parity with what the
+legacy TS suite's CI job did. In CI it is applied to the main pytest run only on
 PRs that touch `tests/e2e/**` (gated on the `e2e_pytest_tests` files-changed
 output); locally:
 
@@ -326,4 +327,9 @@ all three are now fixed and enabled:
 Trace/video capture for authenticated tests is wired: the `admin_page` /
 `read_*_page` fixtures build their context via pytest-playwright's `new_context`
 factory (not `browser.new_context`), so failures produce a trace/video/screenshot
-under `--output` (`test-results/`).
+under `--output` (`test-results/`). Open a captured trace with the Playwright
+trace viewer (the Python package ships the same CLI):
+
+```bash
+uv run playwright show-trace test-results/<test-dir>/trace.zip
+```

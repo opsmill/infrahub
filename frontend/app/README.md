@@ -9,7 +9,6 @@ pnpm start              # Start dev server
 pnpm dev                # Start dev server with devtools
 pnpm build              # Production build
 pnpm test               # Unit tests (Vitest)
-pnpm test:e2e           # E2E tests (Playwright)
 pnpm biome:fix          # Format and lint
 ```
 

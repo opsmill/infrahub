@@ -81,6 +81,7 @@ if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
 
     from infrahub.core.models import SchemaUpdateConstraintInfo
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
@@ -224,17 +225,24 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
         migrations = []
         async with lock.registry.global_graph_lock():
+            # Both baselines are resolved under the lock and before the rebase: the common ancestor
+            # resolves against branched_from, which the rebase advances, and the rollback snapshot
+            # must not predate a schema update that landed while the pre-lock validation ran.
+            migration_baseline_schema: SchemaBranch | None = None
+            pre_rebase_schema: SchemaBranch | None = None
+            if user_branch.schema_differs_from_default_branch:
+                migration_baseline_schema = (await schema_analyzer.get_common_ancestor_schema()).duplicate()
+                pre_rebase_schema = registry.schema.get_schema_branch(name=user_branch.name).duplicate()
+
             async with db.start_transaction() as dbt:
                 await user_branch.rebase(db=dbt, user_id=context.account.account_id, at=rebase_at)
                 log.info("Branch graph rebased")
 
-            if user_branch.schema_differs_from_default_branch:
+            if migration_baseline_schema is not None and pre_rebase_schema is not None:
                 # Update the registry and run migrations after the rebase, with rollback on failure.
                 # Schema nodes were already written by the rebase, so load that schema and apply only
                 # the migrations it implies.
                 log.info("Running migrations")
-                migration_baseline_schema = (await schema_analyzer.get_common_ancestor_schema()).duplicate()
-                pre_rebase_schema = registry.schema.get_schema_branch(name=user_branch.name).duplicate()
                 rebased_schema = await registry.schema.load_schema_from_db(db=db, branch=user_branch)
                 migrations = await schema_analyzer.calculate_migrations(target_schema=rebased_schema)
                 await schema_update_coordinator.execute(
