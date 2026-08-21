@@ -12,6 +12,8 @@ from infrahub.events.node_action import NodeUpdatedEvent
 from tests.helpers.events import dummy_event_meta
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from infrahub.events.models import InfrahubEvent
     from infrahub.trigger.models import TriggerDefinition
 
@@ -43,7 +45,7 @@ def automation_covers_event(trigger_definition: TriggerDefinition, event: Infrah
 
 
 def branches_covered_by(
-    triggers_by_scope: dict[str, TriggerDefinition], kind: str, field: str, branch_names: list[str]
+    triggers_by_scope: Mapping[str, TriggerDefinition], kind: str, field: str, branch_names: list[str]
 ) -> dict[str, list[str]]:
     """Map each branch to the scopes of the automations that fire for a live edit on it."""
     return {
