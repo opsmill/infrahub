@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import NULL_VALUE, RelationshipStatus
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, NULL_VALUE, BranchSupportType, RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeValueIndexedNode, GraphAttributeValueNode
 from infrahub.core.query import Query, QueryType
 from infrahub.types import is_large_attribute_type
@@ -12,6 +12,14 @@ if TYPE_CHECKING:
 
 
 class AttributeAddQuery(Query):
+    """Create missing attribute rows on the nodes of the given kinds.
+
+    ``uuids`` optionally restricts the write to specific nodes.
+
+    Created edges live on the query's branch, except when ``branch_support`` is
+    agnostic: those rows belong to the global branch, visible from every branch.
+    """
+
     name = "attribute_add"
     type = QueryType.WRITE
 
@@ -37,10 +45,13 @@ class AttributeAddQuery(Query):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
+        write_time = self.at.to_string()
+
         self.params["node_kinds"] = self.node_kinds
+        self.params["node_uuids"] = self.uuids
         self.params["attr_name"] = self.attribute_name
         self.params["branch_support"] = self.branch_support
-        self.params["current_time"] = self.at.to_string()
+        self.params["current_time"] = write_time
 
         if self.default_value is not None:
             self.params["attr_value"] = self.default_value
@@ -49,11 +60,18 @@ class AttributeAddQuery(Query):
 
         self.params["user_id"] = self.user_id
 
+        if self.branch_support == BranchSupportType.AGNOSTIC.value:
+            edge_branch_name = GLOBAL_BRANCH_NAME
+            edge_branch_level = 1
+        else:
+            edge_branch_name = self.branch.name
+            edge_branch_level = self.branch.hierarchy_level
+
         self.params["rel_props"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
+            "branch": edge_branch_name,
+            "branch_level": edge_branch_level,
             "status": RelationshipStatus.ACTIVE.value,
-            "from": self.at.to_string(),
+            "from": write_time,
             "from_user_id": self.user_id,
         }
 
@@ -91,6 +109,7 @@ class AttributeAddQuery(Query):
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
         WITH av, is_protected_value
         MATCH (n:%(node_kinds_str)s)
+        WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids
         CALL (n) {
             MATCH (:Root)<-[r:IS_PART_OF]-(n)
             WHERE %(branch_filter)s
@@ -99,7 +118,8 @@ class AttributeAddQuery(Query):
             WHERE %(branch_filter)s
             WITH is_part_of_e, r AS has_attr_e
             RETURN is_part_of_e, has_attr_e
-            ORDER BY has_attr_e.branch_level DESC, has_attr_e.from ASC, is_part_of_e.branch_level DESC, is_part_of_e.from ASC
+            ORDER BY has_attr_e.branch_level DESC, has_attr_e.from DESC, has_attr_e.status ASC,
+                is_part_of_e.branch_level DESC, is_part_of_e.from DESC, is_part_of_e.status ASC
             LIMIT 1
         }
         WITH n, is_part_of_e, has_attr_e, av, is_protected_value
@@ -126,9 +146,6 @@ class AttributeAddQuery(Query):
                 END
             SET n.updated_at = $current_time, n.updated_by = $user_id
         }
-        FOREACH (i in CASE WHEN has_attr_e.status = "deleted" THEN [1] ELSE [] END |
-            SET has_attr_e.to = $current_time, has_attr_e.to_user_id = $user_id
-        )
         """ % {
             "match_query": match_query,
             "branch_filter": branch_filter,
