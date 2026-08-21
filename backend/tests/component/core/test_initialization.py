@@ -1,3 +1,4 @@
+from typing import NoReturn
 from uuid import UUID
 
 import pytest
@@ -113,6 +114,34 @@ async def test_create_default_account_groups_creates_each_permission_once(
         "Proposed Change Reviewer",
     }
     assert len(roles) == 3
+
+
+def _interrupt_transaction() -> NoReturn:
+    """Abort the enclosing transaction so it rolls back.
+
+    Raises:
+        RuntimeError: Always.
+
+    """
+    raise RuntimeError("initialization interrupted")
+
+
+async def test_create_default_account_groups_rolls_back_with_the_caller_transaction(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Permissions must be written inside a caller's transaction, not in sessions of their own.
+
+    A session opened per concurrent task commits independently, so its permissions would outlive
+    the rollback and a later retry would build duplicates on top of them.
+    """
+    with pytest.raises(RuntimeError, match=r"^initialization interrupted$"):
+        async with db.start_transaction() as dbt:
+            await create_default_account_groups(db=dbt)
+            _interrupt_transaction()
+
+    assert await NodeManager.query(db=db, schema=CoreGlobalPermission) == []
+    assert await NodeManager.query(db=db, schema=CoreAccountRole) == []
+    assert await NodeManager.query(db=db, schema=CoreAccountGroup) == []
 
 
 async def test_create_default_account_groups_assigns_every_member(

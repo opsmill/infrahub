@@ -2,7 +2,7 @@ import asyncio
 import importlib
 from collections.abc import Awaitable, Callable, Sequence
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from infrahub_sdk.uuidt import UUIDT
@@ -362,10 +362,23 @@ async def create_ipam_namespace(
     return obj
 
 
-async def run_in_own_session[T](db: InfrahubDatabase, task: Callable[[InfrahubDatabase], Awaitable[T]]) -> T:
-    """Give a concurrent task its own database session — a shared session cannot serve concurrent queries."""
-    async with db.start_session() as session_db:
-        return await task(session_db)
+async def run_concurrently[T](
+    db: InfrahubDatabase, tasks: Sequence[Callable[[InfrahubDatabase], Awaitable[T]]]
+) -> list[T]:
+    """Run each task against its own database session, concurrently.
+
+    A caller that opened a transaction gets sequential execution on that transaction instead:
+    a separate session commits independently of it, which would leave its writes behind on
+    rollback, and the transaction's own session cannot serve concurrent queries.
+    """
+    if db.is_transaction:
+        return [await task(db) for task in tasks]
+
+    async def in_own_session(task: Callable[[InfrahubDatabase], Awaitable[T]]) -> T:
+        async with db.start_session() as session_db:
+            return await task(session_db)
+
+    return list(await asyncio.gather(*(in_own_session(task) for task in tasks)))
 
 
 async def create_global_permission(db: InfrahubDatabase, action: GlobalPermissions, description: str) -> Node:
@@ -427,55 +440,48 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
         proposed_change_permission,
         view_permission,
         modify_permission,
-    ) = await asyncio.gather(
-        run_in_own_session(
-            db,
-            lambda dbs: create_global_permission(
-                db=dbs, action=GlobalPermissions.MANAGE_REPOSITORIES, description="Allow a user to manage repositories"
+    ) = await run_concurrently(
+        db,
+        [
+            partial(
+                create_global_permission,
+                action=GlobalPermissions.MANAGE_REPOSITORIES,
+                description="Allow a user to manage repositories",
             ),
-        ),
-        run_in_own_session(
-            db,
-            lambda dbs: create_global_permission(
-                db=dbs, action=GlobalPermissions.MANAGE_SCHEMA, description="Allow a user to manage the schema"
+            partial(
+                create_global_permission,
+                action=GlobalPermissions.MANAGE_SCHEMA,
+                description="Allow a user to manage the schema",
             ),
-        ),
-        run_in_own_session(
-            db,
-            lambda dbs: create_global_permission(
-                db=dbs,
+            partial(
+                create_global_permission,
                 action=GlobalPermissions.MERGE_PROPOSED_CHANGE,
                 description="Allow a user to merge proposed changes",
             ),
-        ),
-        run_in_own_session(
-            db,
-            lambda dbs: create_object_permission(
-                db=dbs,
+            partial(
+                create_object_permission,
                 name="*",
                 namespace="*",
                 action=PermissionAction.VIEW,
                 decision=PermissionDecision.ALLOW_ALL,
                 description="Allow a user to view any object in any branch",
             ),
-        ),
-        run_in_own_session(
-            db,
-            lambda dbs: create_object_permission(
-                db=dbs,
+            partial(
+                create_object_permission,
                 name="*",
                 namespace="*",
                 action=PermissionAction.ANY,
                 decision=PermissionDecision.ALLOW_OTHER,
                 description="Allow a user to change data in non-default branches",
             ),
-        ),
+        ],
     )
 
     # Other permissions, created to keep references of them from the start
-    await asyncio.gather(
-        *(
-            run_in_own_session(db, partial(get_or_create_global_permission, permission=permission_action))
+    await run_concurrently(
+        db,
+        [
+            partial(get_or_create_global_permission, permission=permission_action)
             for permission_action in (
                 GlobalPermissions.EDIT_DEFAULT_BRANCH,
                 GlobalPermissions.MANAGE_ACCOUNTS,
@@ -484,7 +490,7 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
                 GlobalPermissions.MERGE_BRANCH,
                 GlobalPermissions.REBASE_BRANCH,
             )
-        )
+        ],
     )
 
     role_name = "General Access"
@@ -507,25 +513,21 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
 
 
 async def create_proposed_change_reviewer_role(db: InfrahubDatabase) -> CoreAccountRole:
-    edit_default_branch_permission, reviewer_permission, proposed_change_update_permission = await asyncio.gather(
-        run_in_own_session(
-            db, lambda dbs: get_or_create_global_permission(db=dbs, permission=GlobalPermissions.EDIT_DEFAULT_BRANCH)
+    # Annotated because the global and object permission factories return different node types.
+    permission_tasks: list[Callable[[InfrahubDatabase], Awaitable[Any]]] = [
+        partial(get_or_create_global_permission, permission=GlobalPermissions.EDIT_DEFAULT_BRANCH),
+        partial(get_or_create_global_permission, permission=GlobalPermissions.REVIEW_PROPOSED_CHANGE),
+        partial(
+            create_object_permission,
+            name="ProposedChange",
+            namespace="Core",
+            action=PermissionAction.UPDATE,
+            decision=PermissionDecision.ALLOW_ALL,
+            description="Allow a user to update proposed changes",
         ),
-        run_in_own_session(
-            db,
-            lambda dbs: get_or_create_global_permission(db=dbs, permission=GlobalPermissions.REVIEW_PROPOSED_CHANGE),
-        ),
-        run_in_own_session(
-            db,
-            lambda dbs: create_object_permission(
-                db=dbs,
-                name="ProposedChange",
-                namespace="Core",
-                action=PermissionAction.UPDATE,
-                decision=PermissionDecision.ALLOW_ALL,
-                description="Allow a user to update proposed changes",
-            ),
-        ),
+    ]
+    edit_default_branch_permission, reviewer_permission, proposed_change_update_permission = await run_concurrently(
+        db, permission_tasks
     )
 
     role_name = "Proposed Change Reviewer"
@@ -572,10 +574,13 @@ async def create_accounts_group(
     await group.save(db=db)
     log.info(f"Created account group: {name}")
 
-    if accounts:
-        await group.members.update(db=db, data=list(accounts))  # type: ignore[arg-type]
+    # Deduplicated by id because `update` takes the list as given, where the per-account `add`
+    # it replaces skipped peers that were already members.
+    unique_accounts = list({account.id: account for account in accounts}.values())
+    if unique_accounts:
+        await group.members.update(db=db, data=unique_accounts)  # type: ignore[arg-type]
         await group.members.save(db=db)
-        for account in accounts:
+        for account in unique_accounts:
             log.info(f"Assigned account group: {name} to {account.name.value}")
 
     return group
@@ -591,9 +596,8 @@ async def create_users_group(db: InfrahubDatabase, accounts: Sequence[CoreAccoun
     # since two concurrent get-or-creates of one action would each miss and insert a duplicate.
     await get_or_create_global_permission(db=db, permission=GlobalPermissions.EDIT_DEFAULT_BRANCH)
 
-    default_role, proposed_change_reviewer_role = await asyncio.gather(
-        run_in_own_session(db, create_default_role),
-        run_in_own_session(db, create_proposed_change_reviewer_role),
+    default_role, proposed_change_reviewer_role = await run_concurrently(
+        db, [create_default_role, create_proposed_change_reviewer_role]
     )
     await create_accounts_group(
         db=db, name="Infrahub Users", roles=[default_role, proposed_change_reviewer_role], accounts=accounts
@@ -605,9 +609,12 @@ async def create_default_account_groups(
     admin_accounts: Sequence[CoreAccount] | None = None,
     accounts: Sequence[CoreAccount] | None = None,
 ) -> None:
-    await asyncio.gather(
-        run_in_own_session(db, partial(create_super_administrators_group, accounts=admin_accounts or [])),
-        run_in_own_session(db, partial(create_users_group, accounts=accounts or [])),
+    await run_concurrently(
+        db,
+        [
+            partial(create_super_administrators_group, accounts=admin_accounts or []),
+            partial(create_users_group, accounts=accounts or []),
+        ],
     )
 
 
