@@ -75,7 +75,7 @@ class Migration076(MigrationRequiringRebase):
             await self._ensure_runtime_context(db=migration_input.db)
             default_branch = await registry.get_branch(db=migration_input.db, branch=registry.default_branch)
             result = await self._heal_branch(migration_input=migration_input, branch=default_branch)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - a repair failure is reported, never raised out of a migration
             migration_input.console.print_exception()
             result.errors.append(f"{type(exc).__name__}: {exc}")
 
@@ -108,7 +108,7 @@ class Migration076(MigrationRequiringRebase):
             result.errors.extend(
                 await self._detect_remaining_damage(db=db, branch=branch, baseline_schema=baseline_schema)
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - a repair failure is reported, never raised out of a migration
             migration_input.console.print_exception()
             result.errors.append(f"{type(exc).__name__}: {exc}")
 
@@ -123,7 +123,7 @@ class Migration076(MigrationRequiringRebase):
             await self._ensure_runtime_context(db=db)
             default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
             result.errors.extend(await self._detect_remaining_damage(db=db, branch=default_branch))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - a repair failure is reported, never raised out of a migration
             console.print_exception()
             result.errors.append(f"{type(exc).__name__}: {exc}")
 
@@ -352,7 +352,7 @@ class Migration076(MigrationRequiringRebase):
                         node_uuids=damaged_uuids_by_attribute[attribute.name],
                     )
                 result.nbr_migrations_executed += created
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - see the comment above: one attribute must not hide the others
                 result.errors.append(f"{node_schema.kind}.{attribute.name} on branch {branch.name}: {exc}")
                 break
 
