@@ -1,1 +1,0 @@
-`POST /api/schema/load` now returns the warnings it collected even when the submitted schema matches the one already loaded. Previously the response for an unchanged schema omitted them, so a deprecation or read-only-field warning went unreported on every load after the first.

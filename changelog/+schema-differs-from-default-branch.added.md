@@ -1,1 +1,0 @@
-Added a `schema_differs_from_default_branch` field to the `Branch` and `InfrahubBranch` GraphQL types. It reports whether a branch's schema differs from the default branch, replacing the misleadingly named `has_schema_changes` field with a name that reflects what the value actually means.

@@ -1,1 +1,0 @@
-A branch's details page now says whether you're working on that branch, and lets you switch to it. When the page you're viewing isn't the branch you're working on, a notice explains that edits won't land there and offers a one-click switch.
