@@ -1,1 +1,0 @@
-Hierarchical `parent` and `children` relationships now display the related kind's label (for example "Region" or "Site") instead of the generic "Parent"/"Children" everywhere they appear — the object detail view, tabs, table column headers, filters, the sort picker, and create/edit forms.
