@@ -91,7 +91,7 @@ Capitalize these Infrahub-specific terms when referring to the feature:
 
 **Never use "transform" or "transforms" as a noun.** Always use "Transformation" or "Transformations".
 
-**Say "object", not "node", in user-facing text** (docs, error messages, UI copy) — "node" is internal graph vocabulary.
+**Call a populated instance an "object", not a "node"**, in user-facing text (docs, error messages, UI copy). "Node" stays where it names a schema kind — the counterpart of "Generic" — which is the term the schema docs and the UI already use.
 
 ## Documentation Workflow
 
