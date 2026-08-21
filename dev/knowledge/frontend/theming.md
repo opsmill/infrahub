@@ -121,8 +121,8 @@ once. The two legitimate exceptions, both from
 | Reading the theme from the class | `shared/hooks/use-resolved-theme.test.tsx` |
 | The switch in the account menu, alpha tag, gating | `entities/user-profile/ui/account-menu.test.tsx` |
 | Mermaid renders in the active theme, reacts to a flip, author directive wins | `shared/components/editor/markdown/markdown-with-mermaid.test.tsx` (asserts the colours baked into the real SVG) |
-| First-paint, persistence, flag-off journeys | `tests/e2e/theme.spec.ts` (Playwright, needs a stack) |
-| Docs screenshots stay light | pinned in `tests/utils.ts` |
+| First-paint, persistence, flag-off journeys | `tests/e2e/test_theme.py` (pytest-playwright, needs a stack) |
+| Docs screenshots stay light | pinned in `tests/e2e/helpers.py::save_screenshot_for_docs` |
 
 The design-system package has no test runner, so tests for its theme primitives are hosted in the
 application suite. The pre-paint script itself is reachable only by the e2e suite — it sits outside
