@@ -301,7 +301,7 @@ class InfrahubGraphQLApp:
             background=graphql_params.context.background,
         )
 
-        GRAPHQL_RESPONSE_SIZE_METRICS.labels(**labels).observe(len(json_response.render(response)))
+        GRAPHQL_RESPONSE_SIZE_METRICS.labels(**labels).observe(len(json_response.body))
         GRAPHQL_QUERY_DEPTH_METRICS.labels(**labels).observe(await analyzed_query.calculate_depth())
         GRAPHQL_QUERY_HEIGHT_METRICS.labels(**labels).observe(await analyzed_query.calculate_height())
         # GRAPHQL_QUERY_VARS_METRICS.labels(**labels).observe(len(analyzed_query.variables))
