@@ -587,9 +587,14 @@ async def create_super_administrators_group(db: InfrahubDatabase, accounts: Sequ
 
 
 async def create_users_group(db: InfrahubDatabase, accounts: Sequence[CoreAccount]) -> None:
-    # These two roles get-or-create the same edit-default-branch permission, so they must not run concurrently.
-    default_role = await create_default_role(db=db)
-    proposed_change_reviewer_role = await create_proposed_change_reviewer_role(db=db)
+    # Both roles below want this permission. Creating it up front is what makes them independent,
+    # since two concurrent get-or-creates of one action would each miss and insert a duplicate.
+    await get_or_create_global_permission(db=db, permission=GlobalPermissions.EDIT_DEFAULT_BRANCH)
+
+    default_role, proposed_change_reviewer_role = await asyncio.gather(
+        run_in_own_session(db, create_default_role),
+        run_in_own_session(db, create_proposed_change_reviewer_role),
+    )
     await create_accounts_group(
         db=db, name="Infrahub Users", roles=[default_role, proposed_change_reviewer_role], accounts=accounts
     )
