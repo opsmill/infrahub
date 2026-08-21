@@ -85,7 +85,11 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(updated_pc.rejected_by.peers) == 0
 
         # Verify that an event has been logged
-        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change.approved")
+        await self.assert_event(
+            prefect_client=prefect_client,
+            event_name="infrahub.proposed_change.approved",
+            resource_id=f"infrahub.proposed_change.{proposed_change.id}",
+        )
 
         # Test the ProposedChangeReview mutation with REJECTED decision
         response = await unprivileged_client.execute_graphql(
@@ -107,7 +111,11 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert rejected_by_peers == {reviewer["AccountProfile"]["id"]}
 
         # Verify that an event has been logged
-        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change.rejected")
+        await self.assert_event(
+            prefect_client=prefect_client,
+            event_name="infrahub.proposed_change.rejected",
+            resource_id=f"infrahub.proposed_change.{proposed_change.id}",
+        )
 
     async def test_cancel_approve(
         self,
@@ -168,7 +176,11 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(updated_pc.rejected_by.peers) == 0
 
         # Verify that an event has been logged
-        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change.approval_revoked")
+        await self.assert_event(
+            prefect_client=prefect_client,
+            event_name="infrahub.proposed_change.approval_revoked",
+            resource_id=f"infrahub.proposed_change.{proposed_change.id}",
+        )
 
     async def test_cancel_reject(
         self,
@@ -229,7 +241,11 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert len(updated_pc.rejected_by.peers) == 0
 
         # Verify that an event has been logged
-        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change.rejection_revoked")
+        await self.assert_event(
+            prefect_client=prefect_client,
+            event_name="infrahub.proposed_change.rejection_revoked",
+            resource_id=f"infrahub.proposed_change.{proposed_change.id}",
+        )
 
     async def test_missing_permission(
         self,

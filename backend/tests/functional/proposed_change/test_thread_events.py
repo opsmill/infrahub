@@ -47,9 +47,17 @@ class TestProposedChangeThreadEvents(TestInfrahubApp):
         pc_thread_comment = await client.create(kind=THREADCOMMENT, data={"thread": pc_thread.id, "text": "A comment"})
         await pc_thread_comment.save()
 
-        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change_thread.created")
+        await self.assert_event(
+            prefect_client=prefect_client,
+            event_name="infrahub.proposed_change_thread.created",
+            resource_id=f"infrahub.proposed_change.{proposed_change.id}",
+        )
 
         pc_thread.resolved.value = True
         await pc_thread.save()
 
-        await self.assert_event(prefect_client=prefect_client, event_name="infrahub.proposed_change_thread.updated")
+        await self.assert_event(
+            prefect_client=prefect_client,
+            event_name="infrahub.proposed_change_thread.updated",
+            resource_id=f"infrahub.proposed_change.{proposed_change.id}",
+        )
