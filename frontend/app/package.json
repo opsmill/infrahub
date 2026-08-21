@@ -14,16 +14,9 @@
     "codegen": "graphql-codegen --config graphql.config.ts",
     "codegen:openapi": "npx openapi-typescript ../../schema/openapi.json --output src/shared/api/rest/types.generated.ts",
     "codegen:graphql": "gql.tada generate output && gql.tada generate turbo",
-    "ci:test:e2e": "CI=1 DEBUG=pw:browser pnpm test:e2e 2>/dev/null",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
-    "test:e2e:debug": "playwright test --debug",
-    "test:e2e:headed": "playwright test --headed",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:screenshots": "UPDATE_DOCS_SCREENSHOTS=1 INFRAHUB_ADDRESS=http://localhost:8000 playwright test",
-    "test:e2e:screenshots:headed": "UPDATE_DOCS_SCREENSHOTS=1 INFRAHUB_ADDRESS=http://localhost:8000 playwright test --headed",
     "biome": "biome check .",
     "biome:fix": "biome check --write .",
     "knip": "knip",
@@ -112,7 +105,14 @@
     "@biomejs/biome": "^2.5.1",
     "@graphql-codegen/cli": "^7.2.0",
     "@graphql-codegen/typescript": "^6.1.0",
+<<<<<<< HEAD
     "@playwright/test": "1.62.1",
+||||||| 97fd44bea
+    "@playwright/test": "1.62.1",
+    "@radix-ui/react-scroll-area": "^1.2.18",
+=======
+    "@radix-ui/react-scroll-area": "^1.2.18",
+>>>>>>> origin/stable
     "@rolldown/plugin-babel": "^0.2.3",
     "@tailwindcss/vite": "catalog:",
     "@types/dagre": "^0.7.54",
@@ -128,6 +128,15 @@
     "babel-plugin-react-compiler": "catalog:",
     "knip": "~6.27.0",
     "openapi-typescript": "^7.13.0",
+<<<<<<< HEAD
+||||||| 97fd44bea
+    "react-resizable-panels": "^4.12.2",
+    "tailwind-variants": "^3.3.1",
+=======
+    "playwright": "1.60.0",
+    "react-resizable-panels": "^4.12.2",
+    "tailwind-variants": "^3.3.1",
+>>>>>>> origin/stable
     "tailwindcss": "catalog:",
     "ts-node": "^10.9.2",
     "typescript": "catalog:",
