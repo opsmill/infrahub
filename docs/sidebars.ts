@@ -124,7 +124,7 @@ const sidebars: SidebarsConfig = {
           label: 'Schema operations',
           link: { type: 'generated-index' },
           items: [
-            { type: 'doc', id: 'schema/build-your-schema', label: 'Build your schema' },
+            { type: 'doc', id: 'schema/build-your-schema', label: 'Build your schema with AI' },
             { type: 'doc', id: 'schema/create-and-load', label: 'Create and load schema' },
             { type: 'doc', id: 'schema/migration', label: 'Schema migration' },
             { type: 'doc', id: 'schema/marketplace/index', label: 'Marketplace' },

@@ -1,13 +1,13 @@
 ---
-title: Build your schema
-description: Describe a schema change in plain language and let an AI coding assistant produce, validate, and hand back the schema YAML.
+title: Build your schema with AI
+description: Describe a schema change in plain language and have your assistant produce the schema YAML for it, validated before it reaches you.
 ---
 
-# Build your schema
+Describe a schema change in plain language and your assistant produces the schema YAML for it, using the same top-level keys and conventions covered in [Create and load schema](./create-and-load) — nodes, generics, attributes, relationships, hierarchies.
 
-Describe a schema change in plain language and `infrahub-managing-schemas` returns valid schema YAML for it, using the same top-level keys and conventions covered in [Create and load schema](./create-and-load) — nodes, generics, attributes, relationships, hierarchies. It checks the result against your instance with `infrahubctl schema check` before handing it back. Before modeling anything from scratch, it checks the [Marketplace](./marketplace) for a published schema you can reuse or adapt. For a change to an existing schema, it also plans the migration — see [Schema migration](./migration) for the attribute-level sequencing it follows: safe addition, removal via `state: absent`, two-step renames, type changes.
+Working from the [Schema Manager](https://docs.infrahub.app/skills/skills-reference/managing-schemas) skill, your assistant searches the [Marketplace](./marketplace) for a published schema you can reuse or adapt before modeling anything from scratch, and runs `infrahubctl schema check` against the result before handing it back. For a change to a schema you already have, it also plans the migration — see [Schema migration](./migration) for the attribute-level sequencing it applies: safe addition, removal via `state: absent`, two-step renames, and type changes.
 
-This covers direct, well-scoped changes — adding or modifying nodes, attributes, and relationships. Designing a whole new schema domain with relationships from scratch is a bigger job: describe the domain and let the assistant produce a plan first, rather than a single prompt. See the note on [Build your first schema](../learn/tutorials/build-your-first-schema).
+Use this for direct, well-scoped changes — adding or modifying nodes, attributes, and relationships. Designing a whole new schema domain is a larger job: describe the domain and have your assistant produce a plan you review before it writes any files. [Build your first schema](../learn/tutorials/build-your-first-schema) builds one by hand, which is the quickest way to learn the modeling decisions your assistant is making on your behalf.
 
 ## Example prompts
 
@@ -30,7 +30,7 @@ active, maintenance, and decommissioned.
 
 ### 2. Review the generated schema
 
-The assistant checks the Marketplace for a DCIM schema covering `Device`, finds none matching the request, and writes the attribute directly:
+Your assistant searches the Marketplace for a DCIM schema covering `Device`, finds none that matches the request, and writes the attribute directly:
 
 ```yaml title="schemas/device.yml"
 ---
@@ -50,7 +50,7 @@ nodes:
             label: Decommissioned
 ```
 
-Before handing the file back, the assistant runs `infrahubctl schema check` against it and fixes anything the check flags. What you review here is already validated, not a draft you check yourself.
+Before handing the file back, your assistant runs `infrahubctl schema check` against it and fixes anything the check flags. What you review here has already passed validation, so read it for intent rather than for structure — see [Review what your assistant produces](../overview/build-with-ai/index.mdx#review-what-your-assistant-produces).
 
 ### 3. Load it on a branch
 
@@ -59,18 +59,14 @@ infrahubctl branch create add-device-status
 infrahubctl schema load schemas/device.yml --branch add-device-status
 ```
 
-### 4. Review the diff and open a proposed change
+### 4. Review the diff and open a Proposed Change
 
 Review the schema diff in the web interface, then open a Proposed Change to merge `add-device-status` into `main`. See [Proposed Changes](../proposed-changes/overview) for the review workflow.
 
-## What to watch for
-
-An assistant can invent an attribute, relationship, or node that doesn't exist in your actual schema, especially from an ambiguous prompt. Check the generated YAML against your real schema before merging — `infrahubctl schema check` catches structural errors, not intent.
-
 ## Related
 
-- [Create and load schema](./create-and-load) — write and load schema YAML by hand
-- [Marketplace](./marketplace) — published schemas the skill checks before modeling from scratch
-- [Schema migration](./migration) — the sequencing rules the skill follows for existing schema changes
+- [Create and load schema](./create-and-load) — Write and load schema YAML by hand
+- [Marketplace](./marketplace) — Published schemas to search before modeling from scratch
+- [Schema migration](./migration) — The sequencing rules for changing a schema you already have
 - [Set up your AI assistant](../overview/build-with-ai/setup.mdx) — Install the Infrahub Skills and connect the MCP server
-- [Schema Manager skill reference](https://docs.infrahub.app/skills/skills-reference/managing-schemas) — full behavior
+- [Schema Manager skill reference](https://docs.infrahub.app/skills/skills-reference/managing-schemas) — Full behavior
