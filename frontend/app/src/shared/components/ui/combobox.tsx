@@ -54,7 +54,7 @@ export const ComboboxContent = ({
   return (
     <PopoverContent
       ref={ref}
-      className={classNames("p-0", className)}
+      className={classNames("rounded-xl border-input-border bg-input p-0", className)}
       align="start"
       portal={false}
       style={{
@@ -103,7 +103,7 @@ export const ComboboxItem = ({ children, selectedValue, ref, ...props }: Combobo
     <CommandItem ref={ref} {...props}>
       <Icon
         icon="mdi:check"
-        className={classNames("text-green-900", selectedValue !== props.value && "w-3.5 opacity-0")}
+        className={classNames("text-accent", selectedValue !== props.value && "w-3.5 opacity-0")}
       />
       {children}
     </CommandItem>

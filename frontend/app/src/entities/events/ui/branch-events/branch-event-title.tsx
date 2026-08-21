@@ -15,7 +15,10 @@ export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = 
   "infrahub.branch.created": (props: BranchCreatedEvent) => (
     <div className="flex min-w-0 items-center gap-1 text-foreground-muted">
       <span className="whitespace-nowrap">created the branch</span>
-      <Link to={getBranchDetailsUrl(props.created_branch)} className="min-w-0 truncate text-black">
+      <Link
+        to={getBranchDetailsUrl(props.created_branch)}
+        className="min-w-0 truncate text-foreground"
+      >
         {props.created_branch ?? "-"}
       </Link>
     </div>
@@ -23,7 +26,10 @@ export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = 
   "infrahub.branch.rebased": (props: BranchRebasedEvent) => (
     <div className="flex min-w-0 items-center gap-1 text-foreground-muted">
       <span className="whitespace-nowrap">rebased the branch</span>
-      <Link to={getBranchDetailsUrl(props.rebased_branch)} className="min-w-0 truncate text-black">
+      <Link
+        to={getBranchDetailsUrl(props.rebased_branch)}
+        className="min-w-0 truncate text-foreground"
+      >
         {props.rebased_branch ?? "-"}
       </Link>
     </div>
@@ -31,13 +37,13 @@ export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = 
   "infrahub.branch.merged": (props: BranchMergedEvent) => (
     <div className="flex min-w-0 items-center gap-1 text-foreground-muted">
       <span className="whitespace-nowrap">merged the branch</span>
-      <span className="min-w-0 truncate text-black">{props.source_branch ?? "-"}</span>
+      <span className="min-w-0 truncate text-foreground">{props.source_branch ?? "-"}</span>
     </div>
   ),
   "infrahub.branch.deleted": (props: BranchDeletedEvent) => (
     <div className="flex min-w-0 items-center gap-1 text-foreground-muted">
       <span className="whitespace-nowrap">deleted the branch</span>
-      <span className="min-w-0 truncate text-black">{props.deleted_branch ?? "-"}</span>
+      <span className="min-w-0 truncate text-foreground">{props.deleted_branch ?? "-"}</span>
     </div>
   ),
 };

@@ -19,9 +19,9 @@ export function FilterTag({ label, value, condition, ref, ...props }: FilterTagP
       ref={ref}
       className={classNames(
         focusVisibleStyle,
-        "inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-strong bg-neutral-100 pr-1 pl-2 text-foreground text-sm",
-        "data-hovered:border-custom-blue-700 data-hovered:bg-stone-100",
-        "data-selected:border-custom-blue-700 data-selected:bg-custom-blue-50"
+        "inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-strong bg-background pr-1 pl-2 text-foreground text-sm",
+        "data-hovered:border-ring data-hovered:bg-highlight",
+        "data-selected:border-ring data-selected:bg-selected data-selected:text-selected-foreground data-selected:shadow-selected"
       )}
       textValue={`${label} ${condition || "contains"} ${value}`}
       {...props}
@@ -36,7 +36,7 @@ export function FilterTag({ label, value, condition, ref, ...props }: FilterTagP
       {(value || value === 0 || value === false) && (
         <>
           <Separator orientation="vertical" className="h-6" />
-          <span className="max-w-xs truncate font-medium text-custom-blue-700">
+          <span className="max-w-xs truncate font-medium text-accent">
             {typeof value === "boolean" ? String(value) : value}
           </span>
         </>
@@ -48,7 +48,7 @@ export function FilterTag({ label, value, condition, ref, ...props }: FilterTagP
           "inline-flex cursor-pointer rounded-full border border-transparent"
         )}
       >
-        <CircleXIcon className="size-3.5 text-subtle-muted hover:text-custom-blue-700" />
+        <CircleXIcon className="size-3.5 text-subtle-muted hover:text-accent" />
       </Button>
     </Tag>
   );

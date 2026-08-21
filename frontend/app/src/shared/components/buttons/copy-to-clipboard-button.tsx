@@ -17,6 +17,7 @@ export function CopyToClipboardButton({ data, ...props }: CopyToClipboardProps) 
         variant="ghost"
         shape="square"
         size="xs"
+        className="text-foreground-muted"
         onPress={() => copyToClipboard(data)}
         {...props}
       >

@@ -209,7 +209,7 @@ export const ProposedChangeCreateForm = () => {
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-100 p-4 text-red-800 text-sm">
+        <div className="rounded-md bg-danger-surface p-4 text-danger text-sm">
           {(error as Error).message}
         </div>
       )}

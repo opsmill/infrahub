@@ -31,8 +31,7 @@ const menuItemStyles = tv({
   variants: {
     variant: {
       action: [
-        "shadow-sm transition-colors [&:not(:last-child)]:mb-0.5",
-        "bg-white dark:bg-stone-800",
+        "bg-input shadow-sm transition-colors [&:not(:last-child)]:mb-0.5",
         "data-focused:border-sky-200 data-focused:bg-sky-50 data-focused:text-sky-700",
         "dark:data-focused:border-sky-300/25 dark:data-focused:bg-sky-300/10 dark:data-focused:text-sky-300",
       ],

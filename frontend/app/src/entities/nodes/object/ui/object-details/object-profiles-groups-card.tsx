@@ -148,7 +148,7 @@ function ProfilesList({ objectData, objectSchema, permission }: ProfilesListProp
     <>
       {isEditAllowed ? (
         <Row
-          className="group cursor-pointer rounded-lg p-2 hover:bg-neutral-100"
+          className="group cursor-pointer rounded-lg p-2 hover:bg-background"
           onClick={() => setIsEditModalOpen(true)}
         >
           {content}
@@ -240,7 +240,7 @@ function GroupsList({ objectData, objectSchema, permission }: GroupsListProps) {
     <>
       {isEditAllowed ? (
         <Row
-          className="group cursor-pointer rounded-lg p-2 hover:bg-neutral-100"
+          className="group cursor-pointer rounded-lg p-2 hover:bg-background"
           onClick={() => setIsManageGroupsDrawerOpen(true)}
         >
           {content}

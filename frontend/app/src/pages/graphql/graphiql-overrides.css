@@ -1,0 +1,23 @@
+/* GraphiQL paints its logo text with its own low-emphasis gray, which measures 4.26:1 against its
+   light chrome — just under the 4.5:1 AA needs for text this size. Dropping the alpha it applies
+   reuses its full-strength neutral, so the override keeps following GraphiQL's palette in both
+   themes. */
+.graphiql-container .graphiql-logo,
+.graphiql-container .graphiql-logo .graphiql-logo-link {
+  color: hsl(var(--color-neutral));
+}
+
+/* GraphiQL's dark palette hangs off two HSL triplets with hue 219 — a blue-navy that clashes with
+   the app's warm stone dark. Re-pointing base and neutral at the stone family retunes every
+   surface GraphiQL derives from them. The triplets are stone-900 and stone-200 spelled as bare HSL
+   components, duplicated from the theme because GraphiQL composes them itself via hsl(var(...))
+   and cannot read our oklch tokens. The selector list mirrors GraphiQL's own dark block so its
+   portalled dialogs and tooltips retune with the main container. */
+body.graphiql-dark .graphiql-container,
+body.graphiql-dark .graphiql-dialog,
+body.graphiql-dark .graphiql-dialog-overlay,
+body.graphiql-dark .graphiql-tooltip,
+body.graphiql-dark [data-radix-popper-content-wrapper] {
+  --color-base: 24, 10%, 10%; /* --color-stone-900 */
+  --color-neutral: 20, 6%, 90%; /* --color-stone-200 */
+}

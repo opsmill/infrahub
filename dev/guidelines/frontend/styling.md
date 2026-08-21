@@ -1,6 +1,6 @@
 # Styling Guidelines
 
-> Part of: `dev/guidelines/frontend/`
+> Part of: `dev/guidelines/frontend/` | Related: [Theming](../../knowledge/frontend/theming.md)
 
 ## Layout Components
 
@@ -79,5 +79,18 @@ export const Button = ({ variant, size, className, ref, ...props }: ButtonProps)
 | Inline `style={{}}` | Tailwind classes |
 | CSS modules | Tailwind utilities |
 | `bg-[#1e40af]` | `bg-custom-blue-700` (use theme) |
+| `bg-white`, `bg-gray-50`, `bg-gray-100` | `bg-content`, `bg-content-muted`, `bg-content-strong` |
+| `bg-white dark:bg-stone-900` | `bg-content` — one token already carries both themes |
+| `text-indigo-500`, `text-indigo-700` for an open or active state | `text-active`, `bg-active/10` |
 | `<div className="flex items-center gap-2">` | `<Row>` from `@/shared/components/container` |
 | `<div className="flex flex-col gap-2">` | `<Col>` from `@/shared/components/container` |
+
+### Why a fixed palette is forbidden, not just discouraged
+
+A class like `bg-white` is not theme-neutral — it paints light in *both* themes, so the surface stays bright when the rest of the page goes dark. This is easy to miss in review because the defect is the **absence** of a variant rather than the presence of a wrong one: searching for `dark:` finds the files that already work and none of the files that are broken.
+
+Pairing a literal with a `dark:` override (`bg-white dark:bg-stone-900`) renders correctly but duplicates in every call site what a token defines once, so the next palette change has to be repeated by hand in each of them.
+
+A `dark:` variant is legitimate only where no token can express the difference — swapping between two different assets, for example, or a dark-only effect such as a backdrop blur.
+
+Contrast is the other reason. A mid-ramp shade that reads well on one background rarely clears WCAG AA on its opposite: `text-indigo-500` measured 3.7:1 on the light sidebar and 4.3:1 on the dark one, failing the 4.5:1 threshold in both. Each theme needs its own end of the ramp, which is exactly what a token holds and a literal cannot.

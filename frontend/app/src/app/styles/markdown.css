@@ -191,7 +191,7 @@
 }
 
 .markdown .mermaid-error {
-  background-color: #fef2f2;
-  color: #b91c1c;
+  background-color: var(--danger-surface);
+  color: var(--danger);
   white-space: pre-wrap;
 }

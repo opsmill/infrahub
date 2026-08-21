@@ -4,7 +4,7 @@ import { SchemaConflict } from "./schema-conflict";
 
 export const SchemaIntegrityConflicts = ({ conflicts }: Pick<CoreDataCheck, "conflicts">) => {
   return (
-    <div className="rounded-md border bg-white p-2">
+    <div className="rounded-md border bg-content p-2">
       {conflicts?.value?.map((conflict: any) => {
         return <SchemaConflict key={conflict.id} {...conflict} />;
       })}

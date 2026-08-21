@@ -43,7 +43,7 @@ export function CommandList({ className, ref, ...props }: CommandListProps) {
     <CommandPrimitive.List
       ref={ref}
       className={classNames(
-        "max-h-[280px] grow overflow-y-auto overflow-x-hidden rounded-md p-2",
+        "max-h-70 grow overflow-y-auto overflow-x-hidden rounded-md p-2 text-subtle",
         className
       )}
       asChild
@@ -60,7 +60,7 @@ export function CommandItem({ className, ref, ...props }: CommandItemProps) {
       ref={ref}
       className={classNames(
         "flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden",
-        "data-[disabled=true]:pointer-events-none data-[selected='true']:bg-gray-100 data-[selected=true]:bg-gray-100 data-[disabled=true]:opacity-50",
+        "data-[disabled=true]:pointer-events-none data-[selected=true]:bg-highlight data-[selected=true]:text-highlight-foreground data-[disabled=true]:opacity-50",
         className
       )}
       {...props}

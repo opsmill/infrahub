@@ -15,12 +15,12 @@ const MODE_META: Record<Mode, { title: string; description: string; activeClass:
   path: {
     title: "Path Traversal",
     description: "Find paths between two objects in the graph.",
-    activeClass: "bg-blue-100 text-blue-700",
+    activeClass: "bg-blue-100 text-blue-700 dark:bg-blue-400/20 dark:text-blue-300",
   },
   dependencies: {
     title: "Dependencies",
     description: "Find all connected objects of specific kinds.",
-    activeClass: "bg-amber-100 text-amber-700",
+    activeClass: "bg-amber-100 text-amber-700 dark:bg-amber-400/20 dark:text-amber-300",
   },
 };
 

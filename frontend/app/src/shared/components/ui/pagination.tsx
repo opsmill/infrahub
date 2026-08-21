@@ -74,7 +74,7 @@ export const Pagination = (props: tPaginationType) => {
   return (
     <div
       className={classNames(
-        "sticky bottom-0 flex items-center justify-between bg-white p-2",
+        "sticky bottom-0 flex items-center justify-between bg-table-cell-pinned p-2",
         className
       )}
     >
@@ -122,19 +122,19 @@ export const Pagination = (props: tPaginationType) => {
             marginPagesDisplayed={2}
             pageCount={pagesCount}
             previousLabel="Previous"
-            pageClassName="cursor-pointer relative inline-flex items-center border border-border-strong text-sm font-medium text-foreground-muted hover:bg-gray-50"
+            pageClassName="cursor-pointer relative inline-flex items-center border border-border-strong text-sm font-medium text-foreground-muted hover:bg-highlight"
             pageLinkClassName="cursor-pointer px-4 py-2"
-            previousClassName="cursor-pointer relative inline-flex items-center rounded-l-md border border-border-strong text-sm font-medium text-foreground-muted hover:bg-gray-50"
+            previousClassName="cursor-pointer relative inline-flex items-center rounded-l-md border border-border-strong text-sm font-medium text-foreground-muted hover:bg-highlight"
             previousLinkClassName="cursor-pointer px-4 py-2"
             nextLabel="Next"
-            nextClassName="cursor-pointer relative inline-flex items-center rounded-r-md border border-border-strong text-sm font-medium text-foreground-muted hover:bg-gray-50"
+            nextClassName="cursor-pointer relative inline-flex items-center rounded-r-md border border-border-strong text-sm font-medium text-foreground-muted hover:bg-highlight"
             nextLinkClassName="cursor-pointer px-4 py-2"
             breakLabel="..."
-            breakClassName="cursor-pointer relative inline-flex items-center text-sm font-semibold text-foreground ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
+            breakClassName="cursor-pointer relative inline-flex items-center text-sm font-semibold text-foreground ring-1 ring-inset ring-ring hover:bg-highlight focus:z-20 focus:outline-offset-0"
             breakLinkClassName="cursor-pointer px-4 py-2"
             containerClassName="flex"
-            activeClassName="bg-custom-blue-100 text-custom-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring hover:bg-custom-blue-100"
-            activeLinkClassName="cursor-pointer px-4 py-2 text-custom-white"
+            activeClassName="bg-custom-blue-100 text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring hover:bg-custom-blue-100"
+            activeLinkClassName="cursor-pointer px-4 py-2 text-foreground"
           />
         </div>
       </div>

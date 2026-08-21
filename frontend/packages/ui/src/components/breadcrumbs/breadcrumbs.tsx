@@ -49,7 +49,7 @@ const breadcrumbItemVariants = tv({
   ],
   variants: {
     isPressed: {
-      true: "bg-stone-100",
+      true: "bg-highlight",
     },
   },
 });

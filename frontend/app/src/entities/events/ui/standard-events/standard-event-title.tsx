@@ -15,10 +15,10 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: StandardEvent) => R
     return (
       <div className="flex flex-wrap items-center gap-1">
         updated the commit
-        <span className="text-black">{props.payload?.commit}</span>
+        <span className="text-foreground">{props.payload?.commit}</span>
         from repository
         <Link
-          className="text-black"
+          className="text-foreground"
           to={getObjectDetailsUrl("CoreRepository", props.payload?.repository_id, [
             { name: QSP.BRANCH, value: props.payload?.context?.branch?.name },
           ])}

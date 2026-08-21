@@ -96,8 +96,8 @@ export function ModalDeleteBranch({
     >
       <Col className="gap-4 p-3">
         <Heading slot="title" className="flex items-center gap-2 p-1 font-semibold">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-red-100">
-            <Icon icon="mdi:warning-outline" className="text-red-600" />
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-danger-surface">
+            <Icon icon="mdi:warning-outline" className="text-danger" />
           </div>
           Delete
         </Heading>
@@ -143,7 +143,7 @@ export function ModalDeleteBranch({
         </RadioGroup>
       </Col>
 
-      <Row className="justify-end bg-gray-50 p-3">
+      <Row className="justify-end bg-content-muted p-3">
         <Button variant="outline" onPress={() => handleOpenChange(false)} isDisabled={isLoading}>
           Cancel
         </Button>

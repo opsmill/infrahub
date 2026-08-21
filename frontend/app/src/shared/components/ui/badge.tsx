@@ -8,20 +8,25 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        white: "border-transparent bg-white text-foreground",
-        gray: "border-transparent bg-gray-100 text-foreground",
-        "dark-gray": "border-transparent bg-gray-300 text-foreground",
-        green: "border-transparent bg-green-700/10 text-green-900",
-        red: "border-transparent bg-red-100 text-red-900",
-        blue: "border-transparent bg-custom-blue-700/10 text-custom-blue-700",
-        yellow: "border-transparent bg-yellow-100 text-yellow-900",
-        purple: "border-transparent bg-purple-100 text-purple-800",
-        "gray-outline": "border-border-strong bg-white text-foreground-muted",
-        "lightgray-outline": "bg-white text-subtle-muted",
-        "blue-outline": "border-custom-blue-700 bg-white text-custom-blue-700",
-        "yellow-outline": "border-yellow-100 bg-white text-yellow-900",
-        "green-outline": "border-2 border-green-500 text-green-700",
-        "red-outline": "border-2 border-red-500 text-red-700",
+        white: "border-transparent bg-content text-foreground dark:bg-white/5",
+        gray: "border-transparent bg-content-strong text-foreground",
+        "dark-gray": "border-transparent bg-gray-300 text-foreground dark:bg-white/20",
+        green:
+          "border-transparent bg-green-700/10 text-green-900 dark:bg-green-400/20 dark:text-green-300",
+        red: "border-transparent bg-danger-surface text-danger",
+        blue: "border-transparent bg-custom-blue-700/10 text-custom-blue-700 dark:bg-custom-blue-500/30 dark:text-custom-blue-300",
+        yellow:
+          "border-transparent bg-yellow-100 text-yellow-900 dark:bg-yellow-400/20 dark:text-yellow-300",
+        purple:
+          "border-transparent bg-purple-100 text-purple-800 dark:bg-purple-400/20 dark:text-purple-300",
+        "gray-outline": "border-border-strong bg-content text-foreground-muted dark:bg-transparent",
+        "lightgray-outline": "bg-content text-subtle-muted dark:bg-transparent",
+        "blue-outline":
+          "border-custom-blue-700 bg-content text-custom-blue-700 dark:border-custom-blue-500 dark:bg-transparent dark:text-custom-blue-300",
+        "yellow-outline":
+          "border-yellow-100 bg-content text-yellow-900 dark:border-yellow-400/30 dark:bg-transparent dark:text-yellow-300",
+        "green-outline": "border-2 border-green-500 text-green-700 dark:text-green-400",
+        "red-outline": "border-2 border-danger text-danger",
       },
     },
     defaultVariants: {

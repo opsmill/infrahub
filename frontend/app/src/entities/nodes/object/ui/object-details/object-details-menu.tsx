@@ -186,7 +186,7 @@ export function ObjectDetailsMenu({
               <MenuItem
                 isDisabled={!isDeleteAllowed}
                 tooltip={deleteTooltipMessage}
-                className="text-red-500"
+                className="text-danger"
                 onAction={() => setIsDeleteModalOpen(true)}
               >
                 <Trash2Icon />

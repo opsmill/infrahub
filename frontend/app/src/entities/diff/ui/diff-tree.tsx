@@ -32,7 +32,10 @@ export default function DiffTree({ nodes, ...props }: DiffTreeProps) {
               ? {
                   href: { ...location, hash: `#${item.id}` },
                   routerOptions: { replace: true },
-                  className: selectedDiffNodeId === item.id ? "bg-gray-100" : undefined,
+                  className:
+                    selectedDiffNodeId === item.id
+                      ? "bg-selected text-selected-foreground shadow-selected hover:bg-selected-highlight"
+                      : undefined,
                 }
               : {})}
           >

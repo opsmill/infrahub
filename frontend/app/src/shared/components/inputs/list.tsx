@@ -87,7 +87,7 @@ const ListItems = ({
       className={classNames(
         inputStyle,
         "flex-wrap gap-1.5",
-        disabled && "cursor-not-allowed bg-gray-100"
+        disabled && "cursor-not-allowed opacity-60"
       )}
     >
       {items.length > 0 ? (
@@ -96,7 +96,7 @@ const ListItems = ({
             key={item}
             className={classNames(
               "gap-1.5 py-0 font-normal text-sm",
-              disabled && "cursor-not-allowed bg-gray-200 opacity-70"
+              disabled && "cursor-not-allowed opacity-70"
             )}
           >
             <span>{item}</span>

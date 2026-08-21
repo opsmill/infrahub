@@ -37,7 +37,7 @@ export const ObjectTable = () => {
       scrollX
       hasNextPage={hasNextPage}
       onLoadMore={fetchNextPage}
-      className="dark:bg-table-frame"
+      className="bg-table-frame"
     >
       <DataTable
         columns={columns}

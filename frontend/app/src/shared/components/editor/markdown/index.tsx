@@ -52,7 +52,7 @@ export const MarkdownEditor = ({
     return (
       <MarkdownRender
         markdownText={codeMirror.view?.state?.doc.toString()}
-        className="min-h-10 w-full cursor-not-allowed rounded-md bg-gray-100 p-2 text-foreground shadow-xs ring-1 ring-gray-300 ring-inset"
+        className="min-h-10 w-full cursor-not-allowed rounded-md bg-background p-2 text-foreground shadow-xs ring-1 ring-border-strong ring-inset"
       />
     );
   }
@@ -72,7 +72,7 @@ export const MarkdownEditor = ({
 
       <div
         className={classNames(
-          "rounded-md border border-border-strong bg-white shadow-xs",
+          "rounded-md border border-border-strong bg-input shadow-input",
           focusWithinStyle,
           className
         )}

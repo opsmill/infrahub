@@ -7,6 +7,7 @@ import {
   MenuTrigger,
   Popover,
   Spinner,
+  ThemeSwitchMenuItem,
 } from "@infrahub/ui";
 import {
   CircleUserIcon,
@@ -58,6 +59,8 @@ export const AccountMenu = () => {
 
 const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => (
   <>
+    <ThemeSwitchMenuItem />
+
     <MenuItem onAction={onAboutClick}>
       <InfoIcon /> About Infrahub
     </MenuItem>

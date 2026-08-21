@@ -11,7 +11,7 @@ export function Component() {
 
   return (
     <div>
-      <div className="flex bg-white text-sm">
+      <div className="flex bg-content text-sm">
         <Link
           to={getProposedChangeDetailsUrl(proposedChangeData.id, "tasks")}
           className="flex items-center p-2"

@@ -2,7 +2,12 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  /* Tells the browser which palette to paint the parts of the page CSS cannot reach: scrollbars,
+     native form controls and their popups, autofill highlights, and the canvas behind overscroll. */
+  color-scheme: light;
+
   --background: var(--color-stone-100);
+  --surface: var(--color-stone-200);
   --foreground: var(--color-stone-800);
   --foreground-muted: var(--color-stone-600);
   --subtle: var(--color-stone-600);
@@ -15,6 +20,21 @@
   --ring-halo: --alpha(var(--ring) / 25%);
 
   --accent: #087895;
+
+  /* Marks the element the user is currently acting on: an open navigation menu, a column being
+     sorted or filtered. Each theme needs its own end of the ramp to clear WCAG AA against its own
+     background, so a single shade cannot serve both. */
+  --active: var(--color-indigo-700);
+  --active-surface: var(--color-indigo-100);
+
+  --danger: var(--color-rose-700);
+  --danger-surface: --alpha(var(--color-rose-500) / 15%);
+
+  /* A raised content surface: diff rows, check panels, rendered diagrams. Distinct from --surface,
+     which sits lower, and from --input, which happens to share these values but tracks form fields. */
+  --content: var(--color-white);
+  --content-muted: var(--color-gray-50);
+  --content-strong: var(--color-gray-100);
 
   --input: var(--color-white);
   --input-border: var(--border);
@@ -33,12 +53,20 @@
   --selected-shadow: 0 0 #0000;
   --selected-highlight: var(--highlight), var(--selected);
 
-  --card: linear-gradient(to bottom, var(--color-stone-50) 0%, var(--color-white) 10%);
+  --card: linear-gradient(
+    to bottom,
+    var(--color-stone-50) 0%,
+    var(--color-white) 10%
+  );
   --card-shadow:
     inset 0 2px 0 rgb(255 255 255), inset 0 -1px 2px 1px rgb(0 0 0 / 0.03),
     0 1px 1px rgb(0 0 0 / 0.02);
 
-  --card-header: linear-gradient(to bottom, var(--color-white) 0%, var(--color-neutral-50) 100%);
+  --card-header: linear-gradient(
+    to bottom,
+    var(--color-white) 0%,
+    var(--color-neutral-50) 100%
+  );
   --card-header-foreground: var(--color-neutral-700);
   --card-header-shadow: inset 0 1px 0 rgb(255 255 255 / 0.85);
 
@@ -48,9 +76,10 @@
   --panel: linear-gradient(var(--color-gray-50), var(--color-gray-50));
   --panel-shadow: 0 0 #0000;
 
-  --sheet-frame: --alpha(var(--color-white) / 25%);
-  --sheet-frame-border: var(--border);
-  --sheet-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --modal-frame: --alpha(var(--color-white) / 25%);
+  --modal-frame-border: var(--border);
+  --modal-shadow:
+    0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 
   --table-cell: var(--color-stone-50);
   --table-cell-pinned: var(--color-white);
@@ -58,7 +87,10 @@
 }
 
 .dark {
+  color-scheme: dark;
+
   --background: var(--color-black);
+  --surface: var(--color-stone-800);
   --foreground: var(--color-stone-200);
   --foreground-muted: var(--color-stone-400);
   --subtle: var(--color-stone-400);
@@ -72,6 +104,16 @@
 
   --accent: #a7d9e6;
 
+  --active: var(--color-indigo-400);
+  --active-surface: --alpha(var(--color-indigo-400) / 15%);
+
+  --danger: var(--color-rose-400);
+  --danger-surface: --alpha(var(--color-rose-400) / 20%);
+
+  --content: var(--color-stone-900);
+  --content-muted: rgb(255 255 255 / 0.05);
+  --content-strong: rgb(255 255 255 / 0.1);
+
   --input: var(--color-stone-900);
   --input-border: var(--border-strong);
   --input-shadow: 0 2px 4px rgb(0 0 0 / 0.35);
@@ -79,34 +121,59 @@
   --popover: --alpha(var(--color-stone-900) / 70%);
 
   --highlight:
-    radial-gradient(72% 100% at 50% 100%, rgb(255 255 255 / 0.09), transparent 72%),
+    radial-gradient(
+      72% 100% at 50% 100%,
+      rgb(255 255 255 / 0.09),
+      transparent 72%
+    ),
     linear-gradient(rgb(255 255 255 / 0.02), rgb(255 255 255 / 0.02));
   --highlight-foreground: var(--foreground);
 
   --selected:
-    radial-gradient(72% 100% at 50% 100%, rgb(255 255 255 / 0.16), transparent 72%),
+    radial-gradient(
+      72% 100% at 50% 100%,
+      rgb(255 255 255 / 0.16),
+      transparent 72%
+    ),
     linear-gradient(rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.05));
   --selected-foreground: var(--foreground);
-  --selected-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 1px 2px rgb(0 0 0 / 0.6);
+  --selected-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08), 0 1px 2px rgb(0 0 0 / 0.6);
 
   --card: linear-gradient(180deg, #201d1c 0%, #191716 55%, #141312 100%);
-  --card-shadow: inset 0 2px 2px 1px rgb(32 28 26 / 0.2), 0 1px 2px rgb(0 0 0 / 0.5);
+  --card-shadow:
+    inset 0 2px 2px 1px rgb(32 28 26 / 0.2), 0 1px 2px rgb(0 0 0 / 0.5);
 
-  --card-header: linear-gradient(180deg, rgb(255 251 246 / 0.045) 0%, rgb(255 251 246 / 0.03) 100%);
+  --card-header: linear-gradient(
+    180deg,
+    rgb(255 251 246 / 0.045) 0%,
+    rgb(255 251 246 / 0.03) 100%
+  );
   --card-header-foreground: var(--color-stone-300);
-  --card-header-shadow: inset 0 1px 0 lch(24.13 2.26 37.96), 0 0 2px oklch(0.16 0.01 0);
+  --card-header-shadow:
+    inset 0 1px 0 lch(24.13 2.26 37.96), 0 0 2px oklch(0.16 0.01 0);
 
   --secondary:
-    radial-gradient(120% 55% at 0% 0%, rgb(255 255 255 / 0.005), transparent 62%),
+    radial-gradient(
+      120% 55% at 0% 0%,
+      rgb(255 255 255 / 0.005),
+      transparent 62%
+    ),
     linear-gradient(180deg, #1a1817 0%, #0d0c0b 18%, #000000 100%);
   --secondary-shadow: 0 0 #0000;
 
-  --panel: linear-gradient(180deg, oklch(1 0 0 / 0.06) 0%, oklch(0.4 0 0 / 0.3) 80%);
-  --panel-shadow: inset 0 2px 4px 0 oklch(0.8 0 0 / 0.05);
+  --panel: linear-gradient(
+    180deg,
+    #211f1d 0,
+    #0b0a09 160px,
+    #0b0a09 calc(100% - 160px),
+    #211f1d 100%
+  );
+  --panel-shadow: 0 0 #0000;
 
-  --sheet-frame: rgb(255 251 246 / 0.14);
-  --sheet-frame-border: rgb(255 255 255 / 0.22);
-  --sheet-shadow:
+  --modal-frame: rgb(255 251 246 / 0.14);
+  --modal-frame-border: rgb(255 255 255 / 0.22);
+  --modal-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.12), 0 28px 70px rgb(0 0 0 / 0.75),
     0 6px 20px rgb(0 0 0 / 0.5);
 
@@ -120,6 +187,7 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
   --color-foreground-muted: var(--foreground-muted);
   --color-subtle: var(--subtle);
@@ -132,6 +200,15 @@
   --color-ring-halo: var(--ring-halo);
 
   --color-accent: var(--accent);
+  --color-active: var(--active);
+  --color-active-surface: var(--active-surface);
+
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+
+  --color-content: var(--content);
+  --color-content-muted: var(--content-muted);
+  --color-content-strong: var(--content-strong);
 
   --color-input: var(--input);
   --color-input-border: var(--input-border);
@@ -160,9 +237,9 @@
   --background-image-panel: var(--panel);
   --shadow-panel: var(--panel-shadow);
 
-  --color-sheet-frame: var(--sheet-frame);
-  --color-sheet-frame-border: var(--sheet-frame-border);
-  --shadow-sheet: var(--sheet-shadow);
+  --color-modal-frame: var(--modal-frame);
+  --color-modal-frame-border: var(--modal-frame-border);
+  --shadow-modal: var(--modal-shadow);
 
   --color-table-cell: var(--table-cell);
   --color-table-cell-pinned: var(--table-cell-pinned);

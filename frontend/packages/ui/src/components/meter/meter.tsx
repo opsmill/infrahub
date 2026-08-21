@@ -24,9 +24,8 @@ export function Meter({ label, className, ...props }: MeterProps) {
         const track = (
           <div
             className={cn(
-              "h-2.5 overflow-hidden rounded-full bg-stone-200",
-              "ring-1 inset-shadow-[0_1px_2px_rgba(0,0,0,0.15)] ring-stone-300 ring-inset",
-              "shadow-[0_1px_0_rgba(255,255,255,0.8)]",
+              "h-2.5 overflow-hidden rounded-full bg-border",
+              "ring-1 inset-shadow-[0_1px_2px_rgba(0,0,0,0.15)] ring-border-strong ring-inset",
               label ? "col-span-2 w-full" : "grow",
             )}
           >
@@ -41,7 +40,7 @@ export function Meter({ label, className, ...props }: MeterProps) {
           </div>
         );
 
-        const value = <span className="font-medium text-cyan-700">{valueText}</span>;
+        const value = <span className="font-medium text-accent">{valueText}</span>;
 
         if (label) {
           return (

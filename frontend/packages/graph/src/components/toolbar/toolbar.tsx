@@ -16,7 +16,10 @@ export interface ToolbarProps extends Omit<AriaToolbarProps, "className"> {
 export function Toolbar({ className, ...props }: ToolbarProps) {
   return (
     <AriaToolbar
-      className={cn("flex items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-lg", className)}
+      className={cn(
+        "flex items-center gap-2 rounded-xl border bg-popover px-3 py-2 shadow-xl backdrop-blur-lg",
+        className,
+      )}
       {...props}
     />
   );

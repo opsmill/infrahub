@@ -7,9 +7,9 @@ import { Icon } from "@/shared/components/display/icon";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
 const ActionMapping = {
-  ADDED: <Icon icon={"mdi:add"} className="text-green-500" />,
-  REMOVED: <Icon icon={"mdi:minus"} className="text-red-500" />,
-  UPDATED: <Icon icon={"mdi:exchange"} className="text-custom-blue-500" />,
+  ADDED: <Icon icon={"mdi:add"} className="text-green-500 dark:text-green-400" />,
+  REMOVED: <Icon icon={"mdi:minus"} className="text-danger" />,
+  UPDATED: <Icon icon={"mdi:exchange"} className="text-accent" />,
   UNCHANGED: <Icon icon={"mdi:dot"} className="text-subtle-muted" />,
 };
 
@@ -17,7 +17,7 @@ export const EventRelationships = ({ relationships }: Pick<NodeMutatedEvent, "re
   if (relationships.length === 0) return null;
 
   return (
-    <Card className="bg-zinc-50">
+    <Card className="bg-background">
       <CardContent className="gap-1.5 text-xs">
         {relationships.map(({ action, name, peer }) => {
           return (

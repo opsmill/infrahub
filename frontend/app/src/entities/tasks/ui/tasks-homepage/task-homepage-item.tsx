@@ -1,3 +1,4 @@
+import { Card } from "@infrahub/ui";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -20,11 +21,12 @@ export const TaskHomepageItem = ({
   related_nodes,
 }: TaskHomepageNode) => {
   return (
-    <div className="flex w-full flex-col gap-1.5 rounded-md border border-transparent bg-white p-2 text-xs shadow-sm">
+    <Card className="w-full gap-1.5 rounded-md p-2 text-xs">
       <Link
         className={classNames(
           focusVisibleStyle,
-          "line-clamp-2 font-semibold transition-colors hover:text-custom-blue-700"
+          "line-clamp-2 font-semibold transition-colors",
+          "hover:text-accent"
         )}
         to={constructPath(`/tasks/${id}`)}
       >
@@ -44,7 +46,8 @@ export const TaskHomepageItem = ({
                 key={node.id}
                 className={classNames(
                   focusVisibleStyle,
-                  "flex items-center gap-1 rounded px-1 py-0.5 text-foreground-muted transition-colors hover:bg-gray-100 hover:text-custom-blue-700"
+                  "flex items-center gap-1 rounded px-1 py-0.5 text-foreground-muted transition-colors",
+                  "hover:bg-highlight hover:text-accent"
                 )}
                 to={getObjectDetailsUrl(node.kind, node.id)}
               >
@@ -61,6 +64,6 @@ export const TaskHomepageItem = ({
         <span className="truncate">{branch}</span>
       </span>
       <DateDisplay date={updated_at} className="text-foreground-muted" />
-    </div>
+    </Card>
   );
 };

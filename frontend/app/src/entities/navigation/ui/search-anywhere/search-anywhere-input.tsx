@@ -19,7 +19,7 @@ export function SearchAnywhereInput({
   return (
     <div className="relative">
       <div className="absolute top-2.5 pl-2.5">
-        <Icon icon="mdi:magnify" className="text-custom-blue-600 text-xl" />
+        <Icon icon="mdi:magnify" className="text-accent text-xl" />
       </div>
 
       <Command.Input

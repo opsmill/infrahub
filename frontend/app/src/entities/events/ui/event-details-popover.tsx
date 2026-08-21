@@ -9,7 +9,7 @@ import { EventDetails } from "./event-details";
 export function EventDetailsPopover(props: EventType) {
   return (
     <PopoverTrigger>
-      <Button className="flex items-center gap-1 rounded-md px-1 py-0.5 text-foreground-muted text-xs transition-all hover:bg-gray-100 hover:text-foreground">
+      <Button className="flex items-center gap-1 rounded-md px-1 py-0.5 text-foreground-muted text-xs transition-all hover:bg-highlight hover:text-foreground">
         View more <InfoIcon className="size-3" />
       </Button>
 

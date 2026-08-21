@@ -12,7 +12,7 @@ interface AutoCreateLayoutProps {
 const AutoCreateLayout = ({ idp, children }: AutoCreateLayoutProps) => {
   return (
     <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden text-sm">
-      <span className="max-w-50 shrink-0 truncate font-medium text-black">{idp}</span>
+      <span className="max-w-50 shrink-0 truncate font-medium text-foreground">{idp}</span>
 
       <span className="flex min-w-0 items-center gap-1 whitespace-nowrap text-foreground-muted">
         {children}
@@ -22,7 +22,9 @@ const AutoCreateLayout = ({ idp, children }: AutoCreateLayoutProps) => {
 };
 
 const Highlight = ({ children }: { children: React.ReactNode }) => {
-  return <span className={classNames("max-w-50 truncate font-medium text-black")}>{children}</span>;
+  return (
+    <span className={classNames("max-w-50 truncate font-medium text-foreground")}>{children}</span>
+  );
 };
 
 export const GroupAutoCreateEventTitle = (props: GroupAutoCreateEvent) => {

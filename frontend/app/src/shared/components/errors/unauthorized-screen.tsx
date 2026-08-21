@@ -18,7 +18,7 @@ export default function UnauthorizedScreen({ className, message, icon }: tUnauth
       {icon || (
         <Icon
           icon={"mdi:warning-circle-outline"}
-          className="rounded-full bg-white text-3xl text-red-300"
+          className="rounded-full bg-danger-surface text-3xl text-danger"
         />
       )}
 

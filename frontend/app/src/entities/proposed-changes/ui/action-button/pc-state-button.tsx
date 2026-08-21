@@ -32,7 +32,7 @@ export const PcStateButton = ({ state = "open", setState }: PcStateButtonProps) 
           {auth?.user?.id ? (
             <>
               <Button
-                className="flex gap-2 rounded-r-none border-r-white"
+                className="flex gap-2 rounded-r-none"
                 variant={"primary"}
                 type="submit"
                 isPending={isLoading}

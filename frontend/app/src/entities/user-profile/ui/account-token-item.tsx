@@ -40,7 +40,7 @@ export const ExpirationDate = ({ date }: { date?: string | null }) => {
 
   if (isExpired) {
     return (
-      <Row className="text-red-600">
+      <Row className="text-danger">
         <ClockAlertIcon className="size-4" /> Expired on {formatDate(date, "datetime")}
       </Row>
     );

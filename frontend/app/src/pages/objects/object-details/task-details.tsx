@@ -16,7 +16,7 @@ export function Component() {
 
   return (
     <>
-      <div className="flex items-center bg-white text-sm">
+      <div className="flex items-center bg-content text-sm">
         <Link
           to={getObjectDetailsUrl(objectData.__typename, objectData.id, undefined, "tasks")}
           className="flex items-center p-2"
