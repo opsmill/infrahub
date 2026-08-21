@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
+pytestmark = pytest.mark.shard_b
+
 QUERY_DISPLAY_LABELS = """
 query {
     TestingColor {
@@ -32,11 +34,14 @@ query {
 
 
 async def wait_for_all_tasks_to_be_completed(client: InfrahubClient) -> None:
-    while (  # noqa: ASYNC110
-        await client.task.count(filters=TaskFilter(state=[TaskState.PENDING, TaskState.RUNNING, TaskState.SCHEDULED]))
-        > 0
-    ):
-        await sleep(1)
+    async with timeout(120):
+        while (  # noqa: ASYNC110
+            await client.task.count(
+                filters=TaskFilter(state=[TaskState.PENDING, TaskState.RUNNING, TaskState.SCHEDULED])
+            )
+            > 0
+        ):
+            await sleep(1)
 
 
 class TestFileObjectAndDisplayLabelBackfill(TestInfrahubDockerClient):
@@ -44,6 +49,10 @@ class TestFileObjectAndDisplayLabelBackfill(TestInfrahubDockerClient):
 
     The two groups use disjoint kinds (TestingFileContract/TestingVendor vs TestingColor)
     and every assertion is scoped to the nodes its own test created.
+
+    The display-label tests must keep their definition order: the repr-fallback assertion
+    only holds while the schema still lacks a display label, before a later test reloads
+    it with one and the backfill rewrites existing nodes.
     """
 
     @pytest.fixture(scope="class")

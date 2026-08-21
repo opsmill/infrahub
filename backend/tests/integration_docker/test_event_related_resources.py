@@ -29,6 +29,8 @@ if TYPE_CHECKING:
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
+pytestmark = pytest.mark.shard_b
+
 # Each peer adds two related resources to the node-created event, so 300 peers
 # put the event above the 500 maximum while the single-VLAN control interface
 # stays far below it.
