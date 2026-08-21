@@ -56,7 +56,10 @@ class:
    storage helpers come from `@infrahub/ui`). It fills the design system's `ThemeContext`, which is
    what makes `ThemeSwitchMenuItem` — the ready-made switch a menu can drop in — render and work.
    An absent flag (backend predates it) counts as enabled under a Vite dev server only — see
-   `entities/config/domain/rules/can-offer-dark-theme.ts`.
+   `entities/config/domain/rules/can-offer-dark-theme.ts`. A browser with no stored choice follows
+   the desktop's `prefers-color-scheme`; a Vite dev server overrides that to dark so whoever is
+   working on the theme has it on screen — see
+   `entities/config/domain/rules/get-default-theme.ts`.
 3. **`useResolvedTheme`** (from `@infrahub/ui`) — how components *read* the current theme: a
    `useSyncExternalStore` subscription to the class via MutationObserver. Components never read
    storage or config for this; the document element is the single source of truth.

@@ -1,7 +1,8 @@
-import { ThemeProvider as DesignSystemThemeProvider } from "@infrahub/ui";
+import { ThemeProvider as DesignSystemThemeProvider, useSystemTheme } from "@infrahub/ui";
 import type React from "react";
 
 import { canOfferDarkTheme } from "@/entities/config/domain/rules/can-offer-dark-theme";
+import { getDefaultTheme } from "@/entities/config/domain/rules/get-default-theme";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
 /**
@@ -14,15 +15,15 @@ import { useConfig } from "@/entities/config/ui/config-provider";
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const config = useConfig();
-  const canChoose = canOfferDarkTheme(config.experimental_features, import.meta.env.DEV);
+  const systemTheme = useSystemTheme();
+
+  const isDevServer = import.meta.env.DEV;
+  const canChoose = canOfferDarkTheme(config.experimental_features, isDevServer);
 
   return (
     <DesignSystemThemeProvider
       canChoose={canChoose}
-      // Dark rather than the operating system's appearance: the point of enabling this on a
-      // non-production deployment is that everyone working on it sees the theme being worked on,
-      // which an OS-derived default would give only to those already running a dark desktop.
-      defaultTheme={canChoose ? "dark" : "light"}
+      defaultTheme={getDefaultTheme({ canOfferDark: canChoose, isDevServer, systemTheme })}
     >
       {children}
     </DesignSystemThemeProvider>

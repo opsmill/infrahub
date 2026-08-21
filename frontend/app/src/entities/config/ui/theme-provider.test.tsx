@@ -37,6 +37,7 @@ function renderWithFlag(darkTheme: boolean) {
 }
 
 const isDark = () => document.documentElement.classList.contains("dark");
+const systemPrefersDark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
 
 describe("ThemeProvider", () => {
   beforeEach(() => {
@@ -49,7 +50,14 @@ describe("ThemeProvider", () => {
     document.documentElement.classList.remove("dark");
   });
 
-  test("defaults to dark when the deployment enables the theme", async () => {
+  // Vitest serves the app through Vite in dev mode, so import.meta.env.DEV is true for every test
+  // in this file and the dev-server override is the only branch reachable here. The desktop
+  // follows the desktop in getDefaultTheme's own test and in the E2E suite, which runs a build.
+  test("defaults to dark under a dev server, whatever the desktop asks for", async () => {
+    // Stated rather than assumed: dark below means the override fired, not that the harness
+    // happens to report a dark desktop.
+    expect(systemPrefersDark()).toBe(false);
+
     const component = await renderWithFlag(true);
 
     await expect.element(component.getByTestId("can-choose")).toHaveTextContent("true");
@@ -63,14 +71,10 @@ describe("ThemeProvider", () => {
     expect(isDark()).toBe(false);
   });
 
-  test("ignores the operating system's appearance", async () => {
-    // GIVEN a browser that reports a light desktop
-    // (matchMedia is not consulted at all, which is the property under test)
-    const component = await renderWithFlag(true);
-    await expect.element(component.getByTestId("can-choose")).toHaveTextContent("true");
+  test("mirrors whatever it resolved, so the next load paints before the config returns", async () => {
+    await renderWithFlag(true);
 
-    // THEN the default is still the theme being dogfooded, not the desktop's
-    expect(isDark()).toBe(true);
+    await expect.poll(() => localStorage.getItem("infrahub.theme.resolved")).toBe("dark");
   });
 
   test("a chosen theme overrides the default and survives a remount", async () => {

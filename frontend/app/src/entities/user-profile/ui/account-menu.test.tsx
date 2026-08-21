@@ -94,12 +94,15 @@ describe("AccountMenu", () => {
 
   test("tags only the option that switches into the pre-release theme", async () => {
     vi.mocked(hasGlobalPermission).mockResolvedValue(false);
+    // Start from an explicit choice. Which item is on offer follows the theme on screen, and this
+    // test is about the tag rather than about whatever the default policy currently resolves to.
+    localStorage.setItem("infrahub.theme.choice", "dark");
 
     const component = await renderAccountMenuWithTheme(true);
     await component.getByTestId("authenticated-menu-trigger").click();
 
-    // The default is dark, so the switch offers the way back out — and leaving alpha is not itself
-    // an alpha step, so this item carries no tag.
+    // The page is dark, so the switch offers the way back out — and leaving alpha is not itself an
+    // alpha step, so this item carries no tag.
     const toLight = component.getByRole("menuitem", { name: /Light theme/ });
     await expect.element(toLight).toBeVisible();
     await expect.element(toLight).not.toHaveTextContent("alpha");
