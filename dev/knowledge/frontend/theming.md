@@ -64,9 +64,10 @@ class:
    `useSyncExternalStore` subscription to the class via MutationObserver. Components never read
    storage or config for this; the document element is the single source of truth.
 
-The deployment gate is `INFRAHUB_EXPERIMENTAL_DARK_THEME`, passed through in
-`development/docker-compose.yml` only (default `true` there). The root compose file deliberately
-has no passthrough while the theme is alpha.
+The deployment gate is `INFRAHUB_EXPERIMENTAL_DARK_THEME`, in the shared config block of both
+compose files: `development/docker-compose.yml` defaults it to `true` and the root compose file to
+`false`, so our own stacks carry the theme and a shipped deployment stays without it until an
+operator opts in.
 
 ## Content that carries its own colours
 
