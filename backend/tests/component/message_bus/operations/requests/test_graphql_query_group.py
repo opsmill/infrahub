@@ -13,6 +13,11 @@ from infrahub.groups.tasks import update_graphql_query_group
 from infrahub.workers.dependencies import build_client
 from tests.conftest import TestHelper
 
+# Only intercept the fake SDK endpoint: the per-worker Prefect server flushes
+# batched API logs on its own schedule, and a flush landing mid-test must reach
+# the real server instead of tripping the mock's unmatched-request teardown check.
+pytestmark = pytest.mark.httpx_mock(should_mock=lambda request: request.url.host == "mock")
+
 
 @pytest.fixture
 async def mock_schema_query_02(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTPXMock:

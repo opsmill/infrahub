@@ -28,6 +28,11 @@ from infrahub.workers.dependencies import build_cache
 from tests.adapters.cache import MemoryCache
 from tests.conftest import TestHelper
 
+# Only intercept the fake SDK endpoint: the per-worker Prefect server flushes
+# batched API logs on its own schedule, and a flush landing mid-test must reach
+# the real server instead of tripping the mock's unmatched-request teardown check.
+pytestmark = pytest.mark.httpx_mock(should_mock=lambda request: request.url.host == "mock")
+
 SOURCE_BRANCH_A = "branch2"
 DST_BRANCH_A = "main"
 
