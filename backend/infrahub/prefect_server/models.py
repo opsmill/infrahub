@@ -26,3 +26,7 @@ class InfrahubEventfilterInput(BaseModel):
     limit: int = Field(default=50)
     filter: InfrahubEventFilter = Field(default_factory=InfrahubEventFilter.default)
     offset: int | None = Field(default=None)
+    include_total: bool = Field(
+        default=True,
+        description="When false, skip the unbounded count query and report total=0; the paged events are unaffected",
+    )
