@@ -25,6 +25,7 @@ from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
+from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.core.schema import (
     AttributeSchema,
     NodeSchema,
@@ -1249,6 +1250,18 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at, user_id=user_id)
         await query.execute(db=db)
+
+        retirement_query = await RetireNodeAgnosticFieldsQuery.init(db=db, node_uuid=self.get_id(), at=delete_at)
+        await retirement_query.execute(db=db)
+        retired = retirement_query.get_data()
+        if retired.edges_closed:
+            log.debug(
+                "Retired branch-agnostic fields of a deleted node",
+                node_id=self.get_id(),
+                node_kind=self.get_kind(),
+                edges_closed=retired.edges_closed,
+                at=delete_at.to_string(),
+            )
 
         self._node_changelog = node_changelog
 
