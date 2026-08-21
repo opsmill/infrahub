@@ -104,14 +104,13 @@ export default mergeConfig(
         exclude: [
           "mocks/",
           "node_modules/",
-          "playwright-report/",
           "tests/",
           "**/*.d.ts",
           "src/shared/api/graphql/generated/",
           "src/shared/api/rest/types.generated.ts",
         ],
       },
-      exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/playwright-report/**"],
+      exclude: ["**/node_modules/**", "**/dist/**"],
     },
   })
 );
