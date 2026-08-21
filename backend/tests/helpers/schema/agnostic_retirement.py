@@ -40,7 +40,10 @@ AGNOSTIC_BEACON = NodeSchema(
     name="Beacon",
     namespace="Agnosticretire",
     branch=BranchSupportType.AGNOSTIC,
-    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    attributes=[
+        AttributeSchema(name="name", kind="Text", unique=True),
+        AttributeSchema(name="serial", kind="Number", optional=True),
+    ],
 )
 
 AGNOSTIC_RETIREMENT_SCHEMA = SchemaRoot(nodes=[AGNOSTIC_WIDGET, AGNOSTIC_GADGET, AGNOSTIC_BEACON])

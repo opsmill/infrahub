@@ -3,9 +3,10 @@ from __future__ import annotations
 from itertools import starmap
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import RelationshipStatus
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeRelationships
 from infrahub.core.query import Query
+from infrahub.core.query.agnostic_field_closure import CLOSE_UNRETAINED_AGNOSTIC_FIELDS
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 
@@ -59,8 +60,9 @@ class AttributeRemoveQuery(Query):
 
         self.params["kinds_to_ignore"] = kinds_to_ignore
         self.params["attr_name"] = self.attribute_name
-        self.params["current_time"] = self.at.to_string()
+        self.params["at"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
 
         self.params["user_id"] = self.user_id
 
@@ -95,7 +97,9 @@ class AttributeRemoveQuery(Query):
 
         node_kinds_str = "|".join(self.node_kinds + profile_kinds_to_update + template_kinds_to_update)
         query = """
+        // ------------
         // Find all the active nodes
+        // ------------
         MATCH (node:%(node_kinds)s)
         WHERE (size($kinds_to_ignore) = 0 OR NOT any(l IN labels(node) WHERE l IN $kinds_to_ignore))
         AND exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))
@@ -108,7 +112,9 @@ class AttributeRemoveQuery(Query):
         }
         WITH n1 as active_node, r1 as rb
         WHERE rb.status = "active"
+        // ------------
         // Find all the attributes that need to be updated
+        // ------------
         CALL (active_node) {
             MATCH (active_node)-[r:HAS_ATTRIBUTE]-(attr:Attribute { name: $attr_name })
             WHERE %(branch_filter)s
@@ -135,36 +141,45 @@ class AttributeRemoveQuery(Query):
         }
         WITH p2 as peer_node, rb, active_node, active_attr
         FOREACH (i in CASE WHEN rb.branch = $branch_name THEN [1] ELSE [] END |
-            SET rb.to = $current_time, rb.to_user_id = $user_id
+            SET rb.to = $at, rb.to_user_id = $user_id
         )
+        // ------------
         // Set metadata on Attribute and Node vertices if on default/global branch
+        // ------------
         WITH active_attr, active_node
         CALL (active_attr, active_node) {
             WITH active_attr, active_node
             WHERE $set_metadata
             SET active_attr.previous_updated_at = CASE
-                    WHEN active_attr.updated_at IS NULL OR active_attr.updated_at <> $current_time THEN active_attr.updated_at
+                    WHEN active_attr.updated_at IS NULL OR active_attr.updated_at <> $at THEN active_attr.updated_at
                     ELSE active_attr.previous_updated_at
                 END,
                 active_attr.previous_updated_by = CASE
-                    WHEN active_attr.updated_at IS NULL OR active_attr.updated_at <> $current_time THEN active_attr.updated_by
+                    WHEN active_attr.updated_at IS NULL OR active_attr.updated_at <> $at THEN active_attr.updated_by
                     ELSE active_attr.previous_updated_by
                 END
-            SET active_attr.updated_at = $current_time, active_attr.updated_by = $user_id
+            SET active_attr.updated_at = $at, active_attr.updated_by = $user_id
             SET active_node.previous_updated_at = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
+                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $at THEN active_node.updated_at
                     ELSE active_node.previous_updated_at
                 END,
                 active_node.previous_updated_by = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
+                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $at THEN active_node.updated_by
                     ELSE active_node.previous_updated_by
                 END
-            SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+            SET active_node.updated_at = $at, active_node.updated_by = $user_id
         }
+        // ------------
+        // Clean up branch-agnostic edges when they become unreachable
+        // ------------
+        WITH collect(DISTINCT active_attr) AS agnostic_candidates
+        %(close_unretained_agnostic_fields)s
+        UNWIND agnostic_candidates AS active_attr
         RETURN DISTINCT active_attr
         """ % {
             "branch_filter": branch_filter,
             "sub_query_all": sub_query_all,
             "node_kinds": node_kinds_str,
+            "close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS,
         }
         self.add_to_query(query)
