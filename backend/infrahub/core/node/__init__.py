@@ -1251,7 +1251,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at, user_id=user_id)
         await query.execute(db=db)
 
-        retirement_query = await RetireNodeAgnosticFieldsQuery.init(db=db, node_uuid=self.get_id(), at=delete_at)
+        retirement_query = await RetireNodeAgnosticFieldsQuery.init(db=db, node_uuids=[self.get_id()], at=delete_at)
         await retirement_query.execute(db=db)
         retired = retirement_query.get_data()
         if retired.edges_closed:

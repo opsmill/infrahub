@@ -14,18 +14,19 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class NodeAgnosticRetirementResult:
-    """What retiring one node's branch-agnostic fields changed."""
+    """What one retirement run over a set of nodes changed."""
 
     edges_closed: int
     """Global edges given a `to` timestamp. Zero means every field is still retained somewhere."""
 
 
-_RETIRE_UNRETAINED_FIELDS_OF_NODE = """
+_RETIRE_UNRETAINED_FIELDS_OF_NODES = """
 // -----------------
 // MATCH on the branch-agnostic edges we care about to start with.
 // -----------------
-MATCH (anchor_node:Node {uuid: $node_uuid})-[anchor:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
-WHERE anchor.branch = $global_branch_name
+MATCH (anchor_node:Node)-[anchor:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+WHERE anchor_node.uuid IN $node_uuids
+  AND anchor.branch = $global_branch_name
   AND anchor.status = "active"
   AND anchor.from <= $at
   AND anchor.to IS NULL
@@ -43,7 +44,7 @@ RETURN count(e) AS edges_closed
 
 
 class RetireNodeAgnosticFieldsQuery(Query):
-    """Close the open global edges of one node's branch-agnostic fields that no branch retains.
+    """Close the open global edges of the given nodes' branch-agnostic fields that no branch retains.
 
     Checks if the field is reachable from ANY branch. It is only deleted if it is completely
     unreachable.
@@ -55,16 +56,16 @@ class RetireNodeAgnosticFieldsQuery(Query):
     insert_return: bool = False
     insert_limit: bool = False
 
-    def __init__(self, node_uuid: str, at: Timestamp, **kwargs: Any) -> None:
-        self.node_uuid = node_uuid
+    def __init__(self, node_uuids: list[str], at: Timestamp, **kwargs: Any) -> None:
+        self.node_uuids = node_uuids
         super().__init__(at=at, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
-        self.params["node_uuid"] = self.node_uuid
+        self.params["node_uuids"] = self.node_uuids
         self.params["at"] = self.at.to_string()
 
-        self.add_to_query(_RETIRE_UNRETAINED_FIELDS_OF_NODE)
+        self.add_to_query(_RETIRE_UNRETAINED_FIELDS_OF_NODES)
         self.update_return_labels(["edges_closed"])
 
     def get_data(self) -> NodeAgnosticRetirementResult:
