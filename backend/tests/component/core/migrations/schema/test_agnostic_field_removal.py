@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, HashableModelState, SchemaPathType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, SYSTEM_USER_ID, HashableModelState, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_attribute_remove import NodeAttributeRemoveMigration
@@ -26,19 +26,24 @@ from infrahub.core.migrations.schema.node_relationship_remove import NodeRelatio
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.query.rollback import RollbackScope
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.timestamp import Timestamp
 from tests.helpers.agnostic_edges import (
+    VertexMetadata,
     attribute_global_edges,
+    attribute_metadata,
     attribute_owning_edges,
     edge_summary,
     expected_closed_at,
     open_edge_types,
     open_edges,
     relationship_global_edges,
+    relationship_metadata,
     relationship_peer_shape,
     to_times,
 )
-from tests.helpers.db_validation import verify_graph
+from tests.helpers.db_validation import get_node_metadata, verify_graph
 from tests.helpers.schema.agnostic_retirement import (
     AGNOSTIC_RETIREMENT_SCHEMA,
     BEACON_KIND,
@@ -469,3 +474,114 @@ async def test_an_attribute_of_a_branch_agnostic_kind_stays_open_for_a_branch_th
 
     after = await attribute_global_edges(db=db, node_id=beacon.id, attribute_name=ATTRIBUTE_NAME)
     assert edge_summary(after) == edge_summary(before), "the fork still declares the attribute, so nothing is released"
+
+
+async def test_removing_an_attribute_stamps_the_removal_time_on_its_vertex(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_schema: None
+) -> None:
+    """The removal is a write, so it leaves its audit stamps on the field it closed.
+
+    The attribute is branch-agnostic on a branch-aware object, so the edges carrying its value are on
+    the global branch while the migration runs on the default branch -- and the default branch is one
+    of the two whose writes maintain vertex metadata.
+    """
+    widget = await _create_widget(db=db, branch=default_branch, name="stamped-on-removal", serial=1000)
+
+    before = await attribute_metadata(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
+    assert before.updated_at is not None, "precondition: creating the object stamped the attribute"
+
+    removed_at = Timestamp()
+    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
+    assert not result.errors
+
+    after = await attribute_metadata(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
+    assert after.updated_at == removed_at.to_string(), "the attribute vertex carries the removal time"
+    assert after.updated_by == SYSTEM_USER_ID
+    assert after.previous_updated_at == before.updated_at, "the pre-removal stamp is kept for a rollback"
+    assert after.previous_updated_by == before.updated_by
+
+    owner = await get_node_metadata(db=db, node_uuid=widget.id)
+    assert owner["updated_at"] == removed_at.to_string(), "the owning node is stamped by the same write"
+
+
+async def test_removing_a_relationship_stamps_the_removal_time_on_its_vertex(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_schema: None
+) -> None:
+    """Same for a branch-agnostic relationship, whose vertex sits between two branch-aware objects.
+
+    The removal touches both peers, so both peer nodes carry its stamp, each snapshotting its own
+    pre-removal values.
+    """
+    gadget = await _create_gadget(db=db, branch=default_branch, name="peer-of-the-stamped")
+    widget = await _create_widget(
+        db=db, branch=default_branch, name="stamped-on-rel-removal", serial=1001, gadget=gadget
+    )
+
+    before = await relationship_metadata(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
+    assert before.updated_at is not None, "precondition: creating the relationship stamped its vertex"
+    before_peers = {node.id: await get_node_metadata(db=db, node_uuid=node.id) for node in (widget, gadget)}
+
+    removed_at = Timestamp()
+    result = await _remove_relationship_from_schema(db=db, branch=default_branch, at=removed_at)
+    assert not result.errors
+
+    after = await relationship_metadata(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
+    assert after.updated_at == removed_at.to_string(), "the relationship vertex carries the removal time"
+    assert after.updated_by == SYSTEM_USER_ID
+    assert after.previous_updated_at == before.updated_at, "the pre-removal stamp is kept for a rollback"
+    assert after.previous_updated_by == before.updated_by
+
+    for node in (widget, gadget):
+        peer_meta = await get_node_metadata(db=db, node_uuid=node.id)
+        assert peer_meta["updated_at"] == removed_at.to_string(), "both peer nodes are stamped by the same write"
+        assert peer_meta["previous_updated_at"] == before_peers[node.id]["updated_at"], (
+            "each peer keeps its own pre-removal stamp for a rollback"
+        )
+
+
+async def test_a_rolled_back_removal_leaves_the_global_edges_open(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_schema: None
+) -> None:
+    """A schema update that fails after the removal committed must undo global branch changes.
+
+    The edges reopen, and the stamps the removal wrote on the vertices it touched are restored
+    from their snapshots, which the restore consumes.
+    """
+    widget = await _create_widget(db=db, branch=default_branch, name="keeps-its-serial", serial=300)
+
+    before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
+    assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
+    before_meta = await attribute_metadata(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
+    before_owner = await get_node_metadata(db=db, node_uuid=widget.id)
+
+    removed_at = Timestamp()
+    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
+    assert not result.errors
+    closed = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
+    assert open_edges(closed) == [], "precondition: the removal closed the global edges"
+
+    await GraphRollbacker(db=db).rollback(
+        target_branch=default_branch,
+        at=removed_at,
+        scope=RollbackScope.AT_TIMESTAMP,
+    )
+
+    after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
+    assert edge_summary(after) == edge_summary(before), "every global edge is back to the state the removal found"
+
+    after_meta = await attribute_metadata(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
+    assert after_meta == VertexMetadata(
+        updated_at=before_meta.updated_at,
+        updated_by=before_meta.updated_by,
+        previous_updated_at=None,
+        previous_updated_by=None,
+    ), "the attribute vertex carries its pre-removal stamps again"
+
+    after_owner = await get_node_metadata(db=db, node_uuid=widget.id)
+    assert after_owner["updated_at"] == before_owner["updated_at"], "the owning node is restored by the same pass"
+    assert after_owner["previous_updated_at"] is None
+
+    owning_edges = await attribute_owning_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
+    assert sorted((edge.branch, edge.status, edge.to_time or "") for edge in owning_edges) == [
+        (GLOBAL_BRANCH_NAME, "active", ""),
+    ], "the removal's branch-scoped tombstone is gone and the global owning edge is open again"

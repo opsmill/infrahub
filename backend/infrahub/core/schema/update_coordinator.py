@@ -389,7 +389,6 @@ class SchemaUpdateCoordinator:
             target_branch=branch,
             at=at,
             scope=RollbackScope.AT_TIMESTAMP,
-            restore_metadata=False,
         )
 
     async def _restore_registry_state(
