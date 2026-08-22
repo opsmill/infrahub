@@ -93,12 +93,84 @@ with the shared retention predicate extended only where a slice proves it must b
   the vertices the removal already matched as a collected list rather than re-selecting them, which is
   what keeps the candidate set intact across the removal's own writes, and returns nothing, so both
   queries keep their existing `RETURN` and their migration counts. T030a and T030b followed the same day.
+- [ ] R03a **Slice 2a — the rollback's metadata restore. Take this next, before R04.** Slice 2's
+  closure writes global-branch edges, so both rollback passes must cover the global branch
+  (`_rollback_branches` in `backend/infrahub/core/query/rollback.py`): the target branch follows the
+  scope, the global branch is always matched on the exact timestamp, because nothing write-blocks it.
+  The metadata restore follows the design in plan.md §"The rollback is part of the invariant"
+  (idea brief 2026-08-21): restore on `= $at` on every pass, independent of branch and scope,
+  because every write of one operation lands at exactly the operation's `at`. The per-vertex
+  criterion this task once went looking for turned out to be a constant. Sub-tasks:
+
+  - [ ] R03a.1 **Require `at` on the migration queries.** Make `at` a required constructor argument
+    of `DeleteElementInSchemaQuery` (`backend/infrahub/core/migrations/query/delete_element_in_schema.py`)
+    and `SchemaAttributeUpdateQuery` (`backend/infrahub/core/migrations/query/schema_attribute_update.py`)
+    and drop their `at = self.at or Timestamp()` fallbacks. Dropping the fallback alone enforces
+    nothing — the `Query` base defaults a missing `at` to *now* (`Timestamp(None)`), which is exactly
+    the silent off-timestamp write being outlawed — and a required parameter alone cannot catch the
+    omission either, because the `Query.init` classmethod always forwards `at` explicitly, defaulting
+    it to `None`; the guard is a runtime rejection of a missing `at`. Callers already pass it:
+    `GraphMigration.do_execute` inits every query with `at=migration_input.at`; the m012/m013
+    component tests that construct these queries directly must pass `at=Timestamp()`. State the
+    single-timestamp rule where these queries are defined. *Verify: construction without `at` is an
+    error, pinned by unit tests.*
+  - [ ] R03a.2 **Restore on the exact timestamp.** `_render_restore_metadata_pipeline` matches
+    `restore_vertex.updated_at = $at` on every pass — delete the `rollback_branch.exact` split from
+    the restore (the edge passes keep their exact/range split). The pipeline no longer depends on
+    `rollback_branch`; simplify the `WITH`/`CALL` scoping in both queries accordingly. Dedup the
+    vertex set (`WITH DISTINCT restore_vertex`) so a vertex reached through several edges in one
+    batch is restored once; across batches the exact match is self-limiting, since the first restore
+    moves `updated_at` off `$at`. The `TestRollbackSinceTimestamp` dataset must stamp its
+    default-branch update and delete exactly at the window start — the shape a merge writes and the
+    only stamp the restore matches — while its creation and user-branch changes stay later in the
+    window to keep the range edge-reversal covered. *Verify (the R03a failure modes, pinned as
+    regression tests, SC-002): a vertex bumped at `at + 5` by an unrelated global write survives a
+    `SINCE_TIMESTAMP` rollback untouched, `previous_*` included; a node owning both a branch-aware
+    and a branch-agnostic field is restored at most once and `updated_at` is never NULL after
+    rollback.*
+  - [ ] R03a.3 **Delete `restore_metadata`; the restore is unconditional.** Remove the parameter
+    from `GraphRollbacker.rollback` and both query classes, the default/global-target `ValueError`
+    guard, and the docstring text that justified it. Flip the call sites by deletion:
+    `core/schema/update_coordinator.py` (`restore_metadata=False` — stale since #9980 closed the
+    snapshot gap PR #9878 declared), `core/diff/merger/merger.py`, `core/merge/failure_recoverer.py`.
+    Update every test that passes the flag (~12 files, `rtk grep restore_metadata backend/tests`);
+    `test_restore_metadata_rejected_on_non_default_branch` is deleted with the guard. *Verify
+    (FR: a failed standalone schema update leaves vertex metadata at pre-update values): extend
+    `test_a_rolled_back_removal_leaves_the_global_edges_open`
+    (`tests/component/core/migrations/schema/test_agnostic_field_removal.py`) with metadata
+    assertions — restored stamps, `previous_*` cleared.*
+  - [ ] R03a.4 **Rollback targeting a user branch restores global-bump metadata.** The global-exact
+    pass runs the restore for any target branch. Today a user-branch removal closes global edges
+    without bumping metadata (see the A2 note below), so pin the mechanism with a fixture that bumps
+    the vertex at `at` by hand — the shape the closure will write once IFC-3032 lands — rolls back
+    targeting the user branch, and asserts the restore.
+  - [ ] R03a.5 **Document timestamp-as-operation-identity** in `_rollback_branches`: a
+    same-microsecond unrelated global write is reversed wrongly — accepted, and shared with what
+    `AT_TIMESTAMP` scope already assumes. Also note the one-slot `previous_*` residual (a concurrent
+    global write after the merge's bump keeps a phantom pointer to the rolled-back write; current
+    values stay correct), and keep the re-run idempotency property pinned (SC: re-running rollback
+    is a no-op).
+
+  The two pre-existing metadata gaps this task recorded are resolved as follows: the
+  `restore_metadata=False` / `=True` asymmetry between a standalone schema update and the same
+  removal rolled back through a merge is dissolved by R03a.3 (the update side was the wrong one);
+  the user-branch removal that closes global edges while recording no metadata at all
+  (`set_metadata` derived from the migration branch, `attribute_remove.py`, vs the closure writing
+  the global branch) is an upstream bump gap, **out of scope**, tracked in
+  [IFC-3032](https://opsmill.atlassian.net/browse/IFC-3032).
+
 - [ ] R04 **Slice 3 — branch merge and rebase.** Supersedes T025–T028. Both supply node uuids from
   the diff they already compute. **Carries T033 (FR-014)** — diff a branch that forked before the
   deletion and assert no attribute or relationship change is reported for that node. It sits here
   rather than with the delete slice because it is a claim about the diff, and this is the slice where
   the diff machinery is already in hand. Every assertion written so far reads edges directly, so
-  nothing yet checks the claim at the layer a user would see it.
+  nothing yet checks the claim at the layer a user would see it. **Rollback constraint (from R03a's
+  design, D5)**: the rebase enforcement point's closures must run **inside the rebase transaction**
+  (`backend/infrahub/core/branch/tasks.py`, the `db.start_transaction()` block that applies
+  `user_branch.rebase`), because a no-schema-diff rebase never invokes the schema-update coordinator
+  and transaction atomicity is then the only rollback cover; the coordinator's `AT_TIMESTAMP`
+  rollback at `rebase_at` is covered by the global-exact pass with no new machinery.
+  Pre-transaction rebase writes are diff-store only, invisible to rollback by construction.
 - [ ] R05 **Slice 4 — branch deletion and the FR-018 timing gate.** Its own query, fork-point
   bounded. Supersedes T018–T020 and carries T038's measurement obligation.
 - [ ] R06 **Slice 5 — repair migration.** Blocked on T001. Supersedes Phase 4; C4 in

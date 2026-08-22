@@ -358,6 +358,79 @@ hedge against predicate bugs, not a correctness requirement. The degraded read i
 test where it is actually reachable: only the repair migration closes edges a branch can still read,
 since the runtime paths close only once no branch retains the field.
 
+### The rollback is part of the invariant (2026-08-20)
+
+Closing a global edge is a write like any other, so undoing it has to be possible. That turns out to
+constrain the design more than expected, and the constraint was found late — during slice 2 review.
+
+**A compensating rollback, not a transaction.** Some schema migrations are too large to fit in one
+transaction, and graph migrations are deliberately written to be resumable, committing what succeeded
+and reporting the rest. Transactional atomicity is therefore not available as a guarantee, and the
+compensating rollback is the cleanup mechanism. A design that assumed "the transaction will undo it"
+was implemented and reverted for exactly this reason.
+
+**Ownership is per branch, not per operation.** `RollbackScope.SINCE_TIMESTAMP` reverses a whole
+window, which is safe only because the merge write-block makes the caller the sole writer on the
+target branch for its duration. Nothing write-blocks the global branch — every branch reads and
+writes it — so a range there would revert other writers' work. What replaces the write-block is the
+timestamp: a global-branch write stamped at exactly the operation's `at` is the operation's own. Both
+rollback passes therefore carry a per-branch predicate: the target branch follows the scope, the
+global branch is always exact.
+
+**Why the global branch must be covered under a range scope at all.** A merge runs its schema
+migrations with `manage_rollback=False`, deferring their cleanup to the range-scoped merge handler.
+Any schema migration writing global edges is exposed there, which predates this feature; slice 2's
+closure only added another writer.
+
+**Vertex metadata: restore on the exact timestamp, always (decided 2026-08-21).** The restore used
+to pick its time window from the edge it arrived through, and metadata belongs to the vertex — a
+vertex owning both a branch-aware and a branch-agnostic field is reached through a target-branch
+edge and a global-branch edge in one rollback, two different windows for one vertex. Both failure
+modes that produced (an unrelated global write skipped by the exact pass and then restored anyway by
+the range pass; a second pass nulling what the first restored) dissolve once the restore ignores the
+arriving edge's window entirely and matches `= $at` on every pass. The per-vertex criterion R03a
+went looking for (`branch_support`, or recording the writing operation on the bump) turned out to be
+a constant: every write of one operation lands at exactly the operation's `at`, which is the same
+assumption the edge passes already lean on. The invariant reads symmetric rather than merge-specific
+— every merge-suite write on any branch lands at exactly `merge_at`; `SINCE_TIMESTAMP` on the
+write-blocked destination branch is a free hedge, not a semantic need. The exact window also makes
+the restore self-limiting: the first restore moves `updated_at` off `$at`, so a vertex reached
+through several rolled-back edges is restored at most once and `updated_at` is never nulled by a
+second pass.
+
+Three consequences are structural rather than optional:
+
+- **Migration queries must require `at`.** The `at = self.at or Timestamp()` fallbacks in
+  `migrations/query/delete_element_in_schema.py` and `migrations/query/schema_attribute_update.py`
+  are the places a merge-suite write could silently land off-timestamp, stranding it outside every
+  rollback window. Construction without `at` becomes an error, and the single-timestamp rule is
+  stated where the migration queries are defined.
+- **`restore_metadata` is deleted; the restore is unconditional.** Both of the flag's reasons are
+  gone: #9980 closed the snapshot gap that PR #9878's `restore_metadata=False` was declared for, and
+  the default/global-target guard protected a restore that is now a correct no-op wherever nothing
+  was bumped. The schema-update coordinator flips accordingly, so a failed standalone schema update
+  restores the metadata its migrations bumped — previously it knowingly left it in place, while the
+  same removal rolled back through a merge restored it.
+- **Timestamp-as-operation-identity is an accepted risk**, documented at `_rollback_branches`
+  (`core/query/rollback.py`): a same-microsecond unrelated global write is reversed wrongly —
+  shared with what `AT_TIMESTAMP` scope already assumes on the target branch. Documented residual
+  from the one-slot `previous_*` snapshot: a concurrent global write that bumped a vertex after the
+  merge did keeps a phantom `previous_*` pointer to the rolled-back write; current values stay
+  correct.
+
+Known upstream gap, out of scope here: a **user-branch** schema removal closes global edges without
+bumping the touched vertices' metadata — `set_metadata` is derived from the migration branch
+(`attribute_remove.py`) while the closure always writes the global branch — so there is nothing for
+its rollback to restore until [IFC-3032](https://opsmill.atlassian.net/browse/IFC-3032) fixes the
+bump. The rollback side is built for the fixed world: the global-exact pass restores whatever the
+operation stamped, on any target branch.
+
+**Rebase needs no new machinery.** The global-exact pass covers the coordinator's `AT_TIMESTAMP`
+rollback at `rebase_at`. It does impose one constraint on slice 3 (R04): the rebase enforcement
+point's closures must run inside the rebase transaction (`core/branch/tasks.py`), because a
+no-schema-diff rebase never invokes the coordinator, leaving transaction atomicity as the only
+cover. Pre-transaction rebase writes are diff-store only, invisible to rollback by construction.
+
 ### Implementation sequencing (risk-first)
 
 Revised 2026-08-17: one enforcement point at a time, each landing with the tests that pin it,
