@@ -304,7 +304,7 @@ async def attribute_metadata(db: InfrahubDatabase, node_id: str, attribute_name:
 
 async def relationship_metadata(db: InfrahubDatabase, node_id: str, identifier: str) -> VertexMetadata:
     """The audit stamps on the relationship vertex reached from this node.
-    
+
     Assumes a single :Node vertex with the `node_id` and a single linked :Relationship with the
     `identifier`.
     """
