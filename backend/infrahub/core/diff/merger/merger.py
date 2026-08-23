@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.constants import DiffAction
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.query.bulk_merge import (
     BulkMergeAttributePropertyEdgesQuery,
@@ -12,6 +13,7 @@ from infrahub.core.diff.query.bulk_merge import (
 )
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.diff.query.merge import DiffMergeMetadataQuery
+from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.database import retry_db_transaction
 from infrahub.log import get_logger
@@ -90,9 +92,7 @@ class DiffMerger:
 
         log.info("Discovering affected node UUIDs")
         affected_node_uuids = await self.diff_repository.get_affected_node_uuids(
-            source_branch=self.source_branch,
-            target_branch=self.destination_branch,
-            at=at,
+            diff_branch_name=self.source_branch.name,
             tracking_id=tracking_id,
         )
         self._merge_started = True
@@ -125,7 +125,41 @@ class DiffMerger:
                 )
                 await metadata_query.execute(db=self.db)
 
+        deleted_node_uuids = await self.diff_repository.get_affected_node_uuids(
+            diff_branch_name=self.source_branch.name,
+            tracking_id=tracking_id,
+            include_actions=[DiffAction.REMOVED],
+        )
+        log.info(
+            "Re-evaluating branch-agnostic retirement for merged deletions",
+            candidates=len(deleted_node_uuids),
+        )
+        if deleted_node_uuids:
+            await self._retire_agnostic_fields_of_deleted_nodes(node_uuids=deleted_node_uuids, at=at)
+
         log.info("Graph merge complete")
+
+    # TODO: not sure the retry_db_transaction decorator does anything b/c this is not running in a transaction
+    @retry_db_transaction(name="merge_retire_agnostic_fields")
+    async def _retire_agnostic_fields_of_deleted_nodes(self, node_uuids: list[str], at: Timestamp) -> None:
+        """Re-evaluate retention for the nodes whose deletion this merge carried to the destination.
+
+        The merge itself is never the release trigger: the query re-runs the retention predicate over
+        these candidates and closes only the global edges no branch can still reach, so a node another
+        branch still reads keeps its branch-agnostic values open. A failure propagates and fails the
+        merge.
+        """
+        for i in range(0, len(node_uuids), self.metadata_batch_size):
+            batch_uuids = node_uuids[i : i + self.metadata_batch_size]
+            retirement_query = await RetireNodeAgnosticFieldsQuery.init(db=self.db, node_uuids=batch_uuids, at=at)
+            await retirement_query.execute(db=self.db)
+            retired = retirement_query.get_data()
+            log.info(
+                "Branch-agnostic retirement re-evaluated for merged deletions",
+                deleted_nodes=len(batch_uuids),
+                edges_closed=retired.edges_closed,
+                at=at.to_string(),
+            )
 
     @retry_db_transaction(name="bulk_merge_node_existence")
     async def _bulk_merge_node_existence(self, at: Timestamp, plan: MergeExclusionPlan) -> None:
