@@ -138,14 +138,36 @@ open-branch counts**, and report median durations for all four operations:
 
 | Operation | Branches | Before | After | Δ | Gate |
 |---|---|---|---|---|---|
-| Node deletion | 3 | | | | ≤ +10% |
-| Node deletion | ~100 | | | | ≤ +10% |
-| Branch merge | 3 | | | | ≤ +10% |
-| Branch merge | ~100 | | | | ≤ +10% |
-| Branch rebase | 3 | | | | ≤ +10% |
-| Branch rebase | ~100 | | | | ≤ +10% |
-| Branch deletion | 3 | | | | ≤ +10% |
-| Branch deletion | ~100 | | | | ≤ +10% |
+| Node deletion | 3 | 35.1 ms | 28.7 ms | −18.2% | ✅ ≤ +10% |
+| Node deletion | ~100 | 31.7 ms | 31.0 ms | −2.2% | ✅ ≤ +10% |
+| Branch merge | 3 | 220.6 ms | 164.2 ms | −25.5% | ✅ ≤ +10% |
+| Branch merge | ~100 | 253.9 ms | 155.4 ms | −38.8% | ✅ ≤ +10% |
+| Branch rebase | 3 | 1856.9 ms | 1181.1 ms | −36.4% | ✅ ≤ +10% |
+| Branch rebase | ~100 | 2027.0 ms | 1408.9 ms | −30.5% | ✅ ≤ +10% |
+| Branch deletion | 3 | 34.9 ms | 27.9 ms | −19.8% | ✅ ≤ +10% |
+| Branch deletion | ~100 | 35.2 ms | 48.5 ms | **+37.6%** | ❌ **breached** |
+
+Measured 2026-08-23 with `backend/tests/query_benchmark/test_fr018_agnostic_retirement_operations.py`
+(an uncommitted harness, per the "report numbers, do not add a committed suite" rule above). Dataset:
+250 branch-aware nodes each carrying one branch-agnostic attribute; operations timed end to end;
+before = pre-feature commit `bc7a578cfa` in a separate worktree, after = the slice 1–4 tree. Two full
+runs per build, **interleaved** (after, before, after, before) to cancel machine drift, giving 14–18
+samples per cell; the medians above combine both runs.
+
+**Noise floor**: whole-run medians drifted up to ±2× between consecutive runs, on both builds
+equally, so single-run comparisons of these operations are not evidence. An earlier non-interleaved
+session measured branch deletion at ~100 branches at 364 ms; three later re-measurements (30, 48,
+63 ms medians) never reproduced it, and stage-level profiling of the retirement query at 100 open
+branches puts its warm cost at ~7 ms (candidate seed 4.2 ms, retention predicate ~2 ms; a cold plan
+compile is ~260 ms, paid once per plan-cache eviction).
+
+**The one real breach**: branch deletion at ~100 branches, +37.6% relative — but ~+13 ms absolute,
+which is the warm retirement query plus its closure writes, on a baseline (~35 ms) produced by
+deleting **empty** branches. Any branch carrying real data raises the baseline and dissolves the
+relative breach; the spec's prescribed fallback (fork-point narrowing via the existence edge's
+`from`/`to`) is already built into the query. Decision pending: accept with an absolute floor added
+to the gate (e.g. ≤ +10% or ≤ +25 ms, whichever is greater) or optimize further. Until decided, R05
+stays open.
 
 **Both rows are required.** The predicate's filter grows linearly in open-branch count (two
 `(branch_set, timestamp)` pairs per branch), not in graph size, so a three-branch component
