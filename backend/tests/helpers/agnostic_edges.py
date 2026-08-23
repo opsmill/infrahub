@@ -114,6 +114,47 @@ async def relationship_global_edges(db: InfrahubDatabase, node_id: str, identifi
     return [EdgeState(**dict(result)) for result in results]
 
 
+async def attribute_vertex_uuid(db: InfrahubDatabase, node_id: str, attribute_name: str) -> str:
+    """The attribute vertex's own uuid, captured while the vertex is still reachable from its node."""
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
+        RETURN DISTINCT a.uuid AS uuid
+        """,
+        params={"node_id": node_id, "attribute_name": attribute_name},
+    )
+    (result,) = results
+    return result["uuid"]
+
+
+async def relationship_vertex_uuid(db: InfrahubDatabase, node_id: str, identifier: str) -> str:
+    """The relationship vertex's own uuid, captured while the vertex is still reachable from its node."""
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:IS_RELATED]-(r:Relationship {name: $identifier})
+        RETURN DISTINCT r.uuid AS uuid
+        """,
+        params={"node_id": node_id, "identifier": identifier},
+    )
+    (result,) = results
+    return result["uuid"]
+
+
+async def global_edges_by_vertex_uuid(db: InfrahubDatabase, vertex_uuid: str) -> list[EdgeState]:
+    """Every global-branch edge of a field vertex matched by its own uuid."""
+    results = await db.execute_query(
+        query="""
+        MATCH (v {uuid: $vertex_uuid})
+        WHERE v:Attribute OR v:Relationship
+        MATCH (v)-[e]-()
+        WHERE e.branch = $global_branch
+        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status, e.to AS to_time
+        """,
+        params={"vertex_uuid": vertex_uuid, "global_branch": GLOBAL_BRANCH_NAME},
+    )
+    return [EdgeState(**dict(result)) for result in results]
+
+
 async def attribute_owning_edges(db: InfrahubDatabase, node_id: str, attribute_name: str) -> list[EdgeState]:
     """Every owning edge of the attribute vertex, on any branch."""
     results = await db.execute_query(

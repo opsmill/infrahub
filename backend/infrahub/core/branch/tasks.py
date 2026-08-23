@@ -16,7 +16,7 @@ from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.delete_coordinator import BranchDeleteOrchestrator
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
-from infrahub.core.constants import MutationAction
+from infrahub.core.constants import DiffAction, MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
@@ -40,6 +40,7 @@ from infrahub.core.merge.selective_regen.orchestrator import build_merge_selecti
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
+from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
@@ -79,6 +80,9 @@ if TYPE_CHECKING:
 
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.database import InfrahubDatabase
+
+RETIREMENT_BATCH_SIZE = 500
+"""How many deleted-node uuids one retirement query evaluates at a time."""
 
 
 @flow(name="branch-migrate", flow_run_name="Apply migrations to branch {branch}")
@@ -221,9 +225,17 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
         migrations = []
         async with lock.registry.global_graph_lock():
+            base_deleted_node_uuids = await diff_repository.get_affected_node_uuids(
+                diff_branch_name=base_branch.name,
+                tracking_id=BranchTrackingId(name=user_branch.name),
+                include_actions=[DiffAction.REMOVED],
+            )
             async with db.start_transaction() as dbt:
                 await user_branch.rebase(db=dbt, user_id=context.account.account_id, at=rebase_at)
                 log.info("Branch graph rebased")
+                await _retire_agnostic_fields_of_base_deletions(
+                    db=dbt, node_uuids=base_deleted_node_uuids, at=rebase_at, log=log
+                )
 
             if user_branch.schema_differs_from_default_branch:
                 # Update the registry and run migrations after the rebase, with rollback on failure.
@@ -451,6 +463,38 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
             workflow=workflow,
         )
         await creator.create(model=model, context=context)
+
+
+async def _retire_agnostic_fields_of_base_deletions(
+    db: InfrahubDatabase,
+    node_uuids: list[str],
+    at: Timestamp,
+    log: Logger | LoggerAdapter[Logger],
+) -> None:
+    """Re-evaluate branch-agnostic retention for the base-branch deletions this rebase absorbs.
+
+    Look at every object deleted as part of this rebase and check any branch-agnostic fields on each
+    object, deleting them on the global branch if the field is no longer reachable from any branch.
+
+    Must run after the branch has been rebased.
+
+    Args:
+        db: The transaction the rebase itself runs in.
+        node_uuids: The nodes the base-branch diff records as removed within the rebased window.
+        at: The rebase timestamp; closed edges are stamped with it.
+        log: The flow's run logger.
+
+    """
+    log.info(f"Re-evaluating branch-agnostic retirement for {len(node_uuids)} deletions absorbed by the rebase")
+    for batch_start in range(0, len(node_uuids), RETIREMENT_BATCH_SIZE):
+        batch_uuids = node_uuids[batch_start : batch_start + RETIREMENT_BATCH_SIZE]
+        retirement_query = await RetireNodeAgnosticFieldsQuery.init(db=db, node_uuids=batch_uuids, at=at)
+        await retirement_query.execute(db=db)
+        retired = retirement_query.get_data()
+        log.info(
+            "Branch-agnostic retirement re-evaluated for base-branch deletions: "
+            f"candidates={len(batch_uuids)} edges_closed={retired.edges_closed} at={at.to_string()}"
+        )
 
 
 async def _get_diff_root(
