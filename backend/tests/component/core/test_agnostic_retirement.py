@@ -802,20 +802,10 @@ class TestAgnosticRetirementOnRebase:
         before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
 
         failing_db = FailingRetirementDatabase.from_db(db=db)
-        lock.initialize_lock(local_only=True)
-        context = InfrahubContext.init(
-            branch=default_branch,
-            account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
-        )
-        with (
-            dependency_provider.scope(build_database, lambda singleton=True: failing_db),  # noqa: ARG005
-            # Lambdas rather than the bare classes: fast_depends reads the callable's return annotation,
-            # and a class used as the factory resolves to `None` and fails its validation.
-            dependency_provider.scope(build_workflow, lambda: WorkflowRecorder()),  # noqa: PLW0108
-            dependency_provider.scope(build_cache, lambda: MemoryCache()),  # noqa: PLW0108
-        ):
-            with pytest.raises(RetirementFailureError, match=r"^the retirement run could not complete$"):
-                await rebase_branch(branch=branch.name, context=context, send_events=False)
+        with pytest.raises(RetirementFailureError, match=r"^the retirement run could not complete$"):
+            await _rebase_branch(
+                db=failing_db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider
+            )
 
         in_db = await Branch.get_by_name(db=db, name=branch.name)
         assert in_db.get_branched_from() == branched_from_before, (
