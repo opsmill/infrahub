@@ -498,8 +498,7 @@ async def test_range_scoped_rollback_leaves_global_edges_closed_at_another_times
     await widget.save(db=db)
 
     merge_at = Timestamp()
-    someone_else_at = Timestamp()
-    assert someone_else_at.to_string() != merge_at.to_string()
+    someone_else_at = merge_at.add(microseconds=1)
 
     await _close_global_edges_by_hand(
         db=db, node_id=widget.id, attribute_name=AGNOSTIC_ATTRIBUTE_NAME, at=someone_else_at

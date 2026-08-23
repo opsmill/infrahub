@@ -299,6 +299,7 @@ async def attribute_metadata(db: InfrahubDatabase, node_id: str, attribute_name:
         """,
         params={"node_id": node_id, "attribute_name": attribute_name},
     )
+    assert len(results) == 1, f"Expected a single {attribute_name} attribute for {node_id}, found {len(results)}"
     return VertexMetadata(**dict(results[0]))
 
 
