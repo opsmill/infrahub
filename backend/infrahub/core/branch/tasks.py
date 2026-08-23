@@ -501,6 +501,8 @@ async def _retire_agnostic_fields_of_base_deletions(
         log: The flow's run logger.
 
     """
+    if not node_uuids:
+        return
     log.info(f"Re-evaluating branch-agnostic retirement for {len(node_uuids)} deletions absorbed by the rebase")
     for batch_start in range(0, len(node_uuids), RETIREMENT_BATCH_SIZE):
         batch_uuids = node_uuids[batch_start : batch_start + RETIREMENT_BATCH_SIZE]

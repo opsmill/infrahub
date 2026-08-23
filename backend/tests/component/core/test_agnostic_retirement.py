@@ -23,6 +23,7 @@ from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -33,6 +34,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.query.branch_agnostic_retirement import RetireBranchAgnosticFieldsQuery
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode
@@ -89,6 +91,8 @@ class FailingRetirementDatabase(InfrahubDatabase):
     transaction so that the rollback has something to undo.
     """
 
+    failing_query_name: str = RetireNodeAgnosticFieldsQuery.name
+
     @classmethod
     def from_db(cls, db: InfrahubDatabase) -> FailingRetirementDatabase:
         return cls(
@@ -108,11 +112,17 @@ class FailingRetirementDatabase(InfrahubDatabase):
         type: QueryType | None = None,
         timeout_seconds: float | None = None,
     ) -> tuple[list[Record], dict[str, Any]]:
-        if name == RetireNodeAgnosticFieldsQuery.name:
+        if name == self.failing_query_name:
             raise RetirementFailureError("the retirement run could not complete")
         return await super().execute_query_with_metadata(
             query=query, params=params, name=name, context=context, type=type, timeout_seconds=timeout_seconds
         )
+
+
+class FailingBranchRetirementDatabase(FailingRetirementDatabase):
+    """Fails the branch-deletion retirement query instead of the node-deletion one."""
+
+    failing_query_name = RetireBranchAgnosticFieldsQuery.name
 
 
 async def _create_widget(db: InfrahubDatabase, branch: Branch, name: str, serial: int, **kwargs: Any) -> Node:
@@ -795,3 +805,149 @@ class TestAgnosticRetirementOnRebase:
         on_branch = await NodeManager.get_one(db=db, id=widget.id, branch=in_db)
         assert on_branch is not None, "the branch keeps retaining the object, which is what the rollback preserves"
         assert on_branch.get_attribute(name="serial").value == 2700
+
+
+class TestAgnosticRetirementOnBranchDelete:
+    """The branch-deletion enforcement point: retention is re-evaluated for what the branch could reach.
+
+    Branch-agnostic fields that become unreachable during a branch's delete must be closed. If the
+    field is still accessible from any other branch, it must remain accessible.
+    """
+
+    @pytest.fixture(scope="class")
+    async def default_branch(self, default_branch_scope_class: Branch) -> Branch:
+        return default_branch_scope_class
+
+    @pytest.fixture(scope="class")
+    async def agnostic_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
+        registry.schema.register_schema(schema=AGNOSTIC_RETIREMENT_SCHEMA, branch=default_branch.name)
+
+    async def _branch_vertex_count(self, db: InfrahubDatabase, branch_name: str) -> int:
+        results = await db.execute_query(
+            query="MATCH (b:Branch {name: $branch_name}) RETURN count(b) AS branch_count",
+            params={"branch_name": branch_name},
+        )
+        return results[0]["branch_count"]
+
+    async def test_deleting_the_last_retaining_branch_closes_the_field(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        agnostic_schema: None,
+    ) -> None:
+        """A deletion deferred by an open branch is released when that branch is deleted.
+
+        The branch forked while the object was live, so the default-branch delete closed nothing --
+        the object has no edge on the branch at all; it is retained purely through the fork window.
+        Deleting the branch empties the retaining set, and the deleter's re-evaluation closes the
+        attribute's and the relationship's global edges in one pass, all at the deletion's own stamp.
+        """
+        gadget = await Node.init(db=db, schema=GADGET_KIND, branch=default_branch)
+        await gadget.new(db=db, name="peer-of-the-branch-deleted-retainee")
+        await gadget.save(db=db)
+        widget = await _create_widget(
+            db=db, branch=default_branch, name="released-by-a-branch-delete", serial=3100, gadget=gadget
+        )
+        branch = await create_branch(db=db, branch_name="last-retainer-gets-deleted")
+
+        attribute_before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+        assert open_edge_types(attribute_before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
+
+        await _delete(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
+        assert edge_summary(await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")) == (
+            edge_summary(attribute_before)
+        ), "the branch still reads the object through its fork window, so the delete released nothing"
+
+        lower_bound = Timestamp()
+        result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch)
+        upper_bound = Timestamp()
+        assert result.branch_deleted
+
+        attribute_after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+        assert open_edges(attribute_after) == []
+        assert {edge.status for edge in attribute_after} == {"active"}, (
+            "retirement is a time-close, never a status tombstone"
+        )
+        relationship_after = await relationship_global_edges(
+            db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER
+        )
+        assert open_edges(relationship_after) == [], (
+            "no branch reads both peers as live once the retainer is gone, so the relationship goes with it"
+        )
+        stamps = to_times(attribute_after) | to_times(relationship_after)
+        assert len(stamps) == 1, "the whole run closes at one stamp"
+        (stamp,) = stamps
+        assert stamp is not None
+        assert lower_bound.to_string() <= stamp <= upper_bound.to_string(), (
+            "the close carries the branch deletion's own time"
+        )
+
+    async def test_deleting_a_branch_releases_nothing_while_another_branch_retains_the_object(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        agnostic_schema: None,
+    ) -> None:
+        """The branch delete re-evaluates and defers: a branch that still reads the object keeps it reserved.
+
+        Deleting the second retainer afterwards is what empties the set, proving the deferral is
+        re-evaluated at the next branch deletion rather than lost.
+        """
+        widget = await _create_widget(db=db, branch=default_branch, name="retained-past-a-branch-delete", serial=3200)
+        retainer = await create_branch(db=db, branch_name="outlives-its-sibling")
+        doomed = await create_branch(db=db, branch_name="first-of-two-retainers-to-go")
+
+        before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+        assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
+
+        await _delete(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
+        await BranchDataDeleter(db=db, batch_size=5).delete(branch=doomed)
+
+        assert edge_summary(await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")) == (
+            edge_summary(before)
+        ), "the surviving branch still reads the object, so the branch delete released nothing"
+        on_retainer = await NodeManager.get_one(db=db, id=widget.id, branch=retainer)
+        assert on_retainer is not None
+        assert on_retainer.get_attribute(name="serial").value == 3200
+
+        await BranchDataDeleter(db=db, batch_size=5).delete(branch=retainer)
+
+        after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+        assert open_edges(after) == [], "the last retainer's deletion released it"
+        assert {edge.status for edge in after} == {"active"}
+
+    async def test_a_retirement_failure_fails_the_branch_delete(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        agnostic_schema: None,
+    ) -> None:
+        """The failure has to reach the caller, and the interrupted delete stays resumable.
+
+        Swallowing it would remove the branch's edges next, destroying the reachability information
+        the re-evaluation needs -- the leak would be permanent, with only the repair migration left
+        to find it. The branch vertex survives the failed attempt, so running the delete again
+        finishes the release.
+        """
+        widget = await _create_widget(db=db, branch=default_branch, name="branch-delete-fails-first", serial=3300)
+        branch = await create_branch(db=db, branch_name="deletion-interrupted-by-the-failure")
+
+        await _delete(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
+        before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+
+        failing_db = FailingBranchRetirementDatabase.from_db(db=db)
+        with pytest.raises(RetirementFailureError, match=r"^the retirement run could not complete$"):
+            await BranchDataDeleter(db=failing_db, batch_size=5).delete(branch=branch)
+
+        assert await self._branch_vertex_count(db=db, branch_name=branch.name) == 1, (
+            "the failed delete must stop before removing the branch, or the leak could never be re-evaluated"
+        )
+        assert edge_summary(await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")) == (
+            edge_summary(before)
+        ), "the failed run closed nothing"
+
+        result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch)
+        assert result.branch_deleted
+        assert await self._branch_vertex_count(db=db, branch_name=branch.name) == 0
+        after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+        assert open_edges(after) == [], "resuming the delete completes the release"

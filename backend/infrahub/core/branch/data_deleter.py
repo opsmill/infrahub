@@ -10,7 +10,9 @@ from infrahub.core.query.branch import (
     DeleteBranchAgnosticRelationshipsQuery,
     DeleteBranchEdgesQuery,
 )
+from infrahub.core.query.branch_agnostic_retirement import RetireBranchAgnosticFieldsQuery
 from infrahub.core.query.standard_node import StandardNodeDeleteQuery
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
 
@@ -94,6 +96,7 @@ class BranchDataDeleter:
         operator can see is able to report progress.
         """
         agnostic_edges_count = await self._delete_agnostic_peers(branch_name=branch_name)
+        await self._retire_agnostic_fields(branch_name=branch_name)
         branch_edges_count = await self._delete_edges(branch_name=branch_name)
         return agnostic_edges_count + branch_edges_count
 
@@ -127,6 +130,30 @@ class BranchDataDeleter:
                 f"Deleted agnostic peers of nodes only on branch '{branch_name}', {edges_removed} edge(s) removed"
             )
         return edges_removed
+
+    async def _retire_agnostic_fields(self, branch_name: str) -> None:
+        """Close the global edges of branch-agnostic fields this branch was the last to retain.
+
+        The complement of the agnostic-peer hard-delete: that stage removes the peers of Nodes
+        existing on no other branch, while this one covers Nodes that do exist elsewhere but,
+        following this branch's delete, are no longer readable on any branch. Retention is
+        re-evaluated across every remaining branch, so anything still readable somewhere stays open.
+
+        Uses IS_PART_OF edges on this branch, so must run before those edges are deleted.
+        """
+        batch_size = min(self.batch_size, MAX_AGNOSTIC_PEER_BATCH_SIZE)
+
+        query = await RetireBranchAgnosticFieldsQuery.init(
+            db=self.db, branch_name=branch_name, at=Timestamp(), batch_size=batch_size
+        )
+        await query.execute(db=self.db)
+
+        edges_closed = query.closed_edge_count()
+        if edges_closed:
+            self.log.info(
+                f"Retired agnostic fields no branch retains after deleting branch '{branch_name}', "
+                f"{edges_closed} global edge(s) closed"
+            )
 
     async def _delete_edges(self, branch_name: str) -> int:
         edges_removed = 0
