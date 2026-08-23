@@ -161,13 +161,20 @@ session measured branch deletion at ~100 branches at 364 ms; three later re-meas
 branches puts its warm cost at ~7 ms (candidate seed 4.2 ms, retention predicate ~2 ms; a cold plan
 compile is ~260 ms, paid once per plan-cache eviction).
 
-**The one real breach**: branch deletion at ~100 branches, +37.6% relative — but ~+13 ms absolute,
-which is the warm retirement query plus its closure writes, on a baseline (~35 ms) produced by
-deleting **empty** branches. Any branch carrying real data raises the baseline and dissolves the
-relative breach; the spec's prescribed fallback (fork-point narrowing via the existence edge's
-`from`/`to`) is already built into the query. Decision pending: accept with an absolute floor added
-to the gate (e.g. ≤ +10% or ≤ +25 ms, whichever is greater) or optimize further. Until decided, R05
-stays open.
+**The breach at ~100 branches (+37.6%, ~+13 ms absolute)**: given the noise floor above, the timing
+table alone does not establish this cell — a single +37.6% delta is the same order as the drift the
+unchanged operations show. What establishes it is the stage profiling: the retirement query is the
+one addition to the operation, its warm cost is measured directly at ~7 ms at 100 open branches
+plus closure writes, and ~+13 ms on the ~35 ms baseline predicts the observed delta almost exactly.
+The table corroborates rather than establishes: this is the only cell whose delta is positive, and
+it is positive in **both** interleaved epochs (30.1 vs 25.2 ms, 63.1 vs 44.7 ms) while every
+unchanged operation came out negative under identical conditions.
+
+The baseline itself (~35 ms) comes from deleting **empty** branches; any branch carrying real data
+raises it and dissolves the relative breach. The spec's prescribed fallback (fork-point narrowing
+via the existence edge's `from`/`to`) is already built into the query. Decision pending: accept
+with an absolute floor added to the gate (e.g. ≤ +10% or ≤ +25 ms, whichever is greater) or
+optimize further. Until decided, R05 stays open.
 
 **Both rows are required.** The predicate's filter grows linearly in open-branch count (two
 `(branch_set, timestamp)` pairs per branch), not in graph size, so a three-branch component
