@@ -331,6 +331,77 @@ class TestAgnosticRetirementOnDelete:
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
         assert_attribute_retired_at(after=after, before=before, at=last_delete)
 
+    async def test_an_attribute_that_accumulated_value_edges_is_closed_edge_for_edge(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        agnostic_schema: None,
+    ) -> None:
+        """A value update leaves a second `HAS_VALUE` edge, and the delete's close is per edge, not per type.
+
+        The superseded edge keeps the stamp the update gave it, so the closed shape holds two
+        `HAS_VALUE` rows carrying two different stamps.
+        """
+        widget = await _create_widget(db=db, branch=default_branch, name="value-updated-then-deleted", serial=900)
+        to_update = await NodeManager.get_one(db=db, id=widget.id, branch=default_branch, raise_on_error=True)
+        to_update.get_attribute(name="serial").value = 901
+        await to_update.save(db=db)
+
+        before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+        assert sorted((edge.edge_type, edge.is_open) for edge in before) == [
+            ("HAS_ATTRIBUTE", True),
+            ("HAS_VALUE", False),
+            ("HAS_VALUE", True),
+            ("IS_PROTECTED", True),
+        ], "precondition: the update time-closed the superseded value edge and left the new one open"
+
+        deleted_at = Timestamp()
+        await _delete(db=db, node_id=widget.id, branch=default_branch, at=deleted_at)
+
+        after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+        assert_attribute_retired_at(after=after, before=before, at=deleted_at)
+
+    async def test_a_repointed_relationship_is_closed_edge_for_edge(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        agnostic_schema: None,
+    ) -> None:
+        """A peer update leaves a superseded relationship vertex, and the delete's close is per edge.
+
+        The superseded vertex's edges keep the stamp the update gave them, so the closed shape holds
+        two sets of peer edges carrying two different stamps.
+        """
+        first_peer = await Node.init(db=db, schema=GADGET_KIND, branch=default_branch)
+        await first_peer.new(db=db, name="superseded-peer")
+        await first_peer.save(db=db)
+        second_peer = await Node.init(db=db, schema=GADGET_KIND, branch=default_branch)
+        await second_peer.new(db=db, name="replacement-peer")
+        await second_peer.save(db=db)
+        widget = await _create_widget(
+            db=db, branch=default_branch, name="repointed-then-deleted", serial=1200, gadget=first_peer
+        )
+
+        to_update = await NodeManager.get_one(db=db, id=widget.id, branch=default_branch, raise_on_error=True)
+        await to_update.get_relationship(name="gadget").update(db=db, data=second_peer)
+        await to_update.save(db=db)
+
+        before = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
+        assert sorted((edge.edge_type, edge.is_open) for edge in before) == [
+            ("IS_PROTECTED", False),
+            ("IS_PROTECTED", True),
+            ("IS_RELATED", False),
+            ("IS_RELATED", False),
+            ("IS_RELATED", True),
+            ("IS_RELATED", True),
+        ], "precondition: the update time-closed the superseded vertex's edges and opened the replacement's"
+
+        deleted_at = Timestamp()
+        await _delete(db=db, node_id=widget.id, branch=default_branch, at=deleted_at)
+
+        after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
+        assert_relationship_retired_at(after=after, before=before, at=deleted_at)
+
     async def test_a_relationship_is_closed_when_its_peers_are_live_on_different_branches(
         self,
         db: InfrahubDatabase,
@@ -365,7 +436,7 @@ class TestAgnosticRetirementOnDelete:
         await _delete(db=db, node_id=gadget.id, branch=default_branch, at=last_delete)
 
         after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
-        assert_relationship_retired_at(after=after, at=last_delete)
+        assert_relationship_retired_at(after=after, before=before, at=last_delete)
 
     async def test_a_field_removed_on_the_only_retaining_branch_is_closed_with_the_object(
         self,
@@ -421,7 +492,7 @@ class TestAgnosticRetirementOnDelete:
         await _delete(db=db, node_id=gadget.id, branch=default_branch, at=deleted_at)
 
         after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
-        assert_relationship_retired_at(after=after, at=deleted_at)
+        assert_relationship_retired_at(after=after, before=before, at=deleted_at)
 
     async def test_a_retirement_failure_propagates_and_leaves_the_graph_untouched(
         self,
@@ -538,6 +609,9 @@ class TestAgnosticRetirementOnMerge:
 
         attribute_before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
         assert open_edge_types(attribute_before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
+        relationship_before = await relationship_global_edges(
+            db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER
+        )
 
         await _delete(db=db, node_id=widget.id, branch=branch, at=Timestamp())
         assert edge_summary(await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")) == (
@@ -555,7 +629,7 @@ class TestAgnosticRetirementOnMerge:
         relationship_after = await relationship_global_edges(
             db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER
         )
-        assert_relationship_retired_at(after=relationship_after, at=merged_at)
+        assert_relationship_retired_at(after=relationship_after, before=relationship_before, at=merged_at)
 
     async def test_merging_the_deletion_releases_nothing_while_another_branch_retains_the_object(
         self,
@@ -675,6 +749,9 @@ class TestAgnosticRetirementOnRebase:
 
         attribute_before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
         assert open_edge_types(attribute_before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
+        relationship_before = await relationship_global_edges(
+            db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER
+        )
 
         await _delete(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
         assert edge_summary(await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")) == (
@@ -694,7 +771,7 @@ class TestAgnosticRetirementOnRebase:
         relationship_after = await relationship_global_edges(
             db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER
         )
-        assert_relationship_retired_at(after=relationship_after, at=rebase_at)
+        assert_relationship_retired_at(after=relationship_after, before=relationship_before, at=rebase_at)
 
     async def test_rebasing_releases_nothing_while_another_branch_retains_the_object(
         self,
@@ -852,6 +929,9 @@ class TestAgnosticRetirementOnBranchDelete:
 
         attribute_before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
         assert open_edge_types(attribute_before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
+        relationship_before = await relationship_global_edges(
+            db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER
+        )
 
         await _delete(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
         assert edge_summary(await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")) == (
@@ -864,15 +944,8 @@ class TestAgnosticRetirementOnBranchDelete:
         assert result.branch_deleted
 
         attribute_after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert open_edges(attribute_after) == []
-        assert {edge.status for edge in attribute_after} == {"active"}, (
-            "retirement is a time-close, never a status tombstone"
-        )
         relationship_after = await relationship_global_edges(
             db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER
-        )
-        assert open_edges(relationship_after) == [], (
-            "no branch reads both peers as live once the retainer is gone, so the relationship goes with it"
         )
         stamps = to_times(attribute_after) | to_times(relationship_after)
         assert len(stamps) == 1, "the whole run closes at one stamp"
@@ -881,6 +954,9 @@ class TestAgnosticRetirementOnBranchDelete:
         assert lower_bound.to_string() <= stamp <= upper_bound.to_string(), (
             "the close carries the branch deletion's own time"
         )
+        retired_at = Timestamp(stamp)
+        assert_attribute_retired_at(after=attribute_after, before=attribute_before, at=retired_at)
+        assert_relationship_retired_at(after=relationship_after, before=relationship_before, at=retired_at)
 
     async def test_deleting_a_branch_releases_nothing_while_another_branch_retains_the_object(
         self,

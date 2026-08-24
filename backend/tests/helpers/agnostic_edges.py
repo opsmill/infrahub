@@ -75,8 +75,12 @@ def to_times(edges: list[EdgeState]) -> set[str | None]:
 
 
 def expected_closed_at(edges: list[EdgeState], at: Timestamp) -> list[tuple[str, str, str]]:
-    """What `edge_summary` should return once every type present has been closed at `at`."""
-    return sorted((edge_type, "active", at.to_string()) for edge_type in {edge.edge_type for edge in edges})
+    """What `edge_summary` should return once every open edge has been closed at `at`.
+
+    Built edge by edge, never from the set of types: a vertex holds two edges of one type after a
+    value update, and the superseded edge keeps the close stamp that update gave it.
+    """
+    return sorted((edge.edge_type, edge.status, edge.to_time or at.to_string()) for edge in edges)
 
 
 def assert_attribute_retired_at(after: list[EdgeState], before: list[EdgeState], at: Timestamp) -> None:
@@ -85,11 +89,14 @@ def assert_attribute_retired_at(after: list[EdgeState], before: list[EdgeState],
     assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
 
 
-def assert_relationship_retired_at(after: list[EdgeState], at: Timestamp) -> None:
-    """No branch reads both peers live once the operation lands, so the relationship closes at `at`."""
-    assert open_edges(after) == []
+def assert_relationship_retired_at(after: list[EdgeState], before: list[EdgeState], at: Timestamp) -> None:
+    """No branch reads both peers live once the operation lands, so every open peer edge closes at `at`.
+
+    Compared edge by edge against `before`: a peer update leaves a superseded relationship vertex
+    behind, and that vertex's already-closed edges keep the stamp the update gave them.
+    """
+    assert edge_summary(after) == expected_closed_at(before, at)
     assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
-    assert to_times(after) == {at.to_string()}
 
 
 async def attribute_global_edges(db: InfrahubDatabase, node_id: str, attribute_name: str) -> list[EdgeState]:

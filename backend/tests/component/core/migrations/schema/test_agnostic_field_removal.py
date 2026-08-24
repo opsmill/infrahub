@@ -195,7 +195,7 @@ async def test_a_relationship_removed_from_the_schema_is_closed_when_no_branch_d
     assert result.nbr_migrations_executed == 1
 
     after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
-    assert_relationship_retired_at(after=after, at=removed_at)
+    assert_relationship_retired_at(after=after, before=before, at=removed_at)
     assert await NodeManager.get_one(db=db, id=gadget.id, branch=default_branch) is not None, (
         "the peer object is untouched; only the relationship between the two was released"
     )
@@ -331,7 +331,7 @@ async def test_a_relationship_is_closed_when_the_only_fork_reads_one_of_its_peer
     assert result.nbr_migrations_executed == 1
 
     after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
-    assert_relationship_retired_at(after=after, at=removed_at)
+    assert_relationship_retired_at(after=after, before=before, at=removed_at)
 
 
 async def test_an_attribute_removed_on_a_fork_is_closed_when_the_object_is_deleted_elsewhere(
