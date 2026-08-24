@@ -588,6 +588,12 @@ async def test_branch_update_description(
 
     branch4_updated = await Branch.get_by_name(db=db, name="branch4")
 
+    # The mutation publishes the branch it saved, so the cache stops holding the pre-update instance
+    cached_branch4 = registry.branch["branch4"]
+    assert cached_branch4 is not branch4
+    assert cached_branch4.description == "testing"
+    assert cached_branch4.description == branch4_updated.description
+
     assert branch4.updated_at == branch4.created_at
     assert branch4_updated.description == "testing"
     assert branch4.updated_at

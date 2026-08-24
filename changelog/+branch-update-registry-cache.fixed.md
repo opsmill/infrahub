@@ -1,0 +1,1 @@
+Update the in-memory cache for branches following a BranchUpdate mutation or a run of the migrate_branch task.
