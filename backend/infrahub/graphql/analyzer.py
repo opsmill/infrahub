@@ -321,7 +321,7 @@ class ReachedPathResolver:
             for node in self._iter_object_nodes(query):
                 if node.at_root or node.infrahub_model is None:
                     continue
-                chain = self._clean_hop_chain(node)
+                chain = self._hop_chain_to_root(node)
                 for kind in self._reached_kinds(node):
                     if chain is None:
                         ambiguous_kinds.add(kind)
@@ -350,7 +350,7 @@ class ReachedPathResolver:
         for child in node.children:
             yield from self._iter_object_nodes(child)
 
-    def _clean_hop_chain(self, node: GraphQLQueryNode) -> ReachedPath | None:
+    def _hop_chain_to_root(self, node: GraphQLQueryNode) -> ReachedPath | None:
         """The chain from a related node back to its root, or None when a hop cannot be pinned.
 
         Returns None as soon as an owner along the chain is generic, or a step's field is not a
