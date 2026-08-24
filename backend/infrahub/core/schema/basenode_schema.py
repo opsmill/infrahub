@@ -136,6 +136,13 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
             return self.id
         raise ValueError(f"id is not defined on {self.kind}")
 
+    def get_labels(self) -> list[str]:
+        """Return the graph labels carried by a vertex of this kind.
+
+        Subclasses that support inheritance extend this with their generics.
+        """
+        return [self.kind]
+
     def __hash__(self) -> int:
         """Return a hash of the object.
 

@@ -5,7 +5,7 @@ description: >-
 argument-hint: <PR number (#1234), branch name, or empty for the current branch's PR>
 compatibility: Requires the Infrahub repository checked out and the `gh` CLI authenticated for PR/review access.
 metadata:
-  version: 0.6.0
+  version: 0.8.0
   author: OpsMill
 ---
 
@@ -25,8 +25,40 @@ that **generalize into a rule a future author should follow**, investigates each
 code before deciding, checks whether it is **already documented**, and proposes the smallest edit to
 the right internal-doc file.
 
+It also prunes as it goes: every run adds lessons, so nothing else stops the internal-doc layer from
+growing forever if additions are the only thing that ever happens. §5 sweeps the destinations for the
+staleness the docs already know how to name — a citation that's rotted, a defect note the code has
+since fixed, an old narrow rule a newer one now generalizes — and folds the fix into the same PR. This
+is not a separate cleanup pass; it runs every time, driven by what this run's review evidence turns up
+against what previous runs wrote.
+
 Counterpart to `audit-docs`: that sweeps a feature's *changes* for coverage; this starts from the
 *review threads*.
+
+## ⚠️ Refine, don't accrete — this outranks every other rule here
+
+**A harvest that only adds has made the repo worse, however good each individual rule is.** The
+internal-doc layer is context every teammate's agent pays to load; the routing rules below ("edit
+before create", "strengthen before duplicate") stop duplicate *rules*, not growth. Nothing else in
+this skill removes a single line, so it has to be you, on every lesson you apply:
+
+1. **Measure before appending.** `wc -l` the target file and compare it against its size range in
+   `dev/guidelines/repository-organization.md` (guidelines: 100-400 lines; knowledge: 200-400). A file
+   at or over its range gets **compressed or split, never extended**. A split or move repoints every
+   inbound reference in the same edit — grep the old path and section anchors across `dev/`, `docs/`,
+   the `AGENTS.md` files, **and `.agents/skills`/`.agents/commands`**: skills and commands route by
+   file path too, and a stale route sends every future agent to a file that no longer carries the
+   content.
+2. **Cut what the new rule supersedes.** Weaker, stale, or now-duplicated prose in that file goes in
+   the same edit. Rewrite the section around the new rule instead of bolting it on the end.
+3. **Report added/removed line counts** when you finish. Zero deletions means you accreted rather than
+   refined — say that plainly instead of presenting it as a win.
+4. **Raise the bar as the file grows.** "True but rarely needed" loses to keeping the doc readable. The
+   best outcome of a harvest is often a *shorter* doc that now states the rule sharply.
+
+Write every edit in the house style — `dev/guidelines/documentation.md`, *Writing Style → For Internal
+Docs*: rule first, plain words, no padding, a few lines plus one example. Read that section before the
+first edit.
 
 ## Internal documentation (where lessons go)
 
@@ -159,6 +191,15 @@ dependency-injection rule that happens to mention enums) is a coincidental match
 A reviewer flagged this, so the verdicts are not a pass/fail of the docs — they are:
 
 - **Missing** — the rule is written nowhere → propose the smallest addition in the most-specific home.
+  If the only reason to write it down is a specific defect in the code *today* ("X is currently
+  hand-duplicated", "Y isn't fixed yet"), it is not documentation — it will read as false the moment
+  someone fixes it, and nothing revisits it. Phrase it as a forward-looking convention that stays true
+  regardless of whether this exact instance ever gets fixed ("when adding a value generated this way,
+  derive the fields rather than hand-listing them"), or drop it and suggest filing a GitHub issue
+  instead of writing it into `dev/knowledge`/`dev/guidelines`. The same test applies when the root
+  cause is a fragile *pattern* rather than a defect: if the honest fix is to stop writing the pattern,
+  the lesson is the rule steering to the plain alternative, not a section teaching authors to survive
+  it. A survival guide entrenches what it documents.
 - **Covered but ineffective** — the rule *is* written, yet a reviewer still had to flag it. **This is a
   finding, not a relief** — there is deliberately no "covered and fine" verdict, because a documented
   rule a reviewer still had to raise is evidence the coverage is too weak, not proof it works. Report it
@@ -173,28 +214,19 @@ A reviewer flagged this, so the verdicts are not a pass/fail of the docs — the
     context when the author needed it. The fix is almost always **two coordinated edits, not a move**
     (the 1A+1B fix):
     - **1A — fix the load-trigger.** Add or upgrade the doc's entry in the router/index (the relevant
-      `AGENTS.md` "Knowledge/Guides" list) so it says *when* to load it — the triggering task or
-      symptom — not just *what* it covers. A `dev/knowledge`/`dev/guidelines` doc absent from that list,
-      or listed with a topic-only description ("Query patterns"), never gets loaded; most "covered but
-      ignored" rules fail here. **Keep the entry to one or two sentences, and rewrite rather than
-      append** — the router is a scannable index, not a second copy of the rule; once an entry swells
-      into a paragraph it stops being read, reopening the gap 1A exists to close. If the trigger can't
-      be stated briefly the doc's scope is too broad — that is not a licence for a longer entry. **Name
-      the trigger and
-      topic, not the rule's mechanics**: the entry says *when* to open the doc and roughly what it
-      covers, never the specific method/attribute name or the value the rule turns on — those live in
-      the doc, and copying them into the index rots the moment the symbol is renamed (write
+      `AGENTS.md` list) so it says *when* to load the doc — the triggering task or symptom — not just
+      what it covers. A doc absent from that list, or listed with a topic-only description ("Query
+      patterns"), never gets loaded; most "covered but ignored" rules fail here. Keep the entry to one
+      or two sentences and rewrite rather than append: the router is a scannable index, and an entry
+      that swells into a paragraph stops being read. Name the trigger and topic, never the rule's
+      mechanics — a symbol name copied into the index rots the moment it is renamed (write
       "workflow-name conventions", not "reference names via `SomeClass.name`").
     - **1B — strengthen the rule in place.** Promote it out of any niche section into a prominent home
       and add the carve-out — but leave it in its topically-correct doc.
 
-    Do **not** relocate a domain rule (schema, DB, events, async-tasks…) into a general style/guide doc
-    because that doc is read more often: a rule in the topically-wrong home is *less* trustworthy, not
-    more discoverable. `.agents/rules/*` auto-injects every turn; guidelines/knowledge load only when
-    the router points an agent at them, so the router entry *is* the discoverability mechanism. If your
-    proposed home is a doc whose subject doesn't match the rule (a schema/DB rule in a Python *style*
-    guide), you have mis-diagnosed "not discoverable" as "mis-homed" — fix the load-trigger, not the
-    location.
+    Never relocate a domain rule (schema, DB, events, async-tasks…) into a general style guide because
+    that doc is read more often: the topically-wrong home is *less* trustworthy, not more discoverable.
+    The router entry is the discoverability mechanism, so fix the load-trigger, not the location.
   - **mis-homed** — the rule genuinely sits in the wrong topical doc, or belongs in a task's pre-submit
     checklist → move it to the most-specific correct home (or add the checklist line), then apply 1A so
     that home is actually loadable.
@@ -213,20 +245,77 @@ A reviewer flagged this, so the verdicts are not a pass/fail of the docs — the
 Routing rule of thumb: **most-specific existing home wins; edit before create; strengthen before
 duplicate; fix the load-trigger before relocating; `.agents/rules` only for a true `always/never` that
 must fire while coding.** Confirm the target file exists (`ls`/grep it, match sibling naming) before you
-route a lesson there — never invent a plausible-looking path (e.g. `dev/guidelines/backend/changelog.md`
-when the real home is `dev/guidelines/changelog.md`).
+route a lesson there — never invent a plausible-looking path. Also check the topic still lives in `dev/`
+at all: changelog conventions, for one, moved out to the `creating-changelog-entries` skill. When an
+existing skill or command already owns the workflow a lesson touches (`creating-changelog-entries`,
+`pre-ci`, or `pruning-residues` from the org skills plugin — not vendored in this repo but available to
+agents running with it), route the edit into that skill and leave at most a pointer
+in `dev/` — the same rule stated in two homes drifts apart.
 
-### 5. Report
+### 5. Sweep for rot (prune before you add)
+
+Every run of this skill only adds. Nothing else revisits what a previous run wrote, so the layer
+grows monotonically — a doc entry that was true and useful the week it landed can quietly become
+stale, redundant, or wrong, and stays in place forever unless a run like this one checks it. Do this
+sweep every time, not as an occasional separate cleanup — it is cheap (a handful of greps, not a
+re-read of every doc) and it is what keeps "harvested" from becoming a synonym for "bloated."
+
+**a. Mechanical staleness grep.** Across the destination layer (`dev/guidelines/`, `dev/knowledge/`,
+`dev/guides/`, `.agents/rules/`, `AGENTS.md`, area `AGENTS.md` files), grep for the anti-patterns the
+docs already forbid — a rule existing but nobody enforcing it against older content is exactly the
+"covered but ineffective" failure mode, aimed backward instead of at this PR:
+
+```bash
+grep -rnoE '(PR #[0-9]+|#[0-9]{4,6}\b)' dev/guidelines dev/knowledge dev/guides .agents/rules $(git ls-files '*AGENTS.md')
+grep -rnoE '[A-Za-z0-9_/-]+\.(py|ts|tsx):[0-9]+(-[0-9]+)?' dev/guidelines dev/knowledge dev/guides .agents/rules
+grep -rniE '(known gap|currently (broken|hand-duplicated|unfixed)|not yet fixed|for now,? (this|it))' \
+  dev/guidelines dev/knowledge dev/guides .agents/rules
+```
+
+A hit outside this run's own new edits is debt from an earlier run (or from a doc written outside
+this skill). For each:
+
+- **A stale citation** (PR/issue number, spec file, line number) — drop the citation, keep the
+  underlying behavior description the sentence was making. Don't touch surrounding prose beyond that.
+- **A defect-snapshot note** ("known gap: X is currently...") — check the current code. If the defect
+  is fixed, delete the note; it is now simply false. If still unfixed, either reframe it as a
+  forward-looking convention (per the guardrail in §4) or drop it and flag it as a candidate GitHub
+  issue instead of documentation.
+
+**b. Supersession check.** When a lesson from *this* run generalizes something an earlier run wrote
+narrowly — the same idiom, now with a second, broader instance — edit the earlier entry in place
+(broaden its scope, replace its single example with the more general one) rather than leaving both.
+Two entries saying almost the same thing at different generality levels is worse than one that's
+right, because a future reader can no longer tell which one is current.
+
+**c. Fix every hit now — a punch list is not pruning.** Each hit from (a) is a one-line mechanical
+edit: drop the citation and keep the prose, or delete a defect note once the code confirms the fix.
+A "found but left in place" list costs the same context as the rot it describes, and nobody comes
+back for it. While at the line, check that the claim the citation was attached to still holds — a
+dead citation often rides alongside a renamed method or a drifted line reference. Stay on the
+codified anti-patterns; this is not a second `audit-docs` run. The only unresolved entries "Pruned
+or consolidated" may carry are genuine calls for the user: file a GitHub issue for a real unfixed
+defect, or flag a section needing a fuller rewrite than a sweep should attempt inline.
+
+### 6. Report
 
 Present the findings (format below) and stop. **Do not edit yet** — internal-doc files shape every
 teammate's agent, so the blast radius is the whole team.
 
-### 6. Apply (opt-in)
+### 7. Apply (opt-in)
 
 Ask which to apply: **all / cherry-pick / none**. Only then edit, following the §4 routing (edit an
-existing section before adding one; keep `.agents/rules` lean). Match any example code to
-`.agents/rules/code-doc-style.md` (no ticket/issue IDs, no naming specific callers). **Never resolve
-review threads** — reply if useful, but resolution is the human reviewer's call. After applying, run:
+existing section before adding one; keep `.agents/rules` lean) and the §5 pruning findings.
+
+**Now apply *Refine, don't accrete* (top of this file)** — measure the file against its size range, cut
+what the new rule supersedes, report the line counts. The investigation trail, the reviewer quotes, and
+the ticket and PR numbers belong in this report and in the commit message, never in the doc text —
+sweeping exactly that residue out of an artifact is what `pruning-residues` (org skills plugin, not
+vendored here) does, so run it over the final diff when the plugin is loaded. A lesson that needs three paragraphs to state has not
+been narrowed enough — go back to §3d. Match any
+example code to `.agents/rules/code-doc-style.md` (no ticket/issue IDs, no naming specific callers).
+**Never resolve review threads** — reply if useful, but resolution is the human reviewer's call. After
+applying, run:
 
 ```bash
 uv run invoke docs.lint
@@ -239,6 +328,8 @@ uv run invoke docs.lint
 
 ### Scope
 <!-- PR, branch, how many threads read (resolved + unresolved) -->
+<!-- After applying: lines added/removed per file, each file's size vs its range, what was cut. Zero
+     deletions is a finding about this harvest, not a detail to omit. -->
 
 ### Existing coverage to strengthen (Covered but still flagged)
 
@@ -261,11 +352,18 @@ For each:
   intent, (c) scope + the over-scoped reading ruled out
 - **Root cause**: why an agent would have proposed the rejected shape — what writing the rule prevents
 - **Home**: exact file (+ section) to create
-- **Proposed edit**: the concrete text to add
+- **Proposed edit**: the concrete text to add, already written in the house style (see *Refine, don't accrete* at the top of this file)
 
 ### Not Lessons (PR-local or demoted after investigation)
 <!-- One-off fixes, bugs, and design calls that do NOT generalize — and candidates the investigation
      demoted (unverified claim, coincidental grep match, reviewer error, a question, or universal advice
      with no Infrahub-specific edge). Say why, briefly. Every lesson is grounded in a real comment; none
      is invented, and promoting every comment to a rule is as useless as missing the real ones. -->
+
+### Pruned or consolidated (from the §5 sweep)
+<!-- Debt from earlier runs, already fixed in this PR's diff — a hit reported without an edit is a bug
+     in this run: stale citations dropped, defect notes deleted or reframed, narrow entries merged into
+     the general one. For each: file:line, what was there, why it changed. Label the rare genuine user
+     call (file an issue / fuller rewrite needed) "Needs a decision". Say "none found" when the sweep
+     is clean. -->
 ```

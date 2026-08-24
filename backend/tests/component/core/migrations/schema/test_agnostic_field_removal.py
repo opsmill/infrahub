@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub.database.validation import verify_graph
 import pytest
 
 from infrahub.core import registry
@@ -44,7 +45,7 @@ from tests.helpers.agnostic_edges import (
     relationship_peer_shape,
     to_times,
 )
-from tests.helpers.db_validation import get_node_metadata, verify_graph
+from tests.helpers.db_validation import get_node_metadata
 from tests.helpers.schema.agnostic_retirement import (
     AGNOSTIC_RETIREMENT_SCHEMA,
     BEACON_KIND,

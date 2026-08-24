@@ -307,20 +307,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         and the list of Generic this object is inheriting from.
 
         """
-        labels: list[str] = []
-        if isinstance(self._schema, NodeSchema):
-            labels = [self.get_kind()] + self._schema.inherit_from
-            if (
-                self._schema.namespace not in ["Schema", "Internal"]
-                and InfrahubKind.GENERICGROUP not in self._schema.inherit_from
-            ):
-                labels.append(InfrahubKind.NODE)
-            return labels
-
-        if isinstance(self._schema, ProfileSchema | TemplateSchema):
-            return [self.get_kind()] + self._schema.inherit_from
-
-        return [self.get_kind()]
+        return self._schema.get_labels()
 
     def get_branch_based_on_support_type(self) -> Branch:
         """If the attribute is branch aware, return the Branch object associated with this attribute.

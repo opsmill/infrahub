@@ -93,11 +93,22 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
   }
 
   // UNCHANGED nodes are kept: the backend returns them (include_parents) so the tree
-  // can nest changed nodes under their unchanged parents as hierarchy context
-  const allNodes =
-    data.pages
-      .flatMap((page) => page?.nodes)
-      .flatMap((node) => (node ? [node as unknown as DiffNodeType] : [])) ?? [];
+  // can nest changed nodes under their unchanged parents as hierarchy context.
+  // Pages re-ship ancestors, so dedupe by uuid (duplicates crash the tree
+  // collection), preferring a node's changed entry over an UNCHANGED placeholder.
+  const nodesByUuid = new Map<string, DiffNodeType>();
+  for (const node of data.pages.flatMap((page) => page?.nodes ?? [])) {
+    if (!node) continue;
+    const diffNode = node as unknown as DiffNodeType;
+    const existing = nodesByUuid.get(diffNode.uuid);
+    if (
+      !existing ||
+      (existing.status === DIFF_STATUS.UNCHANGED && diffNode.status !== DIFF_STATUS.UNCHANGED)
+    ) {
+      nodesByUuid.set(diffNode.uuid, diffNode);
+    }
+  }
+  const allNodes = [...nodesByUuid.values()];
 
   // The CONFLICT filter is client-side only (buildFilters excludes it from the backend
   // status filter) and contains_conflict never propagates to ancestor nodes, so the
@@ -107,7 +118,8 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
 
   const changedNodes = nodes.filter(
     (node) =>
-      node.status !== "UNCHANGED" && (qspStatus !== DIFF_STATUS.CONFLICT || node.contains_conflict)
+      node.status !== DIFF_STATUS.UNCHANGED &&
+      (qspStatus !== DIFF_STATUS.CONFLICT || node.contains_conflict)
   );
 
   return (

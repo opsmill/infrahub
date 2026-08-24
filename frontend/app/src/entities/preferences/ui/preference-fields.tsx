@@ -10,6 +10,7 @@ import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Combobox, type ComboboxItem } from "@/shared/components/inputs/combobox";
 import { FormField } from "@/shared/components/ui/form";
 import { formatWithPreferences } from "@/shared/context/date-preferences-context";
+import { supportedTimezone } from "@/shared/utils/date";
 
 import type { Preference } from "@/entities/preferences/domain/model/preference";
 import {
@@ -138,15 +139,25 @@ export function DateFormatField({
   );
 }
 
+/** Resolves the (i) hint for a timezone, correcting the source claim when this browser can't apply it.
+ * A resolved zone this runtime cannot render is silently displayed in the browser's own zone, so the
+ * hint must report that fallback rather than claim the stored zone is in effect. */
+function timezoneSourceMessage(preference: Preference, browserZone: string): string {
+  if (preference.value && !supportedTimezone(preference.value)) {
+    return `This browser can't display ${preference.value}; times are shown in ${browserZone}.`;
+  }
+  return sourceMessage(preference, {
+    formatGlobalValue: (value) => value,
+    browserValue: browserZone,
+  });
+}
+
 export function TimezoneField({
   preference,
   emptyValueLabel = EMPTY_VALUE_LABEL,
 }: PreferenceFieldProps) {
   const message = preference
-    ? sourceMessage(preference, {
-        formatGlobalValue: (value) => value,
-        browserValue: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      })
+    ? timezoneSourceMessage(preference, Intl.DateTimeFormat().resolvedOptions().timeZone)
     : null;
 
   return (

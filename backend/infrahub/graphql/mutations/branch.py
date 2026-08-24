@@ -49,10 +49,19 @@ class BranchCreateInput(InputObjectType):
     id = String(required=False)
     name = String(required=True)
     description = String(required=False)
-    origin_branch = String(required=False)
-    branched_from = String(required=False)
+    origin_branch = InputField(
+        String(required=False),
+        deprecation_reason="Branches can only be created from the default branch. Will be removed after version 1.12.",
+    )
+    branched_from = InputField(
+        String(required=False),
+        deprecation_reason="branched_from is set by the server and cannot be provided. Will be removed after version 1.12.",
+    )
     sync_with_git = Boolean(required=False)
-    is_isolated = InputField(Boolean(required=False), deprecation_reason="Non isolated mode is not supported anymore")
+    is_isolated = InputField(
+        Boolean(required=False),
+        deprecation_reason="Non-isolated mode is not supported anymore. Will be removed after version 1.12.",
+    )
 
 
 class BranchCreate(Mutation):
@@ -77,13 +86,18 @@ class BranchCreate(Mutation):
         background_execution: bool = False,
         wait_until_completion: bool = True,
     ) -> Self:
-        if data.origin_branch and data.origin_branch != registry.default_branch:
-            raise ValueError(f"origin_branch must be '{registry.default_branch}'")
+        origin_branch = data.get("origin_branch")
+        if origin_branch is not None and origin_branch != registry.default_branch:
+            raise ValidationError(f"origin_branch must be '{registry.default_branch}'")
+        if data.get("branched_from") is not None:
+            raise ValidationError(
+                "branched_from input is deprecated and cannot be set, it will be the create time of the branch."
+            )
 
         graphql_context: GraphqlContext = info.context
         task: dict | None = None
 
-        model = BranchCreateModel(**data)
+        model = BranchCreateModel(**{key: value for key, value in data.items() if value is not None})
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         try:

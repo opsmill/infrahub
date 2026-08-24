@@ -21,111 +21,133 @@ from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 
 
-@pytest.fixture
-async def snow_incident_01(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> Node:
+async def build_snow_incident(db: InfrahubDatabase, branch: Branch) -> Node:
     schema = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    registry.schema.register_schema(schema=schema, branch=branch.name)
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
     upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
     snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
     await snps.run()
 
-    incident_1 = await Node.init(db=db, schema="SnowIncident", branch=default_branch)
+    incident_1 = await Node.init(db=db, schema="SnowIncident", branch=branch)
     await incident_1.new(db=db, title="The first issue")
     await incident_1.save(db=db)
 
     return incident_1
 
 
-@pytest.mark.parametrize("start_range,end_range", [(1, 500), (-20, 50)])
-async def test_query_numberpool_constraints_success(
-    db: InfrahubDatabase, default_branch: Branch, snow_incident_01: Node, start_range: int, end_range: int
-) -> None:
-    incident_schema = registry.schema.get(name="SnowIncident")
-    number = incident_schema.get_attribute(name="number")
-    assert isinstance(number.parameters, NumberPoolParameters)
-    number.parameters.start_range = start_range
-    number.parameters.end_range = end_range
+class TestNumberPoolConstraintQueries:
+    """Read-only queries against one dataset built once for the class.
 
-    node_schema = incident_schema
-    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="SnowIncident", field_name="number")
+    The schema objects mutated in the tests are per-test duplicates from the registry.
+    """
 
-    query = await AttributeNumberPoolUpdateValidatorQuery.init(
-        db=db, branch=default_branch, node_schema=node_schema, schema_path=schema_path
-    )
+    @pytest.fixture(scope="class")
+    async def snow_incident_01(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> Node:
+        return await build_snow_incident(db=db, branch=default_branch_scope_class)
 
-    await query.execute(db=db)
+    @pytest.mark.parametrize("start_range,end_range", [(1, 500), (-20, 50)])
+    async def test_query_numberpool_constraints_success(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        snow_incident_01: Node,
+        start_range: int,
+        end_range: int,
+    ) -> None:
+        incident_schema = registry.schema.get(name="SnowIncident")
+        number = incident_schema.get_attribute(name="number")
+        assert isinstance(number.parameters, NumberPoolParameters)
+        number.parameters.start_range = start_range
+        number.parameters.end_range = end_range
 
-    grouped_paths = await query.get_paths()
-    all_data_paths = grouped_paths.get_all_data_paths()
-    assert len(all_data_paths) == 0
+        node_schema = incident_schema
+        schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="SnowIncident", field_name="number")
 
-
-async def test_query_numberpool_constraints_too_small(
-    db: InfrahubDatabase, default_branch: Branch, snow_incident_01: Node
-) -> None:
-    incident_schema = registry.schema.get(name="SnowIncident")
-    number = incident_schema.get_attribute(name="number")
-    assert isinstance(number.parameters, NumberPoolParameters)
-    number.parameters.start_range = 10
-    number.parameters.end_range = 20
-
-    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="SnowIncident", field_name="number")
-
-    query = await AttributeNumberPoolUpdateValidatorQuery.init(
-        db=db, branch=default_branch, node_schema=incident_schema, schema_path=schema_path
-    )
-
-    await query.execute(db=db)
-
-    grouped_paths = await query.get_paths()
-    all_data_paths = grouped_paths.get_all_data_paths()
-    assert len(all_data_paths) == 1
-    assert (
-        DataPath(
-            branch=default_branch.name,
-            path_type=PathType.ATTRIBUTE,
-            node_id=snow_incident_01.id,
-            kind="SnowIncident",
-            field_name="number",
-            value=1,
+        query = await AttributeNumberPoolUpdateValidatorQuery.init(
+            db=db, branch=default_branch_scope_class, node_schema=node_schema, schema_path=schema_path
         )
-        in all_data_paths
-    )
 
+        await query.execute(db=db)
 
-async def test_query_numberpool_constraints_too_large(
-    db: InfrahubDatabase, default_branch: Branch, snow_incident_01: Node
-) -> None:
-    incident_schema = registry.schema.get(name="SnowIncident")
-    number = incident_schema.get_attribute(name="number")
-    assert isinstance(number.parameters, NumberPoolParameters)
-    number.parameters.start_range = -20
-    number.parameters.end_range = -10
+        grouped_paths = await query.get_paths()
+        all_data_paths = grouped_paths.get_all_data_paths()
+        assert len(all_data_paths) == 0
 
-    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="SnowIncident", field_name="number")
+    async def test_query_numberpool_constraints_too_small(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, snow_incident_01: Node
+    ) -> None:
+        incident_schema = registry.schema.get(name="SnowIncident")
+        number = incident_schema.get_attribute(name="number")
+        assert isinstance(number.parameters, NumberPoolParameters)
+        number.parameters.start_range = 10
+        number.parameters.end_range = 20
 
-    query = await AttributeNumberPoolUpdateValidatorQuery.init(
-        db=db, branch=default_branch, node_schema=incident_schema, schema_path=schema_path
-    )
+        schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="SnowIncident", field_name="number")
 
-    await query.execute(db=db)
-
-    grouped_paths = await query.get_paths()
-    all_data_paths = grouped_paths.get_all_data_paths()
-    assert len(all_data_paths) == 1
-    assert (
-        DataPath(
-            branch=default_branch.name,
-            path_type=PathType.ATTRIBUTE,
-            node_id=snow_incident_01.id,
-            kind="SnowIncident",
-            field_name="number",
-            value=1,
+        query = await AttributeNumberPoolUpdateValidatorQuery.init(
+            db=db, branch=default_branch_scope_class, node_schema=incident_schema, schema_path=schema_path
         )
-        in all_data_paths
-    )
+
+        await query.execute(db=db)
+
+        grouped_paths = await query.get_paths()
+        all_data_paths = grouped_paths.get_all_data_paths()
+        assert len(all_data_paths) == 1
+        assert (
+            DataPath(
+                branch=default_branch_scope_class.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=snow_incident_01.id,
+                kind="SnowIncident",
+                field_name="number",
+                value=1,
+            )
+            in all_data_paths
+        )
+
+    async def test_query_numberpool_constraints_too_large(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, snow_incident_01: Node
+    ) -> None:
+        incident_schema = registry.schema.get(name="SnowIncident")
+        number = incident_schema.get_attribute(name="number")
+        assert isinstance(number.parameters, NumberPoolParameters)
+        number.parameters.start_range = -20
+        number.parameters.end_range = -10
+
+        schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="SnowIncident", field_name="number")
+
+        query = await AttributeNumberPoolUpdateValidatorQuery.init(
+            db=db, branch=default_branch_scope_class, node_schema=incident_schema, schema_path=schema_path
+        )
+
+        await query.execute(db=db)
+
+        grouped_paths = await query.get_paths()
+        all_data_paths = grouped_paths.get_all_data_paths()
+        assert len(all_data_paths) == 1
+        assert (
+            DataPath(
+                branch=default_branch_scope_class.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=snow_incident_01.id,
+                kind="SnowIncident",
+                field_name="number",
+                value=1,
+            )
+            in all_data_paths
+        )
+
+
+@pytest.fixture
+async def snow_incident_01(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> Node:
+    return await build_snow_incident(db=db, branch=default_branch)
 
 
 async def test_validator_range(
@@ -134,15 +156,9 @@ async def test_validator_range(
     default_branch: Branch,
     snow_incident_01: Node,
 ) -> None:
+    # Mutates the registry schema branch and rebases, so it keeps function-scoped isolation.
     await branch.rebase(db=db)
 
-    """
-    person_schema = registry.schema.get(name="TestPerson", branch=branch)
-    height_attr = person_schema.get_attribute(name="height")
-    height_attr.parameters.min_value = 100
-    height_attr.parameters.max_value = 150
-    registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
-    """
     incident_schema = registry.schema.get_node_schema(name="SnowIncident")
     number = incident_schema.get_attribute(name="number")
     assert isinstance(number.parameters, NumberPoolParameters)

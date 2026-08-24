@@ -32,6 +32,14 @@ PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS = "30"
 # judged promptly and predictably.
 PREFECT_EVENTS_PROACTIVE_GRANULARITY = "PT1S"
 
+# Ephemeral Prefect test servers get a random loopback port from this pool. It must stay
+# clear of the kernel's ephemeral range (32768+ by default): the harness reserves its port
+# by binding port 0 and releasing it seconds before the server process binds it again, and
+# on a shared CI runner that gap lets outgoing connections or dynamically published
+# container ports — which draw from the same ephemeral pool — grab the port, so the
+# harness's health probe reaches a foreign socket and fails the whole session.
+PREFECT_TEST_SERVER_PORT_RANGE = range(10000, 30000)
+
 # The test Prefect servers (ephemeral subprocess and the prefect container fixture) run
 # every background service in-process against a single SQLite database. SQLite serializes
 # writers, so the periodic services contend with the API and with trigger/event processing;

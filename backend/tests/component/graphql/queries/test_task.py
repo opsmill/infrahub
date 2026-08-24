@@ -837,6 +837,46 @@ async def test_task_query_progress(
     }
 
 
+async def test_task_query_unresolvable_related_node(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    prefect_client: PrefectClient,
+    register_core_models_schema: None,
+    tag_blue: Node,
+) -> None:
+    """A related-node tag whose kind cannot be resolved is omitted while resolvable ones are still returned."""
+    unresolvable_id = "0177c800-0000-0000-0000-0000000000ff"
+    flow = await prefect_client.create_flow_run(
+        flow=dummy_flow,
+        name="dummy-unresolvable-related-node",
+        parameters={"firstname": "xxxx", "lastname": "yyy"},
+        tags=[
+            TAG_NAMESPACE,
+            WorkflowTag.RELATED_NODE.render(identifier=tag_blue.get_id()),
+            WorkflowTag.RELATED_NODE.render(identifier=unresolvable_id),
+        ],
+        state=State(type="RUNNING"),
+    )
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_TASK,
+        variables={"related_nodes": [unresolvable_id]},
+    )
+
+    assert result.errors is None
+    assert result.data
+
+    edges = result.data["InfrahubTask"]["edges"]
+    assert len(edges) == 1
+    node = edges[0]["node"]
+    assert node["id"] == str(flow.id)
+    assert node["related_nodes"] == [{"id": tag_blue.get_id(), "kind": "BuiltinTag"}]
+    assert node["related_node"] == tag_blue.get_id()
+    assert node["related_node_kind"] == "BuiltinTag"
+
+
 async def test_task_no_count(
     db: InfrahubDatabase,
     default_branch: Branch,

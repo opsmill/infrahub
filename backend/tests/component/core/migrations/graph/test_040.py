@@ -14,7 +14,7 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from tests.helpers.db_validation import validate_no_duplicate_attributes
+from infrahub.database.validation import GraphCheck, collect_graph_violations, verify_graph
 
 
 class TestMigration040:
@@ -46,8 +46,8 @@ class TestMigration040:
         await self._duplicate_attribute(db=db, branch=branch, attr_name="smell")
 
         # validate the error state
-        errors = await validate_no_duplicate_attributes(db=db, branch=branch)
-        assert errors
+        violations = await collect_graph_violations(db=db, kinds=["TestCar"])
+        assert {violation.check for violation in violations} == {GraphCheck.DUPLICATE_ATTRIBUTES}
 
         registry.schema.set(name="TestCar", branch=branch.name, schema=new_car_schema)
 
@@ -109,10 +109,7 @@ class TestMigration040:
         assert not result.errors
 
         # validate the result
-        errors = await validate_no_duplicate_attributes(db=db, branch=default_branch)
-        assert not errors
-        errors = await validate_no_duplicate_attributes(db=db, branch=branch)
-        assert not errors
+        await verify_graph(db=db)
 
         # validate values on main
         accord_main = await NodeManager.get_one(db=db, id=car_accord_main.id)

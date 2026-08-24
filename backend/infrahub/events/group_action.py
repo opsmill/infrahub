@@ -8,7 +8,7 @@ from infrahub.external_protocols import ExternalAuthProtocol
 from infrahub.log import get_logger
 
 from .constants import EVENT_NAMESPACE
-from .limits import get_prefect_max_related_resources
+from .limits import get_related_resource_budget
 from .models import EventNode, InfrahubEvent
 
 log = get_logger()
@@ -41,9 +41,9 @@ class GroupMutatedEvent(InfrahubEvent):
         )
 
         # Members and ancestors grow with the size of the mutation, so they come
-        # last and the list is capped: the Prefect API rejects any event whose
-        # related resources exceed the configured maximum, and an oversized event
-        # would never be recorded at all. Each member and ancestor is a single
+        # last and the list is capped: an event carrying more related resources than
+        # the Prefect API accepts is rejected outright and never recorded.
+        # Each member and ancestor is a single
         # entry (also matched as a related node through its own role), so a plain
         # ordered truncation keeps the fixed and group-scoped entries intact.
         for member in self.members:
@@ -64,17 +64,17 @@ class GroupMutatedEvent(InfrahubEvent):
                 }
             )
 
-        max_related = get_prefect_max_related_resources()
-        if len(related) > max_related:
+        budget = get_related_resource_budget()
+        if len(related) > budget:
             log.warning(
-                "Truncating the related resources of a group mutation event to the Prefect maximum",
+                "Truncating the related resources of a group mutation event to the Prefect budget",
                 event_name=self.event_name,
                 kind=self.kind,
                 node_id=self.node_id,
                 related_resources=len(related),
-                maximum=max_related,
+                budget=budget,
             )
-            related = related[:max_related]
+            related = related[:budget]
 
         return related
 

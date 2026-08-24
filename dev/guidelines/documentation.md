@@ -40,6 +40,30 @@ Infrahub documentation follows the [Diataxis framework](https://diataxis.fr/), s
 - **Present tense**: "Infrahub uses branches to isolate changes"
 - **Third person acceptable**: "The schema defines the data model"
 
+### For Internal Docs
+
+Applies to `dev/`, the `AGENTS.md` files, and `.agents/`. These are read mid-task, by people and
+agents with a job to finish.
+
+- **Rule first**: open with the imperative, then the reason. One sentence of reason is usually enough
+- **Plain words**: say what happens — "the transaction commits", not "the exit hook takes the success
+  path". Name a symbol only when the reader has to go find it
+- **Show instead of qualifying**: a ✅/❌ pair replaces a paragraph of caveats
+- **No provenance**: where a rule came from — a review thread, a ticket, a PR, a spec, a line number —
+  belongs in the commit message, not the doc. See the last two entries under
+  [Don't](#dont) for what that rules out
+- **No padding**: cut "note that", "it's important to", "keep in mind", bolded whole sentences, and any
+  sentence that restates the one before it
+- **Say it once**: if the rule is already written elsewhere, link to it instead of restating it
+- **Budget**: a new rule is a few lines plus one example. If it needs more than that, it's an
+  explanation for `dev/knowledge/`, not a guideline
+- **Relative numbers, not absolute ones**: a measurement is only meaningful as a comparison, since the
+  absolute figure depends on the environment it was taken in. Write "cuts merge wall time by roughly
+  4x", not "runs in 10s"
+- **Pay for it**: cut the prose the new rule supersedes, and check the file against its size range
+  in [Repository Organization](repository-organization.md) before appending. A file over its range
+  gets split or compressed, not extended
+
 ## Content Guidelines
 
 ### Do
@@ -73,6 +97,7 @@ Infrahub documentation follows the [Diataxis framework](https://diataxis.fr/), s
 - Link to topic/explanation docs for background information (in guides)
 - Link to guides for task instructions (in topics)
 - Define technical terms on first use
+- Before citing a specific test as verifying a scenario (a spec table, a status doc), confirm that test function actually exists in the change or repo — label not-yet-written coverage as planned/unverified instead of naming a test that isn't there
 
 ### Don't
 
@@ -88,8 +113,8 @@ Infrahub documentation follows the [Diataxis framework](https://diataxis.fr/), s
 - Use marketing language or hype (in topics)
 - Skip definitions of technical terms
 - Focus on "how to" instead of "how it works" (in topics)
-- Reference Jira tickets, GitHub issues, or spec IDs — describe the behavior or constraint itself;
-  work-item IDs belong in commit messages, PR descriptions, and changelog fragments
+- Reference Jira tickets, GitHub issues, PR numbers, or spec files as the reason for a rule — describe the underlying behavior or constraint instead. These rot once the item closes and the spec is forgotten, and a reader can't verify a closed reference the way a reviewer could at review time. Work-item IDs belong in commit messages, PR descriptions, and changelog fragments; track a significant architectural decision in `dev/adr/` (see `dev/adr/README.md`) instead, written as a self-contained Context/Decision/Consequences record independent of the spec that prompted it
+- Cite a `file.py:123` or `file.py:100-140` line location — reference the module path and symbol only (`some/module.py::SomeClass`). A symbol reference survives the code moving within a file or being renamed at the call site; a line number does not, and a spec's own line-numbered citations routinely rot before the feature it describes even merges
 
 ## Documentation Workflow
 

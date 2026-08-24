@@ -1,6 +1,6 @@
 import asyncio
 from pathlib import Path
-from typing import AsyncGenerator, Generator
+from typing import TYPE_CHECKING, AsyncGenerator, Generator
 
 import pytest
 from fast_depends import Provider
@@ -8,6 +8,9 @@ from fast_depends import dependency_provider as provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from prefect.client.orchestration import PrefectClient
+
+if TYPE_CHECKING:
+    from prefect.events.schemas.events import Event
 
 from infrahub import config
 from infrahub.core import registry
@@ -96,20 +99,28 @@ class TestInfrahubAppBase(TestInfrahub):
         # Creating another service object to get service correctly initialized is a hack.
         # We should either reuse `service` fixture (leading to circular fixture dependencies issue atm),
         # or ideally properly patch production code responsible for Bus instantiation instead
+        original = config.OVERRIDE.message_bus
         bus = BusSimulator()
         _ = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution(), message_bus=bus)
         config.OVERRIDE.message_bus = bus
-        with dependency_provider.scope(build_message_bus, lambda: bus):
-            yield bus
+        try:
+            with dependency_provider.scope(build_message_bus, lambda: bus):
+                yield bus
+        finally:
+            config.OVERRIDE.message_bus = original
 
     @pytest.fixture(scope="class")
     async def memory_cache(
         self, db: InfrahubDatabase, dependency_provider: Provider
     ) -> AsyncGenerator[MemoryCache, None]:
+        original = config.OVERRIDE.cache
         cache = MemoryCache()
         config.OVERRIDE.cache = cache
-        with dependency_provider.scope(build_cache, lambda: cache):
-            yield cache
+        try:
+            with dependency_provider.scope(build_cache, lambda: cache):
+                yield cache
+        finally:
+            config.OVERRIDE.cache = original
 
     @pytest.fixture(scope="class")
     async def register_internal_schema(self, db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
@@ -280,14 +291,20 @@ class TestInfrahubAppBase(TestInfrahub):
         graphql_registry.clear_cache()
         await initialization(db=db)
 
-    async def assert_event(self, prefect_client: PrefectClient, event_name: str) -> None:
+    async def assert_event(self, prefect_client: PrefectClient, event_name: str, resource_id: str) -> None:
+        events: list[Event] = []
         for _ in range(PREFECT_EVENT_WAIT_SECONDS):
-            events = await query_events_by_name(client=prefect_client, event_name=event_name)
+            events = await query_events_by_name(client=prefect_client, event_name=event_name, resource_id=resource_id)
             if len(events) == 1:
                 return
+            if len(events) > 1:
+                # Events are append-only, an over-count can never converge back to 1.
+                break
             await asyncio.sleep(1)
 
-        pytest.fail(f"unable to find prefect event '{event_name}'")
+        pytest.fail(
+            f"expected exactly 1 prefect event '{event_name}' for resource '{resource_id}', found {len(events)}"
+        )
 
 
 class TestInfrahubApp(TestInfrahubAppBase):

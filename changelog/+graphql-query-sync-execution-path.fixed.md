@@ -1,0 +1,1 @@
+Sped up GraphQL query execution by keeping non-mutation requests on the synchronous resolution path. The branch-status middleware previously wrapped every resolved field in a coroutine, which made large read queries — most visibly the GraphQL sandbox's schema introspection — take 10+ seconds and starve other requests handled by the same API worker while they ran.

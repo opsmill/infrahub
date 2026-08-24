@@ -51,11 +51,12 @@ Auto-fixes formatting and lint issues in TypeScript/TSX files. If Biome reports 
 
 ## Phase 2 — Fast checks (parallel)
 
-**IMPORTANT: Send ALL 3 commands below in a SINGLE message with 3 parallel Bash tool calls.** Do NOT run them one at a time.
+**IMPORTANT: Send ALL 4 commands below in a SINGLE message with 4 parallel Bash tool calls.** Do NOT run them one at a time.
 
-1. `uv run invoke main.lint` — If ruff reports issues, they were not auto-fixable — report them to the user.
-2. `uv lock --check` — Ensures `uv.lock` matches `pyproject.toml`. If this fails, run `uv lock` and commit the updated lockfile.
-3. `cd frontend/app && npm run codegen:graphql` — Regenerates `graphql-env.d.ts` and `graphql-cache.d.ts` from `schema/schema.graphql`. If the files change, they need to be staged and committed.
+1. `uv run invoke main.lint` — If ruff reports issues, report them to the user.
+2. `uv run ruff check . --exclude python_sdk` — The exact command CI's `python-lint` job runs. This is not redundant with `main.lint`: that task lints only `tasks`, `models`, `utilities`, and `python_testcontainers`, and `backend.lint` only `backend`, so a violation anywhere else (`development/`, root-level scripts, `tests/`) passes locally and fails in CI. Only the whole-repo check proves CI will pass.
+3. `uv lock --check` — Ensures `uv.lock` matches `pyproject.toml`. If this fails, run `uv lock` and commit the updated lockfile.
+4. `cd frontend/app && npm run codegen:graphql` — Regenerates `graphql-env.d.ts` and `graphql-cache.d.ts` from `schema/schema.graphql`. If the files change, they need to be staged and committed.
 
 ---
 
@@ -67,7 +68,7 @@ Auto-fixes formatting and lint issues in TypeScript/TSX files. If Biome reports 
 
 **IMPORTANT: Send ALL 7 commands below in a SINGLE message with 7 parallel Bash tool calls.** Do NOT run them one at a time.
 
-1. `uv run invoke backend.lint` — Run separately from main.lint to avoid `uv run invoke lint` which includes a `yamllint -s .` step that fails on vendored packages in `.venv`. If ruff reports issues, they were not auto-fixable — report them to the user.
+1. `uv run invoke backend.lint` — Run separately from main.lint to avoid `uv run invoke lint` which includes a `yamllint -s .` step that fails on vendored packages in `.venv`. Its ruff step covers `backend` only, the same coverage gap noted in Phase 2; the ty/mypy output is what this check adds.
 2. `cd frontend/app && npx betterer` — Ensures no new TypeScript errors are introduced. The issue count must stay the same or decrease. If it increases, report the new issues to the user.
 3. `uv run invoke docs.lint` — Report any errors. Note: some pre-existing errors in `docs/docs/` may exist — only flag errors in files the user has changed.
 4. `uv run invoke backend.validate-generated` — Ensures generated schema and protocol files are up to date. If this fails, run `uv run invoke backend.generate` and report the regenerated files.
@@ -95,6 +96,7 @@ Summarize results in a table:
 | Docs format | ... |
 | Frontend format/lint | ... |
 | Main Python lint | ... |
+| Ruff (CI parity) | ... |
 | Lockfile sync | ... |
 | Frontend GraphQL types | ... |
 | Backend lint (ty/mypy) | ... |
