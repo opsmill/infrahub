@@ -1405,15 +1405,8 @@ query DestinationBranchRepositories {
         internal_status {
           value
         }
-        ... on CoreRepository {
-          commit {
-            value
-          }
-        }
-        ... on CoreReadOnlyRepository {
-          commit {
-            value
-          }
+        commit {
+          value
         }
       }
     }

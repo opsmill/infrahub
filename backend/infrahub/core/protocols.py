@@ -125,6 +125,7 @@ class CoreGenericRepository(CoreNode):
     location: String
     internal_status: Dropdown
     operational_status: Dropdown
+    commit: StringOptional
     sync_status: Dropdown
     credential: RelationshipManager[CoreCredential]
     tags: RelationshipManager[BuiltinTag]

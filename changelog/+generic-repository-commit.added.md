@@ -1,0 +1,1 @@
+`CoreGenericRepository` now defines a `commit` attribute, so the current commit of any repository can be read without knowing whether it is a managed or a read-only repository. Both concrete kinds continue to override the attribute with their own branch scope, so their behaviour is unchanged.

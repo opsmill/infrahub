@@ -296,14 +296,14 @@ export type BranchCreate = {
 };
 
 export type BranchCreateInput = {
-  /** @deprecated branched_from is set by the server and cannot be provided */
+  /** @deprecated branched_from is set by the server and cannot be provided. Will be removed after version 1.12. */
   branched_from?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['String']['input']>;
-  /** @deprecated Non isolated mode is not supported anymore */
+  /** @deprecated Non-isolated mode is not supported anymore. Will be removed after version 1.12. */
   is_isolated?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
-  /** @deprecated Branches can only be created from the default branch */
+  /** @deprecated Branches can only be created from the default branch. Will be removed after version 1.12. */
   origin_branch?: InputMaybe<Scalars['String']['input']>;
   sync_with_git?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -7244,6 +7244,8 @@ export type CoreGenericAccountUpdateInput = {
 /** A Git Repository integrated with Infrahub */
 export type CoreGenericRepository = {
   checks: NestedPaginatedCoreCheckDefinition;
+  /** Current commit hash being tracked */
+  commit: Maybe<TextAttribute>;
   credential: NestedEdgedCoreCredential;
   /** Description of the repository */
   description: Maybe<TextAttribute>;
@@ -7624,6 +7626,8 @@ export type CoreGenericRepositoryUpdate = {
 
 export type CoreGenericRepositoryUpdateInput = {
   checks?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** Current commit hash being tracked */
+  commit?: InputMaybe<TextAttributeUpdate>;
   credential?: InputMaybe<RelatedNodeInput>;
   /** Description of the repository */
   description?: InputMaybe<TextAttributeUpdate>;
@@ -28230,6 +28234,11 @@ export type QueryCoreCheckDefinitionArgs = {
   query__variables__source__id?: InputMaybe<Scalars['ID']['input']>;
   query__variables__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   query__variables__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -30032,6 +30041,11 @@ export type QueryCoreGeneratorDefinitionArgs = {
   query__variables__source__id?: InputMaybe<Scalars['ID']['input']>;
   query__variables__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   query__variables__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -30730,6 +30744,12 @@ export type QueryCoreGenericRepositoryArgs = {
   checks__timeout__source__id?: InputMaybe<Scalars['ID']['input']>;
   checks__timeout__value?: InputMaybe<Scalars['BigInt']['input']>;
   checks__timeout__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  commit__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  commit__value?: InputMaybe<Scalars['String']['input']>;
+  commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   credential__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   credential__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   credential__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -31233,6 +31253,11 @@ export type QueryCoreGraphQlQueryArgs = {
   query_groups__parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
   query_groups__parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   query_groups__parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34842,6 +34867,11 @@ export type QueryCoreRepositoryGroupArgs = {
   parent__name__value?: InputMaybe<Scalars['String']['input']>;
   parent__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35022,6 +35052,11 @@ export type QueryCoreRepositoryValidatorArgs = {
   proposed_change__total_comments__source__id?: InputMaybe<Scalars['ID']['input']>;
   proposed_change__total_comments__value?: InputMaybe<Scalars['BigInt']['input']>;
   proposed_change__total_comments__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  repository__commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36302,6 +36337,11 @@ export type QueryCoreTransformJinja2Args = {
   query__variables__source__id?: InputMaybe<Scalars['ID']['input']>;
   query__variables__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   query__variables__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36557,6 +36597,11 @@ export type QueryCoreTransformPythonArgs = {
   query__variables__source__id?: InputMaybe<Scalars['ID']['input']>;
   query__variables__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   query__variables__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36788,6 +36833,11 @@ export type QueryCoreTransformationArgs = {
   query__variables__source__id?: InputMaybe<Scalars['ID']['input']>;
   query__variables__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   query__variables__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -37128,6 +37178,11 @@ export type QueryCoreUserValidatorArgs = {
   proposed_change__total_comments__source__id?: InputMaybe<Scalars['ID']['input']>;
   proposed_change__total_comments__value?: InputMaybe<Scalars['BigInt']['input']>;
   proposed_change__total_comments__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  repository__commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
