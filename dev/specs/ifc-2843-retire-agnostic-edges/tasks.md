@@ -83,17 +83,94 @@ with the shared retention predicate extended only where a slice proves it must b
   writes branch-scoped `deleted` edges that the pool's `branch_agnostic=True` filter honours, so
   re-allocation works without retirement and SC-007 was satisfied before this feature. The test keeps
   its value through the graph assertions; the spec is amended.
-- [ ] R03 **Slice 2 — schema attribute and relationship removal.** Fold the closure into
+- [X] R03 **Slice 2 — schema attribute and relationship removal.** Fold the closure into
   `AttributeRemoveQuery` (`backend/infrahub/core/migrations/query/attribute_remove.py`) and its
   relationship equivalent rather than calling retirement after them, which also removes the ordering
   problem in T030: once the removal query has closed the owning edge, an open-edge anchor can no
-  longer see the candidate. Supersedes T029/T030. Carries T030a and T030b.
+  longer see the candidate. Supersedes T029/T030. Carries T030a and T030b. **Done 2026-08-19**, as a
+  shared unit-subquery fragment, `CLOSE_UNRETAINED_AGNOSTIC_FIELDS` in
+  `backend/infrahub/core/query/agnostic_field_closure.py`, composed by both removal queries. It takes
+  the vertices the removal already matched as a collected list rather than re-selecting them, which is
+  what keeps the candidate set intact across the removal's own writes, and returns nothing, so both
+  queries keep their existing `RETURN` and their migration counts. T030a and T030b followed the same day.
+- [ ] R03a **Slice 2a — the rollback's metadata restore. Take this next, before R04.** Slice 2's
+  closure writes global-branch edges, so both rollback passes must cover the global branch
+  (`_rollback_branches` in `backend/infrahub/core/query/rollback.py`): the target branch follows the
+  scope, the global branch is always matched on the exact timestamp, because nothing write-blocks it.
+  The metadata restore follows the design in plan.md §"The rollback is part of the invariant"
+  (idea brief 2026-08-21): restore on `= $at` on every pass, independent of branch and scope,
+  because every write of one operation lands at exactly the operation's `at`. The per-vertex
+  criterion this task once went looking for turned out to be a constant. Sub-tasks:
+
+  - [ ] R03a.1 **Require `at` on the migration queries.** Make `at` a required constructor argument
+    of `DeleteElementInSchemaQuery` (`backend/infrahub/core/migrations/query/delete_element_in_schema.py`)
+    and `SchemaAttributeUpdateQuery` (`backend/infrahub/core/migrations/query/schema_attribute_update.py`)
+    and drop their `at = self.at or Timestamp()` fallbacks. Dropping the fallback alone enforces
+    nothing — the `Query` base defaults a missing `at` to *now* (`Timestamp(None)`), which is exactly
+    the silent off-timestamp write being outlawed — and a required parameter alone cannot catch the
+    omission either, because the `Query.init` classmethod always forwards `at` explicitly, defaulting
+    it to `None`; the guard is a runtime rejection of a missing `at`. Callers already pass it:
+    `GraphMigration.do_execute` inits every query with `at=migration_input.at`; the m012/m013
+    component tests that construct these queries directly must pass `at=Timestamp()`. State the
+    single-timestamp rule where these queries are defined. *Verify: construction without `at` is an
+    error, pinned by unit tests.*
+  - [ ] R03a.2 **Restore on the exact timestamp.** `_render_restore_metadata_pipeline` matches
+    `restore_vertex.updated_at = $at` on every pass — delete the `rollback_branch.exact` split from
+    the restore (the edge passes keep their exact/range split). The pipeline no longer depends on
+    `rollback_branch`; simplify the `WITH`/`CALL` scoping in both queries accordingly. Dedup the
+    vertex set (`WITH DISTINCT restore_vertex`) so a vertex reached through several edges in one
+    batch is restored once; across batches the exact match is self-limiting, since the first restore
+    moves `updated_at` off `$at`. The `TestRollbackSinceTimestamp` dataset must stamp its
+    default-branch update and delete exactly at the window start — the shape a merge writes and the
+    only stamp the restore matches — while its creation and user-branch changes stay later in the
+    window to keep the range edge-reversal covered. *Verify (the R03a failure modes, pinned as
+    regression tests, SC-002): a vertex bumped at `at + 5` by an unrelated global write survives a
+    `SINCE_TIMESTAMP` rollback untouched, `previous_*` included; a node owning both a branch-aware
+    and a branch-agnostic field is restored at most once and `updated_at` is never NULL after
+    rollback.*
+  - [ ] R03a.3 **Delete `restore_metadata`; the restore is unconditional.** Remove the parameter
+    from `GraphRollbacker.rollback` and both query classes, the default/global-target `ValueError`
+    guard, and the docstring text that justified it. Flip the call sites by deletion:
+    `core/schema/update_coordinator.py` (`restore_metadata=False` — stale since #9980 closed the
+    snapshot gap PR #9878 declared), `core/diff/merger/merger.py`, `core/merge/failure_recoverer.py`.
+    Update every test that passes the flag (~12 files, `rtk grep restore_metadata backend/tests`);
+    `test_restore_metadata_rejected_on_non_default_branch` is deleted with the guard. *Verify
+    (FR: a failed standalone schema update leaves vertex metadata at pre-update values): extend
+    `test_a_rolled_back_removal_leaves_the_global_edges_open`
+    (`tests/component/core/migrations/schema/test_agnostic_field_removal.py`) with metadata
+    assertions — restored stamps, `previous_*` cleared.*
+  - [ ] R03a.4 **Rollback targeting a user branch restores global-bump metadata.** The global-exact
+    pass runs the restore for any target branch. Today a user-branch removal closes global edges
+    without bumping metadata (see the A2 note below), so pin the mechanism with a fixture that bumps
+    the vertex at `at` by hand — the shape the closure will write once IFC-3032 lands — rolls back
+    targeting the user branch, and asserts the restore.
+  - [ ] R03a.5 **Document timestamp-as-operation-identity** in `_rollback_branches`: a
+    same-microsecond unrelated global write is reversed wrongly — accepted, and shared with what
+    `AT_TIMESTAMP` scope already assumes. Also note the one-slot `previous_*` residual (a concurrent
+    global write after the merge's bump keeps a phantom pointer to the rolled-back write; current
+    values stay correct), and keep the re-run idempotency property pinned (SC: re-running rollback
+    is a no-op).
+
+  The two pre-existing metadata gaps this task recorded are resolved as follows: the
+  `restore_metadata=False` / `=True` asymmetry between a standalone schema update and the same
+  removal rolled back through a merge is dissolved by R03a.3 (the update side was the wrong one);
+  the user-branch removal that closes global edges while recording no metadata at all
+  (`set_metadata` derived from the migration branch, `attribute_remove.py`, vs the closure writing
+  the global branch) is an upstream bump gap, **out of scope**, tracked in
+  [IFC-3032](https://opsmill.atlassian.net/browse/IFC-3032).
+
 - [ ] R04 **Slice 3 — branch merge and rebase.** Supersedes T025–T028. Both supply node uuids from
   the diff they already compute. **Carries T033 (FR-014)** — diff a branch that forked before the
   deletion and assert no attribute or relationship change is reported for that node. It sits here
   rather than with the delete slice because it is a claim about the diff, and this is the slice where
   the diff machinery is already in hand. Every assertion written so far reads edges directly, so
-  nothing yet checks the claim at the layer a user would see it.
+  nothing yet checks the claim at the layer a user would see it. **Rollback constraint (from R03a's
+  design, D5)**: the rebase enforcement point's closures must run **inside the rebase transaction**
+  (`backend/infrahub/core/branch/tasks.py`, the `db.start_transaction()` block that applies
+  `user_branch.rebase`), because a no-schema-diff rebase never invokes the schema-update coordinator
+  and transaction atomicity is then the only rollback cover; the coordinator's `AT_TIMESTAMP`
+  rollback at `rebase_at` is covered by the global-exact pass with no new machinery.
+  Pre-transaction rebase writes are diff-store only, invisible to rollback by construction.
 - [ ] R05 **Slice 4 — branch deletion and the FR-018 timing gate.** Its own query, fork-point
   bounded. Supersedes T018–T020 and carries T038's measurement obligation.
 - [ ] R06 **Slice 5 — repair migration.** Blocked on T001. Supersedes Phase 4; C4 in
@@ -112,6 +189,17 @@ with the shared retention predicate extended only where a slice proves it must b
   opposite is now true and implemented: failures propagate so the transaction rolls back. See
   T017a.
 - **T030's ordering is moot** — the closure is part of the removal query rather than a call after it.
+  Implementing it (2026-08-19) also showed T030's stated reason was wrong, though its conclusion was
+  right. A removal does **not** close the global owning edge of a branch-agnostic field: both removal
+  queries only close an edge in place when its `branch` equals the migration branch, and a global edge
+  never does, so they shadow it with a branch-scoped `deleted` edge instead and leave the global one
+  open. This holds for the attribute removal as much as the relationship one: its peer match is
+  undirected, so the owning node is among the peers, and `HAS_ATTRIBUTE` is the first entry in
+  `GraphAttributeRelationships`, so the per-type shadow `CREATE` covers the owning edge too. An
+  open-edge anchor would therefore still have found the candidate. The fold earns its place
+  for two other reasons: the removal has already computed which vertices belong to the kind, including
+  the profile/template expansion and the still-declaring kinds to skip, and it is the removal's own
+  writes that make the field unretained — a later pass would have to re-derive both.
 - **T037's prediction was right and its reasoning was wrong.** Deleting a fully branch-agnostic
   object *is* a retirement no-op, but not because the enforcement point declines to act: the ordinary
   agnostic delete already both tombstones the global edges and stamps `to` on the superseded active
@@ -153,10 +241,10 @@ passed.
 - [ ] T026 [US1] Invoke retirement from `DiffMerger.merge_graph` in `backend/infrahub/core/diff/merger/merger.py`, after the bulk merge queries complete, for the deleted nodes named by the merge diff, at the merge `at`
 - [ ] T027 [P] [US1] Write a component test for rebase: a node deleted on the default branch while a branch is open, rebase that branch → closed (FR-007, scenario 5b); plus scenario 11 — a node created and deleted on `B`, then `B` rebased, leaves no vertex with open global edges
 - [ ] T028 [US1] Invoke retirement from `rebase_branch` in `backend/infrahub/core/branch/tasks.py`, inside the existing `lock.registry.global_graph_lock()` and **before** `user_branch.rebase(...)` is applied, at `rebase_at`. Obtain the base-branch deletions via a second `DiffRepository` read under the existing tracking id (decided in plan.md §"Resolved during critique").
-- [ ] T029 [P] [US1] Write component tests for schema removal: a branch-agnostic attribute removed from the schema → closed; likewise a relationship; and with a branch that forked beforehand → deferred and still readable there (FR-010, scenarios 8–9). **Belongs to slice 2 (R03)** and is written against the removal query rather than a separate retirement call. The deferral case is already covered from the delete side by slice 1's field-axis test, which builds the branch-level `deleted` owning edge by hand; these drive it through the real removal path.
+- [X] T029 [P] [US1] Write component tests for schema removal: a branch-agnostic attribute removed from the schema → closed; likewise a relationship; and with a branch that forked beforehand → deferred and still readable there (FR-010, scenarios 8–9). **Belongs to slice 2 (R03)** and is written against the removal query rather than a separate retirement call. The deferral case is already covered from the delete side by slice 1's field-axis test, which builds the branch-level `deleted` owning edge by hand; these drive it through the real removal path. Delivered 2026-08-19 in `backend/tests/component/core/migrations/schema/test_agnostic_field_removal.py` — four tests, both fields closed and both fields deferred, driven through `NodeAttributeRemoveMigration` / `NodeRelationshipRemoveMigration`. Placed with the other removal-migration component tests rather than in `core/test_agnostic_retirement.py`, whose class-scoped database is shared across its tests while these need the function-scoped `default_branch` reset. Mutation-checked twice: with the fragment emptied the two closure tests fail and the two deferral tests pass; with the retention predicate dropped from the fragment the two deferral tests fail and the two closure tests pass.
 - [ ] T030 [US1] **Superseded by R03 — do not implement as written.** The original said to invoke retirement from `NodeAttributeRemoveMigration` and `NodeRelationshipRemoveMigration` *after* each existing removal query runs. That cannot work: the removal query has already closed the owning edge by then, so an open-edge anchor finds no candidate and retirement is a silent no-op. Instead fold the closure into `AttributeRemoveQuery` (`backend/infrahub/core/migrations/query/attribute_remove.py`) and its relationship equivalent, which already match the right vertices for the kind and already carry the branch filter.
-- [ ] T030a [US1] Write the cross-axis component test driven through the **real** removal migration: an object deleted on the default branch while a branch forked after its creation had the attribute removed from its schema. That branch retains the object but not the field, so nothing retains the value and the global edges must close. Deferred from the object-delete slice deliberately — the fixture is only faithful once the removal path is final, and a hand-built version could encode a shape the schema slice changes. The object-delete slice covers the same conjunction with a raw-Cypher fixture instead.
-- [ ] T030b [US1] Write the inverse of T030a: the attribute removed from the schema on the default branch while a branch forked beforehand deleted the object. That branch retains the field but not the object, so again nothing retains the value. Both directions prove the retention conjunction is per branch rather than a disjunction across axes.
+- [X] T030a [US1] Write the cross-axis component test driven through the **real** removal migration: an object deleted on the default branch while a branch forked after its creation had the attribute removed from its schema. That branch retains the object but not the field, so nothing retains the value and the global edges must close. Deferred from the object-delete slice deliberately — the fixture is only faithful once the removal path is final, and a hand-built version could encode a shape the schema slice changes. The object-delete slice covers the same conjunction with a raw-Cypher fixture instead. Delivered 2026-08-19 as `test_an_attribute_removed_on_a_fork_is_closed_when_the_object_is_deleted_elsewhere` in `backend/tests/component/core/migrations/schema/test_agnostic_field_removal.py`. The removal is the real migration; the closure comes from the delete, since that is the enforcement point the surviving axis flips on.
+- [X] T030b [US1] Write the inverse of T030a: the attribute removed from the schema on the default branch while a branch forked beforehand deleted the object. That branch retains the field but not the object, so again nothing retains the value. Both directions prove the retention conjunction is per branch rather than a disjunction across axes. Delivered 2026-08-19 as `test_an_attribute_removed_from_the_schema_is_closed_when_the_only_fork_deleted_the_object` in the same file, closed by the removal query. Mutation-checked: with the field-edge axis dropped from the shared predicate, so that a live owner alone retains, both tests fail; with the closure fragment emptied, T030b fails and T030a passes, which is where each one's closure comes from. Dropping the existence axis instead leaves both passing, and that is a property of the real paths rather than a gap: an ordinary delete tombstones the field edge alongside the existence edge on its own branch, so no branch in either scenario holds a live field edge over a dead owner. Slice 1's raw-Cypher `tombstone_existence_only` fixture exists for exactly that shape.
 
 ### Cross-cutting correctness tests for US1
 
