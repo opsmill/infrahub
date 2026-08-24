@@ -72,6 +72,27 @@ Emission goes through the `AutoCreateEventEmitter` ABC. Two implementations exis
 
 See [Events System](events.md) for the broader event architecture and [`docs/docs/reference/infrahub-events/group.mdx`](../../../docs/docs/reference/infrahub-events/group.mdx) for full event payload shapes.
 
+## Account Lifecycle and Internal Children
+
+An account owns three kinds of bookkeeping node in the `Internal` namespace, each with a mandatory `account` relationship:
+
+| Kind | Identifier | Removed with the account |
+|------|------------|--------------------------|
+| `InternalExternalIdentity` | `account__external_identity` | Yes, `on_delete=CASCADE` |
+| `InternalAccountToken` | `account__token` | Yes, `on_delete=CASCADE` |
+| `InternalRefreshToken` | `account__refreshtoken` | No — the account side has no relationship yet |
+
+`on_delete=CASCADE` is not enough on its own. `NodeDeleteValidator` resolves both cascade peers and mandatory dependents through `RelationshipGetByIdentifierQuery`, and that query excludes namespaces the caller names. The public GraphQL relationship query excludes `Internal`, and so does the validator's general lookup; the validator asks a second time, with nothing excluded, only for cascade relationships whose peer is internal.
+
+Do not exclude `Internal` for the whole validator instead. A refresh token is a mandatory dependent of every account that has ever logged in, so it would make those accounts impossible to delete.
+
+Two rules follow for the SSO login path:
+
+- **An identity with no account is not a returning user.** `signin_sso_account` decides on whether there is an account to sign into, not on whether an identity row exists. An identity whose account is gone is deleted and the login continues as a first login. Deleting it is required rather than cosmetic: the uniqueness constraint on `(sub, provider_name, protocol)` rejects a replacement identity while the old row survives.
+- **A missing peer has two shapes.** No active relationship raises `LookupError` from the relationship manager; an active relationship to an unresolvable node raises `NodeNotFoundError`. Both mean "no account".
+
+`Migration077` deletes the identities and tokens that earlier releases orphaned.
+
 ## Configuration
 
 User-facing keys live under `security.*` in `config.py`:
