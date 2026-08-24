@@ -1,15 +1,14 @@
-import { LinkButton } from "@infrahub/ui";
+import { Checkbox, LinkButton } from "@infrahub/ui";
 import type { PressEvent } from "react-aria-components";
 
-import { Checkbox } from "@/shared/components/aria/checkbox";
 import { Col, Row } from "@/shared/components/container";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchGitSyncBadge } from "@/entities/branches/ui/branch-list-item/branch-git-sync-badge";
 import { BranchSchemaChangesBadge } from "@/entities/branches/ui/branch-list-item/branch-schema-changes-badge";
-import { getBranchDetailsUrl } from "@/entities/branches/utils";
+import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 
 interface BranchNameCellProps {
@@ -49,7 +48,7 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
           <Row className="gap-1">
             {branch.is_default && <BranchDefaultBadge />}
 
-            {branch.has_schema_changes && <BranchSchemaChangesBadge />}
+            {branch.schema_differs_from_default_branch && <BranchSchemaChangesBadge />}
 
             {branch.sync_with_git && <BranchGitSyncBadge />}
           </Row>

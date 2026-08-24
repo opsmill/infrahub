@@ -4,7 +4,7 @@ from infrahub.core.schema.schema_branch_computed.jinja2 import (
     ComputedAttributeTriggerNode,
     ResolvedComputedTarget,
 )
-from infrahub.core.schema.schema_branch_computed.python_transform import PythonDefinition
+from infrahub.core.schema.schema_branch_computed.python_transform import PythonDefinition, TransformReadSet
 
 __all__ = [
     "ComputedAttributeTarget",
@@ -12,4 +12,5 @@ __all__ = [
     "ComputedAttributes",
     "PythonDefinition",
     "ResolvedComputedTarget",
+    "TransformReadSet",
 ]

@@ -15,15 +15,15 @@ import { isRequired } from "@/shared/components/form/utils/validation";
 import type { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
+
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
   ACCOUNT_ROLE_OBJECT,
-} from "@/shared/config/constants";
-
-import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
-import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
+} from "@/entities/role-manager/domain/model/account";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface AccountGroupFormProps {
@@ -115,57 +115,55 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
       ?.enum?.map((data) => ({ value: data as string, label: data as string })) ?? [];
 
   return (
-    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
-      <Form form={form} onSubmit={handleSubmit}>
-        <InputField
-          name="name"
-          label="Name"
-          rules={{
-            required: true,
-            validate: {
-              required: isRequired,
-            },
-          }}
-        />
+    <Form form={form} onSubmit={handleSubmit}>
+      <InputField
+        name="name"
+        label="Name"
+        rules={{
+          required: true,
+          validate: {
+            required: isRequired,
+          },
+        }}
+      />
 
-        <InputField name="description" label="Description" />
+      <InputField name="description" label="Description" />
 
-        <InputField name="label" label="Label" />
+      <InputField name="label" label="Label" />
 
-        <DropdownField name="group_type" label="Type" items={typeOptions} />
+      <DropdownField name="group_type" label="Type" items={typeOptions} />
 
-        <RelationshipManyField
-          name="roles"
-          label="Roles"
-          relationship={{
-            name: "roles",
-            peer: ACCOUNT_ROLE_OBJECT,
-            cardinality: "many",
-          }}
-          defaultValue={roles}
-        />
+      <RelationshipManyField
+        name="roles"
+        label="Roles"
+        relationship={{
+          name: "roles",
+          peer: ACCOUNT_ROLE_OBJECT,
+          cardinality: "many",
+        }}
+        defaultValue={roles}
+      />
 
-        <RelationshipManyField
-          name="members"
-          label="Members"
-          relationship={{
-            name: "members",
-            peer: ACCOUNT_OBJECT,
-            cardinality: "many",
-          }}
-          defaultValue={members}
-        />
+      <RelationshipManyField
+        name="members"
+        label="Members"
+        relationship={{
+          name: "members",
+          peer: ACCOUNT_OBJECT,
+          cardinality: "many",
+        }}
+        defaultValue={members}
+      />
 
-        <Row className="justify-end">
-          {onCancel && (
-            <Button variant="outline" onPress={onCancel}>
-              Cancel
-            </Button>
-          )}
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
+        )}
 
-          <FormSubmit>Save</FormSubmit>
-        </Row>
-      </Form>
-    </div>
+        <FormSubmit>Save</FormSubmit>
+      </Row>
+    </Form>
   );
 };

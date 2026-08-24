@@ -1,6 +1,6 @@
+import { Checkbox } from "@infrahub/ui";
 import type { UseFormReturn } from "react-hook-form";
 
-import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { KindMultiSelect } from "@/shared/components/inputs/kind-multi-select";
 import {
   Accordion,
@@ -18,9 +18,9 @@ import {
 } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 
-import { MAX_TRAVERSAL_DEPTH } from "../../domain/path-traversal.constants";
+import { MAX_TRAVERSAL_DEPTH } from "../../domain/model/path-traversal";
+import { isVisibleNamespace } from "../../domain/rules/visible-namespace";
 import { ObjectPicker } from "../object-picker";
-import { isVisibleNamespace } from "../utils";
 import type { DependenciesModeFormValues } from "./use-dependencies-mode-params";
 
 type DependenciesModeFormProps = {
@@ -164,8 +164,8 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
                   <div className="flex items-center gap-2">
                     <FormInput>
                       <Checkbox
-                        checked={Boolean(field.value)}
-                        onChange={(e) => field.onChange(e.target.checked)}
+                        isSelected={Boolean(field.value)}
+                        onChange={(isSelected) => field.onChange(isSelected)}
                       />
                     </FormInput>
                     <FormLabel className="cursor-pointer">Shortest paths only</FormLabel>

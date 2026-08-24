@@ -14,6 +14,7 @@ from .file_contract import FILE_CONTRACT
 from .location import CONTINENT, COUNTRY, LOCATION, SITE
 from .manufacturer import MANUFACTURER
 from .person import PERSON
+from .recompute import CASCADE_NODE, CYCLE_A, CYCLE_B
 from .snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 from .tag import TAG
 from .thing import THING
@@ -32,6 +33,8 @@ DEVICE_SCHEMA = SchemaRoot(
 )
 LOCATION_SCHEMA = SchemaRoot(generics=[LOCATION], nodes=[CONTINENT, COUNTRY, SITE])
 SNOW_TICKET_SCHEMA = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
+CASCADE_SCHEMA = SchemaRoot(nodes=[CASCADE_NODE])
+CYCLE_SCHEMA = SchemaRoot(nodes=[CYCLE_A, CYCLE_B])
 
 
 async def load_schema(
@@ -75,10 +78,15 @@ test_models: dict[str, Any] = {
 __all__ = [
     "CAR",
     "CAR_SCHEMA",
+    "CASCADE_NODE",
+    "CASCADE_SCHEMA",
     "CHILD",
     "COLOR",
     "CONTINENT",
     "COUNTRY",
+    "CYCLE_A",
+    "CYCLE_B",
+    "CYCLE_SCHEMA",
     "DEVICE",
     "DEVICE_SCHEMA",
     "FILE_CONTRACT",

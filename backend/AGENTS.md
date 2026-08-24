@@ -10,6 +10,7 @@ FastAPI backend with GraphQL API, Neo4j database, and async-first architecture.
 
 - `infrahub/` – Main application
   - `api/` – REST endpoints
+    - `api/admission/` – Priority-aware API backpressure (load shedding) — see [dev/knowledge/backend/api-backpressure.md](../dev/knowledge/backend/api-backpressure.md)
   - `auth/` – Authentication (password, SSO, LDAP) and auto-create groups (`auth/auth_groups/`)
   - `graphql/` – GraphQL schema, mutations, resolvers
   - `core/` – Domain logic (nodes, schemas, branches, diff)
@@ -31,7 +32,8 @@ uv run invoke backend.generate         # Regenerate schemas/protocols
 
 ## Coding Standards
 
-See `dev/guidelines/backend/python.md` for detailed coding standards including:
+See `dev/guidelines/backend/python.md` for detailed coding standards — load it before writing
+backend Python, including:
 
 - Async-first patterns
 - Pydantic models
@@ -39,6 +41,11 @@ See `dev/guidelines/backend/python.md` for detailed coding standards including:
 - Naming conventions
 - Query patterns
 - Type hints
+- Exception handling (catch the narrowest types the call path actually raises)
+
+When planning or implementing a backend feature, also walk
+`dev/guidelines/backend/checklist.md` — migrations, query efficiency (set-based, no N+1),
+permissions, error handling.
 
 ### Neo4j/Cypher Queries
 
@@ -81,7 +88,8 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 
 ### Guidelines
 
-- `dev/guidelines/backend/python.md` - Python coding standards
+- `dev/guidelines/backend/python.md` - Python coding standards — load before writing backend Python (typing, imports, exception handling, docstrings)
+- `dev/guidelines/backend/checklist.md` - feature checklist — walk when planning or implementing a backend feature (migrations, query efficiency, permissions)
 - Use the `creating-changelog-entries` skill - Changelog fragment creation
 
 ### Knowledge (How the system works)
@@ -94,22 +102,27 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/schema-definitions.md` - Defining nodes/relationships (cardinality, `on_delete`, constraints); read before changing the core schema
 - `dev/knowledge/backend/mutations.md` - GraphQL mutation flow, upsert and HFID derivation; read before adding or overriding a mutation
 - `dev/knowledge/backend/permissions.md` - Global/object permission model and checker pipeline; read before touching authorization
+- `dev/knowledge/backend/api-backpressure.md` - Priority-aware load shedding (admission middleware, CoDel, slot pool) and the database-stress signal; read before touching the admission layer or request prioritization
 - `dev/knowledge/backend/authentication.md` - Authentication flow, SSO group resolution, auto-create groups; read when touching login, SSO, or LDAP
 - `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration); read when touching branch lifecycle or write-protection
+- `dev/knowledge/backend/merge-failure-recovery.md` - Failed-merge detection and range rollback, and the invariants that make a blind range revert correct; read before changing merge locking, write scoping, timestamping, or vertex metadata handling
 - `dev/knowledge/backend/events.md` - Events system; read when adding or changing an event
 - `dev/knowledge/backend/async-tasks.md` - Prefect workflows, priority lanes, failure/best-effort handling; read before creating or changing a workflow
 - `dev/knowledge/backend/message-bus.md` - Message bus system; read when adding or changing a message
+- `dev/knowledge/backend/telemetry.md` - Anonymous usage telemetry (categories, windowing, retention, degradation); read when adding or changing telemetry metrics or the collection window
 - `dev/knowledge/backend/webhooks.md` - Webhook delivery and failure classification; read when touching webhook delivery
 - `dev/knowledge/backend/computed-attributes.md` - Jinja2 computed attributes and their recompute paths; read when touching Jinja2 computed attributes
 - `dev/knowledge/backend/display-labels-and-hfid.md` - Display-label and human-friendly-id derivation; read when touching either
 - `dev/knowledge/backend/templates.md` - Object template generation and application; read when touching templates
 - `dev/knowledge/backend/code-generation.md` - Generated-file pipeline (protocols, schema, SDK); read before/after changing event, schema, CLI, or config code
+- `dev/knowledge/backend/git-sync.md` - Remote branch import/mapping and git error surfacing; read when touching repository sync or debugging branch-import behavior
 
 ### Guides (How to do X)
 
 - `dev/guides/backend/creating-events.md` - Creating new events
-- `dev/guides/backend/creating-async-tasks.md` - Creating async tasks
+- `dev/guides/backend/creating-async-tasks.md` - How to create an async task, with a pre-submit checklist. Load when adding a `@task`/`@flow`.
 - `dev/guides/backend/creating-messages.md` - Creating message bus messages
+- `dev/guides/backend/creating-migrations.md` - Choosing a migration base class, `GRAPH_VERSION` bookkeeping, batching, and transaction retry. Load when adding a graph or schema migration.
 
 ### ADRs (Why we decided)
 

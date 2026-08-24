@@ -1,6 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 
 export const BRANCHES_PER_PAGE = 40;
 
@@ -32,7 +30,7 @@ const GET_BRANCHES = graphql(`
           is_default {
             value
           }
-          has_schema_changes {
+          schema_differs_from_default_branch {
             value
           }
         }

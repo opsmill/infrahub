@@ -13,10 +13,6 @@ paths:
 
 Full reference: `dev/guidelines/backend/testing.md`
 
-## Import at the top
-
-All imports should be at the top of the test file. Do not import inside of test functions or classes.
-
 ## No mocking
 
 Do NOT use `unittest.mock`, `pytest-mock`, `MagicMock`, `patch`, or `Mock`.
@@ -27,6 +23,8 @@ Use adapter/protocol patterns instead. The message bus demonstrates this:
 - Testing: `backend/tests/adapters/message_bus.py` (`BusRecorder` / `BusSimulator`)
 
 Both implement `InfrahubMessageBus`. Tests inject the test adapter — no patching.
+
+Two doubles are worth writing for an injected collaborator: a `Recording*` one that keeps the calls in order (assert the exact sequence and values, not "was called"), and — where the code claims to survive that collaborator failing — a `Failing*` one that raises, to prove the claim.
 
 Acceptable exceptions only:
 
@@ -55,7 +53,7 @@ Assert on the exact message with `==`, not substring checks with `in`. Vague che
 
 ## Assert exact expectations
 
-Exact-match is not only for error messages. Assert the exact collection (full set/dict equality, not `in`/`issubset`), never mere non-emptiness (`!= frozenset()`, `len() > 0`), and a positive count where the number matters (so a run that silently measures zero fails). A denial test must also reload the target and assert nothing changed. Full guidance in `dev/guidelines/backend/testing.md` §"Assert exact expectations".
+Exact-match is not only for error messages. Assert the exact collection (full set/dict equality, not `in`/`issubset`), never mere non-emptiness (`!= frozenset()`, `len() > 0`), and a positive count where the number matters (so a run that silently measures zero fails). A denial test must also reload the target and assert nothing changed. Pin literal expected values — never compute the expectation with the same serializer/library the implementation calls. Full guidance in `dev/guidelines/backend/testing.md` §"Assert exact expectations".
 
 ## Don't test the framework
 
@@ -64,6 +62,10 @@ Skip tests that only exercise library behavior: plain `Enum` value/round-trip ch
 ## Pick the cheapest test tier
 
 If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them.
+
+## Don't leak process-global state
+
+Every test in an xdist worker shares one interpreter. Change `logging` levels/handlers/filters, `structlog` config, module-level registries/singletons, `sys.path`/`sys.modules` or env vars only through a save/restore fixture (change it, `yield`, restore it), or `monkeypatch` where it applies. Never call an application startup routine such as `infrahub.log.configure_logging` from a test — it owns the whole process and undoes nothing, so it reconfigures every later test in the worker. Install only the piece under test and remove it after the `yield`. See `dev/guidelines/backend/testing.md` §"Leave process-global state as you found it".
 
 ## Test file placement
 

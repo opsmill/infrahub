@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, type ButtonProps } from "@infrahub/ui";
+import { Button, type ButtonProps, Sheet } from "@infrahub/ui";
 import React from "react";
 
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { isRequired } from "@/shared/components/form/utils/validation";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import {
   Combobox,
   ComboboxContent,
@@ -15,7 +15,7 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 
-import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
 import { useAddEnumMutation } from "@/entities/schema/ui/queries/add-enum.mutation";
 import { useRemoveEnumMutation } from "@/entities/schema/ui/queries/remove-enum.mutation";
@@ -65,7 +65,7 @@ export const EnumDeleteButton = ({
         <Icon icon="mdi:trash-can-outline" />
       </Button>
 
-      <ModalDelete
+      <ModalDanger
         title="Delete"
         description={
           <>
@@ -75,7 +75,7 @@ export const EnumDeleteButton = ({
         }
         isOpen={showDeleteModal}
         onOpenChange={setShowDeleteModal}
-        onDelete={handleDelete}
+        onConfirm={handleDelete}
         isLoading={loading}
       />
     </>
@@ -106,19 +106,13 @@ export const EnumAddAction = ({ schema, field, addOption }: EnumAddActionProps) 
         </Button>
       )}
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel={field?.label}
-            title="Add a new option"
-            subtitle={field?.description}
-          />
-        }
-        open={open}
-        setOpen={setOpen}
-        offset={1}
-      >
+      <Sheet isOpen={open} onOpenChange={setOpen}>
+        <SlideOverTitle
+          schema={schema}
+          currentObjectLabel={field?.label}
+          title="Add a new option"
+          subtitle={field?.description}
+        />
         <DynamicForm
           fields={[
             {
@@ -145,9 +139,8 @@ export const EnumAddAction = ({ schema, field, addOption }: EnumAddActionProps) 
             setOpen(false);
           }}
           onCancel={() => setOpen(false)}
-          className="p-4"
         />
-      </SlideOver>
+      </Sheet>
     </div>
   );
 };

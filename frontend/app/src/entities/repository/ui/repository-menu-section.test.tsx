@@ -1,6 +1,5 @@
+import { Menu } from "@infrahub/ui";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-
-import { Menu } from "@/shared/components/aria/menu";
 
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";

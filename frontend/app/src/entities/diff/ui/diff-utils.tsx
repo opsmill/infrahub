@@ -2,8 +2,8 @@ import { Icon } from "@iconify-icon/react";
 import { LinkButton } from "@infrahub/ui";
 
 import { Badge } from "@/shared/components/ui/badge";
-import { NODE_PATH_EXCLUDELIST } from "@/shared/config/constants";
 
+import { NODE_PATH_EXCLUDELIST } from "@/entities/nodes/object/domain/model/object-kinds";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
 function extractNodeId(path: string) {

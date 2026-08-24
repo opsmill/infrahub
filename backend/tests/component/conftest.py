@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess  # noqa: S404
 import sys
+from collections.abc import AsyncGenerator
 from itertools import islice
 from pathlib import Path
 from typing import Any, Generator
@@ -13,6 +14,8 @@ from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
 from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
+from prefect.client.orchestration import PrefectClient, get_client
+from prefect.server.api.server import SubprocessASGIServer
 from prefect.settings import get_current_settings
 from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
@@ -69,13 +72,17 @@ from infrahub.git import InfrahubRepository
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_workflow
+from tests.adapters.workflow import WorkflowRecorder
 from tests.conftest import TestHelper
 from tests.helpers.constants import (
+    PREFECT_EVENTS_PROACTIVE_GRANULARITY,
     PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS,
     PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
+    PREFECT_TEST_SERVER_PORT_RANGE,
 )
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
+from tests.helpers.utils import find_available_prefect_port
 from tests.test_data import dataset01 as ds01
 
 
@@ -137,11 +144,22 @@ def prefect_test_fixture() -> Generator[None, None, None]:
         )
 
     os.environ["PREFECT_FLOWS_HEARTBEAT_FREQUENCY"] = PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS
+    os.environ["PREFECT_SERVER_EVENTS_PROACTIVE_GRANULARITY"] = PREFECT_EVENTS_PROACTIVE_GRANULARITY
     os.environ.update(PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS)
 
-    with patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command):
-        with prefect_test_harness(server_startup_timeout=60):
-            yield
+    with (
+        patch.object(SubprocessASGIServer, "_port_range", PREFECT_TEST_SERVER_PORT_RANGE),
+        patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command),
+        patch("prefect.testing.utilities._find_available_port", find_available_prefect_port),
+        prefect_test_harness(server_startup_timeout=60),
+    ):
+        yield
+
+
+@pytest.fixture
+async def prefect_client(prefect_test_fixture: None) -> AsyncGenerator[PrefectClient, None]:
+    async with get_client(sync_client=False) as client:
+        yield client
 
 
 @pytest.fixture
@@ -1648,6 +1666,7 @@ async def all_attribute_types_schema(
             {"name": "myjson", "kind": "JSON", "optional": True},
             {"name": "ipaddress", "kind": "IPHost", "optional": True},
             {"name": "prefix", "kind": "IPNetwork", "optional": True},
+            {"name": "bare_address", "kind": "IPAddress", "optional": True},
         ],
     }
 
@@ -2961,6 +2980,17 @@ def workflow_local(dependency_provider: Provider) -> Generator[WorkflowLocalExec
     config.OVERRIDE.workflow = workflow
     with dependency_provider.scope(build_workflow, lambda: workflow):
         yield workflow
+    config.OVERRIDE.workflow = original
+
+
+@pytest.fixture
+def workflow_recorder(dependency_provider: Provider) -> Generator[WorkflowRecorder, None, None]:
+    """Record workflow submissions instead of running them."""
+    original = config.OVERRIDE.workflow
+    recorder = WorkflowRecorder()
+    config.OVERRIDE.workflow = recorder
+    with dependency_provider.scope(build_workflow, lambda: recorder):
+        yield recorder
     config.OVERRIDE.workflow = original
 
 

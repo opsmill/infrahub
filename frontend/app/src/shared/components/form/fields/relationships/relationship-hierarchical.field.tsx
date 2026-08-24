@@ -11,12 +11,12 @@ import { updateRelationshipFieldValue } from "@/shared/components/form/utils/upd
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 import {
   RelationshipHierarchicalInput,
   RelationshipHierarchicalManyInput,
 } from "@/entities/nodes/relationships/ui/relationship-hierarchical-input";
-import type { NodeCore } from "@/entities/nodes/types";
 
 import { useCommonParentFilter } from "./useCommonParentFilter";
 
@@ -100,9 +100,11 @@ export default function RelationshipHierarchicalField({
 
               {relationship.cardinality === "one" && pool && (
                 <PoolSelect
+                  name={name}
                   poolKind={pool.kind}
                   poolDefaultAllocatedObjectKind={pool.defaultAllocatedObjectKind}
                   selectedPoolId={selectedPoolId}
+                  value={fieldData}
                   onChange={onChange}
                 />
               )}

@@ -20,6 +20,10 @@ compatibility: Requires the project to use Towncrier for changelog management �
 
 When NOT to use: the project doesn't use Towncrier; pure internal refactors with no user-facing or maintenance impact; and changes the team has explicitly decided don't warrant an entry. (Most internal maintenance still gets a `housekeeping` fragment.)
 
+**Exception — unreleased features need no fragment.** A fix or follow-up to a feature that has not
+shipped in any release is not user-observable: the feature's own `added` fragment already covers
+everything a user will ever see, and a `fixed` entry for something never released is noise.
+
 ## Quick Reference
 
 ```bash
@@ -78,6 +82,7 @@ uv run towncrier create -c "Migrated the frontend build to pnpm workspaces" +pnp
 - **Placing it in a sub-package directory** (e.g. `backend/changelog/`) instead of the configured fragments directory.
 - **Describing the implementation.** "Refactored the auth-token cache layer" → instead say what the user sees: "Fixed users being unexpectedly logged out".
 - **Wrong tense or multiple sentences.** One past-tense sentence.
+- **Duplicating an existing fragment.** On a feature branch spanning multiple PRs, list the fragments directory first — numbered (`NNNN.type.md`) and `+`-prefixed fragments all render into the changelog. If a fragment already describes the same user-visible change, extend or reconcile it instead of adding an overlapping one.
 
 ## See Also
 

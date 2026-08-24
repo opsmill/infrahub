@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    /* Basic Options */
+    "allowJs": true,
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "target": "es2022",
+    "skipLibCheck": true,
+
+    /* Module Resolution */
+    "module": "preserve",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+
+    /* Emit */
+    "erasableSyntaxOnly": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+
+    /* JSX */
+    "jsx": "react-jsx",
+
+    /* Type Checking */
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    /* Type Definitions */
+    "types": ["node", "vite/client"]
+  },
+  "include": ["src"]
+}

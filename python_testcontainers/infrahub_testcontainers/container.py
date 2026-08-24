@@ -67,6 +67,10 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_SCHEMA_STRICT_MODE": "true",
     "INFRAHUB_TESTING_TASKMGR_API_WORKERS": "1",
     "INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS": "0",
+    # Neo4j Bolt connector thread-pool ceiling. 400 matches Neo4j's own default, so this is a
+    # no-op for normal test runs; heavy dataset/perf runs override it via the environment to
+    # avoid Neo.TransientError.Request.NoThreadsAvailable under a wide recompute fan-out.
+    "INFRAHUB_TESTING_DB_BOLT_THREAD_POOL_MAX_SIZE": "400",
 }
 
 
@@ -156,7 +160,7 @@ class InfrahubDockerCompose(DockerCompose):
                     "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",
                     "INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE": "infrahubentasync",
                     "INFRAHUB_TESTING_PREFECT_UI_ENABLED": "false",
-                    "NEO4J_DOCKER_IMAGE": "neo4j:2025.10.1-enterprise",
+                    "NEO4J_DOCKER_IMAGE": "neo4j:2026.05.0-enterprise",
                 }
             )
         if os.environ.get("INFRAHUB_TESTING_TASKMGR_SCALEOUT"):

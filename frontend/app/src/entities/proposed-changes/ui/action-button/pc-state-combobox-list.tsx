@@ -2,7 +2,7 @@ import type React from "react";
 
 import { ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 
-import { pcStatesList } from "@/entities/proposed-changes/constants";
+import { pcStatesList } from "@/entities/proposed-changes/ui/action-button/pc-states-list";
 
 export interface StateComboboxListProps {
   ref?: React.Ref<HTMLDivElement>;

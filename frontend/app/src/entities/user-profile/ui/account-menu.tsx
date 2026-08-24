@@ -1,20 +1,30 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, LinkButton, Spinner } from "@infrahub/ui";
-import { EllipsisVerticalIcon } from "lucide-react";
+import {
+  Button,
+  LinkButton,
+  Menu,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
+  Popover,
+  Spinner,
+} from "@infrahub/ui";
+import {
+  CircleUserIcon,
+  EllipsisVerticalIcon,
+  FileTextIcon,
+  InfoIcon,
+  LogInIcon,
+  LogOutIcon,
+  SlidersHorizontalIcon,
+} from "lucide-react";
 import React from "react";
-import { Link, useLocation } from "react-router";
+import { useLocation } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Avatar } from "@/shared/components/display/avatar";
 import { Skeleton } from "@/shared/components/loading/skeleton";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuDivider,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
 import {
   INFRAHUB_DISCORD_URL,
   INFRAHUB_DOC_LOCAL,
@@ -22,10 +32,12 @@ import {
   INFRAHUB_SWAGGER_DOC_URL,
 } from "@/shared/config/config";
 
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useLogoutMutation } from "@/entities/authentication/ui/queries/logout.mutation";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { AboutModal } from "@/entities/config/ui/about-modal";
 import { AppInfo } from "@/entities/config/ui/app-info";
+import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
+import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import { useGetAccountProfile } from "@/entities/user-profile/ui/queries/get-account-profile.query";
 
 export const AccountMenu = () => {
@@ -46,59 +58,53 @@ export const AccountMenu = () => {
 
 const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => (
   <>
-    <DropdownMenuItem onSelect={onAboutClick}>
-      <Icon icon="mdi:information-outline" className="text-base" />
-      About Infrahub
-    </DropdownMenuItem>
+    <MenuItem onAction={onAboutClick}>
+      <InfoIcon /> About Infrahub
+    </MenuItem>
 
-    <DropdownMenuItem asChild>
-      <Link to={INFRAHUB_DOC_LOCAL} target="_blank" rel="noreferrer">
-        <Icon icon="mdi:file-document" className="text-base" />
-        Infrahub documentation
-      </Link>
-    </DropdownMenuItem>
+    <MenuItem href={INFRAHUB_DOC_LOCAL} target="_blank" rel="noreferrer">
+      <FileTextIcon /> Infrahub documentation
+    </MenuItem>
 
-    <DropdownMenuItem asChild>
-      <Link to={constructPath("/graphql")} className="text-base">
-        <Icon icon="mdi:graphql" className="text-base" />
-        GraphQL Sandbox
-      </Link>
-    </DropdownMenuItem>
+    <MenuItem href={constructPath("/graphql")}>
+      <Icon icon="mdi:graphql" className="text-base" />
+      GraphQL Sandbox
+    </MenuItem>
 
-    <DropdownMenuItem asChild>
-      <Link to={INFRAHUB_SWAGGER_DOC_URL} target="_blank" rel="noreferrer">
-        <Icon icon="mdi:code-json" className="text-base" />
-        Swagger documentation
-      </Link>
-    </DropdownMenuItem>
+    <MenuItem href={INFRAHUB_SWAGGER_DOC_URL} target="_blank" rel="noreferrer">
+      <Icon icon="mdi:code-json" className="text-base" />
+      Swagger documentation
+    </MenuItem>
 
-    <DropdownMenuDivider />
+    <MenuSeparator />
 
-    <DropdownMenuItem asChild>
-      <Link to={INFRAHUB_GITHUB_URL} target="_blank" rel="noreferrer">
-        <Icon icon="mdi:github" className="text-base" />
-        GitHub Repository
-      </Link>
-    </DropdownMenuItem>
+    <MenuItem href={INFRAHUB_GITHUB_URL} target="_blank" rel="noreferrer">
+      <Icon icon="mdi:github" className="text-base" />
+      GitHub Repository
+    </MenuItem>
 
-    <DropdownMenuItem asChild>
-      <Link to={INFRAHUB_DISCORD_URL} target="_blank" rel="noreferrer">
-        <Icon icon="mdi:discord" className="text-base" />
-        Join our Discord server
-      </Link>
-    </DropdownMenuItem>
+    <MenuItem href={INFRAHUB_DISCORD_URL} target="_blank" rel="noreferrer">
+      <Icon icon="mdi:discord" className="text-base" />
+      Join our Discord server
+    </MenuItem>
   </>
+);
+
+const AppInfoFooter = () => (
+  <div className="border-stone-300 border-t px-2.5 py-1">
+    <AppInfo />
+  </div>
 );
 
 const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }) => {
   const location = useLocation();
 
   return (
-    <DropdownMenu>
+    <div className="relative">
       <LinkButton
         variant="ghost"
         size="sm"
-        className="h-10 justify-stretch gap-2 data-pressed:scale-100"
+        className="h-10 w-full justify-stretch gap-2 data-pressed:scale-100"
         href="/login"
         routerOptions={{ state: { from: location } }}
       >
@@ -110,44 +116,41 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
           <div className="truncate font-medium leading-4">Log in</div>
           <div className="truncate text-stone-500 text-xs">anonymous</div>
         </div>
-
-        <DropdownMenuTrigger
-          onClick={(event) => {
-            event.preventDefault();
-          }}
-          asChild
-        >
-          <Button
-            variant="ghost"
-            shape="square"
-            size="xs"
-            data-testid="unauthenticated-menu-trigger"
-            className="ml-auto data-hovered:bg-stone-300 group-data-[state=collapsed]:hidden"
-          >
-            <EllipsisVerticalIcon />
-          </Button>
-        </DropdownMenuTrigger>
       </LinkButton>
 
-      <DropdownMenuContent align="end" side="right">
-        <CommonMenuItems onAboutClick={onAboutClick} />
-        <DropdownMenuDivider />
-        <DropdownMenuItem asChild>
-          <Link to="/login" state={{ from: location }}>
-            <Icon icon="mdi:login" className="text-base" />
-            Log in
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuDivider />
-        <AppInfo />
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <MenuTrigger>
+        <Button
+          variant="ghost"
+          shape="square"
+          size="xs"
+          aria-label="Open account menu"
+          data-testid="unauthenticated-menu-trigger"
+          className="absolute top-1/2 right-1 -translate-y-1/2 group-data-[state=collapsed]:hidden"
+        >
+          <EllipsisVerticalIcon />
+        </Button>
+
+        <Popover placement="right bottom">
+          <Menu variant="picker" aria-label="Account menu">
+            <CommonMenuItems onAboutClick={onAboutClick} />
+            <MenuSeparator />
+            <MenuItem href="/login" routerOptions={{ state: { from: location } }}>
+              <LogInIcon />
+              Log in
+            </MenuItem>
+          </Menu>
+          <AppInfoFooter />
+        </Popover>
+      </MenuTrigger>
+    </div>
   );
 };
 
 const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }) => {
   const { setToken } = useAuth();
   const { data: profile, isPending } = useGetAccountProfile();
+  const { data: canManageGlobalPreferences = false } =
+    useHasGlobalPermission(MANAGE_GLOBAL_PREFERENCES);
   const { mutateAsync: logout, isPending: isLoggingOut } = useLogoutMutation();
 
   const handleSignOut = async () => {
@@ -169,42 +172,48 @@ const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-10 justify-stretch gap-2 data-pressed:scale-100"
-          data-testid="authenticated-menu-trigger"
-        >
-          <Avatar name={profile?.name?.value} className="size-6 shrink-0" />
+    <MenuTrigger>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-10 justify-stretch gap-2 data-pressed:scale-100"
+        data-testid="authenticated-menu-trigger"
+      >
+        <Avatar name={profile?.name?.value} className="size-6" />
 
-          <div className="overflow-hidden group-data-[state=collapsed]:hidden">
-            <div className="truncate font-medium text-sm">{profile?.label?.value}</div>
-          </div>
+        <div className="overflow-hidden group-data-[state=collapsed]:hidden">
+          <div className="truncate font-medium text-sm">{profile?.label?.value}</div>
+        </div>
 
-          <EllipsisVerticalIcon className="ml-auto group-data-[state=collapsed]:hidden" />
-        </Button>
-      </DropdownMenuTrigger>
+        <EllipsisVerticalIcon className="ml-auto group-data-[state=collapsed]:hidden" />
+      </Button>
 
-      <DropdownMenuContent align="end" side="right">
-        <DropdownMenuItem asChild>
-          <Link to={constructPath("/profile")}>
-            <Icon icon="mdi:account-circle" className="text-base" />
-            Account settings
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuDivider />
-        <CommonMenuItems onAboutClick={onAboutClick} />
-        <DropdownMenuDivider />
-        <DropdownMenuItem onClick={handleSignOut} disabled={isLoggingOut}>
-          {isLoggingOut ? <Spinner /> : <Icon icon="mdi:logout" className="text-base" />}
-          Logout
-        </DropdownMenuItem>
-        <DropdownMenuDivider />
-        <AppInfo />
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <Popover placement="right bottom">
+        <Menu variant="picker" aria-label="Account menu">
+          <MenuItem href={constructPath("/profile")}>
+            <CircleUserIcon /> Account settings
+          </MenuItem>
+
+          {canManageGlobalPreferences && (
+            <MenuItem href={constructPath("/global-preferences")}>
+              <SlidersHorizontalIcon /> Global preferences
+            </MenuItem>
+          )}
+
+          <MenuSeparator />
+
+          <CommonMenuItems onAboutClick={onAboutClick} />
+
+          <MenuSeparator />
+
+          <MenuItem onAction={handleSignOut} isDisabled={isLoggingOut}>
+            {isLoggingOut ? <Spinner /> : <LogOutIcon />}
+            Logout
+          </MenuItem>
+        </Menu>
+        <AppInfoFooter />
+      </Popover>
+    </MenuTrigger>
   );
 };
 

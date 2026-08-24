@@ -4,10 +4,10 @@ import { useAtomValue } from "jotai";
 import type { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getObjectPermissions } from "@/entities/permission/domain/get-object-permissions";
-import type { GetPermissionOptions } from "@/entities/permission/utils";
+import type { GetPermissionOptions } from "@/entities/permission/domain/rules/get-permission";
+import { getObjectPermissions } from "@/entities/permission/domain/use-cases/get-object-permissions";
 
 export interface GetObjectPermissionsParams extends ContextParams, GetPermissionOptions {
   kind: string;

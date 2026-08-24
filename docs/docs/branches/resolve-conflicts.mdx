@@ -8,7 +8,7 @@ Conflicts occur when the same data changes in both a feature branch and the main
 
 The system automatically detects several types of conflicts:
 
-- **Attribute conflicts**: The same field of an object has been modified in both branches with different values. For example, the hostname of a device is changed to `router-1` in one branch and `router-primary` in another.
+- **Attribute conflicts**: The same field of an object has been modified in both branches with different values. For example, the hostname of a device is changed to `router-1` in one branch and `router-primary` in another. For `List` and `JSON`-array attributes marked [`ordered: false`](../reference/schema/attribute.mdx#ordered) in the schema, a difference in element order alone doesn't raise a conflict.
 - **Relationship conflicts**: Conflicting changes to object relationships occur when the connections between objects are modified differently in separate branches. For instance, a device might be assigned to datacenter A in one branch and datacenter B in another.
 - **Schema conflicts**: Incompatible schema modifications between branches can cause structural conflicts. This might happen when a field is removed in one branch but modified in another.
 - **Uniqueness conflicts**: Changes that would violate uniqueness constraints upon merge are flagged to prevent data integrity issues. This occurs when both branches create different objects with the same unique identifier.

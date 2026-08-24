@@ -1,17 +1,17 @@
+import { Sheet, Tooltip } from "@infrahub/ui";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import {
   type IPAddressAvailableIdentifierProps,
   IpAddressAvailableIdentifier,
 } from "@/entities/ipam/ip-addresses/ui/ip-address-available-identifier";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 
 export function IpAddressAvailableCreateFormTrigger(props: IPAddressAvailableIdentifierProps) {
   const { selectedSchema, permission } = useObjectTableContext();
@@ -21,26 +21,17 @@ export function IpAddressAvailableCreateFormTrigger(props: IPAddressAvailableIde
 
   return (
     <>
-      <Tooltip
-        enabled={!isCreationAllowed}
-        content={!isCreationAllowed && permission.create.message}
-        side="right"
-      >
+      <Tooltip message={!isCreationAllowed && permission.create.message} placement="right">
         <IpAddressAvailableIdentifier onClick={() => setIsCreateFormOpen(true)} {...props} />
       </Tooltip>
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={selectedSchema}
-            currentObjectLabel="New"
-            title={`Create ${selectedSchema.label}`}
-            subtitle={selectedSchema.description}
-          />
-        }
-        open={isCreateFormOpen}
-        setOpen={setIsCreateFormOpen}
-      >
+      <Sheet isOpen={isCreateFormOpen} onOpenChange={setIsCreateFormOpen}>
+        <SlideOverTitle
+          schema={selectedSchema}
+          currentObjectLabel="New"
+          title={`Create ${selectedSchema.label}`}
+          subtitle={selectedSchema.description}
+        />
         <ObjectForm
           onSuccess={async () => {
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
@@ -61,7 +52,7 @@ export function IpAddressAvailableCreateFormTrigger(props: IPAddressAvailableIde
           onCancel={() => setIsCreateFormOpen(false)}
           kind={selectedSchema.kind!}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 }

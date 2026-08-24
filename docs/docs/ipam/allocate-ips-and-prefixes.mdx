@@ -1,0 +1,60 @@
+---
+title: Allocate IPs and prefixes
+---
+
+## When to allocate from a pool
+
+Allocate from a Resource Pool when something other than a person assigns the address — a provisioning pipeline creating devices, a Generator rendering configuration, a CI/CD job reserving space for a new service. If you are only recording and querying IP data that already exists, the IPAM nodes alone are enough.
+
+## Use a resource pool
+
+Resource Pool is the recommended way to allocate IP addresses and prefixes. A `CoreIPAddressPool` or `CoreIPPrefixPool` takes your IPAM prefixes as its `resources` and returns the next available address or subnet on request.
+
+```graphql
+mutation {
+  CoreIPAddressPoolCreate(data: {
+    name: {value: "Management IP Pool"},
+    default_address_type: {value: "IpamIPAddress"},
+    default_prefix_length: {value: 24},
+    resources: [{id: "<IpamIPPrefix-id>"}],
+    ip_namespace: {id: "default"}
+  }) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+The `resources` field references the `IpamIPPrefix` objects the pool allocates from — this is the connection point between IPAM and Resource Manager. Passing the same `identifier` on repeated allocation requests returns the existing allocation instead of creating a new one, so a provisioning script can run more than once without allocating the same address or subnet twice. Each pool also takes an exclusive lock scoped to itself while allocating, so two concurrent requests against the same pool never return the same resource.
+
+For the full allocation walkthrough — creating the source prefix, creating the pool, and allocating directly or during node creation — see [Allocate IP addresses](../resource-manager/allocate-ip-address.mdx) and [Allocate IP prefixes](../resource-manager/allocate-ip-prefix.mdx).
+
+## Allocate from generators
+
+A Generator has the same Python SDK client available anywhere else, so allocating from a Resource Pool inside a Generator is a regular SDK call:
+
+```python
+device_loopback = await client.allocate_next_ip_address(
+    resource_pool=loopback_pool,
+    identifier=device_name,
+    data={"interface": interface.id},
+    branch=branch,
+)
+
+interconnect_subnet = await client.allocate_next_ip_prefix(
+    resource_pool=interconnection_pool,
+    kind=IpamIPPrefix,
+    identifier=network.identifier,
+    branch=branch,
+)
+```
+
+`allocate_next_ip_address` and `allocate_next_ip_prefix` take the same `resource_pool` and `identifier` arguments as the underlying `InfrahubIPAddressPoolGetResource` and `InfrahubIPPrefixPoolGetResource` mutations — passing a stable `identifier` (for example, the device name) keeps a Generator idempotent across reruns. The [infrastructure-edge topology model](https://github.com/opsmill/infrahub/blob/stable/models/infrastructure_edge.py) is a worked example that allocates loopback and management addresses, and interconnection subnets, this way.
+
+## Advanced: next-available GraphQL primitives
+
+`InfrahubIPAddressGetNextAvailable` and `InfrahubIPPrefixGetNextAvailable` are read-only GraphQL queries that return the next free address or subnet from a given prefix. Unlike a Resource Pool allocation, they don't create a record, and they don't provide the pool's cross-branch allocation guarantee — two callers on different branches can compute the same "next available" value independently and collide.
+
+Use Resource Pool for production workflows. Use these queries only to look up a value without persisting it.

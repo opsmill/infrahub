@@ -1,0 +1,144 @@
+---
+title: Query IPAM data
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Read the computed values on IP prefixes and addresses, or follow the hierarchy relationships. Use these patterns for reporting, automation, or verification.
+
+## Query a prefix's computed values
+
+Every `IpamIPPrefix` exposes `utilization`, `netmask`, `hostmask`, `network_address`, and `broadcast_address` as read-only attributes, computed on read:
+
+<Tabs groupId="method" queryString>
+  <TabItem value="graphql" label="GraphQL" default>
+
+```graphql
+query {
+  IpamIPPrefix(prefix__value: "192.0.2.0/24") {
+    edges {
+      node {
+        prefix { value }
+        utilization { value }
+        netmask { value }
+        hostmask { value }
+        network_address { value }
+        broadcast_address { value }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+prefix = await client.get(kind="IpamIPPrefix", prefix__value="192.0.2.0/24")
+print(prefix.utilization.value, prefix.netmask.value, prefix.hostmask.value)
+print(prefix.network_address.value, prefix.broadcast_address.value)
+```
+
+</TabItem>
+</Tabs>
+
+## Query an address's computed values
+
+`IpamIPAddress` has no equivalent sibling attributes — instead, the `address` attribute itself (kind `IPHost`) exposes computed sub-fields: `ip`, `netmask`, `hostmask`, `prefixlen`, and `version`.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="graphql" label="GraphQL" default>
+
+```graphql
+query {
+  IpamIPAddress(address__value: "192.0.2.10/24") {
+    edges {
+      node {
+        address {
+          value
+          ip
+          netmask
+          hostmask
+          prefixlen
+          version
+        }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+address = await client.get(kind="IpamIPAddress", address__value="192.0.2.10/24")
+value = address.address.value  # an ipaddress.IPv4Interface or IPv6Interface
+print(value.ip, value.netmask, value.hostmask, value.version)
+```
+
+The Python SDK maps an `IPHost` attribute's value to the standard library's `ipaddress.IPv4Interface` or `IPv6Interface` — `netmask` and `hostmask` come from that object, not from a separate attribute.
+
+</TabItem>
+</Tabs>
+
+## Navigate the hierarchy
+
+IP prefixes expose `parent`, `children`, `ancestors`, and `descendants` relationships. They are read-only — Infrahub manages them automatically.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="graphql" label="GraphQL" default>
+
+```graphql
+query {
+  IpamIPPrefix(prefix__value: "10.0.0.0/16") {
+    edges {
+      node {
+        prefix { value }
+        parent {
+          node { prefix { value } }
+        }
+        children {
+          edges {
+            node { prefix { value } }
+          }
+        }
+        ancestors {
+          edges {
+            node { prefix { value } }
+          }
+        }
+        descendants {
+          edges {
+            node { prefix { value } }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+prefix = await client.get(kind="IpamIPPrefix", prefix__value="10.0.0.0/16")
+for child in await prefix.children.fetch():
+    print(child.prefix.value)
+for descendant in await prefix.descendants.fetch():
+    print(descendant.prefix.value)
+```
+
+</TabItem>
+</Tabs>
+
+## Next
+
+- [IP Address Management](./overview.mdx) — the built-in generics and the hierarchy they participate in
+- [Use namespaces](./use-namespaces.mdx) — isolating the prefixes and addresses these queries run against
+- [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) — creating prefixes and addresses instead of reading them

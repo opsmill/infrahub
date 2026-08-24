@@ -30,8 +30,8 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from infrahub.dependencies.registry import get_component_registry
-from tests.helpers.db_validation import verify_graph
 
 
 class TestDiffAfterNodeRemoveMigration:

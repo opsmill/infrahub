@@ -3,6 +3,7 @@ import { matchPath, useLocation } from "react-router";
 import { BreadcrumbAccountProfile } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-account-profile";
 import { BreadcrumbActivities } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-activities";
 import { BreadcrumbBranches } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-branches";
+import { BreadcrumbGlobalPreferences } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-global-preferences";
 import { BreadcrumbGraphql } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-graphql";
 import { BreadcrumbIpNamespaces } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-ip-namespaces";
 import { BreadcrumbIpam } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-ipam";
@@ -58,6 +59,10 @@ export function BreadcrumbNavigation() {
 
   if (matchPath({ path: "/role-management", end: false }, pathname)) {
     return <BreadcrumbRoleManagement />;
+  }
+
+  if (matchPath({ path: "/global-preferences" }, pathname)) {
+    return <BreadcrumbGlobalPreferences />;
   }
 
   return <BreadcrumbObjects />;

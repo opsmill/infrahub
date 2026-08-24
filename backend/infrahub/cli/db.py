@@ -49,6 +49,7 @@ from infrahub.core.migrations.shared import (
     get_migration_console,
     suppress_internal_logs,
 )
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
@@ -130,7 +131,8 @@ async def do_migrate(
         root_node: The root node containing the current graph version.
         check: If True, only check which migrations need to run without applying them.
         migration_number: If provided, run only this specific migration.
-        verbose: If True, show internal migration output.
+        verbose: If True, leave the internal infrahub/prefect loggers unsuppressed.
+            Per-migration progress is printed either way.
 
     """
     migrations = await detect_migration_to_run(
@@ -618,7 +620,8 @@ async def migrate_database(
         migrations: Sequence of migrations to apply.
         initialize: Whether to initialize the registry before running migrations.
         update_graph_version: Whether to update the graph version after each migration.
-        verbose: If True, show detailed internal output from each migration.
+        verbose: Whether the caller left the internal infrahub/prefect loggers unsuppressed.
+            Only affects the hint shown on failure; per-migration progress is always printed.
 
     """
     if not migrations:
@@ -637,7 +640,6 @@ async def migrate_database(
             migration_console.log(f"{ERROR_BADGE} {error}")
         return False
 
-    inner_console = migration_console if verbose else Console(quiet=True)
     total_start = time.perf_counter()
     applied_count = 0
 
@@ -647,7 +649,7 @@ async def migrate_database(
         start = time.perf_counter()
 
         execution_result = await migration.execute(
-            migration_input=MigrationInput(db=db, console=inner_console),
+            migration_input=MigrationInput(db=db, console=migration_console),
         )
         validation_result = None
         if execution_result.success:
@@ -671,7 +673,7 @@ async def migrate_database(
                     migration_console.log(f"    Error: {error}")
             if not verbose:
                 migration_console.log(
-                    f"    Hint: Use --verbose for detailed output, or re-run with: infrahub db migrate --migration-number {migration_num} --verbose"
+                    f"    Hint: re-run with internal logs enabled: infrahub db migrate --migration-number {migration_num} --verbose"
                 )
             return False
 
@@ -835,16 +837,18 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
 
     coordinator = SchemaUpdateCoordinator(
         db=db,
-        branch=default_branch,
         schema_manager=registry.schema,
-        origin_schema=origin_schema,
-        migration_executor=MigrationExecutor.DIRECT,
+        rollbacker=GraphRollbacker(db=db),
     )
 
     try:
         await coordinator.execute(
+            branch=default_branch,
+            origin_schema=origin_schema,
+            rollback_schema=origin_schema,
             candidate_schema=candidate_schema,
             at=Timestamp(),
+            migration_executor=MigrationExecutor.DIRECT,
             diff=result.diff,
             migrations=result.migrations,
             limit=result.diff.all,

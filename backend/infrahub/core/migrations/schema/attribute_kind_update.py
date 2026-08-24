@@ -147,7 +147,11 @@ CALL (has_value_e) {
 CALL (attr, n) {
     WITH attr, n
     WHERE $set_metadata
+    SET attr.previous_updated_at = CASE WHEN attr.updated_at IS NULL OR attr.updated_at <> $at THEN attr.updated_at ELSE attr.previous_updated_at END,
+        attr.previous_updated_by = CASE WHEN attr.updated_at IS NULL OR attr.updated_at <> $at THEN attr.updated_by ELSE attr.previous_updated_by END
     SET attr.updated_at = $at, attr.updated_by = $user_id
+    SET n.previous_updated_at = CASE WHEN n.updated_at IS NULL OR n.updated_at <> $at THEN n.updated_at ELSE n.previous_updated_at END,
+        n.previous_updated_by = CASE WHEN n.updated_at IS NULL OR n.updated_at <> $at THEN n.updated_by ELSE n.previous_updated_by END
     SET n.updated_at = $at, n.updated_by = $user_id
 }
         """ % {

@@ -7,6 +7,7 @@ import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core import registry
+from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import NULL_VALUE, BranchConflictKeep, DiffAction, InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import BranchTrackingId, ConflictSelection, EnrichedDiffRoot
@@ -15,10 +16,10 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
+from infrahub.database.validation import verify_graph
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.proposed_change.constants import ProposedChangeState
 from tests.constants import TestKind
-from tests.helpers.db_validation import verify_graph
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -215,7 +216,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff = await self.get_branch_diff(db=db, branch=deleted_branch)
         assert len(diff.nodes) == 1
 
-        await deleted_branch.delete(db=db)
+        await BranchDataDeleter(db=db, batch_size=5).delete(branch=deleted_branch)
         return diff
 
     @staticmethod

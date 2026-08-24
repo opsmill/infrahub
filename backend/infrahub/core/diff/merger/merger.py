@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.query.bulk_merge import (
     BulkMergeAttributePropertyEdgesQuery,
@@ -13,7 +12,7 @@ from infrahub.core.diff.query.bulk_merge import (
 )
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.diff.query.merge import DiffMergeMetadataQuery
-from infrahub.core.query.rollback import RollbackQuery
+from infrahub.core.query.rollback import RollbackScope
 from infrahub.database import retry_db_transaction
 from infrahub.log import get_logger
 
@@ -22,6 +21,7 @@ from .exclusion_plan import MergeExclusionPlan
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.diff.repository.repository import DiffRepository
+    from infrahub.core.rollback import GraphRollbacker
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
@@ -49,13 +49,14 @@ class DiffMerger:
         destination_branch: Branch,
         diff_repository: DiffRepository,
         exclusion_plan_builder: MergeExclusionPlanBuilder,
+        rollbacker: GraphRollbacker,
     ) -> None:
         self.source_branch = source_branch
         self.destination_branch = destination_branch
         self.db = db
         self.diff_repository = diff_repository
         self.exclusion_plan_builder = exclusion_plan_builder
-        self._affected_node_uuids: list[str] = []
+        self.rollbacker = rollbacker
         self._merge_started = False
 
     async def merge_graph(self, at: Timestamp) -> None:
@@ -94,7 +95,6 @@ class DiffMerger:
             at=at,
             tracking_id=tracking_id,
         )
-        self._affected_node_uuids = affected_node_uuids
         self._merge_started = True
 
         log.info("Running bulk node existence merge")
@@ -124,11 +124,6 @@ class DiffMerger:
                     node_uuids=batch_uuids,
                 )
                 await metadata_query.execute(db=self.db)
-
-        branched_from = at.subtract(microseconds=1)
-        self.source_branch.branched_from = branched_from.to_string()
-        await self.source_branch.save(db=self.db)
-        registry.branch[self.source_branch.name] = self.source_branch
 
         log.info("Graph merge complete")
 
@@ -200,14 +195,20 @@ class DiffMerger:
         )
         await query.execute(db=self.db)
 
-    async def rollback(self, at: Timestamp) -> None:
+    async def rollback(self, merge_started_at: Timestamp) -> None:
+        """Reverse every destination-branch write stamped at or after the merge start.
+
+        Safe because of the merge write-block: while the merge window is open the merge flow is the
+        only writer on the destination branch, so everything stamped in the window is the merge's
+        own work (graph merge and schema migrations alike). Also restores the updated_at/updated_by
+        snapshots taken when the merge bumped them. Idempotent, and a no-op when this instance
+        never began writing the merge.
+        """
         if not self._merge_started:
             return
-        rollback_query = await RollbackQuery.init(
-            db=self.db,
-            branch=self.source_branch,
+        await self.rollbacker.rollback(
             target_branch=self.destination_branch,
-            at=at,
-            node_uuids=self._affected_node_uuids,
+            at=merge_started_at,
+            scope=RollbackScope.SINCE_TIMESTAMP,
+            restore_metadata=True,
         )
-        await rollback_query.execute(db=self.db)

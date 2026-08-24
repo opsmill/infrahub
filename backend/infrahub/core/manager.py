@@ -163,7 +163,7 @@ class NodeManager:
             node = await cls.get_one_by_hfid(
                 db=db,
                 hfid=filters["hfid"],
-                kind=schema,
+                kind=node_schema.kind,
                 fields=fields,
                 at=at,
                 branch=branch,
@@ -318,7 +318,7 @@ class NodeManager:
             return []
 
         if fetch_peers:
-            peer_ids = [peer.peer_id for peer in peers_info]
+            peer_ids = [str(peer.peer_id) for peer in peers_info]
             peer_nodes = await cls.get_many(
                 db=db,
                 ids=peer_ids,
@@ -336,7 +336,7 @@ class NodeManager:
                 branch=branch,
                 source_kind=peer.source_kind,
                 at=at,
-                node_id=peer.source_id,
+                node_id=str(peer.source_id),
             ).load(
                 db=db,
                 id=peer.rel_node_id,
@@ -344,7 +344,7 @@ class NodeManager:
                 data=peer,
             )
             if fetch_peers:
-                result.set_peer(value=peer_nodes[peer.peer_id])
+                result.set_peer(value=peer_nodes[str(peer.peer_id)])
             results.append(result)
 
         return results
@@ -864,10 +864,11 @@ class NodeManager:
         if node:
             return node
 
-        node = await cls.get_one_by_default_filter(
+        return await cls.get_one_by_default_filter(
             db=db,
             id=id,
             kind=kind,
+            raise_on_error=True,
             fields=fields,
             at=at,
             branch=branch,
@@ -875,9 +876,6 @@ class NodeManager:
             prefetch_relationships=prefetch_relationships,
             branch_agnostic=branch_agnostic,
         )
-        if not node:
-            raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=id)
-        return node
 
     @overload
     @classmethod
@@ -1059,7 +1057,9 @@ class NodeManager:
 
         if not result:
             if raise_on_error:
-                raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=id)
+                # Avoid resolving kind via the schema here: it can raise on the not-found path.
+                node_kind = kind.__name__ if isinstance(kind, type) else (kind or "Node")
+                raise NodeNotFoundError(branch_name=branch.name, node_type=node_kind, identifier=id)
             return None
 
         node = result[id]
@@ -1175,7 +1175,7 @@ class NodeManager:
             node_class = identify_node_class(node=node)
             node_branch = await registry.get_branch(db=db, branch=node.branch)
             item = await node_class.init(schema=node.schema, branch=node_branch, at=at, db=db)
-            await item.load(**new_node_data, db=db)
+            await item.load(**new_node_data, db=db)  # type: ignore[arg-type]  # mypy cannot match a heterogeneous **dict splat against load()'s typed params
             item._set_created_at(node.created_at)
             item._set_created_by(node.created_by)
             item._set_updated_at(node.updated_at)
@@ -1303,9 +1303,9 @@ class NodeManager:
             if insert_peer_node:
                 rel_peers: list[Node | str] = []
                 for peer_id in peer_ids:
-                    peer = nodes_by_id.get(peer_id)
-                    if peer:
-                        rel_peers.append(peer)
+                    peer_node = nodes_by_id.get(peer_id)
+                    if peer_node:
+                        rel_peers.append(peer_node)
             # if only getting some relationships, make sure we want THIS relationship for THIS node schema
             elif cardinality_one_identifiers_by_kind:
                 required_direction = cardinality_one_identifiers_by_kind.get(node_schema.kind, {}).get(
@@ -1344,7 +1344,8 @@ class NodeManager:
                 rel_peers_with_metadata.append(peer_with_metadata)
 
             rel_manager.has_fetched_relationships = True
-            await rel_manager.update(db=db, data=rel_peers_with_metadata)
+            # invariant list parameter; update() only reads data, so the narrower element type is safe
+            await rel_manager.update(db=db, data=rel_peers_with_metadata)  # type: ignore[arg-type]
 
     @classmethod
     async def delete(

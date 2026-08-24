@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class RecordingLock(InfrahubLock):
     """A local lock that logs its real (non-re-entrant) acquire/release boundaries to a timeline."""
 
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
         name: str,
         connection: redis.Redis | InfrahubServices | None = None,

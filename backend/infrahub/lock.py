@@ -53,8 +53,24 @@ GLOBAL_TASKMGR_INIT_LOCK = "global.taskmgr.init"
 GLOBAL_WORKER_TASKMGR_INIT_LOCK = "global.worker.taskmgr.init"
 GLOBAL_SCHEMA_LOCK = "global.schema"
 GLOBAL_GRAPH_LOCK = "global.graph"
-
 GLOBAL_INIT_LOCKS = frozenset({GLOBAL_INIT_LOCK, GLOBAL_TASKMGR_INIT_LOCK, GLOBAL_WORKER_TASKMGR_INIT_LOCK})
+
+_LOCK_TOKEN_SEPARATOR = "::"
+
+
+def get_worker_id_from_lock_token(token: str | None) -> str | None:
+    """Return the worker id from a lock token, or ``None`` if it is absent or malformed.
+
+    A held lock stores a token of the form ``"{timestamp}::{worker_id}"`` (written on acquire). This
+    is the inverse, kept beside the token format so the two stay in sync. ``None`` for a missing or
+    unparseable token means callers never mistake a dropped/garbled lock for one held by a worker.
+    """
+    if not token:
+        return None
+    _, separator, worker_id = token.partition(_LOCK_TOKEN_SEPARATOR)
+    if not separator or not worker_id:
+        return None
+    return worker_id
 
 
 class InfrahubMultiLock:

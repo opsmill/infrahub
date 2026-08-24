@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -111,9 +111,10 @@ class HFIDs:
         for applicable_kinds in relationship_trigger.attributes.values():
             for relationship_identifier in applicable_kinds:
                 if target_kind == relationship_identifier.kind:
-                    template_label = self.get_node_definition(kind=target_kind)
-                    template_label.filter_key = relationship_identifier.filter_key
-                    return template_label
+                    # Copy so the cached definition keeps its own-id filter for self recomputes.
+                    return replace(
+                        self.get_node_definition(kind=target_kind), filter_key=relationship_identifier.filter_key
+                    )
 
         raise ValueError(
             f"Unable to find registered template for {target_kind} registered on related node {related_kind}"

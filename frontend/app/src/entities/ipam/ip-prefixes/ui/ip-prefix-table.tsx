@@ -1,15 +1,16 @@
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import type { Filter } from "@/shared/hooks/useFilters";
 
-import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
+import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
+import { getIpPrefixTableColumns } from "@/entities/ipam/ip-prefixes/ui/get-ip-prefix-table-columns";
 import { useGetIpPrefixList } from "@/entities/ipam/ip-prefixes/ui/queries/get-ip-prefix-list.query";
-import { getIpPrefixTableColumns } from "@/entities/ipam/ip-prefixes/utils/get-ip-prefix-table-columns";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/utils/get-object-actions-column";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
+import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 
 const IP_PREFIX_TABLE_COLUMN_ORDER = [
   "id",
@@ -27,6 +28,7 @@ export interface IpPrefixTableProps {
 
 export function IpPrefixTable({ baseFilters = [] }: IpPrefixTableProps) {
   const { filters, selectedSchema, permission } = useObjectTableContext();
+  const { customSort } = useSort(selectedSchema);
   const allFilters = [...baseFilters, ...filters];
 
   const { data: count } = useObjectsCount({
@@ -38,6 +40,7 @@ export function IpPrefixTable({ baseFilters = [] }: IpPrefixTableProps) {
     useGetIpPrefixList({
       schema: selectedSchema,
       filters: allFilters,
+      sort: customSort,
     });
 
   if (error) {

@@ -1,0 +1,24 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Scan this package's components and the @infrahub/ui source it composes, so utility
+   classes (incl. consumed Button/Card classes) are generated in tests + Storybook. */
+@source "./**/*.{js,ts,jsx,tsx}";
+@source "../../ui/src/**/*.{js,ts,jsx,tsx}";
+
+@font-face {
+  font-family: InterVariable;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(https://rsms.me/inter/font-files/InterVariable.woff2) format("woff2");
+}
+
+@theme {
+  --font-sans: InterVariable, sans-serif;
+}
+
+body {
+  color: var(--color-stone-800);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

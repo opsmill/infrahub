@@ -26,12 +26,16 @@ import { Skeleton } from "@/shared/components/loading/skeleton";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { NODE_TRIGGER_RELATIONSHIP_MATCH, NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
+import {
+  NODE_TRIGGER_RELATIONSHIP_MATCH,
+  NODE_TRIGGER_RULE,
+} from "@/entities/triggers/domain/model/trigger";
 
 interface NodeRelationshipMatchFormProps extends NodeFormProps {}
 
@@ -43,6 +47,7 @@ export const NodeRelationshipMatchForm = ({
   onCancel,
   ...props
 }: NodeRelationshipMatchFormProps) => {
+  const { currentBranch } = useCurrentBranch();
   const { parentData, parentSchema } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
   const updateObject = useUpdateObjectMutation();
@@ -50,6 +55,7 @@ export const NodeRelationshipMatchForm = ({
   const schemaFields = getFormFieldsFromSchema({
     ...props,
     initialObject: currentObject,
+    isDefaultBranch: !!currentBranch.is_default,
     isUpdate,
     parentData,
     parentSchema,
@@ -163,25 +169,23 @@ export const NodeRelationshipMatchForm = ({
   }
 
   return (
-    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
-      <Form form={form} onSubmit={handleSubmit}>
-        <NodeRelationshipField schemaFields={schemaFields} />
+    <Form form={form} onSubmit={handleSubmit}>
+      <NodeRelationshipField schemaFields={schemaFields} />
 
-        {fields.map((field) => {
-          return <DynamicField key={field.name} {...field} />;
-        })}
+      {fields.map((field) => {
+        return <DynamicField key={field.name} {...field} />;
+      })}
 
-        <Row className="justify-end">
-          {onCancel && (
-            <Button variant="outline" onPress={onCancel}>
-              Cancel
-            </Button>
-          )}
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
+        )}
 
-          <FormSubmit>Save</FormSubmit>
-        </Row>
-      </Form>
-    </div>
+        <FormSubmit>Save</FormSubmit>
+      </Row>
+    </Form>
   );
 };
 

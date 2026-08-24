@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { addDropdown } from "@/entities/schema/domain/add-dropdown";
+import { addDropdown } from "@/entities/schema/domain/use-cases/add-dropdown";
 import { invalidateSchemaQueries } from "@/entities/schema/ui/queries/invalidate-schema-queries";
 
 export function useAddDropdownMutation() {

@@ -12,14 +12,14 @@ import {
 import type {
   ConvertSourceRelationshipInputProps,
   RelationshipOneSourceOption,
-} from "@/entities/nodes/convert/types";
+} from "@/entities/nodes/convert/ui/convert-source.types";
 import {
   SourceOptionItem,
   SourceOptionValue,
 } from "@/entities/nodes/convert/ui/source-option-item";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeRelationshipOne } from "@/entities/nodes/types";
+import type { NodeRelationshipOne } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 
 export const ConvertSourceRelationshipOneInput = ({
   sourceObject,

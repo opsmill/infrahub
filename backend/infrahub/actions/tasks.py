@@ -118,8 +118,7 @@ async def add_node_to_group(
     branch_name: str,
     node_id: str,
     group_id: str,
-    context: EventContext,  # noqa: ARG001
-    service: InfrahubServices,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name], nodes=[node_id, group_id])
 
@@ -129,7 +128,9 @@ async def add_node_to_group(
         query={"ok": None},
     )
 
-    await service.client.execute_graphql(query=mutation.render(), branch_name=branch_name)
+    client = get_client()
+    client.request_context = context.to_request_context()
+    await client.execute_graphql(query=mutation.render(), branch_name=branch_name)
 
 
 @flow(
@@ -140,8 +141,7 @@ async def remove_node_from_group(
     branch_name: str,
     node_id: str,
     group_id: str,
-    context: EventContext,  # noqa: ARG001
-    service: InfrahubServices,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name], nodes=[node_id, group_id])
 
@@ -151,7 +151,9 @@ async def remove_node_from_group(
         query={"ok": None},
     )
 
-    await service.client.execute_graphql(query=mutation.render(), branch_name=branch_name)
+    client = get_client()
+    client.request_context = context.to_request_context()
+    await client.execute_graphql(query=mutation.render(), branch_name=branch_name)
 
 
 @flow(
@@ -167,6 +169,7 @@ async def run_generator(
     await add_tags(branches=[branch_name], nodes=node_ids + [generator_definition_id])
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     await _run_generators(
         branch_name=branch_name,
@@ -191,6 +194,7 @@ async def run_generator_group_event(
     await add_tags(branches=[branch_name], nodes=node_ids + [generator_definition_id])
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     await _run_generators(
         branch_name=branch_name,

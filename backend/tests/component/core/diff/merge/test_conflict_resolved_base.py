@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
-from tests.helpers.db_validation import verify_graph
+from infrahub.database.validation import verify_graph
 
 from ._conflict_setup import stage_base_conflicts
 from ._matrix_setup import stage_all_change_types
@@ -100,7 +100,7 @@ async def test_conflict_resolved_base(
 
     # After rollback the added node is gone; base-side values remain (nothing to
     # undo on base since no branch change landed there).
-    await merger.rollback(at=merge_at)
+    await merger.rollback(merge_started_at=merge_at)
     await validate_all_applied_with_conflict_to_base(
         db=db,
         branch=default_branch,

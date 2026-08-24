@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { refreshAccessToken } from "@/entities/authentication/domain/refresh-access-token";
+import { refreshAccessToken } from "@/entities/authentication/domain/use-cases/refresh-access-token";
 
 export function refreshAccessTokenQueryOptions() {
   return queryOptions({

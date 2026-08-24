@@ -1,5 +1,7 @@
 from copy import deepcopy
+from dataclasses import dataclass
 
+import pytest
 from graphql import DocumentNode, GraphQLSchema
 
 from infrahub.core.branch import Branch
@@ -188,6 +190,155 @@ async def test_get_models_in_use(
     assert gqa.query_report.requested_read["TestGazCar"].relationships == set()
     assert gqa.query_report.requested_read[InfrahubKind.GENERICGROUP].attributes == set()
     assert gqa.query_report.requested_read[InfrahubKind.GENERICGROUP].relationships == set()
+
+
+async def test_traversed_kinds(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    query_01: str,
+    car_person_schema_generics: SchemaRoot,
+) -> None:
+    """Traversed kinds cover what the query reaches through a relationship, roots included when shared.
+
+    A caller mapping a data change back to the query's own targets needs the two apart, because a
+    kind read only by following a relationship is never one of those targets. The requested-read map
+    keys by kind alone, so a kind read on both paths has to count as traversed: once a change is in
+    hand there is no way to tell which path saw it.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    traversing = InfrahubGraphQLQueryAnalyzer(
+        query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    assert set(traversing.query_report.requested_read) == {"TestPerson", "TestCar", "TestElectricCar", "TestGazCar"}
+    assert traversing.query_report.traversed_kinds == {"TestCar", "TestElectricCar", "TestGazCar"}
+
+    generic_root_query = """
+    query {
+        TestCar {
+            edges {
+                node {
+                    name { value }
+                }
+            }
+        }
+    }
+    """
+    generic_root = InfrahubGraphQLQueryAnalyzer(
+        query=generic_root_query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    assert generic_root.query_report.traversed_kinds == set()
+
+    shared_kind_query = """
+    query {
+        TestPerson {
+            edges {
+                node {
+                    name { value }
+                    cars { edges { node { owner { node { name { value } } } } } }
+                }
+            }
+        }
+    }
+    """
+    shared_kind = InfrahubGraphQLQueryAnalyzer(
+        query=shared_kind_query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    # TestPerson is the root and is reached again through cars -> owner. Reporting it as traversed is
+    # what stops a change on one of those owners from being narrowed away.
+    assert "TestPerson" in shared_kind.query_report.traversed_kinds
+
+
+@dataclass
+class RequestedReadCase:
+    name: str
+    query: str
+    expected_fields_by_kind: dict[str, set[str]]
+
+
+REQUESTED_READ_CASES = [
+    RequestedReadCase(
+        name="unread_members_of_a_traversed_generic_are_reported_empty",
+        # A caller cannot treat presence in the map as proof the query depends on the kind, it has
+        # to look at the fields. Reporting the members keeps a permission check able to see them.
+        query="""
+        query {
+            TestPerson {
+                edges {
+                    node {
+                        name { value }
+                        cars {
+                            edges {
+                                node {
+                                    ... on TestElectricCar {
+                                        nbr_engine { value }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        expected_fields_by_kind={
+            "TestPerson": {"name", "cars"},
+            "TestCar": set(),
+            "TestElectricCar": {"nbr_engine"},
+            "TestGazCar": set(),
+        },
+    ),
+    RequestedReadCase(
+        name="node_properties_are_reported_under_their_schema_name",
+        # The query spells it hfid, everything downstream calls it human_friendly_id. Reporting the
+        # query spelling would leave each consumer to translate it, and silently match nothing.
+        query="""
+        query {
+            TestPerson {
+                edges {
+                    node {
+                        hfid
+                        display_label
+                        cars {
+                            edges {
+                                node {
+                                    hfid
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        expected_fields_by_kind={
+            "TestPerson": {"human_friendly_id", "display_label", "cars"},
+            "TestCar": {"human_friendly_id"},
+            "TestElectricCar": {"human_friendly_id"},
+            "TestGazCar": {"human_friendly_id"},
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize("case", REQUESTED_READ_CASES, ids=lambda case: case.name)
+async def test_requested_read(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot, case: RequestedReadCase
+) -> None:
+    """Report every kind the query reaches, and the fields it reads from each."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    analyzer = InfrahubGraphQLQueryAnalyzer(
+        query=case.query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+
+    assert {
+        kind: access.fields for kind, access in analyzer.query_report.requested_read.items()
+    } == case.expected_fields_by_kind
 
 
 async def test_query_report(

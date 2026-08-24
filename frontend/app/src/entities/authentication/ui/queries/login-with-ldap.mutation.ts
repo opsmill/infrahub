@@ -1,6 +1,6 @@
 import { mutationOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { loginWithLdap } from "@/entities/authentication/domain/login-with-ldap";
+import { loginWithLdap } from "@/entities/authentication/domain/use-cases/login-with-ldap";
 
 export function loginWithLdapMutationOptions() {
   return mutationOptions({

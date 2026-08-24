@@ -49,6 +49,9 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes, SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
 
+# Selectable like attributes but absent from a model's attribute list. Values are the schema names.
+NODE_PROPERTY_BY_QUERY_FIELD = {"display_label": "display_label", "hfid": "human_friendly_id"}
+
 
 class MutateAction(StrEnum):
     CREATE = "create"
@@ -297,6 +300,26 @@ class GraphQLQueryReport:
                 access[query_model.model.kind].relationships.update(query_model.relationships)
 
         return access
+
+    @cached_property
+    def traversed_kinds(self) -> set[str]:
+        """Return the kinds this query reaches by following a relationship.
+
+        A kind is reported here even when a root query also resolves to it. Both read paths share
+        one entry in the requested-read map, so a caller given a changed node of that kind cannot
+        tell which path saw it; reporting the kind as traversed keeps that ambiguity visible rather
+        than resolving it optimistically.
+
+        The concrete kinds standing behind a generic or interface peer are included, because a data
+        change is reported against the concrete kind.
+        """
+        kinds: set[str] = set()
+        for query in self.queries:
+            for query_model in query.get_models():
+                if not query_model.root:
+                    kinds.add(query_model.model.kind)
+
+        return kinds
 
     def fields_by_kind(self, kind: str) -> list[str]:
         fields: list[str] = []
@@ -687,8 +710,10 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         infrahub_node_models: list[MainSchemaTypes] = []
         if query_node.in_property_level:
             if model := query_node.context_model():
-                if node.name.value in model.attribute_names or node.name.value == "display_label":
+                if node.name.value in model.attribute_names:
                     query_node.append_attribute(attribute=node.name.value)
+                elif node_property := NODE_PROPERTY_BY_QUERY_FIELD.get(node.name.value):
+                    query_node.append_attribute(attribute=node_property)
                 elif node.name.value in model.relationship_names:
                     rel = model.get_relationship_or_none(name=node.name.value)
                     if rel:

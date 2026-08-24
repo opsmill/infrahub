@@ -4,7 +4,7 @@ import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import type { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
 import { store } from "@/shared/stores";
 
-import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
+import { getRelationships } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { TestForm } from "../../../../../../tests/components/form.story";
@@ -16,7 +16,7 @@ import {
 } from "../../../../../../tests/fake/schema";
 import { GenericRelationshipField } from "./generic-relationship.field";
 
-vi.mock("@/entities/nodes/relationships/domain/get-relationships/get-relationships");
+vi.mock("@/entities/nodes/relationships/domain/use-cases/get-relationships");
 
 describe("GenericRelationshipField", () => {
   // A generic peer implemented by TWO concrete nodes, so the field cannot

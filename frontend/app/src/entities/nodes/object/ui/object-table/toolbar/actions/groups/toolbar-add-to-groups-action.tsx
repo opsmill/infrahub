@@ -1,16 +1,14 @@
-import { Button } from "@infrahub/ui";
+import { Button, Popover, PopoverDialog, Tooltip } from "@infrahub/ui";
 import { DialogTrigger } from "react-aria-components";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
-import { Tooltip } from "@/shared/components/aria/tooltip";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { BulkMutateGroups } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/bulk-mutate-groups";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { addRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships";
-import type { NodeCore } from "@/entities/nodes/types";
+import { addRelationships } from "@/entities/nodes/relationships/domain/use-cases/add-relationships";
 
 export interface ToolbarAddToGroupActionProps {
   selectedRows: Array<NodeCore>;

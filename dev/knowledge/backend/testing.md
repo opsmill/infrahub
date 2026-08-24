@@ -159,6 +159,34 @@ def neo4j(request, load_settings_before_session) -> dict[int, int] | None:
     }
 ```
 
+### Parallel execution and database isolation
+
+Component, core, functional and integration tests run under pytest-xdist (`-n <workers>`, see
+`tasks/backend.py`); unit tests do not. Each xdist worker is a separate process running its own
+pytest session, so the session-scoped container fixtures above execute **once per worker** — four
+workers means four Neo4j containers, each with its own graph.
+
+That per-worker isolation is what makes the destructive fixtures safe. `empty_database` runs
+`delete_all_nodes`, which is a bare `MATCH (n) DETACH DELETE n` over the entire graph, and several
+tests assert on global counts rather than on nodes they can identify as their own. Both are only
+correct while a worker owns its database outright.
+
+Two consequences worth remembering:
+
+- Do not introduce cross-worker container sharing (for example testcontainers' `reuse` support, or
+  keying a container off `PYTEST_XDIST_WORKER`) without first removing the whole-graph wipes.
+  Sharing one database between workers makes every `empty_database` test hostile to whatever else
+  is running.
+- Test ordering under `--dist loadscope` (set in `addopts`) is not stable across pytest-xdist
+  releases — scopes are sorted largest-first, so which modules run concurrently can change on an
+  upgrade. Tests must not depend on what else is or is not running.
+
+Within a single module or class, however, pytest runs tests in definition order and
+`--dist loadscope` keeps the whole scope on one worker — so the sequential, stateful `test_stepNN`
+pattern used across `backend/tests/integration/` (and in component migration suites) is deliberate
+and safe. Do not rewrite step tests to be order-independent; the rule above is about dependence
+*across* modules, not within one.
+
 ### Base Test Classes
 
 Located in `backend/tests/helpers/test_app.py`:
@@ -235,6 +263,7 @@ Test data and fixture files:
 | `test_client.py` | HTTP test client wrapper |
 | `utils.py` | Container utilities |
 | `constants.py` | Port numbers, image names |
+| `file_repo.py` | Builds throwaway on-disk Git "remote" repos from `repos/` fixtures (`FileRepo`). The remotes accept pushes to their checked-out branch, so tests exercise push and write-back like a hosted remote would. |
 
 ### Test Data (`backend/tests/test_data/`)
 
@@ -278,6 +307,12 @@ Container (session)
 | `car_person_schema_unregistered` | Unregistered version for custom modifications |
 | `car_person_schema_branch_local` | Schema with branch-local support |
 | `register_core_models_schema` | Core Infrahub models only |
+| `register_core_models_schema_scope_class` | Class-scoped variant of the above |
+
+When several tests share an expensive schema/data load, group them in a class and use the
+`_scope_class` variant with `@pytest.fixture(scope="class")` fixtures for the data; methods run in
+definition order and may build on accumulated state. See `TestNumberPoolAllocation` in
+`backend/tests/component/core/resource_manager/test_number_pool.py`.
 
 **When to use existing fixtures:**
 
@@ -382,6 +417,20 @@ async def test_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
 ```
 
 This matches the pattern used in `test_webhook_header.py` and `test_models.py`.
+
+### Prefect Server State Outlives the Test Class
+
+The Prefect test server is session-scoped — one per xdist worker — while the database and the
+fixtures that populate it are class-scoped, so whatever a class registers on that server survives
+it. Two rules follow:
+
+- Delete the automations a class created at its teardown. A surviving all-branches webhook
+  automation turns every event any later test emits into a scheduled flow run — no worker runs in
+  the functional suite, so nothing executes them — filling the server's SQLite database.
+- Never assert on a flow-run count. `read_flow_runs()` returns at most `PREFECT_API_DEFAULT_LIMIT`
+  (200) rows and the API rejects a larger `limit`, so once that page is full a before/after
+  comparison saturates and can never be true again. Read newest-first
+  (`FlowRunSort.EXPECTED_START_TIME_DESC`) and identify the run by its id or parameters instead.
 
 ### Functional Tests with `TestInfrahubApp`
 

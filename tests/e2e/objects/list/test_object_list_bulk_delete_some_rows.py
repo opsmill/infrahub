@@ -13,7 +13,7 @@ import contextlib
 from typing import TYPE_CHECKING
 
 import pytest
-from helpers import generate_random_branch_name
+from helpers import generate_random_branch_name, get_data_table_row
 from playwright.async_api import expect
 
 pytestmark = pytest.mark.shard_foundation
@@ -43,28 +43,10 @@ class TestBulkDeleteSomeRows:
         # assert we have the initial values
         await admin_page.goto(f"/objects/BuiltinTag?branch={branch}")
         await expect(admin_page.get_by_role("button", name="Add Tag")).to_be_visible()
-        await expect(
-            admin_page.locator("a").filter(has_text="blue").locator("..").get_by_test_id("identifier-checkbox-cell")
-        ).to_be_visible()
-        await expect(
-            admin_page.locator("a").filter(has_text="green").locator("..").get_by_test_id("identifier-checkbox-cell")
-        ).to_be_visible()
 
         # proceed delete
-        await (
-            admin_page.locator("a")
-            .filter(has_text="blue")
-            .locator("..")
-            .get_by_test_id("identifier-checkbox-cell")
-            .click()
-        )
-        await (
-            admin_page.locator("a")
-            .filter(has_text="green")
-            .locator("..")
-            .get_by_test_id("identifier-checkbox-cell")
-            .click()
-        )
+        await get_data_table_row(admin_page, "blue").locator("label").click()
+        await get_data_table_row(admin_page, "green").locator("label").click()
 
         await admin_page.get_by_test_id("object-table-toolbar").get_by_role("button", name="Delete").click()
         await expect(admin_page.get_by_text("Are you sure you want to")).to_be_visible()

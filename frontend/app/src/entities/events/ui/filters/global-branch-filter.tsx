@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import type { TagProps } from "react-aria-components";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import useFilters from "@/shared/hooks/useFilters";
 
 import { branchesState } from "@/entities/branches/stores";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { GlobalFilterForm } from "@/entities/events/ui/filters/global-filter-form";
 import { FilterTag } from "@/entities/events/ui/filters/global-filter-tag";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 
 interface FilterTagProps extends TagProps {}
 
@@ -32,9 +32,9 @@ export function GlobalBranchFilter({ ...props }: FilterTagProps) {
   };
 
   useEffect(() => {
-    if (currentBranch.name === "main" || currentFilter) return;
+    if (currentBranch.is_default || currentFilter) return;
 
-    // Set the current branch if it's not main and if it has not been removed from the filters
+    // Set the current branch if it's not the default one and if it has not been removed from the filters
     setFilters([...filters, { name: branchFilterName, value: currentBranch.name }]);
   }, []);
 

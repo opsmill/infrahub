@@ -5,7 +5,7 @@ import type { QueryConfig } from "@/shared/api/types";
 import {
   type GetArtifactsDiffParams,
   getArtifactsDiff,
-} from "@/entities/diff/domain/get-artifacts-diff";
+} from "@/entities/diff/domain/use-cases/get-artifacts-diff";
 import { artifactsDiffKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 
 export function getArtifactsDiffQueryOptions({ branch }: GetArtifactsDiffParams) {

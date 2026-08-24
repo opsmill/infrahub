@@ -17,6 +17,7 @@ from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
+from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.protocols import CoreArtifact, CoreArtifactDefinition
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import BranchStatusError, NodeNotFoundError, ValidationError
@@ -78,7 +79,9 @@ async def generate_artifact(
     context: InfrahubContext = Depends(get_context),
 ) -> None:
     try:
-        BranchStatusChecker().check(branch=branch_params.branch)
+        await BranchStatusChecker(
+            db=db, merge_write_blocker=MergeWriteBlocker(cache=request.app.state.service.cache)
+        ).check(branch=branch_params.branch)
     except BranchStatusError as err:
         raise ValidationError(input_value=str(err)) from err
 
@@ -109,6 +112,14 @@ async def generate_artifact(
         limit=payload.nodes,
     )
 
+    # No explicit priority: the fan-out inherits the catalogue default (MEDIUM), like the
+    # same generation triggered through the artifact-definition mutation. Dispatching at
+    # HIGH would stamp the whole task tree -- including every per-target /api/query call
+    # the workers make -- as X-Priority: high, making a user-triggered regeneration of
+    # thousands of artifacts unsheddable by the admission layer at the same class as
+    # interactive traffic.
     await service.workflow.submit_workflow(
-        workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, context=context, parameters={"model": model}
+        workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+        context=context,
+        parameters={"model": model},
     )

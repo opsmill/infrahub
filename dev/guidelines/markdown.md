@@ -86,6 +86,7 @@ from infrahub_sdk import InfrahubClient
 - Use descriptive link text
 - Use relative paths for internal documentation links
 - All documentation URLs should be relative (not absolute)
+- When referencing Infrahub source files (models, sample scripts), link the file on GitHub (`https://github.com/opsmill/infrahub/blob/stable/<path>`); never cite a bare repo path — docs readers have no checkout
 
 ```markdown
 <!-- ✅ Good -->
@@ -115,6 +116,7 @@ https://example.com/page
 - **Present tense**: "Infrahub uses branches to isolate changes"
 - **Professional but approachable**: Avoid "simple", "easy", or "just"
 - Use American English for standard text
+- **Literal words**: much of the audience reads English as a second or third language. Avoid figurative phrasing — "carry" (for have), "lives on" (for is stored on), "walk" (for traverse), "reach for" (for use). Say the literal thing.
 
 ### Trailing Commas (Oxford Comma)
 
@@ -191,6 +193,8 @@ import TabItem from '@theme/TabItem';
   </TabItem>
 </Tabs>
 ````
+
+Only keep imports the page uses — no linter flags unused MDX imports, so check them manually when copying a page skeleton.
 
 ## General Tips
 

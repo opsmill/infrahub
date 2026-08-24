@@ -8,7 +8,27 @@ Git workflow and commit conventions for the project.
 
 - **Main branches:** `stable` (production), `develop` (development), `release-*` (releases)
 - **Feature branches:** Create from `develop`, merge back via PR
+- **Bug fixes:** target the oldest branch that needs the fix — `stable` when the bug is in released
+  code and the fix should ship in a patch release, `develop` when the code only exists there or the
+  fix can wait for the next minor
+- **Verify the base before cutting:** check that the code the ticket references actually exists on
+  the chosen base (`git ls-tree <base> -- <path>`); follow-up tickets often reference modules that
+  are only on `develop`
 - **Branch naming:** `<initials>-<short-description>` (e.g., `jd-add-breadcrumbs`)
+
+## Versioning
+
+`infrahub-server` and `infrahub-testcontainers` derive their version from the `infrahub-v*` git tags
+at build time (hatch-vcs). There is no `version` field in `pyproject.toml`, and releases do not bump
+one. Implications for local work:
+
+- **Fetch tags on a fresh clone** (`git fetch --tags`), or a build resolves a development fallback
+  version instead of the real one (the build still succeeds — it never fails on a missing tag).
+- **Editable installs pin the version at `uv sync` time.** After moving to a different commit or
+  fetching new tags, re-run `uv sync` to refresh the version reported at runtime.
+- **Maintenance-branch hygiene:** never merge a newer main-line `infrahub-v*` tag into an older
+  `release-x.y` branch — the resolver would then pick up the wrong version line. Cherry-pick patches
+  onto the release branch instead of merging `stable`/`develop` into it.
 
 ## Submodules
 
@@ -99,6 +119,7 @@ Add changelog fragments to `changelog/` using Towncrier. Use the `creating-chang
 ## Critical Rules
 
 - Never force push to `stable` or `develop`
+- Never merge a newer main-line `infrahub-v*` tag into an older `release-x.y` branch (cherry-pick patches instead)
 - Always run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Include issue references in commit messages when applicable
 

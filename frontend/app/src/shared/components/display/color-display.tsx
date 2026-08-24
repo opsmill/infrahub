@@ -1,4 +1,5 @@
-import { Tooltip } from "@/shared/components/ui/tooltip";
+import { Tooltip } from "@infrahub/ui";
+
 import { getTextColor } from "@/shared/utils/common";
 
 type tColorDisplay = {
@@ -12,9 +13,9 @@ export const ColorDisplay = (props: tColorDisplay) => {
 
   if (description) {
     return (
-      <Tooltip enabled content={description}>
+      <Tooltip message={description} nonInteractiveTrigger>
         <div
-          className="inline-flex min-h-[24px] min-w-[24px] flex-col rounded-md px-2 py-1"
+          className="inline-flex min-h-6 min-w-6 flex-col rounded-md px-2 py-1"
           style={{
             backgroundColor: color || "",
             color: color ? getTextColor(color) : "",
@@ -28,7 +29,7 @@ export const ColorDisplay = (props: tColorDisplay) => {
 
   return (
     <div
-      className="inline-flex min-h-[24px] min-w-[24px] flex-col rounded-md px-2 py-1"
+      className="inline-flex min-h-6 min-w-6 flex-col rounded-md px-2 py-1"
       style={{
         backgroundColor: color || "",
         color: color ? getTextColor(color) : "",

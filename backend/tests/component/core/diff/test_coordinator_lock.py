@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 
 from infrahub import config, lock
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
@@ -12,11 +13,16 @@ from infrahub.core.diff.merger.exclusion_plan import MergeExclusionPlanBuilder
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
-from infrahub.core.merge import BranchMerger
 from infrahub.core.merge.constraints import MergeConstraintValidator
+from infrahub.core.merge.graph_merger import GraphMerger
+from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.node import Node
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.validators.constraint_merge import build_constraint_info_merger
+from infrahub.core.validators.determiner import build_constraint_validator_determiner
+from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import get_component_registry
 
@@ -182,7 +188,7 @@ class TestDiffCoordinatorLocks:
     ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
-        branch_merger = BranchMerger(
+        graph_merger = GraphMerger(
             db=db,
             diff_coordinator=diff_coordinator,
             diff_merger=DiffMerger(
@@ -191,16 +197,31 @@ class TestDiffCoordinatorLocks:
                 destination_branch=default_branch,
                 diff_repository=diff_repository,
                 exclusion_plan_builder=MergeExclusionPlanBuilder(),
+                rollbacker=GraphRollbacker(db=db),
             ),
             diff_repository=diff_repository,
             source_branch=diff_branch,
+            destination_branch=default_branch,
             diff_locker=DiffLocker(),
-            constraint_validator=MergeConstraintValidator(db=db, branch=diff_branch, diff_repository=diff_repository),
+            schema_analyzer=MergeSchemaAnalyzer(
+                db=db,
+                source_branch=diff_branch,
+                destination_branch=default_branch,
+                diff_repository=diff_repository,
+                schema_manager=registry.schema,
+            ),
+            constraint_validator=MergeConstraintValidator(
+                branch=diff_branch,
+                diff_repository=diff_repository,
+                determiner=build_constraint_validator_determiner(db=db, branch=diff_branch),
+                constraint_info_merger=build_constraint_info_merger(),
+                migration_validator=schema_validate_migrations,
+            ),
         )
 
         results = await asyncio.gather(
             diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
-            branch_merger.merge(),
+            graph_merger.merge(at=Timestamp()),
         )
         diff_result = results[0]
         merge_diff = await diff_repository.get_one(diff_branch_name=diff_branch.name)
@@ -226,7 +247,7 @@ class TestDiffCoordinatorLocks:
         diff_repository_2 = await component_registry.get_component(DiffRepository, db=db2, branch=default_branch)
         diff_coordinator_2 = await self.get_diff_coordinator(db=db2, diff_branch=diff_branch)
 
-        branch_merger = BranchMerger(
+        graph_merger = GraphMerger(
             db=db2,
             diff_coordinator=diff_coordinator_2,
             diff_merger=DiffMerger(
@@ -235,17 +256,30 @@ class TestDiffCoordinatorLocks:
                 destination_branch=default_branch,
                 diff_repository=diff_repository_2,
                 exclusion_plan_builder=MergeExclusionPlanBuilder(),
+                rollbacker=GraphRollbacker(db=db2),
             ),
             diff_repository=diff_repository_2,
             source_branch=diff_branch,
+            destination_branch=default_branch,
             diff_locker=DiffLocker(),
+            schema_analyzer=MergeSchemaAnalyzer(
+                db=db2,
+                source_branch=diff_branch,
+                destination_branch=default_branch,
+                diff_repository=diff_repository_2,
+                schema_manager=registry.schema,
+            ),
             constraint_validator=MergeConstraintValidator(
-                db=db2, branch=diff_branch, diff_repository=diff_repository_2
+                branch=diff_branch,
+                diff_repository=diff_repository_2,
+                determiner=build_constraint_validator_determiner(db=db2, branch=diff_branch),
+                constraint_info_merger=build_constraint_info_merger(),
+                migration_validator=schema_validate_migrations,
             ),
         )
 
         results = await asyncio.gather(
-            branch_merger.merge(),
+            graph_merger.merge(at=Timestamp()),
             diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
         )
         diff_result = results[1]

@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 
 import type { ResolveConflictFromApiParams } from "@/entities/diff/api/resolve-conflict-from-api";
-import { resolveConflict } from "@/entities/diff/domain/resolve-conflict";
+import { resolveConflict } from "@/entities/diff/domain/use-cases/resolve-conflict";
 
 // invalidation-at-callsite: callers pass an explicit `onSuccess` (see
 // conflict.tsx) that invalidates `treeQueryKeys.all` + `tasksQueryKeys.all`.

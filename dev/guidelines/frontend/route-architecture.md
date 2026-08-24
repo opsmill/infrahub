@@ -310,8 +310,8 @@ export function DatePreferencesProvider({ children }) {
 Why this matters, and why **`RequireAuth` is not the gate**: `RequireAuth` renders its children when
 `isAuthenticated || config.main.allow_anonymous_access`, so with anonymous access enabled the whole
 authenticated route tree — and any provider mounted in it — renders for **logged-out** users. An
-ungated authenticated query then 401s, Apollo's `errorLink` calls `redirectToLogin`, and the user is
-bounced to `/login`. Because it depends on timing/anonymous-access it surfaces as a **flaky E2E
+ungated authenticated query then 401s, the transport's error routing calls `redirectToLogin`, and the
+user is bounced to `/login`. Because it depends on timing/anonymous-access it surfaces as a **flaky E2E
 failure** (auth-setup timeout, or "not logged in" specs), not an obvious error.
 
 Prefer the mount gate above over react-query `enabled: isAuthenticated` — it keeps the query hook
@@ -319,7 +319,7 @@ itself auth-agnostic (the "authenticated" concern is a distinct component that s
 when logged out). Do **not** rely on placement under `RequireAuth`; do **not** read the auth token
 from a `domain/` use-case (that breaks the FSD layer rule — auth state stays in `ui/`).
 
-This came from PR #9930: `DatePreferencesProvider` first mounted at the app root, then under
+Precedent: `DatePreferencesProvider` first mounted at the app root, then under
 `RequireAuth` — both fired the query for logged-out users and broke E2E. The fix was to gate the
 mount on `isAuthenticated`.
 

@@ -188,7 +188,7 @@ Write your reasoning as a "Fix strategy" section in the PR body BEFORE implement
 Run the specific test the test-writer wrote using the same runner they used:
 - Backend: `uv run pytest path/to/test_file.py::TestClass::test_name -x -v`
 - Frontend unit/component: `cd frontend/app && pnpm run test path/to/test`
-- Frontend E2E: `cd frontend/app && pnpm exec playwright test path/to/test`
+- Frontend E2E (repo root; needs a locally built image: `uv run invoke dev.build`): `INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest -c tests/e2e/pytest.ini tests/e2e/path/to/test.py -x -v`
 - If the test still FAILS, revisit your fix. Do NOT proceed until it passes.
 - Before continuing, verify `git diff` shows no changes to the test file(s) from the
   test-writer's PR. If you accidentally modified a test file, revert those changes.

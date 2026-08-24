@@ -1,14 +1,13 @@
-import { Button } from "@infrahub/ui";
+import { Button, Tooltip } from "@infrahub/ui";
 import { Command } from "cmdk";
 import { TriangleAlertIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 
-import type { PathResult } from "../domain/path-traversal.types";
-import { getKindColor } from "./utils";
+import type { PathResult } from "../domain/model/path-traversal";
+import { getKindColor } from "./get-kind-color";
 
 type Variant = "blue" | "amber";
 
