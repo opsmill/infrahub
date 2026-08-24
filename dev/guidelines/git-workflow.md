@@ -16,6 +16,25 @@ Git workflow and commit conventions for the project.
   are only on `develop`
 - **Branch naming:** `<initials>-<short-description>` (e.g., `jd-add-breadcrumbs`)
 
+### Stacked PRs
+
+A PR that targets another feature branch rather than `develop` does not see what `develop` has
+fixed since the two diverged. GitHub runs CI on the **merge ref** — the head merged into its own
+target — so the lower PR silently picks up `develop`'s fixes while the stacked one does not. Two
+PRs holding identical code can therefore disagree about whether CI passes, which reads like a
+flake and is not one.
+
+Before recording a failure on a stacked PR as inherited or pre-existing, check whether the
+ultimate base already fixes it:
+
+```bash
+git log origin/develop --oneline -- <failing file>   # is there a fix the stack never saw?
+git diff HEAD origin/develop -- <failing file>
+```
+
+A fix that exists on `develop` is cherry-picked onto the stack, not documented as a known
+failure.
+
 ## Versioning
 
 `infrahub-server` and `infrahub-testcontainers` derive their version from the `infrahub-v*` git tags
