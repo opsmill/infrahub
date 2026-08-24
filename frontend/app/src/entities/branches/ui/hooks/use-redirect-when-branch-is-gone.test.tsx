@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import {
   type BranchListConfirmation,
   confirmsBranchIsGone,
@@ -19,17 +20,18 @@ vi.mock("react-toastify", async (importOriginal) => ({
 
 const defaultBranch = generateBranch({ id: "branch-default", name: "primary", is_default: true });
 const featureBranch = generateBranch({ id: "branch-feature", name: "feature-1" });
+const otherBranch = generateBranch({ id: "branch-other", name: "feature-2" });
 
-const listWithoutFeature: BranchListConfirmation = { data: [defaultBranch], isError: false };
-const listWithFeature: BranchListConfirmation = {
-  data: [defaultBranch, featureBranch],
-  isError: false,
-};
+const withoutFeature = [defaultBranch, otherBranch];
+const withFeature = [defaultBranch, otherBranch, featureBranch];
+
+const confirmsGone: BranchListConfirmation = { data: withoutFeature, isError: false };
+const confirmsBack: BranchListConfirmation = { data: withFeature, isError: false };
 const failedFetch: BranchListConfirmation = { data: undefined, isError: true };
 
 const STARTING_PAGE = "/objects/device";
 
-type Props = { branchName: string | null; isMissingFromList: boolean };
+type Props = { branchName: string | null; branches: BranchListItem[] | undefined };
 
 const wrapper = ({ children }: { children?: React.ReactNode }) => (
   <MemoryRouter initialEntries={[STARTING_PAGE]}>{children}</MemoryRouter>
@@ -50,13 +52,15 @@ const renderRedirect = (
 // A nothing-happened assertion has no signal to poll for, so let pending effects run first.
 const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
 
+const toastCount = () => vi.mocked(toast).mock.calls.length;
+
 describe("confirmsBranchIsGone", () => {
   test("confirms a branch the freshly fetched list does not contain", () => {
-    expect(confirmsBranchIsGone(listWithoutFeature, "feature-1")).toBe(true);
+    expect(confirmsBranchIsGone(confirmsGone, "feature-1")).toBe(true);
   });
 
   test("clears a branch the freshly fetched list does contain", () => {
-    expect(confirmsBranchIsGone(listWithFeature, "feature-1")).toBe(false);
+    expect(confirmsBranchIsGone(confirmsBack, "feature-1")).toBe(false);
   });
 
   test("confirms nothing when the fetch failed", () => {
@@ -64,7 +68,7 @@ describe("confirmsBranchIsGone", () => {
   });
 
   test("never confirms an unnamed branch, which resolves to the default one", () => {
-    expect(confirmsBranchIsGone(listWithoutFeature, null)).toBe(false);
+    expect(confirmsBranchIsGone(confirmsGone, null)).toBe(false);
   });
 });
 
@@ -75,11 +79,11 @@ describe("useRedirectWhenBranchIsGone", () => {
 
   test("redirects once a second fetch also misses the branch", async () => {
     // GIVEN
-    const confirmBranchList = vi.fn().mockResolvedValue(listWithoutFeature);
+    const confirmBranchList = vi.fn().mockResolvedValue(confirmsGone);
 
     // WHEN
     const { result } = await renderRedirect(
-      { branchName: "feature-1", isMissingFromList: true },
+      { branchName: "feature-1", branches: withoutFeature },
       confirmBranchList
     );
 
@@ -90,11 +94,11 @@ describe("useRedirectWhenBranchIsGone", () => {
 
   test("stays put when the branch is back in the freshly fetched list", async () => {
     // GIVEN
-    const confirmBranchList = vi.fn().mockResolvedValue(listWithFeature);
+    const confirmBranchList = vi.fn().mockResolvedValue(confirmsBack);
 
     // WHEN
     const { result } = await renderRedirect(
-      { branchName: "feature-1", isMissingFromList: true },
+      { branchName: "feature-1", branches: withoutFeature },
       confirmBranchList
     );
 
@@ -111,7 +115,7 @@ describe("useRedirectWhenBranchIsGone", () => {
 
     // WHEN
     const { result } = await renderRedirect(
-      { branchName: "feature-1", isMissingFromList: true },
+      { branchName: "feature-1", branches: withoutFeature },
       confirmBranchList
     );
 
@@ -127,7 +131,7 @@ describe("useRedirectWhenBranchIsGone", () => {
 
     // WHEN
     const { result } = await renderRedirect(
-      { branchName: "feature-1", isMissingFromList: true },
+      { branchName: "feature-1", branches: withoutFeature },
       confirmBranchList
     );
 
@@ -139,11 +143,11 @@ describe("useRedirectWhenBranchIsGone", () => {
 
   test("does not confirm anything while the branch is in the list", async () => {
     // GIVEN
-    const confirmBranchList = vi.fn().mockResolvedValue(listWithoutFeature);
+    const confirmBranchList = vi.fn().mockResolvedValue(confirmsGone);
 
     // WHEN
     const { result } = await renderRedirect(
-      { branchName: "feature-1", isMissingFromList: false },
+      { branchName: "feature-1", branches: withFeature },
       confirmBranchList
     );
 
@@ -153,23 +157,35 @@ describe("useRedirectWhenBranchIsGone", () => {
     expect(result.current).toBe(STARTING_PAGE);
   });
 
+  test("does not confirm anything before the first list arrives", async () => {
+    // GIVEN
+    const confirmBranchList = vi.fn().mockResolvedValue(confirmsGone);
+
+    // WHEN
+    await renderRedirect({ branchName: "feature-1", branches: undefined }, confirmBranchList);
+
+    // THEN
+    await settle();
+    expect(confirmBranchList).not.toHaveBeenCalled();
+  });
+
   test("does not apply a verdict to the branch the user moved on to", async () => {
     // GIVEN a confirmation for feature-1 held in flight
     let release: (() => void) | undefined;
     const confirmBranchList = vi.fn(
       () =>
         new Promise<BranchListConfirmation>((resolve) => {
-          release = () => resolve(listWithoutFeature);
+          release = () => resolve(confirmsGone);
         })
     );
     const { result, rerender } = await renderRedirect(
-      { branchName: "feature-1", isMissingFromList: true },
+      { branchName: "feature-1", branches: withoutFeature },
       confirmBranchList
     );
     await expect.poll(() => release !== undefined).toBe(true);
 
     // WHEN the user moves to a branch that resolves, and only then does the verdict land
-    await rerender({ branchName: "feature-2", isMissingFromList: false });
+    await rerender({ branchName: "feature-2", branches: withoutFeature });
     release?.();
 
     // THEN
@@ -180,41 +196,41 @@ describe("useRedirectWhenBranchIsGone", () => {
 
   test("redirects again on a revisit without asking the server twice", async () => {
     // GIVEN a branch already confirmed gone and redirected away from
-    const confirmBranchList = vi.fn().mockResolvedValue(listWithoutFeature);
+    const confirmBranchList = vi.fn().mockResolvedValue(confirmsGone);
     const { rerender } = await renderRedirect(
-      { branchName: "feature-1", isMissingFromList: true },
+      { branchName: "feature-1", branches: withoutFeature },
       confirmBranchList
     );
-    await expect.poll(() => vi.mocked(toast).mock.calls.length).toBe(1);
-    await rerender({ branchName: null, isMissingFromList: false });
+    await expect.poll(toastCount).toBe(1);
+    await rerender({ branchName: null, branches: withoutFeature });
 
     // WHEN the same name comes back, e.g. the user hits back
-    await rerender({ branchName: "feature-1", isMissingFromList: true });
+    await rerender({ branchName: "feature-1", branches: withoutFeature });
 
     // THEN it redirects on the standing verdict rather than confirming again
-    await expect.poll(() => vi.mocked(toast).mock.calls.length).toBe(2);
+    await expect.poll(toastCount).toBe(2);
     expect(confirmBranchList).toHaveBeenCalledOnce();
   });
 
-  test("re-confirms a name used again rather than reusing the standing verdict", async () => {
-    // GIVEN feature-1 was confirmed gone, then created again and seen in the list
+  test("re-confirms a name the list carries again, whichever branch is selected", async () => {
+    // GIVEN feature-1 was confirmed gone, then recreated while the user sat on another branch
     const confirmBranchList = vi
       .fn()
-      .mockResolvedValueOnce(listWithoutFeature)
-      .mockResolvedValue(listWithFeature);
+      .mockResolvedValueOnce(confirmsGone)
+      .mockResolvedValue(confirmsBack);
     const { rerender } = await renderRedirect(
-      { branchName: "feature-1", isMissingFromList: true },
+      { branchName: "feature-1", branches: withoutFeature },
       confirmBranchList
     );
-    await expect.poll(() => vi.mocked(toast).mock.calls.length).toBe(1);
-    await rerender({ branchName: "feature-1", isMissingFromList: false });
+    await expect.poll(toastCount).toBe(1);
+    await rerender({ branchName: "feature-2", branches: withFeature });
 
-    // WHEN a later fetch transiently omits the live branch
-    await rerender({ branchName: "feature-1", isMissingFromList: true });
+    // WHEN the user lands on it while a fetched list transiently omits it again
+    await rerender({ branchName: "feature-1", branches: withoutFeature });
 
-    // THEN the miss is confirmed afresh and the branch is kept
+    // THEN the miss is confirmed afresh instead of reusing the standing verdict
     await expect.poll(() => confirmBranchList.mock.calls.length).toBe(2);
     await settle();
-    expect(toast).toHaveBeenCalledOnce();
+    expect(toastCount()).toBe(1);
   });
 });

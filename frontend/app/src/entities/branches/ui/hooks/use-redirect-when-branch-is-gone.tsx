@@ -26,7 +26,7 @@ export function confirmsBranchIsGone(
 
 type UseRedirectWhenBranchIsGoneParams = {
   branchName: string | null;
-  isMissingFromList: boolean;
+  branches: BranchListItem[] | undefined;
   confirmBranchList: () => Promise<BranchListConfirmation>;
 };
 
@@ -37,15 +37,17 @@ type UseRedirectWhenBranchIsGoneParams = {
  * and on window focus, and a live branch can be absent from a single response — filtered out while
  * its data is being deleted, missed by a lagging follower read, or not yet saved by async creation.
  * So a miss is confirmed against a second fetch, and a verdict only ever applies to the branch it
- * was reached for, for as long as that branch stays absent.
+ * was reached for, for as long as no list contains that name again.
  */
 export function useRedirectWhenBranchIsGone({
   branchName,
-  isMissingFromList,
+  branches,
   confirmBranchList,
 }: UseRedirectWhenBranchIsGoneParams) {
   const navigate = useNavigate();
   const confirmedGone = React.useRef(new Set<string>());
+
+  const isMissingFromList = !!branches && !findSelectedBranch(branches, branchName);
 
   const redirectToDefaultBranch = (goneBranchName: string) => {
     toast(
@@ -62,14 +64,16 @@ export function useRedirectWhenBranchIsGone({
     navigate("/");
   };
 
+  // A name the list carries again is a name no standing verdict applies to, whichever branch the
+  // user is on: a branch recreated under a deleted one's name has to be confirmed afresh.
   React.useEffect(() => {
-    if (branchName === null) return;
-
-    // Seeing the branch drops the standing verdict, so a name used again is confirmed afresh.
-    if (!isMissingFromList) {
-      confirmedGone.current.delete(branchName);
-      return;
+    for (const branch of branches ?? []) {
+      confirmedGone.current.delete(branch.name);
     }
+  }, [branches]);
+
+  React.useEffect(() => {
+    if (!isMissingFromList || branchName === null) return;
 
     if (confirmedGone.current.has(branchName)) {
       redirectToDefaultBranch(branchName);

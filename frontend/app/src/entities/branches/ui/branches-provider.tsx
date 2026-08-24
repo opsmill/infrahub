@@ -39,7 +39,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
 
   useRedirectWhenBranchIsGone({
     branchName: branchInQueryString,
-    isMissingFromList: !!branches && !currentBranch,
+    branches,
     confirmBranchList: refetch,
   });
 
