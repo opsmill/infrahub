@@ -414,3 +414,64 @@ async def test_rebase_schemas_handed_to_the_update_coordinator(
     # The restored hash has to reach storage, not just the in-memory registry the rollback wrote
     reloaded_branch = await Branch.get_by_name(db=db, name=rollback_branch.name)
     assert reloaded_branch.active_schema_hash.main == rollback_pre_rebase_hash
+
+
+async def test_failed_rebase_keeps_the_branch_data(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dependency_provider: Provider,
+    workflow_recorder: WorkflowRecorder,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A rollback after failed migrations must not take the branch's own data with it."""
+    widget_kind = "TestingWidget"
+    gadget_kind = "TestingGadget"
+    widget = NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        default_filter="name__value",
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    gadget = NodeSchema(
+        name="Gadget",
+        namespace="Testing",
+        default_filter="name__value",
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    await load_schema(db=db, schema=SchemaRoot(nodes=[widget, gadget]), update_db=True)
+
+    branch = await create_branch(db=db, branch_name="failed-rebase-branch")
+
+    branch_widget = await Node.init(db=db, schema=widget_kind, branch=branch)
+    await branch_widget.new(db=db, name="widget-on-branch")
+    await branch_widget.save(db=db)
+
+    # A schema change of the branch's own, on a kind the destination never touches, so the rebase
+    # runs migrations at all without reporting a conflict
+    branch_gadget = gadget.duplicate()
+    branch_gadget.attributes.append(AttributeSchema(name="serial", kind="Text", optional=True))
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(nodes=[branch_gadget]),
+        branch_name=branch.name,
+        update_db=True,
+        limit=[gadget_kind],
+    )
+
+    # A node created on the destination after the fork, so the rebase has something to pull in
+    main_widget = await Node.init(db=db, schema=widget_kind)
+    await main_widget.new(db=db, name="widget-on-main")
+    await main_widget.save(db=db)
+
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
+        workflow_recorder.execute_results[SCHEMA_APPLY_MIGRATION.name] = ["migration failed on purpose"]
+        with pytest.raises(MigrationError):
+            await rebase_branch(branch=branch.name, context=context)
+
+    rolled_back_branch = await Branch.get_by_name(db=db, name=branch.name)
+    widgets = await NodeManager.query(db=db, schema=widget_kind, branch=rolled_back_branch)
+    assert sorted(str(node.get_attribute("name").value) for node in widgets) == ["widget-on-branch", "widget-on-main"]
