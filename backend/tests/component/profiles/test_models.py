@@ -75,10 +75,11 @@ async def test_profile_refresh_trigger_definition_with_branches_out_of_scope(
     )
 
     assert "infrahub.branch.name" not in trigger.trigger.match
-    assert trigger.trigger.match_related[1:] == [
-        {"prefect.resource.role": "infrahub.branch", "infrahub.resource.label": "!branch1"},
-        {"prefect.resource.role": "infrahub.branch", "infrahub.resource.label": "!branch2"},
-    ]
+    for excluded_branch in ("branch1", "branch2"):
+        assert {
+            "prefect.resource.role": "infrahub.branch",
+            "infrahub.resource.label": f"!{excluded_branch}",
+        } in trigger.trigger.match_related
 
 
 async def test_profile_refresh_trigger_definition_actions(

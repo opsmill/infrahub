@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from infrahub.trigger.models import TriggerDefinition
 
 
-def node_updated_event(kind: str, field: str, branch_name: str) -> NodeUpdatedEvent:
+def _node_updated_event(kind: str, field: str, branch_name: str) -> NodeUpdatedEvent:
     """Build the event a live edit of one attribute on one node emits."""
     changelog = NodeChangelog(node_id=str(uuid4()), node_kind=kind, display_label="node01")
     changelog.attributes[field] = AttributeChangelog(name=field, value="value01", value_previous=None, kind="Text")
@@ -31,11 +31,14 @@ def node_updated_event(kind: str, field: str, branch_name: str) -> NodeUpdatedEv
     )
 
 
-def automation_covers_event(trigger_definition: TriggerDefinition, event: InfrahubEvent) -> bool:
+def _automation_covers_event(trigger_definition: TriggerDefinition, event: InfrahubEvent) -> bool:
     """Report whether the automation built from this definition selects the event.
 
-    The verdict comes from Prefect's own server-side matcher, the one that routes events to
-    automations, because the shape of a generated filter says nothing about what it selects.
+    The verdict comes from `EventTrigger.covers_resources`, which is what the task manager calls
+    to route an event to an automation, so the assertion is about the filter we generate and not
+    about Prefect. The shape of a generated filter says nothing about the events it selects.
+
+    This does tie the test to a server-side signature, which a Prefect upgrade could move.
     """
     server_trigger = PrefectServerEventTrigger.model_validate(trigger_definition.trigger.get_prefect().model_dump())
     return server_trigger.covers_resources(
@@ -52,9 +55,9 @@ def branches_covered_by(
         branch_name: sorted(
             scope
             for scope, trigger in triggers_by_scope.items()
-            if automation_covers_event(
+            if _automation_covers_event(
                 trigger_definition=trigger,
-                event=node_updated_event(kind=kind, field=field, branch_name=branch_name),
+                event=_node_updated_event(kind=kind, field=field, branch_name=branch_name),
             )
         )
         for branch_name in branch_names

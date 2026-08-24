@@ -234,14 +234,13 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
         update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(
             kind=computed_attribute.computed_attribute.kind
         )
-        match_related: dict[str, Any] = {
+        event_trigger.match_related = {
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
         }
 
         if update_fields:
-            match_related["infrahub.field.name"] = update_fields
+            event_trigger.match_related["infrahub.field.name"] = update_fields
 
-        event_trigger.match_related = match_related
         event_trigger.exclude_branches(branches_out_of_scope or [])
 
         return cls(

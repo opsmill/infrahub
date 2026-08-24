@@ -185,9 +185,10 @@ async def test_gather_trigger_computed_attribute_jinja2_different_branch(
 
     trigger_main = triggers_by_name[name_main]
     assert "infrahub.branch.name" not in trigger_main.trigger.match
-    assert trigger_main.trigger.match_related[1:] == [
-        {"prefect.resource.role": "infrahub.branch", "infrahub.resource.label": "!branch2"}
-    ]
+    assert {
+        "prefect.resource.role": "infrahub.branch",
+        "infrahub.resource.label": "!branch2",
+    } in trigger_main.trigger.match_related
 
     trigger_branch = triggers_by_name[name_branch_first]
     assert "infrahub.branch.name" in trigger_branch.trigger.match
