@@ -93,7 +93,7 @@ with the shared retention predicate extended only where a slice proves it must b
   the vertices the removal already matched as a collected list rather than re-selecting them, which is
   what keeps the candidate set intact across the removal's own writes, and returns nothing, so both
   queries keep their existing `RETURN` and their migration counts. T030a and T030b followed the same day.
-- [ ] R03a **Slice 2a — the rollback's metadata restore. Take this next, before R04.** Slice 2's
+- [X] R03a **Slice 2a — the rollback's metadata restore. Take this next, before R04.** Slice 2's
   closure writes global-branch edges, so both rollback passes must cover the global branch
   (`_rollback_branches` in `backend/infrahub/core/query/rollback.py`): the target branch follows the
   scope, the global branch is always matched on the exact timestamp, because nothing write-blocks it.
@@ -102,7 +102,7 @@ with the shared retention predicate extended only where a slice proves it must b
   because every write of one operation lands at exactly the operation's `at`. The per-vertex
   criterion this task once went looking for turned out to be a constant. Sub-tasks:
 
-  - [ ] R03a.1 **Require `at` on the migration queries.** Make `at` a required constructor argument
+  - [X] R03a.1 **Require `at` on the migration queries.** Make `at` a required constructor argument
     of `DeleteElementInSchemaQuery` (`backend/infrahub/core/migrations/query/delete_element_in_schema.py`)
     and `SchemaAttributeUpdateQuery` (`backend/infrahub/core/migrations/query/schema_attribute_update.py`)
     and drop their `at = self.at or Timestamp()` fallbacks. Dropping the fallback alone enforces
@@ -114,7 +114,7 @@ with the shared retention predicate extended only where a slice proves it must b
     component tests that construct these queries directly must pass `at=Timestamp()`. State the
     single-timestamp rule where these queries are defined. *Verify: construction without `at` is an
     error, pinned by unit tests.*
-  - [ ] R03a.2 **Restore on the exact timestamp.** `_render_restore_metadata_pipeline` matches
+  - [X] R03a.2 **Restore on the exact timestamp.** `_render_restore_metadata_pipeline` matches
     `restore_vertex.updated_at = $at` on every pass — delete the `rollback_branch.exact` split from
     the restore (the edge passes keep their exact/range split). The pipeline no longer depends on
     `rollback_branch`; simplify the `WITH`/`CALL` scoping in both queries accordingly. Dedup the
@@ -128,7 +128,7 @@ with the shared retention predicate extended only where a slice proves it must b
     `SINCE_TIMESTAMP` rollback untouched, `previous_*` included; a node owning both a branch-aware
     and a branch-agnostic field is restored at most once and `updated_at` is never NULL after
     rollback.*
-  - [ ] R03a.3 **Delete `restore_metadata`; the restore is unconditional.** Remove the parameter
+  - [X] R03a.3 **Delete `restore_metadata`; the restore is unconditional.** Remove the parameter
     from `GraphRollbacker.rollback` and both query classes, the default/global-target `ValueError`
     guard, and the docstring text that justified it. Flip the call sites by deletion:
     `core/schema/update_coordinator.py` (`restore_metadata=False` — stale since #9980 closed the
@@ -139,12 +139,12 @@ with the shared retention predicate extended only where a slice proves it must b
     `test_a_rolled_back_removal_leaves_the_global_edges_open`
     (`tests/component/core/migrations/schema/test_agnostic_field_removal.py`) with metadata
     assertions — restored stamps, `previous_*` cleared.*
-  - [ ] R03a.4 **Rollback targeting a user branch restores global-bump metadata.** The global-exact
+  - [X] R03a.4 **Rollback targeting a user branch restores global-bump metadata.** The global-exact
     pass runs the restore for any target branch. Today a user-branch removal closes global edges
     without bumping metadata (see the A2 note below), so pin the mechanism with a fixture that bumps
     the vertex at `at` by hand — the shape the closure will write once IFC-3032 lands — rolls back
     targeting the user branch, and asserts the restore.
-  - [ ] R03a.5 **Document timestamp-as-operation-identity** in `_rollback_branches`: a
+  - [X] R03a.5 **Document timestamp-as-operation-identity** in `_rollback_branches`: a
     same-microsecond unrelated global write is reversed wrongly — accepted, and shared with what
     `AT_TIMESTAMP` scope already assumes. Also note the one-slot `previous_*` residual (a concurrent
     global write after the merge's bump keeps a phantom pointer to the rolled-back write; current

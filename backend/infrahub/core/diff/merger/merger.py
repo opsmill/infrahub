@@ -210,5 +210,4 @@ class DiffMerger:
             target_branch=self.destination_branch,
             at=merge_started_at,
             scope=RollbackScope.SINCE_TIMESTAMP,
-            restore_metadata=True,
         )

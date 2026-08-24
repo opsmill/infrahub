@@ -36,6 +36,16 @@ class EdgeState:
         return self.status == "active"
 
 
+@dataclass(frozen=True)
+class VertexMetadata:
+    """The audit stamps a write leaves on a vertex, and the snapshot a rollback would restore from."""
+
+    updated_at: str | None
+    updated_by: str | None
+    previous_updated_at: str | None
+    previous_updated_by: str | None
+
+
 def open_edges(edges: list[EdgeState]) -> list[EdgeState]:
     """Every open edge, one entry each.
 
@@ -272,3 +282,40 @@ async def pool_reservation_edges(db: InfrahubDatabase, pool_id: str, identifier:
         params={"pool_id": pool_id, "identifier": identifier},
     )
     return [EdgeState(**dict(result)) for result in results]
+
+
+async def attribute_metadata(db: InfrahubDatabase, node_id: str, attribute_name: str) -> VertexMetadata:
+    """The audit stamps on the attribute vertex reached from this node.
+
+    Assumes a single :Node vertex with the `node_id` and a single linked :Attribute with the
+    `attribute_name`.
+    """
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(v:Attribute {name: $attribute_name})
+        WITH DISTINCT v
+        RETURN v.updated_at AS updated_at, v.updated_by AS updated_by,
+           v.previous_updated_at AS previous_updated_at, v.previous_updated_by AS previous_updated_by
+        """,
+        params={"node_id": node_id, "attribute_name": attribute_name},
+    )
+    assert len(results) == 1, f"Expected a single {attribute_name} attribute for {node_id}, found {len(results)}"
+    return VertexMetadata(**dict(results[0]))
+
+
+async def relationship_metadata(db: InfrahubDatabase, node_id: str, identifier: str) -> VertexMetadata:
+    """The audit stamps on the relationship vertex reached from this node.
+
+    Assumes a single :Node vertex with the `node_id` and a single linked :Relationship with the
+    `identifier`.
+    """
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:IS_RELATED]-(v:Relationship {name: $identifier})
+        WITH DISTINCT v
+        RETURN v.updated_at AS updated_at, v.updated_by AS updated_by,
+           v.previous_updated_at AS previous_updated_at, v.previous_updated_by AS previous_updated_by
+        """,
+        params={"node_id": node_id, "identifier": identifier},
+    )
+    return VertexMetadata(**dict(results[0]))
