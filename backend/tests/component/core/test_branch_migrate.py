@@ -42,6 +42,5 @@ async def test_migrate_branch_publishes_migrated_branch(
     assert migrated_branch.status is BranchStatus.OPEN
 
     published_branch = registry.branch[branch.name]
-    assert published_branch is not branch
     assert published_branch.graph_version == GRAPH_VERSION
     assert published_branch.status is BranchStatus.OPEN

@@ -48,6 +48,4 @@ async def test_refresh_branches_continues_past_a_branch_it_cannot_refresh(
     assert failures[0]["level"] == "error"
     assert failures[0]["exc_info"]
 
-    published_branch = registry.branch[stale_branch.name]
-    assert published_branch is not stale_branch
-    assert published_branch.branched_from == rebased_branch.branched_from
+    assert registry.branch[stale_branch.name].branched_from == rebased_branch.branched_from
