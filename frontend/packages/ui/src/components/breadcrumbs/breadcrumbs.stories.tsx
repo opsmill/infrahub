@@ -22,7 +22,7 @@ function AllVariantsRender() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <div className="mb-1 text-xs text-subtle-muted">Links</div>
+        <div className="mb-1 text-subtle-muted text-xs">Links</div>
         <Breadcrumbs>
           <BreadcrumbItem href="/">Home</BreadcrumbItem>
           <BreadcrumbItem href="/objects">Objects</BreadcrumbItem>
@@ -31,7 +31,7 @@ function AllVariantsRender() {
       </div>
 
       <div>
-        <div className="mb-1 text-xs text-subtle-muted">Buttons</div>
+        <div className="mb-1 text-subtle-muted text-xs">Buttons</div>
         <Breadcrumbs>
           <BreadcrumbItem onPress={() => {}}>Home</BreadcrumbItem>
           <BreadcrumbItem onPress={() => {}}>Objects</BreadcrumbItem>
@@ -40,7 +40,7 @@ function AllVariantsRender() {
       </div>
 
       <div>
-        <div className="mb-1 text-xs text-subtle-muted">Mixed (links + button)</div>
+        <div className="mb-1 text-subtle-muted text-xs">Mixed (links + button)</div>
         <Breadcrumbs>
           <BreadcrumbItem href="/">Home</BreadcrumbItem>
           <BreadcrumbItem href="/objects">Objects</BreadcrumbItem>
@@ -49,7 +49,7 @@ function AllVariantsRender() {
       </div>
 
       <div>
-        <div className="mb-1 text-xs text-subtle-muted">Loading</div>
+        <div className="mb-1 text-subtle-muted text-xs">Loading</div>
         <Breadcrumbs>
           <BreadcrumbItem href="/">Home</BreadcrumbItem>
           <BreadcrumbItemLoading />
@@ -57,7 +57,7 @@ function AllVariantsRender() {
       </div>
 
       <div>
-        <div className="mb-1 text-xs text-subtle-muted">Error</div>
+        <div className="mb-1 text-subtle-muted text-xs">Error</div>
         <Breadcrumbs>
           <BreadcrumbItem href="/">Home</BreadcrumbItem>
           <BreadcrumbItemError error={new Error("Failed to fetch")} />
@@ -65,7 +65,7 @@ function AllVariantsRender() {
       </div>
 
       <div>
-        <div className="mb-1 text-xs text-subtle-muted">Long content (truncation)</div>
+        <div className="mb-1 text-subtle-muted text-xs">Long content (truncation)</div>
         <div className="w-96">
           <Breadcrumbs>
             <BreadcrumbItem href="/">Home</BreadcrumbItem>
@@ -109,7 +109,7 @@ function PlaygroundRender({ trail, asLinks, showLoading, showError }: Playground
           <BreadcrumbItem key={segment} onPress={() => {}}>
             {segment}
           </BreadcrumbItem>
-        ),
+        )
       )}
       {showLoading && <BreadcrumbItemLoading />}
       {showError && <BreadcrumbItemError error={new Error("Failed to fetch")} />}

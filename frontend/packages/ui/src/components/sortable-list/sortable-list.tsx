@@ -19,7 +19,7 @@ import { Button } from "../button/button";
 function reorderItems<T>(
   items: T[],
   event: DroppableCollectionReorderEvent,
-  getId: (item: T) => Key,
+  getId: (item: T) => Key
 ): T[] {
   const { keys, target } = event;
   const moved = items.filter((item) => keys.has(getId(item)));
@@ -35,10 +35,8 @@ function reorderItems<T>(
   return [...rest.slice(0, insertIndex), ...moved, ...rest.slice(insertIndex)];
 }
 
-export interface SortableListProps<T extends object> extends Omit<
-  AriaGridListProps<T>,
-  "items" | "children" | "dragAndDropHooks"
-> {
+export interface SortableListProps<T extends object>
+  extends Omit<AriaGridListProps<T>, "items" | "children" | "dragAndDropHooks"> {
   items: T[];
   onReorder: (items: T[]) => void;
   children: (item: T) => React.ReactNode;
@@ -83,7 +81,7 @@ export function SortableList<T extends object>({
 
 const sortableItemStyles = tv({
   base: [
-    "flex cursor-grab items-center gap-1.5 rounded-lg border border-transparent p-0.5 text-sm text-subtle outline-hidden select-none",
+    "flex cursor-grab select-none items-center gap-1.5 rounded-lg border border-transparent p-0.5 text-sm text-subtle outline-hidden",
     "data-focus-visible:bg-highlight data-focus-visible:text-foreground",
     "data-selected:bg-selected data-selected:text-foreground",
     "data-dragging:cursor-grabbing",
@@ -103,7 +101,7 @@ export function SortableItem({ children, className, ref, ...props }: SortableIte
     <AriaGridListItem
       ref={ref}
       className={composeAriaClassName(className, ({ isDragging }) =>
-        sortableItemStyles({ isDragging }),
+        sortableItemStyles({ isDragging })
       )}
       {...props}
     >

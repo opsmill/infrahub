@@ -168,7 +168,7 @@ echo "  uv run invoke backend.test-unit    - Run backend unit tests"
 echo "  uv run invoke format               - Format Python code"
 echo "  uv run invoke lint                 - Lint Python code"
 echo "  cd frontend/app && pnpm test       - Run frontend tests"
-echo "  cd frontend/app && pnpm biome:fix  - Format/lint frontend"
+echo "  cd frontend && pnpm biome:fix      - Format/lint frontend"
 echo ""
 
 exit 0

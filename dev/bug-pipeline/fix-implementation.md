@@ -58,7 +58,7 @@ separately (do NOT amend previous commits).
 ```bash
 uv run invoke format
 uv run invoke docs.format
-(cd frontend/app && pnpm exec biome check --write .)
+(cd frontend && pnpm exec biome check --write .)
 ```
 
 If Phase 1 changed any source files, you must re-run from Phase 2.

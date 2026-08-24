@@ -31,7 +31,7 @@ export function Breadcrumb({ children, className, ...props }: BreadcrumbProps) {
           <span
             role="presentation"
             aria-hidden="true"
-            className="text-lg font-medium text-border-strong select-none"
+            className="select-none font-medium text-border-strong text-lg"
           >
             /
           </span>
@@ -65,7 +65,7 @@ export function BreadcrumbItem(props: BreadcrumbItemProps) {
       <Breadcrumb>
         <AriaLink
           className={composeAriaClassName(className, ({ isPressed }) =>
-            cn(breadcrumbItemVariants({ isPressed }), "hover:underline"),
+            cn(breadcrumbItemVariants({ isPressed }), "hover:underline")
           )}
           {...rest}
         />
@@ -78,7 +78,7 @@ export function BreadcrumbItem(props: BreadcrumbItemProps) {
     <Breadcrumb>
       <AriaButton
         className={composeAriaClassName(className, ({ isPressed }) =>
-          breadcrumbItemVariants({ isPressed }),
+          breadcrumbItemVariants({ isPressed })
         )}
         {...rest}
       />

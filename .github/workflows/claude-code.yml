@@ -137,11 +137,11 @@ jobs:
                   "Bash(npm run test)", "Bash(npm run test *)",
                   "Bash(cd frontend/app && npm run test)",
                   "Bash(cd frontend/app && npm run test *)",
-                  "Bash(cd frontend/app && npx biome check --write .)",
+                  "Bash(cd frontend && npx biome check --write .)",
                   "Bash(pnpm run test)", "Bash(pnpm run test *)",
                   "Bash(cd frontend/app && pnpm run test)",
                   "Bash(cd frontend/app && pnpm run test *)",
-                  "Bash(cd frontend/app && pnpm exec biome check --write .)",
+                  "Bash(cd frontend && pnpm exec biome check --write .)",
                   "Bash(ls)", "Bash(ls *)",
                   "Bash(mkdir -p *)"
                 ],

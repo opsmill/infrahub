@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-
 import { Meter as AriaMeter, type MeterProps as AriaMeterProps } from "react-aria-components";
 import { cn } from "tailwind-variants";
 
@@ -17,7 +16,7 @@ export function Meter({ label, className, ...props }: MeterProps) {
         className,
         label
           ? "grid w-full grid-cols-[1fr_auto] items-center gap-x-2"
-          : "flex w-full items-center gap-2",
+          : "flex w-full items-center gap-2"
       )}
     >
       {({ percentage, valueText }) => {
@@ -25,15 +24,15 @@ export function Meter({ label, className, ...props }: MeterProps) {
           <div
             className={cn(
               "h-2.5 overflow-hidden rounded-full bg-border",
-              "ring-1 inset-shadow-[0_1px_2px_rgba(0,0,0,0.15)] ring-border-strong ring-inset",
-              label ? "col-span-2 w-full" : "grow",
+              "inset-shadow-[0_1px_2px_rgba(0,0,0,0.15)] ring-1 ring-border-strong ring-inset",
+              label ? "col-span-2 w-full" : "grow"
             )}
           >
             <div
               className={cn(
                 "h-full rounded-[inherit] transition-all",
                 "border border-cyan-800 bg-linear-to-b from-cyan-800 to-cyan-600",
-                "inset-shadow-[0_1px_0_rgba(255,255,255,0.4)]",
+                "inset-shadow-[0_1px_0_rgba(255,255,255,0.4)]"
               )}
               style={{ width: `${percentage}%` }}
             />
@@ -45,7 +44,7 @@ export function Meter({ label, className, ...props }: MeterProps) {
         if (label) {
           return (
             <>
-              <span className="text-sm font-medium">{label}</span>
+              <span className="font-medium text-sm">{label}</span>
               {value}
               {track}
             </>

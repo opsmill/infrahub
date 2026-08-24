@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-
 import { type ComponentProps, useState } from "react";
 
 import { Checkbox } from "./checkbox";

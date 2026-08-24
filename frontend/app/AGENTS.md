@@ -14,7 +14,7 @@ cd frontend/app && pnpm install    # Install app dependencies only (submodule mu
 cd frontend/app && pnpm dev        # Start dev server
 cd frontend/app && pnpm build      # Production build
 cd frontend/app && pnpm test       # Run unit tests
-cd frontend/app && pnpm biome:fix  # Format and lint
+cd frontend && pnpm biome:fix      # Format and lint the whole workspace (app + packages/*)
 cd frontend/app && pnpm codegen    # Generate GraphQL types
 ```
 
@@ -22,10 +22,11 @@ cd frontend/app && pnpm codegen    # Generate GraphQL types
 
 `pnpm biome:fix` alone is **not** the CI gate. The `frontend-lint` job runs three checks and
 `frontend-tests` runs the browser test suite. Run all of them before pushing — they each fail CI
-independently:
+independently. Note that Biome runs from `frontend/`, the pnpm workspace root, so that one
+config and one command cover `app` and `packages/*` together:
 
 ```bash
-cd frontend/app && pnpm exec biome ci .   # format + lint (same as CI)
+cd frontend && pnpm exec biome ci .       # format + lint, whole workspace (same as CI)
 cd frontend/app && pnpm knip              # unused exports/files/deps
 cd frontend/app && pnpm exec betterer ci  # TypeScript-regression gate (NOT plain tsc)
 cd frontend/app && pnpm test              # vitest (browser mode)

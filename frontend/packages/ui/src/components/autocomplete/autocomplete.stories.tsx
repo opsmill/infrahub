@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-
 import { PlusIcon } from "lucide-react";
 
 import { Button } from "../button/button";

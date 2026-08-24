@@ -3,7 +3,7 @@ import { cn, tv } from "tailwind-variants";
 
 const labelStyles = tv({
   base: [
-    "cursor-pointer text-sm leading-none font-medium text-foreground",
+    "cursor-pointer font-medium text-foreground text-sm leading-none",
     "data-disabled:cursor-not-allowed data-disabled:opacity-70",
   ],
 });
