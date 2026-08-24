@@ -1,11 +1,14 @@
 import uuid
+from copy import deepcopy
 from dataclasses import dataclass
 
 import pytest
 
 from infrahub.core import registry
+from infrahub.core.attribute import BaseAttribute
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
     BranchSupportType,
     HashableModelState,
     InfrahubKind,
@@ -29,7 +32,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
-from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.definitions.core.template import core_object_template
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -44,6 +47,7 @@ from tests.component.core.migrations.schema.metadata_helpers import (
     get_attribute_vertex_metadata,
     get_node_vertex_metadata,
 )
+from tests.component.core.node.test_branch_agnostic_edges import assert_no_global_edges_with_wrong_branch_level
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 
@@ -611,3 +615,378 @@ async def test_migration_numberpool_attribute(
         source = await server.get_attribute("rack_unit").get_source(db=db)
         assert source is not None, "rack_unit should have a source set"
         assert source.id == number_pool.id, f"rack_unit source should be the pool {number_pool.id}"
+
+
+# -----------------------------------------------------------------------------
+# Branch support of the edges created for a new attribute
+# -----------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class AttributeEdgeBranches:
+    """Which branch each live edge of one attribute sits on."""
+
+    branch_support: str
+    owning_edge: tuple[str, int]
+    property_edges: tuple[tuple[str, str, int], ...]
+
+
+async def get_attribute_edge_branches(
+    db: InfrahubDatabase, node_uuid: str, attribute_name: str
+) -> AttributeEdgeBranches:
+    query = """
+MATCH (n:Node {uuid: $node_uuid})-[e:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
+WHERE e.status = "active" AND e.to IS NULL
+MATCH (a)-[p]->()
+WHERE p.status = "active" AND p.to IS NULL
+RETURN a.branch_support AS branch_support,
+       collect(DISTINCT [type(p), p.branch, p.branch_level]) AS property_edges,
+       e.branch AS owning_branch,
+       e.branch_level AS owning_branch_level
+    """
+    records = await db.execute_query(
+        query=query,
+        params={"node_uuid": node_uuid, "attribute_name": attribute_name},
+        name="attribute_edge_branches",
+    )
+    assert len(records) == 1, f"expected exactly one open {attribute_name} attribute, got {len(records)}"
+    record = records[0]
+    return AttributeEdgeBranches(
+        branch_support=record["branch_support"],
+        owning_edge=(record["owning_branch"], record["owning_branch_level"]),
+        property_edges=tuple(sorted(tuple(edge) for edge in record["property_edges"])),
+    )
+
+
+def expected_edges_on(branch_name: str, branch_level: int, branch_support: str) -> AttributeEdgeBranches:
+    return AttributeEdgeBranches(
+        branch_support=branch_support,
+        owning_edge=(branch_name, branch_level),
+        property_edges=(
+            ("HAS_VALUE", branch_name, branch_level),
+            ("IS_PROTECTED", branch_name, branch_level),
+        ),
+    )
+
+
+def add_attribute_to_test_car(branch_name: str, attribute: AttributeSchema) -> tuple[NodeSchema, SchemaBranch]:
+    """Register a TestCar candidate schema carrying ``attribute`` and return the previous schema with it."""
+    previous_schema = registry.schema.get_schema_branch(name=branch_name).get_node(name="TestCar")
+    candidate = registry.schema.get_schema_branch(name=branch_name).duplicate()
+    car_schema = candidate.get_node(name="TestCar")
+    car_schema.attributes.append(attribute)
+    candidate.set(name="TestCar", schema=car_schema)
+    candidate.process()
+    registry.schema.set_schema_branch(name=branch_name, schema=candidate)
+    return previous_schema, candidate
+
+
+async def run_test_car_attribute_add(
+    db: InfrahubDatabase, branch: Branch, previous_schema: NodeSchema, candidate: SchemaBranch, attribute_name: str
+) -> int:
+    migration = NodeAttributeAddMigration(
+        new_node_schema=candidate.get_node(name="TestCar"),
+        previous_node_schema=previous_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name=attribute_name),
+    )
+    result = await migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=branch)
+    assert not result.errors
+    return result.nbr_migrations_executed
+
+
+async def read_tag(db: InfrahubDatabase, node_uuid: str, branch: Branch) -> BaseAttribute:
+    car = await NodeManager.get_one(db=db, id=node_uuid, branch=branch)
+    assert car is not None
+    return car.get_attribute(name="tag")
+
+
+async def test_agnostic_attribute_edges_on_global_branch_from_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
+    """A branch-agnostic attribute added on the default branch stores its edges on the global branch.
+
+    The profile and template copies of the attribute are covered here too, since the migration expands
+    to their kinds off the same declared branch support.
+    """
+    template_owner = await Node.init(db=db, schema="TemplateTestPerson", branch=default_branch)
+    await template_owner.new(db=db, template_name="Template Owner")
+    await template_owner.save(db=db)
+    template_car = await Node.init(db=db, schema="TemplateTestCar", branch=default_branch)
+    await template_car.new(db=db, template_name="Template Accord", color="#111111", owner=template_owner)
+    await template_car.save(db=db)
+    profile_car = await Node.init(db=db, schema="ProfileTestCar", branch=default_branch)
+    await profile_car.new(db=db, profile_name="Profile Accord", profile_priority=1000)
+    await profile_car.save(db=db)
+
+    previous_schema, candidate = add_attribute_to_test_car(
+        branch_name=default_branch.name,
+        attribute=AttributeSchema(name="tag", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC),
+    )
+
+    # The generated schemas carry the declared branch support
+    for kind in ("TestCar", "ProfileTestCar", "TemplateTestCar"):
+        schema = candidate.get(name=kind, duplicate=False)
+        assert schema.get_attribute(name="tag").branch is BranchSupportType.AGNOSTIC
+
+    executed = await run_test_car_attribute_add(
+        db=db, branch=default_branch, previous_schema=previous_schema, candidate=candidate, attribute_name="tag"
+    )
+    # 2 TestCar + 1 TemplateTestCar + 1 ProfileTestCar
+    assert executed == 4
+
+    expected = expected_edges_on(
+        branch_name=GLOBAL_BRANCH_NAME, branch_level=1, branch_support=BranchSupportType.AGNOSTIC.value
+    )
+    for node in (car_accord_main, car_camry_main, template_car, profile_car):
+        assert await get_attribute_edge_branches(db=db, node_uuid=node.get_id(), attribute_name="tag") == expected
+
+    await assert_no_global_edges_with_wrong_branch_level(db=db)
+    await verify_graph(db=db)
+
+
+async def test_agnostic_attribute_value_is_shared_across_branches(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
+    """An agnostic attribute added on one branch is stored once, so a value set there reads back elsewhere."""
+    migration_branch = await create_branch(branch_name="branch-agnostic-add", db=db)
+    sibling_branch = await create_branch(branch_name="branch-agnostic-sibling", db=db)
+
+    agnostic_tag = AttributeSchema(name="tag", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC)
+    previous_schema, candidate = add_attribute_to_test_car(branch_name=migration_branch.name, attribute=agnostic_tag)
+    for other_branch in (sibling_branch, default_branch):
+        add_attribute_to_test_car(branch_name=other_branch.name, attribute=deepcopy(agnostic_tag))
+
+    executed = await run_test_car_attribute_add(
+        db=db, branch=migration_branch, previous_schema=previous_schema, candidate=candidate, attribute_name="tag"
+    )
+    assert executed == 2
+
+    assert await get_attribute_edge_branches(
+        db=db, node_uuid=car_accord_main.get_id(), attribute_name="tag"
+    ) == expected_edges_on(
+        branch_name=GLOBAL_BRANCH_NAME, branch_level=1, branch_support=BranchSupportType.AGNOSTIC.value
+    )
+
+    # One shared vertex, so a value written on one branch is the value every branch reads.
+    car_on_migration_branch = await NodeManager.get_one(db=db, id=car_accord_main.get_id(), branch=migration_branch)
+    assert car_on_migration_branch is not None
+    car_on_migration_branch.get_attribute("tag").value = "shared-tag"
+    await car_on_migration_branch.save(db=db, fields=["tag"])
+
+    for branch in (migration_branch, sibling_branch, default_branch):
+        assert (await read_tag(db=db, node_uuid=car_accord_main.get_id(), branch=branch)).value == "shared-tag"
+
+    await assert_no_global_edges_with_wrong_branch_level(db=db)
+    await verify_graph(db=db)
+
+
+async def test_aware_attribute_edges_stay_on_migration_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
+    """A branch-aware attribute keeps its edges on its own branch, so it is not readable elsewhere."""
+    migration_branch = await create_branch(branch_name="branch-aware-add", db=db)
+
+    aware_tag = AttributeSchema(name="tag", kind="Text", optional=True, branch=BranchSupportType.AWARE)
+    previous_schema, candidate = add_attribute_to_test_car(branch_name=migration_branch.name, attribute=aware_tag)
+    add_attribute_to_test_car(branch_name=default_branch.name, attribute=deepcopy(aware_tag))
+
+    executed = await run_test_car_attribute_add(
+        db=db, branch=migration_branch, previous_schema=previous_schema, candidate=candidate, attribute_name="tag"
+    )
+    assert executed == 2
+
+    assert await get_attribute_edge_branches(
+        db=db, node_uuid=car_accord_main.get_id(), attribute_name="tag"
+    ) == expected_edges_on(
+        branch_name=migration_branch.name,
+        branch_level=migration_branch.hierarchy_level,
+        branch_support=BranchSupportType.AWARE.value,
+    )
+
+    # The migration branch resolves the created attribute; the default branch reaches no vertex at all.
+    assert (await read_tag(db=db, node_uuid=car_accord_main.get_id(), branch=migration_branch)).db_id is not None
+    assert (await read_tag(db=db, node_uuid=car_accord_main.get_id(), branch=default_branch)).db_id is None
+
+    await assert_no_global_edges_with_wrong_branch_level(db=db)
+    await verify_graph(db=db)
+
+
+async def test_agnostic_attribute_add_is_idempotent(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
+    """The re-run guard still matches an owning edge the previous run put on the global branch."""
+    migration_branch = await create_branch(branch_name="branch-agnostic-idempotent", db=db)
+
+    previous_schema, candidate = add_attribute_to_test_car(
+        branch_name=migration_branch.name,
+        attribute=AttributeSchema(name="tag", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC),
+    )
+
+    assert (
+        await run_test_car_attribute_add(
+            db=db, branch=migration_branch, previous_schema=previous_schema, candidate=candidate, attribute_name="tag"
+        )
+        == 2
+    )
+    attribute_count = await count_nodes(db=db, label="Attribute")
+
+    assert (
+        await run_test_car_attribute_add(
+            db=db, branch=migration_branch, previous_schema=previous_schema, candidate=candidate, attribute_name="tag"
+        )
+        == 0
+    )
+    assert await count_nodes(db=db, label="Attribute") == attribute_count
+
+
+async def test_migration_agnostic_numberpool_attribute(
+    db: InfrahubDatabase,
+    branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """An agnostic NumberPool attribute reads back the value the migration allocated for it."""
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    schema_without_pool = NodeSchema(
+        name="Server",
+        namespace="Test",
+        default_filter="name__value",
+        branch=BranchSupportType.AWARE,
+        attributes=[AttributeSchema(name="name", kind="Text", unique=True, branch=BranchSupportType.AWARE)],
+    )
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[schema_without_pool]), branch=branch.name)
+
+    servers = []
+    for index in range(3):
+        server = await Node.init(db=db, schema="TestServer", branch=branch)
+        await server.new(db=db, name=f"server-{index}")
+        await server.save(db=db)
+        servers.append(server)
+
+    schema_with_pool = NodeSchema(
+        name="Server",
+        namespace="Test",
+        default_filter="name__value",
+        branch=BranchSupportType.AWARE,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True, branch=BranchSupportType.AWARE),
+            AttributeSchema(
+                name="rack_unit",
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                branch=BranchSupportType.AGNOSTIC,
+                parameters=NumberPoolParameters(start_range=1, end_range=100),
+            ),
+        ],
+    )
+    previous_schema = registry.schema.get_node_schema(name="TestServer", branch=branch)
+    registry.schema.set(name="TestServer", schema=schema_with_pool, branch=branch.name)
+    registry.schema.process_schema_branch(name=branch.name)
+
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=previous_schema,
+        new_node_schema=schema_with_pool,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestServer", field_name="rack_unit"),
+    )
+    result = await migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=branch)
+    assert not result.errors
+
+    servers_map = await NodeManager.get_many(db=db, branch=branch, ids=[server.get_id() for server in servers])
+    assert len(servers_map) == 3
+    allocated = sorted(servers_map[server.get_id()].get_attribute("rack_unit").value for server in servers)
+    assert allocated == [1, 2, 3]
+
+    # The allocated value and the default it replaced live on the same branch, so the default is closed.
+    assert await get_attribute_edge_branches(
+        db=db, node_uuid=servers[0].get_id(), attribute_name="rack_unit"
+    ) == AttributeEdgeBranches(
+        branch_support=BranchSupportType.AGNOSTIC.value,
+        owning_edge=(GLOBAL_BRANCH_NAME, 1),
+        property_edges=(
+            ("HAS_SOURCE", GLOBAL_BRANCH_NAME, 1),
+            ("HAS_VALUE", GLOBAL_BRANCH_NAME, 1),
+            ("IS_PROTECTED", GLOBAL_BRANCH_NAME, 1),
+        ),
+    )
+
+
+PROBE_GENERIC = GenericSchema(
+    name="Gen",
+    namespace="Mixed",
+    branch=BranchSupportType.AGNOSTIC,
+    attributes=[AttributeSchema(name="name", kind="Text", branch=BranchSupportType.AGNOSTIC)],
+)
+PROBE_AWARE_NODE = NodeSchema(
+    name="Aware",
+    namespace="Mixed",
+    branch=BranchSupportType.AWARE,
+    inherit_from=["MixedGen"],
+    attributes=[AttributeSchema(name="name", kind="Text", branch=BranchSupportType.AGNOSTIC)],
+)
+PROBE_AGNOSTIC_NODE = NodeSchema(
+    name="Agn",
+    namespace="Mixed",
+    branch=BranchSupportType.AGNOSTIC,
+    inherit_from=["MixedGen"],
+    attributes=[AttributeSchema(name="name", kind="Text", branch=BranchSupportType.AGNOSTIC)],
+)
+
+
+async def test_local_attribute_of_generic_follows_each_node_kind(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Verify an edge case involving a branch-agnostic generic and branch-local/agnostic inheritors.
+
+    If a branch-local attribute is added to a concrete node inheriting from a branch-agnostic generic
+    then the new branch-local attribute will
+    - be on the global branch if the inheriting schema is branch-agnostic
+    - be on the default/user branch if the inheriting schema is branch-aware
+    """
+    registry.schema.register_schema(
+        schema=SchemaRoot(generics=[PROBE_GENERIC], nodes=[PROBE_AWARE_NODE, PROBE_AGNOSTIC_NODE]),
+        branch=default_branch.name,
+    )
+    processed = registry.schema.get_schema_branch(name=default_branch.name)
+    previous_schema = processed.get(name="MixedGen", duplicate=False)
+    assert sorted(previous_schema.used_by) == ["MixedAgn", "MixedAware"]
+
+    aware_node = await Node.init(db=db, schema="MixedAware", branch=default_branch)
+    await aware_node.new(db=db, name="aware-1")
+    await aware_node.save(db=db)
+    agnostic_node = await Node.init(db=db, schema="MixedAgn", branch=default_branch)
+    await agnostic_node.new(db=db, name="agnostic-1")
+    await agnostic_node.save(db=db)
+
+    candidate = processed.duplicate()
+    generic_schema = candidate.get(name="MixedGen", duplicate=False)
+    generic_schema.attributes.append(
+        AttributeSchema(name="tag", kind="Text", optional=True, branch=BranchSupportType.LOCAL)
+    )
+    candidate.set(name="MixedGen", schema=generic_schema)
+    candidate.process()
+    registry.schema.set_schema_branch(name=default_branch.name, schema=candidate)
+
+    migration = NodeAttributeAddMigration(
+        new_node_schema=candidate.get(name="MixedGen", duplicate=False),
+        previous_node_schema=previous_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="MixedGen", field_name="tag"),
+    )
+    result = await migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=default_branch)
+    assert not result.errors
+    assert result.nbr_migrations_executed == 2
+
+    # The branch-aware kind keeps the attribute on its own branch...
+    assert await get_attribute_edge_branches(
+        db=db, node_uuid=aware_node.get_id(), attribute_name="tag"
+    ) == expected_edges_on(
+        branch_name=default_branch.name,
+        branch_level=default_branch.hierarchy_level,
+        branch_support=BranchSupportType.LOCAL.value,
+    )
+    # ...while the branch-agnostic kind stores it once, on the global branch.
+    assert await get_attribute_edge_branches(
+        db=db, node_uuid=agnostic_node.get_id(), attribute_name="tag"
+    ) == expected_edges_on(branch_name=GLOBAL_BRANCH_NAME, branch_level=1, branch_support=BranchSupportType.LOCAL.value)
+
+    await assert_no_global_edges_with_wrong_branch_level(db=db)
+    await verify_graph(db=db)
