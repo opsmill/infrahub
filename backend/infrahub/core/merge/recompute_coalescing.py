@@ -12,6 +12,7 @@ from infrahub.log import get_logger
 from infrahub.utilities.chunks import chunked
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     DISPLAY_LABELS_PROCESS_JINJA2,
     HFID_PROCESS,
 )
@@ -28,9 +29,10 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.workflow import InfrahubWorkflow
     from infrahub.workflows.models import WorkflowDefinition
 
-RecomputeFamily = Literal["computed_attribute", "display_label", "hfid"]
+RecomputeFamily = Literal["computed_attribute", "python_computed_attribute", "display_label", "hfid"]
 
 COMPUTED_ATTRIBUTE: RecomputeFamily = "computed_attribute"
+PYTHON_COMPUTED_ATTRIBUTE: RecomputeFamily = "python_computed_attribute"
 DISPLAY_LABEL: RecomputeFamily = "display_label"
 HFID: RecomputeFamily = "hfid"
 
@@ -38,7 +40,7 @@ CREATED = "created"
 UPDATED = "updated"
 DELETED = "deleted"
 
-_SELF_FILTER = "ids"
+SELF_FILTER = "ids"
 
 # Floor for the schema-derived chain bound; the bound only guards a cyclic schema.
 RECOMPUTE_CHAIN_DEPTH_FLOOR = 10
@@ -88,6 +90,11 @@ class AffectedTarget:
     target is reached by the change set, so its readers are resolved by one query
     over the union rather than one per changed node. ``precise`` is ``False`` when a
     bounded over-approximation was used instead of an exact derivation.
+
+    ``whole_kind`` marks a target whose nodes could not be resolved at all, so every
+    node of ``target_kind`` has to be recomputed. Such a target carries no node ids,
+    which is why the submission planner has to treat it as a case of its own rather
+    than chunking an empty id set into nothing.
     """
 
     family: RecomputeFamily
@@ -96,6 +103,7 @@ class AffectedTarget:
     reads_across_relationship: bool
     reader_lookups: frozenset[ReaderLookup]
     precise: bool = True
+    whole_kind: bool = False
 
 
 @dataclass(frozen=True)
@@ -164,6 +172,9 @@ class CoalescedSubmission:
     not the changed-node count times the matching automations. ``filter_key`` groups the node
     ids for deduplication and orders the submissions deterministically; the flow re-derives its
     own query filter and does not read it.
+
+    ``whole_kind`` carries the widened case through to the flow: there are no node ids to send, and
+    every node of ``target_kind`` has to be recomputed.
     """
 
     family: RecomputeFamily
@@ -173,6 +184,7 @@ class CoalescedSubmission:
     filter_key: str
     branch: str
     node_ids: tuple[str, ...]
+    whole_kind: bool = False
 
 
 class CoalescedRecomputeBuilder:
@@ -338,7 +350,7 @@ class CoalescedRecomputeBuilder:
             target_kind = resolved.target.kind
             attribute_name = resolved.target.attribute.name
             for filter_key in resolved.node_filters:
-                is_self = filter_key == _SELF_FILTER
+                is_self = filter_key == SELF_FILTER
                 if is_self and not (include_self and target_kind == kind):
                     continue
                 if not is_self and not include_cross:
@@ -367,22 +379,40 @@ class CoalescedRecomputeSubmitter:
         target whose union exceeds the submission chunk size is split into several submissions so no
         flow-run parameter grows past the size Prefect accepts. The order is deterministic so the
         same change set always submits the same work.
+
+        A widened target has no node ids, and chunking an empty id set yields nothing, so it gets one
+        submission of its own; otherwise the widening would turn into a silent skip.
         """
         chunk_size = get_submission_chunk_size()
-        submissions = [
-            CoalescedSubmission(
-                family=target.family,
-                source_kind=lookup.source_kind,
-                target_kind=target.target_kind,
-                attribute_name=target.attribute_name,
-                filter_key=lookup.filter_key,
-                branch=coalesced.branch,
-                node_ids=chunk,
+        submissions: list[CoalescedSubmission] = []
+        for target in coalesced.targets:
+            if target.whole_kind:
+                submissions.append(
+                    CoalescedSubmission(
+                        family=target.family,
+                        source_kind=target.target_kind,
+                        target_kind=target.target_kind,
+                        attribute_name=target.attribute_name,
+                        filter_key=SELF_FILTER,
+                        branch=coalesced.branch,
+                        node_ids=(),
+                        whole_kind=True,
+                    )
+                )
+                continue
+            submissions.extend(
+                CoalescedSubmission(
+                    family=target.family,
+                    source_kind=lookup.source_kind,
+                    target_kind=target.target_kind,
+                    attribute_name=target.attribute_name,
+                    filter_key=lookup.filter_key,
+                    branch=coalesced.branch,
+                    node_ids=chunk,
+                )
+                for lookup in target.reader_lookups
+                for chunk in chunked(tuple(sorted(lookup.source_node_ids)), chunk_size)
             )
-            for target in coalesced.targets
-            for lookup in target.reader_lookups
-            for chunk in chunked(tuple(sorted(lookup.source_node_ids)), chunk_size)
-        ]
         return sorted(
             submissions,
             key=lambda submission: (
@@ -404,19 +434,30 @@ class CoalescedRecomputeSubmitter:
             "node_kind": submission.source_kind,
             "object_ids": list(submission.node_ids),
             "context": context,
-            "recompute_depth": recompute_depth,
+        }
+        attribute_parameters = {
+            "computed_attribute_name": submission.attribute_name,
+            "computed_attribute_kind": submission.target_kind,
         }
         match submission.family:
             case "computed_attribute":
-                parameters["computed_attribute_name"] = submission.attribute_name
-                parameters["computed_attribute_kind"] = submission.target_kind
-                return COMPUTED_ATTRIBUTE_PROCESS_JINJA2, parameters
+                return (
+                    COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+                    parameters | attribute_parameters | {"recompute_depth": recompute_depth},
+                )
+            case "python_computed_attribute":
+                # The transform flow does not take part in the bounded chain yet, so it has no depth.
+                return COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM, parameters | attribute_parameters
             case "display_label":
-                parameters["target_kind"] = submission.target_kind
-                return DISPLAY_LABELS_PROCESS_JINJA2, parameters
+                return DISPLAY_LABELS_PROCESS_JINJA2, parameters | {
+                    "target_kind": submission.target_kind,
+                    "recompute_depth": recompute_depth,
+                }
             case "hfid":
-                parameters["target_kind"] = submission.target_kind
-                return HFID_PROCESS, parameters
+                return HFID_PROCESS, parameters | {
+                    "target_kind": submission.target_kind,
+                    "recompute_depth": recompute_depth,
+                }
             case _:
                 assert_never(submission.family)
 

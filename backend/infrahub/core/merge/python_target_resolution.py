@@ -1,0 +1,247 @@
+"""Derive the Python transform computed attributes a merge or rebase change set affects.
+
+A Python transform computed attribute declares no dependency graph: what it reads is only known
+from its GraphQL query, and which nodes read a given node is only known from the query groups those
+nodes subscribed to when they last computed. Both are database facts, so they arrive through the two
+source protocols below and the narrowing itself stays free of any database or client import.
+
+Over-recompute is acceptable here, under-recompute is not: every signal that cannot be narrowed
+safely widens to the whole target kind and is logged.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Protocol
+
+from infrahub.log import get_logger
+
+from .recompute_coalescing import (
+    CREATED,
+    DELETED,
+    PYTHON_COMPUTED_ATTRIBUTE,
+    SELF_FILTER,
+    UPDATED,
+    AffectedTarget,
+    ChangeSignature,
+    ReaderLookup,
+)
+
+log = get_logger()
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from infrahub.core.query_group.subscribers import SubscriberRef
+    from infrahub.core.schema.schema_branch_computed import TransformReadSet
+
+    from .recompute_coalescing import MergeChange
+
+
+@dataclass(frozen=True)
+class PythonAttributeReadSet:
+    """One Python transform computed attribute and the schema elements its query reads."""
+
+    kind: str
+    attribute_name: str
+    read_set: TransformReadSet
+
+
+class PythonReadSetSource(Protocol):
+    """The read set of every Python transform computed attribute declared on a branch.
+
+    An attribute whose query cannot be analyzed still has to be reported, with an imprecise read
+    set, so that it widens instead of dropping out of the change set unnoticed.
+    """
+
+    async def read_sets(self, *, branch: str) -> list[PythonAttributeReadSet]: ...
+
+
+class PythonSubscriberSource(Protocol):
+    """The nodes subscribed to a query group that holds any of ``node_ids`` as a member."""
+
+    async def subscribers(self, *, node_ids: list[str], branch: str) -> list[SubscriberRef]: ...
+
+
+@dataclass(frozen=True)
+class _Selection:
+    """Why one change signature selects one attribute, and how exactly."""
+
+    self_target: bool
+    widen: bool
+    precise: bool
+
+
+@dataclass
+class _Accumulator:
+    kind: str
+    attribute_name: str
+    self_ids: set[str] = field(default_factory=set)
+    source_ids: set[str] = field(default_factory=set)
+    precise: bool = True
+    whole_kind: bool = False
+
+    def add(self, *, selection: _Selection, node_ids: set[str]) -> None:
+        if selection.widen:
+            self.whole_kind = True
+        elif selection.self_target:
+            self.self_ids.update(node_ids)
+        else:
+            self.source_ids.update(node_ids)
+        if not selection.precise:
+            self.precise = False
+
+
+class PythonTargetResolver:
+    """Map a merge or rebase change set to the Python computed attributes it affects.
+
+    One instance serves one pass on one branch: the read-set index is fetched once, and reader
+    resolution is memoised on the set of changed ids it runs over, so attributes selected by the
+    same changes share a single union query instead of one query per changed node. Keying the
+    memo on the id set rather than sharing one union across every attribute is what keeps an
+    attribute from inheriting the subscribers of changes that cannot affect it.
+    """
+
+    def __init__(
+        self,
+        *,
+        read_set_source: PythonReadSetSource,
+        subscriber_source: PythonSubscriberSource,
+        branch: str,
+    ) -> None:
+        self.read_set_source = read_set_source
+        self.subscriber_source = subscriber_source
+        self.branch = branch
+        self._read_sets: list[PythonAttributeReadSet] | None = None
+        self._subscriber_cache: dict[frozenset[str], list[SubscriberRef]] = {}
+
+    async def resolve(self, *, changes: Iterable[MergeChange]) -> list[AffectedTarget]:
+        """Derive the affected Python computed attributes and the nodes to recompute for each.
+
+        Changes are grouped by their (kind, action, changed fields) signature so the narrowing runs
+        once per distinct shape. Targets are deduplicated per (kind, attribute) across the whole
+        change set and returned in a deterministic order.
+        """
+        ids_by_signature: dict[ChangeSignature, set[str]] = {}
+        for change in changes:
+            signature = ChangeSignature(kind=change.kind, action=change.action, changed_fields=change.changed_fields)
+            ids_by_signature.setdefault(signature, set()).add(change.node_id)
+
+        read_sets = await self._load_read_sets()
+        accumulators: dict[tuple[str, str], _Accumulator] = {}
+        for signature, node_ids in ids_by_signature.items():
+            for attribute in read_sets:
+                selection = _select(signature=signature, attribute=attribute)
+                if selection is None:
+                    continue
+                key = (attribute.kind, attribute.attribute_name)
+                accumulator = accumulators.setdefault(
+                    key, _Accumulator(kind=attribute.kind, attribute_name=attribute.attribute_name)
+                )
+                accumulator.add(selection=selection, node_ids=node_ids)
+
+        targets = [await self._build_target(accumulator=accumulators[key]) for key in sorted(accumulators)]
+        return [target for target in targets if target is not None]
+
+    async def _build_target(self, *, accumulator: _Accumulator) -> AffectedTarget | None:
+        identity = f"{accumulator.kind}.{accumulator.attribute_name}"
+        target_ids = set(accumulator.self_ids)
+        whole_kind = accumulator.whole_kind
+        if whole_kind:
+            log.info("Widening the recompute of %s to its whole kind: the read set is undeterminable", identity)
+        elif accumulator.source_ids:
+            try:
+                refs = await self._subscribers_for(frozenset(accumulator.source_ids))
+            except Exception:
+                log.exception("Widening the recompute of %s to its whole kind: the reader lookup failed", identity)
+                whole_kind = True
+            else:
+                target_ids.update(ref.id for ref in refs if ref.kind == accumulator.kind)
+
+        if whole_kind:
+            return AffectedTarget(
+                family=PYTHON_COMPUTED_ATTRIBUTE,
+                target_kind=accumulator.kind,
+                attribute_name=accumulator.attribute_name,
+                reads_across_relationship=False,
+                reader_lookups=frozenset(),
+                precise=False,
+                whole_kind=True,
+            )
+
+        if not target_ids:
+            return None
+
+        return AffectedTarget(
+            family=PYTHON_COMPUTED_ATTRIBUTE,
+            target_kind=accumulator.kind,
+            attribute_name=accumulator.attribute_name,
+            reads_across_relationship=False,
+            reader_lookups=frozenset(
+                {
+                    ReaderLookup(
+                        source_kind=accumulator.kind,
+                        filter_key=SELF_FILTER,
+                        source_node_ids=frozenset(target_ids),
+                    )
+                }
+            ),
+            precise=accumulator.precise,
+        )
+
+    async def _load_read_sets(self) -> list[PythonAttributeReadSet]:
+        if self._read_sets is None:
+            self._read_sets = await self.read_set_source.read_sets(branch=self.branch)
+        return self._read_sets
+
+    async def _subscribers_for(self, node_ids: frozenset[str]) -> list[SubscriberRef]:
+        cached = self._subscriber_cache.get(node_ids)
+        if cached is None:
+            cached = await self.subscriber_source.subscribers(node_ids=sorted(node_ids), branch=self.branch)
+            self._subscriber_cache[node_ids] = cached
+        return cached
+
+
+def _select(*, signature: ChangeSignature, attribute: PythonAttributeReadSet) -> _Selection | None:
+    """Decide whether one change signature affects one attribute, or return None when it cannot.
+
+    Raises:
+        ValueError: on a change action the narrowing has no rule for, since guessing one would risk
+            leaving a value stale.
+
+    """
+    if signature.action == CREATED:
+        # A created node subscribes to no query group yet, so it can only be its own target.
+        return _Selection(self_target=True, widen=False, precise=True) if attribute.kind == signature.kind else None
+
+    if signature.action not in {UPDATED, DELETED}:
+        raise ValueError(f"Unknown change action: {signature.action!r}")
+
+    return _select_reader(signature=signature, read_set=attribute.read_set)
+
+
+def _select_reader(*, signature: ChangeSignature, read_set: TransformReadSet) -> _Selection | None:
+    """Decide whether an update or a deletion of ``signature.kind`` moves what the query reads.
+
+    The field filter is dropped for one kind at a time, never for the whole read set: a query that
+    reads a derived field of one kind still rejects an unread field of another. Collapsing the set
+    would leave a chained level selecting nodes the change cannot affect.
+    """
+    if read_set.depends_on_everything:
+        return _Selection(self_target=False, widen=True, precise=False)
+
+    if signature.kind not in read_set.read_kinds:
+        return None
+
+    if signature.action == DELETED:
+        # Every field the query read is gone with the node, so dropping the field filter is exact.
+        return _Selection(self_target=False, widen=False, precise=True)
+
+    if not signature.changed_fields or signature.kind in read_set.imprecise_kinds:
+        # Nothing to filter on, or a derived read whose backing fields cannot be named.
+        return _Selection(self_target=False, widen=False, precise=False)
+
+    if signature.changed_fields & read_set.read_fields.get(signature.kind, frozenset()):
+        return _Selection(self_target=False, widen=False, precise=True)
+
+    return None

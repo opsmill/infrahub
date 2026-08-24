@@ -5136,6 +5136,12 @@
                         "description": "When enabled, only the generators and artifact definitions affected by a merge are re-executed; when disabled, every generator and artifact definition is re-executed.",
                         "default": true
                     },
+                    "coalesce_python_recompute_after_merge": {
+                        "type": "boolean",
+                        "title": "Coalesce Python Recompute After Merge",
+                        "description": "When enabled, the coalesced merge and rebase pass recomputes Python transform computed attributes; when disabled, one task per changed node recomputes them.",
+                        "default": true
+                    },
                     "merge_failure_grace_period_seconds": {
                         "type": "integer",
                         "minimum": 0.0,
