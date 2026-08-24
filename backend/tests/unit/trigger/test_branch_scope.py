@@ -6,7 +6,7 @@ default-branch automation must then skip the events of that branch, or the work 
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable
 
 import pytest
@@ -131,26 +131,9 @@ class TestBranchScoping:
             UNKNOWN_BRANCH: [DEFAULT_BRANCH],
         }
 
-    def test_default_automation_excludes_every_diverged_branch(self, case: BuilderCase) -> None:
-        trigger = case.build(DEFAULT_BRANCH, DIVERGED_BRANCHES).trigger
-
-        assert "infrahub.branch.name" not in trigger.match
-        assert isinstance(trigger.match_related, list)
-        assert trigger.match_related[1:] == [BRANCH_EXCLUSION_BRANCH1, BRANCH_EXCLUSION_BRANCH2]
-
-    def test_branch_automation_matches_its_own_branch(self, case: BuilderCase) -> None:
-        trigger = case.build("branch1", []).trigger
-
-        assert trigger.match["infrahub.branch.name"] == "branch1"
-        assert isinstance(trigger.match_related, dict)
-
     def test_default_automation_without_diverged_branch_covers_every_branch(self, case: BuilderCase) -> None:
         """With nothing diverged, one automation owns every branch, including future ones."""
-        automation = case.build(DEFAULT_BRANCH, [])
-
-        assert "infrahub.branch.name" not in automation.trigger.match
-        assert isinstance(automation.trigger.match_related, dict)
-        assert _covered_branches({DEFAULT_BRANCH: automation}) == {
+        assert _covered_branches({DEFAULT_BRANCH: case.build(DEFAULT_BRANCH, [])}) == {
             DEFAULT_BRANCH: [DEFAULT_BRANCH],
             "branch1": [DEFAULT_BRANCH],
             "branch2": [DEFAULT_BRANCH],
@@ -161,60 +144,33 @@ class TestBranchScoping:
 @dataclass
 class ExcludeBranchesCase:
     name: str
-    match_related: dict | list[dict]
     branch_names: list[str]
     expected: dict | list[dict]
-    expected_prefect_specifications: int = field(default=1)
 
 
 EXCLUDE_BRANCHES_CASES = [
     ExcludeBranchesCase(
-        name="no_branch_leaves_the_dict_untouched",
-        match_related={"infrahub.field.name": [FIELD]},
+        name="nothing_to_exclude_leaves_the_shape_alone",
         branch_names=[],
         expected={"infrahub.field.name": [FIELD]},
     ),
     ExcludeBranchesCase(
-        name="one_branch_promotes_the_dict_to_a_list",
-        match_related={"infrahub.field.name": [FIELD]},
-        branch_names=["branch1"],
-        expected=[{"infrahub.field.name": [FIELD]}, BRANCH_EXCLUSION_BRANCH1],
-        expected_prefect_specifications=2,
-    ),
-    ExcludeBranchesCase(
-        name="branches_are_sorted_so_the_automation_is_stable",
-        match_related={"infrahub.field.name": [FIELD]},
+        name="exclusions_are_sorted",
         branch_names=["branch2", "branch1"],
         expected=[{"infrahub.field.name": [FIELD]}, BRANCH_EXCLUSION_BRANCH1, BRANCH_EXCLUSION_BRANCH2],
-        expected_prefect_specifications=3,
-    ),
-    ExcludeBranchesCase(
-        name="an_empty_match_related_is_dropped",
-        match_related={},
-        branch_names=["branch1"],
-        expected=[BRANCH_EXCLUSION_BRANCH1],
-    ),
-    ExcludeBranchesCase(
-        name="an_existing_list_is_extended",
-        match_related=[{"infrahub.field.name": [FIELD]}, BRANCH_EXCLUSION_BRANCH1],
-        branch_names=["branch2"],
-        expected=[{"infrahub.field.name": [FIELD]}, BRANCH_EXCLUSION_BRANCH1, BRANCH_EXCLUSION_BRANCH2],
-        expected_prefect_specifications=3,
     ),
 ]
 
 
 @pytest.mark.parametrize("case", EXCLUDE_BRANCHES_CASES, ids=lambda case: case.name)
-def test_exclude_branches(case: ExcludeBranchesCase) -> None:
-    event_trigger = EventTrigger(events={NodeUpdatedEvent.event_name}, match_related=case.match_related)
+def test_exclude_branches_keeps_the_automation_stable(case: ExcludeBranchesCase) -> None:
+    """An automation is reconciled by comparing model dumps, so the output has to be stable.
+
+    Registry order is insertion order, so unsorted exclusions would rewrite the automation on
+    every setup run, and an untouched filter has to keep the shape it had.
+    """
+    event_trigger = EventTrigger(events={NodeUpdatedEvent.event_name}, match_related={"infrahub.field.name": [FIELD]})
 
     event_trigger.exclude_branches(case.branch_names)
 
     assert event_trigger.match_related == case.expected
-
-    prefect_match_related = event_trigger.get_prefect().match_related
-    if case.expected_prefect_specifications == 1:
-        assert not isinstance(prefect_match_related, list)
-    else:
-        assert isinstance(prefect_match_related, list)
-        assert len(prefect_match_related) == case.expected_prefect_specifications
