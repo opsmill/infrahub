@@ -326,12 +326,10 @@ disable_error_code = [
 [[tool.mypy.overrides]]
 module = "infrahub.database"
 disable_error_code = [
+    # Only remaining violation: AsyncGraphDatabase.driver() rejects `resolver=None` in the neo4j
+    # stubs even though None is the driver's own runtime default. To remove this we would have to
+    # always pass a resolver, including for a single member and for an empty address_members list.
     "arg-type",
-    "assignment",
-    "index",
-    "misc",
-    "return-value",
-    "union-attr",
 ]
 
 [[tool.mypy.overrides]]
@@ -1624,10 +1622,12 @@ include = ["backend/infrahub/database/**"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
+# Queries are assembled at runtime, so they are `str` where the neo4j stubs require `LiteralString`.
+# Also covers the `resolver=None` violation described in the mypy override for infrahub.database.
 invalid-argument-type = "ignore"
-invalid-return-type = "ignore"
+# IndexManagerBase and its subclasses define a `list` method, which shadows the builtin for every
+# `list[...]` annotation in those class bodies. To remove this the method has to be renamed.
 invalid-type-form = "ignore"
-unresolved-attribute = "ignore"
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]

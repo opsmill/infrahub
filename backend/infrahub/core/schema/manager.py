@@ -65,7 +65,7 @@ class SchemaManager(NodeManager):
     def _get_from_cache(self, key: int) -> Any:
         return self._cache[key]
 
-    def set(self, name: str, schema: NodeSchema | GenericSchema, branch: str | None = None) -> int:
+    def set(self, name: str, schema: MainSchemaTypes, branch: str | None = None) -> int:
         branch = branch or registry.default_branch
 
         if branch not in self._branches:
