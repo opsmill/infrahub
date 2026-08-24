@@ -12,6 +12,7 @@ from infrahub.core.merge.recompute_coalescing import (
     RECOMPUTE_CHAIN_DEPTH_FLOOR,
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
+    DisabledPythonTargetDeriver,
     RecomputeChainSubmitter,
     max_recompute_chain_depth,
 )
@@ -64,6 +65,7 @@ def _dispatcher(
         chain=RecomputeChainSubmitter(
             builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
             submitter=CoalescedRecomputeSubmitter(workflow=workflow),
+            python_deriver=DisabledPythonTargetDeriver(),
         ),
     )
 
@@ -404,6 +406,7 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
         submissions = await RecomputeChainSubmitter(
             builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
             submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+            python_deriver=DisabledPythonTargetDeriver(),
         ).submit(
             written=written,
             branch=default_branch.name,
@@ -425,6 +428,7 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_deriver=DisabledPythonTargetDeriver(),
     ).submit(
         written=written,
         branch=default_branch.name,
@@ -450,6 +454,7 @@ async def test_chain_coalesces_the_next_level_into_one_submission(
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_deriver=DisabledPythonTargetDeriver(),
     ).submit(
         written=written,
         branch=default_branch.name,
@@ -480,6 +485,7 @@ async def test_chain_dispatches_nothing_when_no_values_were_written(
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_deriver=DisabledPythonTargetDeriver(),
     ).submit(
         written=[],
         branch=default_branch.name,
@@ -508,6 +514,7 @@ async def test_chain_stops_at_the_depth_bound(
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_deriver=DisabledPythonTargetDeriver(),
     ).submit(
         written=written,
         branch=default_branch.name,
@@ -536,6 +543,7 @@ async def test_chain_bound_scales_with_the_schema_so_deep_chains_are_not_truncat
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_deriver=DisabledPythonTargetDeriver(),
     ).submit(
         written=written,
         branch=default_branch.name,

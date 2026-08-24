@@ -51,6 +51,7 @@ from .scoping import (
 from .transform_recompute import TransformRecomputeSubmitter
 
 if TYPE_CHECKING:
+    from infrahub.core.schema import NodeSchema
     from infrahub.core.schema.computed_attribute import ComputedAttribute
     from infrahub.core.schema.schema_branch_computed import TransformReadSet
     from infrahub.database import InfrahubDatabase
@@ -93,6 +94,21 @@ def _resolve_changed_elements(
     if changed_elements is None:
         return None
     return ChangedElementSet.from_payload(changed_elements)
+
+
+def _python_transform_attributes(*, node_schema: NodeSchema, attribute_name: str) -> dict[str, ComputedAttribute]:
+    """The Python transform computed attributes of a kind, narrowed to the requested one.
+
+    Every caller submits one flow per attribute, so processing the whole kind here would run the
+    transform of a kind with N attributes N times per submission.
+    """
+    transform_attributes = {
+        attribute.name: attribute.computed_attribute
+        for attribute in node_schema.attributes
+        if attribute.computed_attribute and attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON
+    }
+    requested = transform_attributes.get(attribute_name)
+    return {attribute_name: requested} if requested else {}
 
 
 async def _transform_value_for_node(
@@ -165,18 +181,22 @@ def _partition_transform_results(
 async def process_transform(
     branch_name: str,
     node_kind: str,
-    computed_attribute_name: str,  # noqa: ARG001
+    computed_attribute_name: str,
     computed_attribute_kind: str,  # noqa: ARG001
     context: EventContext,
     object_id: str | None = None,
     object_ids: list[str] | None = None,
     updated_fields: list[str] | None = None,  # noqa: ARG001
+    coalesced: bool = False,
+    recompute_depth: int = 0,
 ) -> None:
-    """Recompute Python computed attributes for a batch of nodes.
+    """Recompute one Python computed attribute for a batch of nodes.
 
     One repository init and one bulk write per batch; unchanged values emit no events
     and fan out no further recompute; a failing node keeps its previous value without
-    blocking its siblings.
+    blocking its siblings. A coalesced pass stamps its writes with the recompute origin
+    and drives the next level through the bounded chain, instead of letting the writes
+    re-enter the live per-node paths.
 
     Raises:
         ValueError: if a computed attribute has no transform configured or the transform cannot be fetched.
@@ -192,12 +212,10 @@ async def process_transform(
 
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     node_schema = schema_branch.get_node(name=node_kind, duplicate=False)
-    transform_attributes: dict[str, ComputedAttribute] = {}
-    for attribute in node_schema.attributes:
-        if attribute.computed_attribute and attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON:
-            transform_attributes[attribute.name] = attribute.computed_attribute
+    transform_attributes = _python_transform_attributes(node_schema=node_schema, attribute_name=computed_attribute_name)
 
     if not transform_attributes:
+        log.warning(f"'{node_kind}' has no Python computed attribute named '{computed_attribute_name}'")
         return
 
     for attribute_name, transform_attribute in transform_attributes.items():
@@ -254,8 +272,8 @@ async def process_transform(
             writes=writes,
             branch_name=branch_name,
             context=context,
-            coalesced=False,
-            recompute_depth=0,
+            coalesced=coalesced,
+            recompute_depth=recompute_depth,
         )
         log.info(
             f"Recompute of '{attribute_name}' complete: submitted={len(results)} "
@@ -272,7 +290,14 @@ async def trigger_update_python_computed_attributes(
     computed_attribute_name: str,
     computed_attribute_kind: str,
     context: EventContext,
+    coalesced: bool = False,
+    recompute_depth: int = 0,
 ) -> None:
+    """Recompute one Python computed attribute over every node of its kind.
+
+    ``coalesced`` and ``recompute_depth`` are carried to each batch, so a widened pass keeps the
+    recompute origin and the depth bound of the pass that asked for it.
+    """
     await add_tags(branches=[branch_name])
 
     client = get_client()
@@ -295,6 +320,8 @@ async def trigger_update_python_computed_attributes(
                 "computed_attribute_name": computed_attribute_name,
                 "computed_attribute_kind": computed_attribute_kind,
                 "context": context,
+                "coalesced": coalesced,
+                "recompute_depth": recompute_depth,
             },
             # Must be a creation tag: in-flow tag updates drop tags added mid-run.
             tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],

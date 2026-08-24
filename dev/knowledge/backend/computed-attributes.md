@@ -39,7 +39,7 @@ These changes are handled by Prefect background tasks triggered by `NodeCreatedE
 
 **When**: A branch merge or rebase changes nodes that feed computed attributes.
 
-A merge or rebase does not emit one event and one flow per changed node. It runs a single coalesced recompute for the whole change set, writes the results in bulk, and chains any value that reads them. The three families (computed attributes, display labels, human-friendly ids) share this path, and the per-node triggers are suppressed for merge/rebase/recompute-origin events so the change is processed once. See [merge-recompute.md](merge-recompute.md).
+A merge or rebase does not emit one event and one flow per changed node. It runs a single coalesced recompute for the whole change set, writes the results in bulk, and chains any value that reads them. The three families (computed attributes, display labels, human-friendly ids) share this path, and the per-node triggers are suppressed for merge/rebase/recompute-origin events so the change is processed once. Python transform computed attributes join the pass when `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE` is on, which is the default, while their per-node automations keep firing as well. See [merge-recompute.md](merge-recompute.md).
 
 ## Self-Targeting Filter (`targets_self`)
 
@@ -125,8 +125,10 @@ Besides the transform-lifecycle triggers, each `(kind, attribute)` has a data-pa
 
 `process_transform` processes its node ids as one batch per attribute, not one task per node:
 
+- It recomputes the one attribute named in `computed_attribute_name`. Every caller submits one flow per attribute, so processing every Python attribute of the kind would run each transform once per attribute of that kind.
 - The transform's git repository is initialized once for the whole batch and shared across the per-node executions. Transform execution must not mutate the shared checkout.
 - Each node's read still runs individually with `update_group=True`, keeping the node subscribed to the transform's query group (the reverse index that routes future source changes to affected readers).
+- A coalesced pass tells the flow so through `coalesced` and `recompute_depth`: its writes are stamped with the recompute origin and drive the next chain level, instead of re-entering the live per-node paths with no depth guard.
 - The recomputed values persist through the shared bulk recompute writer (bounded transactions), not via per-node GraphQL mutations. The writer's skip-unchanged gating is per node, not per value: a save that produces no effective change emits no event and dispatches no follow-on recompute, which is what keeps a wide fan-out from echoing into further waves. A node whose save changes another of its fields still emits an event.
 - A node whose transform raises or returns a non-string is skipped with its previous value intact and a logged reason; the rest of the batch persists. The flow ends with a `submitted/written/skipped` summary line.
 - Each submission carries the branch tag at creation so the flow run stays visible in branch-filtered task queries; tags added mid-run do not survive later in-flow tag updates.

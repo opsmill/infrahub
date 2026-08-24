@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.merge.python_target_sources import build_python_target_deriver
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
@@ -74,5 +75,6 @@ async def build_bulk_recompute_dispatcher(schema_branch: SchemaBranch) -> BulkRe
     chain = RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
+        python_deriver=await build_python_target_deriver(db=db),
     )
     return BulkRecomputeDispatcher(db=db, writer=writer, chain=chain)

@@ -21,10 +21,17 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import MergeConflictsUnresolvedError
-from infrahub.workers.dependencies import build_cache, build_database, build_event_service, build_workflow
+from infrahub.workers.dependencies import (
+    build_cache,
+    build_component,
+    build_database,
+    build_event_service,
+    build_workflow,
+)
 from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.component import build_worker_component
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
@@ -100,6 +107,7 @@ async def test_merge_conflicts_when_a_self_attribute_input_changes_on_each_side(
     event_recorder = MemoryInfrahubEvent()
     workflow_recorder = WorkflowRecorder()
     cache = MemoryCache()
+    component = await build_worker_component(db=db, cache=cache)
     context = InfrahubContext.init(
         branch=default_branch,
         account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
@@ -111,6 +119,7 @@ async def test_merge_conflicts_when_a_self_attribute_input_changes_on_each_side(
         dependency_provider.scope(build_event_service, lambda: event_recorder),
         dependency_provider.scope(build_workflow, lambda: workflow_recorder),
         dependency_provider.scope(build_cache, lambda: cache),
+        dependency_provider.scope(build_component, lambda: component),
         pytest.raises(
             MergeConflictsUnresolvedError,
             match=r"^Unable to merge the branch 'two-sided-self', conflict resolution missing:.*summary/value",
