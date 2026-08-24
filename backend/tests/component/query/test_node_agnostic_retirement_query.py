@@ -1,4 +1,4 @@
-"""Graph-shape assertions for the retirement of one node's branch-agnostic fields.
+"""Graph-shape assertions for the retirement of nodes' branch-agnostic fields.
 
 Every assertion reads the edges directly rather than going through the node manager: the subject is
 which edges carry a `to` timestamp and which do not, and a read through the manager would hide the
@@ -29,6 +29,7 @@ from infrahub.core.query.node_agnostic_retirement import (
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from tests.helpers.agnostic_edges import (
+    assert_attribute_retired_at,
     attribute_global_edges,
     attribute_vertex_count,
     edge_summary,
@@ -70,7 +71,7 @@ async def _rename_widget_kind(db: InfrahubDatabase, branch: Branch) -> None:
 
 
 async def _retire(db: InfrahubDatabase, node_id: str, at: Timestamp) -> NodeAgnosticRetirementResult:
-    query = await RetireNodeAgnosticFieldsQuery.init(db=db, node_uuid=node_id, at=at)
+    query = await RetireNodeAgnosticFieldsQuery.init(db=db, node_uuids=[node_id], at=at)
     await query.execute(db=db)
     return query.get_data()
 
@@ -117,7 +118,9 @@ class TestRetireNodeAgnosticFields:
             "the bystander has to be retirable, or the anchor is not what spared it"
         )
 
-        query = await RetireNodeAgnosticFieldsQuery.init(db=db, node_uuid="no-node-carries-this-uuid", at=Timestamp())
+        query = await RetireNodeAgnosticFieldsQuery.init(
+            db=db, node_uuids=["no-node-carries-this-uuid"], at=Timestamp()
+        )
         await query.execute(db=db)
 
         assert query.get_result() is not None
@@ -201,8 +204,7 @@ class TestRetireNodeAgnosticFields:
         )
 
         after = await attribute_global_edges(db=db, node_id=widget.get_id(), attribute_name="serial")
-        assert open_edges(after) == []
-        assert {edge.to_time for edge in after if edge.status == "active"} == {retired_at.to_string()}
+        assert_attribute_retired_at(after=after, before=before, at=retired_at)
 
     async def test_a_relationship_stays_open_while_both_peers_are_live_on_one_branch(
         self,
@@ -259,7 +261,7 @@ class TestRetireNodeAgnosticFields:
         )
 
         after = await attribute_global_edges(db=db, node_id=widget.get_id(), attribute_name="serial")
-        assert open_edges(after) == []
+        assert_attribute_retired_at(after=after, before=before, at=at)
 
     async def test_a_partially_closed_relationship_is_retired(
         self,
