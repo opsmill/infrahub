@@ -475,6 +475,46 @@ async def test_unknown_group_is_silently_ignored(
     assert len(accounts) == 1
 
 
+async def test_login_after_account_deletion_creates_a_new_account(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Deleting an SSO account must give the provider user a clean slate.
+
+    The account delete leaves the identity node behind, so the next login matches an identity
+    that has no account anymore. That login must create a new account, exactly like a
+    first-time login, or the user can never sign in again.
+    """
+    identity = ExternalIdentity(
+        sub="sub-deleted-001",
+        provider_name="provider1",
+        protocol=ExternalAuthProtocol.OIDC,
+        display_name="Paul Novak",
+        email="paul@example.com",
+    )
+
+    first_login = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+    account = await NodeManager.get_one(db=db, id=first_login.account_id, raise_on_error=True)
+    await NodeManager.delete(db=db, nodes=[account])
+
+    second_login = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+
+    assert second_login.token.access_token
+    assert second_login.account_id != first_login.account_id
+
+    accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Paul Novak"})
+    assert len(accounts) == 1
+    assert accounts[0].id == second_login.account_id
+
+    identity_nodes = await NodeManager.query(
+        db=db,
+        schema=InfrahubKind.EXTERNALIDENTITY,
+        filters={"sub__value": "sub-deleted-001", "provider_name__value": "provider1", "protocol__value": "oidc"},
+    )
+    assert len(identity_nodes) == 1
+    linked_account = await identity_nodes[0].account.get_peer(db=db)
+    assert linked_account.id == second_login.account_id
+
+
 async def test_two_different_identities_produce_two_accounts(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
