@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal, assert_never
+from typing import TYPE_CHECKING, Any, Literal, Protocol, assert_never
 
 from infrahub.display_labels.scoping import derive_display_label_targets
 from infrahub.events.limits import get_submission_chunk_size
@@ -24,6 +24,7 @@ log = get_logger()
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
+    from infrahub.computed_attribute.scoping import ChangedElementSet
     from infrahub.core.recompute.bulk_write import WrittenNode
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.events.models import EventContext
@@ -132,6 +133,43 @@ class CoalescedRecompute:
     @property
     def fallback_used(self) -> bool:
         return any(not target.precise for target in self.targets)
+
+    def with_targets(self, targets: Iterable[AffectedTarget]) -> CoalescedRecompute:
+        """The same recompute plus more targets, deduplicated against the ones already held."""
+        return CoalescedRecompute(branch=self.branch, targets=self.targets | frozenset(targets))
+
+
+class PythonTargetDeriver(Protocol):
+    """The Python transform computed attributes a merge or rebase change set affects.
+
+    A Python transform declares no dependency graph, so this derivation needs the database and the
+    API client; keeping it behind an interface is what keeps them out of the coalesced pass itself.
+
+    ``schema_changed_elements`` names the schema elements a merge changed. It lets the derivation
+    drop the pairs the schema-driven backfill already refreshes, and is ``None`` wherever no schema
+    change is replayed.
+    """
+
+    async def resolve(
+        self,
+        *,
+        changes: Iterable[MergeChange],
+        branch: str,
+        schema_changed_elements: ChangedElementSet | None,
+    ) -> list[AffectedTarget]: ...
+
+
+class DisabledPythonTargetDeriver:
+    """The derivation while the coalescing switch is off: the per-node automations own the work."""
+
+    async def resolve(
+        self,
+        *,
+        changes: Iterable[MergeChange],  # noqa: ARG002
+        branch: str,  # noqa: ARG002
+        schema_changed_elements: ChangedElementSet | None,  # noqa: ARG002
+    ) -> list[AffectedTarget]:
+        return []
 
 
 @dataclass
@@ -461,9 +499,13 @@ class CoalescedRecomputeSubmitter:
                         "computed_attribute_name": submission.attribute_name,
                         "computed_attribute_kind": submission.target_kind,
                         "context": context,
+                        "coalesced": True,
+                        "recompute_depth": recompute_depth,
                     }
-                # The transform flow does not take part in the bounded chain yet, so it has no depth.
-                return COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM, parameters | attribute_parameters
+                return (
+                    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
+                    parameters | attribute_parameters | {"coalesced": True, "recompute_depth": recompute_depth},
+                )
             case "display_label":
                 return DISPLAY_LABELS_PROCESS_JINJA2, parameters | {
                     "target_kind": submission.target_kind,
@@ -516,18 +558,35 @@ class MergeRecomputeCoordinator:
     """Build the coalesced recompute for a merge or rebase change set and submit it.
 
     Build and submit are always run together, so this holds one of each and hands the builder's
-    output to the submitter.
+    output to the submitter. The Python transform family is derived separately, since it reads the
+    database and the query groups instead of the schema alone.
     """
 
-    def __init__(self, builder: CoalescedRecomputeBuilder, submitter: CoalescedRecomputeSubmitter) -> None:
+    def __init__(
+        self,
+        builder: CoalescedRecomputeBuilder,
+        submitter: CoalescedRecomputeSubmitter,
+        python_deriver: PythonTargetDeriver,
+    ) -> None:
         self.builder = builder
         self.submitter = submitter
+        self.python_deriver = python_deriver
 
     async def run(
-        self, *, changes: Iterable[MergeChange], branch: str, context: EventContext
+        self,
+        *,
+        changes: Iterable[MergeChange],
+        branch: str,
+        context: EventContext,
+        schema_changed_elements: ChangedElementSet | None = None,
     ) -> list[CoalescedSubmission]:
-        coalesced = self.builder.build(changes=changes, branch=branch)
-        return await self.submitter.submit(coalesced=coalesced, context=context)
+        # Two derivations read the change set, so a one-shot iterable would leave the second empty.
+        change_list = list(changes)
+        coalesced = self.builder.build(changes=change_list, branch=branch)
+        python_targets = await self.python_deriver.resolve(
+            changes=change_list, branch=branch, schema_changed_elements=schema_changed_elements
+        )
+        return await self.submitter.submit(coalesced=coalesced.with_targets(python_targets), context=context)
 
 
 def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
@@ -547,9 +606,15 @@ def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
 class RecomputeChainSubmitter:
     """Dispatch the next recompute level for a set of derived-value writes, as one coalesced pass."""
 
-    def __init__(self, builder: CoalescedRecomputeBuilder, submitter: CoalescedRecomputeSubmitter) -> None:
+    def __init__(
+        self,
+        builder: CoalescedRecomputeBuilder,
+        submitter: CoalescedRecomputeSubmitter,
+        python_deriver: PythonTargetDeriver,
+    ) -> None:
         self.builder = builder
         self.submitter = submitter
+        self.python_deriver = python_deriver
 
     async def submit(
         self,
@@ -585,4 +650,8 @@ class RecomputeChainSubmitter:
             for node in written
         ]
         coalesced = self.builder.build(changes=changes, branch=branch)
-        return await self.submitter.submit(coalesced=coalesced, context=context, recompute_depth=next_depth)
+        # A chained level replays data writes, never a schema change, so nothing is covered elsewhere.
+        python_targets = await self.python_deriver.resolve(changes=changes, branch=branch, schema_changed_elements=None)
+        return await self.submitter.submit(
+            coalesced=coalesced.with_targets(python_targets), context=context, recompute_depth=next_depth
+        )

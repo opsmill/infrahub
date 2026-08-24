@@ -27,6 +27,7 @@ from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
 from infrahub.core.merge.merge_locker import MergeLocker
+from infrahub.core.merge.python_target_sources import build_python_target_deriver
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
@@ -346,7 +347,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         coordinator = MergeRecomputeCoordinator(
             builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
             submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
+            python_deriver=await build_python_target_deriver(db=db),
         )
+        # A rebase emits no schema-updated event, so no backfill covers any of the derived targets.
         await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
 
 

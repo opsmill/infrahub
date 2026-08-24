@@ -22,6 +22,7 @@ from .constraints import MergeConstraintValidator
 from .graph_merger import GraphMerger
 from .orchestrator import BranchMergeOrchestrator
 from .post_merge import PostMergeDispatcher
+from .python_target_sources import build_python_target_deriver
 from .repository_merge_dispatcher import RepositoryMergeDispatcher
 from .rollback_handler import MergeRollbackHandler
 from .schema_analyzer import MergeSchemaAnalyzer
@@ -113,6 +114,7 @@ async def build_branch_merge_orchestrator(
         workflow=workflow,
         event_service=event_service,
         default_branch=destination_branch,
+        python_deriver=await build_python_target_deriver(db=db),
         logger=logger,
     )
 

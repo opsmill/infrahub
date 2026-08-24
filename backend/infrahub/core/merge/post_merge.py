@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub import config
+from infrahub.computed_attribute.scoping import ChangedElementSet
 from infrahub.core import registry
 from infrahub.core.constants import MutationAction
 from infrahub.core.merge.recompute_coalescing import (
@@ -38,6 +39,7 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.workflow import InfrahubWorkflow
     from infrahub.workflows.models import WorkflowDefinition
 
+    from .recompute_coalescing import PythonTargetDeriver
     from .repository_merge_dispatcher import RepositoryMergeDispatcher
 
 
@@ -54,12 +56,14 @@ class PostMergeDispatcher:
         workflow: InfrahubWorkflow,
         event_service: InfrahubEventService,
         default_branch: Branch,
+        python_deriver: PythonTargetDeriver,
         logger: InfrahubLogger | None = None,
     ) -> None:
         self.repository_merge_dispatcher = repository_merge_dispatcher
         self.workflow = workflow
         self.event_service = event_service
         self.default_branch = default_branch
+        self.python_deriver = python_deriver
         self.log = logger or get_logger()
 
     async def run_follow_ups(
@@ -132,17 +136,20 @@ class PostMergeDispatcher:
         )
 
         events: list[InfrahubEvent] = [merge_event]
+        schema_changed_elements: ChangedElementSet | None = None
         if schema_diff is not None and schema_hash is not None:
+            changed_elements = build_changed_elements_payload(schema_diff)
             # Drive the display-label, HFID and computed-attribute backfills for destination-only nodes,
             # scoped to the elements the merge changed so the recompute stays narrow.
             events.append(
                 SchemaUpdatedEvent(
                     branch_name=self.default_branch.name,
                     schema_hash=schema_hash,
-                    changed_elements=build_changed_elements_payload(schema_diff),
+                    changed_elements=changed_elements,
                     meta=EventMeta.from_parent(parent=merge_event, branch=self.default_branch),
                 )
             )
+            schema_changed_elements = ChangedElementSet.from_payload(changed_elements)
         changes: list[MergeChange] = []
         for action, node_changelog in node_events:
             mutation_action = MutationAction.from_diff_action(diff_action=action)
@@ -175,8 +182,14 @@ class PostMergeDispatcher:
             coordinator = MergeRecomputeCoordinator(
                 builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
                 submitter=CoalescedRecomputeSubmitter(workflow=self.workflow),
+                python_deriver=self.python_deriver,
             )
-            await coordinator.run(changes=changes, branch=self.default_branch.name, context=event_context)
+            await coordinator.run(
+                changes=changes,
+                branch=self.default_branch.name,
+                context=event_context,
+                schema_changed_elements=schema_changed_elements,
+            )
 
     async def _submit_workflow(
         self,
