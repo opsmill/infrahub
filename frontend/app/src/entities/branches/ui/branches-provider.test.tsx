@@ -1,3 +1,4 @@
+import React from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { QSP } from "@/shared/config/qsp";
@@ -16,8 +17,25 @@ vi.mock("@/entities/branches/ui/queries/get-branches.query");
 const defaultBranch = generateBranch({ id: "branch-default", name: "primary", is_default: true });
 const featureBranch = generateBranch({ id: "branch-feature", name: "feature-1" });
 
-const mockBranchesQuery = (state: Partial<ReturnType<typeof useGetBranches>>) =>
-  vi.mocked(useGetBranches).mockReturnValue(state as ReturnType<typeof useGetBranches>);
+type BranchesQueryState = Partial<ReturnType<typeof useGetBranches>>;
+
+// Mocked as a hook rather than a fixed value so that refetch() behaves like React Query's: it
+// resolves with the next scripted response and re-renders with it. Responses are consumed in order
+// and the last one is reused once the script runs out.
+const mockBranchesQuery = (...responses: BranchesQueryState[]) =>
+  vi.mocked(useGetBranches).mockImplementation(() => {
+    const [fetchIndex, setFetchIndex] = React.useState(0);
+    const lastIndex = responses.length - 1;
+
+    return {
+      ...responses[Math.min(fetchIndex, lastIndex)],
+      refetch: () => {
+        const nextIndex = Math.min(fetchIndex + 1, lastIndex);
+        setFetchIndex(nextIndex);
+        return Promise.resolve(responses[nextIndex]);
+      },
+    } as ReturnType<typeof useGetBranches>;
+  });
 
 const mockFetchedBranches = () =>
   mockBranchesQuery({ data: [defaultBranch, featureBranch], isPending: false, error: null });
@@ -179,6 +197,26 @@ describe("BranchesProvider", () => {
 
     // THEN
     await expect.poll(getBranchInUrl).toBe("feature-1");
+  });
+
+  test("stays on the branch when only one fetched list omitted it", async () => {
+    // GIVEN
+    mockBranchesQuery(
+      { data: [defaultBranch], isPending: false, error: null },
+      { data: [defaultBranch, featureBranch], isPending: false, error: null }
+    );
+    seedBranchInUrl(featureBranch.name);
+
+    // WHEN
+    const component = await render(
+      <BranchesProvider>
+        <BranchProbe />
+      </BranchesProvider>
+    );
+
+    // THEN
+    await expect.element(component.getByText("Current branch: feature-1")).toBeVisible();
+    expect(getBranchInUrl()).toBe("feature-1");
   });
 
   test("falls back to the default branch when the URL names an unknown branch", async () => {

@@ -29,7 +29,7 @@ export function useCurrentBranch() {
 }
 
 export const BranchesProvider = ({ children }: { children?: React.ReactNode }) => {
-  const { data: branches, isPending, error } = useGetBranches();
+  const { data: branches, isPending, error, refetch } = useGetBranches();
   const [branchInQueryString, setBranchInQueryString] = useQueryState(QSP.BRANCH);
   const navigate = useNavigate();
 
@@ -40,22 +40,44 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
     setBranchInQueryString(branch.is_default ? null : branch.name);
   };
 
+  // Tracks the branch a fetched list already missed, so a single confirmation is in flight at a time.
+  const missToConfirm = React.useRef<string | null | undefined>(undefined);
+
   React.useEffect(() => {
     if (!branches || currentBranch) return;
+    if (missToConfirm.current === branchInQueryString) return;
 
-    toast(
-      <Alert
-        type={ALERT_TYPES.ERROR}
-        message={
-          <>
-            Branch <b>{branchInQueryString}</b> not found, you have been redirected to the default
-            branch.
-          </>
-        }
-      />
-    );
-    navigate("/");
-  }, [branches, currentBranch]);
+    missToConfirm.current = branchInQueryString;
+
+    // One list that omits the branch is not proof the branch is gone. The list is refetched on every
+    // branch mutation and on window focus, so a single response that misses a live branch would
+    // otherwise throw the user back to the homepage, off their branch, mid-work. Confirm the miss
+    // against a freshly fetched list first — a branch that really was deleted is missing from that
+    // one too, so the redirect still happens, one request later.
+    refetch().then(({ data: confirmedBranches, isError }) => {
+      const branchIsBack =
+        !!confirmedBranches && !!findSelectedBranch(confirmedBranches, branchInQueryString);
+
+      // A failed confirmation confirms nothing: leave the user where they are.
+      if (branchIsBack || isError) {
+        missToConfirm.current = undefined;
+        return;
+      }
+
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={
+            <>
+              Branch <b>{branchInQueryString}</b> not found, you have been redirected to the default
+              branch.
+            </>
+          }
+        />
+      );
+      navigate("/");
+    });
+  }, [branches, currentBranch, branchInQueryString]);
 
   if (isPending) {
     return <InfrahubLoading>Loading branches...</InfrahubLoading>;
