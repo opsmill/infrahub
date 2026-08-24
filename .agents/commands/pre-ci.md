@@ -6,7 +6,7 @@ allowed-tools:
   - Bash(uv run ruff check:*)
   - Bash(uv lock --check:*)
   - Bash(uv lock:*)
-  - Bash(npm --prefix frontend/app run:*)
+  - Bash(pnpm --dir frontend/app run:*)
   - Bash(npx markdownlint*:*)
 ---
 
@@ -17,7 +17,7 @@ Run all locally-executable CI checks to catch issues before pushing.
 **Every command runs from the repository root and must leave the working directory unchanged.**
 The parallel phases below share a single shell, so a `cd` in one command silently changes where
 its siblings run, and the `invoke` tasks then fail on relative paths such as
-`schema/schema.graphql`. The frontend checks use `npm --prefix` for that reason - do not rewrite
+`schema/schema.graphql`. The frontend checks use `pnpm --dir` for that reason - do not rewrite
 them as `cd frontend/app && ...`.
 
 **Options:**
@@ -47,7 +47,7 @@ Auto-fixes markdown formatting issues.
 ### 3. Format and lint frontend code (Biome)
 
 ```bash
-npm --prefix frontend/app run biome:fix
+pnpm --dir frontend/app run biome:fix
 ```
 
 Auto-fixes formatting and lint issues in TypeScript/TSX files. If Biome reports errors that cannot be auto-fixed, report them to the user.
@@ -59,7 +59,7 @@ Auto-fixes formatting and lint issues in TypeScript/TSX files. If Biome reports 
 1. `uv run invoke main.lint` — If ruff reports issues, report them to the user.
 2. `uv run ruff check . --exclude python_sdk` — The exact command CI's `python-lint` job runs. This is not redundant with `main.lint`: that task lints only `tasks`, `models`, `utilities`, and `python_testcontainers`, and `backend.lint` only `backend`, so a violation anywhere else (`development/`, root-level scripts, `tests/`) passes locally and fails in CI. Only the whole-repo check proves CI will pass.
 3. `uv lock --check` — Ensures `uv.lock` matches `pyproject.toml`. If this fails, run `uv lock` and commit the updated lockfile.
-4. `npm --prefix frontend/app run codegen:graphql` — Regenerates `graphql-env.d.ts` and `graphql-cache.d.ts` from `schema/schema.graphql`. If the files change, they need to be staged and committed.
+4. `pnpm --dir frontend/app run codegen:graphql` — Regenerates `graphql-env.d.ts` and `graphql-cache.d.ts` from `schema/schema.graphql`. If the files change, they need to be staged and committed.
 
 ---
 
@@ -72,7 +72,7 @@ Auto-fixes formatting and lint issues in TypeScript/TSX files. If Biome reports 
 **IMPORTANT: Send ALL 7 commands below in a SINGLE message with 7 parallel Bash tool calls.** Do NOT run them one at a time.
 
 1. `uv run invoke backend.lint` — Run separately from main.lint to avoid `uv run invoke lint` which includes a `yamllint -s .` step that fails on vendored packages in `.venv`. Its ruff step covers `backend` only, the same coverage gap noted in Phase 2; the ty/mypy output is what this check adds.
-2. `npm --prefix frontend/app run betterer` — Ensures no new TypeScript errors are introduced. The issue count must stay the same or decrease. If it increases, report the new issues to the user.
+2. `pnpm --dir frontend/app run betterer` — Ensures no new TypeScript errors are introduced. The issue count must stay the same or decrease. If it increases, report the new issues to the user.
 3. `uv run invoke docs.lint` — Report any errors. Note: some pre-existing errors in `docs/docs/` may exist — only flag errors in files the user has changed.
 4. `uv run invoke backend.validate-generated` — Ensures generated schema and protocol files are up to date. If this fails, run `uv run invoke backend.generate` and report the regenerated files.
 5. `uv run invoke schema.validate-graphqlschema` — Ensures `schema/schema.graphql` is up to date. Regenerates the file then checks for uncommitted diffs. If validation fails, the correct file is already on disk — just stage and commit it.
