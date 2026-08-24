@@ -87,8 +87,10 @@ class QueryImpactClassifier:
         if not self.only_has_unique_targets:
             # Any number of objects can answer the query, so a changed node cannot be traced back to
             # the targets reading it.
-            any_relevant_change = self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
-            return EveryTarget() if any_relevant_change else ChangedNodes(node_ids=[])
+            has_relevant_change = bool(
+                self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
+            )
+            return EveryTarget() if has_relevant_change else ChangedNodes(node_ids=[])
 
         root_fields_by_kind = {
             kind: fields for kind, fields in self.readable_fields_by_kind.items() if kind not in self.traversed_kinds
