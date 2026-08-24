@@ -65,15 +65,16 @@ class QueryImpactClassifier:
     against the same query builds it once. The routing is decided without any id lookup, which
     keeps the rule -- when narrowing is sound and when it is not -- independent of storage.
 
-    Narrowing is sound only when the query pins a single object per root **and** no relevant change
-    lands on a kind the query reaches through a relationship. Unique targeting says nothing about
-    such a kind, and a node read that way is never tracked as a member of the query's target group,
-    so it cannot be mapped back to a subscriber. Those changes widen to every target: over-executing
-    is acceptable, leaving a stale output behind is not.
+    Narrowing needs the query to pin a single object per root. A relevant change on a root kind then
+    maps straight to its members. A relevant change on a kind reached through a relationship maps
+    back only when every relationship chain down to that kind has been reconstructed: the members
+    are recovered by walking those chains in reverse. When a reached kind has no reconstructed chain,
+    that change widens to every target -- over-executing is acceptable, leaving a stale output behind
+    is not.
 
     A kind read both at a root and through a relationship counts as traversed. The two read paths
-    are indistinguishable once a change is in hand, so treating it as mappable would narrow away the
-    members reached only by the relationship.
+    are indistinguishable once a change is in hand, so treating it as a plain root change would
+    narrow away the members reached only by the relationship.
     """
 
     query_branch: str
