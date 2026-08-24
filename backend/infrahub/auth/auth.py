@@ -196,12 +196,14 @@ async def signin_sso_account(
     event_service: InfrahubEventService | None = None,
 ) -> AuthResult:
     existing_identity = await _find_existing_identity(db=db, external_identity=external_identity)
-    is_first_login = existing_identity is None
+    account: CoreAccount | None = None
     if existing_identity is not None:
         account = await _account_from_existing_identity(
             db=db, identity_node=existing_identity, external_identity=external_identity
         )
-    else:
+
+    is_first_login = account is None
+    if account is None:
         account = await _create_account_for_new_identity(db=db, external_identity=external_identity)
 
     await _assign_group_memberships(
@@ -233,13 +235,33 @@ async def _find_existing_identity(*, db: InfrahubDatabase, external_identity: Ex
 
 async def _account_from_existing_identity(
     *, db: InfrahubDatabase, identity_node: Node, external_identity: ExternalIdentity
-) -> CoreAccount:
-    """Return the account linked to an existing identity, refreshing its label when stale."""
-    account = await identity_node.get_relationship(name="account").get_peer(
-        db=db, peer_type=CoreAccount, raise_on_error=True
-    )
+) -> CoreAccount | None:
+    """Return the account linked to an existing identity, refreshing its label when stale.
+
+    Returns `None` when the identity has no account left, which happens once that account is
+    deleted. The stale identity is dropped here so the caller can start over from a first login:
+    its uniqueness constraint would otherwise reject the replacement identity.
+    """
+    account = await _peer_account_or_none(db=db, identity_node=identity_node)
+    if account is None:
+        log.warning(
+            "sso identity has no account, dropping it to sign in as a new user",
+            provider_name=external_identity.provider_name,
+            protocol=external_identity.protocol,
+        )
+        await identity_node.delete(db=db)
+        return None
+
     await _set_label_if_stale(db=db, account=account, display_name=external_identity.display_name)
     return account
+
+
+async def _peer_account_or_none(*, db: InfrahubDatabase, identity_node: Node) -> CoreAccount | None:
+    """Resolve the identity's account, treating an unresolvable peer as no account at all."""
+    try:
+        return await identity_node.get_relationship(name="account").get_peer(db=db, peer_type=CoreAccount)
+    except NodeNotFoundError:
+        return None
 
 
 async def _create_account_for_new_identity(*, db: InfrahubDatabase, external_identity: ExternalIdentity) -> CoreAccount:
