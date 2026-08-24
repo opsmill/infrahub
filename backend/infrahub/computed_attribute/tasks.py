@@ -13,6 +13,10 @@ from infrahub.core.recompute.bulk_write import AttributeValueWrite
 from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
+from infrahub.core.schema.schema_branch_computed.python_transform import (
+    IMPRECISE_READ_FIELDS,
+    derived_read_is_scopable,
+)
 from infrahub.events import BranchDeletedEvent
 from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
@@ -51,6 +55,7 @@ from .transform_recompute import TransformRecomputeSubmitter
 
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
     from infrahub.graphql.analyzer import GraphQLQueryReport
@@ -94,9 +99,29 @@ def _resolve_changed_elements(
     return ChangedElementSet.from_payload(changed_elements)
 
 
-def _transform_read_set_from_query_report(report: GraphQLQueryReport) -> TransformReadSet:
+def _transform_read_set_from_query_report(
+    *, report: GraphQLQueryReport, schema_branch: SchemaBranch
+) -> TransformReadSet:
     """Map an analyzed GraphQL query report into the kinds and fields it reads."""
-    return TransformReadSet.from_read_fields({kind: access.fields for kind, access in report.requested_read.items()})
+    read_fields_by_kind = {kind: access.fields for kind, access in report.requested_read.items()}
+
+    scopable_derived_kinds = {
+        kind
+        for kind, fields in read_fields_by_kind.items()
+        if _derived_reads_are_scopable(schema_branch=schema_branch, kind=kind, read_fields=frozenset(fields))
+    }
+
+    return TransformReadSet.from_read_fields(read_fields_by_kind, scopable_derived_kinds=scopable_derived_kinds)
+
+
+def _derived_reads_are_scopable(*, schema_branch: SchemaBranch, kind: str, read_fields: frozenset[str]) -> bool:
+    """Whether every derived field read on one kind can be held against that kind alone."""
+    derived_reads = read_fields & IMPRECISE_READ_FIELDS
+    if not derived_reads or not schema_branch.has(name=kind):
+        return False
+
+    node_schema = schema_branch.get(name=kind, duplicate=False)
+    return all(derived_read_is_scopable(node_schema=node_schema, field_name=field_name) for field_name in derived_reads)
 
 
 async def _transform_value_for_node(
@@ -558,12 +583,17 @@ async def computed_attribute_setup_python(
         triggers_python, _ = await gather_trigger_computed_attribute_python(db=db)
 
         # The read set of each transform is derived from its GraphQL query here, where the
-        # database session is available, so that the scoping decision itself stays pure.
+        # database session is available, so that the scoping decision itself stays pure. A
+        # derived read is checked against the schema of the trigger's own branch, whose derived
+        # definitions are what decide the read can be held against a single kind.
         read_sets: dict[tuple[str, str, str], TransformReadSet] = {}
         for trigger in triggers_python:
             definition = trigger.computed_attribute.computed_attribute
             read_sets[trigger.branch, definition.kind, definition.attribute.name] = (
-                _transform_read_set_from_query_report(report=trigger.computed_attribute.query_analyzer.query_report)
+                _transform_read_set_from_query_report(
+                    report=trigger.computed_attribute.query_analyzer.query_report,
+                    schema_branch=registry.schema.get_schema_branch(name=trigger.branch),
+                )
             )
 
         # Since we can have multiple trigger per NodeKind
