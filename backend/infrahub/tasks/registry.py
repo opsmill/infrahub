@@ -7,6 +7,7 @@ from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.log import get_logger
+from infrahub.utils import log_exception_guard
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -95,10 +96,12 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
                 # have an associated schema
                 continue
 
-            if active_branch.name in registry.branch:
-                await update_branch_registry(db=db, branch=active_branch)
-            else:
-                await create_branch_registry(db=db, branch=active_branch)
+            # Absorb a failure on one branch rather than abandoning the sweep
+            with log_exception_guard(log, f"Failed to refresh branch {active_branch.name!r} in the registry"):
+                if active_branch.name in registry.branch:
+                    await update_branch_registry(db=db, branch=active_branch)
+                else:
+                    await create_branch_registry(db=db, branch=active_branch)
 
         purged_branches = await registry.purge_inactive_branches(db=db, active_branches=active_branches)
         purged_branches.update(
