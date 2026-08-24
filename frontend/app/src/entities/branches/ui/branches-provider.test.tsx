@@ -16,6 +16,7 @@ vi.mock("@/entities/branches/ui/queries/get-branches.query");
 // so the provider has to resolve it from is_default.
 const defaultBranch = generateBranch({ id: "branch-default", name: "primary", is_default: true });
 const featureBranch = generateBranch({ id: "branch-feature", name: "feature-1" });
+const otherBranch = generateBranch({ id: "branch-other", name: "feature-2" });
 
 type BranchesQueryState = Partial<ReturnType<typeof useGetBranches>>;
 
@@ -37,6 +38,30 @@ const mockBranchesQuery = (...responses: BranchesQueryState[]) =>
     } as ReturnType<typeof useGetBranches>;
   });
 
+// Scripts a single list plus a refetch the test releases by hand, so a confirmation can be held
+// in flight while the URL moves to another branch.
+const mockBranchesQueryWithHeldRefetch = (branches: BranchListItem[]) => {
+  let release: (() => void) | undefined;
+
+  vi.mocked(useGetBranches).mockImplementation(
+    () =>
+      ({
+        data: branches,
+        isPending: false,
+        error: null,
+        refetch: () =>
+          new Promise((resolve) => {
+            release = () => resolve({ data: branches, isError: false });
+          }),
+      }) as unknown as ReturnType<typeof useGetBranches>
+  );
+
+  return {
+    isRefetching: () => release !== undefined,
+    releaseRefetch: () => release?.(),
+  };
+};
+
 const mockFetchedBranches = () =>
   mockBranchesQuery({ data: [defaultBranch, featureBranch], isPending: false, error: null });
 
@@ -44,6 +69,13 @@ const seedBranchInUrl = (branchName: string) =>
   window.history.replaceState(null, "", `${window.location.pathname}?${QSP.BRANCH}=${branchName}`);
 
 const getBranchInUrl = () => new URLSearchParams(window.location.search).get(QSP.BRANCH);
+
+// The provider renders a spinner instead of its children while the branch is unresolved, so a user
+// mid-confirmation can only move by navigating (back/forward, a link), not by using the selector.
+const navigateToBranchInUrl = (branchName: string) => {
+  seedBranchInUrl(branchName);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+};
 
 function BranchProbe({ switchTo }: { switchTo?: BranchListItem }) {
   const { currentBranch, setCurrentBranch } = useCurrentBranch();
@@ -236,5 +268,50 @@ describe("BranchesProvider", () => {
       .element(component.getByText(/not found, you have been redirected to the default branch/))
       .toBeVisible();
     await expect.poll(getBranchInUrl).toBeNull();
+  });
+
+  test("redirects again when the same unknown branch is visited a second time", async () => {
+    // GIVEN a branch that is gone, already redirected away from once
+    mockFetchedBranches();
+    seedBranchInUrl("does-not-exist");
+    const component = await render(
+      <BranchesProvider>
+        <BranchProbe />
+      </BranchesProvider>
+    );
+    await expect.poll(getBranchInUrl).toBeNull();
+
+    // WHEN the same name comes back into the URL, e.g. the user hits back
+    navigateToBranchInUrl("does-not-exist");
+
+    // THEN it redirects again rather than leaving the app on a spinner it never leaves
+    await expect.poll(getBranchInUrl).toBeNull();
+    await expect.element(component.getByText("Current branch: primary")).toBeVisible();
+  });
+
+  test("does not redirect a user who moved on while the confirmation was in flight", async () => {
+    // GIVEN feature-1 is gone, feature-2 is live, and feature-1's confirmation is held in flight
+    const { isRefetching, releaseRefetch } = mockBranchesQueryWithHeldRefetch([
+      defaultBranch,
+      otherBranch,
+    ]);
+    seedBranchInUrl(featureBranch.name);
+    const component = await render(
+      <BranchesProvider>
+        <BranchProbe />
+      </BranchesProvider>
+    );
+    await expect.poll(isRefetching).toBe(true);
+
+    // WHEN the user moves to feature-2 and only then does the feature-1 confirmation land
+    navigateToBranchInUrl(otherBranch.name);
+    await expect.element(component.getByText("Current branch: feature-2")).toBeVisible();
+    releaseRefetch();
+
+    // THEN feature-1's verdict is not applied to feature-2
+    await expect.poll(getBranchInUrl).toBe("feature-2");
+    expect(
+      component.getByText(/not found, you have been redirected to the default branch/).query()
+    ).toBeNull();
   });
 });
