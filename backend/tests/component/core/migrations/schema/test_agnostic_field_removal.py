@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.database.validation import verify_graph
 import pytest
 
 from infrahub.core import registry
@@ -30,6 +29,7 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.timestamp import Timestamp
+from infrahub.database.validation import verify_graph
 from tests.helpers.agnostic_edges import (
     VertexMetadata,
     assert_attribute_retired_at,

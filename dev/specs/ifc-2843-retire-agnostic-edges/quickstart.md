@@ -65,7 +65,7 @@ second retirement run reporting a non-zero count is the symptom of having missed
 uv run pytest backend/tests/unit/core/agnostic/
 
 # Component — query graph shape, enforcement points, migration fixtures
-uv run pytest -x -v backend/tests/component/core/test_agnostic_retirement.py
+uv run pytest -x -v backend/tests/component/core/agnostic_retirement/
 uv run pytest -x -v backend/tests/component/query/test_agnostic_retirement_query.py
 uv run pytest -x -v backend/tests/component/migrations/test_m076_retire_agnostic_property_edges.py
 
