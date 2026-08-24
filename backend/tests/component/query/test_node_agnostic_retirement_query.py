@@ -29,6 +29,7 @@ from infrahub.core.query.node_agnostic_retirement import (
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from tests.helpers.agnostic_edges import (
+    assert_attribute_retired_at,
     attribute_global_edges,
     attribute_vertex_count,
     edge_summary,
@@ -203,8 +204,7 @@ class TestRetireNodeAgnosticFields:
         )
 
         after = await attribute_global_edges(db=db, node_id=widget.get_id(), attribute_name="serial")
-        assert open_edges(after) == []
-        assert {edge.to_time for edge in after if edge.status == "active"} == {retired_at.to_string()}
+        assert_attribute_retired_at(after=after, before=before, at=retired_at)
 
     async def test_a_relationship_stays_open_while_both_peers_are_live_on_one_branch(
         self,
@@ -261,7 +261,7 @@ class TestRetireNodeAgnosticFields:
         )
 
         after = await attribute_global_edges(db=db, node_id=widget.get_id(), attribute_name="serial")
-        assert open_edges(after) == []
+        assert_attribute_retired_at(after=after, before=before, at=at)
 
     async def test_a_partially_closed_relationship_is_retired(
         self,

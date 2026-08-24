@@ -1,4 +1,4 @@
-"""Graph-shape readers for the branch-agnostic retirement tests.
+"""Graph-shape readers and shared assertions for the branch-agnostic retirement tests.
 
 These read edges directly rather than going through the node manager: the subject of the assertions
 is which edges carry a `to` timestamp and which do not, and a read through the manager would hide the
@@ -77,6 +77,19 @@ def to_times(edges: list[EdgeState]) -> set[str | None]:
 def expected_closed_at(edges: list[EdgeState], at: Timestamp) -> list[tuple[str, str, str]]:
     """What `edge_summary` should return once every type present has been closed at `at`."""
     return sorted((edge_type, "active", at.to_string()) for edge_type in {edge.edge_type for edge in edges})
+
+
+def assert_attribute_retired_at(after: list[EdgeState], before: list[EdgeState], at: Timestamp) -> None:
+    """The attribute's global edges were time-closed at `at`, never tombstoned."""
+    assert edge_summary(after) == expected_closed_at(before, at)
+    assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
+
+
+def assert_relationship_retired_at(after: list[EdgeState], at: Timestamp) -> None:
+    """No branch reads both peers live once the operation lands, so the relationship closes at `at`."""
+    assert open_edges(after) == []
+    assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
+    assert to_times(after) == {at.to_string()}
 
 
 async def attribute_global_edges(db: InfrahubDatabase, node_id: str, attribute_name: str) -> list[EdgeState]:

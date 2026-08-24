@@ -51,12 +51,13 @@ from tests.adapters.cache import MemoryCache
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.agnostic_edges import (
     EdgeState,
+    assert_attribute_retired_at,
+    assert_relationship_retired_at,
     attribute_global_edges,
     attribute_owning_edges,
     attribute_vertex_uuid,
     edge_summary,
     existence_edges,
-    expected_closed_at,
     global_edges_by_vertex_uuid,
     open_edge_types,
     open_edges,
@@ -225,8 +226,7 @@ class TestAgnosticRetirementOnDelete:
         await _delete(db=db, node_id=widget.id, branch=branch, at=deleted_at)
 
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert edge_summary(after) == expected_closed_at(before, deleted_at)
-        assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
+        assert_attribute_retired_at(after=after, before=before, at=deleted_at)
 
     async def test_a_field_stays_open_while_the_default_branch_still_holds_the_object(
         self,
@@ -265,8 +265,7 @@ class TestAgnosticRetirementOnDelete:
         await _delete(db=db, node_id=widget.id, branch=default_branch, at=deleted_at)
 
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert edge_summary(after) == expected_closed_at(before, deleted_at)
-        assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
+        assert_attribute_retired_at(after=after, before=before, at=deleted_at)
 
     async def test_a_field_stays_open_for_a_branch_that_forked_between_creation_and_deletion(
         self,
@@ -320,8 +319,7 @@ class TestAgnosticRetirementOnDelete:
         await _delete(db=db, node_id=widget.id, branch=second, at=last_delete)
 
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert open_edges(after) == [], "the last holder released it"
-        assert {edge.to_time for edge in after} == {last_delete.to_string()}
+        assert_attribute_retired_at(after=after, before=before, at=last_delete)
 
     async def test_a_relationship_is_closed_when_its_peers_are_live_on_different_branches(
         self,
@@ -357,10 +355,7 @@ class TestAgnosticRetirementOnDelete:
         await _delete(db=db, node_id=gadget.id, branch=default_branch, at=last_delete)
 
         after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
-        assert open_edges(after) == [], (
-            "no branch reads both peers as live, so the relationship is released even though each peer "
-            "survives somewhere"
-        )
+        assert_relationship_retired_at(after=after, at=last_delete)
 
     async def test_a_field_removed_on_the_only_retaining_branch_is_closed_with_the_object(
         self,
@@ -382,8 +377,7 @@ class TestAgnosticRetirementOnDelete:
         await _delete(db=db, node_id=widget.id, branch=default_branch, at=deleted_at)
 
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert edge_summary(after) == expected_closed_at(before, deleted_at)
-        assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
+        assert_attribute_retired_at(after=after, before=before, at=deleted_at)
 
         owning_edges = await attribute_owning_edges(db=db, node_id=widget.id, attribute_name="serial")
         assert sorted((edge.branch, edge.status, edge.to_time or "") for edge in owning_edges) == [
@@ -417,9 +411,7 @@ class TestAgnosticRetirementOnDelete:
         await _delete(db=db, node_id=gadget.id, branch=default_branch, at=deleted_at)
 
         after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
-        assert open_edges(after) == []
-        assert {edge.status for edge in after} == {"active"}
-        assert {edge.to_time for edge in after} == {deleted_at.to_string()}
+        assert_relationship_retired_at(after=after, at=deleted_at)
 
     async def test_a_retirement_failure_propagates_and_leaves_the_graph_untouched(
         self,
@@ -479,7 +471,7 @@ class TestAgnosticRetirementOnDelete:
         await _delete(db=db, node_id=holder.id, branch=default_branch, at=deleted_at)
 
         after = await attribute_global_edges(db=db, node_id=holder.id, attribute_name="serial")
-        assert edge_summary(after) == expected_closed_at(before, deleted_at)
+        assert_attribute_retired_at(after=after, before=before, at=deleted_at)
         assert await pool_reservation_edges(db=db, pool_id=serial_pool.id, identifier=holder.id) == reserved_before, (
             "the reservation is never cleaned up on delete, and does not need to be"
         )
@@ -549,17 +541,11 @@ class TestAgnosticRetirementOnMerge:
             "the merge carried the deletion to the default branch"
         )
         attribute_after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert edge_summary(attribute_after) == expected_closed_at(attribute_before, merged_at)
-        assert {edge.status for edge in attribute_after} == {"active"}, (
-            "retirement is a time-close, never a status tombstone"
-        )
+        assert_attribute_retired_at(after=attribute_after, before=attribute_before, at=merged_at)
         relationship_after = await relationship_global_edges(
             db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER
         )
-        assert open_edges(relationship_after) == [], (
-            "no branch reads both peers as live once the deletion lands, so the relationship goes with it"
-        )
-        assert {edge.to_time for edge in relationship_after} == {merged_at.to_string()}
+        assert_relationship_retired_at(after=relationship_after, at=merged_at)
 
     async def test_merging_the_deletion_releases_nothing_while_another_branch_retains_the_object(
         self,
@@ -623,9 +609,7 @@ class TestAgnosticRetirementOnMerge:
         assert await NodeManager.get_one(db=db, id=unretained.id, branch=default_branch) is None
 
         unretained_after = await attribute_global_edges(db=db, node_id=unretained.id, attribute_name="serial")
-        assert edge_summary(unretained_after) == expected_closed_at(unretained_before, merged_at), (
-            "no branch ever read the younger node besides the two that dropped it, so it closes"
-        )
+        assert_attribute_retired_at(after=unretained_after, before=unretained_before, at=merged_at)
         assert edge_summary(await attribute_global_edges(db=db, node_id=retained.id, attribute_name="serial")) == (
             edge_summary(retained_before)
         ), "its neighbor's release must not drag the retained node's fields shut with it"
@@ -696,17 +680,11 @@ class TestAgnosticRetirementOnRebase:
             "the rebase carried the deletion into the branch's view"
         )
         attribute_after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert edge_summary(attribute_after) == expected_closed_at(attribute_before, rebase_at)
-        assert {edge.status for edge in attribute_after} == {"active"}, (
-            "retirement is a time-close, never a status tombstone"
-        )
+        assert_attribute_retired_at(after=attribute_after, before=attribute_before, at=rebase_at)
         relationship_after = await relationship_global_edges(
             db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER
         )
-        assert open_edges(relationship_after) == [], (
-            "no branch reads both peers as live once the rebase lands, so the relationship goes with it"
-        )
-        assert to_times(relationship_after) == {rebase_at.to_string()}
+        assert_relationship_retired_at(after=relationship_after, at=rebase_at)
 
     async def test_rebasing_releases_nothing_while_another_branch_retains_the_object(
         self,

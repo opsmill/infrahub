@@ -31,11 +31,12 @@ from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.timestamp import Timestamp
 from tests.helpers.agnostic_edges import (
     VertexMetadata,
+    assert_attribute_retired_at,
+    assert_relationship_retired_at,
     attribute_global_edges,
     attribute_metadata,
     attribute_owning_edges,
     edge_summary,
-    expected_closed_at,
     open_edge_types,
     open_edges,
     relationship_global_edges,
@@ -168,8 +169,7 @@ async def test_an_attribute_removed_from_the_schema_is_closed_when_no_branch_dec
     assert result.nbr_migrations_executed == 1
 
     after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
-    assert edge_summary(after) == expected_closed_at(before, removed_at)
-    assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
+    assert_attribute_retired_at(after=after, before=before, at=removed_at)
 
     owning_edges = await attribute_owning_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert sorted((edge.branch, edge.status, edge.to_time or "") for edge in owning_edges) == [
@@ -194,9 +194,7 @@ async def test_a_relationship_removed_from_the_schema_is_closed_when_no_branch_d
     assert result.nbr_migrations_executed == 1
 
     after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
-    assert open_edges(after) == []
-    assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
-    assert to_times(after) == {removed_at.to_string()}
+    assert_relationship_retired_at(after=after, at=removed_at)
     assert await NodeManager.get_one(db=db, id=gadget.id, branch=default_branch) is not None, (
         "the peer object is untouched; only the relationship between the two was released"
     )
@@ -284,9 +282,7 @@ async def test_one_removal_closes_only_the_objects_the_fork_cannot_reach(
     assert to_times(retained_after) == {None}
 
     retired_after = await attribute_global_edges(db=db, node_id=retired.id, attribute_name=ATTRIBUTE_NAME)
-    assert edge_summary(retired_after) == expected_closed_at(retired_before, removed_at)
-    assert {edge.status for edge in retired_after} == {"active"}, "retirement is a time-close, never a status tombstone"
-    assert to_times(retired_after) == {removed_at.to_string()}
+    assert_attribute_retired_at(after=retired_after, before=retired_before, at=removed_at)
 
     on_branch = await NodeManager.get_one(db=db, id=retained.id, branch=branch)
     assert on_branch is not None
@@ -334,9 +330,7 @@ async def test_a_relationship_is_closed_when_the_only_fork_reads_one_of_its_peer
     assert result.nbr_migrations_executed == 1
 
     after = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
-    assert open_edges(after) == []
-    assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
-    assert to_times(after) == {removed_at.to_string()}
+    assert_relationship_retired_at(after=after, at=removed_at)
 
 
 async def test_an_attribute_removed_on_a_fork_is_closed_when_the_object_is_deleted_elsewhere(
@@ -364,8 +358,7 @@ async def test_an_attribute_removed_on_a_fork_is_closed_when_the_object_is_delet
     await _delete(db=db, node_id=widget.id, branch=default_branch, at=deleted_at)
 
     after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
-    assert edge_summary(after) == expected_closed_at(before, deleted_at)
-    assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
+    assert_attribute_retired_at(after=after, before=before, at=deleted_at)
 
     owning_edges = await attribute_owning_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert sorted((edge.branch, edge.status, edge.to_time or "") for edge in owning_edges) == sorted(
@@ -406,8 +399,7 @@ async def test_an_attribute_removed_from_the_schema_is_closed_when_the_only_fork
     assert result.nbr_migrations_executed == 1
 
     after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
-    assert edge_summary(after) == expected_closed_at(before, removed_at)
-    assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
+    assert_attribute_retired_at(after=after, before=before, at=removed_at)
 
     owning_edges = await attribute_owning_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert sorted((edge.branch, edge.status, edge.to_time or "") for edge in owning_edges) == sorted(
@@ -446,8 +438,7 @@ async def test_an_attribute_of_a_branch_agnostic_kind_is_closed_when_no_branch_d
     assert result.nbr_migrations_executed == 1
 
     after = await attribute_global_edges(db=db, node_id=beacon.id, attribute_name=ATTRIBUTE_NAME)
-    assert edge_summary(after) == expected_closed_at(before, removed_at)
-    assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
+    assert_attribute_retired_at(after=after, before=before, at=removed_at)
 
 
 async def test_an_attribute_of_a_branch_agnostic_kind_stays_open_for_a_branch_that_forked_before(

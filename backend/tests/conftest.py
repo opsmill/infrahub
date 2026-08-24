@@ -90,6 +90,7 @@ ResponseClass = TypeVar("ResponseClass")
 DEFAULT_TESTING_LOG_LEVEL = "WARNING"
 
 pytest.register_assert_rewrite("tests.db_snapshot")
+pytest.register_assert_rewrite("tests.helpers.agnostic_edges")
 
 graphql_registry.clear_cache()
 
