@@ -896,6 +896,64 @@ async def test_delete_repository_query_group_cascade(
     await verify_graph(db=db)
 
 
+async def test_delete_account_cascades_internal_identity_and_token(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """An account owns its external identities and its API tokens.
+
+    Both declare the account as a mandatory relationship, so leaving them behind produces nodes
+    that can never resolve their peer. A surviving external identity also keeps matching the SSO
+    login of the provider user, which is how a deleted account turns into a locked-out user.
+    """
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="Rita Vance", account_type="User", password="not-a-real-password")
+    await account.save(db=db)
+
+    identity = await Node.init(db=db, schema=InfrahubKind.EXTERNALIDENTITY)
+    await identity.new(db=db, sub="sub-cascade-001", provider_name="provider1", protocol="oidc", account=account.id)
+    await identity.save(db=db)
+
+    token = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
+    await token.new(db=db, token="token-cascade-001", account=account.id)
+    await token.save(db=db)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[account])
+
+    assert {d.id for d in deleted} == {account.id, identity.id, token.id}
+    node_map = await NodeManager.get_many(db=db, ids=[account.id, identity.id, token.id])
+    assert node_map == {}
+
+    await verify_graph(db=db)
+
+
+async def test_delete_account_with_refresh_token_is_allowed(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A refresh token must never make its account undeletable.
+
+    Every account that has ever logged in owns one, and its account relationship is mandatory,
+    so treating it as a blocking dependent would make those accounts impossible to delete.
+    """
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="Sam Ortiz", account_type="User", password="not-a-real-password")
+    await account.save(db=db)
+
+    refresh_token = await Node.init(db=db, schema=InfrahubKind.REFRESHTOKEN)
+    await refresh_token.new(db=db, account=account.id, expiration="2030-01-01T00:00:00Z")
+    await refresh_token.save(db=db)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[account])
+
+    assert account.id in {d.id for d in deleted}
+    assert await NodeManager.get_one(db=db, id=account.id) is None
+
+    await verify_graph(db=db)
+
+
 async def test_delete_repository_repository_group_cascade(
     db: InfrahubDatabase,
     default_branch: Branch,

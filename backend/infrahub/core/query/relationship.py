@@ -1151,11 +1151,7 @@ class RelationshipGetByIdentifierQuery(Query):
         else:
             self.identifiers = identifiers
             self.full_identifiers = []
-        self.excluded_namespaces = excluded_namespaces or []
-
-        # Always exclude relationships with internal nodes
-        if "Internal" not in self.excluded_namespaces:
-            self.excluded_namespaces.append("Internal")
+        self.excluded_namespaces = list(excluded_namespaces or [])
 
         super().__init__(**kwargs)
 

@@ -3,6 +3,7 @@ from infrahub.core.constants import (
     AccountType,
     BranchSupportType,
     InfrahubKind,
+    RelationshipDeleteBehavior,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 
@@ -169,13 +170,21 @@ core_generic_account = GenericSchema(
         ),
     ],
     relationships=[
-        Rel(name="tokens", peer=InfrahubKind.ACCOUNTTOKEN, optional=True, cardinality=Cardinality.MANY),
+        Rel(
+            name="tokens",
+            peer=InfrahubKind.ACCOUNTTOKEN,
+            optional=True,
+            cardinality=Cardinality.MANY,
+            identifier="account__token",
+            on_delete=RelationshipDeleteBehavior.CASCADE,
+        ),
         Rel(
             name="external_identities",
             peer=InfrahubKind.EXTERNALIDENTITY,
             optional=True,
             cardinality=Cardinality.MANY,
             identifier="account__external_identity",
+            on_delete=RelationshipDeleteBehavior.CASCADE,
         ),
     ],
 )

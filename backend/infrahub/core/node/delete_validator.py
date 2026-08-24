@@ -4,7 +4,7 @@ from typing import Iterable
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import RelationshipDeleteBehavior
+from infrahub.core.constants import INTERNAL_NAMESPACE, RelationshipDeleteBehavior
 from infrahub.core.node import Node
 from infrahub.core.query.relationship import (
     FullRelationshipIdentifier,
@@ -27,6 +27,7 @@ class NodeDeleteIndex:
         self._all_schemas_map = all_schemas_map
         # {node_schema: {DeleteRelationshipType: {relationship_identifier: peer_node_schema}}}
         self._dependency_graph: dict[str, dict[DeleteRelationshipType, dict[str, set[str]]]] = {}
+        self._internal_cascade_identifiers: list[FullRelationshipIdentifier] = []
 
     def index(self, start_schemas: Iterable[NodeSchema | ProfileSchema | TemplateSchema]) -> None:
         cascade_kinds = self._index_cascading_deletes(start_schemas=start_schemas)
@@ -72,6 +73,15 @@ class NodeDeleteIndex:
                     relationship_identifier=relationship_schema.get_identifier(),
                     peer_kinds=peer_kinds,
                 )
+                if relationship_schema.internal_peer:
+                    self._internal_cascade_identifiers.extend(
+                        FullRelationshipIdentifier(
+                            source_kind=kind_to_check,
+                            identifier=relationship_schema.get_identifier(),
+                            destination_kind=peer_kind,
+                        )
+                        for peer_kind in peer_kinds
+                    )
                 for peer_kind in peer_kinds:
                     if peer_kind not in visited:
                         kinds_to_check.add(peer_kind)
@@ -112,6 +122,10 @@ class NodeDeleteIndex:
                     )
         return full_relationship_identifiers
 
+    def get_internal_cascade_relationship_identifiers(self) -> list[FullRelationshipIdentifier]:
+        """Return the cascade relationships whose peer is a node of the Internal namespace."""
+        return list(self._internal_cascade_identifiers)
+
     def get_relationship_types(self, src_kind: str, relationship_identifier: str) -> set[DeleteRelationshipType]:
         relationship_types: set[DeleteRelationshipType] = set()
         if src_kind not in self._dependency_graph:
@@ -142,12 +156,14 @@ class NodeDeleteValidator:
         if not full_relationship_identifiers:
             return {node.get_id() for node in start_nodes}
 
-        query = await RelationshipGetByIdentifierQuery.init(
-            db=self.db, full_identifiers=full_relationship_identifiers, branch=self.branch, at=at
+        peers_datas = await self._get_peers(
+            full_identifiers=full_relationship_identifiers, at=at, excluded_namespaces=[INTERNAL_NAMESPACE]
         )
-        await query.execute(db=self.db)
+        internal_cascade_identifiers = self.index.get_internal_cascade_relationship_identifiers()
+        if internal_cascade_identifiers:
+            peers_datas += await self._get_peers(full_identifiers=internal_cascade_identifiers, at=at)
 
-        peer_data_by_source_id = self._build_peer_data_map(peers_datas=query.get_peers())
+        peer_data_by_source_id = self._build_peer_data_map(peers_datas=peers_datas)
         node_ids_to_check = {node.get_id() for node in start_nodes}
         node_ids_to_delete: set[str] = set()
         dependent_node_details_map: dict[str, list[RelationshipPeersData]] = {}
@@ -179,6 +195,27 @@ class NodeDeleteValidator:
             missing_delete_peers_data.extend(dependent_node_details_map[peer_id])
         validation_error = self._build_validation_error(missing_delete_peers_data=missing_delete_peers_data)
         raise validation_error
+
+    async def _get_peers(
+        self,
+        full_identifiers: list[FullRelationshipIdentifier],
+        at: Timestamp | str | None,
+        excluded_namespaces: list[str] | None = None,
+    ) -> list[RelationshipPeersData]:
+        """Resolve the peers of the given relationships.
+
+        Internal nodes are hidden by default, so a cascade that owns them has to ask for them
+        with no namespace excluded.
+        """
+        query = await RelationshipGetByIdentifierQuery.init(
+            db=self.db,
+            full_identifiers=full_identifiers,
+            branch=self.branch,
+            at=at,
+            excluded_namespaces=excluded_namespaces,
+        )
+        await query.execute(db=self.db)
+        return list(query.get_peers())
 
     def _build_peer_data_map(
         self, peers_datas: Iterable[RelationshipPeersData]
