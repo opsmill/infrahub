@@ -85,12 +85,12 @@ export { Spinner, type SpinnerProps } from "./components/spinner/spinner";
 export { Tooltip, type TooltipProps } from "./components/tooltip/tooltip";
 export {
   Tree,
-  type TreeProps,
   TreeItem,
   TreeItemContent,
   type TreeItemContentProps,
   TreeItemLoader,
   type TreeItemProps,
+  type TreeProps,
 } from "./components/tree/tree";
 export { DismissGuardContext, useDismissGuard } from "./hooks/use-dissmiss-guard";
 export { applyTheme, type ResolvedTheme, useResolvedTheme } from "./theme/resolved-theme";

@@ -4,5 +4,13 @@
   "packageManager": "pnpm@10.33.2",
   "engines": {
     "node": ">=24.0"
+  },
+  "scripts": {
+    "biome": "biome check .",
+    "biome:fix": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.1",
+    "ultracite": "^7.8.3"
   }
 }

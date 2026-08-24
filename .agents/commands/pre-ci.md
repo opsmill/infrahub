@@ -15,6 +15,7 @@ allowed-tools:
   - Bash(uv run --directory python_testcontainers pytest:*)
   - Bash(uv lock --check:*)
   - Bash(uv lock:*)
+  - Bash(pnpm --dir frontend:*)
   - Bash(pnpm --dir frontend/app:*)
   - Bash(pnpm --dir frontend/packages/graph:*)
   - Bash(npx markdownlint*:*)
@@ -95,8 +96,12 @@ These modify files and must complete before any lint check.
 **1A. Frontend** — *if frontend changed*
 
 ```bash
-pnpm --dir frontend/app run biome:fix
+pnpm --dir frontend run biome:fix
 ```
+
+`--dir frontend`, the pnpm workspace root, **not** `--dir frontend/app`: one Biome config at
+`frontend/biome.jsonc` governs the app and `packages/*` together, and the app-scoped
+invocation would silently leave the packages unformatted.
 
 **1B. Python** — *if backend or python changed*
 
@@ -148,8 +153,9 @@ The **complete** set of frontend checks CI runs. If dependencies are stale, firs
 **3A. Lint trio — ALWAYS run, regardless of detected areas** (job `frontend-lint`). Send as
 parallel Bash calls:
 
-1. `pnpm --dir frontend/app exec biome ci .` — `biome ci`, **not** `biome check --write`: only
-   the `ci` variant is check-only.
+1. `pnpm --dir frontend exec biome ci .` — from the workspace root, so the app and
+   `packages/*` are both gated, matching the `frontend-lint` job. `biome ci`, **not**
+   `biome check --write`: only the `ci` variant is check-only.
 2. `pnpm --dir frontend/app run knip` — unused exports, files, and dependencies.
 3. `pnpm --dir frontend/app exec betterer ci` — `betterer ci`, **not** bare `betterer`, which
    rewrites the snapshot instead of failing.

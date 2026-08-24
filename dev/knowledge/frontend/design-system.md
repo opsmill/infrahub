@@ -98,6 +98,39 @@ Each migrated component ships with a `*.stories.tsx`. Run Storybook from `fronte
 | Importing `Button` / `Card` / `Modal` / `Spinner` from anywhere except `@infrahub/ui` | The shared packages are deduplicated for a reason — bundle size and styling consistency. |
 | Adding a one-off `<dialog>` because Modal feels heavy | Use `Modal` — it handles focus trap, escape, and overlay. |
 
+## Formatting and linting
+
+One toolchain covers the whole `frontend/` pnpm workspace: **Biome**, configured once at
+`frontend/biome.jsonc` (the root config) with thin per-member configs that inherit it via
+`"extends": "//"`:
+
+| Config | Role |
+|---|---|
+| `frontend/biome.jsonc` | Shared formatter, import sorting, and lint rules; extends the `ultracite` presets |
+| `frontend/app/biome.jsonc` | App-relative ignores (generated GraphQL/REST types, Playwright output) |
+| `frontend/packages/{ui,graph}/biome.jsonc` | `noBarrelFile` off — `src/index.ts` is each package's public API |
+
+Run it from the workspace root, never from a single member:
+
+```bash
+cd frontend && pnpm biome:fix   # or: pnpm exec biome ci .  (what CI runs)
+```
+
+Two things to know:
+
+- **Run Biome from `frontend/`, not `frontend/app`.** Biome discovers its config by walking up from
+  the current directory, so invoking it inside `frontend/app` silently leaves `packages/*`
+  unchecked, and invoking it in a worktree with no config in the tree walks up past the repo
+  entirely and applies a *different* checkout's config.
+- The per-package configs are what make each package its own Biome project. Without them,
+  `noUndeclaredDependencies` cannot find the package's own `package.json` and reports every import
+  as undeclared.
+
+`packages/ui` and `packages/graph` previously used `oxlint` + `oxfmt`, which nothing in CI ever ran.
+That split was removed in #10390; `packages/plugins/template` is a standalone published scaffold and
+still ships its own ESLint setup, and `packages/schema-visualizer` is a git submodule with its own
+Biome config. Both are excluded from the root config.
+
 ## Discovery commands
 
 ```bash
