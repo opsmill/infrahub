@@ -47,7 +47,7 @@ const renderRedirect = (
     { wrapper, initialProps }
   );
 
-// Nothing-happened assertions have no signal to poll for, so give React a beat to not redirect.
+// A nothing-happened assertion has no signal to poll for, so let pending effects run first.
 const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
 
 describe("confirmsBranchIsGone", () => {
@@ -196,19 +196,24 @@ describe("useRedirectWhenBranchIsGone", () => {
     expect(confirmBranchList).toHaveBeenCalledOnce();
   });
 
-  test("stops redirecting once a branch of that name exists again", async () => {
-    // GIVEN a branch already confirmed gone
-    const confirmBranchList = vi.fn().mockResolvedValue(listWithoutFeature);
+  test("re-confirms a name used again rather than reusing the standing verdict", async () => {
+    // GIVEN feature-1 was confirmed gone, then created again and seen in the list
+    const confirmBranchList = vi
+      .fn()
+      .mockResolvedValueOnce(listWithoutFeature)
+      .mockResolvedValue(listWithFeature);
     const { rerender } = await renderRedirect(
       { branchName: "feature-1", isMissingFromList: true },
       confirmBranchList
     );
     await expect.poll(() => vi.mocked(toast).mock.calls.length).toBe(1);
-
-    // WHEN a branch of the same name is created again
     await rerender({ branchName: "feature-1", isMissingFromList: false });
 
-    // THEN the stale verdict is not replayed
+    // WHEN a later fetch transiently omits the live branch
+    await rerender({ branchName: "feature-1", isMissingFromList: true });
+
+    // THEN the miss is confirmed afresh and the branch is kept
+    await expect.poll(() => confirmBranchList.mock.calls.length).toBe(2);
     await settle();
     expect(toast).toHaveBeenCalledOnce();
   });

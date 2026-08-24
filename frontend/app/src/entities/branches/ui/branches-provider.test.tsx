@@ -19,9 +19,8 @@ const featureBranch = generateBranch({ id: "branch-feature", name: "feature-1" }
 
 type BranchesQueryState = Partial<ReturnType<typeof useGetBranches>>;
 
-// Mocked as a hook rather than a fixed value so that refetch() behaves like React Query's: it
-// resolves with the next scripted response and re-renders with it. Responses are consumed in order
-// and the last one is reused once the script runs out.
+// Mocked as a hook so refetch() behaves like React Query's: it resolves with the next scripted
+// response and re-renders with it, reusing the last one once the script runs out.
 const mockBranchesQuery = (...responses: BranchesQueryState[]) =>
   vi.mocked(useGetBranches).mockImplementation(() => {
     const [fetchIndex, setFetchIndex] = React.useState(0);
