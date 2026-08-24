@@ -1184,7 +1184,7 @@ jobs:
             playwright-junit.xml
       - name: Publish e2e results
         if: always() && github.event.pull_request.head.repo.fork == false
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: playwright-junit.xml
           check_name: "E2E pytest (${{ matrix.shard }})"
