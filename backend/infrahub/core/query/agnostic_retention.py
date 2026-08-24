@@ -30,6 +30,10 @@ UNRETAINED_AGNOSTIC_FIELD_PREDICATE = """
 // ----------------------
 MATCH (branch:Branch)
 WHERE branch.name <> $global_branch_name
+// ----------------------
+// Don't consider DELETING branches when determining reachability
+// ----------------------
+AND branch.status <> "DELETING"
 WITH
     agnostic_candidates,
     collect({

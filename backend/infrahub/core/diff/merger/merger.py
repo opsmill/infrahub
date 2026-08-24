@@ -139,7 +139,6 @@ class DiffMerger:
 
         log.info("Graph merge complete")
 
-    # TODO: not sure the retry_db_transaction decorator does anything b/c this is not running in a transaction
     @retry_db_transaction(name="merge_retire_agnostic_fields")
     async def _retire_agnostic_fields_of_deleted_nodes(self, node_uuids: list[str], at: Timestamp) -> None:
         """Re-evaluate retention for the nodes whose deletion this merge carried to the destination.
