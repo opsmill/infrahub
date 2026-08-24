@@ -1,0 +1,1 @@
+The frontend design-system packages (`@infrahub/ui` and `@infrahub/graph`) are now format- and lint-checked in CI with their own toolchain (oxfmt and oxlint), alongside the app's existing Biome check. Both packages shipped that toolchain but nothing ever ran it, so a misformatted or lint-breaking file in either package could ship green.

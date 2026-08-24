@@ -57,6 +57,24 @@ Source of truth: `frontend/packages/graph/src/index.ts`. Adopted by `path-traver
 
 A third directory exists under `frontend/packages/`: `plugins/` holds a single standalone Vite + module-federation plugin template (`plugins/template`) that is **not** a pnpm workspace member (the workspace lists `app`, `packages/schema-visualizer`, `packages/ui`, and `packages/graph`) and is unrelated to the design system.
 
+## Formatting and linting: two toolchains, split by directory
+
+`frontend/app` uses Biome. Both workspace packages use oxfmt and oxlint instead, each with its own
+`oxfmt.config.ts` and `oxlint.config.ts` (`@infrahub/ui` also sorts Tailwind classes through oxfmt).
+There is no Biome config anywhere under `frontend/packages/`, so **never run Biome there**: with no
+`biome.jsonc` to find it walks up out of the checkout, picks up an unrelated config, and reformats
+the whole file.
+
+```bash
+pnpm --filter @infrahub/ui run format          # oxfmt --write
+pnpm --filter @infrahub/ui run format:check    # what CI runs
+pnpm --filter @infrahub/ui run lint            # oxlint
+pnpm --filter @infrahub/ui run lint:fix        # oxlint --fix
+```
+
+Same four scripts for `@infrahub/graph`. CI's `frontend-lint` job runs `format:check` and `lint` for
+both packages next to the app's Biome check, so a misformatted package file fails the build.
+
 ## When to consume from `@infrahub/ui`
 
 Always, for the components above. Do not reimplement them inline in feature code, even if it "feels lighter":

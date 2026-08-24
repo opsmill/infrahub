@@ -128,6 +128,16 @@ jobs:
         run: pnpm knip
       - name: Check TypeScript regressions (Betterer)
         run: pnpm exec betterer ci
+      # The workspace packages are formatted and linted by oxfmt/oxlint, not Biome, so they need
+      # their own steps. Each runs the package's own script, which keeps CI and local in step.
+      - name: "Check formatting (oxfmt): packages/ui"
+        run: pnpm --filter @infrahub/ui run format:check
+      - name: "Check linting (oxlint): packages/ui"
+        run: pnpm --filter @infrahub/ui run lint
+      - name: "Check formatting (oxfmt): packages/graph"
+        run: pnpm --filter @infrahub/graph run format:check
+      - name: "Check linting (oxlint): packages/graph"
+        run: pnpm --filter @infrahub/graph run lint
 
   frontend-validate-openapi-types:
     if: |

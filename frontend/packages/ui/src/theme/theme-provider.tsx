@@ -29,9 +29,11 @@ export function ThemeProvider({ canChoose, defaultTheme, children }: ThemeProvid
 
   const theme: ResolvedTheme = canChoose ? (choice ?? defaultTheme) : defaultTheme;
 
-  // Before paint, not after: the pre-paint script can only replay a theme this browser has already
-  // resolved once, so a first-time visitor starts with no class at all. A passive effect would let
-  // that first commit paint in the wrong palette and then snap.
+  /*
+   * Before paint, not after: the pre-paint script can only replay a theme this browser has already
+   * resolved once, so a first-time visitor starts with no class at all. A passive effect would let
+   * that first commit paint in the wrong palette and then snap.
+   */
   useLayoutEffect(() => {
     applyTheme(theme);
     mirrorResolvedTheme(theme);
