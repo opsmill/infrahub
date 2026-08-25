@@ -14,6 +14,7 @@ from .file_contract import FILE_CONTRACT
 from .location import CONTINENT, COUNTRY, LOCATION, SITE
 from .manufacturer import MANUFACTURER
 from .person import PERSON
+from .rack import CARD, POWER_SLOT, RACK, SLOT
 from .recompute import CASCADE_NODE, CYCLE_A, CYCLE_B
 from .snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 from .tag import TAG
@@ -32,6 +33,7 @@ DEVICE_SCHEMA = SchemaRoot(
     generics=[INTERFACE, INTERFACE_HOLDER], nodes=[DEVICE, PHYSICAL_INTERFACE, VIRTUAL_INTERFACE, SFP]
 )
 LOCATION_SCHEMA = SchemaRoot(generics=[LOCATION], nodes=[CONTINENT, COUNTRY, SITE])
+RACK_SCHEMA = SchemaRoot(generics=[SLOT], nodes=[RACK, POWER_SLOT, CARD, TAG])
 SNOW_TICKET_SCHEMA = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
 CASCADE_SCHEMA = SchemaRoot(nodes=[CASCADE_NODE])
 CYCLE_SCHEMA = SchemaRoot(nodes=[CYCLE_A, CYCLE_B])
@@ -77,6 +79,7 @@ test_models: dict[str, Any] = {
 
 __all__ = [
     "CAR",
+    "CARD",
     "CAR_SCHEMA",
     "CASCADE_NODE",
     "CASCADE_SCHEMA",
@@ -97,8 +100,12 @@ __all__ = [
     "MANUFACTURER",
     "PERSON",
     "PHYSICAL_INTERFACE",
+    "POWER_SLOT",
+    "RACK",
+    "RACK_SCHEMA",
     "SFP",
     "SITE",
+    "SLOT",
     "TAG",
     "THING",
     "TICKET",

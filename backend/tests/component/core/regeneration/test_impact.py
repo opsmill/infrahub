@@ -4,15 +4,13 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipDirection
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
 from infrahub.core.regeneration.models import TargetSelection
-from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff
-from tests.helpers.schema import CAR_SCHEMA, load_schema
-from tests.helpers.schema.tag import TAG
+from tests.helpers.schema import CAR_SCHEMA, RACK_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -207,53 +205,6 @@ class TestFieldLevelImpact(TestInfrahubApp):
         assert resolved == TargetSelection(ids=[], widened=False)
 
 
-# A rack reaches a card through a slot: ``slots`` peers the generic ``TestingSlot`` and ``card`` is a
-# relationship defined on that generic. The card is therefore reached through a relationship whose
-# owner is a generic -- the case that pins to the generic kind for the reverse traversal.
-GENERIC_OWNER_SCHEMA = SchemaRoot(
-    generics=[
-        GenericSchema(
-            name="Slot",
-            namespace="Testing",
-            attributes=[AttributeSchema(name="name", kind="Text")],
-            relationships=[
-                RelationshipSchema(
-                    name="card",
-                    peer="TestingCard",
-                    identifier="slot__card",
-                    cardinality=RelationshipCardinality.ONE,
-                    optional=True,
-                    direction=RelationshipDirection.OUTBOUND,
-                )
-            ],
-        )
-    ],
-    nodes=[
-        NodeSchema(
-            name="Rack",
-            namespace="Testing",
-            attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
-            relationships=[
-                RelationshipSchema(
-                    name="slots",
-                    peer="TestingSlot",
-                    identifier="rack__slot",
-                    cardinality=RelationshipCardinality.MANY,
-                    optional=True,
-                    direction=RelationshipDirection.OUTBOUND,
-                )
-            ],
-        ),
-        NodeSchema(name="PowerSlot", namespace="Testing", inherit_from=["TestingSlot"]),
-        NodeSchema(
-            name="Card",
-            namespace="Testing",
-            attributes=[AttributeSchema(name="name", kind="Text")],
-        ),
-        TAG,
-    ],
-)
-
 QUERY_RACK_WITH_CARD = """
 query GetImpactRack($ids: [ID!]!) {
     TestingRack(ids: $ids) {
@@ -276,7 +227,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
     The query pins its root rack by id and reads ``name`` off a card reached through the rack's slots.
     The slot is a concrete ``TestingPowerSlot`` labelled with the ``TestingSlot`` generic, so the
     reverse traversal keyed on the generic label walks the card change back through the slot to the
-    rack -- proving the generic-owner hop resolves to a subset of members rather than widening.
+    rack.
     """
 
     @pytest.fixture(scope="class")
@@ -286,7 +237,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
         default_branch: Branch,
         client: InfrahubClient,
     ) -> dict[str, Any]:
-        await load_schema(db=db, schema=GENERIC_OWNER_SCHEMA, update_db=True)
+        await load_schema(db=db, schema=RACK_SCHEMA, update_db=True)
 
         card = await Node.init(db=db, schema="TestingCard")
         await card.new(db=db, name="card-1")
