@@ -60,20 +60,13 @@ class AttributeAddQuery(Query):
 
         self.params["user_id"] = self.user_id
 
-        if self.branch_support == BranchSupportType.AGNOSTIC.value:
-            edge_branch_name = GLOBAL_BRANCH_NAME
-            edge_branch_level = 1
-        else:
-            edge_branch_name = self.branch.name
-            edge_branch_level = self.branch.hierarchy_level
-
-        self.params["rel_props"] = {
-            "branch": edge_branch_name,
-            "branch_level": edge_branch_level,
-            "status": RelationshipStatus.ACTIVE.value,
-            "from": write_time,
-            "from_user_id": self.user_id,
-        }
+        self.params["is_branch_agnostic"] = self.branch_support == BranchSupportType.AGNOSTIC.value
+        self.params["is_branch_local"] = self.branch_support == BranchSupportType.LOCAL.value
+        self.params["agnostic_support"] = BranchSupportType.AGNOSTIC.value
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.params["branch_name"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["edge_status"] = RelationshipStatus.ACTIVE.value
 
         self.params["is_protected_default"] = False
 
@@ -124,17 +117,39 @@ class AttributeAddQuery(Query):
         }
         WITH n, is_part_of_e, has_attr_e, av, is_protected_value
         WHERE is_part_of_e.status = "active" AND (has_attr_e IS NULL OR has_attr_e.status = "deleted")
+        // -----------------
+        // Use the branch support of the new Attribute and its Node to determine which branch the edges are added to
+        // If Attribute is (branch-agnostic) OR (branch-local AND Node is branch-agnostic) then use global branch
+        // -----------------
+        WITH n, has_attr_e, av, is_protected_value,
+            $is_branch_agnostic
+            OR ($is_branch_local AND n.branch_support = $agnostic_support) AS on_global_branch
+        WITH n, has_attr_e, av, is_protected_value,
+            {
+                branch: CASE WHEN on_global_branch THEN $global_branch_name ELSE $branch_name END,
+                branch_level: CASE WHEN on_global_branch THEN 1 ELSE $branch_level END,
+                status: $edge_status,
+                from: $current_time,
+                from_user_id: $user_id
+            } AS edge_props
         CREATE (a:Attribute { name: $attr_name, branch_support: $branch_support })
-        CREATE (n)-[:HAS_ATTRIBUTE $rel_props ]->(a)
-        CREATE (a)-[:HAS_VALUE $rel_props ]->(av)
-        CREATE (a)-[:IS_PROTECTED $rel_props]->(is_protected_value)
+        CREATE (n)-[new_has_attr:HAS_ATTRIBUTE]->(a)
+        SET new_has_attr = edge_props
+        CREATE (a)-[new_has_value:HAS_VALUE]->(av)
+        SET new_has_value = edge_props
+        CREATE (a)-[new_is_protected:IS_PROTECTED]->(is_protected_value)
+        SET new_is_protected = edge_props
         %(uuid_generation)s
+        // -----------------
         // Set metadata on Attribute and Node vertices if on default/global branch
+        // -----------------
         WITH a, n, has_attr_e
         CALL (a, n) {
             WITH a, n
             WHERE $set_metadata
+            // -----------------
             // The Attribute vertex is created here, so it has no prior metadata to snapshot for rollback
+            // -----------------
             SET a.created_at = $current_time, a.created_by = $user_id, a.updated_at = $current_time, a.updated_by = $user_id
             SET n.previous_updated_at = CASE
                     WHEN n.updated_at IS NULL OR n.updated_at <> $current_time THEN n.updated_at
