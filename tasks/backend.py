@@ -1319,14 +1319,60 @@ def _generate_protocols(context: Context) -> None:
     execute_command(context=context, command=f"ruff check --fix {protocols_output}")
 
     # Export protocols for Python SDK code use
-    generated = f"{REPO_BASE}/python_sdk/infrahub_sdk"
-    template = env.get_template("generate_protocols_sdk.j2")
-
-    protocols_rendered = template.render(
-        generics=_sort_and_filter_models(core_models["generics"]), models=_sort_and_filter_models(core_models["nodes"])
-    )
-    protocols_output = f"{generated}/protocols.py"
-    Path(protocols_output).write_text(protocols_rendered, encoding="utf-8")
+    protocols_output = f"{REPO_BASE}/python_sdk/infrahub_sdk/protocols.py"
+    Path(protocols_output).write_text(_render_sdk_protocols(), encoding="utf-8")
 
     execute_command(context=context, command=f"ruff format {protocols_output}")
     execute_command(context=context, command=f"ruff check --fix {protocols_output}")
+
+
+def _render_sdk_protocols() -> str:
+    """Render the protocols the SDK ships, using the SDK's own generator."""
+    from typing import assert_never
+
+    from infrahub_sdk.protocols_generator.generator import CodeGenerator
+    from infrahub_sdk.protocols_generator.target import ProtocolTarget
+    from infrahub_sdk.schema import (
+        GenericSchemaAPI,
+        MainSchemaTypesAll,
+        NodeSchemaAPI,
+        ProfileSchemaAPI,
+        TemplateSchemaAPI,
+    )
+
+    from infrahub import config
+    from infrahub.core.schema import (
+        GenericSchema,
+        NodeSchema,
+        ProfileSchema,
+        SchemaRoot,
+        TemplateSchema,
+        core_models,
+        internal_schema,
+    )
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.schema.read_schema import build_read_schema
+
+    # Processing a schema branch reads the settings, so they have to be loaded even though
+    # generation never reaches a database.
+    config.load_and_exit()
+
+    schema_branch = SchemaBranch(cache={}, name="default")
+    schema_branch.load_schema(schema=SchemaRoot(**internal_schema).merge(schema=SchemaRoot(**core_models)))
+    schema_branch.process()
+
+    schema: dict[str, MainSchemaTypesAll] = {}
+    for kind, node in schema_branch.get_all(include_internal=False).items():
+        match node:
+            case ProfileSchema():
+                schema[kind] = build_read_schema(model=ProfileSchemaAPI, schema=node)
+            case TemplateSchema():
+                schema[kind] = build_read_schema(model=TemplateSchemaAPI, schema=node)
+            case GenericSchema():
+                schema[kind] = build_read_schema(model=GenericSchemaAPI, schema=node)
+            case NodeSchema():
+                schema[kind] = build_read_schema(model=NodeSchemaAPI, schema=node)
+            case _:
+                assert_never(node)
+
+    return CodeGenerator(schema=schema, target=ProtocolTarget.SDK_CORE).render()
