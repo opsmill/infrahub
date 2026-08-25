@@ -1,1 +1,1 @@
-Reading a node with its relationships prefetched no longer issues an extra database query for each relationship that has no peer.
+Reading a node together with its relationships no longer issues an extra database query for each relationship that has no peer.
