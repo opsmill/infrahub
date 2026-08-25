@@ -1845,3 +1845,6 @@ async def test_update_reports_the_parent_only_when_something_changed(
     assert loaded.node_changelog.parent.node_id == person.id
     assert loaded.node_changelog.parent.node_kind == "TestPerson"
     assert counting_db.count_for(RelationshipGetPeerQuery.name) == 1
+
+    reloaded = await NodeManager.get_one(db=db, id=car.id, branch=default_branch, raise_on_error=True)
+    assert reloaded.nbr_seats.value == 4

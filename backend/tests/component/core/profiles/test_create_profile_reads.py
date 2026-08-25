@@ -58,6 +58,14 @@ async def test_create_with_profiles_still_applies_them(
     assert child.name.value == "profile-name"
     assert child.name.is_from_profile is True
 
+    reloaded = await NodeManager.get_one(
+        db=db, id=child.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE, raise_on_error=True
+    )
+    assert reloaded.name.value == "profile-name"
+    assert reloaded.name.is_from_profile is True
+    assert reloaded.name.source_id == profile.id
+    assert {rel.peer_id for rel in await reloaded.profiles.get_relationships(db=db)} == {profile.id}
+
 
 async def test_create_from_a_template_applies_the_profiles_it_carries(
     db: InfrahubDatabase, default_branch: Branch, device_schema: None
