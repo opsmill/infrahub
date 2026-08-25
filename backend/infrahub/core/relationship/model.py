@@ -1139,7 +1139,9 @@ class RelationshipManager[RelationshipManagerPeerType]:
             # Creating it writes the edges without going through this manager, so this answer must
             # not be recorded for reuse: it stops being true as soon as the node is saved.
             self._last_db_peers = None
-            return self._compare_with_db_peers(peers=[])
+            details = self._compare_with_db_peers(peers=[])
+            self._relationship_id_details = None
+            return details
 
         peers = await self.get_db_peers(db=db, at=at, branch_agnostic=branch_agnostic)
         self._last_db_peers = DbPeersRead(peers=peers, at=str(at or self.at), branch_agnostic=branch_agnostic)
