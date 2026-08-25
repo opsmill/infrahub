@@ -1,5 +1,6 @@
 import pytest
 
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -74,6 +75,47 @@ def test_validate_names_rejects_double_underscore_in_relationship_name() -> None
         match=r"TestingUnderscore: 'peer__link' cannot be used as a relationship name",
     ):
         schema.validate_names()
+
+
+def test_local_attribute_keeps_its_branch_support_over_the_generic() -> None:
+    """An attribute redefined on a node must not pick up the branch support of the generic's own copy.
+
+    Generics may declare an attribute that every implementer carries while the implementers scope it
+    differently, so the local definition has to win outright.
+    """
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(
+        schema=SchemaRoot(
+            generics=[
+                GenericSchema(
+                    name="Item",
+                    namespace="Testing",
+                    branch=BranchSupportType.AGNOSTIC,
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text"),
+                        AttributeSchema(name="revision", kind="Text", branch=BranchSupportType.LOCAL),
+                    ],
+                )
+            ],
+            nodes=[
+                NodeSchema(
+                    name="Note",
+                    namespace="Testing",
+                    branch=BranchSupportType.AGNOSTIC,
+                    inherit_from=["TestingItem"],
+                    attributes=[AttributeSchema(name="revision", kind="Text", branch=BranchSupportType.AWARE)],
+                )
+            ],
+        )
+    )
+    schema_branch.process()
+
+    generic_revision = schema_branch.get_generic(name="TestingItem", duplicate=False).get_attribute(name="revision")
+    assert generic_revision.branch == BranchSupportType.LOCAL
+
+    node_revision = schema_branch.get_node(name="TestingNote", duplicate=False).get_attribute(name="revision")
+    assert node_revision.branch == BranchSupportType.AWARE
+    assert node_revision.inherited is False
 
 
 def _load_processed_branch(schema_root: SchemaRoot) -> SchemaBranch:

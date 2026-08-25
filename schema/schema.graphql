@@ -3546,6 +3546,8 @@ input CoreGenericAccountUpdateInput {
 """A Git Repository integrated with Infrahub"""
 interface CoreGenericRepository {
   checks(class_name__is_protected: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], file_path__is_protected: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar], timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreCheckDefinition!
+  """Current commit hash being tracked"""
+  commit: TextAttribute
   credential: NestedEdgedCoreCredential!
   """Description of the repository"""
   description: TextAttribute
@@ -3581,6 +3583,8 @@ type CoreGenericRepositoryUpdate {
 
 input CoreGenericRepositoryUpdateInput {
   checks: [RelatedNodeInput]
+  """Current commit hash being tracked"""
+  commit: TextAttributeUpdate
   credential: RelatedNodeInput
   """Description of the repository"""
   description: TextAttributeUpdate
@@ -15739,6 +15743,11 @@ type Query {
     query__variables__source__id: ID
     query__variables__value: GenericScalar
     query__variables__values: [GenericScalar]
+    repository__commit__is_protected: Boolean
+    repository__commit__owner__id: ID
+    repository__commit__source__id: ID
+    repository__commit__value: String
+    repository__commit__values: [String]
     repository__description__is_protected: Boolean
     repository__description__owner__id: ID
     repository__description__source__id: ID
@@ -17645,6 +17654,11 @@ type Query {
     query__variables__source__id: ID
     query__variables__value: GenericScalar
     query__variables__values: [GenericScalar]
+    repository__commit__is_protected: Boolean
+    repository__commit__owner__id: ID
+    repository__commit__source__id: ID
+    repository__commit__value: String
+    repository__commit__values: [String]
     repository__description__is_protected: Boolean
     repository__description__owner__id: ID
     repository__description__source__id: ID
@@ -18373,6 +18387,12 @@ type Query {
     checks__timeout__source__id: ID
     checks__timeout__value: BigInt
     checks__timeout__values: [BigInt]
+    commit__is_protected: Boolean
+    commit__isnull: Boolean
+    commit__owner__id: ID
+    commit__source__id: ID
+    commit__value: String
+    commit__values: [String]
     credential__description__is_protected: Boolean
     credential__description__owner__id: ID
     credential__description__source__id: ID
@@ -18902,6 +18922,11 @@ type Query {
     query_groups__parameters__source__id: ID
     query_groups__parameters__value: GenericScalar
     query_groups__parameters__values: [GenericScalar]
+    repository__commit__is_protected: Boolean
+    repository__commit__owner__id: ID
+    repository__commit__source__id: ID
+    repository__commit__value: String
+    repository__commit__values: [String]
     repository__description__is_protected: Boolean
     repository__description__owner__id: ID
     repository__description__source__id: ID
@@ -22715,6 +22740,11 @@ type Query {
     parent__name__value: String
     parent__name__values: [String]
     partial_match: Boolean
+    repository__commit__is_protected: Boolean
+    repository__commit__owner__id: ID
+    repository__commit__source__id: ID
+    repository__commit__value: String
+    repository__commit__values: [String]
     repository__description__is_protected: Boolean
     repository__description__owner__id: ID
     repository__description__source__id: ID
@@ -22903,6 +22933,11 @@ type Query {
     proposed_change__total_comments__source__id: ID
     proposed_change__total_comments__value: BigInt
     proposed_change__total_comments__values: [BigInt]
+    repository__commit__is_protected: Boolean
+    repository__commit__owner__id: ID
+    repository__commit__source__id: ID
+    repository__commit__value: String
+    repository__commit__values: [String]
     repository__description__is_protected: Boolean
     repository__description__owner__id: ID
     repository__description__source__id: ID
@@ -24271,6 +24306,11 @@ type Query {
     query__variables__source__id: ID
     query__variables__value: GenericScalar
     query__variables__values: [GenericScalar]
+    repository__commit__is_protected: Boolean
+    repository__commit__owner__id: ID
+    repository__commit__source__id: ID
+    repository__commit__value: String
+    repository__commit__values: [String]
     repository__description__is_protected: Boolean
     repository__description__owner__id: ID
     repository__description__source__id: ID
@@ -24534,6 +24574,11 @@ type Query {
     query__variables__source__id: ID
     query__variables__value: GenericScalar
     query__variables__values: [GenericScalar]
+    repository__commit__is_protected: Boolean
+    repository__commit__owner__id: ID
+    repository__commit__source__id: ID
+    repository__commit__value: String
+    repository__commit__values: [String]
     repository__description__is_protected: Boolean
     repository__description__owner__id: ID
     repository__description__source__id: ID
@@ -24773,6 +24818,11 @@ type Query {
     query__variables__source__id: ID
     query__variables__value: GenericScalar
     query__variables__values: [GenericScalar]
+    repository__commit__is_protected: Boolean
+    repository__commit__owner__id: ID
+    repository__commit__source__id: ID
+    repository__commit__value: String
+    repository__commit__values: [String]
     repository__description__is_protected: Boolean
     repository__description__owner__id: ID
     repository__description__source__id: ID
@@ -25129,6 +25179,11 @@ type Query {
     proposed_change__total_comments__source__id: ID
     proposed_change__total_comments__value: BigInt
     proposed_change__total_comments__values: [BigInt]
+    repository__commit__is_protected: Boolean
+    repository__commit__owner__id: ID
+    repository__commit__source__id: ID
+    repository__commit__value: String
+    repository__commit__values: [String]
     repository__description__is_protected: Boolean
     repository__description__owner__id: ID
     repository__description__source__id: ID
