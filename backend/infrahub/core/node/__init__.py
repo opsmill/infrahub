@@ -513,6 +513,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 id=object_template_field.get("id"),
                 hfid=object_template_field.get("hfid"),
                 branch=self.get_branch_based_on_support_type(),
+                prefetch_relationships=True,
             )
         except NodeNotFoundError:
             errors.append(

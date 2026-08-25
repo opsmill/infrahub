@@ -431,6 +431,7 @@ class NodeManager:
         branch: Branch | str | None = ...,
         id: str | None = ...,
         hfid: list[str] | None = ...,
+        prefetch_relationships: bool = ...,
     ) -> SchemaProtocol: ...
 
     @overload
@@ -443,6 +444,7 @@ class NodeManager:
         branch: Branch | str | None = ...,
         id: str | None = ...,
         hfid: list[str] | None = ...,
+        prefetch_relationships: bool = ...,
     ) -> Node: ...
 
     @classmethod
@@ -454,6 +456,7 @@ class NodeManager:
         branch: Branch | str | None = None,
         id: str | None = None,
         hfid: list[str] | None = None,
+        prefetch_relationships: bool = False,
     ) -> Node | SchemaProtocol:
         if id and is_valid_uuid(id):
             return await cls.get_one(
@@ -463,6 +466,7 @@ class NodeManager:
                 branch=branch,
                 at=at,
                 include_metadata=MetadataOptions.LINKED_NODES,
+                prefetch_relationships=prefetch_relationships,
                 raise_on_error=True,
             )
 
@@ -474,6 +478,7 @@ class NodeManager:
                 branch=branch,
                 at=at,
                 include_metadata=MetadataOptions.LINKED_NODES,
+                prefetch_relationships=prefetch_relationships,
                 raise_on_error=True,
             )
 

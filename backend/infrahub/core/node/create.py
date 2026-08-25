@@ -39,7 +39,9 @@ async def get_template_relationship_peers(
     """For a given relationship on the template, fetch the related peers."""
     template_relationship_manager: RelationshipManager = getattr(template, relationship.name)
     if relationship.cardinality == RelationshipCardinality.MANY:
-        return await template_relationship_manager.get_peers(db=db, include_metadata=MetadataOptions.SOURCE)
+        return await template_relationship_manager.get_peers(
+            db=db, include_metadata=MetadataOptions.SOURCE, prefetch_relationships=True
+        )
 
     peers: dict[str, CoreObjectTemplate] = {}
     template_relationship_peer = await template_relationship_manager.get_peer(db=db)
