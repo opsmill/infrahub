@@ -10,11 +10,6 @@ from typer.testing import CliRunner
 with patch("sys.stdin"):
     from infrahub.git_credential.helper import app, parse_helper_get_input
 
-# Only intercept the fake SDK endpoint: the per-worker Prefect server flushes
-# batched API logs on its own schedule, and a flush landing mid-test must reach
-# the real server instead of failing inside the mock and polluting stderr.
-pytestmark = pytest.mark.httpx_mock(should_mock=lambda request: request.url.host == "mock")
-
 runner = CliRunner()
 
 

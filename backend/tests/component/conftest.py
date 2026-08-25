@@ -85,6 +85,27 @@ from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import find_available_prefect_port
 from tests.test_data import dataset01 as ds01
 
+COMPONENT_TESTS_DIR = Path(__file__).parent
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Default every component test using ``httpx_mock`` to intercepting only the fake SDK host.
+
+    The per-worker Prefect server flushes batched API logs on its own schedule; a flush landing
+    inside a mocked test must reach the real server instead of failing inside the mock. Tests that
+    declare their own ``httpx_mock`` marker keep it: a hook-added function-level marker would
+    otherwise outrank an explicit module-level one, so the default is only added when none exists.
+    """
+    default_marker = pytest.mark.httpx_mock(should_mock=lambda request: request.url.host == "mock")
+    for item in items:
+        if COMPONENT_TESTS_DIR not in item.path.parents:
+            continue
+        if "httpx_mock" not in getattr(item, "fixturenames", ()):
+            continue
+        if list(item.iter_markers("httpx_mock")):
+            continue
+        item.add_marker(default_marker)
+
 
 @pytest.fixture(scope="module", autouse=True)
 def load_component_dependency_registry() -> None:
