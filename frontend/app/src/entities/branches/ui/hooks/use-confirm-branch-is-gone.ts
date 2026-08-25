@@ -22,29 +22,20 @@ export function confirmsBranchIsGone(
 }
 
 /**
- * Confirms whether the branch named in the URL is really gone before anyone acts on its absence.
- *
- * One list that omits the branch is not proof of deletion: it is refetched on every branch mutation
- * and on window focus, and a live branch can be absent from a single response — filtered out while
- * its data is being deleted, missed by a lagging follower read, or not yet saved by async creation.
- * So a miss is confirmed against a second fetch, and a verdict only ever applies to the branch it
- * was reached for, for as long as no list contains that name again.
- *
- * A null branchName is the default branch (its name is absent from the URL). Its confirmed absence
- * is a broken deployment, reported separately so the caller can render an error instead of
- * redirecting onto the very branch that is missing.
+ * Confirms against a second fetch that the branch named in the URL is really gone — a single list
+ * omitting a branch is not proof of deletion, since a live branch can be absent from one response.
+ * A null branchName is the default branch; its confirmed absence is reported as
+ * `isDefaultBranchGone` so the caller can render an error instead of redirecting in a loop.
  */
 export function useConfirmBranchIsGone({ branchName }: { branchName: string | null }) {
   const { data: branches, refetch, dataUpdatedAt } = useGetBranches();
 
-  // The one standing verdict: a branch identity a confirming fetch has settled as gone.
   const [confirmedGone, setConfirmedGone] = React.useState<{
     branchName: string | null;
   } | null>(null);
   const pendingConfirmation = React.useRef<{ branchName: string | null } | null>(null);
 
-  // A branch the list carries again has no standing verdict: a branch recreated under a deleted
-  // one's name has to be confirmed afresh.
+  // A branch the list carries again has to be confirmed afresh, so its standing verdict is dropped.
   if (confirmedGone && branches && findSelectedBranch(branches, confirmedGone.branchName)) {
     setConfirmedGone(null);
   }
@@ -53,9 +44,7 @@ export function useConfirmBranchIsGone({ branchName }: { branchName: string | nu
   const isConfirmedGone =
     isMissingFromList && !!confirmedGone && confirmedGone.branchName === branchName;
 
-  // dataUpdatedAt is a dependency so that every newly arrived list that still omits the branch gets
-  // its own confirmation attempt: retries are off app-wide, so without it one failed confirmation
-  // would leave the miss unconfirmed forever, with no verdict and no recovery.
+  // dataUpdatedAt re-arms the confirmation on every fresh list, since retries are off app-wide.
   React.useEffect(() => {
     if (!isMissingFromList) {
       pendingConfirmation.current = null;
@@ -71,7 +60,7 @@ export function useConfirmBranchIsGone({ branchName }: { branchName: string | nu
     refetch()
       .catch(() => FAILED_CONFIRMATION)
       .then((confirmed) => {
-        // A verdict is discarded once its attempt is superseded or abandoned.
+        // A superseded or abandoned attempt's verdict no longer applies.
         if (pendingConfirmation.current !== attempt) return;
         pendingConfirmation.current = null;
 

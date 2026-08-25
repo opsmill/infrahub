@@ -19,10 +19,9 @@ const featureBranch = generateBranch({ id: "branch-feature", name: "feature-1" }
 
 type BranchesQueryState = Partial<ReturnType<typeof useGetBranches>>;
 
-// Mocked the way React Query behaves: one shared store serving every call site, a stable refetch
-// that resolves with the next scripted response and re-renders subscribers with it, reusing the
-// last one once the script runs out. advanceList moves to the next response without a refetch,
-// like a background refresh landing.
+// Behaves like React Query: one shared store for every call site, a stable refetch resolving with
+// the next scripted response and re-rendering subscribers, the last response reused once the
+// script runs out.
 const mockBranchesQuery = (...responses: BranchesQueryState[]) => {
   const lastIndex = responses.length - 1;
   let index = 0;
@@ -37,10 +36,10 @@ const mockBranchesQuery = (...responses: BranchesQueryState[]) => {
     for (const listener of listeners) listener();
   };
 
-  const refetch = vi.fn(() => {
+  const refetch = () => {
     advanceList();
     return Promise.resolve(responses[index]);
-  });
+  };
 
   vi.mocked(useGetBranches).mockImplementation(() => {
     const fetchIndex = React.useSyncExternalStore(subscribe, () => index);
@@ -255,45 +254,6 @@ describe("BranchesProvider", () => {
       .toBeVisible();
     await expect.poll(getBranchInUrl).toBeNull();
   });
-  test("keeps the page mounted while a transient miss of its branch is confirmed", async () => {
-    // GIVEN the user works on feature-1, mounted from a list that contains it
-    let probeMounts = 0;
-    function MountCountingProbe() {
-      React.useEffect(() => {
-        probeMounts += 1;
-      }, []);
-      return <BranchProbe />;
-    }
-    const withFeature: BranchesQueryState = {
-      data: [defaultBranch, featureBranch],
-      isPending: false,
-      error: null,
-    };
-    const withoutFeature: BranchesQueryState = {
-      data: [defaultBranch],
-      isPending: false,
-      error: null,
-    };
-    const { advanceList, refetch } = mockBranchesQuery(withFeature, withoutFeature, withFeature);
-    seedBranchInUrl(featureBranch.name);
-    const component = await render(
-      <BranchesProvider>
-        <MountCountingProbe />
-      </BranchesProvider>
-    );
-    await expect.element(component.getByText("Current branch: feature-1")).toBeVisible();
-
-    // WHEN a background refresh omits the branch, and the confirming fetch brings it back
-    advanceList();
-
-    // THEN the miss is confirmed against a fresh fetch, and the page never unmounts
-    await expect.poll(() => refetch.mock.calls.length).toBe(1);
-    await expect.element(component.getByText("Current branch: feature-1")).toBeVisible();
-    await expect.poll(() => probeMounts).toBe(1);
-    expect(component.getByText("Loading branches...").query()).toBeNull();
-    expect(getBranchInUrl()).toBe("feature-1");
-  });
-
   test("shows an error screen when the default branch is confirmed missing", async () => {
     // GIVEN a deployment whose branch list carries no default branch, on the default branch
     mockBranchesQuery({ data: [featureBranch], isPending: false, error: null });

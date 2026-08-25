@@ -32,9 +32,8 @@ type ScriptedRefetch =
   | { rejects: true }
   | { heldData: BranchListItem[] };
 
-// Mocks useGetBranches the way React Query behaves: refetch is a stable function that resolves with
-// the next scripted response and re-renders with it, dataUpdatedAt bumps only on fresh data, and
-// arriveList models a background refresh (window focus, mutation) landing outside any refetch call.
+// Behaves like React Query: stable refetch, dataUpdatedAt bumping only on fresh data, and
+// arriveList modelling a background refresh landing outside any refetch call.
 const mockBranchesQuery = (initial: BranchListItem[] | undefined, ...script: ScriptedRefetch[]) => {
   let setQueryState!: React.Dispatch<
     React.SetStateAction<{ data: BranchListItem[] | undefined; dataUpdatedAt: number }>

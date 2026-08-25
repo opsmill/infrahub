@@ -39,13 +39,6 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
     branchName: branchInQueryString,
   });
 
-  // The last branch this provider resolved, kept so a page is not unmounted while a transient miss
-  // of the branch it is already showing is being confirmed.
-  const [lastResolvedBranch, setLastResolvedBranch] = React.useState(currentBranch);
-  if (currentBranch && currentBranch !== lastResolvedBranch) {
-    setLastResolvedBranch(currentBranch);
-  }
-
   React.useEffect(() => {
     if (goneBranchName === null) return;
 
@@ -74,8 +67,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
   }
 
   if (goneBranchName !== null) {
-    // replace, not push: a pushed "/" would leave the gone-branch URL in history, and Back would
-    // bounce off it forever.
+    // replace, not push: Back must not land on the gone-branch URL and bounce here forever
     return <Navigate to="/" replace />;
   }
 
@@ -87,19 +79,9 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
     return <ErrorScreen message={error.message} />;
   }
 
-  // While a miss is confirmed, only the branch the page was already showing stays mounted; any
-  // other unresolved branch gets the loading screen until the verdict lands.
-  const resolvedBranch =
-    currentBranch ??
-    (lastResolvedBranch && findSelectedBranch([lastResolvedBranch], branchInQueryString));
-
-  if (!resolvedBranch) {
+  if (!currentBranch) {
     return <InfrahubLoading>Loading branches...</InfrahubLoading>;
   }
 
-  return (
-    <BranchContext value={{ currentBranch: resolvedBranch, setCurrentBranch }}>
-      {children}
-    </BranchContext>
-  );
+  return <BranchContext value={{ currentBranch, setCurrentBranch }}>{children}</BranchContext>;
 };
