@@ -37,7 +37,11 @@ PERSON = _node("Person")
 PHYSICAL = _node("Physical")
 VIRTUAL = _node("Virtual")
 THING = _node("Thing")
-ENDPOINT = GenericSchema(name="Endpoint", namespace="Testing")
+ENDPOINT = GenericSchema(
+    name="Endpoint",
+    namespace="Testing",
+    relationships=[_rel("things", "TestingThing", "endpoint__thing")],
+)
 DEVICE_WITH_GENERIC = _node("Device", _rel("endpoints", "TestingEndpoint", "device__endpoint"))
 DEVICE_TWO_OWNERS = _node(
     "Device",
@@ -192,13 +196,11 @@ def test_a_kind_reached_via_a_generic_peer_and_a_concrete_relationship_unions_th
     }
 
 
-def test_a_kind_owned_by_a_generic_widens_while_the_generic_peer_narrows() -> None:
-    # A kind reached through a relationship on a generic owner cannot currently be pinned to a
-    # concrete node_kind for the reverse traversal (matching the generic label would miss instances
-    # created before the generic was added to the kind's inheritance -- schema changes do not
-    # relabel), so it widens for now. The generic peer's own implementations still narrow, since they
-    # are matched by uuid. This widen is a liftable limitation, not a hard rule: fanning the reverse
-    # traversal out per concrete implementation would narrow it, and this expectation would change then.
+def test_a_kind_reached_through_a_relationship_on_a_generic_owner_narrows() -> None:
+    # A kind reached through a relationship defined on a generic owner pins to the generic kind: the
+    # relationship carries one identifier and every instance is labelled with the generic, so the
+    # reverse traversal keyed on the generic label reaches every owner. The generic peer's own
+    # implementations narrow alongside, matched by uuid.
     things = _tree("things", THING)
     endpoints = _tree("endpoints", ENDPOINT, things)
     endpoints.infrahub_node_models = [PHYSICAL, VIRTUAL]
@@ -206,14 +208,17 @@ def test_a_kind_owned_by_a_generic_widens_while_the_generic_peer_narrows() -> No
 
     result = ReachedPathResolver(queries=[tree]).resolve()
 
-    endpoint_hop = RelationshipHop(
+    device_hop = RelationshipHop(
         node_kind="TestingDevice", relationship_identifier="device__endpoint", relationship_direction=OUT
     )
+    endpoint_hop = RelationshipHop(
+        node_kind="TestingEndpoint", relationship_identifier="endpoint__thing", relationship_direction=OUT
+    )
     assert result == {
-        "TestingPhysical": (ReachedPath(hops=(endpoint_hop,)),),
-        "TestingVirtual": (ReachedPath(hops=(endpoint_hop,)),),
+        "TestingPhysical": (ReachedPath(hops=(device_hop,)),),
+        "TestingVirtual": (ReachedPath(hops=(device_hop,)),),
+        "TestingThing": (ReachedPath(hops=(endpoint_hop, device_hop)),),
     }
-    assert "TestingThing" not in result
 
 
 def test_an_implementation_also_reached_un_pinnably_widens_while_its_siblings_narrow() -> None:

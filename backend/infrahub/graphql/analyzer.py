@@ -334,16 +334,16 @@ class ReachedPathResolver:
     def _hop_chain_to_root(self, node: GraphQLQueryNode) -> ReachedPath | None:
         """The chain from a related node back to its root, or None when a hop cannot be pinned.
 
-        Returns None as soon as an owner along the chain is generic, or a step's field is not a
-        relationship on its owner (an inline/named fragment refinement), because neither resolves a
-        changed node to a single concrete reverse relationship. The related node's own kind may be a
-        generic; the caller resolves it to its concrete implementations.
+        Returns None when a step's field is not a relationship on its owner (an inline/named fragment
+        refinement), which cannot resolve a changed node to a reverse relationship. A generic owner is
+        pinnable: the relationship it defines carries one identifier and every instance carries the
+        generic's label, so the hop keys on the generic kind.
         """
         hops: list[RelationshipHop] = []
         current = node
         while not current.at_root:
             owner = self._nearest_object_ancestor(current)
-            if owner is None or owner.infrahub_model is None or isinstance(owner.infrahub_model, GenericSchema):
+            if owner is None or owner.infrahub_model is None:
                 return None
             relationship = owner.infrahub_model.get_relationship_or_none(name=current.path)
             if relationship is None or not relationship.identifier:
