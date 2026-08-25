@@ -48,7 +48,7 @@ Two stacks can run the solution. They differ in where the Infrahub code comes fr
 | Compose files | Released stack downloaded by the solution, plus its own override | `development/docker-compose*.yml` from this repo |
 | Infrahub code | Baked into the image; rebuild to change it | Mounted from the worktree at `/source`; restart to change it |
 | Solution wiring | Already in the solution's override | You write an overlay |
-| Also published | MCP sidecar, Prefect, Neo4j browser and Bolt | Observability profile (Prometheus, Grafana, Tempo) |
+| Also published | MCP sidecar, Prefect, Neo4j browser and Bolt | Observability stack (Prometheus, Grafana, Tempo) behind its own profiles |
 | Service names | `infrahub-server`, `task-worker`, `task-manager` | `server`, `task-worker`, `task-manager` |
 
 Path A is the default: less to maintain, and the solution owns the wiring. Take path B when image
@@ -122,7 +122,11 @@ the solution package.
 Build both images first, exactly as in path A (`uv run invoke dev.build`, then
 `INFRAHUB_BASE_VERSION=local uv run inv build` from the clone).
 
-Write the overlay somewhere durable — `development/docker-compose.ai-dc.yml` is untracked and works:
+Write the overlay somewhere durable — `development/docker-compose.ai-dc.yml` is untracked and works.
+Replace `<AI_DC_CLONE>` with the absolute path to your solution clone, for example
+`/home/you/src/infrahub-solution-ai-dc`. A relative path resolves against the compose project
+directory rather than the repository root, so an absolute one avoids a mount that silently points
+somewhere else:
 
 ```yaml
 ---
@@ -171,7 +175,9 @@ docker compose -p ai-dc --profile dev \
 Three parts of that command are required:
 
 - `--profile dev`: `server` and the workers only exist under the `dev` and `demo` profiles. Without
-  a profile you get the dependencies and nothing else.
+  a profile you get the dependencies and nothing else. The observability services sit behind profiles
+  of their own, so add `--profile debug` for Prometheus, Grafana, and the exporters, and
+  `--profile trace` for Tempo.
 - `--pull never`: the dev stack sets `pull_policy: always`, which fails on a tag that only exists
   locally.
 - The `local-build` files: they are what mount the worktree at `/source`. Drop them and you are
