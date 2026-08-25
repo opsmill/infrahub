@@ -1,17 +1,33 @@
+from __future__ import annotations
+
 import hashlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipCardinality
-from infrahub.core.node import Node
 from infrahub.core.schema import GenericSchema
-from infrahub.core.schema.schema_branch import SchemaBranch
 
 if TYPE_CHECKING:
+    from infrahub.core.node import Node
     from infrahub.core.relationship import RelationshipManager
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.database import InfrahubDatabase
 
 
 RESOURCE_POOL_LOCK_NAMESPACE = "resource_pool"
 RELATIONSHIP_COUNT_LOCK_NAMESPACE = "relationship_count"
+
+
+async def apply_payload_for_lock_names(db: InfrahubDatabase, node: Node, data: dict[str, Any]) -> None:
+    """Apply a mutation payload to a node used only to compute lock names.
+
+    The peers this node already has in the database are left unread: the relationship lock names
+    are built from the peers the payload sets, and no pool is allocated.
+    """
+    for rel_name in node._relationships:
+        rel_manager: RelationshipManager = getattr(node, rel_name)
+        rel_manager.has_fetched_relationships = True
+
+    await node.from_graphql(db=db, data=data, process_pools=False)
 
 
 def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch) -> list[str]:
