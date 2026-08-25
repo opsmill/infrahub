@@ -373,7 +373,9 @@ LDAP authentication configuration.
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
 | `INFRAHUB_TRACE_ENABLE` | None | boolean | False |
-| `INFRAHUB_TRACE_INSECURE` | Use insecure connection (HTTP) if True, otherwise use secure connection (HTTPS) | boolean | True |
+| `INFRAHUB_TRACE_INSECURE` | Connect to the OTLP endpoint without TLS. Applies to the grpc protocol only; for http/protobuf the endpoint URL scheme decides. Implied off when `tls_ca_bundle` is set. | boolean | True |
+| `INFRAHUB_TRACE_TLS_CA_BUNDLE` | Path to a PEM-encoded certificate authority bundle used to verify the OTLP collector's TLS certificate, for a collector using a private or self-signed certificate. Supported by both exporter protocols; with http/protobuf the endpoint must use https://. Checked at startup. | None | None |
+| `INFRAHUB_TRACE_TLS_INSECURE` | Skip TLS certificate validation when exporting traces. Supported by the http/protobuf protocol only, and only with an https:// endpoint; the grpc client cannot skip validation, use `tls_ca_bundle` there. Test and development environments only; never enable in production. | boolean | False |
 | `INFRAHUB_TRACE_EXPORTER_TYPE` | Type of exporter to be used for tracing | string (console, otlp) | console |
 | `INFRAHUB_TRACE_EXPORTER_PROTOCOL` | Protocol to be used for exporting traces | string (grpc, http/protobuf) | grpc |
 | `INFRAHUB_TRACE_EXPORTER_ENDPOINT` | OTLP endpoint for exporting traces | None | None |

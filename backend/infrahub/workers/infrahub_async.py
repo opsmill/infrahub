@@ -106,6 +106,9 @@ class InfrahubWorkerAsync(BaseWorker):
                 exporter_type=config.SETTINGS.trace.exporter_type,
                 exporter_endpoint=config.SETTINGS.trace.exporter_endpoint,
                 exporter_protocol=config.SETTINGS.trace.exporter_protocol,
+                insecure=config.SETTINGS.trace.insecure,
+                tls_insecure=config.SETTINGS.trace.tls_insecure,
+                tls_ca_bundle=config.SETTINGS.trace.tls_ca_bundle,
             )
 
         # Start metric endpoint
