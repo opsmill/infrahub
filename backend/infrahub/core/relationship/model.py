@@ -1126,7 +1126,8 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
         current_peer_ids = [rel.get_peer_id() for rel in self._relationships]
 
-        peers = await self.get_db_peers(db=db, at=at, branch_agnostic=branch_agnostic)
+        # A node that has never been written cannot have any relationship edge in the database.
+        peers = await self.get_db_peers(db=db, at=at, branch_agnostic=branch_agnostic) if self.node._existing else []
 
         self.is_from_profile = bool(peers) and all(peer.is_from_profile for peer in peers)
 
