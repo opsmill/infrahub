@@ -8,6 +8,7 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
+from infrahub.core.changelog.enrichment import enrichment_primary_enabled
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
@@ -1114,6 +1115,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 node_changelog.create_relationship(relationship=rel)
 
         node_changelog.display_label = await self.get_display_label(db=db)
+        if enrichment_primary_enabled():
+            node_changelog.hfid = await self.get_hfid(db=db)
         return node_changelog
 
     async def _update(
@@ -1167,6 +1170,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         )
 
         node_changelog.display_label = await self.get_display_label(db=db)
+        if enrichment_primary_enabled():
+            node_changelog.hfid = await self.get_hfid(db=db)
 
         if node_changelog.has_changes:
             self._set_updated_at(update_at)
@@ -1207,6 +1212,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         node_changelog = NodeChangelog(
             node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db)
         )
+        if enrichment_primary_enabled():
+            node_changelog.hfid = await self.get_hfid(db=db)
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)

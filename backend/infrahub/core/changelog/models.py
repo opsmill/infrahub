@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, PrivateAttr, computed_field, field_validator, model_validator
 
+from infrahub.core.changelog.enrichment import enrichment_full_enabled
 from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality, RelationshipKind
 
 if TYPE_CHECKING:
@@ -117,6 +118,8 @@ class RelationshipCardinalityOneChangelog(BaseModel):
     peer_kind_previous: str | None = Field(default=None, description="The node kind of the previous peer")
     peer_id: str | None = Field(default=None, description="The current peer of this relationship")
     peer_kind: str | None = Field(default=None, description="The node kind of the current peer")
+    peer_display_label: str | None = Field(default=None, description="The display label of the current peer")
+    peer_hfid: list[str] | None = Field(default=None, description="The HFID of the current peer")
     properties: dict[str, PropertyChangelog] = Field(
         default_factory=dict, description="Changes to properties of this relationship if any were made"
     )
@@ -166,6 +169,8 @@ class RelationshipCardinalityOneChangelog(BaseModel):
 class RelationshipPeerChangelog(BaseModel):
     peer_id: str = Field(..., description="The ID of the peer")
     peer_kind: str = Field(..., description="The node kind of the peer")
+    peer_display_label: str | None = Field(default=None, description="The display label of the peer")
+    peer_hfid: list[str] | None = Field(default=None, description="The HFID of the peer")
     peer_status: DiffAction = Field(
         ..., description="Indicate how the relationship to this peer was changed in this update"
     )
@@ -229,6 +234,7 @@ class NodeChangelog(BaseModel):
     node_id: str
     node_kind: str
     display_label: str
+    hfid: list[str] | None = None
 
     attributes: dict[str, AttributeChangelog] = Field(default_factory=dict)
     relationships: dict[str, RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog] = Field(
@@ -468,7 +474,7 @@ class RelationshipChangelogGetter:
         for relationship in primary_changelog.relationships.values():
             if isinstance(relationship, RelationshipCardinalityOneChangelog):
                 secondaries.extend(
-                    self._parse_cardinality_one_relationship(
+                    await self._parse_cardinality_one_relationship(
                         relationship=relationship,
                         node_schema=node_schema,
                         primary_changelog=primary_changelog,
@@ -477,7 +483,7 @@ class RelationshipChangelogGetter:
                 )
             elif isinstance(relationship, RelationshipCardinalityManyChangelog):
                 secondaries.extend(
-                    self._parse_cardinality_many_relationship(
+                    await self._parse_cardinality_many_relationship(
                         relationship=relationship,
                         node_schema=node_schema,
                         primary_changelog=primary_changelog,
@@ -487,7 +493,20 @@ class RelationshipChangelogGetter:
 
         return secondaries
 
-    def _parse_cardinality_one_relationship(
+    async def _load_peer_labels(self, peer_id: str, peer_kind: str) -> tuple[str, list[str] | None]:
+        """Naively load the peer node to read its materialized display_label / hfid.
+
+        Deliberately one DB load per peer -- this is the cost under test. A missing peer falls
+        back to the pre-enrichment placeholder rather than failing the mutation.
+        """
+        from infrahub.core.manager import NodeManager  # noqa: PLC0415  # circular import: manager -> node -> changelog
+
+        peer = await NodeManager.get_one(db=self._db, id=peer_id, kind=peer_kind, branch=self._branch)
+        if peer is None:
+            return "n/a", None
+        return await peer.get_display_label(db=self._db), await peer.get_hfid(db=self._db)
+
+    async def _parse_cardinality_one_relationship(
         self,
         relationship: RelationshipCardinalityOneChangelog,
         node_schema: MainSchemaTypes,
@@ -500,7 +519,7 @@ class RelationshipChangelogGetter:
         if relationship.peer_status == DiffAction.ADDED:
             peer_schema = schema_branch.get(name=str(relationship.peer_kind), duplicate=False)
             secondaries.extend(
-                self._process_added_peers(
+                await self._process_added_peers(
                     peer_id=str(relationship.peer_id),
                     peer_kind=str(relationship.peer_kind),
                     peer_schema=peer_schema,
@@ -512,7 +531,7 @@ class RelationshipChangelogGetter:
         elif relationship.peer_status == DiffAction.UPDATED:
             peer_schema = schema_branch.get(name=str(relationship.peer_kind), duplicate=False)
             secondaries.extend(
-                self._process_added_peers(
+                await self._process_added_peers(
                     peer_id=str(relationship.peer_id),
                     peer_kind=str(relationship.peer_kind),
                     peer_schema=peer_schema,
@@ -521,7 +540,7 @@ class RelationshipChangelogGetter:
                 )
             )
             secondaries.extend(
-                self._process_removed_peers(
+                await self._process_removed_peers(
                     peer_schema=peer_schema,
                     peer_id=str(relationship.peer_id_previous),
                     peer_kind=str(relationship.peer_kind_previous),
@@ -534,7 +553,7 @@ class RelationshipChangelogGetter:
             peer_schema = schema_branch.get(name=str(relationship.peer_kind_previous), duplicate=False)
 
             secondaries.extend(
-                self._process_removed_peers(
+                await self._process_removed_peers(
                     peer_id=str(relationship.peer_id_previous),
                     peer_kind=str(relationship.peer_kind_previous),
                     peer_schema=peer_schema,
@@ -545,7 +564,7 @@ class RelationshipChangelogGetter:
 
         return secondaries
 
-    def _parse_cardinality_many_relationship(
+    async def _parse_cardinality_many_relationship(
         self,
         relationship: RelationshipCardinalityManyChangelog,
         node_schema: MainSchemaTypes,
@@ -559,7 +578,7 @@ class RelationshipChangelogGetter:
             if peer.peer_status == DiffAction.ADDED:
                 peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
                 secondaries.extend(
-                    self._process_added_peers(
+                    await self._process_added_peers(
                         peer_id=peer.peer_id,
                         peer_kind=peer.peer_kind,
                         peer_schema=peer_schema,
@@ -571,7 +590,7 @@ class RelationshipChangelogGetter:
             elif peer.peer_status == DiffAction.REMOVED:
                 peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
                 secondaries.extend(
-                    self._process_removed_peers(
+                    await self._process_removed_peers(
                         peer_id=peer.peer_id,
                         peer_kind=peer.peer_kind,
                         peer_schema=peer_schema,
@@ -582,7 +601,7 @@ class RelationshipChangelogGetter:
 
         return secondaries
 
-    def _process_added_peers(
+    async def _process_added_peers(
         self,
         peer_id: str,
         peer_kind: str,
@@ -593,12 +612,16 @@ class RelationshipChangelogGetter:
         secondaries: list[NodeChangelog] = []
         peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
         if peer_relation:
-            node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
+            full = enrichment_full_enabled()
+            display_label, hfid = await self._load_peer_labels(peer_id=peer_id, peer_kind=peer_kind) if full else ("n/a", None)
+            node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label=display_label, hfid=hfid)
             if peer_relation.cardinality == RelationshipCardinality.ONE:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
                     name=peer_relation.name,
                     peer_id=primary_changelog.node_id,
                     peer_kind=primary_changelog.node_kind,
+                    peer_display_label=primary_changelog.display_label if full else None,
+                    peer_hfid=primary_changelog.hfid if full else None,
                 )
                 secondaries.append(node_changelog)
             elif peer_relation.cardinality == RelationshipCardinality.MANY:
@@ -608,6 +631,8 @@ class RelationshipChangelogGetter:
                         RelationshipPeerChangelog(
                             peer_id=primary_changelog.node_id,
                             peer_kind=primary_changelog.node_kind,
+                            peer_display_label=primary_changelog.display_label if full else None,
+                            peer_hfid=primary_changelog.hfid if full else None,
                             peer_status=DiffAction.ADDED,
                         )
                     ],
@@ -616,7 +641,7 @@ class RelationshipChangelogGetter:
 
         return secondaries
 
-    def _process_removed_peers(
+    async def _process_removed_peers(
         self,
         peer_id: str,
         peer_kind: str,
@@ -627,12 +652,16 @@ class RelationshipChangelogGetter:
         secondaries: list[NodeChangelog] = []
         peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
         if peer_relation:
-            node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
+            full = enrichment_full_enabled()
+            display_label, hfid = await self._load_peer_labels(peer_id=peer_id, peer_kind=peer_kind) if full else ("n/a", None)
+            node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label=display_label, hfid=hfid)
             if peer_relation.cardinality == RelationshipCardinality.ONE:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
                     name=peer_relation.name,
                     peer_id_previous=primary_changelog.node_id,
                     peer_kind_previous=primary_changelog.node_kind,
+                    peer_display_label=primary_changelog.display_label if full else None,
+                    peer_hfid=primary_changelog.hfid if full else None,
                 )
                 secondaries.append(node_changelog)
             elif peer_relation.cardinality == RelationshipCardinality.MANY:
@@ -642,6 +671,8 @@ class RelationshipChangelogGetter:
                         RelationshipPeerChangelog(
                             peer_id=primary_changelog.node_id,
                             peer_kind=primary_changelog.node_kind,
+                            peer_display_label=primary_changelog.display_label if full else None,
+                            peer_hfid=primary_changelog.hfid if full else None,
                             peer_status=DiffAction.REMOVED,
                         )
                     ],
