@@ -37,10 +37,10 @@ const mockBranchesQuery = (...responses: BranchesQueryState[]) => {
     for (const listener of listeners) listener();
   };
 
-  const refetch = () => {
+  const refetch = vi.fn(() => {
     advanceList();
     return Promise.resolve(responses[index]);
-  };
+  });
 
   vi.mocked(useGetBranches).mockImplementation(() => {
     const fetchIndex = React.useSyncExternalStore(subscribe, () => index);
@@ -52,7 +52,7 @@ const mockBranchesQuery = (...responses: BranchesQueryState[]) => {
     } as ReturnType<typeof useGetBranches>;
   });
 
-  return { advanceList };
+  return { advanceList, refetch };
 };
 
 const mockFetchedBranches = () =>
@@ -274,7 +274,7 @@ describe("BranchesProvider", () => {
       isPending: false,
       error: null,
     };
-    const { advanceList } = mockBranchesQuery(withFeature, withoutFeature, withFeature);
+    const { advanceList, refetch } = mockBranchesQuery(withFeature, withoutFeature, withFeature);
     seedBranchInUrl(featureBranch.name);
     const component = await render(
       <BranchesProvider>
@@ -286,7 +286,8 @@ describe("BranchesProvider", () => {
     // WHEN a background refresh omits the branch, and the confirming fetch brings it back
     advanceList();
 
-    // THEN the page never unmounts and nothing redirects
+    // THEN the miss is confirmed against a fresh fetch, and the page never unmounts
+    await expect.poll(() => refetch.mock.calls.length).toBe(1);
     await expect.element(component.getByText("Current branch: feature-1")).toBeVisible();
     await expect.poll(() => probeMounts).toBe(1);
     expect(component.getByText("Loading branches...").query()).toBeNull();

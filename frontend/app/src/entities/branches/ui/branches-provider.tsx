@@ -74,7 +74,9 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
   }
 
   if (goneBranchName !== null) {
-    return <Navigate to="/" />;
+    // replace, not push: a pushed "/" would leave the gone-branch URL in history, and Back would
+    // bounce off it forever.
+    return <Navigate to="/" replace />;
   }
 
   if (isPending) {
