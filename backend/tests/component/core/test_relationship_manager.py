@@ -426,3 +426,66 @@ async def test_no_peer_read_for_a_node_absent_from_the_database(
     assert details.peer_ids_present_both == []
     assert details.peer_ids_present_local_only == []
     assert details.peer_ids_present_database_only == [person.id]
+
+
+async def test_update_details_are_recomputed_without_reading_the_peers_again(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    john = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await john.new(db=db, name="John", height=180)
+    await john.save(db=db)
+
+    jane = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await jane.new(db=db, name="Jane", height=170)
+    await jane.save(db=db)
+
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="accord", nbr_seats=5, owner=john.id)
+    await car.save(db=db)
+
+    loaded_car = await NodeManager.get_one(db=db, id=car.id, branch=default_branch, raise_on_error=True)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+    relm: RelationshipManager = loaded_car.owner
+
+    await relm.fetch_relationship_ids(db=counting_db, force_refresh=True)
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 1
+
+    await relm.update(db=counting_db, data=jane.id)
+    details = await relm.refresh_update_details(db=counting_db)
+
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 1
+    assert details.peer_ids_present_both == []
+    assert details.peer_ids_present_local_only == [jane.id]
+    assert details.peer_ids_present_database_only == [john.id]
+
+    # Writing to the relationship discards the recorded read, so the next comparison reads again.
+    await relm.save(db=counting_db)
+    counting_db.reset_counts()
+    await relm.refresh_update_details(db=counting_db)
+
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 1
+    reloaded_car = await NodeManager.get_one(db=db, id=car.id, branch=default_branch, raise_on_error=True)
+    reloaded_owner = await reloaded_car.owner.get_peer(db=db)
+    assert reloaded_owner is not None
+    assert reloaded_owner.id == jane.id
+
+
+async def test_peers_read_before_the_node_exists_are_not_reused(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    """Creating the node writes its edges outside the manager, so that answer cannot be reused."""
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="John", height=180)
+    await person.save(db=db)
+
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="accord", nbr_seats=5, owner=person.id)
+
+    relm: RelationshipManager = car.owner
+    await relm.fetch_relationship_ids(db=db, force_refresh=True)
+    await car.save(db=db)
+
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+    await relm.refresh_update_details(db=counting_db)
+
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 1

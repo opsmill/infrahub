@@ -86,6 +86,15 @@ class RelationshipUpdateDetails:
 
 
 @dataclass
+class DbPeersRead:
+    """The peers a relationship manager read from the database, and the conditions of that read."""
+
+    peers: list[RelationshipPeerData]
+    at: str
+    branch_agnostic: bool
+
+
+@dataclass
 class PeerWithRelationshipMetadata:
     peer: Node | str
     peer_kind: str | None = None
@@ -883,6 +892,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
         self._relationships: RelationshipValidatorList = self._get_init_relationships()
         self._relationship_id_details: RelationshipUpdateDetails | None = None
+        self._last_db_peers: DbPeersRead | None = None
         self.has_fetched_relationships: bool = False
         self.lock = asyncio.Lock()
 
@@ -1124,10 +1134,39 @@ class RelationshipManager[RelationshipManagerPeerType]:
         if not force_refresh and self._relationship_id_details is not None:
             return self._relationship_id_details
 
-        current_peer_ids = [rel.get_peer_id() for rel in self._relationships]
+        if not self.node._existing:
+            # A node that has never been written cannot have any relationship edge in the database.
+            # Creating it writes the edges without going through this manager, so this answer must
+            # not be recorded for reuse: it stops being true as soon as the node is saved.
+            self._last_db_peers = None
+            return self._compare_with_db_peers(peers=[])
 
-        # A node that has never been written cannot have any relationship edge in the database.
-        peers = await self.get_db_peers(db=db, at=at, branch_agnostic=branch_agnostic) if self.node._existing else []
+        peers = await self.get_db_peers(db=db, at=at, branch_agnostic=branch_agnostic)
+        self._last_db_peers = DbPeersRead(peers=peers, at=str(at or self.at), branch_agnostic=branch_agnostic)
+
+        return self._compare_with_db_peers(peers=peers)
+
+    async def refresh_update_details(
+        self,
+        db: InfrahubDatabase,
+        at: Timestamp | None = None,
+        branch_agnostic: bool = False,
+    ) -> RelationshipUpdateDetails:
+        """Compare the local relationships with the peers last read from the database.
+
+        The peers are read again only when this manager has not read them yet under the same
+        conditions, or when it has written to the relationship since. Use this instead of
+        `fetch_relationship_ids` when the local relationships have changed but the database has
+        not, so that the comparison is recomputed without paying for another read.
+        """
+        last_read = self._last_db_peers
+        if last_read is None or last_read.at != str(at or self.at) or last_read.branch_agnostic != branch_agnostic:
+            return await self.fetch_relationship_ids(db=db, at=at, branch_agnostic=branch_agnostic, force_refresh=True)
+
+        return self._compare_with_db_peers(peers=last_read.peers)
+
+    def _compare_with_db_peers(self, peers: list[RelationshipPeerData]) -> RelationshipUpdateDetails:
+        current_peer_ids = [rel.get_peer_id() for rel in self._relationships]
 
         self.is_from_profile = bool(peers) and all(peer.is_from_profile for peer in peers)
 
@@ -1312,6 +1351,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
                 if process_delete:
                     for rel in previous_relationships.values():
                         await rel.delete(db=db, at=update_at, user_id=user_id)
+                    self._last_db_peers = None
                 return True
             return False
 
@@ -1432,6 +1472,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
             at=remove_at,
         )
         await delete_query.execute(db=db)
+        self._last_db_peers = None
 
     async def save(
         self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None
@@ -1441,7 +1482,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         branch_agnostic = self.schema.branch is BranchSupportType.AGNOSTIC
 
         save_at = Timestamp(at)
-        details = await self.fetch_relationship_ids(db=db, branch_agnostic=branch_agnostic, force_refresh=True)
+        details = await self.refresh_update_details(db=db, branch_agnostic=branch_agnostic)
         relationship_mapper = ChangelogRelationshipMapper(schema=self.schema)
 
         # If we have previously fetched the relationships from the database
@@ -1478,6 +1519,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
             elif rel.schema.kind == RelationshipKind.PARENT:
                 relationship_mapper.add_parent_from_relationship(relationship=rel)
 
+        self._last_db_peers = None
         return relationship_mapper.changelog
 
     async def delete(
@@ -1495,6 +1537,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
             )
             await rel.delete(at=delete_at, db=db)
 
+        self._last_db_peers = None
         return relationship_mapper.changelog
 
     async def to_graphql(
