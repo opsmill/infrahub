@@ -1,9 +1,18 @@
-"""Run the Prefect task manager setup once per test process.
+"""Run the Prefect task manager setup once per Prefect server.
 
 The task manager setup registers blocks, worker pools, deployments and builtin
-triggers against the per-process Prefect test server. The inputs are static and
-the calls are slow (several seconds of API round-trips), so fixtures should reuse
-a single setup per process instead of repeating it for every test or test class.
+triggers against the Prefect server the current settings point at. The inputs are
+static and the calls are slow (several seconds of API round-trips), so fixtures
+should reuse a single setup per server instead of repeating it for every test or
+test class.
+
+The memoization is keyed on the Prefect API URL, not on the process. A single
+test process talks to more than one Prefect server: the session-scoped
+``prefect_test_fixture`` runs an ephemeral in-process harness, while the
+module-scoped ``prefect`` fixture points ``PREFECT_API_URL`` at a testcontainer
+for the duration of a module. Memoizing per process let the first server's setup
+satisfy the second one's fixtures, leaving that server without deployments —
+``setup_triggers`` then raised ``KeyError`` on the empty deployment mapping.
 
 A failure is remembered the same way a success is. An unreachable Prefect test
 server does not fail fast — the setup blocks until the pytest timeout fires — so
@@ -16,20 +25,33 @@ themselves before yielding back, otherwise later tests will observe the corrupti
 
 from collections.abc import Awaitable, Callable
 
+from prefect.settings import get_current_settings
+
 from infrahub.workflows.initialization import setup_task_manager
 
 
+def _current_prefect_api_url() -> str | None:
+    return get_current_settings().api.url
+
+
 class TaskManagerSetup:
-    def __init__(self, setup: Callable[[], Awaitable[None]] = setup_task_manager) -> None:
+    def __init__(
+        self,
+        setup: Callable[[], Awaitable[None]] = setup_task_manager,
+        server_key: Callable[[], str | None] = _current_prefect_api_url,
+    ) -> None:
         self._setup = setup
-        self._initialized = False
-        self._failure: BaseException | None = None
+        self._server_key = server_key
+        self._initialized: set[str | None] = set()
+        self._failures: dict[str | None, BaseException] = {}
 
     async def run_once(self) -> None:
-        if self._failure is not None:
-            raise RuntimeError("Prefect task manager setup already failed in this process") from self._failure
+        server = self._server_key()
 
-        if self._initialized:
+        if server in self._failures:
+            raise RuntimeError(f"Prefect task manager setup already failed for {server}") from self._failures[server]
+
+        if server in self._initialized:
             return
 
         try:
@@ -37,10 +59,10 @@ class TaskManagerSetup:
         # The pytest timeout raises Failed, which derives from BaseException, and that is
         # the failure worth remembering most.
         except BaseException as exc:
-            self._failure = exc
+            self._failures[server] = exc
             raise
 
-        self._initialized = True
+        self._initialized.add(server)
 
 
 _setup = TaskManagerSetup()
