@@ -51,11 +51,10 @@ class GraphQLExtractor:
     def _process_expand_directive(self, path: str, directive: DirectiveNode) -> None:
         excluded_fields = []
         for argument in directive.arguments:
-            if argument.name.value == "exclude":
-                if isinstance(argument.value, ListValueNode):
-                    excluded_fields.extend(
-                        [value.value for value in argument.value.values if isinstance(value, StringValueNode)]
-                    )
+            if argument.name.value == "exclude" and isinstance(argument.value, ListValueNode):
+                excluded_fields.extend(
+                    [value.value for value in argument.value.values if isinstance(value, StringValueNode)]
+                )
 
         if path not in self.typename_paths:
             self.typename_paths[path] = []

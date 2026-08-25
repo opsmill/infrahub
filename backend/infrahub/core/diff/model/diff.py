@@ -163,13 +163,15 @@ class ModifiedPath(BaseModel):
         if self.modification_type != other.modification_type:
             return False
 
-        if self.modification_type == "node":
-            if self.action == other.action and self.action in [DiffAction.REMOVED, DiffAction.UPDATED]:
-                return False
+        if (
+            self.modification_type == "node"
+            and self.action == other.action
+            and self.action in [DiffAction.REMOVED, DiffAction.UPDATED]
+        ):
+            return False
 
-        if self.modification_type == "element":
-            if self.action == other.action and self.action == DiffAction.REMOVED:
-                return False
+        if self.modification_type == "element" and self.action == other.action and self.action == DiffAction.REMOVED:
+            return False
 
         return self.type == other.type and self.node_id == other.node_id
 

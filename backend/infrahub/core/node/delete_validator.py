@@ -163,9 +163,8 @@ class NodeDeleteValidator:
                     src_kind=peer_data.source_kind, relationship_identifier=peer_data.identifier
                 )
                 peer_id = str(peer_data.destination_id)
-                if DeleteRelationshipType.CASCADE_DELETE in relationship_types:
-                    if peer_id not in node_ids_to_delete:
-                        node_ids_to_check.add(peer_id)
+                if DeleteRelationshipType.CASCADE_DELETE in relationship_types and peer_id not in node_ids_to_delete:
+                    node_ids_to_check.add(peer_id)
                 if DeleteRelationshipType.DEPENDENT_NODE in relationship_types:
                     if peer_id not in dependent_node_details_map:
                         dependent_node_details_map[peer_id] = []

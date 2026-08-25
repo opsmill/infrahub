@@ -147,19 +147,18 @@ async def _resolve_available_address_nodes(
     # Look for gaps between existing addresses
     for existing in sorted_nodes:
         current = existing.address.obj.ip
-        if previous_address:
-            if int(current) - int(previous_address) > 1:
-                with_available_ranges.append(
-                    await _build_ip_range_node(
-                        db=db,
-                        branch=branch,
-                        schema=ip_range_schema,
-                        address=previous_address + 1,
-                        last_address=current - 1,
-                        ip_namespace=ip_namespace,
-                        ip_prefix=prefix,
-                    )
+        if previous_address and int(current) - int(previous_address) > 1:
+            with_available_ranges.append(
+                await _build_ip_range_node(
+                    db=db,
+                    branch=branch,
+                    schema=ip_range_schema,
+                    address=previous_address + 1,
+                    last_address=current - 1,
+                    ip_namespace=ip_namespace,
+                    ip_prefix=prefix,
                 )
+            )
 
         with_available_ranges.append(existing)
         previous_address = existing.address.obj.ip

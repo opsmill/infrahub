@@ -2863,11 +2863,12 @@ class SchemaBranch:
             for kind in node.inherit_from
             if self.has(name=kind)
         )
-        if getattr(node, "generate_profile", False) or parent_generates_profile:
-            if PROFILES_RELATIONSHIP_NAME not in [r.name for r in template_schema.relationships]:
-                settings = dict(profiles_rel_settings)
-                settings["identifier"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
-                template_schema.relationships.append(RelationshipSchema(**settings))
+        if (
+            getattr(node, "generate_profile", False) or parent_generates_profile
+        ) and PROFILES_RELATIONSHIP_NAME not in [r.name for r in template_schema.relationships]:
+            settings = dict(profiles_rel_settings)
+            settings["identifier"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
+            template_schema.relationships.append(RelationshipSchema(**settings))
 
         self.set(name=template_schema.kind, schema=template_schema)
 
@@ -2988,14 +2989,18 @@ class SchemaBranch:
                 continue
             # In a context of a generic, we won't be able to create objects out of it, so any kind of nodes implementing the generic is a valid
             # option, we therefore need to have a template for each of those nodes
-            if isinstance(peer_schema, GenericSchema) and peer_schema.used_by:
-                if relationship.kind != RelationshipKind.PARENT or not any(
-                    u in [i.kind for i in identified] for u in peer_schema.used_by
-                ):
-                    for used_by in peer_schema.used_by:
-                        identified |= self.identify_required_object_templates(
-                            node_schema=self.get_node(name=used_by, duplicate=False), identified=identified
-                        )
+            if (
+                isinstance(peer_schema, GenericSchema)
+                and peer_schema.used_by
+                and (
+                    relationship.kind != RelationshipKind.PARENT
+                    or not any(u in [i.kind for i in identified] for u in peer_schema.used_by)
+                )
+            ):
+                for used_by in peer_schema.used_by:
+                    identified |= self.identify_required_object_templates(
+                        node_schema=self.get_node(name=used_by, duplicate=False), identified=identified
+                    )
 
             identified |= self.identify_required_object_templates(node_schema=peer_schema, identified=identified)
 
