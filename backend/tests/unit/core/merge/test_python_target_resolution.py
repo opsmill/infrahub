@@ -112,6 +112,20 @@ async def test_created_nodes_are_their_own_targets() -> None:
     assert subscribers.calls == []
 
 
+async def test_a_deleted_node_of_the_target_kind_is_not_its_own_target() -> None:
+    """Self-targeting applies to an update, never to a deletion: the node has no value left.
+
+    Its readers still come from the lookup, so only the deleted node itself drops out.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[SUMMARY], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(branch=BRANCH, changes=[MergeChange(node_id="d1", kind=DEVICE, action="deleted")])
+
+    assert subscribers.calls == [("d1",)]
+    assert targets == []
+
+
 async def test_an_update_selects_the_readers_of_the_changed_field_in_one_lookup() -> None:
     """Two changed sites resolve their readers with a single union lookup, not one per node."""
     subscribers = RecordingSubscriberSource(

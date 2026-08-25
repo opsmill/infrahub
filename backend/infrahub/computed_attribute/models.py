@@ -9,6 +9,7 @@ from prefect.events.schemas.automations import Automation  # noqa: TC002
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing_extensions import Self
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, NodeSchema  # noqa: TC001
@@ -115,6 +116,16 @@ class PythonTransformComputedAttribute(BaseModel):
 class PythonTransformTarget:
     kind: str
     object_id: str
+
+
+def _restrict_to_live_origin(event_trigger: EventTrigger) -> None:
+    """Leave merge, rebase and recompute replays to the coalesced pass when it owns them.
+
+    One setting gates both halves. With the filter applied and the pass disabled, nothing
+    would recompute a replayed change.
+    """
+    if config.SETTINGS.main.coalesce_python_recompute_after_merge:
+        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
 
 
 class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
@@ -231,6 +242,8 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
         if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
+        _restrict_to_live_origin(event_trigger)
+
         update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(
             kind=computed_attribute.computed_attribute.kind
         )
@@ -299,6 +312,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
+        _restrict_to_live_origin(event_trigger)
         event_trigger.exclude_branches(branches_out_of_scope or [])
 
         return cls(

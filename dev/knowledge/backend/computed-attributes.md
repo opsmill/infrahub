@@ -39,7 +39,7 @@ These changes are handled by Prefect background tasks triggered by `NodeCreatedE
 
 **When**: A branch merge or rebase changes nodes that feed computed attributes.
 
-A merge or rebase runs a single coalesced recompute for the whole change set, writes the results in bulk, and chains any value that reads them. For computed attributes, display labels and human-friendly ids it replaces the per-node path entirely: their triggers are suppressed for merge/rebase/recompute-origin events, so the change is processed once. Python transform computed attributes join the pass when `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE` is on, which is the default, but their per-node automations keep firing, so that family is processed twice until those automations are gated. See [merge-recompute.md](merge-recompute.md).
+A merge or rebase runs a single coalesced recompute for the whole change set, writes the results in bulk, and chains any value that reads them. It replaces the per-node path for all four derived-value families: computed attributes, display labels, human-friendly ids and Python transform computed attributes. Their triggers are suppressed for merge/rebase/recompute-origin events, so the change is processed once. `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE`, on by default, governs the Python family and selects both halves at once: the pass and the `live` filter on its two automations. See [merge-recompute.md](merge-recompute.md).
 
 ## Self-Targeting Filter (`targets_self`)
 
@@ -119,7 +119,7 @@ All three run `process_transform_lifecycle`. On create or update it waits for th
 
 ### Node-Input Automations
 
-Besides the transform-lifecycle triggers, each `(kind, attribute)` has a data-path automation that recomputes the value when a node feeding the transform's query changes. `_reconcile_python_computed_attribute_automations` rebuilds these from the schema. One gather builds both trigger lists and they are applied under a single trigger-registry lock, so a concurrent reconcile cannot delete an automation another run just created, and a transform delete prunes its automation rather than leaving it stale.
+Besides the transform-lifecycle triggers, each `(kind, attribute)` has two data-path automations that recompute the value when a node feeding the transform's query changes: one on the attribute's own kind, one per kind the query reads. While the coalesced pass owns merge and rebase, both match `origin=live` only. `_reconcile_python_computed_attribute_automations` rebuilds these from the schema. One gather builds both trigger lists and they are applied under a single trigger-registry lock, so a concurrent reconcile cannot delete an automation another run just created, and a transform delete prunes its automation rather than leaving it stale.
 
 ### Batch Execution
 

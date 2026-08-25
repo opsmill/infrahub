@@ -3,6 +3,8 @@
 Node events carry an origin label so the coalesced merge and rebase recompute can own the
 computed-attribute, display-label, and human-friendly-id families while their per-node
 automations skip the replayed change. A live mutation keeps the default origin and keeps firing.
+
+The Python transform family carries the same filter, but only while the coalesced pass owns it.
 """
 
 from __future__ import annotations
