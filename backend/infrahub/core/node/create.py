@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Mapping, overload
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import (
+    PROFILES_RELATIONSHIP_NAME,
     SYSTEM_USER_ID,
     MetadataOptions,
     RelationshipCardinality,
@@ -373,7 +374,8 @@ async def create_node(
                     user_id=user_id,
                 )
 
-    if await get_profile_ids(db=db, obj=obj):
+    # A node created here can only be linked to the profiles its payload named.
+    if PROFILES_RELATIONSHIP_NAME in data and await get_profile_ids(db=db, obj=obj):
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
         await node_profiles_applier.apply_profiles(node=obj)
         await obj.save(db=db, user_id=user_id)
