@@ -5,22 +5,25 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.protocols import CoreGeneratorDefinition
 
 from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
+from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.generators.models import build_generator_definition
 from infrahub.message_bus.types import ProposedChangeBranchDiff, ProposedChangeRepository
 from infrahub.proposed_change.branch_diff import set_diff_summary_cache
-from infrahub.proposed_change.models import RequestProposedChangeRunGenerators
-from infrahub.proposed_change.tasks import run_generators
+from infrahub.proposed_change.models import RequestGeneratorDefinitionCheck, RequestProposedChangeRunGenerators
+from infrahub.proposed_change.tasks import request_generator_definition_check, run_generators
 from infrahub.server import app
 from infrahub.workers.dependencies import build_client, build_workflow
-from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_CHECK
+from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_CHECK, RUN_GENERATOR_AS_CHECK
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubAppBase
@@ -674,3 +677,188 @@ class TestGeneratorRegenLegacyFallback(GeneratorRegenTestBase):
             files_changed=["README.md"],
         )
         assert selected == ["device-gen-legacy"]
+
+
+FRESH_SOURCE_BRANCH = "feature/fresh-branch-generator-targets"
+
+
+class TestGeneratorRegenFreshBranchTargets(GeneratorRegenTestBase):
+    """The first check on a freshly-cut branch runs a generator only for the targets the branch changed.
+
+    A generator has already run for every pre-existing target on the destination branch, so a
+    per-target run record exists there for each of them. A fresh branch then adds one new target and
+    a check runs for the definition. Only the added target's inputs changed, so only it must run; the
+    pre-existing targets, untouched by the branch, must be left alone even though this is the first
+    check the branch has seen.
+    """
+
+    @pytest.fixture(scope="class")
+    async def dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> dict[str, Any]:
+        await load_schema(db=db, schema=GENERATOR_SCHEMA, update_db=True)
+
+        pre_existing = []
+        for name, color in (("dev1", "red"), ("dev2", "green"), ("dev3", "blue")):
+            device = await Node.init(db=db, schema="TestNetworkDevice")
+            await device.new(db=db, name=name, color=color)
+            await device.save(db=db)
+            pre_existing.append(device)
+
+        repo = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+        await repo.new(db=db, name="fresh-branch-repo", location="https://github.com/test/fresh-branch-repo.git")
+        await repo.save(db=db)
+
+        query = await Node.init(db=db, schema="CoreGraphQLQuery")
+        await query.new(db=db, name="GetFreshDevice", query=QUERY_A, models=["TestNetworkDevice"])
+        await query.save(db=db)
+
+        group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+        await group.new(db=db, name="fresh-branch-targets", members=pre_existing)
+        await group.save(db=db)
+
+        gendef = await Node.init(db=db, schema=InfrahubKind.GENERATORDEFINITION)
+        await gendef.new(
+            db=db,
+            name="device-gen-fresh",
+            query=query,
+            repository=repo,
+            targets=group,
+            file_path="generators/fresh/fresh.py",
+            class_name="DeviceGenerator",
+            parameters={"value": {"name": "name__value"}},
+            convert_query_response=False,
+            execute_in_proposed_change=True,
+            execute_after_merge=True,
+            dependencies=DEPENDENCIES_A,
+            dependencies_complete=True,
+        )
+        await gendef.save(db=db)
+
+        source_branch_obj = await create_branch(branch_name=FRESH_SOURCE_BRANCH, db=db)
+        await load_schema(db=db, schema=GENERATOR_SCHEMA, branch_name=FRESH_SOURCE_BRANCH, update_db=False)
+
+        # A run record on the destination branch for each pre-existing target, written after the
+        # branch was cut - the state a generator running on the destination branch leaves behind while
+        # a fork already exists. The branch reads the destination only as of its fork point, so these
+        # later records fall outside its view.
+        for device in pre_existing:
+            instance = await Node.init(db=db, schema=InfrahubKind.GENERATORINSTANCE)
+            await instance.new(
+                db=db,
+                name=f"device-gen-fresh: {device.name.value}",
+                status=GeneratorInstanceStatus.READY.value,
+                object=device,
+                definition=gendef,
+            )
+            await instance.save(db=db)
+
+        added_device = await Node.init(db=db, schema="TestNetworkDevice", branch=source_branch_obj)
+        await added_device.new(db=db, name="dev4", color="yellow")
+        await added_device.save(db=db)
+
+        group_on_branch = await NodeManager.get_one(db=db, id=group.id, branch=source_branch_obj)
+        await group_on_branch.members.update(db=db, data=[device.id for device in pre_existing] + [added_device.id])
+        await group_on_branch.save(db=db)
+
+        pc = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await pc.new(
+            db=db, name="fresh-branch-pc", source_branch=FRESH_SOURCE_BRANCH, destination_branch=default_branch.name
+        )
+        await pc.save(db=db)
+
+        return {
+            "proposed_change_id": pc.id,
+            "repository_id": repo.id,
+            "repository_name": "fresh-branch-repo",
+            "source_branch": FRESH_SOURCE_BRANCH,
+            "gendef_id": gendef.id,
+            "added_device_id": added_device.id,
+        }
+
+    async def _dispatched_targets(
+        self,
+        *,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+        diff_summary: list[dict],
+    ) -> list[str]:
+        pipeline_id = uuid.uuid4()
+        repository = ProposedChangeRepository(
+            repository_id=dataset["repository_id"],
+            repository_name=dataset["repository_name"],
+            read_only=False,
+            source_branch=dataset["source_branch"],
+            destination_branch=default_branch.name,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
+            source_commit="source-commit-sha",
+            destination_commit="dest-commit-sha",
+            files_added=[],
+            files_changed=[],
+            files_removed=[],
+        )
+        branch_diff = ProposedChangeBranchDiff(pipeline_id=pipeline_id, repositories=[repository])
+        await set_diff_summary_cache(pipeline_id=pipeline_id, diff_summary=diff_summary, cache=memory_cache)
+
+        generators = await client.filters(
+            kind=CoreGeneratorDefinition,
+            prefetch_relationships=True,
+            populate_store=True,
+            branch=dataset["source_branch"],
+            ids=[dataset["gendef_id"]],
+        )
+        definition_model = build_generator_definition(generators[0])
+
+        model = RequestGeneratorDefinitionCheck(
+            generator_definition=definition_model,
+            branch_diff=branch_diff,
+            proposed_change=dataset["proposed_change_id"],
+            source_branch=dataset["source_branch"],
+            source_branch_sync_with_git=True,
+            destination_branch=default_branch.name,
+        )
+        await request_generator_definition_check(model=model, context=self._make_context(admin_account, default_branch))
+        return sorted(
+            call["parameters"]["model"].target_name
+            for call in workflow_recorder.get_execute_calls_for(RUN_GENERATOR_AS_CHECK)
+        )
+
+    async def test_first_check_on_fresh_branch_runs_only_the_added_target(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+    ) -> None:
+        """Adding one target on a fresh branch runs the generator for that target alone.
+
+        The three pre-existing targets were not touched by the branch, so a check running for the
+        first time on that branch must skip them and run only for the newly added target.
+        """
+        dispatched = await self._dispatched_targets(
+            dataset=dataset,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            client=client,
+            memory_cache=memory_cache,
+            workflow_recorder=workflow_recorder,
+            diff_summary=[
+                make_node_diff(
+                    dataset["added_device_id"],
+                    "TestNetworkDevice",
+                    FRESH_SOURCE_BRANCH,
+                    ["name"],
+                    action="ADDED",
+                )
+            ],
+        )
+        assert dispatched == ["dev4"]
