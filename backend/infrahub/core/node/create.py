@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import SchemaProtocol
     from infrahub.core.protocols import CoreObjectTemplate
-    from infrahub.core.relationship.model import RelationshipManager
+    from infrahub.core.relationship.model import Relationship, RelationshipManager
     from infrahub.core.schema import MainSchemaTypes, NonGenericSchemaTypes, RelationshipSchema
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
@@ -55,6 +55,16 @@ async def get_template_relationship_peers(
         include_metadata=MetadataOptions.SOURCE,
     )
     return peers
+
+
+async def _peer_is_a_template(db: InfrahubDatabase, relationship: Relationship) -> bool:
+    """Whether the peer of this relationship is a template, reading it only when its kind is unknown."""
+    peer_kind = relationship.get_concrete_peer_kind()
+    if peer_kind is None:
+        peer = await relationship.get_peer(db=db)
+        return peer.get_schema().is_template_schema
+
+    return db.schema.get(name=peer_kind, branch=relationship.branch, duplicate=False).is_template_schema
 
 
 async def extract_peer_data(
@@ -103,31 +113,32 @@ async def extract_peer_data(
         ):
             continue
 
-        peers_map = await rel_manager.get_peers(db=db)
+        # The peers are named by their id and their kind, both of which the relationships carry.
+        relationships = [item for item in await rel_manager.get_relationships(db=db) if item.peer_id]
+        peer_ids = [item.peer_id for item in relationships]
         if rel_manager.schema.kind in [
             RelationshipKind.COMPONENT,
             RelationshipKind.PARENT,
             RelationshipKind.PROFILE,
-        ] and list(peers_map.keys()) == [current_template.id]:
+        ] and peer_ids == [current_template.id]:
             # The peer is the node this one is created under, which the caller holds: naming it by
             # its id would have every step that needs the peer read it back.
             obj_peer_data[rel] = parent_obj
             continue
 
         rel_peer_ids = []
-        for peer_id, peer_object in peers_map.items():
+        for item in relationships:
             # deeper templates are handled in the next level of recursion
-            if peer_object.get_schema().is_template_schema:
+            if await _peer_is_a_template(db=db, relationship=item):
                 continue
-            rel_peer_ids.append({"id": peer_id})
+            rel_peer_ids.append({"id": item.peer_id})
 
         # Only set the relationship data if there are actual peers to set
         if rel_peer_ids:
             obj_peer_data[rel] = rel_peer_ids
 
         if rel_manager.schema.kind == RelationshipKind.PROFILE:
-            profiles = list(await rel_manager.get_peers(db=db))
-            obj_peer_data[rel] = profiles
+            obj_peer_data[rel] = peer_ids
 
     return obj_peer_data
 
