@@ -67,3 +67,42 @@ describe("Dropdown delete button", () => {
       .toBeVisible();
   });
 });
+
+describe("Dropdown popover width", () => {
+  test("keeps the option popover within the trigger width when a choice description is long", async () => {
+    // GIVEN a dropdown in a narrow container whose option has a description far wider than the field
+    const longDescriptionItems = [
+      {
+        value: "vm",
+        label: "Virtual Machine",
+        description:
+          "Representing a hypervisor that hosts virtual machines running many isolated guest operating systems.",
+      },
+      {
+        value: "baremetal",
+        label: "Bare Metal",
+        description:
+          "Representing a workload directly on the hardware, without a hypervisor and with no virtualization layer.",
+      },
+    ];
+
+    // WHEN the dropdown is opened
+    const component = await render(
+      <div style={{ width: 200 }}>
+        <Dropdown items={longDescriptionItems} value="vm" onChange={() => {}} defaultOpen />
+      </div>
+    );
+    await expect.element(component.getByPlaceholder("Filter...")).toBeVisible();
+
+    // THEN the popover does not grow wider than its trigger, so its left edge is never clipped
+    const trigger = component.baseElement.querySelector<HTMLElement>('button[role="combobox"]');
+    if (!trigger) throw new Error("Trigger button was not found in the DOM");
+    const popover = component.baseElement.querySelector<HTMLElement>("[data-react-aria-top-layer]");
+    if (!popover) throw new Error("Popover content element was not found in the DOM");
+
+    const triggerWidth = trigger.getBoundingClientRect().width;
+    const popoverWidth = popover.getBoundingClientRect().width;
+
+    expect(popoverWidth).toBeLessThanOrEqual(triggerWidth + 1);
+  });
+});

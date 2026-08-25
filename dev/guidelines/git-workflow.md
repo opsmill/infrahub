@@ -14,6 +14,9 @@ Git workflow and commit conventions for the project.
 - **Verify the base before cutting:** check that the code the ticket references actually exists on
   the chosen base (`git ls-tree <base> -- <path>`); follow-up tickets often reference modules that
   are only on `develop`
+- **Lint/tooling changes follow the same split:** enabling a lint rule that rewrites runtime call
+  sites is development work — target `develop`; a tooling change that touches only config or docs
+  may target `stable`
 - **Branch naming:** `<initials>-<short-description>` (e.g., `jd-add-breadcrumbs`)
 
 ## Versioning

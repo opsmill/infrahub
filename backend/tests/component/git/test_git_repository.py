@@ -47,8 +47,6 @@ from tests.conftest import TestHelper
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.test_client import dummy_async_request
 
-pytestmark = pytest.mark.httpx_mock(should_mock=lambda request: request.url.host != "127.0.0.1")
-
 
 async def test_directories_props(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> None:
     repo = await InfrahubRepository.new(
