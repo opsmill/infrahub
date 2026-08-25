@@ -125,12 +125,31 @@ After resolution, `save()` reconciles local state with the database:
 - Peer only in local: create new relationship in DB
 - Peer only in DB: delete orphaned relationship
 
+### When the peers are read from the database
+
+One mutation applies the payload, checks the constraints and saves, and each of those steps
+compares the local relationships against the stored peers. The comparison is recomputed from the
+peers the manager already read rather than reading them again:
+
+- `fetch_relationship_ids()` reads the peers and records them; `refresh_update_details()` only
+  recomputes the comparison, reading again when the manager has not read under the same conditions
+  or has written to the relationship since. Any write through the manager discards the record.
+- A node that has never been written is not read at all: it cannot have any relationship edge, and
+  creating it writes the edges without going through the manager, so that answer is never recorded.
+- A read with `prefetch_relationships` resolves every relationship in one query, so a relationship
+  that came back without a peer is marked as read too.
+
 ## Locking Strategy
 
 1. A preview node is created with `process_pools=False` (no side effects)
 2. Lock names are computed from uniqueness constraints and resource pool fields
 3. `InfrahubMultiLock` acquired before the transaction
 4. Actual mutation runs inside the lock
+
+The update path builds its preview by reading the node and applying the payload through
+`apply_payload_for_lock_names()`, which leaves the stored peers unread: the relationship lock names
+come from the peers the payload sets. The node itself is still read, because the uniqueness
+constraint hashes cover attributes the payload may not carry.
 
 ## Key Files
 
