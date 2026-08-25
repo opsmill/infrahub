@@ -1,4 +1,7 @@
+import random
+import socket
 import time
+from contextlib import closing
 from pathlib import Path
 
 import httpx
@@ -12,7 +15,30 @@ from tests.helpers.constants import (
     PORT_HTTP_NEO4J,
     PORT_PREFECT,
     PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
+    PREFECT_TEST_SERVER_PORT_RANGE,
 )
+
+
+def find_available_prefect_port() -> int:
+    """Pick a free loopback port for an ephemeral Prefect test server.
+
+    Replaces prefect.testing.utilities._find_available_port, whose bind-port-0 reservation
+    draws from the kernel's ephemeral range and collides with other processes on a shared
+    CI runner (see PREFECT_TEST_SERVER_PORT_RANGE).
+
+    Raises:
+        RuntimeError: If no free port is found after 50 attempts.
+
+    """
+    for _ in range(50):
+        port = random.choice(PREFECT_TEST_SERVER_PORT_RANGE)
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+            try:
+                sock.bind(("127.0.0.1", port))
+            except OSError:
+                continue
+        return port
+    raise RuntimeError("Unable to find an available port for the Prefect test server")
 
 
 def get_exposed_port(container: DockerContainer, port: int) -> int:

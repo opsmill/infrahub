@@ -34,12 +34,14 @@ if TYPE_CHECKING:
 
 
 # Two Python computed attributes on TestCar, each fed by its own transform (transform01 and
-# transform_opaque), with a Person peer.
+# transform_opaque), with a Person peer. TestCar's display label is built from its own name, so a
+# transform reading that label can be scoped to TestCar; a label crossing a relationship could not.
 CAR_PERSON_PYTHON_SCHEMA = SchemaRoot(
     nodes=[
         NodeSchema(
             name="Car",
             namespace="Test",
+            display_labels=["name__value"],
             attributes=[
                 AttributeSchema(name="name", kind="Text", unique=True),
                 AttributeSchema(name="nbr_seats", kind="Number", optional=True),

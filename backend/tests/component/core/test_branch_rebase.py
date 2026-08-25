@@ -8,6 +8,7 @@ from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
@@ -29,7 +30,12 @@ async def test_rebase_graph(
     db: InfrahubDatabase, base_dataset_02: dict, register_core_models_schema: SchemaBranch
 ) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
+    cached_branched_from = registry.branch[branch1.name].branched_from
     await branch1.rebase(db=db)
+
+    # Rebasing mutates the instance it is given but must not publish it to the branch cache
+    assert branch1.branched_from != cached_branched_from
+    assert registry.branch[branch1.name].branched_from == cached_branched_from
 
     # Query all cars in MAIN, AFTER the rebase
     cars = sorted(await NodeManager.query(schema="TestCar", db=db), key=lambda c: c.id)
@@ -373,6 +379,14 @@ async def test_rebase_schemas_handed_to_the_update_coordinator(
 
     with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
         await rebase_branch(branch=baseline_branch.name, context=context)
+
+        # The flow publishes the branch it rebased, so the cache stops holding the pre-rebase instance
+        rebased_baseline_branch = await Branch.get_by_name(db=db, name=baseline_branch.name)
+        assert rebased_baseline_branch.branched_from != baseline_branch.branched_from
+        published_baseline_branch = registry.branch[baseline_branch.name]
+        assert published_baseline_branch is not baseline_branch
+        assert published_baseline_branch.branched_from == rebased_baseline_branch.branched_from
+        assert published_baseline_branch.status is BranchStatus.OPEN
 
         migration_calls = workflow_recorder.get_execute_calls_for(SCHEMA_APPLY_MIGRATION)
         assert len(migration_calls) == 1

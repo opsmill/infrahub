@@ -59,7 +59,7 @@ Use the "When to use" / "When NOT to use" guidance in
   functional (`backend/tests/functional/`), integration docker (`backend/tests/integration_docker/`).
   Use existing schema fixtures and helpers when available.
 - **Frontend:** Vitest for unit/component tests (colocated with source as `.test.ts`),
-  Playwright for E2E (`frontend/app/tests/e2e/`).
+  pytest-playwright for E2E (`tests/e2e/` at the repo root, see its README).
   Use BDD GIVEN/WHEN/THEN structure. Use factories from `tests/fake/`.
 
 ## Step 6: Write the test
@@ -90,7 +90,7 @@ Write a single targeted test that reproduces the bug:
 **CRITICAL: Verify the test FAILS on the current code.** Run it:
 - Backend: `uv run pytest path/to/test_file.py::TestClass::test_name -x -v`
 - Frontend unit/component: `cd frontend/app && pnpm run test path/to/test`
-- Frontend E2E: `cd frontend/app && pnpm exec playwright test path/to/test`
+- Frontend E2E (repo root; needs a locally built image: `uv run invoke dev.build`): `INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest -c tests/e2e/pytest.ini tests/e2e/path/to/test.py -x -v`
 - If a test run takes more than 5 minutes, kill it and investigate why.
 - The test must fail with an **assertion error that directly relates to the root cause**
   described by the analyst. For example, if the root cause is "no uniqueness enforcement,"

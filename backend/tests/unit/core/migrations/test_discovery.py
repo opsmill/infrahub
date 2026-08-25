@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from infrahub.core.migrations.graph.discovery import MIGRATION_FILE_PATTERN, discover_migrations
+from infrahub.core.migrations.graph.discovery import (
+    MIGRATION_FILE_PATTERN,
+    MIGRATION_PACKAGE_PATTERN,
+    discover_migrations,
+)
 
 
 class TestMigrationFilePattern:
@@ -17,6 +21,19 @@ class TestMigrationFilePattern:
         assert not MIGRATION_FILE_PATTERN.match("__init__.py")
         assert not MIGRATION_FILE_PATTERN.match("discovery.py")
         assert not MIGRATION_FILE_PATTERN.match("load_schema_branch.py")
+
+
+class TestMigrationPackagePattern:
+    def test_valid_migration_packages(self) -> None:
+        assert MIGRATION_PACKAGE_PATTERN.match("m076_heal_missing_attribute_rows")
+        assert MIGRATION_PACKAGE_PATTERN.match("m123_some_migration")
+
+    def test_rejects_non_migration_directories(self) -> None:
+        assert not MIGRATION_PACKAGE_PATTERN.match("m01_too_short")
+        assert not MIGRATION_PACKAGE_PATTERN.match("m1234_too_long")
+        assert not MIGRATION_PACKAGE_PATTERN.match("migration_001")
+        assert not MIGRATION_PACKAGE_PATTERN.match("m001_example.py")
+        assert not MIGRATION_PACKAGE_PATTERN.match("__pycache__")
 
 
 class TestDiscoverMigrations:
@@ -53,3 +70,18 @@ class TestDiscoverMigrations:
             number_part = cls.__name__[len("Migration") :]
             assert len(number_part) == 3
             assert number_part.isdigit()
+
+    def test_module_names_match_class_numbers(self) -> None:
+        prefix = "infrahub.core.migrations.graph."
+        for cls in discover_migrations():
+            number = cls.__name__[len("Migration") :]
+            assert cls.__module__.startswith(prefix)
+            module_tail = cls.__module__[len(prefix) :]
+            assert module_tail.startswith(f"m{number}_")
+
+    def test_discovers_package_migrations(self) -> None:
+        by_name = {cls.__name__: cls for cls in discover_migrations()}
+        assert "Migration076" in by_name
+        assert by_name["Migration076"].__module__.startswith(
+            "infrahub.core.migrations.graph.m076_heal_missing_attribute_rows."
+        )

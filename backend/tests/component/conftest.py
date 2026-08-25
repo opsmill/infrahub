@@ -15,6 +15,7 @@ from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
 from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
 from prefect.client.orchestration import PrefectClient, get_client
+from prefect.server.api.server import SubprocessASGIServer
 from prefect.settings import get_current_settings
 from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
@@ -77,9 +78,11 @@ from tests.helpers.constants import (
     PREFECT_EVENTS_PROACTIVE_GRANULARITY,
     PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS,
     PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
+    PREFECT_TEST_SERVER_PORT_RANGE,
 )
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
+from tests.helpers.utils import find_available_prefect_port
 from tests.test_data import dataset01 as ds01
 
 
@@ -144,9 +147,13 @@ def prefect_test_fixture() -> Generator[None, None, None]:
     os.environ["PREFECT_SERVER_EVENTS_PROACTIVE_GRANULARITY"] = PREFECT_EVENTS_PROACTIVE_GRANULARITY
     os.environ.update(PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS)
 
-    with patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command):
-        with prefect_test_harness(server_startup_timeout=60):
-            yield
+    with (
+        patch.object(SubprocessASGIServer, "_port_range", PREFECT_TEST_SERVER_PORT_RANGE),
+        patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command),
+        patch("prefect.testing.utilities._find_available_port", find_available_prefect_port),
+        prefect_test_harness(server_startup_timeout=60),
+    ):
+        yield
 
 
 @pytest.fixture
