@@ -426,3 +426,26 @@ five integrations already assumed it passed. T020 is deliberately early and deli
   (`.agents/rules/code-doc-style.md`). They belong in commit messages, the changelog, and these
   spec files.
 - Commit after each task or logical group. Do not push without being asked.
+
+---
+
+## Phase 7: Convergence
+
+Appended by `/speckit-converge` on 2026-08-24. Assessment of the codebase against spec.md,
+plan.md, and tasks.md found twelve gaps; eight are already carried by open tasks above
+(T001, T020, T039–T047, T048, T049, T051, T052, T057, R05, R06, R07) and are **not**
+duplicated here. These four have no existing task.
+
+R08's removal targets never shipped — Phase 2 was withdrawn before `backend/infrahub/core/agnostic/`
+or `backend/infrahub/core/query/agnostic_retirement.py` were created — so the superseded stack does
+not exist and R08 has no remaining work.
+
+- [ ] T058 Renumber the repair migration from `m076` to `m077` and the version bump from 75→76 to 76→77 per T044/T046 and `contracts/retirement-component.md` C4 (contradicts). `m076_heal_missing_attribute_rows/` already occupies the m076 slot and `GRAPH_VERSION` is already 76 on the base branch (landed via #10353), so the numbers every artifact states are now taken. Create `backend/infrahub/core/migrations/graph/m077_retire_agnostic_property_edges.py` with `minimum_version: int = 76`, bump `GRAPH_VERSION` 76 → 77 in `backend/infrahub/core/graph/__init__.py`, and name its tests `backend/tests/component/core/migrations/graph/m077_retire_agnostic_property_edges/`. No manual registration is needed — `backend/infrahub/core/migrations/graph/__init__.py` discovers migrations via `discover_migrations()`, so T046's registration half is already satisfied by placement. Correct the stale `m076` / 75→76 references in the Blocking-gate section, T044, T046, T049, and C4 while making the change, and re-confirm the migration number is still free at the moment it lands, since the base branch may take another slot first.
+- [ ] T059 Measure branch rebase for memory exhaustion at a deletion count large enough to stress both unbounded dimensions, per Constitution Principle V ("Memory footprint MUST be considered: large result sets MUST use pagination or streaming") and FR-018 (missing). Nothing currently tests this: `backend/tests/query_benchmark/test_fr018_agnostic_retirement_operations.py` reports wall-clock medians only, over small datasets at ~3 and ~100 open branches, and rebases one victim node per sample. Two dimensions grow unbounded in a real large rebase and neither is covered:
+
+  1. **Process side** — `_retire_agnostic_fields_of_base_deletions` (`backend/infrahub/core/branch/tasks.py:484`) receives the base-branch diff's complete removed-node uuid list and holds all of it in memory before slicing it at `RETIREMENT_BATCH_SIZE = 500`. The batching bounds each query, not the list that feeds it.
+  2. **Database side** — `_RETIRE_UNRETAINED_FIELDS_OF_NODES` (`backend/infrahub/core/query/node_agnostic_retirement.py`) does `WITH collect(DISTINCT field) AS agnostic_candidates` and then runs `UNRETAINED_AGNOSTIC_FIELD_PREDICATE`, which cross-joins that collected list against every non-`DELETING` branch and every linked vertex. A 500-uuid batch is bounded in uuids but not in fields-per-node or branches, so the intermediate row set is the product of three growing terms.
+
+  Build the case in the FR-018 harness: a branch open across a base-branch deletion of enough nodes to exceed several `RETIREMENT_BATCH_SIZE` slices, each carrying a branch-agnostic attribute and relationship, at the realistic-high open-branch count. Assert the rebase completes and record peak Neo4j heap and peak Python RSS alongside the duration, so the ceiling is a number rather than an assumption. If either grows with total deletion count rather than with batch size, bound it — stream the uuids from `DiffRepository.get_affected_node_uuids` instead of listing them, and/or cap the candidate collection inside the query — and re-measure. Apply the same check to `DiffMerger.merge_graph` (`backend/infrahub/core/diff/merger/merger.py`), which feeds the same query the same way and has the same shape.
+- [ ] T060 Justify or revert the `python_sdk` submodule pointer bump `99a380a → f9e28cf` (unrequested). No requirement, plan decision, or task in this feature calls for an SDK change, and `AGENTS.md` §Submodules requires the SDK commit be pushed upstream and merged there before the pointer bump lands here — a pointer to an unpushed commit breaks every other checkout. Confirm the target commit exists on the SDK branch named after this Infrahub branch's base (`release-1.11`), or restore the original pointer before opening the PR.
+- [ ] T061 Remove or relocate the untracked repo-root working files not named by any artifact (unrequested): `IFC-2843-ROLLBACK.md`, `PR_DESCRIPTION.md`, and the `repositories/` directory. `IFC-2843-prd.md` stays — spec.md names it as the feature's input. Fold anything in the rollback notes still worth keeping into `plan.md` §"The rollback is part of the invariant" rather than leaving it at the repo root.
