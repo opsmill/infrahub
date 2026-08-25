@@ -6,13 +6,14 @@ static and the calls are slow (several seconds of API round-trips), so fixtures
 should reuse a single setup per server instead of repeating it for every test or
 test class.
 
-The memoization is keyed on the Prefect API URL, not on the process. A single
-test process talks to more than one Prefect server: the session-scoped
-``prefect_test_fixture`` runs an ephemeral in-process harness, while the
-module-scoped ``prefect`` fixture points ``PREFECT_API_URL`` at a testcontainer
-for the duration of a module. Memoizing per process let the first server's setup
-satisfy the second one's fixtures, leaving that server without deployments —
-``setup_triggers`` then raised ``KeyError`` on the empty deployment mapping.
+The memoization is keyed on the Prefect API URL, not on the process. One test
+process talks to more than one Prefect server — an ephemeral in-process one for
+the whole session and a container that modules opt into — and each needs its own
+registration; a setup done against one server says nothing about the other.
+
+The memo assumes every server it has seen lives for the rest of the process. A
+server torn down and recreated at a URL the memo already holds would be skipped,
+so callers must only target session-lived servers.
 
 A failure is remembered the same way a success is. An unreachable Prefect test
 server does not fail fast — the setup blocks until the pytest timeout fires — so
