@@ -12,12 +12,14 @@ import {
 } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
-import { Input, type InputProps } from "@/shared/components/ui/input";
+import { Input, type InputProps, MultilineInput } from "@/shared/components/ui/input";
 import { inputStyle } from "@/shared/components/ui/style";
 
 export interface InputFieldProps
   extends FormFieldProps,
-    Omit<InputProps, "defaultValue" | "name" | "onChange"> {}
+    Omit<InputProps, "defaultValue" | "name" | "onChange"> {
+  multiline?: boolean;
+}
 
 const InputField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
@@ -31,6 +33,7 @@ const InputField = ({
   isBulkUpdate,
   shouldUnregister,
   autoFocus,
+  multiline,
   ...props
 }: InputFieldProps) => {
   return (
@@ -58,16 +61,39 @@ const InputField = ({
             <Row className="gap-1">
               <FormInput>
                 {!selectedPoolId || override ? (
-                  <Input
-                    {...field}
-                    {...props}
-                    value={selectedPoolId ? "" : ((fieldData?.value as string) ?? "")}
-                    onChange={(event) => {
-                      field.onChange(updateFormFieldValue(event.target.value, defaultValue));
-                    }}
-                    autoFocus={autoFocus || override}
-                    onBlur={() => setOverride(false)}
-                  />
+                  multiline ? (
+                    <MultilineInput
+                      {...field}
+                      {...(props as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
+                      value={selectedPoolId ? "" : ((fieldData?.value as string) ?? "")}
+                      onChange={(event) => {
+                        // Text values are single-line; strip newlines pasted in.
+                        field.onChange(
+                          updateFormFieldValue(event.target.value.replace(/\n/g, " "), defaultValue)
+                        );
+                      }}
+                      onKeyDown={(event) => {
+                        // Keep the input's Enter-to-submit behavior.
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          event.currentTarget.form?.requestSubmit();
+                        }
+                      }}
+                      autoFocus={autoFocus || override}
+                      onBlur={() => setOverride(false)}
+                    />
+                  ) : (
+                    <Input
+                      {...field}
+                      {...props}
+                      value={selectedPoolId ? "" : ((fieldData?.value as string) ?? "")}
+                      onChange={(event) => {
+                        field.onChange(updateFormFieldValue(event.target.value, defaultValue));
+                      }}
+                      autoFocus={autoFocus || override}
+                      onBlur={() => setOverride(false)}
+                    />
+                  )
                 ) : (
                   <Button className={inputStyle} onPress={() => setOverride(true)}>
                     Allocated by pool
