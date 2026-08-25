@@ -244,6 +244,17 @@ async def get_profile_ids(db: InfrahubDatabase, obj: Node | CoreObjectTemplate) 
     return {pr.peer_id for pr in profile_rels}
 
 
+def _has_profiles_set(node: Node) -> bool:
+    """Whether the node was built with profiles, named by its payload or copied from its template.
+
+    A relationship manager initialised with data is marked as fetched, so this reads nothing.
+    """
+    if not hasattr(node, PROFILES_RELATIONSHIP_NAME):
+        return False
+    profiles: RelationshipManager = getattr(node, PROFILES_RELATIONSHIP_NAME)
+    return profiles.has_fetched_relationships and len(profiles) > 0
+
+
 async def _do_create_node(
     node_class: type[Node],
     node_constraint_runner: NodeConstraintRunner,
@@ -374,8 +385,9 @@ async def create_node(
                     user_id=user_id,
                 )
 
-    # A node created here can only be linked to the profiles its payload named.
-    if PROFILES_RELATIONSHIP_NAME in data and await get_profile_ids(db=db, obj=obj):
+    # The node was written from its in-memory state, so the profiles it is linked to are the ones
+    # its payload or its template set on it; there is nothing to read back.
+    if _has_profiles_set(node=obj):
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
         await node_profiles_applier.apply_profiles(node=obj)
         await obj.save(db=db, user_id=user_id)
