@@ -135,3 +135,28 @@ async def test_create_from_template_does_not_read_the_objects_already_created_fr
 
     assert len(set(counts)) == 1, f"the cost of a create grew with the objects already created: {counts}"
     assert len(set(rows_read)) == 1, f"a create read more of the database for each object created: {rows_read}"
+
+
+async def test_materializing_a_component_costs_a_constant_number_of_queries(
+    db: InfrahubDatabase, default_branch: Branch, device_schema: None
+) -> None:
+    """Each component a template carries is created at a fixed cost, and the cost does not drift."""
+    device_schema_obj = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+
+    counts = {}
+    for nbr_interfaces in (1, 3, 5):
+        template = await _build_template(
+            db=db, branch=default_branch, name=f"cost-{nbr_interfaces}", nbr_interfaces=nbr_interfaces
+        )
+        counting_db = CountingInfrahubDatabase.from_db(db=db)
+        await create_node(
+            data={"name": f"cost-device-{nbr_interfaces}", "object_template": {"id": template.id}},
+            db=counting_db,
+            branch=default_branch,
+            schema=device_schema_obj,
+        )
+        counts[nbr_interfaces] = sum(counting_db.query_counts.values())
+
+    per_component = (counts[3] - counts[1]) / 2
+    assert per_component == (counts[5] - counts[3]) / 2, f"the cost per component is not constant: {counts}"
+    assert per_component <= 5, f"materializing a component costs {per_component} queries: {counts}"

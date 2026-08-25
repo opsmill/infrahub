@@ -1055,6 +1055,30 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
         return await rels[0].get_peer(db=db)
 
+    async def get_peer_id(self, db: InfrahubDatabase) -> str | None:
+        """Return the id of the peer of this relationship without reading the peer itself.
+
+        A peer named by a human-friendly id or by a default filter value is still read, as reading it
+        is the only way to know which node it is.
+
+        Raises:
+            TypeError: When the relationship has a cardinality of many.
+
+        """
+        if self.schema.cardinality == "many":
+            raise TypeError("peer is not available for relationship with multiple cardinality")
+
+        rels = await self.get_relationships(db=db)
+        if not rels:
+            return None
+
+        peer_id = rels[0].peer_id
+        if peer_id and is_valid_uuid(peer_id):
+            return peer_id
+
+        peer = await rels[0].get_peer(db=db)
+        return peer.get_id() if peer else None
+
     @overload
     async def get_peers(
         self,

@@ -109,7 +109,9 @@ async def extract_peer_data(
             RelationshipKind.PARENT,
             RelationshipKind.PROFILE,
         ] and list(peers_map.keys()) == [current_template.id]:
-            obj_peer_data[rel] = {"id": parent_obj.id}
+            # The peer is the node this one is created under, which the caller holds: naming it by
+            # its id would have every step that needs the peer read it back.
+            obj_peer_data[rel] = parent_obj
             continue
 
         rel_peer_ids = []

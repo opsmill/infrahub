@@ -8,10 +8,12 @@ from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.node.constraints.grouped_uniqueness import NodeGroupedUniquenessConstraint
 from infrahub.core.node.constraints.uniqueness_violation_message import UniquenessViolationMessageBuilder
+from infrahub.core.query.node import NodeListGetAttributeQuery, NodeListGetInfoQuery
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.validators.uniqueness.query import UniquenessValidationQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import HFIDViolatedError, ValidationError
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.node_creation import create_and_save
 
 
@@ -147,6 +149,20 @@ class TestNodeGroupedUniquenessConstraint:
         car_node.get_schema().uniqueness_constraints = [["previous_owner"]]
 
         await self.__call_system_under_test(db=db, branch=default_branch, node=car_node)
+
+    async def test_uniqueness_constraint_relationship_does_not_read_the_peer(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple: dict[str, Node]
+    ) -> None:
+        """The constraint compares the peer this node points at, which its id identifies."""
+        car_node: Node = car_person_generics_data_simple["c1"]
+        car_node.get_schema().uniqueness_constraints = [["previous_owner"]]
+        counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+        await self.__call_system_under_test(db=counting_db, branch=default_branch, node=car_node)
+
+        assert counting_db.count_for(UniquenessValidationQuery.name) > 0
+        assert counting_db.count_for(NodeListGetInfoQuery.name) == 0
+        assert counting_db.count_for(NodeListGetAttributeQuery.name) == 0
 
     async def test_uniqueness_constraint_conflict_one_relationship(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple: dict[str, Node]
