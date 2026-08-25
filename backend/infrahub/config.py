@@ -1195,7 +1195,29 @@ class TraceSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_TRACE_")
     enable: bool = Field(default=False)
     insecure: bool = Field(
-        default=True, description="Use insecure connection (HTTP) if True, otherwise use secure connection (HTTPS)"
+        default=True,
+        description=(
+            "Connect to the OTLP endpoint without TLS. Applies to the grpc protocol only; for "
+            "http/protobuf the endpoint URL scheme decides. Implied off when `tls_ca_bundle` is set."
+        ),
+    )
+    tls_ca_bundle: str | None = Field(
+        default=None,
+        description=(
+            "Path to a PEM-encoded certificate authority bundle used to verify the OTLP "
+            "collector's TLS certificate, for a collector using a private or self-signed "
+            "certificate. Supported by both exporter protocols; with http/protobuf the "
+            "endpoint must use https://. Checked at startup."
+        ),
+    )
+    tls_insecure: bool = Field(
+        default=False,
+        description=(
+            "Skip TLS certificate validation when exporting traces. Supported by the http/protobuf "
+            "protocol only, and only with an https:// endpoint; the grpc client cannot skip "
+            "validation, use `tls_ca_bundle` there. Test and development environments only; "
+            "never enable in production."
+        ),
     )
     exporter_type: TraceExporterType = Field(
         default=TraceExporterType.CONSOLE, description="Type of exporter to be used for tracing"
@@ -1204,6 +1226,42 @@ class TraceSettings(BaseSettings):
         default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
     )
     exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        """Check the TLS settings are mutually consistent and that the CA bundle loads.
+
+        Raises:
+            ValueError: If the TLS settings conflict or the CA bundle cannot be loaded.
+
+        """
+        if self.tls_insecure and self.tls_ca_bundle is not None:
+            raise ValueError("trace.tls_insecure cannot be combined with trace.tls_ca_bundle; pick one.")
+        if self.tls_insecure and self.exporter_protocol is TraceTransportProtocol.GRPC:
+            raise ValueError(
+                "trace.tls_insecure is not supported with the grpc exporter protocol, because the gRPC client "
+                "cannot skip certificate validation. Set trace.tls_ca_bundle to the collector's CA instead, "
+                "or use the http/protobuf protocol."
+            )
+        tls_setting = "trace.tls_ca_bundle" if self.tls_ca_bundle is not None else "trace.tls_insecure"
+        if (
+            (self.tls_ca_bundle is not None or self.tls_insecure)
+            and self.exporter_type is TraceExporterType.OTLP
+            and self.exporter_protocol is TraceTransportProtocol.HTTP_PROTOBUF
+            and self.exporter_endpoint
+            and not self.exporter_endpoint.startswith("https://")
+        ):
+            raise ValueError(
+                f"{tls_setting} cannot be combined with a trace.exporter_endpoint that is not https://, because "
+                "the endpoint URL scheme decides whether the http/protobuf exporter uses TLS, and the setting "
+                f"would be silently ignored on a plaintext connection. Use an https:// endpoint, or drop {tls_setting}."
+            )
+        if self.tls_ca_bundle is not None:
+            try:
+                ssl.create_default_context(cafile=self.tls_ca_bundle)
+            except (ssl.SSLError, OSError) as exc:
+                raise ValueError(f"Unable to load trace CA bundle from {self.tls_ca_bundle}: {exc}") from exc
+        return self
 
 
 class SyslogProtocol(StrEnum):
