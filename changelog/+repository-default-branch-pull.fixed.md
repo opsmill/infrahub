@@ -1,0 +1,1 @@
+Fixed repositories whose default branch differs from the Infrahub default branch being flipped to the `error` operational status when a task worker synchronized them by pulling instead of checking out a pinned commit. The pull now targets the repository's own default branch instead of the Infrahub branch name, which does not exist on the remote.
