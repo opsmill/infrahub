@@ -363,8 +363,9 @@ class InfrahubMutationMixin:
             if field_to_remove in fields:
                 fields.remove(field_to_remove)
 
-        after_mutate_profile_ids = await get_profile_ids(db=db, obj=obj)
-        if after_mutate_profile_ids or (not after_mutate_profile_ids and obj.uses_profiles()):
+        # A node already holding values from a profile needs the applier either way, so which
+        # profiles it is linked to does not have to be read.
+        if obj.uses_profiles() or await get_profile_ids(db=db, obj=obj):
             node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
             updated_field_names = await node_profiles_applier.apply_profiles(node=obj)
             fields += updated_field_names
