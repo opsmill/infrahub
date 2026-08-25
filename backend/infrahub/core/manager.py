@@ -1252,6 +1252,9 @@ class NodeManager:
         peer_ids = grouped_peer_nodes.get_all_peers()
         # there are no peers to enrich the nodes
         if not peer_ids:
+            if prefetch_relationships:
+                for node in nodes_by_id.values():
+                    _mark_all_relationships_as_fetched(node=node)
             return
 
         missing_peers: dict[str, Node] = {}
@@ -1287,6 +1290,8 @@ class NodeManager:
         insert_peer_node: bool,
     ) -> None:
         if not grouped_peer_nodes.has_node(node_id=node.get_id()):
+            if insert_peer_node:
+                _mark_all_relationships_as_fetched(node=node)
             return
 
         node_schema = node.get_schema()
@@ -1296,10 +1301,14 @@ class NodeManager:
                 rel_name=rel_schema.get_identifier(),
                 direction=rel_schema.direction,
             )
+            rel_manager: RelationshipManager = getattr(node, rel_schema.name)
             if not peer_ids:
+                if insert_peer_node:
+                    # The batched query covered every relationship of this node, so an empty result
+                    # is authoritative and a later read does not need to ask the database again.
+                    rel_manager.has_fetched_relationships = True
                 continue
 
-            rel_manager: RelationshipManager = getattr(node, rel_schema.name)
             if insert_peer_node:
                 rel_peers: list[Node | str] = []
                 for peer_id in peer_ids:
@@ -1372,6 +1381,13 @@ class NodeManager:
             await node.delete(db=db, at=at, user_id=user_id)
 
         return nodes_to_delete
+
+
+def _mark_all_relationships_as_fetched(node: Node) -> None:
+    """Record that a batched relationship read has covered every relationship of this node."""
+    for rel_name in node._relationships:
+        rel_manager: RelationshipManager = getattr(node, rel_name)
+        rel_manager.has_fetched_relationships = True
 
 
 def _get_cardinality_one_identifiers_by_kind(
