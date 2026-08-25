@@ -7,6 +7,7 @@ import pytest
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
+from infrahub.core.query.node import NodeListGetRelationshipsQuery
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from tests.constants import TestKind
@@ -42,10 +43,28 @@ async def _build_template(db: InfrahubDatabase, branch: Branch, name: str, nbr_i
     return template
 
 
-async def test_create_from_template_does_not_read_its_empty_relationships(
+async def test_create_without_a_template_does_not_look_for_one(
     db: InfrahubDatabase, default_branch: Branch, device_schema: None
 ) -> None:
-    """A template is read with its relationships, so the ones it leaves empty cost no query."""
+    """A node built without a template is not asked afterwards which template it came from."""
+    device_schema_obj = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+    device = await create_node(
+        data={"name": "no-template", "manufacturer": "Acme", "weight": 1, "airflow": "Passive"},
+        db=counting_db,
+        branch=default_branch,
+        schema=device_schema_obj,
+    )
+
+    assert device.manufacturer.value == "Acme"
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 0
+
+
+async def test_create_from_template_reads_it_once_with_its_relationships(
+    db: InfrahubDatabase, default_branch: Branch, device_schema: None
+) -> None:
+    """The template is read once, with its relationships, for the preview and the node it creates."""
     template = await _build_template(db=db, branch=default_branch, name="empty-template", nbr_interfaces=0)
     device_schema_obj = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
     counting_db = CountingInfrahubDatabase.from_db(db=db)
@@ -59,11 +78,11 @@ async def test_create_from_template_does_not_read_its_empty_relationships(
 
     assert device.manufacturer.value == "Acme"
     assert device.weight.value == 1
-    # The only remaining read looks for the component peers the new node has to be given.
-    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 1
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 0
+    assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 1
 
 
-async def test_create_from_template_reads_the_component_peers_in_one_query(
+async def test_create_from_template_does_not_read_the_relationships_of_its_components(
     db: InfrahubDatabase, default_branch: Branch, device_schema: None
 ) -> None:
     """The peers of a component relationship are read with their own relationships, all at once."""
@@ -91,4 +110,28 @@ async def test_create_from_template_reads_the_component_peers_in_one_query(
         }
         counts[nbr_interfaces] = counting_db.count_for(RelationshipGetPeerQuery.name)
 
-    assert counts[1] == counts[5] == 1
+    assert counts[1] == counts[5] == 0
+
+
+async def test_create_from_template_does_not_read_the_objects_already_created_from_it(
+    db: InfrahubDatabase, default_branch: Branch, device_schema: None
+) -> None:
+    """A template lists every object created from it; creating one more never reads that list."""
+    template = await _build_template(db=db, branch=default_branch, name="popular", nbr_interfaces=1)
+    device_schema_obj = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+
+    counts = []
+    rows_read = []
+    for idx in range(5):
+        counting_db = CountingInfrahubDatabase.from_db(db=db)
+        await create_node(
+            data={"name": f"device-{idx}", "object_template": {"id": template.id}},
+            db=counting_db,
+            branch=default_branch,
+            schema=device_schema_obj,
+        )
+        counts.append(sum(counting_db.query_counts.values()))
+        rows_read.append(sum(counting_db.row_counts.values()))
+
+    assert len(set(counts)) == 1, f"the cost of a create grew with the objects already created: {counts}"
+    assert len(set(rows_read)) == 1, f"a create read more of the database for each object created: {rows_read}"

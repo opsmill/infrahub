@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, overload
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, cast, overload
 
 from infrahub import lock
 from infrahub.core import registry
@@ -22,6 +22,7 @@ from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.lock import InfrahubMultiLock
 from infrahub.profiles.node_applier import NodeProfilesApplier
+from infrahub.templates.node_applier import get_relationship_names_to_read
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -38,15 +39,21 @@ async def get_template_relationship_peers(
 ) -> Mapping[str, CoreObjectTemplate]:
     """For a given relationship on the template, fetch the related peers."""
     template_relationship_manager: RelationshipManager = getattr(template, relationship.name)
+    peers: Mapping[str, CoreObjectTemplate]
     if relationship.cardinality == RelationshipCardinality.MANY:
-        return await template_relationship_manager.get_peers(
-            db=db, include_metadata=MetadataOptions.SOURCE, prefetch_relationships=True
-        )
+        peers = await template_relationship_manager.get_peers(db=db, include_metadata=MetadataOptions.SOURCE)
+    else:
+        template_relationship_peer = await template_relationship_manager.get_peer(db=db)
+        peers = {template_relationship_peer.id: template_relationship_peer} if template_relationship_peer else {}
 
-    peers: dict[str, CoreObjectTemplate] = {}
-    template_relationship_peer = await template_relationship_manager.get_peer(db=db)
-    if template_relationship_peer:
-        peers[template_relationship_peer.id] = template_relationship_peer
+    # Every peer is a subtemplate of its own, read here with the relationships materializing it reads.
+    await registry.manager.prefetch_relationships(
+        db=db,
+        nodes=cast("Iterable[Node]", peers.values()),
+        names={name for peer in peers.values() for name in get_relationship_names_to_read(schema=peer.get_schema())},
+        branch=template_relationship_manager.branch,
+        include_metadata=MetadataOptions.SOURCE,
+    )
     return peers
 
 
@@ -272,14 +279,15 @@ async def _do_create_node(
     data: dict[str, Any],
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
+    object_template: CoreObjectTemplate | None = None,
 ) -> Node:
     with creation_context:
         obj = await node_class.init(db=db, schema=schema, branch=branch)
+        obj._object_template = object_template
         await obj.new(db=db, **data)
         await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
         await obj.save(db=db, at=at, user_id=user_id)
 
-        object_template = await obj.get_object_template(db=db)
         if object_template:
             await handle_template_relationships(
                 db=db,
@@ -353,6 +361,9 @@ async def create_node(
     await preview_obj.new(db=db, process_pools=False, **data)
     schema_branch = db.schema.get_schema_branch(name=branch.name)
     lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
+    # The preview read the object template to work out the lock names; the node created under the
+    # lock is built from that same template rather than reading it again.
+    object_template = preview_obj._object_template
 
     obj: Node
     creation_context = NodeCreationContext()
@@ -371,6 +382,7 @@ async def create_node(
                 data=data,
                 at=at,
                 user_id=user_id,
+                object_template=object_template,
             )
         else:
             async with db.start_transaction() as dbt:
@@ -389,6 +401,7 @@ async def create_node(
                     data=data,
                     at=at,
                     user_id=user_id,
+                    object_template=object_template,
                 )
 
     # The node was written from its in-memory state, so the profiles it is linked to are the ones

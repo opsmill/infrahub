@@ -1,0 +1,1 @@
+Creating an object from an object template reads the template once instead of three times, and creating an object that could have used a template but did not no longer asks the database whether it had one.

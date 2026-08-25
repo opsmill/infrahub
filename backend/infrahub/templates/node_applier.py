@@ -23,6 +23,24 @@ TEMPLATE_GROUP_FOR_INSTANCES_REL_MAP: dict[str, str] = {
     "subscriber_of_groups_for_instances": "subscriber_of_groups",
 }
 
+# The relationship kinds an object template is read for: the values it carries and the components it
+# holds. Its own group memberships describe the template, not its instances, and its TEMPLATE-kind
+# relationship lists every object already created from it, which creating one more never needs.
+TEMPLATE_APPLICATION_RELATIONSHIP_KINDS = frozenset(
+    {
+        RelationshipKind.ATTRIBUTE,
+        RelationshipKind.COMPONENT,
+        RelationshipKind.GENERIC,
+        RelationshipKind.PARENT,
+        RelationshipKind.PROFILE,
+    }
+)
+
+
+def get_relationship_names_to_read(schema: MainSchemaTypes) -> set[str]:
+    """Return the names of the relationships an object template is read for."""
+    return {rel.name for rel in schema.relationships if rel.kind in TEMPLATE_APPLICATION_RELATIONSHIP_KINDS}
+
 
 class NodeTemplateApplier:
     """Applies a template to produce field data for a new node."""

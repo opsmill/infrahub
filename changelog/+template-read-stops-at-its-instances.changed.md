@@ -1,0 +1,1 @@
+Reading a node together with its relationships now reads only the relationships its schema declares, so creating an object from an object template no longer loads every object already created from that template.
