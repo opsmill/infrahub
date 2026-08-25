@@ -1485,6 +1485,9 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
         save_at = Timestamp(at)
         details = await self.refresh_update_details(db=db, branch_agnostic=branch_agnostic)
+        # The writes below make the recorded peers stale. Discard them now, so that a write failing
+        # part-way cannot leave the pre-write snapshot behind for a later comparison.
+        self._last_db_peers = None
         relationship_mapper = ChangelogRelationshipMapper(schema=self.schema)
 
         # If we have previously fetched the relationships from the database
@@ -1521,7 +1524,6 @@ class RelationshipManager[RelationshipManagerPeerType]:
             elif rel.schema.kind == RelationshipKind.PARENT:
                 relationship_mapper.add_parent_from_relationship(relationship=rel)
 
-        self._last_db_peers = None
         return relationship_mapper.changelog
 
     async def delete(
@@ -1532,6 +1534,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         relationship_mapper = ChangelogRelationshipMapper(schema=self.schema)
 
         await self._fetch_relationships(at=delete_at, db=db, force_refresh=True)
+        self._last_db_peers = None
 
         for rel in await self.get_relationships(db=db):
             relationship_mapper.delete_relationship(
@@ -1539,7 +1542,6 @@ class RelationshipManager[RelationshipManagerPeerType]:
             )
             await rel.delete(at=delete_at, db=db)
 
-        self._last_db_peers = None
         return relationship_mapper.changelog
 
     async def to_graphql(
