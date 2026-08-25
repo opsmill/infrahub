@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, assert_never
 
 from infrahub.core import registry
@@ -92,7 +91,6 @@ async def get_field_level_impacted_subscribers(
     return TargetSelection(ids=ids, widened=False)
 
 
-@dataclass(frozen=True)
 class ReachedMemberResolver:
     """Walk each relationship-reached change back to the group members that read it.
 
@@ -101,7 +99,8 @@ class ReachedMemberResolver:
     resolved member set is a superset too.
     """
 
-    resolver: UniquenessDependentResolverInterface
+    def __init__(self, *, resolver: UniquenessDependentResolverInterface) -> None:
+        self.resolver = resolver
 
     async def resolve(self, changes: RelationshipReachedChanges) -> set[str]:
         members: set[str] = set(changes.direct_member_node_ids)
