@@ -8,6 +8,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.tasks.registry import refresh_branches
+from tests.helpers.log import find_logged_events
 
 
 async def test_refresh_branches_continues_past_a_branch_it_cannot_refresh(
@@ -38,12 +39,7 @@ async def test_refresh_branches_continues_past_a_branch_it_cannot_refresh(
         await refresh_branches(db=db)
 
     # The branch it gave up on has to be reported, with its traceback: absorbed is not silent
-    failures = [
-        record.msg
-        for record in caplog.records
-        if isinstance(record.msg, dict)
-        and record.msg.get("event") == f"Failed to refresh branch '{broken_branch.name}' in the registry"
-    ]
+    failures = find_logged_events(caplog, event=f"Failed to refresh branch '{broken_branch.name}' in the registry")
     assert len(failures) == 1
     assert failures[0]["level"] == "error"
     assert failures[0]["exc_info"]
