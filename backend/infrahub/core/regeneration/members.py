@@ -56,17 +56,23 @@ def should_render_artifact(
     return artifact_id in impacted_artifacts
 
 
-def run_generator(instance_id: str | None, regenerate_all_members: bool, impacted_instances: list[str]) -> bool:
-    """Returns a boolean to indicate if a generator instance needs to be executed.
+def run_generator(
+    instance_id: str | None,
+    regenerate_all_members: bool,
+    impacted_instances: list[str],
+    member_changed_on_branch: bool | None = None,
+) -> bool:
+    """Whether a generator must run for one target.
 
-    Will return true if:
-        * The instance_id wasn't set which could be that it's a new object that doesn't have a previous generator instance
-        * regenerate_all_members is set, forcing every instance to be executed regardless of impact
-        * The instance_id exists in the impacted_instances list
-    Will return false if:
-        * regenerate_all_members is not set and the instance_id exists and is not in the impacted list.
-
+    With an existing run record, the target runs on a forced pass or when the record is among those
+    the change impacted. Without a record, the target runs when the branch itself changed it; a caller
+    that cannot determine that (``member_changed_on_branch`` left as ``None``) treats a missing record
+    as a new target and runs it.
     """
-    if not instance_id or regenerate_all_members:
+    if regenerate_all_members:
         return True
+    if not instance_id:
+        if member_changed_on_branch is None:
+            return True
+        return member_changed_on_branch
     return instance_id in impacted_instances

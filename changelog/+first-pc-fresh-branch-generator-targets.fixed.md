@@ -1,0 +1,1 @@
+The first proposed change opened on a freshly-cut branch now runs a generator only for the targets the branch actually changed. Previously it ran the generator for every target of every selected definition, because per-target run records written on the destination branch after the branch was cut fall outside the branch's view and were read as new targets.

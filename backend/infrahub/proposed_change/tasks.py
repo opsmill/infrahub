@@ -1128,14 +1128,21 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     if managed_branch:
         log.info("Query, definition or repository file change detected, all instances will be processed")
 
+    # A target with no run record visible on this branch is genuinely new only when the branch itself
+    # changed it. A pre-existing target keeps its record on the destination branch, which a branch
+    # forked before that record was written cannot see, so a missing record must not be read as new.
+    changed_node_ids = {node["id"] for node in diff_summary}
+    regenerate_all_members = managed_branch or selection.widened
+
     check_generator_run_models: list[RunGeneratorAsCheckModel] = []
     for relationship in group.members.peers:
         member = relationship.peer
         generator_instance = instance_by_member.get(member.id)
         if run_generator(
             instance_id=generator_instance,
-            regenerate_all_members=managed_branch,
+            regenerate_all_members=regenerate_all_members,
             impacted_instances=impacted_instances,
+            member_changed_on_branch=member.id in changed_node_ids,
         ):
             requested_instances += 1
             log.info(f"Trigger execution of {model.generator_definition.definition_name} for {member.display_label}")
