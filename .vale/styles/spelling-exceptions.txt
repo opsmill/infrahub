@@ -187,6 +187,7 @@ passthrough
 breakpoint
 pdb
 performant
+plaintext
 pluggable
 pnpm
 post-mortem
