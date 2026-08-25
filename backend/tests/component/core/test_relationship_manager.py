@@ -489,3 +489,32 @@ async def test_peers_read_before_the_node_exists_are_not_reused(
     await relm.refresh_update_details(db=counting_db)
 
     assert counting_db.count_for(RelationshipGetPeerQuery.name) == 1
+
+
+async def test_details_computed_before_the_node_exists_are_not_reused(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    """Once the node is written its edges exist, so the comparison made before that must not be returned again.
+
+    The manager's own `at` predates the write, so the second read is made at a later time to see the edges.
+    """
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="John", height=180)
+    await person.save(db=db)
+
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="accord", nbr_seats=5, owner=person.id)
+
+    relm: RelationshipManager = car.owner
+    details = await relm.fetch_relationship_ids(db=db, force_refresh=True)
+    assert details.peer_ids_present_local_only == [person.id]
+
+    await car.save(db=db)
+
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+    details = await relm.fetch_relationship_ids(db=counting_db, at=Timestamp(), force_refresh=False)
+
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 1
+    assert details.peer_ids_present_both == [person.id]
+    assert details.peer_ids_present_local_only == []
+    assert details.peer_ids_present_database_only == []
