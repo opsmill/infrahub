@@ -253,8 +253,8 @@ class BranchUpdate(Mutation):
         async with graphql_context.db.start_transaction() as db:
             await obj.save(db=db, user_id=graphql_context.active_account_session.account_id)
 
-        # update registry after txn commit, so it cannot diverge from db on failure
-        registry.branch[obj.name] = obj
+        # Update the registry after the txn commits, so it cannot diverge from the db on failure
+        registry.refresh_cached_branch(obj)
 
         return cls(ok=True)
 
