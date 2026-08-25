@@ -10,7 +10,7 @@ def find_keyword_violations(
     repo_root: Path,
     exclude_dirs: set[str],
     exclude_patterns: tuple[str, ...],
-) -> list[str]:
+) -> tuple[list[str], int]:
     """Traverse files once and check each line for any prohibited keyword.
 
     Args:
@@ -20,10 +20,13 @@ def find_keyword_violations(
         exclude_patterns: Tuple of filename patterns to exclude.
 
     Returns:
-        List of file paths (as strings) where any keyword was found.
+        A tuple of (file paths where any keyword was found, number of files that could not be
+        scanned). A skipped file is an error, not a pass: a scan that could not read a file must
+        not report a clean repository.
 
     """
     violations = []
+    errors = 0
     lowered_keywords = [k.lower() for k in keywords]
 
     for path in repo_root.rglob("*"):
@@ -38,8 +41,9 @@ def find_keyword_violations(
                         violations.append(str(path))
                         break
         except Exception:
+            errors += 1
             logging.exception(f"Error occurred while scanning {path}")
-    return violations
+    return violations, errors
 
 
 def find_keyword_in_git_commits(keywords: list[str]) -> list[str]:
@@ -56,20 +60,22 @@ def find_keyword_in_git_commits(keywords: list[str]) -> list[str]:
     lowered_keywords = [k.lower() for k in keywords]
     try:
         result = subprocess.run(
-            ["/usr/bin/git", "log", "--pretty=format:%H:%s"],
+            ["/usr/bin/git", "log", "--pretty=format:%H %s"],
             capture_output=True,
             encoding="utf-8",
             check=True,
         )
-        for line in result.stdout.splitlines():
-            try:
-                commit_hash, message = line.split(":", 1)
-            except ValueError:
-                continue
-            if any(keyword in message.lower() for keyword in lowered_keywords):
-                violations.append(commit_hash)
     except Exception:
+        # A commit scan that could not run has not scanned anything: fail instead of
+        # reporting a clean history.
         logging.exception("Error occurred while scanning git commit messages")
+        print("::error::Unable to scan git commit messages")
+        sys.exit(1)
+
+    for line in result.stdout.splitlines():
+        commit_hash, _, message = line.partition(" ")
+        if any(keyword in message.lower() for keyword in lowered_keywords):
+            violations.append(commit_hash)
     return violations
 
 
@@ -104,14 +110,16 @@ def main() -> None:
     exclude_patterns = ("*.log", "*.lock", ".env", "package-lock.json")
     repo_root = Path.cwd()
 
-    violations = find_keyword_violations(keywords, repo_root, exclude_dirs, exclude_patterns)
+    violations, scan_errors = find_keyword_violations(keywords, repo_root, exclude_dirs, exclude_patterns)
     commit_violations = find_keyword_in_git_commits(keywords)
 
-    if violations or commit_violations:
+    if violations or commit_violations or scan_errors:
         if violations:
             print(f"::error::Keyword scan failed - prohibited terms found in {len(violations)} file(s)")
         if commit_violations:
             print(f"::error::Prohibited keywords found in {len(commit_violations)} git commit(s)")
+        if scan_errors:
+            print(f"::error::{scan_errors} file(s) could not be scanned")
         print("Contact security team for details on specific violations")
         sys.exit(1)
     else:

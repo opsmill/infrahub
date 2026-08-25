@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Full history: the scan checks every commit message, and the default depth-1 clone
+          # exposes only the single (synthetic merge) commit, making that check vacuous.
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
