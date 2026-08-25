@@ -64,6 +64,26 @@ When a user creates an object with `object_template={id: ...}`, `Node.handle_obj
 
 After save, `handle_template_relationships()` (`core/node/create.py`) walks the new node's `COMPONENT` relationships and recursively materializes any subtemplate peers as their own real objects, recursing into their components.
 
+### What applying a template reads
+
+Creating an object from a template reads the template once, with the relationships applying it
+consults (`get_relationship_names_to_read()` in `templates/node_applier.py`: the kinds ATTRIBUTE,
+COMPONENT, GENERIC, PARENT and PROFILE). The template's own group memberships describe the template,
+and its TEMPLATE-kind `related_nodes` names every object already created from it, so neither is read.
+
+`create_node()` applies the template twice — once on the preview node it builds to work out the lock
+names, once on the node it creates under the lock — from that single read: `Node._object_template`
+carries it, and `_do_create_node()` uses it instead of asking the saved node which template it came
+from.
+
+The peers of the template's component relationships are read the same way, with the relationships
+materializing them consults, and each component is then created from the ids and kinds those
+relationships carry.
+
+The cost of a create is then the template read (3 queries), the node's own uniqueness check and
+write, and 2 queries per component (its uniqueness check and its write). It does not grow with the
+number of objects created from the template before.
+
 ### Group Propagation
 
 `TEMPLATE_GROUP_FOR_INSTANCES_REL_MAP` (defined in `infrahub/templates/node_applier.py`) maps the template-only field names to the real group-membership relationship names:

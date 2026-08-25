@@ -137,7 +137,24 @@ peers the manager already read rather than reading them again:
 - A node that has never been written is not read at all: it cannot have any relationship edge, and
   creating it writes the edges without going through the manager, so that answer is never recorded.
 - A read with `prefetch_relationships` resolves every relationship in one query, so a relationship
-  that came back without a peer is marked as read too.
+  that came back without a peer is marked as read too. That read covers the relationships the
+  schemas of the nodes declare, and `NodeManager.prefetch_relationships()` narrows it further to the
+  relationships the caller names — reading a node's every edge would pull in the relationships that
+  point *at* it, such as the objects created from an object template or the nodes using a profile.
+
+### The peers a mutation already holds
+
+A payload names a peer by id, but a caller that already holds the peer can pass the node itself, and
+the mutation then works from it rather than reading it back:
+
+- the grouped uniqueness constraint asks the relationship for the peer id
+  (`RelationshipManager.get_peer_id()`) and reads the peer only when it is named by a
+  human-friendly id or a default filter value, which reading is the only way to resolve;
+- the peer-kind constraint trusts the kind a peer states, and reads only the peers named by an id;
+- `Relationship.get_create_data()` writes the edge from the peer it holds.
+
+Passing a node keeps the rest of the payload for that relationship (its source, its owner) only if
+the node replaces the `id` inside it rather than the payload itself.
 
 ## Locking Strategy
 
