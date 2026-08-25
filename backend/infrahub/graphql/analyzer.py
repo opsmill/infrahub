@@ -283,11 +283,10 @@ def _reached_path_sort_key(path: ReachedPath) -> tuple[tuple[str, str, str], ...
 class ReachedPathResolver:
     """Reconstruct, from a query's node tree, the relationship chains reaching each related kind.
 
-    A kind maps to every relationship chain of concrete owners that reaches it; a kind reached as a
-    generic peer is resolved to the generic's concrete implementations, since a data change reports
-    the concrete kind. A kind is absent -- so a change there widens -- when a way it is reached cannot
-    be pinned: an owner along the chain is generic, a step is an inline/named fragment refinement, or
-    the kind is also read at a root.
+    A kind maps to every relationship chain that reaches it; a kind reached as a generic peer is
+    resolved to the generic's concrete implementations, since a data change reports the concrete kind.
+    A kind is absent -- so a change there widens -- when a way it is reached cannot be pinned: a hop
+    along it is an inline/named fragment refinement, or the kind is also read at a root.
     """
 
     queries: list[GraphQLQueryNode]

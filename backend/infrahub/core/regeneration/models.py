@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class RelationshipHop:
-    """One relationship step, expressed from the owner object that carries the relationship.
+    """One relationship hop, expressed from the owner object that carries the relationship.
 
     ``node_kind`` owns ``relationship_identifier``; ``relationship_direction`` is that relationship's
     direction on the owner.
