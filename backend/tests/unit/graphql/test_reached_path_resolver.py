@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
+from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
-from infrahub.graphql.analyzer import GraphQLQueryNode, ReachedPath, ReachedPathResolver, RelationshipHop
+from infrahub.graphql.analyzer import GraphQLQueryNode, ReachedPathResolver
 
 OUT = RelationshipDirection.OUTBOUND
 

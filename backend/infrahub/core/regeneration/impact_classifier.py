@@ -8,7 +8,7 @@ from .predicates import relevant_node_changes
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
 
-    from infrahub.graphql.analyzer import ReachedPath
+    from .models import ReachedPath
 
 
 @dataclass(frozen=True, slots=True)

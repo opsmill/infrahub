@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
-from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer, ReachedPath, RelationshipHop
+from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, DEVICE_SCHEMA, load_schema

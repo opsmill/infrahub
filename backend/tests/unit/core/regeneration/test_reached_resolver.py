@@ -7,7 +7,7 @@ import pytest
 from infrahub.core.constants import RelationshipDirection
 from infrahub.core.regeneration.impact import ReachedMemberResolver
 from infrahub.core.regeneration.impact_classifier import ReachedChange, RelationshipReachedChanges
-from infrahub.graphql.analyzer import ReachedPath, RelationshipHop
+from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
 
 
 @dataclass

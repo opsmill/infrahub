@@ -39,7 +39,8 @@ from graphql.language.ast import (
 from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from infrahub_sdk.utils import extract_fields
 
-from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
+from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
 from infrahub.core.schema import AttributePathParsingError, GenericSchema
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graphql.utils import extract_schema_models
@@ -140,26 +141,6 @@ class ObjectAccess:
     @property
     def fields(self) -> set[str]:
         return self.attributes.union(self.relationships)
-
-
-@dataclass(frozen=True, slots=True)
-class RelationshipHop:
-    """One relationship step, expressed from the owner object that carries the relationship.
-
-    ``node_kind`` owns ``relationship_identifier``; ``relationship_direction`` is that relationship's
-    direction on the owner.
-    """
-
-    node_kind: str
-    relationship_identifier: str
-    relationship_direction: RelationshipDirection
-
-
-@dataclass(frozen=True, slots=True)
-class ReachedPath:
-    """The relationship chain a query follows from a root object down to a related kind."""
-
-    hops: tuple[RelationshipHop, ...]
 
 
 @dataclass

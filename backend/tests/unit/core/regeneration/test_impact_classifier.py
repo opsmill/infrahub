@@ -14,7 +14,7 @@ from infrahub.core.regeneration.impact_classifier import (
     ReachedChange,
     RelationshipReachedChanges,
 )
-from infrahub.graphql.analyzer import ReachedPath, RelationshipHop
+from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
 from tests.helpers.diff_summary import node_diff
 
 if TYPE_CHECKING:
