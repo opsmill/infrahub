@@ -159,4 +159,4 @@ async def test_materializing_a_component_costs_a_constant_number_of_queries(
 
     per_component = (counts[3] - counts[1]) / 2
     assert per_component == (counts[5] - counts[3]) / 2, f"the cost per component is not constant: {counts}"
-    assert per_component <= 3, f"materializing a component costs {per_component} queries: {counts}"
+    assert per_component <= 2, f"materializing a component costs {per_component} queries: {counts}"
