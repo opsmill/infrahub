@@ -1,13 +1,16 @@
 import { useQueryState } from "nuqs";
 import React from "react";
+import { Navigate } from "react-router";
+import { toast } from "react-toastify";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/shared/config/qsp";
 
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { findSelectedBranch } from "@/entities/branches/domain/rules/find-selected-branch";
-import { useRedirectWhenBranchIsGone } from "@/entities/branches/ui/hooks/use-redirect-when-branch-is-gone";
+import { useConfirmBranchIsGone } from "@/entities/branches/ui/hooks/use-confirm-branch-is-gone";
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 
 type BranchContext = {
@@ -32,7 +35,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
 
   const currentBranch = branches ? findSelectedBranch(branches, branchInQueryString) : null;
 
-  const { isDefaultBranchGone } = useRedirectWhenBranchIsGone({
+  const { goneBranchName, isDefaultBranchGone } = useConfirmBranchIsGone({
     branchName: branchInQueryString,
   });
 
@@ -43,6 +46,22 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
     setLastResolvedBranch(currentBranch);
   }
 
+  React.useEffect(() => {
+    if (goneBranchName === null) return;
+
+    toast(
+      <Alert
+        type={ALERT_TYPES.ERROR}
+        message={
+          <>
+            Branch <b>{goneBranchName}</b> not found, you have been redirected to the default
+            branch.
+          </>
+        }
+      />
+    );
+  }, [goneBranchName]);
+
   // The branch QSP is the source of truth: the default branch is represented by its absence
   const setCurrentBranch = (branch: BranchListItem) => {
     setBranchInQueryString(branch.is_default ? null : branch.name);
@@ -52,6 +71,10 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
     return (
       <ErrorScreen message="The default branch is missing from this deployment. Contact your administrator." />
     );
+  }
+
+  if (goneBranchName !== null) {
+    return <Navigate to="/" />;
   }
 
   if (isPending) {
