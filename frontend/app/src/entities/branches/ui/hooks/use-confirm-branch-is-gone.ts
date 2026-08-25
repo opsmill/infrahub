@@ -37,88 +37,52 @@ export function confirmsBranchIsGone(
 export function useConfirmBranchIsGone({ branchName }: { branchName: string | null }) {
   const { data: branches, refetch, dataUpdatedAt } = useGetBranches();
 
-  const [confirmedGoneNames, setConfirmedGoneNames] = React.useState<ReadonlySet<string>>(
-    new Set()
-  );
-  const [isDefaultBranchGone, setIsDefaultBranchGone] = React.useState(false);
-  const confirmation = React.useRef<{ branchName: string | null } | null>(null);
+  // The one standing verdict: a branch identity a confirming fetch has settled as gone.
+  const [confirmedGone, setConfirmedGone] = React.useState<{
+    branchName: string | null;
+  } | null>(null);
+  const pendingConfirmation = React.useRef<{ branchName: string | null } | null>(null);
+
+  // A branch the list carries again has no standing verdict: a branch recreated under a deleted
+  // one's name has to be confirmed afresh.
+  if (confirmedGone && branches && findSelectedBranch(branches, confirmedGone.branchName)) {
+    setConfirmedGone(null);
+  }
 
   const isMissingFromList = !!branches && !findSelectedBranch(branches, branchName);
-  const goneBranchName =
-    branchName !== null && isMissingFromList && confirmedGoneNames.has(branchName)
-      ? branchName
-      : null;
-
-  // A name the list carries again is a name no standing verdict applies to, whichever branch the
-  // user is on: a branch recreated under a deleted one's name has to be confirmed afresh.
-  React.useEffect(() => {
-    if (!branches) return;
-
-    setConfirmedGoneNames((previous) => {
-      const carried = branches.filter((branch) => previous.has(branch.name));
-      if (carried.length === 0) return previous;
-
-      const next = new Set(previous);
-      for (const branch of carried) {
-        next.delete(branch.name);
-      }
-      return next;
-    });
-
-    if (branches.some((branch) => branch.is_default)) {
-      setIsDefaultBranchGone(false);
-    }
-  }, [branches]);
-
-  React.useEffect(
-    () => () => {
-      confirmation.current = null;
-    },
-    []
-  );
+  const isConfirmedGone =
+    isMissingFromList && !!confirmedGone && confirmedGone.branchName === branchName;
 
   // dataUpdatedAt is a dependency so that every newly arrived list that still omits the branch gets
   // its own confirmation attempt: retries are off app-wide, so without it one failed confirmation
   // would leave the miss unconfirmed forever, with no verdict and no recovery.
   React.useEffect(() => {
     if (!isMissingFromList) {
-      confirmation.current = null;
+      pendingConfirmation.current = null;
       return;
     }
 
-    const alreadyConfirmedGone =
-      branchName === null ? isDefaultBranchGone : confirmedGoneNames.has(branchName);
-    if (alreadyConfirmedGone) return;
-
-    if (confirmation.current?.branchName === branchName) return;
+    if (isConfirmedGone) return;
+    if (pendingConfirmation.current?.branchName === branchName) return;
 
     const attempt = { branchName };
-    confirmation.current = attempt;
+    pendingConfirmation.current = attempt;
 
     refetch()
       .catch(() => FAILED_CONFIRMATION)
       .then((confirmed) => {
         // A verdict is discarded once its attempt is superseded or abandoned.
-        if (confirmation.current !== attempt) return;
-        confirmation.current = null;
+        if (pendingConfirmation.current !== attempt) return;
+        pendingConfirmation.current = null;
 
         if (!confirmsBranchIsGone(confirmed, branchName)) return;
 
-        if (branchName === null) {
-          setIsDefaultBranchGone(true);
-          return;
-        }
-
-        setConfirmedGoneNames((previous) => new Set(previous).add(branchName));
+        setConfirmedGone({ branchName });
       });
-  }, [
-    branchName,
-    isMissingFromList,
-    isDefaultBranchGone,
-    confirmedGoneNames,
-    dataUpdatedAt,
-    refetch,
-  ]);
+  }, [branchName, isMissingFromList, isConfirmedGone, dataUpdatedAt, refetch]);
 
-  return { goneBranchName, isDefaultBranchGone };
+  return {
+    goneBranchName: isConfirmedGone && branchName !== null ? branchName : null,
+    isDefaultBranchGone: isConfirmedGone && branchName === null,
+  };
 }
