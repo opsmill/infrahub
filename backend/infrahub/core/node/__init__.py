@@ -1146,14 +1146,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 updated_relationship = await rel.save(db=db, user_id=user_id, at=update_at)
                 node_changelog.add_relationship(relationship_changelog=updated_relationship)
 
-        if len(processed_relationships) != len(self._relationships):
-            # Analyze if the node has a parent and add it to the changelog if missing
-            if parent_relationship := self._get_parent_relationship_name():
-                if parent_relationship not in processed_relationships:
-                    rel = self.get_relationship(name=parent_relationship)
-                    if parent := await rel.get_parent(db=db):
-                        node_changelog.add_parent_from_relationship(parent=parent)
-
         # Recompute Jinja2 computed attributes affected by the updated fields
         await self._recompute_local_jinja2(
             db=db, fields=fields, node_changelog=node_changelog, update_at=update_at, user_id=user_id
@@ -1173,12 +1165,27 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         node_changelog.display_label = await self.get_display_label(db=db)
 
         if node_changelog.has_changes:
+            await self._add_parent_to_changelog(
+                db=db, node_changelog=node_changelog, processed_relationships=processed_relationships
+            )
             self._set_updated_at(update_at)
             self._set_updated_by(user_id)
             update_branch = self.get_branch_based_on_support_type()
             if update_branch.is_default or update_branch.is_global:
                 await self._save_metadata(db=db, branch=update_branch)
         return node_changelog
+
+    async def _add_parent_to_changelog(
+        self, db: InfrahubDatabase, node_changelog: NodeChangelog, processed_relationships: list[str]
+    ) -> None:
+        """Report the node's parent when the update did not go through the parent relationship itself."""
+        parent_relationship = self._get_parent_relationship_name()
+        if not parent_relationship or parent_relationship in processed_relationships:
+            return
+
+        relationship_manager = self.get_relationship(name=parent_relationship)
+        if parent := await relationship_manager.get_parent(db=db):
+            node_changelog.add_parent_from_relationship(parent=parent)
 
     async def save(
         self,
