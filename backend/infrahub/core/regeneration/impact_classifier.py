@@ -59,22 +59,19 @@ type ImpactAssessment = EveryTarget | ChangedNodes | RelationshipReachedChanges
 
 @dataclass(frozen=True, kw_only=True, slots=True)
 class QueryImpactClassifier:
-    """Route a diff onto a query's subscribers from the query's read surface alone.
+    """Classify a diff against one query's read surface, without any id lookup.
 
-    Holds what one query analysis established on one branch, so a caller assessing several diffs
-    against the same query builds it once. The routing is decided without any id lookup, which
-    keeps the rule -- when narrowing is sound and when it is not -- independent of storage.
+    Holds what a single query analysis established on one branch, so several diffs can be
+    assessed against the same query without rebuilding it, and the narrowing rule stays
+    independent of storage.
 
-    Narrowing needs the query to pin a single object per root. A relevant change on a root kind then
-    maps straight to its members. A relevant change on a kind reached through a relationship maps
-    back only when every relationship chain down to that kind has been reconstructed: the members
-    are recovered by walking those chains in reverse. When a reached kind has no reconstructed chain,
-    that change widens to every target -- over-executing is acceptable, leaving a stale output behind
-    is not.
+    Narrowing needs the query to pin one object per root. A change on a root kind maps straight
+    to its members. A change on a kind reached through a relationship maps back only when the
+    chains down to it were reconstructed; otherwise it widens to every target.
 
-    A kind read both at a root and through a relationship counts as traversed. The two read paths
-    are indistinguishable once a change is in hand, so treating it as a plain root change would
-    narrow away the members reached only by the relationship.
+    A kind read both at a root and through a relationship widens: the two read paths are
+    indistinguishable once a change is in hand, so narrowing would drop the members reached only
+    by the relationship.
     """
 
     query_branch: str
