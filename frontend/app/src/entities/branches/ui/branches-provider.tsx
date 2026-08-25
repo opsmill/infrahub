@@ -27,21 +27,32 @@ export function useCurrentBranch() {
 }
 
 export const BranchesProvider = ({ children }: { children?: React.ReactNode }) => {
-  const { data: branches, isPending, error, refetch } = useGetBranches();
+  const { data: branches, isPending, error } = useGetBranches();
   const [branchInQueryString, setBranchInQueryString] = useQueryState(QSP.BRANCH);
 
   const currentBranch = branches ? findSelectedBranch(branches, branchInQueryString) : null;
+
+  const { isDefaultBranchGone } = useRedirectWhenBranchIsGone({
+    branchName: branchInQueryString,
+  });
+
+  // The last branch this provider resolved, kept so a page is not unmounted while a transient miss
+  // of the branch it is already showing is being confirmed.
+  const [lastResolvedBranch, setLastResolvedBranch] = React.useState(currentBranch);
+  if (currentBranch && currentBranch !== lastResolvedBranch) {
+    setLastResolvedBranch(currentBranch);
+  }
 
   // The branch QSP is the source of truth: the default branch is represented by its absence
   const setCurrentBranch = (branch: BranchListItem) => {
     setBranchInQueryString(branch.is_default ? null : branch.name);
   };
 
-  useRedirectWhenBranchIsGone({
-    branchName: branchInQueryString,
-    branches,
-    confirmBranchList: refetch,
-  });
+  if (isDefaultBranchGone) {
+    return (
+      <ErrorScreen message="The default branch is missing from this deployment. Contact your administrator." />
+    );
+  }
 
   if (isPending) {
     return <InfrahubLoading>Loading branches...</InfrahubLoading>;
@@ -51,9 +62,19 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
     return <ErrorScreen message={error.message} />;
   }
 
-  if (!currentBranch) {
+  // While a miss is confirmed, only the branch the page was already showing stays mounted; any
+  // other unresolved branch gets the loading screen until the verdict lands.
+  const resolvedBranch =
+    currentBranch ??
+    (lastResolvedBranch && findSelectedBranch([lastResolvedBranch], branchInQueryString));
+
+  if (!resolvedBranch) {
     return <InfrahubLoading>Loading branches...</InfrahubLoading>;
   }
 
-  return <BranchContext value={{ currentBranch, setCurrentBranch }}>{children}</BranchContext>;
+  return (
+    <BranchContext value={{ currentBranch: resolvedBranch, setCurrentBranch }}>
+      {children}
+    </BranchContext>
+  );
 };

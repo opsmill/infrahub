@@ -19,22 +19,41 @@ const featureBranch = generateBranch({ id: "branch-feature", name: "feature-1" }
 
 type BranchesQueryState = Partial<ReturnType<typeof useGetBranches>>;
 
-// Mocked as a hook so refetch() behaves like React Query's: it resolves with the next scripted
-// response and re-renders with it, reusing the last one once the script runs out.
-const mockBranchesQuery = (...responses: BranchesQueryState[]) =>
+// Mocked the way React Query behaves: one shared store serving every call site, a stable refetch
+// that resolves with the next scripted response and re-renders subscribers with it, reusing the
+// last one once the script runs out. advanceList moves to the next response without a refetch,
+// like a background refresh landing.
+const mockBranchesQuery = (...responses: BranchesQueryState[]) => {
+  const lastIndex = responses.length - 1;
+  let index = 0;
+  const listeners = new Set<() => void>();
+  const subscribe = (listener: () => void) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  };
+
+  const advanceList = () => {
+    index = Math.min(index + 1, lastIndex);
+    for (const listener of listeners) listener();
+  };
+
+  const refetch = () => {
+    advanceList();
+    return Promise.resolve(responses[index]);
+  };
+
   vi.mocked(useGetBranches).mockImplementation(() => {
-    const [fetchIndex, setFetchIndex] = React.useState(0);
-    const lastIndex = responses.length - 1;
+    const fetchIndex = React.useSyncExternalStore(subscribe, () => index);
 
     return {
-      ...responses[Math.min(fetchIndex, lastIndex)],
-      refetch: () => {
-        const nextIndex = Math.min(fetchIndex + 1, lastIndex);
-        setFetchIndex(nextIndex);
-        return Promise.resolve(responses[nextIndex]);
-      },
+      ...responses[fetchIndex],
+      dataUpdatedAt: fetchIndex,
+      refetch,
     } as ReturnType<typeof useGetBranches>;
   });
+
+  return { advanceList };
+};
 
 const mockFetchedBranches = () =>
   mockBranchesQuery({ data: [defaultBranch, featureBranch], isPending: false, error: null });
@@ -235,5 +254,60 @@ describe("BranchesProvider", () => {
       .element(component.getByText(/not found, you have been redirected to the default branch/))
       .toBeVisible();
     await expect.poll(getBranchInUrl).toBeNull();
+  });
+  test("keeps the page mounted while a transient miss of its branch is confirmed", async () => {
+    // GIVEN the user works on feature-1, mounted from a list that contains it
+    let probeMounts = 0;
+    function MountCountingProbe() {
+      React.useEffect(() => {
+        probeMounts += 1;
+      }, []);
+      return <BranchProbe />;
+    }
+    const withFeature: BranchesQueryState = {
+      data: [defaultBranch, featureBranch],
+      isPending: false,
+      error: null,
+    };
+    const withoutFeature: BranchesQueryState = {
+      data: [defaultBranch],
+      isPending: false,
+      error: null,
+    };
+    const { advanceList } = mockBranchesQuery(withFeature, withoutFeature, withFeature);
+    seedBranchInUrl(featureBranch.name);
+    const component = await render(
+      <BranchesProvider>
+        <MountCountingProbe />
+      </BranchesProvider>
+    );
+    await expect.element(component.getByText("Current branch: feature-1")).toBeVisible();
+
+    // WHEN a background refresh omits the branch, and the confirming fetch brings it back
+    advanceList();
+
+    // THEN the page never unmounts and nothing redirects
+    await expect.element(component.getByText("Current branch: feature-1")).toBeVisible();
+    await expect.poll(() => probeMounts).toBe(1);
+    expect(component.getByText("Loading branches...").query()).toBeNull();
+    expect(getBranchInUrl()).toBe("feature-1");
+  });
+
+  test("shows an error screen when the default branch is confirmed missing", async () => {
+    // GIVEN a deployment whose branch list carries no default branch, on the default branch
+    mockBranchesQuery({ data: [featureBranch], isPending: false, error: null });
+
+    // WHEN
+    const component = await render(
+      <BranchesProvider>
+        <BranchProbe />
+      </BranchesProvider>
+    );
+
+    // THEN it reports the broken deployment instead of redirecting into a loop
+    await expect
+      .element(component.getByText(/The default branch is missing from this deployment/))
+      .toBeVisible();
+    expect(component.getByText(/Current branch/).query()).toBeNull();
   });
 });

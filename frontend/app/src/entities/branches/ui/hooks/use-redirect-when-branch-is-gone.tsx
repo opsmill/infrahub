@@ -6,6 +6,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { findSelectedBranch } from "@/entities/branches/domain/rules/find-selected-branch";
+import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 
 export type BranchListConfirmation = {
   data: BranchListItem[] | undefined;
@@ -24,12 +25,6 @@ export function confirmsBranchIsGone(
   return !findSelectedBranch(confirmation.data, branchName);
 }
 
-type UseRedirectWhenBranchIsGoneParams = {
-  branchName: string | null;
-  branches: BranchListItem[] | undefined;
-  confirmBranchList: () => Promise<BranchListConfirmation>;
-};
-
 /**
  * Redirects to the default branch once the branch named in the URL is confirmed gone.
  *
@@ -38,14 +33,19 @@ type UseRedirectWhenBranchIsGoneParams = {
  * its data is being deleted, missed by a lagging follower read, or not yet saved by async creation.
  * So a miss is confirmed against a second fetch, and a verdict only ever applies to the branch it
  * was reached for, for as long as no list contains that name again.
+ *
+ * A null branchName is the default branch (its name is absent from the URL). A confirmed-gone
+ * default branch is a broken deployment: redirecting to "/" would loop, so the hook reports it as
+ * `isDefaultBranchGone` for the caller to render an error instead.
  */
-export function useRedirectWhenBranchIsGone({
-  branchName,
-  branches,
-  confirmBranchList,
-}: UseRedirectWhenBranchIsGoneParams) {
+export function useRedirectWhenBranchIsGone({ branchName }: { branchName: string | null }) {
+  const { data: branches, refetch, dataUpdatedAt } = useGetBranches();
   const navigate = useNavigate();
-  const confirmedGone = React.useRef(new Set<string>());
+
+  const confirmedGoneNames = React.useRef(new Set<string>());
+  const confirmation = React.useRef<{ branchName: string | null } | null>(null);
+  const redirectedFor = React.useRef<string | null>(null);
+  const [isDefaultBranchGone, setIsDefaultBranchGone] = React.useState(false);
 
   const isMissingFromList = !!branches && !findSelectedBranch(branches, branchName);
 
@@ -68,31 +68,64 @@ export function useRedirectWhenBranchIsGone({
   // user is on: a branch recreated under a deleted one's name has to be confirmed afresh.
   React.useEffect(() => {
     for (const branch of branches ?? []) {
-      confirmedGone.current.delete(branch.name);
+      confirmedGoneNames.current.delete(branch.name);
+    }
+    if (branches?.some((branch) => branch.is_default)) {
+      setIsDefaultBranchGone(false);
     }
   }, [branches]);
 
-  React.useEffect(() => {
-    if (!isMissingFromList || branchName === null) return;
+  React.useEffect(
+    () => () => {
+      confirmation.current = null;
+    },
+    []
+  );
 
-    if (confirmedGone.current.has(branchName)) {
-      redirectToDefaultBranch(branchName);
+  // dataUpdatedAt is a dependency so that every newly arrived list that still omits the branch gets
+  // its own confirmation attempt: retries are off app-wide, so without it one failed confirmation
+  // would leave the miss unconfirmed forever, with no redirect and no recovery.
+  React.useEffect(() => {
+    if (!isMissingFromList) {
+      confirmation.current = null;
+      redirectedFor.current = null;
       return;
     }
 
-    let abandoned = false;
+    const alreadyConfirmedGone =
+      branchName === null ? isDefaultBranchGone : confirmedGoneNames.current.has(branchName);
+    if (alreadyConfirmedGone) {
+      if (branchName !== null && redirectedFor.current !== branchName) {
+        redirectedFor.current = branchName;
+        redirectToDefaultBranch(branchName);
+      }
+      return;
+    }
 
-    confirmBranchList()
+    if (confirmation.current?.branchName === branchName) return;
+
+    const attempt = { branchName };
+    confirmation.current = attempt;
+
+    refetch()
       .catch(() => FAILED_CONFIRMATION)
-      .then((confirmation) => {
-        if (abandoned || !confirmsBranchIsGone(confirmation, branchName)) return;
+      .then((confirmed) => {
+        // A verdict is discarded once its attempt is superseded or abandoned.
+        if (confirmation.current !== attempt) return;
+        confirmation.current = null;
 
-        confirmedGone.current.add(branchName);
+        if (!confirmsBranchIsGone(confirmed, branchName)) return;
+
+        if (branchName === null) {
+          setIsDefaultBranchGone(true);
+          return;
+        }
+
+        confirmedGoneNames.current.add(branchName);
+        redirectedFor.current = branchName;
         redirectToDefaultBranch(branchName);
       });
+  }, [branchName, isMissingFromList, isDefaultBranchGone, dataUpdatedAt, refetch]);
 
-    return () => {
-      abandoned = true;
-    };
-  }, [branchName, isMissingFromList, confirmBranchList]);
+  return { isDefaultBranchGone };
 }
