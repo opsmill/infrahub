@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 import pytest
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-    OTLPSpanExporter as GRPCSpanExporter,
-)
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
     OTLPSpanExporter as HTTPSpanExporter,
 )
@@ -74,28 +71,4 @@ class TestCreateSpanExporter:
         )
         assert isinstance(exporter, HTTPSpanExporter)
         assert not isinstance(exporter._session, InsecureTLSSession)
-        exporter.shutdown()
-
-    def test_grpc_insecure_enables_plaintext(self) -> None:
-        exporter = create_span_exporter(
-            exporter_type="otlp",
-            insecure=True,
-            tls_insecure=False,
-            exporter_endpoint="collector:4317",
-            exporter_protocol="grpc",
-        )
-        assert isinstance(exporter, GRPCSpanExporter)
-        assert exporter._insecure is True
-        exporter.shutdown()
-
-    def test_grpc_secure_uses_tls(self) -> None:
-        exporter = create_span_exporter(
-            exporter_type="otlp",
-            insecure=False,
-            tls_insecure=False,
-            exporter_endpoint="collector:4317",
-            exporter_protocol="grpc",
-        )
-        assert isinstance(exporter, GRPCSpanExporter)
-        assert exporter._insecure is False
         exporter.shutdown()

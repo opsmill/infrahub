@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 import grpc
 import pytest
+import requests
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -130,18 +131,31 @@ class RunningCollector:
     """One entry per export request the collector accepted."""
 
 
-@pytest.fixture
-def grpc_collector(pki: LocalPKI) -> Iterator[RunningCollector]:
+def _serve_grpc(credentials: grpc.ServerCredentials | None) -> Iterator[RunningCollector]:
+    """Run a gRPC trace collector, over TLS when credentials are given and in plaintext otherwise."""
     servicer = _GRPCTraceService()
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
     trace_service_pb2_grpc.add_TraceServiceServicer_to_server(servicer, server)
-    credentials = grpc.ssl_server_credentials([(pki.server_key, pki.server_certificate)])
-    port = server.add_secure_port("127.0.0.1:0", credentials)
+    port = (
+        server.add_insecure_port("127.0.0.1:0")
+        if credentials is None
+        else server.add_secure_port("127.0.0.1:0", credentials)
+    )
     server.start()
     try:
         yield RunningCollector(endpoint=f"localhost:{port}", exported=servicer.exported)
     finally:
         server.stop(grace=None)
+
+
+@pytest.fixture
+def grpc_collector(pki: LocalPKI) -> Iterator[RunningCollector]:
+    yield from _serve_grpc(grpc.ssl_server_credentials([(pki.server_key, pki.server_certificate)]))
+
+
+@pytest.fixture
+def plaintext_grpc_collector() -> Iterator[RunningCollector]:
+    yield from _serve_grpc(credentials=None)
 
 
 @pytest.fixture
@@ -201,6 +215,45 @@ def make_exporter() -> Iterator[Callable[..., SpanExporter]]:
 
 
 class TestGRPCExporterTLS:
+    def test_insecure_delivers_to_plaintext_collector(
+        self,
+        plaintext_grpc_collector: RunningCollector,
+        span: ReadableSpan,
+        make_exporter: Callable[..., SpanExporter],
+    ) -> None:
+        exporter = make_exporter(
+            exporter_type="otlp",
+            exporter_protocol="grpc",
+            exporter_endpoint=plaintext_grpc_collector.endpoint,
+            insecure=True,
+            tls_insecure=False,
+        )
+        result = exporter.export([span])
+
+        assert result is SpanExportResult.SUCCESS
+        assert plaintext_grpc_collector.exported == [1]
+
+    def test_without_insecure_the_plaintext_collector_is_unreachable(
+        self,
+        plaintext_grpc_collector: RunningCollector,
+        span: ReadableSpan,
+        monkeypatch: pytest.MonkeyPatch,
+        make_exporter: Callable[..., SpanExporter],
+    ) -> None:
+        # Cap the export deadline so the failure path does not sit in gRPC's retry backoff.
+        monkeypatch.setenv("OTEL_EXPORTER_OTLP_TIMEOUT", "1")
+        exporter = make_exporter(
+            exporter_type="otlp",
+            exporter_protocol="grpc",
+            exporter_endpoint=plaintext_grpc_collector.endpoint,
+            insecure=False,
+            tls_insecure=False,
+        )
+        result = exporter.export([span])
+
+        assert result is SpanExportResult.FAILURE
+        assert plaintext_grpc_collector.exported == []
+
     def test_ca_bundle_delivers_to_collector_with_private_certificate(
         self,
         grpc_collector: RunningCollector,
@@ -294,7 +347,9 @@ class TestHTTPExporterTLS:
             insecure=True,
             tls_insecure=False,
         )
-        result = exporter.export([span])
+        # This exporter version lets the verification failure escape export() instead of reporting
+        # it as SpanExportResult.FAILURE; BatchSpanProcessor logs whatever export() raises.
+        with pytest.raises(requests.exceptions.SSLError):
+            exporter.export([span])
 
-        assert result is SpanExportResult.FAILURE
         assert http_collector.exported == []

@@ -8,8 +8,8 @@ from pydantic import ValidationError
 
 from infrahub.config import TraceExporterType, TraceSettings, TraceTransportProtocol
 
-# Any PEM that loads as a trust store; this one is expired, which only matters when verifying.
-LOADABLE_CA_BUNDLE = str(Path(__file__).parent.parent.parent / "helpers" / "expired_self_signed_cert.pem")
+# Any PEM that loads as a trust store; the settings only check that it loads, never verify with it.
+LOADABLE_CA_BUNDLE = str(Path(__file__).parent.parent / "test_data" / "ca-bundle.pem")
 
 
 class TestTraceSettings:
