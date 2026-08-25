@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 
+from infrahub import config
 from infrahub.computed_attribute.gather import (
     gather_trigger_computed_attribute_jinja2,
     gather_trigger_computed_attribute_python,
@@ -19,7 +20,7 @@ from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.events.constants import NODE_ORIGIN_LABEL
+from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
 from tests.helpers.trigger import branches_covered_by
 
 TRANSFORM_NAME = "transform_person_cars"
@@ -214,28 +215,6 @@ async def test_gather_trigger_computed_attribute_python(
     assert triggers_by_kind["TestCar"].trigger.match_related["infrahub.field.name"] == ["name"]
 
 
-async def test_the_python_automations_fire_whatever_the_origin(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    car_person_schema_computed_attr: None,
-    transform01: Node,
-) -> None:
-    """These automations still cover a merge and a rebase, unlike the other three families.
-
-    The coalesced pass leans on that: when its own derivation fails it drops this family and lets
-    them do the work. Gating them on the live origin removes that cover, so the fallback that drops
-    the family has to widen to the whole kind in the same change.
-    """
-    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
-
-    # Named, so that a gather returning nothing cannot satisfy the assertions below.
-    assert [trigger.name for trigger in triggers] == ["TestCar_computed_desc_python"]
-    assert [trigger.name for trigger in trigger_queries] == ["TestCar_computed_desc_python::kind::TestCar"]
-
-    assert [trigger.name for trigger in triggers if NODE_ORIGIN_LABEL in trigger.trigger.match] == []
-    assert [trigger.name for trigger in trigger_queries if NODE_ORIGIN_LABEL in trigger.trigger.match] == []
-
-
 async def test_two_attributes_sharing_a_transform_each_get_an_automation(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -420,6 +399,48 @@ async def test_gather_trigger_computed_attribute_python_fires_once_per_branch(
             )
             == expected_owners
         )
+
+
+async def test_python_triggers_match_only_live_origin(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_computed_attr: None, transform01: Node
+) -> None:
+    """A merge, a rebase or a coalesced write starts no per-node flow while the pass owns them.
+
+    Both trigger families have to carry the filter: the owner one reaches the node that changed,
+    the query one reaches its readers, and either would replay the whole change set on its own.
+    """
+    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    # Named, so that a gather returning nothing cannot satisfy the assertions below.
+    assert [trigger.name for trigger in triggers] == ["TestCar_computed_desc_python"]
+    assert [trigger.name for trigger in trigger_queries] == ["TestCar_computed_desc_python::kind::TestCar"]
+
+    for trigger in [*triggers, *trigger_queries]:
+        assert trigger.trigger.match[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE.value
+
+
+async def test_python_triggers_keep_every_origin_when_the_pass_is_disabled(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_computed_attr: None,
+    transform01: Node,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Disabling the coalesced pass hands merge and rebase back to the per-node automations.
+
+    One setting decides both halves, so the system can never sit with the filter applied and
+    nothing left to recompute a replayed change.
+    """
+    monkeypatch.setattr(config.SETTINGS.main, "coalesce_python_recompute_after_merge", False)
+
+    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    # Named, so that a gather returning nothing cannot satisfy the assertions below.
+    assert [trigger.name for trigger in triggers] == ["TestCar_computed_desc_python"]
+    assert [trigger.name for trigger in trigger_queries] == ["TestCar_computed_desc_python::kind::TestCar"]
+
+    for trigger in [*triggers, *trigger_queries]:
+        assert NODE_ORIGIN_LABEL not in trigger.trigger.match
 
 
 @dataclass
