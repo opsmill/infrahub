@@ -1,1 +1,1 @@
-Creating a node no longer queries the database for the profiles it is linked to, since only the profiles named in the request can apply to it.
+Creating a node no longer queries the database for the profiles it is linked to: the ones set by its payload or copied from its template are already known.
