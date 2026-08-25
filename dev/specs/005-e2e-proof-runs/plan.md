@@ -70,7 +70,8 @@ specs/005-e2e-proof-runs/
     ├── e2e_proof_verdict.py           # NEW: junit → verdict (phase-aware), stdout = verdict + reason
     ├── e2e_proof_embed.py             # NEW: idempotent PR-body section replace (proof + note sections)
     └── tests/
-        └── test_e2e_proof_verdict.py  # NEW: unit tests over crafted junit fixtures
+        ├── test_e2e_proof_verdict.py  # NEW: unit tests over crafted junit fixtures
+        └── test_e2e_proof_embed.py    # NEW: unit tests for marker invariants + idempotency (critique E2)
 
 dev/bug-pipeline/
 ├── test-writing.md                    # EDIT: E2E tier path (placement, shard marker, skip local verify)
@@ -81,7 +82,7 @@ dev/bug-pipeline/
 
 ## Design decisions (delta over the PoC)
 
-1. **Storage** — release assets, run-id-suffixed names, superseded assets deleted on each publish; cleanup workflow empties `pr-<n>-*` on close (research R1, R6). The PoC's `bug-pipeline-assets` orphan branch is left untouched as reference; production never writes to it.
+1. **Storage** — release assets, run-id-suffixed names, superseded assets deleted on each publish; cleanup workflow empties `pr-<n>-*` on close (research R1, R6). **Validation-first**: the very first implementation task uploads one PNG to the prerelease and confirms it renders inline in a PR body (camo over the `releases/download` redirect); on failure, fall back to orphan-branch storage behind the same contract (critique X1). The PoC's `bug-pipeline-assets` orphan branch is left untouched as reference; production never writes to it.
 2. **Verdict as a tested script** — `e2e_proof_verdict.py` takes `--phase` and the junit path, prints `verdict=... reason=...`, exit code communicates contract satisfaction; unit tests cover: assertion failure, setup error, unexpected pass, multi-test, missing report, non-assertion failure (research R2).
 3. **Embed as a script** — `e2e_proof_embed.py` owns the three marker pairs (`E2E_PROOF:RED`, `E2E_PROOF:GREEN`, `E2E_PROOF:NOTE`); it never rewrites anything outside them (FR-007, FR-011, FR-014).
 4. **Expected-red note** — written into the NOTE section during RED, rewritten during GREEN (research R4); no PR comments, no labels.

@@ -82,6 +82,7 @@ Screenshots are stored in the repository's release-asset store (a single permane
 - Reviewer-agent compatibility: the proof job's body edits and the new sections must not break the existing reviewer triggers (`ai-bug-pipeline-*` + phase markers in the body).
 - A backend-only pipeline bug (no e2e test in the diff): the proof job does not run at all; the existing pipeline behavior is unchanged.
 - Release-asset store unavailable or upload fails: the verdict must still stand (evidence is best-effort; verification is not), and the job reports the missing screenshot rather than failing the phase for it.
+- Inconclusive verdict (infra flake): a human or the reviewer re-runs the proof job; the test-writer agent escalates instead of looping after two consecutive inconclusive runs on the same commit.
 
 ## Requirements *(mandatory)*
 
@@ -94,7 +95,7 @@ Screenshots are stored in the repository's release-asset store (a single permane
 - **FR-005**: The GREEN verdict MUST be satisfied only when that single test passes.
 - **FR-006**: Both phases MUST capture a screenshot of the test run (failure capture on RED, forced end-of-test capture on GREEN) and publish it to the screenshot store.
 - **FR-007**: The proof job MUST embed the published screenshots and the verdict into the PR description inside marker-delimited sections, idempotently across re-runs, without altering the pipeline phase markers or content outside its sections.
-- **FR-008**: Screenshots MUST be stored as release assets on a dedicated permanent prerelease, individually deletable per PR; the production path MUST NOT commit images to a git branch.
+- **FR-008**: Screenshots MUST be stored as release assets on a dedicated permanent prerelease, individually deletable per PR; the production path MUST NOT commit images to a git branch. Inline rendering of release-asset URLs MUST be validated before the storage work builds on it; if rendering proves unreliable, the same naming/cleanup contract falls back to the PoC-proven orphan-branch storage.
 - **FR-009**: The system MUST delete a PR's stored screenshots when that PR closes.
 - **FR-010**: The pipeline prompts (shared `dev/bug-pipeline/` files and their gh-aw workflow copies) MUST allow the agents to choose the E2E tier: test placed in `tests/e2e/` with exactly one module-level shard marker, no local execution, CI verification via the proof job replacing the local verify-it-fails step — for the E2E tier only; all other tiers keep local verification. The compiled gh-aw lock files MUST be regenerated to match.
 - **FR-011**: On RED-phase pipeline PRs with an e2e test, the system MUST surface an explanation that the repository's normal e2e jobs are expected to fail during this phase and that the proof job is the authoritative check; the explanation MUST NOT claim failures are expected once the GREEN phase starts.

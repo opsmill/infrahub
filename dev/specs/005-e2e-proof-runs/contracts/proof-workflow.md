@@ -30,6 +30,7 @@ usage: e2e_proof_embed.py --repo <owner/repo> --pr <n> --phase {red,green}
 - Also rewrites the `E2E_PROOF:NOTE` section per phase (red → expected-red explanation naming the proof job as authoritative; green → note that all jobs are expected to pass).
 - MUST leave `AGENT_TEST_COMPLETE` / `AGENT_FIX_COMPLETE` and all content outside the marker pairs byte-identical.
 - Idempotent: running twice with the same inputs yields the same body.
+- `--reason` is truncated to 200 characters and markdown-neutralized (backticks/brackets/angle-brackets escaped) before insertion (critique E1).
 
 ## Asset naming contract
 
@@ -37,4 +38,4 @@ usage: e2e_proof_embed.py --repo <owner/repo> --pr <n> --phase {red,green}
 
 ## Agent prompt contract (E2E tier addition)
 
-Test-writer, when choosing E2E: place one test under `tests/e2e/<domain>/test_*.py`, module-level `pytestmark = pytest.mark.shard_<name>` (exactly one), do **not** run it locally, push and let `bug-agent-e2e-proof` verify RED. Fix agent: for e2e repro tests, GREEN verification is the proof job, not a local run. All other tiers unchanged. Lock files regenerated with `gh aw compile` in the same commit as any `.md` prompt change.
+Test-writer, when choosing E2E: place one test under `tests/e2e/<domain>/test_*.py`, module-level `pytestmark = pytest.mark.shard_<name>` (exactly one), do **not** run it locally, push and let `bug-agent-e2e-proof` verify RED. Fix agent: for e2e repro tests, GREEN verification is the proof job, not a local run. On an `inconclusive` verdict the agent does not loop: a human or reviewer re-runs the job, and the test-writer escalates after two consecutive inconclusive runs on the same commit. All other tiers unchanged. Lock files regenerated with `gh aw compile` in the same commit as any `.md` prompt change.
