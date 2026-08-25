@@ -2,8 +2,8 @@
 paths:
   - "backend/**/*.py"
   - "python_testcontainers/**/*.py"
-  - "frontend/app/src/**/*.ts"
-  - "frontend/app/src/**/*.tsx"
+  - "frontend/**/*.ts"
+  - "frontend/**/*.tsx"
 ---
 
 # Code documentation style
