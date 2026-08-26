@@ -93,6 +93,10 @@ class DbPeersRead:
     at: str
     branch_agnostic: bool
 
+    def is_valid_for(self, at: str, branch_agnostic: bool) -> bool:
+        """Whether a read under these conditions would return the peers recorded here."""
+        return self.at == at and self.branch_agnostic == branch_agnostic
+
 
 @dataclass
 class PeerWithRelationshipMetadata:
@@ -1143,8 +1147,11 @@ class RelationshipManager[RelationshipManagerPeerType]:
             self._relationship_id_details = None
             return details
 
-        peers = await self.get_db_peers(db=db, at=at, branch_agnostic=branch_agnostic)
-        self._last_db_peers = DbPeersRead(peers=peers, at=str(at or self.at), branch_agnostic=branch_agnostic)
+        # Resolve the timestamp here rather than leaving it to `get_db_peers`, so that the peers are
+        # recorded under the very timestamp the query read them at.
+        read_at = at or self.at
+        peers = await self.get_db_peers(db=db, at=read_at, branch_agnostic=branch_agnostic)
+        self._last_db_peers = DbPeersRead(peers=peers, at=str(read_at), branch_agnostic=branch_agnostic)
 
         return self._compare_with_db_peers(peers=peers)
 
@@ -1162,10 +1169,10 @@ class RelationshipManager[RelationshipManagerPeerType]:
         not, so that the comparison is recomputed without paying for another read.
         """
         last_read = self._last_db_peers
-        if last_read is None or last_read.at != str(at or self.at) or last_read.branch_agnostic != branch_agnostic:
-            return await self.fetch_relationship_ids(db=db, at=at, branch_agnostic=branch_agnostic, force_refresh=True)
+        if last_read and last_read.is_valid_for(at=str(at or self.at), branch_agnostic=branch_agnostic):
+            return self._compare_with_db_peers(peers=last_read.peers)
 
-        return self._compare_with_db_peers(peers=last_read.peers)
+        return await self.fetch_relationship_ids(db=db, at=at, branch_agnostic=branch_agnostic, force_refresh=True)
 
     def _compare_with_db_peers(self, peers: list[RelationshipPeerData]) -> RelationshipUpdateDetails:
         current_peer_ids = [rel.get_peer_id() for rel in self._relationships]

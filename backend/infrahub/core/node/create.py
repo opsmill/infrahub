@@ -251,8 +251,12 @@ def _has_profiles_set(node: Node) -> bool:
     """
     if not hasattr(node, PROFILES_RELATIONSHIP_NAME):
         return False
-    profiles: RelationshipManager = getattr(node, PROFILES_RELATIONSHIP_NAME)
-    return profiles.has_fetched_relationships and len(profiles) > 0
+    profiles = node.get_relationship(PROFILES_RELATIONSHIP_NAME)
+    if not profiles.has_fetched_relationships:
+        # Nothing populated this manager, so the node was built without profiles. Counting the peers
+        # is not an option: `len()` raises on a manager whose peers have never been read.
+        return False
+    return len(profiles) > 0
 
 
 async def _do_create_node(
