@@ -72,6 +72,22 @@ Screenshots are stored on a dedicated non-code orphan branch, pinned to immutabl
 2. **Given** a pipeline PR that closes (merged or not), **When** the cleanup runs, **Then** that PR's screenshots are deleted from the store.
 3. **Given** the store after any publish or cleanup, **When** its tip is inspected, **Then** it contains folders only for open pipeline PRs.
 
+### User Story 5 - Reproduction tests are demoted, not hoarded (Priority: P2)
+
+After the fix is verified GREEN, the e2e reproduction is treated as evidence, not automatically as a permanent test. The fix agent leaves behind a regression test at the cheapest tier that can still exercise the wiring the bug traversed — usually demoting the e2e repro to a component or unit test in the same PR. The e2e test survives only when no cheaper tier can express the regression (backend-state, permission, branch or cache wiring), in which case it moves under `tests/e2e/regressions/` with its shard marker.
+
+**Why this priority**: without a lifecycle policy, every pipeline bug appends one micro-test to the most expensive suite forever — eroding the hand-balanced CI shards and paying boot overhead on every e2e-triggering PR. This is the constitution's "tests at the appropriate level" applied to the pipeline.
+
+**Independent Test**: read the updated fix-phase prompts — they require a demote-or-keep decision with a stated justification; on a demotable bug the final PR contains the cheaper-tier test and not the e2e repro; on an e2e-only bug the repro lands under `tests/e2e/regressions/`.
+
+**Acceptance Scenarios**:
+
+1. **Given** a GREEN-verified fix whose bug is expressible at a cheaper tier, **When** the fix phase completes, **Then** the PR contains a component/unit regression test targeting the wiring the bug traversed and the e2e reproduction is removed in the same PR.
+2. **Given** a GREEN-verified fix that only reproduces with the full stack, **When** the fix phase completes, **Then** the e2e test is relocated under `tests/e2e/regressions/` keeping exactly one shard marker, with the keep justification stated in the PR.
+3. **Given** the demoted test, **When** it targets a leaf component instead of the dispatch/wiring the bug traversed, **Then** review rejects it (coverage must not silently narrow).
+
+---
+
 ### Edge Cases
 
 - Proof run on a PR whose diff adds more than one e2e test file, or none (after the path filter matched a helper/conftest change): the job fails with an explicit verdict naming the problem — the pipeline contract is exactly one reproduction test.
@@ -102,6 +118,7 @@ Screenshots are stored on a dedicated non-code orphan branch, pinned to immutabl
 - **FR-012**: The RED phase MUST use a published product image rather than building one (the test-only PR is code-identical to the base branch); the GREEN phase MUST build the image containing the fix.
 - **FR-013**: Concurrent proof runs on one PR MUST be serialized or superseded such that the final PR description reflects only the latest run per phase.
 - **FR-014**: The existing reviewer agent's triggers and gates MUST continue to work unchanged on pipeline PRs that carry the new proof sections.
+- **FR-015**: The fix-phase instructions MUST require a demote-or-keep decision for the e2e reproduction after GREEN: demote to the cheapest tier that still exercises the wiring the bug traversed (removing the e2e repro in the same PR), or keep it under `tests/e2e/regressions/` with a stated justification that no cheaper tier can express the regression. The GREEN proof run MUST still have verified the fix against the e2e reproduction before any demotion happens.
 
 ### Key Entities
 

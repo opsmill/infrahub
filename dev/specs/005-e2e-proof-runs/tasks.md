@@ -39,6 +39,7 @@
 
 - [ ] T014 [P] [US2] Update `dev/bug-pipeline/test-writing.md`: in step 5's E2E bullet add the proof-run path — place exactly one test under `tests/e2e/<domain>/test_*.py` with one module-level `pytestmark = pytest.mark.shard_<name>`; add an E2E carve-out to step 7 (do NOT run locally; push and the `bug-agent-e2e-proof` job verifies the failure; on `inconclusive` do not loop — escalate after two consecutive inconclusive runs on the same commit)
 - [ ] T015 [P] [US2] Update `dev/bug-pipeline/fix-implementation.md`: E2E repro verification is the proof job's GREEN phase, not a local run (keep local verification for every other tier)
+- [ ] T015b [US5] Add the demote-or-keep step (FR-015) to `dev/bug-pipeline/fix-implementation.md`: after GREEN, demote the e2e repro to the cheapest tier that still exercises the wiring the bug traversed (remove the e2e file in the same PR; the demoted test must target the dispatch/wiring seam, not the leaf component), or keep it by moving it under `tests/e2e/regressions/` with exactly one shard marker and a one-line justification that no cheaper tier can express the regression
 - [ ] T016 [US2] Mirror the same edits into `.github/workflows/bug-agent-test.md` and `.github/workflows/bug-agent-fix.md`, run `gh aw compile bug-agent-test bug-agent-fix`, and commit the regenerated `.lock.yml` files in the same commit (compiler v0.81.6 churn is expected; note it in the commit body)
 
 ## Phase 5: User Story 3 — expected-red communication (P3)
