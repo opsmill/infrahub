@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+import pytest
+
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import (
     AttributeChangelog,
@@ -13,6 +15,7 @@ from infrahub.core.changelog.models import (
 from infrahub.core.constants import DiffAction
 from infrahub.events.limits import get_prefect_max_related_resources, get_related_resource_budget
 from infrahub.events.node_action import NodeCreatedEvent
+from infrahub.trigger.constants import BRANCH_RESOURCE_LABEL, BRANCH_RESOURCE_ROLE
 from tests.helpers.events import dummy_event_meta
 
 # Mirrors a real-world trunk interface carrying (almost) every VLAN of a 4k VLAN range.
@@ -95,6 +98,20 @@ def test_truncation_drops_peer_entries_not_node_scoped_entries() -> None:
     ]
     assert relationship_entries
     assert len(related) == get_related_resource_budget()
+
+
+@pytest.mark.parametrize("peer_count", [SMALL_PEER_COUNT, LARGE_PEER_COUNT])
+def test_branch_related_resource_survives_truncation(peer_count: int) -> None:
+    """The branch entry carries the branch name, and truncation never drops it.
+
+    The default-branch automations exclude the branches that own their own automation
+    through this entry, so losing it stops them from firing.
+    """
+    event = _make_event(peer_count=peer_count)
+
+    branch_entries = [item for item in event.get_related() if item["prefect.resource.role"] == BRANCH_RESOURCE_ROLE]
+
+    assert [item[BRANCH_RESOURCE_LABEL] for item in branch_entries] == [event.meta.context.branch.name]
 
 
 def test_small_changelog_keeps_every_peer_entry() -> None:

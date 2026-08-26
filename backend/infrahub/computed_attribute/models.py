@@ -163,9 +163,7 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         template_hash = computed_attribute.attribute.computed_attribute.get_hash()
 
         event_trigger.match = {"infrahub.node.kind": trigger_node.kind}
-        if branches_out_of_scope:
-            event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
-        elif not branches_out_of_scope and branch != registry.default_branch:
+        if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
         event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
@@ -173,6 +171,7 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
             "infrahub.field.name": trigger_node.fields,
         }
+        event_trigger.exclude_branches(branches_out_of_scope or [])
 
         workflow = ExecuteWorkflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
@@ -229,9 +228,7 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
             "infrahub.node.kind": [computed_attribute.computed_attribute.kind],
         }
 
-        if branches_out_of_scope:
-            event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
-        elif not branches_out_of_scope and branch != registry.default_branch:
+        if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
         update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(
@@ -243,6 +240,8 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
 
         if update_fields:
             event_trigger.match_related["infrahub.field.name"] = update_fields
+
+        event_trigger.exclude_branches(branches_out_of_scope or [])
 
         return cls(
             name=computed_attribute.computed_attribute.key_name,
@@ -297,10 +296,10 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
             "infrahub.field.name": update_fields,
         }
 
-        if branches_out_of_scope:
-            event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
-        elif not branches_out_of_scope and branch != registry.default_branch:
+        if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
+
+        event_trigger.exclude_branches(branches_out_of_scope or [])
 
         return cls(
             name=f"{computed_attribute.computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
