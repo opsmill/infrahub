@@ -111,20 +111,67 @@ describe("resolveDatePreferences", () => {
 
 describe("inheritedTimezone", () => {
   test("returns the GLOBAL value, which is what an unset field inherits", () => {
-    expect(inheritedTimezone({ value: "Europe/Paris", source: "GLOBAL" })).toBe("Europe/Paris");
+    expect(
+      inheritedTimezone({
+        value: "Europe/Paris",
+        source: "GLOBAL",
+        inherited: { value: "Europe/Paris", source: "GLOBAL" },
+      })
+    ).toBe("Europe/Paris");
   });
 
   test("returns null for a DEFAULT source so the browser zone applies", () => {
-    expect(inheritedTimezone({ value: null, source: "DEFAULT" })).toBeNull();
+    expect(
+      inheritedTimezone({
+        value: null,
+        source: "DEFAULT",
+        inherited: { value: null, source: "DEFAULT" },
+      })
+    ).toBeNull();
   });
 
-  test("ignores a value carried on a DEFAULT source, as the pattern resolver does", () => {
-    expect(inheritedTimezone({ value: "Europe/Paris", source: "DEFAULT" })).toBeNull();
+  test("ignores a value carried on a DEFAULT inherited layer, as the pattern resolver does", () => {
+    expect(
+      inheritedTimezone({
+        value: "Europe/Paris",
+        source: "DEFAULT",
+        inherited: { value: "Europe/Paris", source: "DEFAULT" },
+      })
+    ).toBeNull();
   });
 
-  test("discards a USER value: dropping the override is exactly what stops it applying", () => {
-    // The API resolves the inherited value away once an override wins, so it is unknowable here —
-    // null (browser zone) is honest, the caller's own zone would be a stale guess.
-    expect(inheritedTimezone({ value: "Asia/Tokyo", source: "USER" })).toBeNull();
+  test("returns the GLOBAL layer a USER override shadows, which is what clearing it restores", () => {
+    // Previously asserted null, on the rationale that the inherited value was "unknowable here"
+    // because the API resolved it away once an override won. The API now reports it, so null is
+    // simply wrong: it is what made the date-format preview drop to the browser zone (#10200)
+    // instead of the organisation default while a personal timezone override was being cleared.
+    expect(
+      inheritedTimezone({
+        value: "Asia/Tokyo",
+        source: "USER",
+        inherited: { value: "Europe/Paris", source: "GLOBAL" },
+      })
+    ).toBe("Europe/Paris");
+  });
+
+  test("returns null for a USER override that shadows nothing", () => {
+    expect(
+      inheritedTimezone({
+        value: "Asia/Tokyo",
+        source: "USER",
+        inherited: { value: null, source: "DEFAULT" },
+      })
+    ).toBeNull();
+  });
+
+  test("reads the inherited layer of any field, not just the timezone", () => {
+    // The rule is about the inherited layer, not about zones: a date-format key resolves identically.
+    expect(
+      inheritedTimezone({
+        value: "EU_DATETIME",
+        source: "USER",
+        inherited: { value: "ISO_DATETIME", source: "GLOBAL" },
+      })
+    ).toBe("ISO_DATETIME");
   });
 });
