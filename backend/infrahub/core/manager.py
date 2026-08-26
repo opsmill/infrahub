@@ -29,7 +29,7 @@ from infrahub.core.query.node import (
 )
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
-from infrahub.core.relationship import Relationship, RelationshipManager
+from infrahub.core.relationship import Relationship
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import (
     GenericSchema,
@@ -1254,7 +1254,7 @@ class NodeManager:
         if not peer_ids:
             if prefetch_relationships:
                 for node in nodes_by_id.values():
-                    _mark_all_relationships_as_fetched(node=node)
+                    node.mark_relationships_as_fetched()
             return
 
         missing_peers: dict[str, Node] = {}
@@ -1291,7 +1291,7 @@ class NodeManager:
     ) -> None:
         if not grouped_peer_nodes.has_node(node_id=node.get_id()):
             if insert_peer_node:
-                _mark_all_relationships_as_fetched(node=node)
+                node.mark_relationships_as_fetched()
             return
 
         node_schema = node.get_schema()
@@ -1301,7 +1301,7 @@ class NodeManager:
                 rel_name=rel_schema.get_identifier(),
                 direction=rel_schema.direction,
             )
-            rel_manager: RelationshipManager = getattr(node, rel_schema.name)
+            rel_manager = node.get_relationship(rel_schema.name)
             if not peer_ids:
                 if insert_peer_node:
                     # The batched query covered every relationship of this node, so an empty result
@@ -1382,13 +1382,6 @@ class NodeManager:
             await node.delete(db=db, at=at, user_id=user_id)
 
         return nodes_to_delete
-
-
-def _mark_all_relationships_as_fetched(node: Node) -> None:
-    """Record that a batched relationship read has covered every relationship of this node."""
-    for rel_name in node._relationships:
-        rel_manager: RelationshipManager = getattr(node, rel_name)
-        rel_manager.has_fetched_relationships = True
 
 
 def _get_cardinality_one_identifiers_by_kind(
