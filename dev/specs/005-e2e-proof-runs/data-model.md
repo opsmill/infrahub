@@ -24,12 +24,12 @@ One workflow execution bound to (pipeline PR, phase).
 
 ## Screenshot store
 
-Release `bug-pipeline-assets` (permanent prerelease).
+Orphan branch `bug-pipeline-assets` (T001 validation reversed the release-asset choice — see research R1).
 
-- Asset name: `pr-<pr_number>-<phase>-<run_id>.png` — URL changes every publish (camo cache safety).
-- Publish also deletes older `pr-<pr_number>-<phase>-*` assets (one live asset per phase).
-- Cleanup on PR close deletes all `pr-<pr_number>-*` assets.
-- Lifecycle invariant (SC-005): assets exist only for open pipeline PRs.
+- File path: `pr-<pr_number>/<phase>-<run_id>.png`; embed URL is `raw.githubusercontent.com/<repo>/<commit-sha>/…` pinned to the publishing commit (immutable — no cache staleness).
+- Publish commit also deletes the older `pr-<pr_number>/<phase>-*.png` (one live file per phase).
+- Cleanup on PR close commits the removal of the whole `pr-<pr_number>/` folder.
+- Lifecycle invariant (SC-005): the branch **tip** carries files only for open pipeline PRs; history growth is the accepted trade-off recorded in research R1.
 
 ## PR-description sections (owned by this feature)
 

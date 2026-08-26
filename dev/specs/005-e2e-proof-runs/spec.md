@@ -60,7 +60,7 @@ On a test-only pipeline PR, the repository's normal e2e jobs fail because the ne
 
 ### User Story 4 - Screenshot storage does not grow without bound (Priority: P3)
 
-Screenshots are stored in the repository's release-asset store (a single permanent prerelease) rather than a growing git branch. Each pipeline PR's assets are individually addressable and are deleted when the PR closes.
+Screenshots are stored on a dedicated non-code orphan branch, pinned to immutable per-publish URLs. Each pipeline PR's images live in their own folder, superseded images are removed on every publish, and the folder is removed when the PR closes, so the store's tip stays bounded by open pipeline PRs. (Release-asset storage was the preferred option but failed inline-rendering validation — see the plan's validation-first decision.)
 
 **Why this priority**: Hosting is mandatory (images in PR descriptions must be fetchable URLs; there is no API to upload issue/PR attachments), but unbounded growth is a maintenance liability, not a user-facing feature.
 
@@ -68,9 +68,9 @@ Screenshots are stored in the repository's release-asset store (a single permane
 
 **Acceptance Scenarios**:
 
-1. **Given** a completed proof run, **When** the screenshot is published, **Then** it is stored as a release asset (not a git commit) and the embedded image renders in the PR description.
+1. **Given** a completed proof run, **When** the screenshot is published, **Then** the embedded image renders inline in the PR description from an immutable URL.
 2. **Given** a pipeline PR that closes (merged or not), **When** the cleanup runs, **Then** that PR's screenshots are deleted from the store.
-3. **Given** the PoC's `bug-pipeline-assets` orphan branch, **When** this feature lands, **Then** the production path no longer writes to it.
+3. **Given** the store after any publish or cleanup, **When** its tip is inspected, **Then** it contains folders only for open pipeline PRs.
 
 ### Edge Cases
 
@@ -95,7 +95,7 @@ Screenshots are stored in the repository's release-asset store (a single permane
 - **FR-005**: The GREEN verdict MUST be satisfied only when that single test passes.
 - **FR-006**: Both phases MUST capture a screenshot of the test run (failure capture on RED, forced end-of-test capture on GREEN) and publish it to the screenshot store.
 - **FR-007**: The proof job MUST embed the published screenshots and the verdict into the PR description inside marker-delimited sections, idempotently across re-runs, without altering the pipeline phase markers or content outside its sections.
-- **FR-008**: Screenshots MUST be stored as release assets on a dedicated permanent prerelease, individually deletable per PR; the production path MUST NOT commit images to a git branch. Inline rendering of release-asset URLs MUST be validated before the storage work builds on it; if rendering proves unreliable, the same naming/cleanup contract falls back to the PoC-proven orphan-branch storage.
+- **FR-008**: Screenshots MUST be stored on the dedicated non-code orphan branch (`bug-pipeline-assets`), embedded via immutable commit-pinned URLs, with each publish removing the superseded image for that PR/phase. (Validation outcome: release-asset URLs do not render inline in PR descriptions — GitHub emits a direct, CSP-blocked image element for them — so the critique-X1 fallback to the PoC-proven storage is in effect; see research R1.)
 - **FR-009**: The system MUST delete a PR's stored screenshots when that PR closes.
 - **FR-010**: The pipeline prompts (shared `dev/bug-pipeline/` files and their gh-aw workflow copies) MUST allow the agents to choose the E2E tier: test placed in `tests/e2e/` with exactly one module-level shard marker, no local execution, CI verification via the proof job replacing the local verify-it-fails step — for the E2E tier only; all other tiers keep local verification. The compiled gh-aw lock files MUST be regenerated to match.
 - **FR-011**: On RED-phase pipeline PRs with an e2e test, the system MUST surface an explanation that the repository's normal e2e jobs are expected to fail during this phase and that the proof job is the authoritative check; the explanation MUST NOT claim failures are expected once the GREEN phase starts.

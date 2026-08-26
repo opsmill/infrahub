@@ -7,7 +7,7 @@
 
 ## Phase 1: Setup — validate the storage bet (critique X1, MUST run first)
 
-- [ ] T001 Validate release-asset inline rendering: create the permanent prerelease (`gh release create bug-pipeline-assets --prerelease --title "bug-pipeline assets" --notes "Screenshot store for bug-pipeline proof runs. Do not delete."`), upload any PNG, embed its `https://github.com/opsmill/infrahub/releases/download/bug-pipeline-assets/<file>` URL in a scratch PR/issue body, and confirm it renders inline. Record the outcome in `specs/005-e2e-proof-runs/research.md` under R1. If rendering fails, switch FR-008's storage to the orphan-branch fallback (same naming/cleanup contract) and adjust T012/T013/T016 accordingly before proceeding.
+- [X] T001 Validate release-asset inline rendering: create the permanent prerelease (`gh release create bug-pipeline-assets --prerelease --title "bug-pipeline assets" --notes "Screenshot store for bug-pipeline proof runs. Do not delete."`), upload any PNG, embed its `https://github.com/opsmill/infrahub/releases/download/bug-pipeline-assets/<file>` URL in a scratch PR/issue body, and confirm it renders inline. Record the outcome in `specs/005-e2e-proof-runs/research.md` under R1. **Outcome: rendering FAILED (direct `<img>` to `releases/download` is blocked; `naturalWidth: 0`, control raw URL renders at 1280px on the same page). Fallback executed: FR-008/data-model/contracts/T012/T018 rewritten to orphan-branch storage; the validation release and tag were deleted.**
 
 ## Phase 2: Foundational — the two tested scripts (block US1/US3/US4)
 
@@ -28,7 +28,7 @@
 - [ ] T009 [US1] Add environment steps (python 3.12, uv sync --all-groups, `uv run playwright install --with-deps chromium`, tini) and a fast-fail step running `uv run pytest .github/scripts/tests/ -q` so a broken script never produces a wrong verdict
 - [ ] T010 [US1] Add image-selection steps per research R3: RED resolves the latest published image (`gh api repos/opsmill/infrahub/releases/latest` → tag, Docker Hub `docker.io/opsmill/infrahub`, `INFRAHUB_TESTING_DOCKER_PULL=true`) with fallback to `uv run invoke dev.build` when resolution/pull fails; GREEN always builds (`INFRAHUB_TESTING_IMAGE_VER=local`, pull=false)
 - [ ] T011 [US1] Add the run + verdict + gate steps: `tini -s -g -- uv run pytest -c tests/e2e/pytest.ini <test> --screenshot on` with captured exit code; verdict via `e2e_proof_verdict.py`; step summary line; final gate step fails the job unless the phase contract is satisfied; `actions/upload-artifact` of `test-results/` + `playwright-junit.xml` on `always()`
-- [ ] T012 [US1] Add screenshot publish step per the asset contract: newest `test-results/**/*.png` → upload as `pr-<pr>-<phase>-<run_id>.png` to release `bug-pipeline-assets` (create-if-missing, idempotent), then delete older `pr-<pr>-<phase>-*` assets; missing screenshot logs a notice and never fails the job (evidence is best-effort)
+- [ ] T012 [US1] Add screenshot publish step per the asset contract: newest `test-results/**/*.png` → commit as `pr-<pr>/<phase>-<run_id>.png` to orphan branch `bug-pipeline-assets` (checkout the branch into a subdir; delete the older `pr-<pr>/<phase>-*.png` in the same commit; push; capture the commit SHA for the raw URL); missing screenshot logs a notice and never fails the job (evidence is best-effort)
 - [ ] T013 [US1] Wire `e2e_proof_embed.py` into the workflow after publish (runs `if: always()` once phase is known), passing verdict/reason/run-url/image-url; verify against contracts that only owned sections change
 
 ## Phase 4: User Story 2 — agents may choose the E2E tier (P2)
@@ -55,7 +55,7 @@
 
 **Independent test**: close the replay PR → its `pr-<n>-*` assets disappear; `bug-pipeline-assets` release remains; PoC orphan branch untouched by production code.
 
-- [ ] T018 [US4] Write `.github/workflows/bug-agent-e2e-cleanup.yml`: `pull_request [closed]` + `startsWith(head.ref, 'ai-bug-pipeline-')` guard, permissions `contents: write` only, deletes all `pr-<pr>-*` assets from release `bug-pipeline-assets` via `gh release delete-asset` (tolerate absent release/assets)
+- [ ] T018 [US4] Write `.github/workflows/bug-agent-e2e-cleanup.yml`: `pull_request [closed]` + `startsWith(head.ref, 'ai-bug-pipeline-')` guard, permissions `contents: write` only, commits removal of the `pr-<pr>/` folder from orphan branch `bug-pipeline-assets` (tolerate absent branch/folder)
 
 ## Phase 7: Polish & validation
 

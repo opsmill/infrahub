@@ -34,7 +34,7 @@ usage: e2e_proof_embed.py --repo <owner/repo> --pr <n> --phase {red,green}
 
 ## Asset naming contract
 
-`pr-<pr>-<phase>-<run_id>.png` on release `bug-pipeline-assets`; publisher deletes older `pr-<pr>-<phase>-*` after upload; cleanup workflow (`pull_request` `[closed]`, same branch guard) deletes `pr-<pr>-*`.
+`pr-<pr>/<phase>-<run_id>.png` committed to orphan branch `bug-pipeline-assets` (T001 reversed the release-asset option — research R1); embed URLs are commit-SHA-pinned raw URLs; the publish commit deletes the older `pr-<pr>/<phase>-*.png`; cleanup workflow (`pull_request` `[closed]`, same branch guard) commits removal of `pr-<pr>/`.
 
 ## Agent prompt contract (E2E tier addition)
 

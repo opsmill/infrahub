@@ -17,7 +17,9 @@
 - Check-run `output.images`: still requires an externally hosted `image_url`. Doesn't solve hosting.
 - Dedicated assets repository: works but moves the problem and adds a second repo to operate.
 
-**Bootstrap**: the release must exist before the first upload. The publisher step runs `gh release create bug-pipeline-assets --prerelease --title "bug-pipeline assets" --notes "Screenshot store for bug-pipeline proof runs. Do not delete."` if missing (idempotent, `|| true` on already-exists).
+**T001 validation outcome (2026-08-25) — DECISION REVERSED**: release assets do **not** render inline. GitHub does not camo-proxy `releases/download` URLs (same-origin); it emits a direct `<img src>` whose load fails in the browser (`naturalWidth: 0`; page CSP/redirect chain), verified on PR #10411 with a same-page control: the PoC's `raw.githubusercontent.com` images render at full width. **Fallback per critique X1 is in effect**: storage is the `bug-pipeline-assets` orphan branch (PoC-proven) behind the same naming/cleanup contract — path `pr-<pr>/<phase>-<run_id>.png`, embed URLs pinned to the publishing commit SHA (immutable, no cache staleness), superseded files and closed-PR folders deleted by commit. Known trade-off: git history grows by one small commit per publish; deletes bound the checkout, not the history. A manual orphan reset remains possible at the cost of killing embeds in old PRs.
+
+**Superseded by T001** (kept for the record): the release must exist before the first upload. The publisher step runs `gh release create bug-pipeline-assets --prerelease --title "bug-pipeline assets" --notes "Screenshot store for bug-pipeline proof runs. Do not delete."` if missing (idempotent, `|| true` on already-exists).
 
 ## R2. Verdict extraction
 
