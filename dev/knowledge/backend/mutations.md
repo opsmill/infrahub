@@ -36,7 +36,7 @@ mutate_create()
                       -> add_human_friendly_id()
                       -> add_display_label()
                       -> NodeCreateAllQuery  # bulk Neo4j insert
-            -> handle_template_relationships()  # recursive template instantiation
+            -> handle_template_relationships()  # template instantiation, read a level at a time
        -> apply profiles if applicable
   -> emit NodeCreatedEvent
 ```

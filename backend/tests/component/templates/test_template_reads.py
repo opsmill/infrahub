@@ -259,7 +259,9 @@ async def test_a_level_of_a_template_is_read_once_however_many_parents_it_hangs_
     assert set(relationship_reads.values()) == {3}, (
         f"a level was read once per parent rather than once: {relationship_reads}"
     )
-    # Each of those reads brings back the peers it names, which is how a level is in memory before
-    # it is walked. Nothing reads a subtemplate again afterwards, so the nodes read are those three
-    # sets of peers plus the template the create was given.
-    assert set(node_reads.values()) == {4}, f"a subtemplate was read back after the level it came in: {node_reads}"
+    # Four node reads: the template the create was given, then the peers each of those three reads
+    # names. A level's read names the level below it and the parents it points back at, so the last
+    # two bring back the device template and the whole interface level a second time — the batched
+    # read has no way to be told a node is already in hand. What matters here is that neither figure
+    # grows with the width of a level.
+    assert set(node_reads.values()) == {4}, f"reading the subtemplates grew with the width of a level: {node_reads}"
