@@ -85,8 +85,11 @@ export function DataTable<T extends NodeCore>({
 
   const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
 
+  // `min-w-max` stops the grid from being squeezed into its scroll container.
+  // Without it the tracks compress until columns are unreadably narrow instead of
+  // keeping their width and letting the table scroll horizontally.
   return (
-    <div className="grid content-start" style={style} {...props}>
+    <div className="grid min-w-max content-start" style={style} {...props}>
       {allHeaders.map((header) => {
         return flexRender(header.column.columnDef.header, {
           ...header.getContext(),
@@ -115,7 +118,9 @@ export function DataTable<T extends NodeCore>({
         Array.from({ length: allHeaders.length }).map((_, index) => (
           <div
             key={index}
-            className={classNames(cellsStyle, cellFooterStyle, index === 0 && "left-0 z-10")}
+            // The whole footer bar has to outrank the sticky body cells, not just its
+            // first cell, or the last row's sticky action menu punches through it.
+            className={classNames(cellsStyle, cellFooterStyle, "z-10", index === 0 && "left-0")}
           >
             {index === 0 && (
               <>

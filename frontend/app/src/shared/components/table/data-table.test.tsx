@@ -3,7 +3,10 @@ import { describe, expect, test } from "vitest";
 
 import { DataTable } from "@/shared/components/table/data-table";
 
-import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
+import {
+  StickyLeftCell,
+  StickyRightCell,
+} from "@/entities/nodes/object/ui/object-table/cells/style";
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 
 import { render } from "../../../../tests/components/render";
@@ -46,11 +49,7 @@ const buildColumns = (label: (row: DemoRow) => React.ReactNode): ColumnDef<DemoR
   {
     id: "actions",
     header: () => <div />,
-    cell: () => (
-      <div data-testid="actions-cell" className="sticky right-0 size-10">
-        ...
-      </div>
-    ),
+    cell: () => <StickyRightCell data-testid="actions-cell">...</StickyRightCell>,
   },
 ];
 
@@ -118,6 +117,29 @@ describe("DataTable first column overflow", () => {
 
     // And the button itself must stay inside the capped column.
     expect(link.scrollWidth).toBeLessThanOrEqual(link.clientWidth);
+  });
+
+  test("keeps the sticky footer above the sticky row actions", async () => {
+    // GIVEN a table that renders its count footer
+    await render(
+      <div className="w-[600px] overflow-x-auto">
+        <DataTable columns={columns} data={rows} count={rows.length} />
+      </div>
+    );
+
+    // THEN every footer cell outranks the sticky action cells, so the last row's
+    // action menu cannot punch through the count bar.
+    const grid = document.querySelector('[style*="grid-template-columns"]')!;
+    const footerCells = [...grid.children].filter(
+      (el) => getComputedStyle(el).position === "sticky" && getComputedStyle(el).bottom === "0px"
+    );
+    expect(footerCells.length).toBeGreaterThan(0);
+
+    const actionsZ =
+      Number(getComputedStyle(document.querySelector('[data-testid="actions-cell"]')!).zIndex) || 0;
+    for (const cell of footerCells) {
+      expect(Number(getComputedStyle(cell).zIndex) || 0).toBeGreaterThan(actionsZ);
+    }
   });
 
   test("does not let the first column cover the row action menu", async () => {

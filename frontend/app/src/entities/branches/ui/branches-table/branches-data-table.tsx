@@ -54,7 +54,9 @@ export function BranchesDataTable({
   const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
 
   return (
-    <div className="grid content-start" style={style} {...props}>
+    // See DataTable: `min-w-max` keeps the columns at their own width and lets the
+    // table scroll instead of compressing every track to fit the container.
+    <div className="grid min-w-max content-start" style={style} {...props}>
       {selectedRows.length > 0 && (
         <BranchesToolbar selectedBranches={selectedRows} onClose={table.resetRowSelection} />
       )}
