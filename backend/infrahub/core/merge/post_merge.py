@@ -130,7 +130,7 @@ class PostMergeDispatcher:
             branch_name=branch.name,
             branch_id=str(branch.get_uuid()),
             proposed_change_id=proposed_change_id,
-            meta=EventMeta.from_context(context=event_context, branch=self.global_branch),
+            meta=EventMeta.from_context(context=event_context, branch=self.default_branch),
         )
 
         events: list[InfrahubEvent] = [merge_event]
