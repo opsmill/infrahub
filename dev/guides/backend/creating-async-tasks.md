@@ -50,9 +50,9 @@ from infrahub.workers.dependencies import get_database
 
 
 @flow(name="my-workflow", flow_run_name="Process {resource_id}")
-async def my_workflow(resource_id: str, context: InfrahubContext) -> None:
+async def my_workflow(resource_id: str, branch: str, context: InfrahubContext) -> None:
     log = get_run_logger()
-    log.info(f"Starting workflow for {resource_id}")
+    log.info(f"Starting workflow for {resource_id} on branch {branch}")
 
     database = await get_database()
     async with database.start_session() as db:
