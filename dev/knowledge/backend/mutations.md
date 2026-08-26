@@ -96,8 +96,10 @@ decoration:
   `db.start_transaction()`, which is what makes it replay-safe.
 - Skip the retry when `db.is_transaction` — a caller-supplied transaction is already failed after a
   `TransientError`, and replaying inside it raises instead of recovering; the caller owns the retry.
-- Check whether an already-retried caller reaches the code (upsert dispatches to create/update):
-  nested retries multiply attempts.
+- Check whether an already-retried caller reaches the code: nested retries multiply attempts.
+  Upsert is the case to watch, and today it is safe — it reaches only the undecorated
+  `mutate_create` and `_call_mutate_update`, never the decorated `mutate_update`, so it is the
+  single retry point. Routing it through a decorated method would start multiplying attempts.
 
 ## Relationship Resolution During Mutations
 

@@ -30,8 +30,8 @@ Infrahub documentation is organized using the [Diataxis framework](https://diata
   - `reference/` – API/configuration reference
   - `tutorials/` – Learning tutorials
   - `media/` – Images and screenshots. Export diagrams (Excalidraw) with an opaque white
-    background, not transparent — the docs render on a dark theme where near-black line work on a
-    transparent canvas is unreadable, and the white card is the established convention here
+    background, not transparent — the docs support a dark theme, where near-black line work on a
+    transparent canvas becomes unreadable, and the white card is the established convention here
   - `development/` – Developer documentation
     - `docs.mdx` – Documentation guide with linting rules
     - `style-guide.mdx` – **Writing style and terminology rules**

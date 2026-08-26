@@ -355,9 +355,13 @@ async def set(self, key: str, value: str, expires: KVTTL | int | None = None) ->
 
 To branch on or read from a typed object, use `isinstance` so the type checker can narrow it; reaching for `getattr(obj, "attr", default)` defeats type analysis. When guarding a schema object, cover the whole family that carries the attribute — `isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema))` — since profiles and templates inherit node behavior and a `NodeSchema`-only check silently drops them.
 
-### Don't write "one or many" unions — take `Sequence[T]` and let callers wrap
+### Don't write "one or many" unions — take the plural form and let callers wrap
 
-A parameter typed `T | Sequence[T]` forces runtime `isinstance` dispatch on every consumer, and when `T` includes `str` the dispatch is a trap: a bare string satisfies `Sequence[str]`, so it falls into the "many" branch and gets iterated character-by-character. Declare the plural form only — `Sequence[str]` (or `list[str]`) — and have callers pass `[value]`. In existing code that already carries such a union, exclude `str` before the `Sequence` check (`if isinstance(data, str) or not isinstance(data, Sequence): data = [data]`), and whenever an annotation widens, widen the runtime check in step and test with a bare `str` and a `tuple`.
+A parameter typed `T | Sequence[T]` forces runtime `isinstance` dispatch on every consumer, and when `T` includes `str` the dispatch is a trap: a bare string satisfies `Sequence[str]`, so it falls into the "many" branch and gets iterated character-by-character. Declare the plural form only — `list[str]` or `tuple[str]` — and have callers pass `[value]`.
+Prefer a concrete container over `Sequence[str]` when the element type is or includes `str`: mypy
+rejects a bare `str` for `list[str]`, but accepts it for `Sequence[str]`, so the annotation alone
+still lets the character-iteration bug through. Reserve `Sequence[T]` for a parameter that
+deliberately accepts any sequence of a non-string `T`. In existing code that already carries such a union, exclude `str` before the `Sequence` check (`if isinstance(data, str) or not isinstance(data, Sequence): data = [data]`), and whenever an annotation widens, widen the runtime check in step and test with a bare `str` and a `tuple`.
 
 ### Deterministic serialization for hashes and cache keys
 

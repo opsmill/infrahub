@@ -98,9 +98,10 @@ cd frontend/app && pnpm biome:fix     # Format/lint frontend
 uv run invoke docs.lint               # Lint documentation
 ```
 
-`invoke lint` lints only `tasks`, `models`, `utilities`, `python_testcontainers` and `backend`, while
-CI runs `ruff check . --exclude python_sdk` over the whole repo — so a violation elsewhere passes
-locally and fails in CI. `/pre-ci` includes that whole-repo check.
+`invoke lint` runs `yamllint` repo-wide, but its ruff checks cover only `tasks`, `models`,
+`utilities`, `python_testcontainers` and `backend`, while CI runs `ruff check . --exclude python_sdk`
+over the whole repo — so a Python violation elsewhere passes locally and fails in CI. `/pre-ci`
+includes that whole-repo check.
 
 ### Build
 

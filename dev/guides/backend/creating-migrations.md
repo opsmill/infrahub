@@ -129,11 +129,16 @@ node deletes everything attached to it), the per-transaction cost is unbounded n
 `n` is. Batch over the fan-out unit where possible, and cap a fan-out-prone batch with
 `min(configured_size, ceiling)` rather than inheriting `query_size_limit` unchanged.
 
-**Pitfall — one bad item must not hide the rest.** A migration that iterates independent items
-(branches, nodes, kinds) wraps each item in its own `try`, collects per-item failures into
-`MigrationResult.errors`, and keeps going. A single `try` around the loop aborts on the first
-failure, reports one error, and leaves the state of every remaining item unknown — on re-run the
-operator cannot tell what was reclaimed and what was never attempted.
+**Pitfall — one bad item must not hide the rest.** An `ArbitraryMigration` that owns its `execute`
+and iterates independent items (branches, nodes, kinds) as auto-commit statements wraps each item in
+its own `try`, collects per-item failures into `MigrationResult.errors`, and keeps going —
+`m075_finish_deleting_branches.py` is the house example. A single `try` around the loop aborts on the
+first failure, reports one error, and leaves the state of every remaining item unknown — on re-run
+the operator cannot tell what was reclaimed and what was never attempted.
+
+This does not extend to `GraphMigration` and `SchemaMigration`: their `execute` wraps the work in
+`db.start_transaction()`, and a failed statement aborts that transaction, so catching per item and
+continuing inside it cannot work. There, let the error reach the transaction owner.
 
 ### Step 4: Beware of Shared Nodes
 
