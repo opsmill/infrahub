@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from ipaddress import ip_interface
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -9,6 +10,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RelationshipCardinality
 from infrahub.core.initialization import initialize_registry
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
@@ -561,3 +563,111 @@ async def test_create_template_with_invalid_number_pool_id(
     )
     with pytest.raises(NodeNotFoundError):
         await template.save(db=db)
+
+
+@pytest.fixture
+async def device_schema_with_component_pools(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+    init_nodes_registry: None,
+) -> None:
+    """Put a primary_ip on both levels of components, so one pool can serve the two of them."""
+    schema = copy.deepcopy(DEVICE_SCHEMA)
+    for kind in (TestKind.PHYSICAL_INTERFACE, TestKind.SFP):
+        node = next(n for n in schema.nodes if n.kind == kind)
+        node.relationships.append(
+            RelationshipSchema(
+                name="primary_ip", peer="IpamIPAddress", cardinality=RelationshipCardinality.ONE, optional=True
+            )
+        )
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.mark.xfail(
+    reason=(
+        "Reading the template a level at a time also creates the components a level at a time, so a "
+        "component and the component it holds no longer take adjacent addresses from a shared pool. "
+        "Remove this marker once the walk creates the components depth first again."
+    ),
+    strict=True,
+)
+async def test_one_pool_shared_by_two_component_levels_allocates_depth_first(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    device_schema_with_component_pools: None,
+    ip_address_pool: CoreIPAddressPool,
+) -> None:
+    """A component and the component it holds take adjacent addresses from a shared pool.
+
+    The device template carries interfaces, each interface carries an SFP, and one pool serves both
+    levels. The pool hands the next free address to each caller in turn, so the order the components
+    are created in decides which address each one gets. An interface and its own SFP are created one
+    after the other, which is what keeps their two addresses next to each other.
+    """
+    template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
+    interface_template_schema = registry.schema.get_template_schema(
+        name=f"Template{TestKind.PHYSICAL_INTERFACE}", branch=default_branch
+    )
+    sfp_template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.SFP}", branch=default_branch)
+
+    template = await Node.init(schema=template_schema, db=db, branch=default_branch)
+    await template.new(db=db, template_name="pool-order-template", manufacturer="Acme", weight=1, airflow="Passive")
+    await template.save(db=db)
+
+    for idx in range(3):
+        interface = await Node.init(schema=interface_template_schema, db=db, branch=default_branch)
+        await interface.new(
+            db=db,
+            template_name=f"pool-order-eth{idx}",
+            name=f"eth{idx}",
+            phys_type="SFP+ (10GE)",
+            device=template.id,
+            primary_ip_from_resource_pool={"id": ip_address_pool.id},
+        )
+        await interface.save(db=db)
+
+        sfp = await Node.init(schema=sfp_template_schema, db=db, branch=default_branch)
+        await sfp.new(
+            db=db,
+            template_name=f"pool-order-eth{idx}-sfp",
+            phys_type="SFP+ (10GE)",
+            serial_number=f"pool-order-sn{idx}",
+            interface=interface.id,
+            primary_ip_from_resource_pool={"id": ip_address_pool.id},
+        )
+        await sfp.save(db=db)
+
+    node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+    device = await create_node(
+        data={"name": "pool-order-device", "object_template": {"id": template.id}},
+        db=db,
+        branch=default_branch,
+        schema=node_schema,
+    )
+
+    reloaded = await NodeManager.get_one(db=db, id=device.id, branch=default_branch, raise_on_error=True)
+    allocated: dict[str, tuple[int, int]] = {}
+    for interface in (await reloaded.interfaces.get_peers(db=db)).values():
+        sfp = await interface.sfp.get_peer(db=db)
+        assert sfp is not None, "the second level of the template was not materialized"
+        interface_ip = await interface.primary_ip.get_peer(db=db)
+        sfp_ip = await sfp.primary_ip.get_peer(db=db)
+        assert interface_ip is not None, f"{interface.name.value} was not allocated an address"
+        assert sfp_ip is not None, f"the SFP of {interface.name.value} was not allocated an address"
+        allocated[interface.name.value] = (
+            int(ip_interface(interface_ip.address.value).ip),
+            int(ip_interface(sfp_ip.address.value).ip),
+        )
+
+    assert len(allocated) == 3
+    addresses = [address for pair in allocated.values() for address in pair]
+    assert len(set(addresses)) == 6, f"an address was handed out twice: {allocated}"
+
+    # Which interface the pool serves first is not fixed, so only the adjacency is asserted.
+    for name, (interface_address, sfp_address) in sorted(allocated.items()):
+        assert sfp_address == interface_address + 1, (
+            f"{name} took {interface_address} and its SFP took {sfp_address}: the SFP is no longer "
+            f"allocated right after the interface holding it"
+        )
