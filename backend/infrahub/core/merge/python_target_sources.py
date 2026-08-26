@@ -10,8 +10,11 @@ from infrahub.computed_attribute.read_sets import transform_read_set_from_query_
 from infrahub.core.query_group.subscribers import fetch_subscriber_refs
 from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
+from infrahub.log import get_logger
 
 from .python_target_resolution import PythonAttributeReadSet, PythonTargetResolver
+
+log = get_logger()
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -24,13 +27,10 @@ class DatabasePythonReadSetSource:
     """Read sets for every Python transform computed attribute declared on a branch.
 
     The schema is what says which attributes exist; the analyzed transform queries are what says
-    what each of them reads. An attribute whose transform the gather did not find keeps an imprecise
-    read set rather than disappearing, so the resolver widens it instead of skipping it.
-
-    Raises:
-        Exception: the gather resolves the repository and query peers strictly, so a missing peer
-            fails the whole index rather than degrading one attribute.
-
+    what each of them reads. Whatever the queries cannot supply, every attribute the schema declares
+    still gets an entry, so the resolver widens it instead of skipping it. That holds for a single
+    transform the gather did not find and for a gather that failed outright: it resolves its peers
+    strictly, and one missing peer would otherwise take the whole pass down with it.
     """
 
     def __init__(self, db: InfrahubDatabase) -> None:
@@ -38,7 +38,11 @@ class DatabasePythonReadSetSource:
 
     async def read_sets(self, *, branch: str) -> list[PythonAttributeReadSet]:
         schema_branch = registry.schema.get_schema_branch(name=branch)
-        gathered = await gather_python_transform_attributes(db=self.db, branch_name=branch)
+        try:
+            gathered = await gather_python_transform_attributes(db=self.db, branch_name=branch)
+        except Exception:
+            log.exception("Widening every Python computed attribute on %s: the read-set gather failed", branch)
+            gathered = []
         analyzed = {
             (
                 item.computed_attribute.kind,

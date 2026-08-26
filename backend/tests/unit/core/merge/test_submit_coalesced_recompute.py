@@ -21,6 +21,7 @@ from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     DISPLAY_LABELS_PROCESS_JINJA2,
     HFID_PROCESS,
+    TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
 from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.workflow import WorkflowRecorder
@@ -176,6 +177,28 @@ async def test_submit_dispatches_the_transform_flow_for_a_python_target() -> Non
         "context": _event_context(),
     }
     assert calls[0]["tags"] == [WorkflowTag.BRANCH.render(identifier="main")]
+
+
+async def test_submit_sends_a_widened_target_to_the_fan_out_flow() -> None:
+    """A widened target has no ids, so the flow that resolves the kind itself has to run instead.
+
+    Sending it to the per-id flow would recompute nothing, which is the skip the flag exists to
+    prevent.
+    """
+    recorder = WorkflowRecorder()
+    coalesced = CoalescedRecompute(branch="main", targets=frozenset({_python_target(whole_kind=True)}))
+
+    await CoalescedRecomputeSubmitter(workflow=recorder).submit(coalesced=coalesced, context=_event_context())
+
+    assert recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM) == []
+    calls = recorder.get_submit_calls_for(TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES)
+    assert len(calls) == 1
+    assert calls[0]["parameters"] == {
+        "branch_name": "main",
+        "computed_attribute_name": "digest",
+        "computed_attribute_kind": TARGET_KIND,
+        "context": _event_context(),
+    }
 
 
 class _FailFirstWorkflow(WorkflowRecorder):

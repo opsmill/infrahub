@@ -15,6 +15,7 @@ from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     DISPLAY_LABELS_PROCESS_JINJA2,
     HFID_PROCESS,
+    TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
 from infrahub.workflows.constants import WorkflowTag
 
@@ -171,8 +172,8 @@ class CoalescedSubmission:
     ids for deduplication and orders the submissions deterministically; the flow re-derives its
     own query filter and does not read it.
 
-    ``whole_kind`` records the widened case: there are no node ids to send, and every node of
-    ``target_kind`` has to be recomputed. No process flow acts on it yet.
+    ``whole_kind`` carries the widened case: there are no node ids to send, so the submission goes
+    to the fan-out flow, which resolves every node of ``target_kind`` itself.
     """
 
     family: RecomputeFamily
@@ -444,6 +445,14 @@ class CoalescedRecomputeSubmitter:
                     parameters | attribute_parameters | {"recompute_depth": recompute_depth},
                 )
             case "python_computed_attribute":
+                if submission.whole_kind:
+                    # The widened case has no ids to send: the fan-out flow resolves the kind itself.
+                    return TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES, {
+                        "branch_name": submission.branch,
+                        "computed_attribute_name": submission.attribute_name,
+                        "computed_attribute_kind": submission.target_kind,
+                        "context": context,
+                    }
                 # The transform flow does not take part in the bounded chain yet, so it has no depth.
                 return COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM, parameters | attribute_parameters
             case "display_label":
