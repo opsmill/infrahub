@@ -81,6 +81,7 @@ from tests.helpers.constants import (
     PREFECT_TEST_SERVER_PORT_RANGE,
 )
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.prefect_diagnostics import register_prefect_test_server
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import find_available_prefect_port
 from tests.test_data import dataset01 as ds01
@@ -128,9 +129,17 @@ def neo4j_factory() -> _GraphHydrator:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def prefect_test_fixture() -> Generator[None, None, None]:
+def prefect_test_fixture(tmp_path_factory: pytest.TempPathFactory) -> Generator[None, None, None]:
+    log_dir = tmp_path_factory.getbasetemp()
+
     def _run_uvicorn_command(self: Any) -> subprocess.Popen[Any]:
-        """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead."""
+        """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead.
+
+        The server is launched through a wrapper that answers SIGUSR1 with the stacks of all its
+        threads, and its output is redirected to a file rather than left to interleave with the
+        worker's own. A server that stops answering is otherwise invisible in CI: blocked, it
+        logs nothing at all, and the tests only ever see their own timeouts.
+        """
         # used to turn off serving the UI
         server_env = {
             "PREFECT_UI_ENABLED": "0",
@@ -139,11 +148,15 @@ def prefect_test_fixture() -> Generator[None, None, None]:
             "PREFECT_SERVER_API_MAX_PARAMETER_SIZE": "0",
         }
 
-        return subprocess.Popen(
+        log_path = log_dir / f"prefect-test-server-{self.port}.log"
+        # Held open for the lifetime of the server process, which outlives this function.
+        log_file = log_path.open("wb")
+
+        process = subprocess.Popen(
             args=[
                 sys.executable,
                 "-m",
-                "uvicorn",
+                "tests.helpers.prefect_test_server",
                 # "--app-dir",
                 # str(infrahub.__module_path__.parent),
                 "--factory",
@@ -162,7 +175,11 @@ def prefect_test_fixture() -> Generator[None, None, None]:
                 **server_env,
                 **get_current_settings().to_environment_variables(exclude_unset=True),
             },
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
         )
+        register_prefect_test_server(port=self.port, process=process, log_path=log_path)
+        return process
 
     os.environ["PREFECT_FLOWS_HEARTBEAT_FREQUENCY"] = PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS
     os.environ["PREFECT_SERVER_EVENTS_PROACTIVE_GRANULARITY"] = PREFECT_EVENTS_PROACTIVE_GRANULARITY
