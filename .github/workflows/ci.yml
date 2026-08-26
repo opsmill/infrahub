@@ -581,6 +581,12 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    strategy:
+      fail-fast: false
+      matrix:
+        # Shard contents live in INTEGRATION_TEST_SHARDS in tasks/backend.py; keep this
+        # list in sync with it (the catch-all shard runs everything not named there).
+        shard: [a, b]
     runs-on:
       group: "huge-runners"
     timeout-minutes: 30
@@ -609,16 +615,20 @@ jobs:
       - name: Install dependencies
         run: "uv sync --all-groups"
       - name: "Mypy Tests"
+        if: matrix.shard == 'a'
         run: "uv run invoke backend.mypy"
-      - name: "Integration Tests"
-        run: "uv run invoke backend.test-integration"
+      - name: "Validate integration test shards"
+        if: matrix.shard == 'b'
+        run: "uv run invoke backend.validate-integration-shards"
+      - name: "Integration Tests (${{ matrix.shard }})"
+        run: "uv run invoke backend.test-integration --shard ${{ matrix.shard }}"
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          flag-name: backend-integration
+          flag-name: backend-integration-${{ matrix.shard }}
           parallel: true
 
   backend-tests-functional:
@@ -1405,5 +1415,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component-graphql,backend-component-core-diff,backend-component-core-schema,backend-component-other"
+          carryforward: "backend-unit,backend-integration-a,backend-integration-b,frontend-unit,backend-component-graphql,backend-component-core-diff,backend-component-core-schema,backend-component-other"
           parallel-finished: true
