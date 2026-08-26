@@ -28,21 +28,10 @@ safe-outputs:
     max: 30
     target: "*"
     allowed:
-      - group/backend
-      - group/frontend
-      - group/schema
-      - group/sync-engine
-      - group/ci
-      - category/scaling
-      - category/git-sync
-      - category/schema-lifecycle
-      - category/branching
-      - category/tasks
-      - category/generators-artifacts
-      - category/api
-      - category/error-reporting
-      - category/permissions
-      - category/pools
+      - "group/*"
+      - "category/*"
+    blocked:
+      - group/ux-design
   missing-tool:
 ---
 
@@ -69,17 +58,20 @@ in the allowed list.
 
 ## Find the work
 
-Use `gh` to list open issues that are missing at least one axis. Run both searches:
+Build the label lists from `.github/labels.yml` (see the classification rules below),
+then use `gh` to list open issues that are missing at least one axis. Run both
+searches, negating every label of the axis so an issue only matches when it has none
+of them:
 
 ```bash
-# missing a component label
+# missing a component label: negate every group/* label from the registry, e.g.
 gh issue list --state open --limit 100 \
-  --search 'is:open -label:group/backend -label:group/frontend -label:group/schema -label:group/sync-engine -label:group/ci' \
+  --search 'is:open -label:group/backend -label:group/frontend ...one -label: per group/* entry...' \
   --json number,title,labels
 
-# bugs missing a category label
+# bugs missing a category label: negate every category/* label from the registry, e.g.
 gh issue list --state open --limit 100 \
-  --search 'is:open label:type/bug -label:category/scaling -label:category/git-sync -label:category/schema-lifecycle -label:category/branching -label:category/tasks -label:category/generators-artifacts -label:category/api -label:category/error-reporting -label:category/permissions -label:category/pools' \
+  --search 'is:open label:type/bug -label:category/scaling ...one -label: per category/* entry...' \
   --json number,title,labels
 ```
 

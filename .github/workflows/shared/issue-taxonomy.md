@@ -8,6 +8,15 @@ Apply **at most two** labels per issue: one `group/*` (always) and one
 
 **Never apply a priority label.** Priority is assigned by a human.
 
+## Label definitions
+
+The label definitions live in `.github/labels.yml` (checked out in your
+workspace) — the same registry that provisions the labels on GitHub. Read that
+file and use the `description` of each `group/*` and `category/*` entry as its
+definition. Do not rely on a from-memory idea of what a label means.
+
+`group/ux-design` is the one exception: it is applied by humans, never by you.
+
 ## What is already handled without you
 
 Two things are decided deterministically by other workflows, so do not spend
@@ -27,15 +36,7 @@ integration, or by hand). If a `group/*` label is already present, leave it alon
 
 ## 1. Component — `group/*`, exactly one, only if missing
 
-Where the fix will most likely land, not where the symptom appears.
-
-| Label | Applies when |
-|-------|--------------|
-| `group/backend` | API server, GraphQL, task worker, git agent, database, Python code |
-| `group/frontend` | React UI: rendering, forms, layout, client-side queries |
-| `group/schema` | The core schema definitions themselves (usually alongside `group/backend`) |
-| `group/sync-engine` | The external synchronization engine specifically |
-| `group/ci` | CI pipeline, GitHub Actions, build tooling |
+Pick where the fix will most likely land, not where the symptom appears.
 
 If a report describes a UI symptom whose cause is clearly server-side (for example a
 slow page because a query returns too much data), prefer `group/backend`.
@@ -47,21 +48,6 @@ the body describes something behaving incorrectly). For feature requests, tasks,
 questions, and documentation issues apply the `group/*` label only.
 
 Pick the **single best** primary category:
-
-| Label | Applies when |
-|-------|--------------|
-| `category/scaling` | Only appears or gets materially worse with data volume: thousands of nodes, relationships, tasks or events. Timeouts, OOM, slow queries at scale |
-| `category/git-sync` | Repository sync/import from Git: read-only repos, `objects/` files, `.infrahub.yml`, commits, tags, clones |
-| `category/schema-lifecycle` | Schema load, import, validation, migration, inheritance and attribute definition semantics |
-| `category/branching` | Branch create/merge/rebase/diff, proposed changes, conflict handling |
-| `category/tasks` | Task manager and Prefect workflow lifecycle: stuck runs, missing/incorrect tasks in the task list |
-| `category/generators-artifacts` | Generator, artifact and transform pipeline: definitions, regeneration, execution |
-| `category/api` | GraphQL/REST semantics: queries, filters, mutations, events, webhooks, response shape |
-| `category/error-reporting` | The defect **is** the message: opaque, misleading, wrong status code, unhelpful traceback. Use only when the underlying behaviour is otherwise correct |
-| `category/permissions` | Authentication, authorization, roles, tokens, object permissions |
-| `category/pools` | Resource pools: NumberPool, prefix pools, IPAM allocation |
-
-Rules for choosing:
 
 - **One primary category.** Many bugs touch two areas. Pick where the fix belongs.
   A slow diff on a large branch is `category/scaling` if volume is the trigger and

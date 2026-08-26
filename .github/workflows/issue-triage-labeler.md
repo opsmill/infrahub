@@ -28,21 +28,10 @@ safe-outputs:
     max: 2
     target: triggering
     allowed:
-      - group/backend
-      - group/frontend
-      - group/schema
-      - group/sync-engine
-      - group/ci
-      - category/scaling
-      - category/git-sync
-      - category/schema-lifecycle
-      - category/branching
-      - category/tasks
-      - category/generators-artifacts
-      - category/api
-      - category/error-reporting
-      - category/permissions
-      - category/pools
+      - "group/*"
+      - "category/*"
+    blocked:
+      - group/ux-design
   missing-tool:
 ---
 
