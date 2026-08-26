@@ -14,8 +14,7 @@ import { render } from "../../../../tests/components/render";
 vi.mock("@/entities/preferences/ui/queries/get-effective-preferences.query");
 vi.mock("@/entities/authentication/ui/auth-provider");
 
-// Fixture invariant, mirroring the API: a non-USER source inherits its own {value, source} (nothing
-// is being shadowed), while a USER source states the layer it shadows — never USER itself.
+// Fixtures follow the `inherited` invariant documented on `EffectivePreference`.
 function mockEffective(data: EffectivePreferences | undefined) {
   // The provider only reads `.data`; the rest of the query result is irrelevant here.
   vi.mocked(useGetEffectivePreferences).mockReturnValue({ data } as ReturnType<

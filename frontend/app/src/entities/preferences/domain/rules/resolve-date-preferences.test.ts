@@ -6,8 +6,7 @@ import {
   resolveDatePreferences,
 } from "@/entities/preferences/domain/rules/resolve-date-preferences";
 
-// Fixture invariant, mirroring the API: a non-USER source inherits its own {value, source} (nothing
-// is being shadowed), while a USER source states the layer it shadows — never USER itself.
+// Fixtures follow the `inherited` invariant documented on `EffectivePreference`.
 describe("resolveDatePreferences", () => {
   test("maps a USER date-format key to its date-fns pattern", () => {
     // GIVEN a user-set EU date format

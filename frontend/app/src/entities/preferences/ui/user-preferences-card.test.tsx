@@ -17,8 +17,7 @@ vi.mock("@/entities/preferences/domain/use-cases/upsert-user-preferences");
 const FIXED_INSTANT = new Date("2026-06-11T23:30:00Z");
 const EFFECTIVE_ZONE = "Asia/Tokyo";
 
-// Fixture invariant, mirroring the API: a non-USER source inherits its own {value, source} (nothing
-// is being shadowed), while a USER source states the layer it shadows — never USER itself.
+// Fixtures follow the `inherited` invariant documented on `EffectivePreference`.
 const baseEffective: EffectivePreferences = {
   dateFormat: {
     value: "EU_DATETIME",
