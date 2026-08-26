@@ -223,7 +223,8 @@ async def test_an_unscoped_update_selects_on_the_kind_alone() -> None:
     assert set(by_identity) == {(DEVICE, "summary"), (ROUTER, "tag")}
     assert _ids(by_identity[DEVICE, "summary"]) == frozenset({"d1"})
     assert _ids(by_identity[ROUTER, "tag"]) == frozenset({"r1"})
-    assert all(target.precise is False for target in targets)
+    assert by_identity[DEVICE, "summary"].precise is False
+    assert by_identity[ROUTER, "tag"].precise is False
 
 
 async def test_deleted_nodes_select_their_readers() -> None:

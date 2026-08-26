@@ -14,12 +14,12 @@ class StaticPythonReadSetSource:
     """Serves a fixed read-set index and records the branches it was asked for."""
 
     def __init__(self, read_sets: list[PythonAttributeReadSet]) -> None:
-        self.read_sets_by_call = read_sets
+        self.configured_read_sets = read_sets
         self.calls: list[str] = []
 
     async def read_sets(self, *, branch: str) -> list[PythonAttributeReadSet]:
         self.calls.append(branch)
-        return self.read_sets_by_call
+        return self.configured_read_sets
 
 
 class RecordingSubscriberSource:
