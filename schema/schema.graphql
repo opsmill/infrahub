@@ -8349,6 +8349,7 @@ An effective `date_format` value and the source it was resolved from.
 `value` is a DateFormat key, or null when nothing is set.
 """
 type EffectiveDateFormat {
+  inherited: InheritedDateFormat!
   source: PreferenceSource!
   value: DateFormat
 }
@@ -8365,6 +8366,7 @@ type EffectivePreferencesType {
 An effective `timezone`: the resolved IANA name (null when nothing is set) and its source.
 """
 type EffectiveTimezone {
+  inherited: InheritedTimezone!
   source: PreferenceSource!
   value: String
 }
@@ -8975,6 +8977,22 @@ Retry a settled delivery by replaying its frozen payload as a new, independent d
 type InfrahubTaskRetry {
   ok: Boolean
   task: TaskInfo
+}
+
+"""
+The date_format the caller would inherit with no override of their own; source is GLOBAL or DEFAULT.
+"""
+type InheritedDateFormat {
+  source: PreferenceSource!
+  value: DateFormat
+}
+
+"""
+The timezone the caller would inherit with no override of their own; source is GLOBAL or DEFAULT.
+"""
+type InheritedTimezone {
+  source: PreferenceSource!
+  value: String
 }
 
 """Token for User Account"""

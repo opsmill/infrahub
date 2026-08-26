@@ -46,6 +46,20 @@ PreferenceSource = Enum.from_enum(
 )
 
 
+class InheritedDateFormat(ObjectType):
+    """The date_format the caller would inherit with no override of their own; source is GLOBAL or DEFAULT."""
+
+    value = Field(DateFormat, required=False)
+    source = Field(PreferenceSource, required=True)
+
+
+class InheritedTimezone(ObjectType):
+    """The timezone the caller would inherit with no override of their own; source is GLOBAL or DEFAULT."""
+
+    value = Field(String, required=False)
+    source = Field(PreferenceSource, required=True)
+
+
 class EffectiveDateFormat(ObjectType):
     """An effective `date_format` value and the source it was resolved from.
 
@@ -54,6 +68,7 @@ class EffectiveDateFormat(ObjectType):
 
     value = Field(DateFormat, required=False)
     source = Field(PreferenceSource, required=True)
+    inherited = Field(InheritedDateFormat, required=True)
 
 
 class EffectiveTimezone(ObjectType):
@@ -61,6 +76,7 @@ class EffectiveTimezone(ObjectType):
 
     value = Field(String, required=False)
     source = Field(PreferenceSource, required=True)
+    inherited = Field(InheritedTimezone, required=True)
 
 
 class EffectivePreferencesType(ObjectType):

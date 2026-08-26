@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from graphene import Field
 
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
-from infrahub.core.preferences.models import EffectivePreferences
+from infrahub.core.preferences.models import EffectivePreferences, ResolvedPreference
 from infrahub.core.preferences.permissions import MANAGE_GLOBAL_PREFERENCES_PERMISSION
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.types.preferences import (
@@ -19,11 +19,22 @@ if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
 
 
+def _effective_field(resolved: ResolvedPreference, inherited: ResolvedPreference) -> dict:
+    """Plain dicts, not ResolvedPreference: the frozen dataclass has no `inherited` attribute for graphene to find."""
+    return {
+        "value": resolved.value,
+        "source": resolved.source,
+        "inherited": {"value": inherited.value, "source": inherited.source},
+    }
+
+
 async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) -> dict:  # noqa: ARG001
     """Resolve the caller's effective preferences (user override → global default → DEFAULT).
 
-    Open to any authenticated caller; the global row is read internally, never exposed as raw org
-    values.
+    Open to any authenticated caller. The global layer's values ARE reported here — labelled GLOBAL
+    when nothing shadows them, and as the `inherited` layer when a user override does. What this
+    query never exposes is the raw org row itself: the gated `InfrahubGlobalPreferences` remains the
+    only raw-scope read.
     """
     graphql_context: GraphqlContext = info.context
     account_id = graphql_context.active_account_session.account_id
@@ -34,8 +45,8 @@ async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) ->
     preferences = await repository.get_for_owners(owner_ids={account_id, global_id})
     effective = EffectivePreferences(user=preferences.get(account_id), global_=preferences.get(global_id))
     return {
-        "date_format": effective.resolved_date_format(),
-        "timezone": effective.resolved_timezone(),
+        "date_format": _effective_field(effective.resolved_date_format(), effective.inherited_date_format()),
+        "timezone": _effective_field(effective.resolved_timezone(), effective.inherited_timezone()),
     }
 
 

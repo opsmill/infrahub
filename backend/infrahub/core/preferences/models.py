@@ -51,6 +51,9 @@ class EffectivePreferences:
     A field is taken from the user layer if set, else the global layer, else DEFAULT with a null
     value (a missing layer counts as "nothing set"). DEFAULT carries a None value: the backend does
     not know the clients' built-in defaults, it only reports that neither layer sets the field.
+
+    The `inherited_*` projection runs the same resolution with the user layer suppressed, so it
+    reports what the caller would fall back to and can only ever be GLOBAL or DEFAULT, never USER.
     """
 
     user: Preference | None
@@ -67,6 +70,14 @@ class EffectivePreferences:
             self.user.timezone if self.user else None,
             self.global_.timezone if self.global_ else None,
         )
+
+    def inherited_date_format(self) -> ResolvedPreference[DateFormat]:
+        """What the caller would inherit for date_format with no override of their own (GLOBAL or DEFAULT)."""
+        return self._resolve_field(user_value=None, global_value=self.global_.date_format if self.global_ else None)
+
+    def inherited_timezone(self) -> ResolvedPreference[str]:
+        """What the caller would inherit for timezone with no override of their own (GLOBAL or DEFAULT)."""
+        return self._resolve_field(user_value=None, global_value=self.global_.timezone if self.global_ else None)
 
     def _resolve_field[T](self, user_value: T | None, global_value: T | None) -> ResolvedPreference[T]:
         if user_value is not None:
