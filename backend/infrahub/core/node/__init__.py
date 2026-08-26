@@ -552,9 +552,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             return set()
 
         self._object_template = template
-        # The node records which template it was created from; the template is already read, so it is
-        # named by the node it is rather than by an id to be read again. The rest of the payload is
-        # kept, as it carries the metadata of the relationship.
+        # Hand the template over as the node it is: it has just been read, and the relationship layer
+        # links a node it is given directly, where an id would send it back to the database. The rest
+        # of the payload is kept, as it carries the metadata of the relationship.
         fields[OBJECT_TEMPLATE_RELATIONSHIP_NAME] = {**object_template_field, "id": template}
         pool_allocator = DefaultPoolAllocator(db=db, branch=self._branch) if process_pools else NoOpPoolAllocator()
         applier = NodeTemplateApplier(db=db, branch=self._branch, pool_allocator=pool_allocator)

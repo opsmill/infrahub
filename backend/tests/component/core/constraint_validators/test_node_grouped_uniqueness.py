@@ -154,12 +154,18 @@ class TestNodeGroupedUniquenessConstraint:
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple: dict[str, Node]
     ) -> None:
         """The constraint compares the peer this node points at, which its id identifies."""
-        car_node: Node = car_person_generics_data_simple["c1"]
+        person: Node = car_person_generics_data_simple["p2"]
+        car: Node = car_person_generics_data_simple["c1"]
+        await car.previous_owner.update(db=db, data=person)
+        await car.save(db=db)
+        # Read the car back, so its relationship carries the id of its peer rather than the peer itself.
+        car_node = await registry.manager.get_one(db=db, id=car.get_id(), branch=default_branch, raise_on_error=True)
         car_node.get_schema().uniqueness_constraints = [["previous_owner"]]
         counting_db = CountingInfrahubDatabase.from_db(db=db)
 
         await self.__call_system_under_test(db=counting_db, branch=default_branch, node=car_node)
 
+        assert await car_node.previous_owner.get_peer_id(db=db) == person.get_id()
         assert counting_db.count_for(UniquenessValidationQuery.name) > 0
         assert counting_db.count_for(NodeListGetInfoQuery.name) == 0
         assert counting_db.count_for(NodeListGetAttributeQuery.name) == 0

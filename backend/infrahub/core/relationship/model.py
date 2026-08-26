@@ -22,7 +22,14 @@ from pydantic import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
-from infrahub.core.constants import SYSTEM_USER_ID, BranchSupportType, InfrahubKind, MetadataOptions, RelationshipKind
+from infrahub.core.constants import (
+    SYSTEM_USER_ID,
+    BranchSupportType,
+    InfrahubKind,
+    MetadataOptions,
+    RelationshipCardinality,
+    RelationshipKind,
+)
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.metadata.interface import MetadataInterface
@@ -967,7 +974,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         return self.schema.kind
 
     def __iter__(self) -> Iterator[Relationship]:
-        if self.schema.cardinality == "one":
+        if self.schema.cardinality == RelationshipCardinality.ONE:
             raise TypeError("relationship with single cardinality are not iterable")
 
         if not self.has_fetched_relationships:
@@ -1044,7 +1051,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         peer_type: type[PeerType] | None = None,  # noqa: ARG002
         raise_on_error: bool = False,
     ) -> Node | PeerType | None:
-        if self.schema.cardinality == "many":
+        if self.schema.cardinality == RelationshipCardinality.MANY:
             raise TypeError("peer is not available for relationship with multiple cardinality")
 
         rels = await self.get_relationships(db=db)
@@ -1065,7 +1072,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
             TypeError: When the relationship has a cardinality of many.
 
         """
-        if self.schema.cardinality == "many":
+        if self.schema.cardinality == RelationshipCardinality.MANY:
             raise TypeError("peer is not available for relationship with multiple cardinality")
 
         rels = await self.get_relationships(db=db)
@@ -1252,9 +1259,9 @@ class RelationshipManager[RelationshipManagerPeerType]:
     async def get(self, db: InfrahubDatabase) -> Relationship | list[Relationship] | None:
         rels = await self.get_relationships(db=db)
 
-        if self.schema.cardinality == "one" and rels:
+        if self.schema.cardinality == RelationshipCardinality.ONE and rels:
             return rels[0]
-        if self.schema.cardinality == "one" and not rels:
+        if self.schema.cardinality == RelationshipCardinality.ONE and not rels:
             return None
 
         return rels
@@ -1579,7 +1586,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         self, db: InfrahubDatabase, fields: dict | None = None, related_node_ids: set | None = None
     ) -> dict | None:
         # NOTE Need to investigate when and why we are passing the peer directly here, how do we account for many relationship
-        if self.schema.cardinality == "many":
+        if self.schema.cardinality == RelationshipCardinality.MANY:
             raise TypeError("to_graphql is not available for relationship with multiple cardinality")
 
         relationships = await self.get_relationships(db=db)

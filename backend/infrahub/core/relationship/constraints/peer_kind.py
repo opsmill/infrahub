@@ -50,6 +50,9 @@ class RelationshipPeerKindConstraint(RelationshipManagerConstraintInterface):
         for relationship in relationships:
             peer_id = relationship.peer_id
             if peer_id is None:
+                # The peer is named by an hfid the relationship has not resolved yet: this constraint
+                # runs before RelationshipCountConstraint, which is what calls resolve(). Resolving an
+                # hfid reads it as the schema's peer kind, so a peer of another kind is not found.
                 continue
             peer_kind = relationship.get_concrete_peer_kind()
             if peer_kind is None:

@@ -99,8 +99,8 @@ async def extract_peer_data(
             attr_data["is_from_profile"] = True
         obj_peer_data[attr_name] = attr_data
 
-    for rel in template_peer.get_schema().relationship_names:
-        rel_manager: RelationshipManager = getattr(template_peer, rel)
+    for rel_name in template_peer.get_schema().relationship_names:
+        rel_manager: RelationshipManager = getattr(template_peer, rel_name)
         if (
             rel_manager.schema.kind
             not in [
@@ -114,31 +114,34 @@ async def extract_peer_data(
             continue
 
         # The peers are named by their id and their kind, both of which the relationships carry.
-        relationships = [item for item in await rel_manager.get_relationships(db=db) if item.peer_id]
-        peer_ids = [item.peer_id for item in relationships]
+        relationships = [
+            relationship for relationship in await rel_manager.get_relationships(db=db) if relationship.peer_id
+        ]
+        peer_ids = [relationship.peer_id for relationship in relationships]
         if rel_manager.schema.kind in [
             RelationshipKind.COMPONENT,
             RelationshipKind.PARENT,
             RelationshipKind.PROFILE,
         ] and peer_ids == [current_template.id]:
-            # The peer is the node this one is created under, which the caller holds: naming it by
-            # its id would have every step that needs the peer read it back.
-            obj_peer_data[rel] = parent_obj
+            # This relationship points back at the template being applied, so the peer on the new
+            # object is the node created from that template — which the caller holds. Hand the node
+            # over, so every step that needs the peer already has it.
+            obj_peer_data[rel_name] = parent_obj
             continue
 
         rel_peer_ids = []
-        for item in relationships:
+        for relationship in relationships:
             # deeper templates are handled in the next level of recursion
-            if await _peer_is_a_template(db=db, relationship=item):
+            if await _peer_is_a_template(db=db, relationship=relationship):
                 continue
-            rel_peer_ids.append({"id": item.peer_id})
+            rel_peer_ids.append({"id": relationship.peer_id})
 
         # Only set the relationship data if there are actual peers to set
         if rel_peer_ids:
-            obj_peer_data[rel] = rel_peer_ids
+            obj_peer_data[rel_name] = rel_peer_ids
 
         if rel_manager.schema.kind == RelationshipKind.PROFILE:
-            obj_peer_data[rel] = peer_ids
+            obj_peer_data[rel_name] = peer_ids
 
     return obj_peer_data
 
