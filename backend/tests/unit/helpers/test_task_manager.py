@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from tests.helpers.task_manager import TaskManagerSetup
@@ -114,3 +116,59 @@ async def test_failure_that_bypasses_exception_is_remembered() -> None:
         await once.run_once()
 
     assert setup.calls == 1
+
+
+class HangingSetup(RecordingSetup):
+    """Stands in for a Prefect test server that accepts connections but never answers."""
+
+    async def __call__(self) -> None:
+        await super().__call__()
+        await asyncio.Event().wait()
+
+
+class RecordingReport:
+    """Keeps the diagnostic reports a failed setup asked for."""
+
+    def __init__(self) -> None:
+        self.reasons: list[str] = []
+
+    def __call__(self, reason: str) -> None:
+        self.reasons.append(reason)
+
+
+async def test_hanging_setup_gives_up_inside_the_coroutine() -> None:
+    """The pytest timeout fires above the coroutine, so a hang has to be bounded here."""
+    setup = HangingSetup()
+    once = TaskManagerSetup(setup=setup, server_key=MovingServer("http://wedged/api"), timeout=0.05)
+
+    with pytest.raises(TimeoutError):
+        await once.run_once()
+
+    with pytest.raises(RuntimeError, match=r"^Prefect task manager setup already failed for http://wedged/api$"):
+        await once.run_once()
+
+    assert setup.calls == 1
+
+
+async def test_a_failed_setup_is_reported_once() -> None:
+    setup = FailingSetup(TimeoutError("prefect server is unreachable"))
+    report = RecordingReport()
+    once = TaskManagerSetup(setup=setup, server_key=MovingServer("http://server-a/api"), report_failure=report)
+
+    with pytest.raises(TimeoutError):
+        await once.run_once()
+    with pytest.raises(RuntimeError):
+        await once.run_once()
+
+    assert report.reasons == [
+        "Prefect task manager setup failed for http://server-a/api: TimeoutError('prefect server is unreachable')"
+    ]
+
+
+async def test_a_successful_setup_is_not_reported() -> None:
+    report = RecordingReport()
+    once = TaskManagerSetup(setup=RecordingSetup(), server_key=MovingServer(), report_failure=report)
+
+    await once.run_once()
+
+    assert report.reasons == []
