@@ -204,6 +204,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         return self._resolved_peer_kind
 
+    def get_peer_in_hand(self) -> Node | None:
+        """Return the peer as the node it is, or None when this relationship holds only its id."""
+        if self._peer is None or isinstance(self._peer, str):
+            return None
+
+        return self._peer
+
     @property
     def node_id(self) -> str:
         if self._node_id:
