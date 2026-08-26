@@ -4,10 +4,12 @@ argument-hint: "[--fast] [--all]"
 allowed-tools:
   - Bash(git merge-base:*)
   - Bash(git diff:*)
-  - Bash(git status:*)
+  - Bash(git ls-files:*)
   - Bash(git rev-parse:*)
+  - Bash(sort:*)
   - Bash(uv run invoke:*)
   - Bash(uv run ruff check:*)
+  - Bash(uv run ty check:*)
   - Bash(uv run yamllint:*)
   - Bash(uv run --directory python_testcontainers pytest:*)
   - Bash(uv lock --check:*)
@@ -42,23 +44,28 @@ them as `cd frontend/app && ...`.
 Run this first. Everything after it is conditional on the result.
 
 ```bash
-BASE_REF=$(for R in origin/develop origin/stable; do
-  git rev-parse --verify --quiet "$R" >/dev/null 2>&1 || continue
-  echo "$(git rev-list --count "$(git merge-base HEAD "$R")"..HEAD) $R"
-done | sort -n | head -1 | cut -d' ' -f2)
+BASE_REF=origin/stable
+if git rev-parse --verify --quiet origin/develop >/dev/null 2>&1; then
+  git merge-base --is-ancestor "$(git merge-base HEAD origin/stable)" \
+    "$(git merge-base HEAD origin/develop)" && BASE_REF=origin/develop
+fi
 MERGE_BASE=$(git merge-base HEAD "$BASE_REF")
-{ git diff --name-only "$MERGE_BASE"...HEAD; git status --porcelain | cut -c4- | sed 's/.* -> //'; } | sort -u
+{ git diff --name-only --no-renames "$MERGE_BASE"...HEAD
+  git diff --name-only --no-renames HEAD
+  git ls-files --others --exclude-standard
+} | sort -u
 ```
 
-Both `develop` and `stable` exist, and a branch may be cut from either, so the loop picks
-whichever candidate leaves HEAD fewest commits ahead — that is the one this branch actually
-forked from. Preferring `develop` unconditionally would diff a `stable`-based branch against a
-merge base tens of commits back and report every area as changed.
+Both `develop` and `stable` exist, and a branch may be cut from either, so pick the candidate
+whose merge base sits **closer to HEAD** — that is the one this branch actually forked from.
+Preferring `develop` unconditionally would diff a `stable`-based branch against a merge base tens
+of commits back and report every area as changed.
 
 The list covers **both committed and uncommitted** work — CI sees the former, you are about to
-push the latter, so both must pass. The `sed` unwraps `git status`'s rename form
-(`R  old -> new`), which would otherwise be classified as the single literal path `old -> new`
-and match no area at all.
+push the latter, so both must pass. `--no-renames` matters: with rename detection on, a moved
+file reports only its new path, so the area that lost the file is never flagged. Every command
+here is in `allowed-tools`; keep it that way, and do not reach for `git status --porcelain`
+parsing, whose `R  old -> new` form collapses into one bogus path.
 
 Classify the paths using the same globs as `.github/file-filters.yml`. Each area below is that
 file's `<area>_all` list, so local gating matches the `files-changed` outputs CI branches on:
@@ -139,7 +146,12 @@ at a time.
    `python_testcontainers`, and `backend.lint` only `backend`, so a violation anywhere else
    (`development/`, root-level scripts, `tests/`) passes locally and fails in CI. Only the
    whole-repo check proves CI will pass.
-3. `uv lock --check` — ensures `uv.lock` matches `pyproject.toml`. If it fails, run `uv lock` and
+3. `uv run ty check .` — the `python-lint` job's third step, whole-repo like CI. **Easy to
+   miss**: `ty` is otherwise only reachable through Phase 4B `backend.lint`, which the `python`
+   area does not enable, so a `models/` or root-script change would clear pre-ci and still fail
+   CI's ty step. The job's remaining step, `ruff format --check`, needs no entry here — Phase 1B
+   runs under the same gate and has already fixed formatting.
+4. `uv lock --check` — ensures `uv.lock` matches `pyproject.toml`. If it fails, run `uv lock` and
    commit the updated lockfile.
 
 **2C. YAML** — *if yaml changed*
@@ -225,8 +237,8 @@ Verifies the generated bindings match `schema/error-catalogue.json`. On failure,
 1. `uv run invoke backend.lint` — call this task directly rather than `uv run invoke lint`, which
    bundles `main.lint`, `backend.lint` and `yamllint` into one run and so ignores the area gating
    Phases 2B and 2C apply. Its ruff step covers `backend` only, the same coverage gap noted in
-   Phase 2B; the ty and mypy output is what this check adds. CI splits these: `ty` runs in
-   `python-lint`, while
+   Phase 2B, and its ty step repeats Phase 2B's — **mypy is what this check adds**. CI splits
+   them: `ty` runs in `python-lint`, while
    `mypy` runs as a step inside `backend-tests-integration` and `backend-tests-functional`.
 2. `uv run invoke backend.validate-generated` — ensures generated schema and protocol files are
    current. If it fails, run `uv run invoke backend.generate` and report the regenerated files.
@@ -296,7 +308,7 @@ Summarize in a table. Include **every** row; mark rows as `skipped (no <area> ch
 | Ruff (CI parity) | python-lint | ... |
 | Lockfile sync | uv-check (`uv-check.yml`) | ... |
 | YAML lint (`yamllint -s .`) | yaml-lint | ... |
-| Backend lint (ty) | python-lint | ... |
+| Type check (`ty check .`) | python-lint | ... |
 | Backend lint (mypy) | backend-tests-integration, backend-tests-functional | ... |
 | Generated files | backend-validate-generated | ... |
 | GraphQL schema validation | graphql-schema | ... |
