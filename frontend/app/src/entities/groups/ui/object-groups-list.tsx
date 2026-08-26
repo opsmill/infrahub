@@ -46,7 +46,7 @@ function ObjectGroupItem({ objectId, group }: ObjectGroupItemProps) {
   const { schema: groupSchema } = useSchema(group.__typename);
 
   return (
-    <Row className="relative justify-between gap-4 rounded-md border border-border-strong bg-gray-100 p-2">
+    <Row className="relative justify-between gap-4 rounded-md border border-border-strong bg-background p-2">
       <div className="space-y-1 overflow-hidden">
         <Link
           to={getObjectDetailsUrl(group.__typename, group.id)}
@@ -105,11 +105,11 @@ function RemoveGroupButton({ objectId, group }: ObjectGroupItemProps) {
           variant="ghost"
           size="xs"
           shape="circle"
-          className="shrink-0 data-hovered:bg-gray-200"
+          className="shrink-0 data-hovered:bg-highlight"
           onPress={() => setShowDeleteModal(true)}
           data-testid="leave-group-button"
         >
-          <Icon icon="mdi:link-variant-remove" className="text-lg text-red-600" />
+          <Icon icon="mdi:link-variant-remove" className="text-danger text-lg" />
         </Button>
       </Tooltip>
 

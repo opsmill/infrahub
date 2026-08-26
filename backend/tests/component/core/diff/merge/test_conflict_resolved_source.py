@@ -13,7 +13,7 @@ from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
-from tests.helpers.db_validation import verify_graph
+from infrahub.database.validation import verify_graph
 
 from ._conflict_setup import stage_base_conflicts
 from ._matrix_setup import stage_all_change_types

@@ -13,7 +13,7 @@ export interface AccountTokenItemProps {
 export function AccountTokenItem({ token }: AccountTokenItemProps) {
   return (
     <Row className="gap-3 p-3 text-sm" data-testid={`account-token-${token.name}`}>
-      <KeySquareIcon className="size-5 text-stone-600" />
+      <KeySquareIcon className="size-5 text-foreground-muted" />
 
       <div className="min-w-0">
         <div className="truncate font-medium">{token.name}</div>
@@ -40,14 +40,14 @@ export const ExpirationDate = ({ date }: { date?: string | null }) => {
 
   if (isExpired) {
     return (
-      <Row className="text-red-600">
+      <Row className="text-danger">
         <ClockAlertIcon className="size-4" /> Expired on {formatDate(date, "datetime")}
       </Row>
     );
   }
 
   return (
-    <Row className="text-gray-500">
+    <Row className="text-foreground-muted">
       <ClockFadingIcon className="size-4" /> Expires {formatDate(date, "datetime")}
     </Row>
   );

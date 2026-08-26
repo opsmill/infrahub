@@ -1,1 +1,0 @@
-Fixed the focus ring on text inputs being clipped on the left and right edges when an object form is opened inside a sheet (for example the "Add object" form). The form no longer adds its own redundant scroll container, so the ring is drawn in full.

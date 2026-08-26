@@ -171,7 +171,7 @@ export const ProposedChangeDetails = ({
   ];
 
   return (
-    <div className="flex grow flex-col gap-2.5 bg-stone-50 p-2.5">
+    <div className="flex grow flex-col gap-2.5 bg-background p-2.5">
       {!loadingCheck && !!checkCount && (
         <Card>
           <CardContent>
@@ -201,7 +201,7 @@ export const ProposedChangeDetails = ({
 
                 <DateDisplay
                   date={proposedChangeData.description.updated_at}
-                  className="ml-auto font-normal text-gray-600 text-xs"
+                  className="ml-auto font-normal text-foreground-muted text-xs"
                 />
               </CardHeader>
 
@@ -216,7 +216,7 @@ export const ProposedChangeDetails = ({
           <CardHeader className="flex items-center justify-between">
             <div
               onClick={() => navigate(path)}
-              className="cursor-pointer font-semibold text-base text-gray-900 leading-6 hover:underline"
+              className="cursor-pointer font-semibold text-base text-foreground leading-6 hover:underline"
             >
               Proposed change
             </div>

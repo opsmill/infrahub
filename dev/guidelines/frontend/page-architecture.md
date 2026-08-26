@@ -2,7 +2,7 @@
 
 > Part of: `dev/guidelines/frontend/`
 
-Rules for structuring page components and the forms / panels they contain. These exist because a path-traversal feature page grew to 500+ lines owning URL sync, clipboard helpers, formatters, mode routing, and rendering simultaneously, and duplicated `useState` between the page and its selector subcomponents.
+Rules for structuring page components and the forms / panels they contain. These exist because a recent feature shipped a 500+ line page that owned URL sync, clipboard helpers, formatters, mode routing, and rendering simultaneously, and duplicated `useState` between the page and its selector subcomponents.
 
 ## State ownership
 
@@ -83,7 +83,7 @@ Move these out of the page component the moment you write them:
 
 ## Component contracts: design for both callers from the start
 
-When two modes/features will share a visualization or panel, design the contract for both *before* shipping the first one. For example, a graph component shipped with `destination` as a required prop; when a second mode arrived without a single destination, the only fix was fabricating a synthetic value — a smell that traces back to the original prop design.
+When two modes/features will share a visualization or panel, design the contract for both *before* shipping the first one. Example: a graph component shipped with `destination` as a required prop; when a second mode arrived without a single destination, the only fix was fabricating a synthetic value — a smell that traces back to the original prop design.
 
 Rule: if a second caller is in the spec at all, the prop API must support it on the first iteration. Make optional what is genuinely optional.
 

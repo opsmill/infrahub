@@ -83,7 +83,12 @@ export function RelationshipTable({
     });
 
   return (
-    <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
+    <InfiniteScroll
+      scrollX
+      className="bg-table-frame"
+      hasNextPage={hasNextPage}
+      onLoadMore={fetchNextPage}
+    >
       <DataTable
         columns={columns}
         count={count}

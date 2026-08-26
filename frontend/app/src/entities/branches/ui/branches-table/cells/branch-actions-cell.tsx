@@ -34,7 +34,7 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
             variant="ghost"
             data-testid={`branch-actions-cell-${branch.name}`}
           >
-            <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
+            <Icon icon={"mdi:dots-vertical"} className="text-subtle-muted" />
           </Button>
 
           <Popover placement="bottom end">
@@ -47,7 +47,7 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
               <MenuItem
                 isDisabled={!isDeleteAllowed}
                 tooltip={branch.is_default ? "Cannot delete the default branch" : "Login required"}
-                className="text-red-500"
+                className="text-danger"
                 onAction={() => setShowDeleteModal(true)}
               >
                 <Trash2Icon />

@@ -14,13 +14,11 @@ export function BranchIdentifierHeader({ className, ...props }: BranchIdentifier
   const { isAuthenticated } = useAuth();
 
   return (
-    <div
-      className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white", className)}
-    >
+    <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10", className)}>
       {isAuthenticated && (
         <Checkbox aria-label="Select all branches" {...props} data-testid="select-all-rows" />
       )}
-      <Icon icon="mdi:source-branch" className="text-stone-400" />
+      <Icon icon="mdi:source-branch" className="text-subtle-muted" />
       <span className="truncate">Branch</span>
     </div>
   );

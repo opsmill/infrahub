@@ -120,7 +120,7 @@ function RelationshipOneRow({
                 }
               />
               {relationshipProperties.is_protected && (
-                <LockIcon className="size-3.5 text-gray-600" />
+                <LockIcon className="size-3.5 text-foreground-muted" />
               )}
             </>
           )}
@@ -184,7 +184,7 @@ function RelationshipManyRow({
                         isProtected={edgeProperties.is_protected}
                       />
                       {edgeProperties.is_protected && (
-                        <LockIcon className="size-3.5 text-gray-600" />
+                        <LockIcon className="size-3.5 text-foreground-muted" />
                       )}
                     </>
                   )}

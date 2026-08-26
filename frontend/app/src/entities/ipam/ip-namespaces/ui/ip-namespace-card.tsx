@@ -16,13 +16,13 @@ export interface IpNamespaceCardProps {
 
 const CARD_STYLES = {
   container: classNames(
-    "bg-white rounded-lg border p-4 flex flex-col gap-2",
-    "transition-all hover:border-custom-blue-600 hover:shadow-sm",
+    "bg-card shadow-card rounded-lg border p-4 flex flex-col gap-2",
+    "transition-all hover:border-ring",
     focusVisibleStyle
   ),
   title: "text-lg font-semibold truncate",
-  badge: "px-3 py-1.5 bg-blue-50 text-blue-700 font-medium rounded-full",
-  description: "text-sm text-gray-600",
+  badge: "px-3 py-1.5 bg-accent/10 text-accent font-medium rounded-full",
+  description: "text-sm text-foreground-muted",
 };
 
 export function IpNamespaceCard({ ipNamespace }: IpNamespaceCardProps) {

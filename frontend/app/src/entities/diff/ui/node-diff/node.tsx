@@ -58,7 +58,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                 <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
                 <Badge variant="white">
                   {schema?.namespace && (
-                    <span className="text-gray-500">
+                    <span className="text-foreground-muted">
                       {schema.namespace} <span className="mx-2">›</span>
                     </span>
                   )}
@@ -68,7 +68,7 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                   to={getObjectDetailsUrl(node.kind, node.uuid, [
                     { name: QSP.BRANCH, value: destinationBranch },
                   ])}
-                  className="px-2 py-1 font-medium text-gray-800 hover:text-custom-blue-800 hover:underline"
+                  className="px-2 py-1 font-medium text-foreground hover:text-accent hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {node.label}
@@ -77,9 +77,9 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
                 {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
               </div>
             }
-            className="rounded-md border bg-gray-100"
+            className="rounded-md border bg-content-strong dark:bg-white/5"
           >
-            <div className="divide-y border-t bg-white">
+            <div className="divide-y border-t bg-content">
               <div className="grid grid-cols-3 pl-8">
                 <Badge variant="green" className="col-start-2 col-end-3 bg-transparent">
                   <Icon icon="mdi:layers-triple" className="mr-1" /> {sourceBranch}

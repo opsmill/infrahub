@@ -47,9 +47,9 @@ export function ProcessingMutateObject({ node, payload, onSuccess }: ProcessingM
   if (error) {
     return (
       <NodeCard node={node}>
-        <Row className="cursor-pointer text-red-600 text-xs">
+        <Row className="cursor-pointer text-danger text-xs">
           <span>{error.message}</span>
-          <div className="rounded-full border border-red-200 bg-red-50 p-1 hover:border-current">
+          <div className="rounded-full border border-danger/25 bg-danger-surface p-1 hover:border-current">
             <RefreshCwIcon className="size-2.5" onClick={() => handleProcessing()} />
           </div>
         </Row>
@@ -76,7 +76,7 @@ export function NodeCard({ node, children }: { node: NodeCore; children?: React.
     <Card className="w-100 text-sm">
       <CardContent>
         <Col className="gap-1">
-          <Row className="justify-between text-gray-600 text-xs">
+          <Row className="justify-between text-foreground-muted text-xs">
             <Row className="gap-1">
               <Icon icon={getSchemaIcon(schema)} />
               <span>{schema?.label}</span>

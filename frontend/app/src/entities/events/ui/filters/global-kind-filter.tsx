@@ -41,37 +41,37 @@ export function GlobalKindFilter({ label, name, ...props }: FilterTagProps) {
         <PopoverTrigger className="flex h-6 items-center pl-1">
           <span>{label}</span>
 
-          <div className="ml-1 w-px self-stretch bg-gray-300" />
+          <div className="ml-1 w-px self-stretch bg-border-strong" />
 
           {(currentFilter?.value === undefined || currentFilter?.value === null) && (
             <Icon
               icon="mdi:plus-circle-outline"
-              className="mx-1 text-base text-gray-400 transition-all group-hover:text-custom-blue-700"
+              className="mx-1 text-base text-subtle-muted transition-all group-hover:text-accent"
             />
           )}
 
           {currentFilter?.value !== undefined && currentFilter?.value !== null && (
             <div
-              className="flex h-6 items-center gap-1 rounded-r-full px-1 transition-all hover:bg-gray-300"
+              className="flex h-6 items-center gap-1 rounded-r-full px-1 transition-all hover:bg-highlight"
               onClick={(event) => {
                 event.stopPropagation();
                 handleRemoveFilter(name);
               }}
             >
-              <div className="inline-flex items-center font-medium text-custom-blue-700">
+              <div className="inline-flex items-center font-medium text-accent">
                 {getFilterDisplayValue()}
               </div>
 
               <Icon
                 icon="mdi:close-circle-outline"
-                className="text-base text-gray-400 transition-all group-hover:text-custom-blue-700"
+                className="text-base text-subtle-muted transition-all group-hover:text-accent"
               />
             </div>
           )}
         </PopoverTrigger>
 
         <PopoverContent className="relative rounded-tl-none" align="start">
-          <div className="absolute -top-[1.8rem] -left-px rounded-t-md border border-b-0 bg-white px-2 py-1">
+          <div className="absolute -top-[1.8rem] -left-px rounded-t-md border border-b-0 bg-input px-2 py-1">
             Filter by
             <span className="ml-1 font-semibold">{label}</span>
           </div>

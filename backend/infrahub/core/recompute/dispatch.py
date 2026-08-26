@@ -14,7 +14,6 @@ from infrahub.core.registry import registry
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.exceptions import BranchNotFoundError
 from infrahub.workers.dependencies import get_database, get_event_service, get_workflow
-from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
     from infrahub.core.recompute.bulk_write import AttributeValueWrite
@@ -53,7 +52,6 @@ class BulkRecomputeDispatcher:
         if not writes:
             return
 
-        await add_tags(db_change=True)
         try:
             branch = await registry.get_branch(db=self._db, branch=branch_name)
         except BranchNotFoundError:

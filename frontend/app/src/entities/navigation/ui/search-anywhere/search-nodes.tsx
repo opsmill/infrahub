@@ -104,14 +104,12 @@ export const NodesOptions = ({ node }: NodesOptionsProps) => {
     <SearchAnywhereItem to={url} value={url}>
       <Icon
         icon={schema.icon || "mdi:code-braces-box"}
-        className="px-2 py-0.5 text-custom-blue-700 text-lg"
+        className="px-2 py-0.5 text-accent text-lg"
       />
 
       <div className="grow overflow-auto text-sm">
         <div className="flex justify-between">
-          <span className="mr-1 font-semibold text-custom-blue-800">
-            {getNodeLabel(objectDetailsData)}
-          </span>
+          <span className="mr-1 font-semibold text-accent">{getNodeLabel(objectDetailsData)}</span>
 
           <div className="inline-flex items-center gap-1">
             <Badge variant="blue" className="py-0 text-xxs">
@@ -121,7 +119,7 @@ export const NodesOptions = ({ node }: NodesOptionsProps) => {
           </div>
         </div>
 
-        <div className="mt-1 flex gap-5 text-gray-600">
+        <div className="mt-1 flex gap-5 text-foreground-muted">
           {displayIpNamespace && (
             <NodeAttribute
               title={"IP Namespace"}
@@ -188,7 +186,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           const color = value.color === "" ? "#f1f1f1" : value.color;
           return (
             <div
-              className="truncate rounded-sm border border-transparent px-1.5 text-center font-medium text-gray-700"
+              className="truncate rounded-sm border border-transparent px-1.5 text-center font-medium text-foreground"
               style={{ background: `${color}40` }}
             >
               {value.label}
@@ -205,7 +203,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
   return (
     <div className="flex flex-col overflow-hidden whitespace-nowrap text-xxs leading-3">
       <span>{title}</span>
-      <span className="truncate font-medium text-gray-800">{formatValue() || "-"}</span>
+      <span className="truncate font-medium text-foreground">{formatValue() || "-"}</span>
     </div>
   );
 };

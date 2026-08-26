@@ -28,7 +28,7 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
           data-testid={`actions-row-button-${objectLabel}`}
           aria-label="Actions"
         >
-          <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
+          <Icon icon={"mdi:dots-vertical"} className="text-subtle-muted" />
         </Button>
 
         <Popover placement="bottom end">
@@ -36,7 +36,7 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
             <MenuItem
               isDisabled={!isDeleteAllowed}
               tooltip={permission.delete.message}
-              className="text-red-500"
+              className="text-danger"
               onAction={() => setShowDeleteModal(true)}
               data-testid={"delete-row-button"}
             >

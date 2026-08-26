@@ -1,9 +1,9 @@
 import type React from "react";
-import type { TreeProps as AriaTreeProps } from "react-aria-components";
 
 import { ChevronRightIcon } from "lucide-react";
 import {
   Tree as AriaTree,
+  type TreeProps as AriaTreeProps,
   TreeItem as AriaTreeItem,
   TreeItemContent as AriaTreeItemContent,
   type TreeItemContentProps as AriaTreeItemContentProps,
@@ -50,11 +50,11 @@ export interface TreeItemProps extends AriaTreeItemProps {}
 export function TreeItem({ className, ...props }: TreeItemProps) {
   return (
     <AriaTreeItem
-      className={composeAriaClassName(className, (resolvedClassName) =>
+      className={composeAriaClassName(
+        className,
         cn(
           focusVisibleStyle,
-          "cursor-pointer rounded-md border border-transparent text-sm mix-blend-multiply hover:bg-neutral-100",
-          resolvedClassName,
+          "cursor-pointer rounded-md border border-transparent text-sm text-subtle hover:bg-highlight hover:text-highlight-foreground",
         ),
       )}
       {...props}
@@ -106,7 +106,7 @@ export function TreeItemLoader(props: AriaTreeLoadMoreItemProps) {
     <AriaTreeLoadMoreItem {...props}>
       {({ level }) => (
         <div
-          className="flex h-8 items-center justify-start gap-2 text-sm text-neutral-500"
+          className="flex h-8 items-center justify-start gap-2 text-sm text-subtle-muted"
           style={{ paddingLeft: level * LOADER_INDENT_PX }}
         >
           <Spinner />

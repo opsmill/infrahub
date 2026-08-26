@@ -19,80 +19,20 @@ Infrahub frontend has 3 types of testing:
 
 ## E2E tests
 
-Infrahub uses [Playwright](https://playwright.dev/) for e2e testing.
-
-### Folder structure
-
-E2E tests are located in `/frontend/app/tests/e2e`.
-
-### Writing e2e tests
-
-[Playwright](https://playwright.dev/docs/codegen) can automatically generate tests as you perform actions in the browser, making it a quick way to start testing:
+End-to-end tests live in `tests/e2e/` at the repository root. The suite is written in Python with
+[pytest-playwright](https://playwright.dev/python/) and boots a complete Infrahub stack with
+`infrahub-testcontainers`. You need a running Docker daemon and a locally built
+Infrahub image (`uv run invoke dev.build`). Run from the repository root (not from
+`frontend/app`):
 
 ```shell
-npx playwright codegen
+INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false \
+  uv run pytest -c tests/e2e/pytest.ini tests/e2e
 ```
 
-To run a specific test, substitute `test` with `test.only`, or use the --grep 'test name' CLI parameter:
+To run against an already-running Infrahub instead of booting a stack, set `INFRAHUB_ADDRESS`.
 
-```ts
-...
-test.only('test name', async ({ page }) => {
-  expect(response.ok).toBe(true);
-});
-// or
-npx playwright test --grep 'test name'
-```
-
-To disable a specific test, substitute `test` with `test.skip`:
-
-```ts
-test.skip('test name', async ({ page }) => {
-  expect(response.ok).toBe(true);
-});
-```
-
-### Debugging e2e tests
-
-To debug a test, you need to run tests in debug mode. You can pause script execution using:
-
-```ts
-await page.pause();
-```
-
-To continue, press 'Resume' button in the page overlay or call `playwright.resume()` in the DevTools console.
-
-At the end of each test, all traces are saved for exploration in `/frontend/playwright-report`. You can open `index.html` in a browser or run `npx playwright show-report`.
-
-You can find a tutorial on how to use Trace viewer GUI in the [Playwright Trace Viewer documentation](https://playwright.dev/docs/trace-viewer).
-
-### Best practices
-
-1. Prioritize user-facing attributes and avoid selectors tied to implementation:
-
-```ts
-// ❌
-page.locator("[href='/objects/CoreOrganization'] > .group")
-
-// ✅
-page.getByRole("button", { name: "Save" });
-```
-
-2. Structure tests with steps for better readability:
-
-```shell
-# headless mode
-pnpm test:e2e
-
-# non-headless mode (headed)
-pnpm test:e2e:headed
-
-# Debug mode
-pnpm test:e2e:debug
-
-# UI mode
-pnpm test:e2e:ui
-```
+See `tests/e2e/README.md` for the suite architecture, the data fixtures, and the debugging workflow.
 
 ## Unit & integration tests
 

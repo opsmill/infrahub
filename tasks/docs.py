@@ -904,6 +904,8 @@ def _error_catalogue_type_label(schema: dict[str, Any]) -> str:
         return " \\| ".join(_error_catalogue_type_label(branch) for branch in schema["anyOf"])
     if schema.get("format") == "date-time":
         return "string (date-time)"
+    if schema.get("type") == "array":
+        return f"{_error_catalogue_type_label(schema.get('items', {}))}[]"
     json_type = schema.get("type")
     return str(json_type) if json_type is not None else "object"
 
@@ -917,6 +919,8 @@ def _error_catalogue_example_value(schema: dict[str, Any]) -> Any:  # noqa: ANN4
         return None
     if schema.get("format") == "date-time":
         return "2026-01-01T00:00:00Z"
+    if schema.get("type") == "array":
+        return [_error_catalogue_example_value(schema.get("items", {}))]
     samples: dict[str, Any] = {"string": "example", "integer": 1, "number": 1, "boolean": True, "null": None}
     return samples.get(str(schema.get("type")))
 

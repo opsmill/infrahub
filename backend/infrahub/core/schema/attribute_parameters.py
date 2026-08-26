@@ -89,11 +89,11 @@ class TextAttributeParameters(AttributeParameters):
             and config.SETTINGS.main.schema_strict_mode
             and self.min_length is not None
             and self.max_length is not None
+            and self.min_length > self.max_length
         ):
-            if self.min_length > self.max_length:
-                raise ValueError(
-                    "`max_length` can't be less than `min_length` when the schema is configured with strict mode"
-                )
+            raise ValueError(
+                "`max_length` can't be less than `min_length` when the schema is configured with strict mode"
+            )
 
         return self
 
@@ -137,11 +137,11 @@ class NumberAttributeParameters(AttributeParameters):
             and config.SETTINGS.main.schema_strict_mode
             and self.min_value is not None
             and self.max_value is not None
+            and self.min_value > self.max_value
         ):
-            if self.min_value > self.max_value:
-                raise ValueError(
-                    "`max_value` can't be less than `min_value` when the schema is configured with strict mode"
-                )
+            raise ValueError(
+                "`max_value` can't be less than `min_value` when the schema is configured with strict mode"
+            )
 
         return self
 

@@ -1,7 +1,11 @@
 import { useState } from "react";
 
 import { Icon } from "@/shared/components/display/icon";
-import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
+import {
+  cellHeaderInteractiveStyle,
+  cellHeaderStyle,
+  cellsStyle,
+} from "@/shared/components/table/style";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { classNames } from "@/shared/utils/common";
 
@@ -24,18 +28,20 @@ export function DecisionColumnHeader({
 
   return (
     <Popover open={showFilters} onOpenChange={setShowFilters}>
-      <PopoverTrigger className={classNames(cellsStyle, cellHeaderStyle)}>
+      <PopoverTrigger
+        className={classNames(cellsStyle, cellHeaderStyle, cellHeaderInteractiveStyle)}
+      >
         <FieldSchemaIcon fieldSchema={attributeSchema} />
 
         <span className="mr-2 truncate">{attributeSchema.label ?? attributeSchema.name}</span>
         <Icon
           icon="mdi:filter-variant"
-          className={classNames("ml-auto text-lg", currentFilter ? "text-indigo-700" : "invisible")}
+          className={classNames("ml-auto text-lg", currentFilter ? "text-active" : "invisible")}
         />
       </PopoverTrigger>
 
       <PopoverContent className="relative rounded-tl-none p-0" align="start">
-        <div className="absolute -top-[1.8rem] -left-px rounded-t-md border border-b-0 bg-white px-2 py-1 font-semibold">
+        <div className="absolute -top-[1.8rem] -left-px rounded-t-md border border-b-0 bg-table-cell-pinned px-2 py-1 font-semibold">
           Filter by {attributeSchema.label ?? attributeSchema.name}
         </div>
 

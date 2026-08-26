@@ -33,7 +33,12 @@ export const ObjectTable = () => {
   const flatData = data?.pages.flat() ?? [];
 
   return (
-    <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
+    <InfiniteScroll
+      scrollX
+      hasNextPage={hasNextPage}
+      onLoadMore={fetchNextPage}
+      className="bg-table-frame"
+    >
       <DataTable
         columns={columns}
         count={count}

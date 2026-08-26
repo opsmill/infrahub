@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, assert_never
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.query_group.subscribers import fetch_subscriber_refs
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -19,26 +19,6 @@ log = get_logger()
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
-
-
-GATHER_GRAPHQL_QUERY_SUBSCRIBERS = """
-query GatherGraphQLQuerySubscribers($members: [ID!]) {
-  CoreGraphQLQueryGroup(members__ids: $members) {
-    edges {
-      node {
-        subscribers {
-          edges {
-            node {
-              id
-              __typename
-            }
-          }
-        }
-      }
-    }
-  }
-}
-"""
 
 
 async def get_field_level_impacted_subscribers(
@@ -107,15 +87,5 @@ async def get_field_level_impacted_subscribers(
 async def _get_subscribers_for_nodes(
     node_ids: list[str], branch: str, client: InfrahubClient
 ) -> list[ProposedChangeSubscriber]:
-    result = await client.execute_graphql(
-        query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS,
-        branch_name=branch,
-        variables={"members": node_ids},
-    )
-    subscribers = []
-    for group in result[InfrahubKind.GRAPHQLQUERYGROUP]["edges"]:
-        for subscriber in group["node"]["subscribers"]["edges"]:
-            subscribers.append(
-                ProposedChangeSubscriber(subscriber_id=subscriber["node"]["id"], kind=subscriber["node"]["__typename"])
-            )
-    return subscribers
+    refs = await fetch_subscriber_refs(client=client, node_ids=node_ids, branch=branch)
+    return [ProposedChangeSubscriber(subscriber_id=ref.id, kind=ref.kind) for ref in refs]

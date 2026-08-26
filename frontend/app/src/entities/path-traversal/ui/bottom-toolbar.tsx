@@ -52,8 +52,8 @@ export function BottomToolbar({
             onPress={onParametersClick}
             className={classNames(
               isParametersOpen
-                ? "bg-indigo-500 text-white data-hovered:bg-indigo-600"
-                : "text-gray-600"
+                ? "bg-selected text-selected-foreground shadow-selected data-hovered:bg-selected-highlight"
+                : "text-foreground-muted"
             )}
           >
             <Icon icon="mdi:tune-variant" className="text-lg" />
@@ -68,7 +68,7 @@ export function BottomToolbar({
               aria-label="Reload"
               onPress={onReload}
               isDisabled={isReloading}
-              className="text-gray-600"
+              className="text-foreground-muted"
             >
               <Icon
                 icon="mdi:refresh"

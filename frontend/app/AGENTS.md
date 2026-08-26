@@ -14,7 +14,6 @@ cd frontend/app && pnpm install    # Install app dependencies only (submodule mu
 cd frontend/app && pnpm dev        # Start dev server
 cd frontend/app && pnpm build      # Production build
 cd frontend/app && pnpm test       # Run unit tests
-cd frontend/app && pnpm test:e2e   # Run E2E tests
 cd frontend/app && pnpm biome:fix  # Format and lint
 cd frontend/app && pnpm codegen    # Generate GraphQL types
 ```
@@ -52,6 +51,7 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 - `dev/knowledge/frontend/entities-structure.md` - Entity layer pattern (api/domain/ui), GraphQL fetching, backend authority
 - `dev/knowledge/frontend/shared-components.md` - **Reuse-first inventory** — look here before building anything generic
 - `dev/knowledge/frontend/design-system.md` - `@infrahub/ui` package (Button, Card, Modal, Spinner)
+- `dev/knowledge/frontend/theming.md` - **Read before touching colours** — theme tokens, the dark class, how to change a colour in one theme only
 - `dev/knowledge/frontend/file-components.md` - DataViewer and file handling components
 - `dev/knowledge/frontend/auth-methods.md` - Auth method registry, picker, token persistence boundaries
 - `dev/knowledge/frontend/branches.md` - Read before writing code that depends on which branch is current, or on the default branch — the default branch name is deployment-configurable
@@ -60,5 +60,5 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 
 - `dev/guides/frontend/writing-unit-tests.md` - Unit tests for TypeScript functions
 - `dev/guides/frontend/writing-component-tests.md` - React component tests
-- `dev/guides/frontend/writing-e2e-tests.md` - Playwright E2E tests
+- `dev/guides/frontend/writing-e2e-tests.md` - E2E tests (pytest-playwright)
 - `dev/guides/frontend/adding-an-auth-method.md` - Step-by-step recipe for adding a new login method

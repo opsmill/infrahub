@@ -81,7 +81,7 @@ export const ChecksSummary = (props: ChecksSummaryProps) => {
             onPress={() => handleRetry("all")}
             isDisabled={!isAuthenticated}
             variant="ghost"
-            className="gap-1 data-hovered:bg-neutral-200"
+            className="gap-1 data-hovered:bg-highlight"
           >
             Retry all
             <Retry isLoading={isPending || isLoading} isDisabled={isPending || isLoading} />

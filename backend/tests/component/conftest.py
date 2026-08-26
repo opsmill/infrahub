@@ -15,6 +15,7 @@ from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
 from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
 from prefect.client.orchestration import PrefectClient, get_client
+from prefect.server.api.server import SubprocessASGIServer
 from prefect.settings import get_current_settings
 from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
@@ -71,15 +72,39 @@ from infrahub.git import InfrahubRepository
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_workflow
+from tests.adapters.workflow import WorkflowRecorder
 from tests.conftest import TestHelper
 from tests.helpers.constants import (
     PREFECT_EVENTS_PROACTIVE_GRANULARITY,
     PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS,
     PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
+    PREFECT_TEST_SERVER_PORT_RANGE,
 )
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
+from tests.helpers.utils import find_available_prefect_port
 from tests.test_data import dataset01 as ds01
+
+COMPONENT_TESTS_DIR = Path(__file__).parent
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Default every component test using ``httpx_mock`` to intercepting only the fake SDK host.
+
+    The per-worker Prefect server flushes batched API logs on its own schedule; a flush landing
+    inside a mocked test must reach the real server instead of failing inside the mock. Tests that
+    declare their own ``httpx_mock`` marker keep it: a hook-added function-level marker would
+    otherwise outrank an explicit module-level one, so the default is only added when none exists.
+    """
+    default_marker = pytest.mark.httpx_mock(should_mock=lambda request: request.url.host == "mock")
+    for item in items:
+        if COMPONENT_TESTS_DIR not in item.path.parents:
+            continue
+        if "httpx_mock" not in getattr(item, "fixturenames", ()):
+            continue
+        if list(item.iter_markers("httpx_mock")):
+            continue
+        item.add_marker(default_marker)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -143,9 +168,13 @@ def prefect_test_fixture() -> Generator[None, None, None]:
     os.environ["PREFECT_SERVER_EVENTS_PROACTIVE_GRANULARITY"] = PREFECT_EVENTS_PROACTIVE_GRANULARITY
     os.environ.update(PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS)
 
-    with patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command):
-        with prefect_test_harness(server_startup_timeout=60):
-            yield
+    with (
+        patch.object(SubprocessASGIServer, "_port_range", PREFECT_TEST_SERVER_PORT_RANGE),
+        patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command),
+        patch("prefect.testing.utilities._find_available_port", find_available_prefect_port),
+        prefect_test_harness(server_startup_timeout=60),
+    ):
+        yield
 
 
 @pytest.fixture
@@ -2972,6 +3001,17 @@ def workflow_local(dependency_provider: Provider) -> Generator[WorkflowLocalExec
     config.OVERRIDE.workflow = workflow
     with dependency_provider.scope(build_workflow, lambda: workflow):
         yield workflow
+    config.OVERRIDE.workflow = original
+
+
+@pytest.fixture
+def workflow_recorder(dependency_provider: Provider) -> Generator[WorkflowRecorder, None, None]:
+    """Record workflow submissions instead of running them."""
+    original = config.OVERRIDE.workflow
+    recorder = WorkflowRecorder()
+    config.OVERRIDE.workflow = recorder
+    with dependency_provider.scope(build_workflow, lambda: recorder):
+        yield recorder
     config.OVERRIDE.workflow = original
 
 

@@ -131,10 +131,9 @@ def _validate_input(graphql_context: GraphqlContext, branch: Branch, input_data:
         # Validate that the requested node_kind exists, will raise an error if not
         graphql_context.db.schema.get(name=input_data.node_kind.value, branch=branch, duplicate=False)
 
-        if input_data.event_type:
-            # If the event type is not set then all events are applicable, this will mean that some events
-            # would be filtered out, as they won't match the node.
-            if input_data.event_type.value not in get_all_infrahub_node_kind_events():
-                raise ValidationError(
-                    input_value=f"Defining a node_kind is not valid for {input_data.event_type.value} events"
-                )
+        # If the event type is not set then all events are applicable, this will mean that some events
+        # would be filtered out, as they won't match the node.
+        if input_data.event_type and input_data.event_type.value not in get_all_infrahub_node_kind_events():
+            raise ValidationError(
+                input_value=f"Defining a node_kind is not valid for {input_data.event_type.value} events"
+            )

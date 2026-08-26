@@ -9,6 +9,7 @@ import {
 import React from "react";
 
 import { Row } from "@/shared/components/container";
+import { StickyCellShadow } from "@/shared/components/table/sticky-cell-shadow";
 import { cellFooterStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
@@ -90,7 +91,7 @@ export function DataTable<T extends NodeCore>({
 
       {allRows.map((row) => {
         return (
-          <div key={row.id} className="contents" data-testid="data-table-row">
+          <div key={row.id} className="group contents" data-testid="data-table-row">
             {row.getVisibleCells().map((cell) => {
               return flexRender(cell.column.columnDef.cell, {
                 ...cell.getContext(),
@@ -115,9 +116,9 @@ export function DataTable<T extends NodeCore>({
               <>
                 <Row className="gap-1">
                   <span className="font-medium">{formatNumberDisplay(count)}</span>
-                  <span className="text-gray-500">count{count > 1 && "s"}</span>
+                  <span className="text-foreground-muted">count{count > 1 && "s"}</span>
                 </Row>
-                <div className="pointer-events-none absolute top-0 -right-4 bottom-0 w-4 bg-linear-to-r from-gray-500/10" />
+                <StickyCellShadow side="left" />
               </>
             )}
           </div>

@@ -332,6 +332,10 @@ Work dispatched *after* an operation has already committed — the recompute and
 
 The same holds for a single side effect inline in a request handler — a telemetry or notification event sent before the response — not only for per-item batch work. Confirm first that the call can fail in a way the caller cares about (see [Exception Handling](../../guidelines/backend/exceptions.md)); if it does need isolating, dispatch it as a background task that runs after the response instead of wrapping it in `try`/`except` in the handler.
 
+### Transient database errors are retried at the transaction layer, not by task retry
+
+A Prefect task retry re-runs the failed task and by default waits no time between attempts. When a batch of concurrent tasks contend for the same nodes, each deadlocking task retries at the same moment and deadlocks again. Transient database errors therefore belong to the transaction-layer retry (`retry_db_transaction`), which reopens a fresh transaction after an exponential backoff with jitter so contending writers separate; the task-level retry remains the outer fallback. A transaction-owning write path invoked from a task must carry `retry_db_transaction` and let retriable errors reach that owner. See [Database Schema — Transaction Retry](database-schema.md#transaction-retry).
+
 ## Recovery actions
 
 A task run can expose recovery actions through the GraphQL `Task` type's `available_actions` field, gated by the run's current state. `TaskActionGenerator` derives the action set per workflow, and `InfrahubTaskRetry` and `InfrahubTaskCancel` carry the actions out. Only `WEBHOOK_SEND` runs expose actions today; see [Webhooks](webhooks.md) for the delivery-specific behavior.

@@ -55,7 +55,7 @@ const GlobalEventDisplay = (props: EventType) => {
     default: {
       warnUnexpectedType(props);
       return (
-        <span className="flex items-center text-gray-500 text-sm">
+        <span className="flex items-center text-foreground-muted text-sm">
           {(props as EventType).event}
         </span>
       );
@@ -68,10 +68,10 @@ export const Event = (props: EventType) => {
     <div
       className={classNames(
         "relative grid grid-cols-8 gap-2 p-2",
-        "rounded-md border bg-gray-50 shadow-xs transition-all"
+        "rounded-md border bg-card shadow-card transition-all"
       )}
     >
-      <div className="flex items-center whitespace-nowrap font-medium text-gray-500 text-xs">
+      <div className="flex items-center whitespace-nowrap font-medium text-foreground-muted text-xs">
         <DateDisplay date={props.occurred_at} fullTimestamp />
       </div>
 
@@ -79,7 +79,7 @@ export const Event = (props: EventType) => {
         <GlobalEventDisplay {...props} />
       </div>
 
-      <div className="flex items-center gap-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-500 text-xs">
+      <div className="flex items-center gap-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium text-foreground-muted text-xs">
         {props.branch && (
           <>
             <Icon icon={"mdi:source-branch"} />
@@ -90,7 +90,7 @@ export const Event = (props: EventType) => {
       </div>
 
       <div className="relative">
-        <Link to={`/activities/${props.id}`} className="text-gray-500 text-xs">
+        <Link to={`/activities/${props.id}`} className="text-foreground-muted text-xs">
           View details
         </Link>
 
@@ -98,7 +98,7 @@ export const Event = (props: EventType) => {
           <Tooltip message="Contains sub activities" nonInteractiveTrigger>
             <Icon
               icon={"mdi:subtasks"}
-              className="absolute right-2 rounded-full bg-custom-blue-500/10 p-1.5 text-custom-blue-500"
+              className="absolute right-2 rounded-full bg-accent/10 p-1.5 text-accent"
               data-testid="activity-has-children-icon"
             />
           </Tooltip>

@@ -74,7 +74,7 @@ export function NodeMetadataPopover(props: NodeMetadataProps) {
         size="xs"
         shape="circle"
         variant="ghost"
-        className="text-gray-500"
+        className="text-foreground-muted"
         aria-label="View node metadata"
       >
         <Icon icon="mdi:information-slab-circle-outline" />

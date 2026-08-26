@@ -39,18 +39,18 @@ export function InfraNode({ data }: NodeProps) {
   const isEndpoint = isSource || isDestination;
 
   let borderClass = "";
-  let bgClass = "bg-white";
+  let bgClass = "bg-input";
   let borderStyle: string | undefined;
 
   if (isSource) {
-    borderClass = "border-emerald-500";
-    bgClass = "bg-emerald-50";
+    borderClass = "border-emerald-500 dark:border-emerald-400";
+    bgClass = "bg-emerald-50 dark:bg-emerald-400/15";
   } else if (isDestination) {
-    borderClass = "border-orange-500";
-    bgClass = "bg-orange-50";
+    borderClass = "border-orange-500 dark:border-orange-400";
+    bgClass = "bg-orange-50 dark:bg-orange-400/15";
   } else {
     borderStyle = kindColor;
-    if (nodeData.highlighted) bgClass = "bg-blue-50";
+    if (nodeData.highlighted) bgClass = "bg-blue-50 dark:bg-blue-400/15";
   }
 
   const dimmed = !nodeData.highlighted && !isEndpoint;
@@ -65,7 +65,7 @@ export function InfraNode({ data }: NodeProps) {
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
-      <Handle type="target" position={targetPosition} className="!bg-gray-400" />
+      <Handle type="target" position={targetPosition} className="!bg-subtle-muted" />
 
       {/* Endpoint badge */}
       {isSource && (
@@ -80,16 +80,16 @@ export function InfraNode({ data }: NodeProps) {
       )}
 
       <div className="mt-1 truncate font-medium text-sm">{nodeData.label}</div>
-      <div className="truncate text-[11px] text-gray-500">{nodeData.kind}</div>
+      <div className="truncate text-[11px] text-foreground-muted">{nodeData.kind}</div>
 
-      <Handle type="source" position={sourcePosition} className="!bg-gray-400" />
+      <Handle type="source" position={sourcePosition} className="!bg-subtle-muted" />
 
       {showTooltip && (
-        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border bg-white px-3 py-2 text-left shadow-lg">
+        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border bg-popover px-3 py-2 text-left shadow-lg backdrop-blur-lg">
           <div className="font-medium text-sm">{nodeData.label}</div>
-          <div className="text-gray-500 text-xs">{nodeData.kind}</div>
-          <div className="mt-1 font-mono text-[10px] text-gray-400">{nodeData.nodeId}</div>
-          <div className="mt-1 text-[10px] text-blue-500">Click to open details</div>
+          <div className="text-foreground-muted text-xs">{nodeData.kind}</div>
+          <div className="mt-1 font-mono text-[10px] text-subtle-muted">{nodeData.nodeId}</div>
+          <div className="mt-1 text-[10px] text-accent">Click to open details</div>
         </div>
       )}
     </div>

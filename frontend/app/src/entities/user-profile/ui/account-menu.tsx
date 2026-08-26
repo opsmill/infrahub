@@ -7,6 +7,7 @@ import {
   MenuTrigger,
   Popover,
   Spinner,
+  ThemeSwitchMenuItem,
 } from "@infrahub/ui";
 import {
   CircleUserIcon,
@@ -58,6 +59,8 @@ export const AccountMenu = () => {
 
 const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => (
   <>
+    <ThemeSwitchMenuItem />
+
     <MenuItem onAction={onAboutClick}>
       <InfoIcon /> About Infrahub
     </MenuItem>
@@ -108,13 +111,13 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
         href="/login"
         routerOptions={{ state: { from: location } }}
       >
-        <div className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-stone-200">
-          <Icon icon="mdi:user" className="relative top-1 text-3xl text-stone-600" />
+        <div className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-border">
+          <Icon icon="mdi:user" className="relative top-1 text-3xl text-subtle-muted" />
         </div>
 
         <div className="overflow-hidden group-data-[state=collapsed]:hidden">
           <div className="truncate font-medium leading-4">Log in</div>
-          <div className="truncate text-stone-500 text-xs">anonymous</div>
+          <div className="truncate text-subtle-muted text-xs">anonymous</div>
         </div>
       </LinkButton>
 

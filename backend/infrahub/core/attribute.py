@@ -299,13 +299,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 if not is_valid:
                     raise ValidationError({name: f"{validation_value} must conform with the regex: {regex!r}"})
 
-        if min_length := schema.get_min_length():
-            if len(value) < min_length:
-                raise ValidationError({name: f"{value} must have a minimum length of {min_length!r}"})
+        if (min_length := schema.get_min_length()) and len(value) < min_length:
+            raise ValidationError({name: f"{value} must have a minimum length of {min_length!r}"})
 
-        if max_length := schema.get_max_length():
-            if len(value) > max_length:
-                raise ValidationError({name: f"{value} must have a maximum length of {max_length!r}"})
+        if (max_length := schema.get_max_length()) and len(value) > max_length:
+            raise ValidationError({name: f"{value} must have a maximum length of {max_length!r}"})
 
         # Some invalid values may exist due to https://github.com/opsmill/infrahub/issues/6714.
         if config.SETTINGS.main.schema_strict_mode and isinstance(schema.parameters, NumberAttributeParameters):

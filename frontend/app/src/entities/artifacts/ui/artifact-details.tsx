@@ -67,7 +67,7 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
             className="m-1 grow overflow-hidden"
           />
         ) : (
-          <div className="flex grow items-center justify-center p-4 text-gray-500">
+          <div className="flex grow items-center justify-center p-4 text-foreground-muted">
             No artifact content available
           </div>
         )}

@@ -30,9 +30,9 @@ function AutocompleteSearchField({
       autoFocus
       {...props}
     >
-      <SearchIcon aria-hidden className="m-2 size-3.5 text-neutral-400" />
+      <SearchIcon aria-hidden className="m-2 size-3.5 text-subtle-muted" />
       <AriaInput
-        className="min-w-0 flex-1 border-none outline-hidden placeholder:text-neutral-400 [&::-webkit-search-cancel-button]:hidden"
+        className="min-w-0 flex-1 border-none outline-hidden placeholder:text-subtle-muted [&::-webkit-search-cancel-button]:hidden"
         placeholder={placeholder}
       />
       <Button

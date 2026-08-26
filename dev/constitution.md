@@ -107,7 +107,7 @@ be written before or alongside implementation, not deferred.
   triggered actions, or schema migrations.
 - **Frontend unit tests**: Vitest for pure logic, utilities, and React
   hooks. MUST run in seconds.
-- **Frontend E2E tests** (`frontend/app/tests/e2e/`): Playwright tests
+- **E2E tests** (`tests/e2e/` at the repo root): pytest-playwright tests
   MUST be included for all user-facing features. Feature implementation
   is not complete until E2E tests pass.
 - Prefer adapter/protocol patterns over mocking. Mocks are acceptable

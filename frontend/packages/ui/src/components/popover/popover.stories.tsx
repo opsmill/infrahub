@@ -28,7 +28,7 @@ export const AllVariants: Story = {
     <div className="flex flex-col gap-4">
       {WIDTHS.map((width) => (
         <div key={width} className="flex flex-col gap-1">
-          <div className="text-xxs font-medium tracking-wider text-neutral-400 uppercase">
+          <div className="text-xxs font-medium tracking-wider text-subtle-muted uppercase">
             {width}
           </div>
 

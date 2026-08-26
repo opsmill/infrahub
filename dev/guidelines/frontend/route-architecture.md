@@ -319,7 +319,7 @@ itself auth-agnostic (the "authenticated" concern is a distinct component that s
 when logged out). Do **not** rely on placement under `RequireAuth`; do **not** read the auth token
 from a `domain/` use-case (that breaks the FSD layer rule — auth state stays in `ui/`).
 
-`DatePreferencesProvider` hit this directly: first mounted at the app root, then under
+Precedent: `DatePreferencesProvider` first mounted at the app root, then under
 `RequireAuth` — both fired the query for logged-out users and broke E2E. The fix was to gate the
 mount on `isAuthenticated`.
 

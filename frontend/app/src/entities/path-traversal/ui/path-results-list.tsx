@@ -22,15 +22,18 @@ const VARIANT_CLASSES: Record<
 > = {
   blue: {
     headerBanner: "",
-    headerText: "text-gray-700",
-    selected: "data-[selected=true]:border-blue-300 data-[selected=true]:bg-blue-50",
-    selectedTitle: "text-blue-700",
+    headerText: "text-subtle",
+    selected:
+      "data-[selected=true]:border-blue-300 data-[selected=true]:bg-blue-50 dark:data-[selected=true]:border-blue-400/40 dark:data-[selected=true]:bg-blue-400/10",
+    selectedTitle: "text-blue-700 dark:text-blue-300",
   },
   amber: {
-    headerBanner: "mb-2 rounded-md border border-amber-200 bg-amber-50 p-2",
-    headerText: "font-medium text-amber-800 text-xs",
-    selected: "data-[selected=true]:border-amber-300 data-[selected=true]:bg-amber-50",
-    selectedTitle: "text-amber-700",
+    headerBanner:
+      "mb-2 rounded-md border border-amber-200 bg-amber-50 p-2 dark:border-amber-400/30 dark:bg-amber-200/10",
+    headerText: "font-medium text-amber-800 text-xs dark:text-amber-200",
+    selected:
+      "data-[selected=true]:border-amber-300 data-[selected=true]:bg-amber-50 dark:data-[selected=true]:border-amber-400/40 dark:data-[selected=true]:bg-amber-400/10",
+    selectedTitle: "text-amber-700 dark:text-amber-300",
   },
 };
 
@@ -77,7 +80,7 @@ export function PathResultsList({
               variant="ghost"
               size="xs"
               onPress={() => copyToClipboard(copyAllText())}
-              className="px-2 py-0.5 text-blue-600 text-xs data-hovered:bg-blue-50"
+              className="px-2 py-0.5 text-accent text-xs data-hovered:bg-highlight"
             >
               {isCopied ? "Copied!" : "Copy all"}
             </Button>
@@ -86,7 +89,7 @@ export function PathResultsList({
       </div>
 
       {warning && (
-        <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-amber-800 text-xs">
+        <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-amber-800 text-xs dark:border-amber-400/30 dark:bg-amber-200/10 dark:text-amber-200">
           <TriangleAlertIcon className="mt-px size-4 shrink-0 text-amber-500" aria-hidden="true" />
           <div>{warning}</div>
         </div>
@@ -111,7 +114,7 @@ export function PathResultsList({
                   value={String(index)}
                   onSelect={() => onSelect(index)}
                   className={classNames(
-                    "group block cursor-pointer rounded-md border border-transparent transition-colors hover:border-border hover:bg-gray-50",
+                    "group block cursor-pointer rounded-md border border-transparent transition-colors hover:border-border hover:bg-highlight",
                     v.selected
                   )}
                 >
@@ -120,12 +123,12 @@ export function PathResultsList({
                       <span
                         className={classNames(
                           "truncate font-medium text-xs",
-                          isExpanded ? v.selectedTitle : "text-gray-600"
+                          isExpanded ? v.selectedTitle : "text-subtle"
                         )}
                       >
                         {getItemTitle(path, index)}
                       </span>
-                      <span className="shrink-0 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-500">
+                      <span className="shrink-0 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] text-subtle-muted dark:bg-white/10">
                         {path.depth} hop{path.depth !== 1 ? "s" : ""}
                       </span>
                     </div>
@@ -136,7 +139,7 @@ export function PathResultsList({
                           e.stopPropagation();
                           copyToClipboard(copyItemText(index));
                         }}
-                        className="shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition-opacity hover:text-gray-500 focus-visible:opacity-100 group-hover:opacity-100"
+                        className="shrink-0 rounded p-0.5 text-subtle-muted opacity-0 transition-opacity hover:text-subtle focus-visible:opacity-100 group-hover:opacity-100"
                         title="Copy this entry"
                       >
                         copy
@@ -144,14 +147,16 @@ export function PathResultsList({
                     )}
                   </div>
                   {subtitle && !isExpanded && (
-                    <div className="truncate px-3 pb-2 text-[10px] text-gray-400">{subtitle}</div>
+                    <div className="truncate px-3 pb-2 text-[10px] text-subtle-muted">
+                      {subtitle}
+                    </div>
                   )}
                   {isExpanded && (
                     <ul className="space-y-1 px-3 pb-2">
                       {path.hops.map((hop, hopIndex) => (
                         <li
                           key={`${hop.node.id}-${hopIndex}`}
-                          className="flex items-center gap-2 text-[11px] text-gray-700"
+                          className="flex items-center gap-2 text-[11px] text-subtle"
                         >
                           <span
                             className="size-1.5 shrink-0 rounded-full"
@@ -168,7 +173,7 @@ export function PathResultsList({
           </Command.List>
         </Command>
       ) : (
-        <div className="text-center text-gray-400 text-sm">{emptyMessage}</div>
+        <div className="text-center text-sm text-subtle-muted">{emptyMessage}</div>
       )}
     </div>
   );

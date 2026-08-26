@@ -13,21 +13,22 @@ import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 const checkboxCardVariants = tv({
   base: [
     focusVisibleStyle,
-    "group/checkbox-card relative flex cursor-pointer items-center gap-3 rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-neutral-600 transition-all",
+    "group/checkbox-card relative flex cursor-pointer items-center gap-3 rounded-lg border border-border-strong bg-input px-3 py-2 text-sm text-foreground-muted transition-all",
     "data-disabled:cursor-not-allowed data-disabled:opacity-60",
     "data-pressed:scale-97 data-pressed:shadow-none data-pressed:duration-75",
   ],
   variants: {
     isSelected: {
       true: [
-        "bg-gradient-to-b from-stone-100 to-white text-neutral-800 shadow-xs inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
+        "bg-gradient-to-b from-stone-100 to-white text-foreground shadow-xs inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
+        "dark:from-white/10 dark:to-white/5 dark:shadow-none dark:inset-shadow-[0_1px_0_rgba(255,255,255,0.08)]",
       ],
     },
   },
 });
 
 const checkboxCardIndicatorVariants = tv({
-  base: "flex size-4 shrink-0 items-center justify-center rounded-full border border-border-strong bg-white text-white transition-all",
+  base: "flex size-4 shrink-0 items-center justify-center rounded-full border border-border-strong bg-input text-white transition-all",
   variants: {
     isSelected: {
       true: "border-cyan-800 bg-linear-to-b from-cyan-800 to-cyan-600 inset-shadow-[0_1px_0_rgba(255,255,255,0.4)]",

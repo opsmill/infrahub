@@ -88,7 +88,7 @@ export const SchemaViewer = ({
     <section
       style={style}
       className={classNames(
-        "flex flex-col space-y-4 overflow-hidden rounded-md border bg-white p-4 shadow-lg",
+        "flex flex-col space-y-4 overflow-hidden rounded-md border bg-card p-4 shadow-lg",
         className
       )}
       data-testid="schema-viewer"
@@ -100,7 +100,7 @@ export const SchemaViewer = ({
           <span className="text-xs">{schema.id}</span>
         </div>
 
-        <div className="flex items-center gap-2 text-gray-600">
+        <div className="flex items-center gap-2 text-foreground-muted">
           {schema.kind && (
             <Tooltip message="View in graph">
               <LinkButton
@@ -147,13 +147,13 @@ const SchemaViewerTitle = ({ schema }: { schema: ModelSchema }) => {
       {schema.icon && (
         <Icon
           icon={schema.icon}
-          className="self-start rounded-sm border border-custom-blue-100 p-2 text-custom-blue-600 text-xl"
+          className="self-start rounded-sm border border-accent/20 p-2 text-accent text-xl"
         />
       )}
 
       <div>
         <h1 className="font-semibold">{schema.label}</h1>
-        <p className="text-gray-600 text-sm">{schema.description}</p>
+        <p className="text-foreground-muted text-sm">{schema.description}</p>
       </div>
     </header>
   );

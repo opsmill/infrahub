@@ -18,8 +18,8 @@ from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedA
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  used in dataclass field
 from infrahub.server import app
 from infrahub.workers.dependencies import build_workflow
-from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.task_manager import setup_task_manager_once
 from tests.helpers.test_app import TestInfrahubAppBase
 
 if TYPE_CHECKING:
@@ -34,12 +34,14 @@ if TYPE_CHECKING:
 
 
 # Two Python computed attributes on TestCar, each fed by its own transform (transform01 and
-# transform_opaque), with a Person peer.
+# transform_opaque), with a Person peer. TestCar's display label is built from its own name, so a
+# transform reading that label can be scoped to TestCar; a label crossing a relationship could not.
 CAR_PERSON_PYTHON_SCHEMA = SchemaRoot(
     nodes=[
         NodeSchema(
             name="Car",
             namespace="Test",
+            display_labels=["name__value"],
             attributes=[
                 AttributeSchema(name="name", kind="Text", unique=True),
                 AttributeSchema(name="nbr_seats", kind="Number", optional=True),
@@ -140,7 +142,7 @@ class ScopedRecomputeTestBase(TestInfrahubAppBase):
     ) -> AsyncGenerator[WorkflowRecorder, None]:
         original = config.OVERRIDE.workflow
         recorder = WorkflowRecorder()
-        await setup_task_manager()
+        await setup_task_manager_once()
         config.OVERRIDE.workflow = recorder
         with dependency_provider.scope(build_workflow, lambda: recorder):
             yield recorder

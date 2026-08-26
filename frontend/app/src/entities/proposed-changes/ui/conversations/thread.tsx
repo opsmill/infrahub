@@ -5,7 +5,6 @@ import { toast } from "react-toastify";
 import { queryClient } from "@/shared/api/rest/client";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { classNames } from "@/shared/utils/common";
 
 import { getThreadTitle } from "@/entities/diff/ui/diff-utils";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
@@ -157,10 +156,7 @@ export const Thread = (props: tThread) => {
   );
 
   return (
-    <Card
-      className={classNames("relative gap-2 p-2", isResolved && "to-gray-200")}
-      data-testid="thread"
-    >
+    <Card className="relative gap-2 p-2" data-testid="thread">
       {displayContext && getThreadTitle(thread)}
 
       {comments.map((comment: any, index: number) => (

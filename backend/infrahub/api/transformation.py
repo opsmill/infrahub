@@ -55,7 +55,7 @@ async def transform_python(
     query = await transform.query.get_peer(db=db, raise_on_error=True)
     repository = await transform.repository.get_peer(db=db, raise_on_error=True)
 
-    if repository.commit.value is None:  # type: ignore[attr-defined]
+    if repository.commit.value is None:
         raise TransformError(
             repository_name=repository.name.value,
             location=repository.location.value,
@@ -84,7 +84,7 @@ async def transform_python(
         repository_id=repository.id,
         repository_name=repository.name.value,
         repository_kind=repository.get_kind(),
-        commit=repository.commit.value,  # type: ignore[attr-defined]
+        commit=repository.commit.value,
         branch=branch_params.branch.name,
         transform_location=f"{transform.file_path.value}::{transform.class_name.value}",
         timeout=transform.timeout.value,
@@ -123,7 +123,7 @@ async def transform_jinja2(
     query = await transform.query.get_peer(db=db, raise_on_error=True)
     repository = await transform.repository.get_peer(db=db, raise_on_error=True)
 
-    if repository.commit.value is None:  # type: ignore[attr-defined]
+    if repository.commit.value is None:
         raise TransformError(
             repository_name=repository.name.value,
             location=repository.location.value,
@@ -150,7 +150,7 @@ async def transform_jinja2(
         repository_id=repository.id,
         repository_name=repository.name.value,
         repository_kind=repository.get_kind(),
-        commit=repository.commit.value,  # type: ignore[attr-defined]
+        commit=repository.commit.value,
         branch=branch_params.branch.name,
         template_location=transform.template_path.value,
         timeout=transform.timeout.value,

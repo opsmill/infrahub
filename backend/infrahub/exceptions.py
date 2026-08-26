@@ -412,15 +412,23 @@ class DiffError(Error):
 
 
 class UniquenessViolationError(ValidationError):
-    """Raised when a node's uniqueness constraint is violated."""
+    """Raised when a node's values collide with an existing node on a uniqueness constraint.
+
+    ``fields`` names the constraint members, which may be relationships as well as attributes.
+    """
+
+    def __init__(self, message: str, *, node_kind: str, fields: list[str]) -> None:
+        self.node_kind = node_kind
+        self.fields = fields
+        super().__init__(message)
 
 
 class HFIDViolatedError(UniquenessViolationError):
     matching_nodes_ids: set[str]
 
-    def __init__(self, input_value: str | dict | list, matching_nodes_ids: set[str]) -> None:
+    def __init__(self, message: str, *, node_kind: str, fields: list[str], matching_nodes_ids: set[str]) -> None:
         self.matching_nodes_ids = matching_nodes_ids
-        super().__init__(input_value)
+        super().__init__(message, node_kind=node_kind, fields=fields)
 
 
 class DiffRangeValidationError(DiffError): ...

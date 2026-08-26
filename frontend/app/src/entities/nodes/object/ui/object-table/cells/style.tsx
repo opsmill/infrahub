@@ -1,3 +1,4 @@
+import { StickyCellShadow } from "@/shared/components/table/sticky-cell-shadow";
 import { cellMutedStyle } from "@/shared/components/table/style";
 import { TableCell, type TableCellProps } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
@@ -16,13 +17,13 @@ export function StickyLeftCell({
     <TableCell
       className={classNames(
         "sticky left-0 z-1 font-medium",
-        isMuted ? cellMutedStyle : "bg-white",
+        isMuted ? cellMutedStyle : "bg-table-cell-pinned",
         className
       )}
       {...props}
     >
       {children}
-      <div className="pointer-events-none absolute top-0 -right-4 bottom-0 w-4 bg-gradient-to-r from-gray-500/10" />
+      <StickyCellShadow side="left" />
     </TableCell>
   );
 }
@@ -32,12 +33,12 @@ export function StickyRightCell({ className, isMuted, children, ...props }: Stic
     <TableCell
       className={classNames(
         "sticky right-0 -ml-px size-10 items-center justify-center border-l",
-        isMuted ? cellMutedStyle : "bg-white",
+        isMuted ? cellMutedStyle : "bg-table-cell-pinned",
         className
       )}
       {...props}
     >
-      <div className="pointer-events-none absolute top-0 bottom-0 -left-4 w-4 bg-gradient-to-r from-transparent to-gray-300/30" />
+      <StickyCellShadow side="right" />
       {children}
     </TableCell>
   );

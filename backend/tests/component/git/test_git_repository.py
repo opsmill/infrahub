@@ -14,6 +14,8 @@ from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx._httpx_mock import HTTPXMock
 
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
@@ -35,6 +37,7 @@ from infrahub.git.integrator import (
     ArtifactGenerateResult,
     CheckDefinitionInformation,
 )
+from infrahub.git.models import RequestArtifactGenerate
 from infrahub.git.sync import RepositoryFileImporter, RepositorySyncer
 from infrahub.git.worktree import Worktree
 from infrahub.lock import InfrahubLockRegistry
@@ -43,8 +46,6 @@ from infrahub.utils import find_first_file_in_directory
 from tests.conftest import TestHelper
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.test_client import dummy_async_request
-
-pytestmark = pytest.mark.httpx_mock(should_mock=lambda request: request.url.host != "127.0.0.1")
 
 
 async def test_directories_props(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> None:
@@ -517,6 +518,37 @@ async def test_merge_branch01_into_main(git_repo_01: InfrahubRepository, branch0
     assert response == str(commit_after)
 
 
+async def test_merge_writes_back_to_non_main_default_branch(
+    git_repo_01: InfrahubRepository,
+    git_upstream_repo_01: dict[str, str | Path],
+    branch01: BranchData,
+) -> None:
+    """Merging into Infrahub main writes the merge commit back to a non-main git default branch.
+
+    Reproduces a worker whose clone only ever checked out `main`, so it holds `develop` only as a
+    remote-tracking ref with no local branch of that name. The push that maps Infrahub `main` onto
+    the configured git default branch must still advance the remote `develop`.
+    """
+    upstream_path = str(git_upstream_repo_01["path"])
+    upstream = Repo(upstream_path)
+    upstream.git.branch("develop", "main")
+
+    repo = git_repo_01
+    await repo.fetch()
+    repo.default_branch_name = "develop"
+
+    local_branch_names = {branch.name for branch in repo.get_git_repo_main().branches}
+    assert local_branch_names == {"main"}
+
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
+
+    develop_before = Repo(upstream_path).commit("develop").hexsha
+    merge_commit = await repo.merge(source_branch=branch01.name, dest_branch="main")
+
+    assert merge_commit != develop_before
+    assert Repo(upstream_path).commit("develop").hexsha == merge_commit
+
+
 async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData) -> None:
     repo = git_repo_01
     await repo.fetch()
@@ -917,6 +949,50 @@ async def test_artifact_generate_jinja2_new(
     assert result == expected_data
 
 
+async def test_render_artifact_python_without_payload(
+    client: InfrahubClient,
+    prefect_test_fixture: None,
+    git_repo_transforms_w_client: InfrahubRepository,
+    artifact_node_01: InfrahubNode,
+    mock_gql_query_03: HTTPXMock,
+) -> None:
+    repo = git_repo_transforms_w_client
+    commit_main = repo.get_commit_value(branch_name="main", remote=False)
+    branch = Branch(name="main", uuid=uuid4())
+    registry.branch[branch.name] = branch
+
+    message = RequestArtifactGenerate(
+        artifact_name="myartifact",
+        artifact_definition="c4908d78-7b24-45e2-9252-96d0fb3e2c78",
+        artifact_definition_name="artifactdef01",
+        commit=commit_main,
+        content_type="text/plain",
+        transform_type=InfrahubKind.TRANSFORMPYTHON,
+        transform_location="transform03.py::Transform03",
+        repository_id=str(repo.id),
+        repository_name=repo.name,
+        repository_kind=InfrahubKind.REPOSITORY,
+        branch_name=branch.name,
+        target_id="b663d7a4-5f95-48dd-b04d-e03169e7fcf3",
+        target_kind="TestElectricCar",
+        target_name="bolt",
+        query="my_query",
+        query_id="47800bff-adf1-450d-8388-b04ef2ffb129",
+        timeout=10,
+        variables={"name": "bolt"},
+        context=InfrahubContext(branch=BranchContext(name=branch.name), account=AnonymousSession()),
+    )
+
+    with pytest.raises(
+        TransformError, match=r"^The transform at transform03\.py::Transform03 did not return a payload$"
+    ):
+        await repo.render_artifact(artifact=artifact_node_01, artifact_created=True, message=message)
+
+    assert artifact_node_01.status.value == "Pending"
+    assert artifact_node_01.checksum.value is None
+    assert artifact_node_01.storage_id.value is None
+
+
 async def test_execute_python_transform_file_missing(
     client: InfrahubClient, prefect_test_fixture: None, git_repo_transforms: InfrahubRepository
 ) -> None:
@@ -1264,6 +1340,7 @@ async def test_init_reinitialized_after_missing_directory(
         id=repo_id,
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
+        default_branch_name="main",
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 

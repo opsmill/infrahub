@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
-from tests.helpers.db_validation import verify_graph
+from infrahub.database.validation import verify_graph
 
 from ._matrix_setup import stage_all_change_types
 from ._migrations import migrate_testcar_to_test2newcar

@@ -71,9 +71,9 @@ export const ProfilesSelector = ({
   };
 
   return (
-    <div className="bg-gray-100 p-4">
+    <div className="bg-surface/70 p-4">
       <Label htmlFor={id}>
-        Select profiles <span className="ml-1 text-gray-500 text-xs italic">optional</span>
+        Select profiles <span className="ml-1 text-foreground-muted text-xs italic">optional</span>
       </Label>
 
       <Combobox>
@@ -98,7 +98,7 @@ export const ProfilesSelector = ({
                     onPress={() => {
                       handleRemove(profile);
                     }}
-                    className="h-4 w-4 text-gray-500 data-hovered:text-gray-800"
+                    className="h-4 w-4 text-subtle-muted data-hovered:text-foreground"
                     aria-label="Remove"
                     data-testid="remove-option"
                   >
@@ -110,7 +110,7 @@ export const ProfilesSelector = ({
 
             {isPending && <Spinner className="ml-auto" />}
 
-            <button id={id} type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
+            <button id={id} type="button" className="h-3.5 w-3.5 text-subtle-muted outline-hidden">
               <Icon icon="mdi:unfold-more-horizontal" />
             </button>
           </div>

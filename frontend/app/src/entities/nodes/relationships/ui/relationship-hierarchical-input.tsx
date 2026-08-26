@@ -175,7 +175,7 @@ export const RelationshipHierarchicalManyInput = ({
                   onPress={() => {
                     onChange(value?.filter((item) => item.id !== node.id));
                   }}
-                  className="h-4 w-4 text-gray-500 data-hovered:text-gray-800"
+                  className="h-4 w-4 text-subtle-muted data-hovered:text-foreground"
                   aria-label={`Remove ${getNodeLabel(node)}`}
                   data-testid="remove-option"
                 >
@@ -188,7 +188,7 @@ export const RelationshipHierarchicalManyInput = ({
           <PopoverTrigger ref={ref} asChild {...props}>
             <button
               type="button"
-              className="h-3.5 w-3.5 text-gray-600 outline-hidden"
+              className="h-3.5 w-3.5 text-subtle-muted outline-hidden"
               aria-label={`Open ${peer}`}
             >
               <Icon icon="mdi:unfold-more-horizontal" />

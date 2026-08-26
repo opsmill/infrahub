@@ -101,7 +101,7 @@ export function GeneratorDefinitionRunButton({
               <Text slot="label" className="font-semibold">
                 All targets
               </Text>
-              <Text slot="description" className="text-gray-600 text-xs">
+              <Text slot="description" className="text-foreground-muted text-xs">
                 Generate for all members in the target group
               </Text>
             </MenuItem>
@@ -112,7 +112,7 @@ export function GeneratorDefinitionRunButton({
               <Text slot="label" className="font-semibold">
                 Selected targets
               </Text>
-              <Text slot="description" className="text-gray-600 text-xs">
+              <Text slot="description" className="text-foreground-muted text-xs">
                 Choose specific members of target group
               </Text>
             </MenuItem>
@@ -155,7 +155,7 @@ export function GeneratorTargetSelectionForm({
           variant="ghost"
           size="xs"
           onPress={onCancel}
-          className="h-5 p-1 text-gray-500 text-xs data-hovered:text-gray-700"
+          className="h-5 p-1 text-subtle-muted text-xs data-hovered:text-subtle"
         >
           Back
         </Button>
@@ -175,7 +175,7 @@ export function GeneratorTargetSelectionForm({
                     onClick={() => handleRemoveTarget(node.id)}
                     className={classNames(
                       focusVisibleStyle,
-                      "flex size-3.5 items-center justify-center rounded-full border border-transparent text-xs hover:text-gray-900"
+                      "flex size-3.5 items-center justify-center rounded-full border border-transparent text-xs hover:text-foreground"
                     )}
                     aria-label={`Remove ${label}`}
                   >
@@ -186,7 +186,7 @@ export function GeneratorTargetSelectionForm({
             })}
           </div>
         ) : (
-          <span className="text-gray-400">No targets selected</span>
+          <span className="text-subtle-muted">No targets selected</span>
         )}
       </div>
 

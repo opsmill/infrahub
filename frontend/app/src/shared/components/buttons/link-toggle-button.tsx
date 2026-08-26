@@ -16,7 +16,9 @@ export const LinkToggleButton = ({ className, to, matchPath, ...props }: LinkTog
       to={to}
       className={classNames(
         "flex cursor-pointer items-center gap-1.5 rounded-sm px-3 py-1.5 font-medium text-sm outline-hidden transition-colors",
-        isActive ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-700",
+        isActive
+          ? "bg-selected text-foreground shadow-xs"
+          : "text-foreground-muted hover:text-foreground",
         typeof className === "string" ? className : undefined
       )}
       {...props}
@@ -30,7 +32,9 @@ interface LinkToggleButtonGroupProps {
 }
 
 export const LinkToggleButtonGroup = ({ className, children }: LinkToggleButtonGroupProps) => (
-  <div className={classNames("flex gap-1 rounded-md border bg-gray-100 p-1 shadow-xs", className)}>
+  <div
+    className={classNames("flex gap-1 rounded-md border bg-background p-1 shadow-xs", className)}
+  >
     {children}
   </div>
 );

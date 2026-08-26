@@ -1,1 +1,0 @@
-Significantly reduced the size of the Infrahub container image: the build toolchain now lives in a dedicated build stage that is excluded from the runtime image, and the `numpy` and `pyarrow` dependencies are no longer installed by default (`pyarrow` remains available via the `object-transfer` extra for `infrahubctl object load`).

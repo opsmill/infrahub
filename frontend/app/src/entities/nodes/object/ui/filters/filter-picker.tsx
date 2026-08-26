@@ -140,5 +140,5 @@ function FilterPickerItem({ definition, hasActiveFilter, ref }: FilterPickerItem
 }
 
 function ActiveFilterIndicator() {
-  return <span className="size-1 rounded-full bg-custom-blue-700" />;
+  return <span className="size-1 rounded-full bg-accent" />;
 }

@@ -32,7 +32,7 @@ type Story = StoryObj<typeof meta>;
 
 function ColumnLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[10px] font-medium tracking-wider text-neutral-400 uppercase">
+    <div className="text-[10px] font-medium tracking-wider text-subtle-muted uppercase">
       {children}
     </div>
   );
@@ -56,7 +56,7 @@ export const AllVariants: Story = {
       rowProps: Partial<ButtonProps> = {},
     ) => (
       <div key={label} className="contents">
-        <div className="text-sm font-medium text-neutral-700">{label}</div>
+        <div className="text-sm font-medium text-subtle">{label}</div>
 
         <div className="flex flex-wrap items-center gap-2">
           {SIZES.map((size) => (

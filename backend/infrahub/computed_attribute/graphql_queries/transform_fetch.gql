@@ -22,15 +22,8 @@ query ComputedAttributeFetchTransform($transform_ids: [ID], $transform_name: Str
                         name {
                             value
                         }
-                        ... on CoreRepository {
-                            commit {
-                                value
-                            }
-                        }
-                        ... on CoreReadOnlyRepository {
-                            commit {
-                                value
-                            }
+                        commit {
+                            value
                         }
                     }
                 }

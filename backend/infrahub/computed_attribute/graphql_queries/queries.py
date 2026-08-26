@@ -95,7 +95,7 @@ class ComputedAttributeTransformQuery(BaseModel):
                 repository_id=repo.id,
                 repository_typename=repo.typename__,
                 repository_name=repo.name.value,
-                repository_commit=commit.value if (commit := getattr(repo, "commit", None)) else None,
+                repository_commit=repo.commit.value if repo.commit else None,
                 query_name=query_node.name.value,
             )
         return None

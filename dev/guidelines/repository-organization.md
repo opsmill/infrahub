@@ -61,6 +61,8 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 
 **Content Lifecycle**: Approved plans. Living during development, then archived or moved to knowledge/guidelines.
 
+Living means kept consistent: when a design decision changes mid-implementation, sweep every artifact in the spec directory (spec, plan, research, data-model, tasks, quickstart, decision records) to the new design in the same pass, and re-verify literal references — test paths, migration numbers, `GRAPH_VERSION` — against the final code. When two artifacts contradict, the code decides which one is stale. Re-running `/speckit-analyze` after a redesign catches drift.
+
 **Primary Target**: Human
 
 **File Size Guidelines**: 200-500 lines

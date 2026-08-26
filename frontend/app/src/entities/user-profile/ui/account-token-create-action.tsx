@@ -6,6 +6,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Col, Row } from "@/shared/components/container";
 import { Icon } from "@/shared/components/display/icon";
+import { inputStyle } from "@/shared/components/ui/style";
 
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { AccountTokenCreateForm } from "@/entities/user-profile/ui/account-token-create-form";
@@ -31,7 +32,7 @@ export function AccountTokenCreateAction() {
               className="ml-auto"
             />
           </Row>
-          <span className="text-gray-500 text-sm">
+          <span className="text-foreground-muted text-sm">
             These tokens provide full access to your account. Please keep them secure.
           </span>
         </Col>
@@ -53,8 +54,8 @@ export function AccountTokenCreateAction() {
       >
         <Col className="p-3">
           <Heading slot="title" className="flex items-center gap-2 font-semibold">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-custom-blue-600">
-              <Icon icon="mdi:key-variant" className="text-white" />
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-custom-blue-600 dark:bg-custom-blue-500/30">
+              <Icon icon="mdi:key-variant" className="text-white dark:text-custom-blue-300" />
             </div>
             Token created
           </Heading>
@@ -65,12 +66,12 @@ export function AccountTokenCreateAction() {
           </div>
 
           <Row>
-            <div className="h-9 grow rounded-md bg-gray-100 p-2">{newToken}</div>
-            <CopyToClipboard text={newToken} shape="square" variant="outline" />
+            <div className={inputStyle}>{newToken}</div>
+            <CopyToClipboard size="md" text={newToken} shape="square" variant="outline" />
           </Row>
         </Col>
 
-        <Row className="justify-end bg-gray-50 p-3">
+        <Row className="justify-end bg-content-muted p-3">
           <Button variant="primary" onPress={() => setNewToken("")}>
             Confirm
           </Button>

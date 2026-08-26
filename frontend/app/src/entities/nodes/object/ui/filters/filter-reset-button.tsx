@@ -13,7 +13,7 @@ export const FilterResetButton = () => {
 
   return (
     <Button
-      variant="outline"
+      variant="input"
       size="xs"
       className="sticky right-0 z-10 h-auto rounded-full py-0.5"
       onPress={handleResetFilters}

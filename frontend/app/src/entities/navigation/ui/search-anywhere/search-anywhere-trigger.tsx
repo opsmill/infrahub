@@ -18,7 +18,7 @@ export function SearchAnywhereTrigger({ className, ...props }: ButtonProps) {
       {...props}
     >
       <Icon icon="mdi:magnify" aria-hidden="true" className="text-base" />
-      <span className="truncate text-stone-700 group-data-[state=collapsed]:hidden">Search</span>
+      <span className="truncate text-subtle group-data-[state=collapsed]:hidden">Search</span>
 
       <Kbd keys={command} className="ml-auto group-data-[state=collapsed]:hidden">
         K

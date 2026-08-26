@@ -10,7 +10,7 @@ import {
   ListLayout,
   Virtualizer,
 } from "react-aria-components";
-import { cn, tv } from "tailwind-variants";
+import { tv } from "tailwind-variants";
 
 import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 
@@ -47,13 +47,11 @@ export function ListBox<T extends object>({
     <SelectionIndicatorContext.Provider value={selectionIndicator}>
       <AriaListBox
         shouldFocusOnHover
-        className={composeAriaClassName(className, (resolvedClassName) =>
-          cn(listBoxStyles({ virtualized }), resolvedClassName),
-        )}
+        className={composeAriaClassName(className, listBoxStyles({ virtualized }))}
         renderEmptyState={
           emptyMessage === undefined
             ? undefined
-            : () => <div className="px-2 py-1 text-sm text-neutral-600">{emptyMessage}</div>
+            : () => <div className="px-2 py-1 text-sm text-subtle-muted">{emptyMessage}</div>
         }
         {...props}
       />
@@ -80,12 +78,35 @@ export function ListBox<T extends object>({
 
 const listBoxItemStyles = tv({
   base: [
-    "flex min-w-40 cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden select-none",
+    "flex min-w-40 cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-subtle outline-hidden select-none",
     "data-disabled:pointer-events-none data-disabled:opacity-50",
   ],
   variants: {
-    isFocused: { true: "bg-stone-700/10 text-stone-800" },
+    isFocused: {
+      true: "bg-highlight text-highlight-foreground",
+    },
+    isSelected: {
+      true: "",
+    },
+    selectionIndicator: {
+      checkmark: "",
+      highlight: "",
+      none: "",
+    },
   },
+  compoundVariants: [
+    {
+      isSelected: true,
+      selectionIndicator: "highlight",
+      class: "bg-selected text-selected-foreground shadow-selected",
+    },
+    {
+      isFocused: true,
+      isSelected: true,
+      selectionIndicator: "highlight",
+      class: "bg-selected-highlight",
+    },
+  ],
 });
 
 export interface ListBoxItemProps<T> extends AriaListBoxItemProps<T> {
@@ -105,10 +126,7 @@ export function ListBoxItem<T extends object>({
       ref={ref}
       textValue={textValue || (typeof children === "string" ? children : undefined)}
       className={composeAriaClassName(className, ({ isFocused, isSelected }) =>
-        cn(
-          listBoxItemStyles({ isFocused }),
-          isSelected && selectionIndicator === "highlight" && "bg-stone-700/10 text-stone-800",
-        ),
+        listBoxItemStyles({ isFocused, isSelected, selectionIndicator }),
       )}
       {...props}
     >
@@ -126,7 +144,7 @@ export function ListBoxItem<T extends object>({
 
 const listBoxLoadMoreStyles = tv({
   extend: listBoxItemStyles,
-  base: "text-stone-400",
+  base: "text-subtle-muted",
 });
 
 export function ListBoxLoadMoreItem({ className, ...props }: AriaListBoxLoadMoreItemProps) {

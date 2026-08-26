@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.schema.basenode_schema import BaseNodeSchema
 
 
@@ -42,7 +41,4 @@ class ProfileSchema(BaseNodeSchema):
         and the list of Generic this object is inheriting from.
 
         """
-        labels: list[str] = [self.kind] + self.inherit_from
-        if self.namespace not in ["Schema", "Internal"] and InfrahubKind.GENERICGROUP not in self.inherit_from:
-            labels.append(InfrahubKind.PROFILE)
-        return labels
+        return [self.kind] + self.inherit_from

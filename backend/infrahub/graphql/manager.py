@@ -603,10 +603,11 @@ class GraphQLSchemaManager:
                 generic = self.get_type(name=generic_name)
                 interfaces.add(generic)
 
-        if isinstance(schema, NodeSchema):
-            if not schema.inherit_from or InfrahubKind.GENERICGROUP not in schema.inherit_from:
-                node_interface = self.get_type(name=InfrahubKind.NODE)
-                interfaces.add(node_interface)
+        if isinstance(schema, NodeSchema) and (
+            not schema.inherit_from or InfrahubKind.GENERICGROUP not in schema.inherit_from
+        ):
+            node_interface = self.get_type(name=InfrahubKind.NODE)
+            interfaces.add(node_interface)
 
         meta_attrs = {
             "schema": schema,

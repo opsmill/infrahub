@@ -122,30 +122,30 @@ function NodeContextMenu({
         onClick={onClose}
       />
       <div
-        className="fixed z-50 min-w-[180px] rounded-md border bg-white py-1 shadow-lg"
+        className="fixed z-50 min-w-[180px] rounded-md border bg-popover py-1 shadow-lg backdrop-blur-lg"
         style={{ left: menu.x, top: menu.y }}
       >
         <div className="border-b px-3 py-1.5">
           <div className="truncate font-medium text-xs">{menu.nodeLabel}</div>
-          <div className="truncate text-[10px] text-gray-400">{menu.nodeKind}</div>
+          <div className="truncate text-[10px] text-subtle-muted">{menu.nodeKind}</div>
         </div>
         <a
           href={detailsUrl}
-          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-gray-50"
+          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-highlight"
           onClick={onClose}
         >
           Open details
         </a>
         <a
           href={pathAsSourceUrl}
-          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-gray-50"
+          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-highlight"
           onClick={onClose}
         >
           Set as source
         </a>
         <a
           href={pathAsDestUrl}
-          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-gray-50"
+          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-highlight"
           onClick={onClose}
         >
           Set as destination
@@ -153,7 +153,7 @@ function NodeContextMenu({
         <button
           type="button"
           onClick={handleCopyId}
-          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-gray-50"
+          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-highlight"
         >
           Copy ID
         </button>
@@ -166,7 +166,7 @@ function NodeContextMenu({
                 onExcludeKind(menu.nodeKind);
                 onClose();
               }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-red-600 text-xs hover:bg-red-50"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-danger text-xs hover:bg-danger-surface"
             >
               Exclude {menu.nodeKind}
             </button>
@@ -224,7 +224,7 @@ function buildGraph(
         type: "path",
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: isHighlighted ? "#3b82f6" : "#d1d5db",
+          color: isHighlighted ? "#3b82f6" : "var(--color-border-strong)",
         },
         data: {
           label: toHop.relationship?.from_label ?? "",
@@ -314,7 +314,12 @@ export function PathFlowGraph({
         elementsSelectable={false}
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e5e7eb" />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={20}
+          size={1}
+          color="var(--color-border-strong)"
+        />
 
         <BottomToolbar
           isParametersOpen={parametersOpen}

@@ -23,14 +23,17 @@ const getValidatorState = (state?: string, conclusion?: string) => {
     case "queued": {
       return (
         <Tooltip message="Queued" nonInteractiveTrigger>
-          <Icon icon={"mdi:timer-sand-complete"} className="text-yellow-500" />
+          <Icon icon={"mdi:timer-sand-complete"} className="text-yellow-500 dark:text-yellow-400" />
         </Tooltip>
       );
     }
     case "in_progress": {
       return (
         <Tooltip message="In progress" nonInteractiveTrigger>
-          <Icon icon={"mdi:clock-time-four-outline"} className="text-yellow-500" />
+          <Icon
+            icon={"mdi:clock-time-four-outline"}
+            className="text-yellow-500 dark:text-yellow-400"
+          />
         </Tooltip>
       );
     }
@@ -40,7 +43,7 @@ const getValidatorState = (state?: string, conclusion?: string) => {
           <Tooltip message="Success" nonInteractiveTrigger>
             <Icon
               icon={"mdi:check-circle-outline"}
-              className="text-green-500"
+              className="text-green-500 dark:text-green-400"
               data-testid="validator-success"
             />
           </Tooltip>
@@ -50,14 +53,17 @@ const getValidatorState = (state?: string, conclusion?: string) => {
       if (conclusion === "failure") {
         return (
           <Tooltip message="Failure" nonInteractiveTrigger>
-            <Icon icon={"mdi:warning"} className="text-red-500" />
+            <Icon icon={"mdi:warning"} className="text-red-500 dark:text-red-400" />
           </Tooltip>
         );
       }
 
       return (
         <Tooltip message="Unknown" nonInteractiveTrigger>
-          <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500" />
+          <Icon
+            icon={"mdi:warning-circle-outline"}
+            className="text-yellow-500 dark:text-yellow-400"
+          />
         </Tooltip>
       );
     }
@@ -133,7 +139,7 @@ export const Validator = ({ validator }: tValidatorProps) => {
           <Link
             to={getObjectDetailsUrl("CoreArtifactDefinition", artifactDefinition.id)}
             onClick={(e) => e.stopPropagation()}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-subtle-muted hover:text-subtle"
           >
             <Icon icon="mdi:open-in-new" />
           </Link>
@@ -151,7 +157,7 @@ export const Validator = ({ validator }: tValidatorProps) => {
   );
 
   return (
-    <Accordion title={title} className="rounded-md bg-white p-2" data-testid="validator">
+    <Accordion title={title} className="rounded-md bg-content p-2" data-testid="validator">
       <ValidatorDetails id={id} />
     </Accordion>
   );

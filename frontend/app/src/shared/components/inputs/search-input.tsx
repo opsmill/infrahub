@@ -28,7 +28,7 @@ export function SearchFieldInput({ className, ...props }: AriaInputProps) {
     <AriaInput
       className={composeRenderProps(className, (className) =>
         classNames(
-          "min-w-0 flex-1 border-none px-2 py-1.5 outline-hidden placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden",
+          "min-w-0 flex-1 border-none px-2 py-1.5 outline-hidden placeholder:text-subtle-muted [&::-webkit-search-cancel-button]:hidden",
           className
         )
       )}

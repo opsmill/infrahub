@@ -39,7 +39,7 @@ export default function TabUpdatePassword() {
         <Card className="m-auto w-full max-w-md">
           <CardContent>
             <h3 className="mb-2 font-semibold leading-6">Password managed externally</h3>
-            <p className="text-gray-600 text-sm">
+            <p className="text-foreground-muted text-sm">
               This account authenticates through an external directory. Change your password in the
               directory provider; local password updates are not accepted.
             </p>

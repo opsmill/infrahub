@@ -43,13 +43,13 @@ export const AccordionStyled = ({
           </div>
         </div>
 
-        {description && <p className="font-normal text-gray-600 text-xs">{description}</p>}
+        {description && <p className="font-normal text-foreground-muted text-xs">{description}</p>}
       </h4>
     }
-    className="rounded-sm bg-white p-3 shadow-sm"
+    className="rounded-sm bg-card p-3 shadow-card"
     {...props}
   >
-    <article className="mt-3 divide-y rounded-sm bg-gray-100 px-2">{children}</article>
+    <article className="mt-3 divide-y rounded-sm bg-panel px-2 shadow-panel">{children}</article>
   </Accordion>
 );
 
@@ -116,8 +116,8 @@ export const TabStyled = ({ className, ...props }: TabProps) => (
   <Tab
     className={({ isSelected }) =>
       classNames(
-        "px-4 py-2 text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-hidden",
-        isSelected ? "border-b-2 border-b-custom-blue-600 font-semibold" : "cursor-pointer",
+        "px-4 py-2 text-sm hover:bg-highlight focus:bg-highlight focus:outline-hidden",
+        isSelected ? "border-b-2 border-b-accent font-semibold" : "cursor-pointer",
         className
       )
     }
@@ -138,7 +138,7 @@ export const TabPanelStyled = ({ className, ...props }: TabPanelProps) => {
   );
 };
 
-export const NullDisplay = () => <div className="text-gray-500 text-xs">null</div>;
+export const NullDisplay = () => <div className="text-subtle-muted text-xs">null</div>;
 
 export const SchemaKindDisplay = ({
   kinds,
@@ -156,8 +156,8 @@ export const SchemaKindDisplay = ({
         <Badge
           key={kind}
           className={classNames(
-            "border-sky-200 bg-sky-50 text-sky-800",
-            onKindClick && "cursor-pointer hover:bg-sky-100"
+            "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-400/30 dark:bg-sky-400/20 dark:text-sky-300",
+            onKindClick && "cursor-pointer hover:bg-sky-100 dark:hover:bg-sky-400/30"
           )}
           onClick={onKindClick ? () => onKindClick(kind) : undefined}
         >

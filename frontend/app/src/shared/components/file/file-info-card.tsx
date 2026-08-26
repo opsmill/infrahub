@@ -26,11 +26,11 @@ export function FileInfoCard({
 
   const content = (
     <Row className="overflow-hidden">
-      <FileIconComponent className="size-5 shrink-0 text-gray-500" />
+      <FileIconComponent className="size-5 shrink-0 text-subtle-muted" />
       <div className="min-w-0 flex-1 truncate">
-        <p className="truncate font-medium text-gray-900 text-sm">{fileName}</p>
+        <p className="truncate font-medium text-foreground text-sm">{fileName}</p>
         {(fileSize !== undefined || contentType) && (
-          <p className="mt-0.5 text-gray-500 text-xs">
+          <p className="mt-0.5 text-foreground-muted text-xs">
             {[fileSize !== undefined && formatFileSize(fileSize), contentType]
               .filter(Boolean)
               .join(" • ")}
@@ -54,19 +54,19 @@ export function FileInfoCard({
           className={classNames(
             inputStyle,
             focusVisibleStyle,
-            "gap-2 bg-gray-50 px-3 text-left",
-            "hover:border-border-strong hover:bg-gray-100",
+            "gap-2 bg-input px-3 text-left",
+            "hover:border-border-strong hover:bg-highlight",
             className
           )}
         >
           {content}
-          <UploadIcon className="ml-auto size-4 shrink-0 text-gray-400" />
+          <UploadIcon className="ml-auto size-4 shrink-0 text-subtle-muted" />
         </Button>
       </FileTrigger>
     );
   }
 
   return (
-    <div className={classNames("rounded-md border bg-gray-50 px-3 py-2", className)}>{content}</div>
+    <div className={classNames("rounded-xl border bg-card px-3 py-2", className)}>{content}</div>
   );
 }

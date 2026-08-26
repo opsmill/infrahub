@@ -30,7 +30,12 @@ export function BranchesTable() {
   const isLoading = isPending || isFetchingNextPage;
 
   return (
-    <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
+    <InfiniteScroll
+      scrollX
+      className="bg-table-frame"
+      hasNextPage={hasNextPage}
+      onLoadMore={fetchNextPage}
+    >
       <BranchesDataTable
         columns={columns}
         data={flatData}

@@ -14,7 +14,6 @@ from infrahub.core.node.standard import StandardNode, StandardNodeOrdering
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.branch import (
     BranchNodeGetListQuery,
-    DeleteBranchRelationshipsQuery,
     RebaseBranchQuery,
 )
 from infrahub.core.registry import registry
@@ -335,17 +334,16 @@ class Branch(StandardNode):
         return await super().create(db=db, user_id=user_id)
 
     async def delete(self, db: InfrahubDatabase) -> None:
-        if self.is_default:
-            raise ValidationError(f"Unable to delete {self.name} it is the default branch.")
-        if self.is_global:
-            raise ValidationError(f"Unable to delete {self.name} this is an internal branch.")
+        """Not supported on a Branch.
 
-        self.status = BranchStatus.DELETING
-        await self.save(db=db)
+        The inherited implementation would drop the Branch vertex and silently leave every edge and
+        vertex belonging to the branch behind, so it is refused rather than overridden.
 
-        query = await DeleteBranchRelationshipsQuery.init(db=db, branch_name=self.name)
-        await query.execute(db=db)
-        await super().delete(db=db)
+        Raises:
+            NotImplementedError: Always.
+
+        """
+        raise NotImplementedError("Unable to delete a Branch directly, use BranchDataDeleter instead.")
 
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Timestamp] = None, include_outside_parentheses: bool = False
@@ -440,7 +438,10 @@ class Branch(StandardNode):
     async def rebase(
         self, db: InfrahubDatabase, at: str | Timestamp | None = None, user_id: str = SYSTEM_USER_ID
     ) -> None:
-        """Rebase the current Branch with its origin branch."""
+        """Rebase the current Branch with its origin branch.
+
+        Mutates this instance (`branched_from`, `status`) and persists it with the given `db`.
+        """
         at = Timestamp(at)
 
         await self.rebase_graph(db=db, at=at)
@@ -448,9 +449,6 @@ class Branch(StandardNode):
         self.branched_from = at.to_string()
         self.status = BranchStatus.OPEN
         await self.save(db=db, user_id=user_id)
-
-        # Update the branch in the registry after the rebase
-        registry.branch[self.name] = self
 
     async def rebase_graph(self, db: InfrahubDatabase, at: Timestamp) -> None:
         """Rebase all relationships on this branch to a new point in time.

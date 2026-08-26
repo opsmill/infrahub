@@ -209,6 +209,14 @@ core_generic_repository = GenericSchema(
             order_weight=5000,
         ),
         Attr(
+            name="commit",
+            kind="Text",
+            description="Current commit hash being tracked",
+            optional=True,
+            branch=BranchSupportType.LOCAL,
+            order_weight=7500,
+        ),
+        Attr(
             name="sync_status",
             kind="Dropdown",
             description="Current synchronization status of the repository",

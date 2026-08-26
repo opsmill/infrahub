@@ -64,7 +64,7 @@ class TestObjectHierarchyNavigation:
         await expect(admin_page.get_by_text("NameUnited States of America")).to_be_visible()
         await expect(admin_page.get_by_text("Site5")).to_be_visible()
         await expect(object_hierarchy_tree.get_by_role("row", name="United States of America")).to_contain_class(
-            "bg-neutral-100"
+            "bg-selected"
         )
         await expect(object_hierarchy_tree.get_by_role("button", name="Expand United States of")).to_be_visible()
 
@@ -73,4 +73,4 @@ class TestObjectHierarchyNavigation:
         await expect(admin_page.get_by_text("NameNorth America")).to_be_visible()
         await expect(object_hierarchy_tree.get_by_role("button", name="Collapse North America")).to_be_visible()
         await expect(object_hierarchy_tree.get_by_role("button", name="Expand United States of")).to_be_visible()
-        await expect(object_hierarchy_tree.get_by_role("row", name="North America")).to_contain_class("bg-neutral-100")
+        await expect(object_hierarchy_tree.get_by_role("row", name="North America")).to_contain_class("bg-selected")

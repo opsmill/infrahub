@@ -50,7 +50,6 @@ jobs:
       infrahub_uv_files: ${{ steps.changes.outputs.infrahub_uv_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
       version_upgrade_workflow: ${{ steps.changes.outputs.version_upgrade_workflow }}
-      e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
       e2e_pytest_tests: ${{ steps.changes.outputs.e2e_pytest_test_files }}
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
       openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
@@ -64,7 +63,7 @@ jobs:
         with:
           submodules: true
       - name: Check for file changes
-        uses: dorny/paths-filter@v4.0.2
+        uses: dorny/paths-filter@v4.0.3
         id: changes
         with:
           token: ${{ github.token }}
@@ -1084,226 +1083,9 @@ jobs:
       - name: "Validate release notes style"
         run: ./vale --config=./.vale.ini $(find ./changelog ./docs/docs/release-notes/infrahub -type f \( -name '*.mdx' -o -name '*.md' \)) CHANGELOG.md
 
-  # ------------------------------------------ E2E Tests  ------------------------------------------
-  E2E-testing-playwright:
-    defaults:
-      run:
-        working-directory: ./frontend/app
-    needs:
-      - prepare-environment
-      - frontend-lint
-      - files-changed
-      - yaml-lint
-      - python-lint
-      - infrahub-testcontainers-check
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.e2e == 'true'
-    runs-on:
-      group: huge-runners
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: E2E-testing-playwright
-            env:
-              INFRAHUB_DB_TYPE: neo4j
-              UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
-              # Backpressure is on by default, but this legacy suite drives enough concurrent
-              # UI + polling load that interactive requests queue behind lock-holding writes and
-              # time out. The suite is slated for removal; disable admission control just here.
-              INFRAHUB_API_BACKPRESSURE_ENABLED: "false"
-          # - name: E2E-testing-playwright-nats
-          #   env:
-          #     INFRAHUB_DB_TYPE: neo4j
-          #     INFRAHUB_USE_NATS: 1
-          #     INFRAHUB_BROKER_DRIVER: nats
-          #     INFRAHUB_BROKER_PORT: 4222
-          #     INFRAHUB_CACHE_DRIVER: nats
-          #     INFRAHUB_CACHE_ADDRESS: message-queue
-          #     INFRAHUB_CACHE_PORT: 4222
-    name: ${{ matrix.name }}
-    env: ${{ matrix.env }}
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v7
-        with:
-          submodules: true
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          package_json_file: frontend/package.json
-      - name: Install NodeJS
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
-      - name: Set up Python
-        id: python
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
-      - name: Install dependencies
-        run: "uv sync --all-groups"
-
-      - name: Set job name
-        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
-
-      - name: Enable tracing
-        if: github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
-        run: echo "INFRAHUB_TRACE_ENABLE=true" >> $GITHUB_ENV
-      - name: Set tracing configuration
-        run: echo "INFRAHUB_TRACE_INSECURE=false" >> $GITHUB_ENV
-      - name: Set tracing configuration
-        run: echo "INFRAHUB_TRACE_EXPORTER_TYPE=otlp" >> $GITHUB_ENV
-      - name: Set tracing configuration
-        run: echo "INFRAHUB_TRACE_EXPORTER_ENDPOINT=${{ secrets.TRACING_ENDPOINT }}" >> $GITHUB_ENV
-      - name: Set tracing configuration
-        run: echo "OTEL_RESOURCE_ATTRIBUTES=github.run_id=${GITHUB_RUN_ID}" >> $GITHUB_ENV
-
-      - name: "Store start time"
-        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
-
-      - name: "Set environment variables"
-        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
-      - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-      - name: "Clear docker environment"
-        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-
-      - name: Build Demo
-        run: |
-          echo "::group::Build infrahub container"
-          uv run invoke dev.build
-          echo "::endgroup::"
-
-      - name: Initialize Demo
-        id: init-demo
-        run: uv run invoke dev.start dev.load-infra-schema
-
-      - name: Check Demo Status
-        run: uv run invoke dev.status
-
-      - name: Load Data
-        run: uv run invoke dev.load-infra-data
-
-      - name: Git Repository
-        run: uv run invoke dev.infra-git-import dev.infra-git-create
-
-      - name: Set infrahub address
-        run: |
-          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
-          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
-
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright Browsers
-        run: pnpm exec playwright install chromium --no-shell
-
-      # Make chromium ignore netlink messages so AddressTrackerLinux takes its "assume always
-      # online" path. The LD_PRELOAD shim fails NETLINK_ROUTE sockets at the libc level, which
-      # is robust across Playwright/Chromium versions (unlike patching the chrome binary). The
-      # shim is injected into the browser process via playwright.config.ts (NO_NETLINK_SO).
-      - name: Build no-netlink shim
-        run: |
-          gcc -shared -fPIC -Wall -Wextra \
-            -o "$RUNNER_TEMP/no_netlink.so" \
-            tests/e2e/fixtures/no_netlink.c -ldl
-          echo "NO_NETLINK_SO=$RUNNER_TEMP/no_netlink.so" >> "$GITHUB_ENV"
-
-      - name: Wait for artifacts to be generated before restarting infrahub
-        if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: pnpm exec playwright test artifact
-
-      - name: Add response delay if required
-        if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=1" >> $GITHUB_ENV && uv run invoke dev.start
-        env:
-          INFRAHUB_MISC_RESPONSE_DELAY: 1
-
-      - name: Set infrahub address
-        if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: |
-          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
-          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
-
-      - name: Run Playwright tests
-        run: pnpm ci:test:e2e
-
-      # - name: Generate tracing spans
-      #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
-      #   uses: inception-health/otel-upload-test-artifact-action@v1
-      #   with:
-      #     jobName: "E2E-testing-playwright"
-      #     stepName: "Run Playwright tests"
-      #     path: "frontend/app/playwright-junit.xml"
-      #     type: "junit"
-      #     githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
-
-      - name: playwright-report
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ matrix.name }}
-          path: frontend/app/playwright-report/
-
-      - name: Containers after tests
-        if: always()
-        run: docker ps -a
-
-      - name: Display server logs
-        if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1" || true
-
-      - name: Display task worker 1 logs
-        if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1" || true
-
-      - name: Display task worker 2 logs
-        if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2" || true
-
-      - name: Display task manager logs
-        if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1" || true
-
-      - name: Display database logs
-        if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1" || true
-
-      - name: Display message-queue logs
-        if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1" || true
-
-      - name: Display server status
-        if: always()
-        run: uv run invoke demo.status
-
-      - name: "Clear docker environment and force vmagent to stop"
-        if: always()
-        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-
-      - name: "Wait for vmagent to push metrics"
-        if: always()
-        run: "sleep 10"
-      - name: "Show graph URL"
-        if: always()
-        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$JOB_NAME&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
-
   # ----------------------------- E2E pytest-playwright (infrahub-testcontainers) -----------------------------
-  # New Python e2e suite. Runs ALONGSIDE E2E-testing-playwright (the TS suite)
-  # until parity is confirmed, then the TS job can be removed. Instead of
-  # `invoke dev.start dev.load-infra-*`, infrahub-testcontainers spins up the
-  # stack and pytest fixtures load the dataset (see tests/e2e/).
+  # Python e2e suite: infrahub-testcontainers spins up the stack and pytest
+  # fixtures load the dataset (see tests/e2e/).
   E2E-testing-pytest-playwright:
     needs:
       - prepare-environment
@@ -1319,6 +1101,11 @@ jobs:
     runs-on:
       group: huge-runners
     timeout-minutes: 60
+    # ci.yml has no top-level permissions block; a job-level one restricts this job
+    # to exactly what is listed, so contents: read (checkout) must be explicit.
+    permissions:
+      contents: read
+      checks: write # Publish e2e results (junit check run)
     strategy:
       fail-fast: false
       matrix:
@@ -1347,10 +1134,18 @@ jobs:
         run: uv run playwright install --with-deps chromium
       - name: Install tini
         run: apt-get update && apt-get install -y tini
-      - name: Set job name
-        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
-      - name: "Store start time"
-        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+      # The testcontainers compose file passes these through to infrahub-server and
+      # task-worker; they resolve from the process environment (create_env_file does
+      # not write them), so $GITHUB_ENV is all the wiring needed.
+      - name: Enable tracing
+        if: github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
+        run: echo "INFRAHUB_TRACE_ENABLE=true" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: |
+          echo "INFRAHUB_TRACE_INSECURE=false" >> $GITHUB_ENV
+          echo "INFRAHUB_TRACE_EXPORTER_TYPE=otlp" >> $GITHUB_ENV
+          echo "INFRAHUB_TRACE_EXPORTER_ENDPOINT=${{ secrets.TRACING_ENDPOINT }}" >> $GITHUB_ENV
+          echo "OTEL_RESOURCE_ATTRIBUTES=github.run_id=${GITHUB_RUN_ID},ci.shard=${{ matrix.shard }}" >> $GITHUB_ENV
       - name: "Set environment variables"
         run: |
           RUNNER_NAME=$(echo "${{ runner.name }}" | grep -o 'ghrunner[0-9]\+' | sed 's/ghrunner\([0-9]\+\)/ghrunner_\1/')
@@ -1379,7 +1174,7 @@ jobs:
       - name: Run tutorial Playwright tests
         if: matrix.shard == 'tutorial'
         run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/tutorial
-      - name: playwright-report
+      - name: e2e-artifacts
         if: always()
         uses: actions/upload-artifact@v7
         with:
@@ -1387,6 +1182,16 @@ jobs:
           path: |
             test-results/
             playwright-junit.xml
+      - name: Publish e2e results
+        if: always() && github.event.pull_request.head.repo.fork == false
+        uses: mikepenz/action-junit-report@v6
+        with:
+          report_paths: playwright-junit.xml
+          check_name: "E2E pytest (${{ matrix.shard }})"
+          include_passed: false
+          detailed_summary: true
+          fail_on_failure: false # pytest already fails the job; only annotate
+      # Leftover containers here mean the session-fixture teardown did not run.
       - name: Containers after tests
         if: always()
         run: docker ps -a
@@ -1532,7 +1337,7 @@ jobs:
 
       - name: Run all benchmarks
         if: contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@v4
+        uses: CodSpeedHQ/action@v5
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation
@@ -1541,7 +1346,7 @@ jobs:
       - name: Run non-intensive benchmarks
         if: |
           !contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@v4
+        uses: CodSpeedHQ/action@v5
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation

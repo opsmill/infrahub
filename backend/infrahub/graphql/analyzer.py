@@ -708,24 +708,22 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         context_type = query_node.context_type
         infrahub_model = None
         infrahub_node_models: list[MainSchemaTypes] = []
-        if query_node.in_property_level:
-            if model := query_node.context_model():
-                if node.name.value in model.attribute_names:
-                    query_node.append_attribute(attribute=node.name.value)
-                elif node_property := NODE_PROPERTY_BY_QUERY_FIELD.get(node.name.value):
-                    query_node.append_attribute(attribute=node_property)
-                elif node.name.value in model.relationship_names:
-                    rel = model.get_relationship_or_none(name=node.name.value)
-                    if rel:
-                        infrahub_model = self.schema_branch.get(name=rel.peer, duplicate=False)
-                        if isinstance(infrahub_model, GenericSchema):
-                            infrahub_node_models = [
-                                self.schema_branch.get(name=used_by, duplicate=False)
-                                for used_by in infrahub_model.used_by
-                            ]
+        if query_node.in_property_level and (model := query_node.context_model()):
+            if node.name.value in model.attribute_names:
+                query_node.append_attribute(attribute=node.name.value)
+            elif node_property := NODE_PROPERTY_BY_QUERY_FIELD.get(node.name.value):
+                query_node.append_attribute(attribute=node_property)
+            elif node.name.value in model.relationship_names:
+                rel = model.get_relationship_or_none(name=node.name.value)
+                if rel:
+                    infrahub_model = self.schema_branch.get(name=rel.peer, duplicate=False)
+                    if isinstance(infrahub_model, GenericSchema):
+                        infrahub_node_models = [
+                            self.schema_branch.get(name=used_by, duplicate=False) for used_by in infrahub_model.used_by
+                        ]
 
-                        context_type = ContextType.from_relationship_cardinality(cardinality=rel.cardinality)
-                    query_node.append_relationship(relationship=node.name.value)
+                    context_type = ContextType.from_relationship_cardinality(cardinality=rel.cardinality)
+                query_node.append_relationship(relationship=node.name.value)
 
         current_node = GraphQLQueryNode(
             parent=query_node,

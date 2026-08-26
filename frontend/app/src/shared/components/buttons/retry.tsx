@@ -34,10 +34,7 @@ export const Retry = (props: tRetryProps) => {
       )}
       onClick={handleClick}
     >
-      <Icon
-        icon={"mdi:reload"}
-        className={classNames(isLoading ? "text-gray-300" : "text-gray-400")}
-      />
+      <Icon icon={"mdi:reload"} className="text-subtle-muted" />
     </div>
   );
 };

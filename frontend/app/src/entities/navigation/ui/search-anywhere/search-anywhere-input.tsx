@@ -19,7 +19,7 @@ export function SearchAnywhereInput({
   return (
     <div className="relative">
       <div className="absolute top-2.5 pl-2.5">
-        <Icon icon="mdi:magnify" className="text-custom-blue-600 text-xl" />
+        <Icon icon="mdi:magnify" className="text-accent text-xl" />
       </div>
 
       <Command.Input
@@ -38,7 +38,7 @@ export function SearchAnywhereInput({
           onPress={() => setCaseSensitive(!caseSensitive)}
           className={classNames(
             "absolute top-1 right-1 size-8 rounded",
-            !caseSensitive && "text-gray-400"
+            !caseSensitive && "text-subtle-muted"
           )}
         >
           <CaseSensitiveIcon className="size-5" />

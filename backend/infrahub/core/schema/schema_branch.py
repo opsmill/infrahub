@@ -62,6 +62,7 @@ from infrahub.core.schema.attribute_parameters import (
 )
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
+from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
@@ -2579,7 +2580,7 @@ class SchemaBranch:
                 self.set(name=node_name, schema=node_schema)
 
     def _get_profile_kind(self, node_kind: str) -> str:
-        return f"Profile{node_kind}"
+        return get_profile_kind(node_kind=node_kind)
 
     def generate_profile_from_node(self, node: NodeSchema | GenericSchema) -> ProfileSchema:
         core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
@@ -2644,7 +2645,7 @@ class SchemaBranch:
         return profile
 
     def _get_object_template_kind(self, node_kind: str) -> str:
-        return f"Template{node_kind}"
+        return get_object_template_kind(node_kind=node_kind)
 
     def manage_object_template_relationships(self) -> None:
         """Add an `object_template` relationship to all nodes that can be created from object templates.
@@ -2862,11 +2863,12 @@ class SchemaBranch:
             for kind in node.inherit_from
             if self.has(name=kind)
         )
-        if getattr(node, "generate_profile", False) or parent_generates_profile:
-            if PROFILES_RELATIONSHIP_NAME not in [r.name for r in template_schema.relationships]:
-                settings = dict(profiles_rel_settings)
-                settings["identifier"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
-                template_schema.relationships.append(RelationshipSchema(**settings))
+        if (
+            getattr(node, "generate_profile", False) or parent_generates_profile
+        ) and PROFILES_RELATIONSHIP_NAME not in [r.name for r in template_schema.relationships]:
+            settings = dict(profiles_rel_settings)
+            settings["identifier"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
+            template_schema.relationships.append(RelationshipSchema(**settings))
 
         self.set(name=template_schema.kind, schema=template_schema)
 
@@ -2987,14 +2989,18 @@ class SchemaBranch:
                 continue
             # In a context of a generic, we won't be able to create objects out of it, so any kind of nodes implementing the generic is a valid
             # option, we therefore need to have a template for each of those nodes
-            if isinstance(peer_schema, GenericSchema) and peer_schema.used_by:
-                if relationship.kind != RelationshipKind.PARENT or not any(
-                    u in [i.kind for i in identified] for u in peer_schema.used_by
-                ):
-                    for used_by in peer_schema.used_by:
-                        identified |= self.identify_required_object_templates(
-                            node_schema=self.get_node(name=used_by, duplicate=False), identified=identified
-                        )
+            if (
+                isinstance(peer_schema, GenericSchema)
+                and peer_schema.used_by
+                and (
+                    relationship.kind != RelationshipKind.PARENT
+                    or not any(u in [i.kind for i in identified] for u in peer_schema.used_by)
+                )
+            ):
+                for used_by in peer_schema.used_by:
+                    identified |= self.identify_required_object_templates(
+                        node_schema=self.get_node(name=used_by, duplicate=False), identified=identified
+                    )
 
             identified |= self.identify_required_object_templates(node_schema=peer_schema, identified=identified)
 

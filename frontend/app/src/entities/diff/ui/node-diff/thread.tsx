@@ -39,8 +39,9 @@ export const DiffThread = ({ path }: tDiffThread) => {
             <Button
               isDisabled={!permission?.create?.isAllowed}
               onPress={() => setShowThread(true)}
-              className="h-6 rounded-full bg-gray-200 px-2 shadow-xs data-hovered:bg-gray-300"
-              variant={"ghost"}
+              className="h-6 rounded-full"
+              size="xs"
+              variant="outline"
               data-testid="data-diff-add-comment"
             >
               <Icon icon="mdi:chat-outline" />

@@ -27,7 +27,7 @@ The kind name is mechanical: a template for `InfraDevice` becomes `TemplateInfra
 
 ## Schema Generation Flow
 
-Template schemas are generated during schema processing in `process_pre_validation`, in this order:
+Template schemas are generated during schema processing in `process_pre_validation` (`schema_branch.py`), in this order:
 
 1. **`manage_object_template_schemas()`** — for every `NodeSchema` that sets `generate_template: true`, call `generate_object_template_from_node()` to construct a `TemplateSchema` (or a generic template for shared abstractions) and register it under the `Template{kind}` name. Identifies dependent component peers via `identify_required_object_templates()` so they get subtemplates too.
 
@@ -50,7 +50,7 @@ Subtemplates inherit from `CoreObjectComponentTemplate` rather than `CoreObjectT
 
 ## Application Flow
 
-When a user creates an object with `object_template={id: ...}`, `Node.handle_object_template()` is invoked during field processing on node creation. It:
+When a user creates an object with `object_template={id: ...}`, `Node.handle_object_template()` is invoked from `Node.new()` (`core/node/__init__.py`). It:
 
 1. Loads the referenced `CoreObjectTemplate` instance (via the GraphQL `object_template` input).
 2. Constructs a `NodeTemplateApplier` with a `DefaultPoolAllocator` (or `NoOpPoolAllocator` if pool processing is suppressed).
@@ -62,7 +62,7 @@ When a user creates an object with `object_template={id: ...}`, `Node.handle_obj
 4. Merges only previously-absent keys back into `fields`, preserving user input.
 5. Returns the set of `pool_pending_fields` — fields whose pool allocation was deferred (e.g., because the chosen allocator is the no-op variant).
 
-After save, `handle_template_relationships()` walks the new node's `COMPONENT` relationships and recursively materializes any subtemplate peers as their own real objects, recursing into their components.
+After save, `handle_template_relationships()` (`core/node/create.py`) walks the new node's `COMPONENT` relationships and recursively materializes any subtemplate peers as their own real objects, recursing into their components.
 
 ### Group Propagation
 

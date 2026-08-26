@@ -18,7 +18,7 @@ export function RelationshipFilterCombobox({
   onChange,
 }: RelationshipFilterComboboxProps) {
   return (
-    <div className="min-h-0 overflow-hidden rounded-md border border-border-strong bg-white">
+    <div className="min-h-0 overflow-hidden rounded-md border border-border-strong bg-input">
       {!!value?.length && (
         <Col className="max-h-24 items-start overflow-y-auto border-border-strong border-b p-2">
           {value.map(({ id, display_label }) => (
@@ -31,7 +31,7 @@ export function RelationshipFilterCombobox({
                 variant="ghost"
                 preventFocusOnPress
                 onPress={() => onChange(value.filter((item) => item.id !== id))}
-                className="h-4 w-4 text-gray-500 data-hovered:text-gray-800"
+                className="h-4 w-4 text-subtle-muted data-hovered:text-foreground"
                 aria-label="Remove"
                 data-testid="remove-option"
               >

@@ -1,9 +1,10 @@
-import { LinkButton, Spinner } from "@infrahub/ui";
+import { Spinner } from "@infrahub/ui";
 import { Link } from "react-router";
 
 import { Row } from "@/shared/components/container";
 import { Icon } from "@/shared/components/display/icon";
 import { TableCell } from "@/shared/components/table/table-cell";
+import { LinkPill } from "@/shared/components/ui/link-pill";
 import { QSP } from "@/shared/config/qsp";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
@@ -41,7 +42,7 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
   if (!firstPC) {
     return (
       <TableCell className="h-auto min-h-14">
-        <span className="text-gray-400">-</span>
+        <span className="text-subtle-muted">-</span>
       </TableCell>
     );
   }
@@ -55,20 +56,15 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
   return (
     <TableCell className="h-auto min-h-14">
       <Row className="flex-wrap">
-        <LinkButton
-          variant="outline"
-          size="sm"
-          href={detailUrl}
-          className="max-w-40 rounded-full pr-2.5 data-hovered:border-custom-blue-700 data-hovered:underline"
-        >
-          <Icon icon={getSchemaIcon(schema)} className="shrink-0 text-custom-blue-800" />
+        <LinkPill href={detailUrl} className="max-w-40">
+          <Icon icon={getSchemaIcon(schema)} className="shrink-0 text-accent" />
           <span className="truncate">{firstPC.node.name.value}</span>
-        </LinkButton>
+        </LinkPill>
 
         {remainingCount > 0 && (
           <Link
             to={listUrl}
-            className="shrink-0 whitespace-nowrap text-gray-500 text-sm hover:underline"
+            className="shrink-0 whitespace-nowrap text-foreground-muted text-sm hover:underline"
           >
             +{remainingCount} more
           </Link>

@@ -11,7 +11,7 @@ export default defineConfig({
   server: {
     port: 8080,
     watch: {
-      ignored: ["**/generated/**", "**/*.generated.ts", "**/playwright-report/**"],
+      ignored: ["**/generated/**", "**/*.generated.ts"],
       followSymlinks: true,
     },
     fs: {

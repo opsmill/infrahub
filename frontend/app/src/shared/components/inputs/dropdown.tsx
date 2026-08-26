@@ -89,7 +89,7 @@ export const DropdownItem = ({
             excludeFromTabOrder
             variant="ghost"
             size="sm"
-            className="ml-auto h-6 text-red-800"
+            className="ml-auto h-6 text-danger"
             onPress={() => {
               setShowDeleteModal(true);
             }}
@@ -257,7 +257,7 @@ export const Dropdown = ({
         </div>
       </ComboboxTrigger>
 
-      <ComboboxContent fitTriggerWidth={false}>
+      <ComboboxContent>
         <ComboboxList>
           <ComboboxEmpty>No dropdown found.</ComboboxEmpty>
           {localItems.map((item) => (

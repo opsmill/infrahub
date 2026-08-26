@@ -16,7 +16,7 @@ export function GroupPanelHeader({
   return (
     <h3
       className={classNames(
-        "flex h-10 shrink-0 items-center border-b p-2 font-medium text-neutral-600 text-xs",
+        "flex h-10 shrink-0 items-center border-b p-2 font-medium text-foreground-muted text-xs",
         className
       )}
       {...props}

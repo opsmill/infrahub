@@ -26,7 +26,7 @@ export function DataViewer({
   className,
 }: DataViewerProps) {
   return (
-    <Col className={classNames("grow rounded-lg bg-neutral-800 p-2 text-neutral-200", className)}>
+    <Col className={classNames("grow rounded-lg bg-stone-800 p-2 text-stone-200", className)}>
       <Row>
         <span className="grow px-1 font-medium">{title}</span>
         {actions}
@@ -55,7 +55,7 @@ function DataViewerContent({
 
     case "image/svg+xml": {
       return (
-        <ScrollArea scrollX className="rounded-lg bg-white" scrollBarClassName="bg-transparent">
+        <ScrollArea scrollX className="rounded-lg bg-content" scrollBarClassName="bg-transparent">
           <Svg value={content} className="mx-auto" />
         </ScrollArea>
       );
@@ -74,7 +74,7 @@ function DataViewerContent({
         <iframe
           src={`data:application/pdf;base64,${content}`}
           title="PDF Preview"
-          className="h-150 w-full rounded-lg border border-neutral-700"
+          className="h-150 w-full rounded-lg border border-stone-700"
         />
       );
     }
@@ -86,7 +86,7 @@ function DataViewerContent({
     case "image/bmp":
     case "image/x-icon": {
       return (
-        <div className="flex justify-center rounded-lg bg-white p-4">
+        <div className="flex justify-center rounded-lg bg-content p-4">
           <img
             src={`data:${contentType};base64,${content}`}
             alt="Preview"
@@ -118,7 +118,7 @@ function DataViewerContent({
       }
 
       return (
-        <div className="flex grow flex-col items-center justify-center gap-2 rounded-lg border p-8 text-neutral-400">
+        <div className="flex grow flex-col items-center justify-center gap-2 rounded-lg border p-8 text-foreground-muted">
           <EyeOffIcon className="size-8" />
           <p>This file can&#39;t be previewed</p>
           <p className="text-sm">{contentType}</p>

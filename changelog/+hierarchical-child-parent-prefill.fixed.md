@@ -1,1 +1,0 @@
-When adding a child to a hierarchical object (for example a Country under a Continent), the creation form now pre-fills the parent field with that object, so the parent no longer has to be selected by hand.

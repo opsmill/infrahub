@@ -1,27 +1,64 @@
-import { playwright } from "@vitest/browser-playwright";
+import { type PlaywrightBrowserProvider, playwright } from "@vitest/browser-playwright";
 import { defineConfig, mergeConfig } from "vitest/config";
 
 import viteConfig from "./vite.config";
 
+// vi.mock in browser mode is served through Playwright request interception, which the
+// provider enables on a session's first registered mock and disables again when a test
+// file's mocks are cleared. Chromium applies that enable asynchronously (the CDP ack does
+// not wait for the renderer's loader factories to update), so a module fetched within the
+// first ~1ms after registration can slip past the route and load unmocked — the recurring
+// "vi.mocked(...).mockX is not a function" flake that hits a random test file. Installing a
+// route that never matches keeps interception enabled for the whole session, so per-file
+// mock registration becomes a pure matcher update with no enable/disable transition to race.
+function playwrightWithAlwaysOnInterception() {
+  const provider = playwright();
+  return {
+    ...provider,
+    providerFactory(...args: Parameters<typeof provider.providerFactory>) {
+      const instance = provider.providerFactory(...args) as PlaywrightBrowserProvider;
+      const anchored = new WeakSet<object>();
+      const openPage = instance.openPage.bind(instance);
+      instance.openPage = async (sessionId, url, options) => {
+        await openPage(sessionId, url, options);
+        const context = instance.contexts.get(sessionId);
+        if (context && !anchored.has(context)) {
+          anchored.add(context);
+          await context.route(
+            () => false,
+            () => {}
+          );
+        }
+      };
+      return instance;
+    },
+  };
+}
+
 export default mergeConfig(
   viteConfig,
   defineConfig({
-    // Deps discovered mid-run trigger a re-optimization reload that resets vi.mock and
-    // flakes the browser tests, so anything not seen by Vite's initial scan must be
-    // pre-bundled here. Two groups below:
-    // - deps of @infrahub/ui and @infrahub/graph, which are workspace packages consumed
-    //   as SOURCE (live symlinks), so Vite treats their imports as app source;
-    // - the app's own lazily-imported deps (React.lazy / dynamic import), which the
-    //   initial scan cannot see and CI's cold cache discovers mid-run.
+    // A dep discovered mid-run makes Vite reload the page, dropping the vi.mock() registrations
+    // made before it. `entries` widens the initial scan, which browser mode otherwise seeds with
+    // the test files alone, missing anything reachable only from a page no test imports.
+    // `include` covers the rest; each entry resolves from frontend/app, so a dep owned by a
+    // workspace package needs Vite's nested `<owner> > <dep>` form. A bare specifier that does
+    // not resolve is dropped with a warning and protects nothing.
+    //
+    // Verifying a change here: dev/guides/frontend/writing-component-tests.md
     optimizeDeps: {
+      entries: ["index.html", "src/**/*.{ts,tsx}"],
       include: [
+        "@infrahub/ui > @radix-ui/react-scroll-area",
+        "@infrahub/ui > react-resizable-panels",
+        "@infrahub/ui > tailwind-variants",
+        "@infrahub/graph > tailwind-variants",
+        "infrahub-schema-visualizer > @dagrejs/dagre",
+        "infrahub-schema-visualizer > html-to-image",
         "@date-fns/tz",
         "react-aria-components",
         "lucide-react",
-        "tailwind-variants",
         "tailwind-merge",
-        "@radix-ui/react-scroll-area",
-        "react-resizable-panels",
         "@graphiql/plugin-explorer",
         "@tanstack/react-query-devtools",
         "graphiql",
@@ -31,10 +68,13 @@ export default mergeConfig(
         "react-error-boundary",
         "react-scan",
         "@headlessui/react",
-        "@dagrejs/dagre",
         "dagre",
+        "@radix-ui/react-dropdown-menu",
         "@radix-ui/react-progress",
-        "html-to-image",
+        // mermaid pulls its diagram renderers (flowDiagram, pie, …) in via dynamic import,
+        // which only a pre-bundle makes reachable before the mid-run re-optimization.
+        "mermaid",
+        "rehype-mermaid",
         "react-paginate",
         "react-diff-view",
         "recharts",
@@ -46,7 +86,7 @@ export default mergeConfig(
       browser: {
         enabled: true,
         headless: true,
-        provider: playwright(),
+        provider: playwrightWithAlwaysOnInterception(),
         instances: [
           {
             browser: "chromium",
@@ -64,14 +104,13 @@ export default mergeConfig(
         exclude: [
           "mocks/",
           "node_modules/",
-          "playwright-report/",
           "tests/",
           "**/*.d.ts",
           "src/shared/api/graphql/generated/",
           "src/shared/api/rest/types.generated.ts",
         ],
       },
-      exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/playwright-report/**"],
+      exclude: ["**/node_modules/**", "**/dist/**"],
     },
   })
 );

@@ -47,7 +47,9 @@ class TestMultiProfiles:
         await admin_page.get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_text("InfraInterface created")).to_be_visible()
         await admin_page.get_by_test_id("close-alert").click()
-        await expect(admin_page.get_by_text("InfraInterface created")).not_to_be_visible()
+        # Wait for detachment, not invisibility: a closed toast stays hidden in the DOM through its
+        # exit animation, and a next toast with the same text mounting beside it breaks strict mode.
+        await expect(admin_page.get_by_text("InfraInterface created")).to_have_count(0)
 
         # L2 profile v1
         await admin_page.get_by_test_id("create-object-button").click()
@@ -58,7 +60,7 @@ class TestMultiProfiles:
         await admin_page.get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_text("InfraInterfaceL2 created")).to_be_visible()
         await admin_page.get_by_test_id("close-alert").click()
-        await expect(admin_page.get_by_text("InfraInterfaceL2 created")).not_to_be_visible()
+        await expect(admin_page.get_by_text("InfraInterfaceL2 created")).to_have_count(0)
 
         # L2 profile v2
         await admin_page.get_by_test_id("create-object-button").click()

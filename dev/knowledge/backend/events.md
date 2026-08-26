@@ -41,10 +41,32 @@ an oversized event is dropped entirely, never recorded. Node mutation events
 build their related resources in priority order — node-scoped entries first
 (attribute updates, parent, the node's own related-node entry), then
 relationship updates (which automation triggers match on), then per-peer
-related-node entries — and truncate at that maximum with a warning log. A node
+related-node entries — and truncate with a warning log. A node
 with a very large cardinality-many relationship therefore keeps its event, but
 not every peer is represented in `related`; the full peer list remains
 available in the event payload's changelog.
+
+Events truncate to `get_related_resource_budget()`, which sits below that
+maximum rather than on it. Prefect's events worker appends run-context
+resources — flow run, task run, flow, deployment, work queue, work pool, and
+one per flow-run tag — after the event has been handed over, extending the list
+in place in a way that skips the client-side validation. An event that leaves
+Infrahub on the maximum therefore arrives above it, and the Prefect API answers
+by closing the `/events/in` websocket rather than by dropping the single event.
+The reserved headroom keeps the enlarged event acceptable.
+
+Group mutation events (`member_added` / `member_removed`) follow the same rule.
+Each member and each ancestor is a single related resource carrying its own
+role (`infrahub.group.member` / `infrahub.group.ancestor`) rather than a
+role-plus-duplicate pair, so the list grows by one per member instead of two.
+The fixed group-scoped entries come first and members/ancestors come last, so
+the same ordered truncation keeps the event within the budget. Group
+automations match the primary group resource and read the changed members from
+the payload, so truncating overflow members only trims the event-query display;
+the event is always recorded and automations always fire. The event query
+API treats members and ancestors as related nodes (matching all three roles and
+deduplicating by id), which keeps its output stable across the consolidated
+format and any older events still carrying the duplicate related-node role.
 
 ## Event Types
 
@@ -85,6 +107,48 @@ A trigger definition's `ExecuteWorkflow` action passes parameters to the target 
 Prefect's `RunDeployment._upgrade_v1_templates` (>=3.6.24) rewrites a bare single-expression string such as `"{{ event.id }}"` by appending `| tojson`, which JSON-serializes the rendered value to preserve its type. `json.dumps` raises on values that are not JSON-native (a `UUID` or a `datetime`) or that resolve to an undefined resource key, so the render fails and the deployment never runs.
 
 Emit single-expression parameters through `jinja_parameter()` in `trigger/models.py`, which wraps them as an explicit `{"__prefect_kind": "jinja", "template": ...}` value. Prefect leaves a parameter that already declares a `__prefect_kind` untouched, so it renders as a plain string on every Prefect version. Values that must keep their non-string type use the `{"__prefect_kind": "json", "value": {"__prefect_kind": "jinja", "template": "... | tojson"}}` form instead.
+
+## Branch scoping of automations
+
+The per-node trigger families — Jinja2 computed attributes, Python computed attributes (owner and
+query), display labels, human-friendly ids, and profile refresh — build one automation per branch
+whose definition differs from the default branch, plus one default-branch automation that owns
+every other branch. Divergence is the schema hash for the schema-driven families and the
+repository commit for the Python transform ones.
+
+The default-branch automation has to exclude the branches that own their own automation.
+**Prefect ORs the patterns of a single label**, so `match["infrahub.branch.name"] = ["!b1", "!b2"]`
+excludes nothing: `b1` fails the first pattern and passes the second, and `ResourceSpecification.matches`
+only needs one pattern to hold. It **ANDs the entries of `match_related`** instead
+(`ResourceTrigger.covers_resources` requires every entry to be satisfied), so each excluded branch
+gets its own one-negation specification:
+
+```python
+match_related = [
+    {"prefect.resource.role": ..., "infrahub.field.name": [...]},   # the field filter
+    {"prefect.resource.role": "infrahub.branch", "infrahub.resource.label": "!b1"},
+    {"prefect.resource.role": "infrahub.branch", "infrahub.resource.label": "!b2"},
+]
+```
+
+`EventTrigger.exclude_branches()` builds this. It relies on the `infrahub.branch` related resource
+that every event carries (`EventMeta.get_related`), which sits among the first entries and therefore
+survives the related-resource truncation above. It sorts the branch names, because a Prefect
+automation is reconciled by comparing model dumps and the registry hands back branches in
+insertion order.
+
+Two properties are worth keeping:
+
+- **Positive exclusion beats enumeration.** Listing the in-scope branches instead would leave a
+  branch created after the last reconcile with no automation at all, and nothing re-runs the setup
+  on branch creation (only `SchemaUpdatedEvent` and `BranchDeletedEvent` do). Excluding the known
+  divergent branches keeps every unknown branch on the default automation.
+- **Assert on behaviour, not on shape.** A filter's dict says nothing about the events it selects.
+  Use `automation_covers_event()` in `tests/helpers/trigger.py`, which runs the generated automation
+  through Prefect's own server-side matcher.
+
+A single negation on the primary resource is still correct and is used where the split is
+default-branch versus everything else (`actions/models.py`, `webhook/models.py`).
 
 ## Event Metadata
 

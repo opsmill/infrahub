@@ -63,11 +63,11 @@ function SectionHeader({ children }: { children: ReactNode }) {
 }
 
 function SectionTitle({ children }: { children: ReactNode }) {
-  return <h3 className="font-semibold text-gray-700 text-sm">{children}</h3>;
+  return <h3 className="font-semibold text-sm text-subtle">{children}</h3>;
 }
 
 function SectionEmptyMessage({ children }: { children: ReactNode }) {
-  return <p className="text-gray-500 text-sm">{children}</p>;
+  return <p className="text-foreground-muted text-sm">{children}</p>;
 }
 
 function ShowMoreButton({ showAll, onClick }: { showAll: boolean; onClick: () => void }) {
@@ -78,7 +78,7 @@ function ShowMoreButton({ showAll, onClick }: { showAll: boolean; onClick: () =>
       onPress={() => {
         onClick();
       }}
-      className="h-auto gap-1 px-0.5 text-gray-500 text-xs"
+      className="h-auto gap-1 px-0.5 text-subtle-muted text-xs"
     >
       {showAll ? (
         <>
@@ -148,11 +148,11 @@ function ProfilesList({ objectData, objectSchema, permission }: ProfilesListProp
     <>
       {isEditAllowed ? (
         <Row
-          className="group cursor-pointer rounded-lg p-2 hover:bg-neutral-100"
+          className="group cursor-pointer rounded-lg p-2 hover:bg-background"
           onClick={() => setIsEditModalOpen(true)}
         >
           {content}
-          <PenLineIcon className="ml-auto size-3.5 shrink-0 text-neutral-400 opacity-0 group-hover:opacity-100" />
+          <PenLineIcon className="ml-auto size-3.5 shrink-0 text-subtle-muted opacity-0 group-hover:opacity-100" />
         </Row>
       ) : (
         content
@@ -240,11 +240,11 @@ function GroupsList({ objectData, objectSchema, permission }: GroupsListProps) {
     <>
       {isEditAllowed ? (
         <Row
-          className="group cursor-pointer rounded-lg p-2 hover:bg-neutral-100"
+          className="group cursor-pointer rounded-lg p-2 hover:bg-background"
           onClick={() => setIsManageGroupsDrawerOpen(true)}
         >
           {content}
-          <PenLineIcon className="ml-auto size-3.5 shrink-0 text-neutral-400 opacity-0 group-hover:opacity-100" />
+          <PenLineIcon className="ml-auto size-3.5 shrink-0 text-subtle-muted opacity-0 group-hover:opacity-100" />
         </Row>
       ) : (
         content

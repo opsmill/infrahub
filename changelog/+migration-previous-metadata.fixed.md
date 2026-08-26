@@ -1,1 +1,0 @@
-Recovering from a failed branch merge now restores `updated_at`/`updated_by` metadata for objects, attributes, and relationships affected by a schema migration, such as changing the inheritance of a schema or adding a new attribute.

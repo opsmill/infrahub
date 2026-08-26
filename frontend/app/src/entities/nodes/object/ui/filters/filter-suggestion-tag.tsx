@@ -13,16 +13,16 @@ export function FilterSuggestionTag({ label, className, ...props }: FilterSugges
     <Tag
       className={classNames(
         focusVisibleStyle,
-        "inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-strong pr-1.5 pl-2 text-sm text-stone-800",
-        "group border-dashed text-stone-400",
-        "hover:border-stone-600 hover:bg-stone-100 hover:text-stone-600",
+        "inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-strong pr-1.5 pl-2 text-foreground text-sm",
+        "group border-dashed text-subtle-muted",
+        "hover:border-subtle hover:bg-highlight hover:text-foreground-muted",
         className
       )}
       textValue={label}
       {...props}
     >
       <span>{label}</span>
-      <div className="h-6 border-border-strong border-r border-dashed group-hover:border-stone-600" />
+      <div className="h-6 border-border-strong border-r border-dashed group-hover:border-subtle" />
       <PlusIcon className="size-4" />
     </Tag>
   );

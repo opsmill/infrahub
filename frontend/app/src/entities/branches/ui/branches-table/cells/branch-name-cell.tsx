@@ -40,7 +40,7 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
             variant="ghost"
             size="sm"
             href={getBranchDetailsUrl(branch.name)}
-            className="truncate rounded-full px-2.5 text-custom-blue-700 data-hovered:bg-custom-blue-700/10 data-hovered:underline"
+            className="truncate rounded-full px-2.5 text-accent data-hovered:bg-accent/10 data-hovered:underline"
           >
             {branch.name}
           </LinkButton>
@@ -55,7 +55,9 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
         </Row>
 
         {branch.description && (
-          <span className="truncate pl-2.5 text-gray-600 text-xs">{branch.description}</span>
+          <span className="truncate pl-2.5 text-foreground-muted text-xs">
+            {branch.description}
+          </span>
         )}
       </Col>
     </StickyLeftCell>

@@ -63,8 +63,10 @@ one decision, so a sink implements them together. Separate interfaces belong to 
 which is why the pool, the policy, and the tracker each have their own.
 
 The events are named methods rather than a callable protocol, so a sink can carry several of them
-and each one says which event fired. Each component fans out through a single private `_notify`,
-which is also where the per-observer failure containment lives.
+and each one says which event fired. Each component confines its fan-out to sinks behind private
+methods where the per-observer failure containment also lives — a single `_notify` in the slot
+pool, the retry policy, and the load tracker, and one `_observe_*` method per event in the
+admission controller.
 
 The concrete sinks in `observers.py` are named only where the object graph is wired: `server.py`
 passes them to `build_admission_controller`, which takes them as arguments rather than choosing them,

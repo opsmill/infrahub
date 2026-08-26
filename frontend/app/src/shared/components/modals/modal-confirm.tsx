@@ -30,16 +30,19 @@ export function ModalConfirm({
     <Modal isDismissable={!isLoading} isOpen={isOpen} onOpenChange={onOpenChange}>
       <Col className="p-3">
         <Heading slot="title" className="flex items-center gap-2 p-1 font-semibold">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-yellow-100">
-            <Icon icon="mdi:alert-circle-outline" className="text-yellow-600" />
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-400/20">
+            <Icon
+              icon="mdi:alert-circle-outline"
+              className="text-yellow-600 dark:text-yellow-300"
+            />
           </div>
           {title}
         </Heading>
 
-        {description && <p className="px-8 text-gray-500 text-sm">{description}</p>}
+        {description && <p className="px-8 text-foreground-muted text-sm">{description}</p>}
       </Col>
 
-      <Row className="justify-end bg-gray-50 p-3">
+      <Row className="justify-end bg-content-muted p-3">
         <Button variant="outline" onPress={() => onOpenChange(false)} isDisabled={isLoading}>
           {cancelLabel}
         </Button>

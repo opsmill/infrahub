@@ -22,14 +22,16 @@ type Story = StoryObj<typeof meta>;
 
 function ColumnLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-xxs font-medium tracking-wider text-neutral-400 uppercase">{children}</div>
+    <div className="text-xxs font-medium tracking-wider text-subtle-muted uppercase">
+      {children}
+    </div>
   );
 }
 
 // The menu lives inside a Popover in real usage; this mimics that surface so the  items render against the expected background.
 function MenuSurface({ children }: { children: React.ReactNode }) {
   return (
-    <div className="w-56 rounded-xl border border-border-strong bg-stone-100/70 shadow-md">
+    <div className="w-56 rounded-xl border border-border-strong bg-popover shadow-md backdrop-blur-lg">
       {children}
     </div>
   );
@@ -122,7 +124,7 @@ export const AllVariants: Story = {
             {disabledItems()}
           </Menu>
         </MenuSurface>
-        <p className="text-xxs text-neutral-400">Hover the disabled item to see the tooltip.</p>
+        <p className="text-xxs text-subtle-muted">Hover the disabled item to see the tooltip.</p>
       </div>
       <MenuSurface>
         <Menu aria-label="Picker menu with a disabled item" variant="picker">
@@ -183,7 +185,7 @@ function PickerWithSubmenuRender() {
           </Autocomplete>
         </Popover>
       </MenuTrigger>
-      <p className="text-xs text-neutral-500">Picked: {picked ?? "—"}</p>
+      <p className="text-xs text-subtle-muted">Picked: {picked ?? "—"}</p>
     </div>
   );
 }

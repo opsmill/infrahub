@@ -31,9 +31,12 @@ class InfrahubCheckBackboneLinkRedundancy(InfrahubCheck):
 
                         if endpoint_node["connected_endpoint"]:
                             connected_endpoint_node = endpoint_node["connected_endpoint"]["node"]
-                            if connected_endpoint_node:
-                                if connected_endpoint_node["enabled"]["value"] and circuit_status == "active":
-                                    backbone_links_per_site[site_name]["operational"] += 1
+                            if (
+                                connected_endpoint_node
+                                and connected_endpoint_node["enabled"]["value"]
+                                and circuit_status == "active"
+                            ):
+                                backbone_links_per_site[site_name]["operational"] += 1
 
             for site_name, site in backbone_links_per_site.items():
                 if site.get("operational", 0) / site["total"] < 0.6:

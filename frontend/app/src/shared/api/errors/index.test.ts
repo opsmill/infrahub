@@ -76,6 +76,41 @@ describe("parseCatalogueError", () => {
     expect(parsed.data).toEqual({ action: "update", resource_kind: "CoreAccount" });
   });
 
+  it("narrows UNIQUENESS_VIOLATION with a single-field constraint", () => {
+    // GIVEN
+    const extensions = {
+      code: "UNIQUENESS_VIOLATION",
+      http_status: 422,
+      data: { node_kind: "BuiltinTag", fields: ["name"] },
+    };
+
+    // WHEN
+    const parsed = parseCatalogueError(extensions);
+
+    // THEN
+    expect(parsed).toEqual({
+      code: ERROR_CODES.UNIQUENESS_VIOLATION,
+      http_status: 422,
+      data: { node_kind: "BuiltinTag", fields: ["name"] },
+    });
+  });
+
+  it("narrows UNIQUENESS_VIOLATION with a composite constraint", () => {
+    // GIVEN
+    const extensions = {
+      code: "UNIQUENESS_VIOLATION",
+      http_status: 422,
+      data: { node_kind: "TestCar", fields: ["name", "owner"] },
+    };
+
+    // WHEN
+    const parsed = parseCatalogueError(extensions);
+
+    // THEN
+    expect(parsed.code).toBe(ERROR_CODES.UNIQUENESS_VIOLATION);
+    expect(parsed.data).toEqual({ node_kind: "TestCar", fields: ["name", "owner"] });
+  });
+
   it.each([
     ["ATTRIBUTE_REQUIRED", { node_kind: "CoreAccount", field_name: "name" }, 422],
     [
@@ -230,6 +265,7 @@ describe("ErrorCode exhaustiveness", () => {
         case ERROR_CODES.ATTRIBUTE_REQUIRED:
         case ERROR_CODES.ATTRIBUTE_INVALID_TYPE:
         case ERROR_CODES.ATTRIBUTE_CONSTRAINT_VIOLATION:
+        case ERROR_CODES.UNIQUENESS_VIOLATION:
         case ERROR_CODES.BRANCH_NOT_FOUND:
         case ERROR_CODES.BRANCH_ALREADY_MERGED:
         case ERROR_CODES.BRANCH_NEEDS_REBASE:

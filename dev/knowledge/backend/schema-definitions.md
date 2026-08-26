@@ -54,7 +54,7 @@ core_standard_webhook = NodeSchema(
 | `on_delete` | `RelationshipDeleteBehavior \| None` | `None` | `None` (no-action) or `cascade` |
 | `allow_override` | `AllowOverrideType` | `ANY` | Whether inheriting nodes can override this relationship |
 | `read_only` | `bool` | `False` | Prevents user modification |
-| `deprecation` | `str \| None` | `None` | Deprecation message shown to users |
+| `deprecation` | `str \| None` | `None` | Deprecation message shown to users; name the version after which the field is removed (applies to GraphQL `deprecation_reason` too) |
 | `common_parent` | `str \| None` | `None` | Constrains peer's parent to match this object's parent |
 | `common_relatives` | `list[str] \| None` | `None` | Peer relationships that must share the same set of peers |
 
@@ -94,6 +94,12 @@ All `AttributeSchema` entries must include a `description` field. This is enforc
 ## Constraint Count Test
 
 `backend/tests/component/message_bus/operations/requests/test_proposed_change.py::test_get_proposed_change_schema_integrity_constraints` contains hardcoded constraint counts. These counts change whenever schemas are added or removed because `ConstraintValidatorDeterminer` iterates all schemas in the registry and generates one `SchemaUpdateConstraintInfo` per validatable property. After schema changes, run the test to get actual counts and update the assertions.
+
+## Runtime schema registry cache
+
+Each worker keeps per-branch `SchemaBranch` objects cached in `registry.schema`. The codebase relies on this cache being kept up-to-date, so read the current schema of a branch via `registry.schema.get_schema_branch(name=...)` — do not add defensive `load_schema_from_db` reloads "just in case". One caveat: `get_schema_branch` silently creates an *empty* `SchemaBranch` for a name it has never seen rather than raising, so it is only valid for branches the process has loaded or registered.
+
+In branch merge/rebase tasks, schema loads needed only for migrations (common-ancestor baseline, pre-rebase rollback schema) belong inside the `obj.has_schema_changes` guard so data-only operations skip them.
 
 ## Field Visibility and the Write / Read / Internal Models
 

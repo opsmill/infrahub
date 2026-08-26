@@ -57,7 +57,7 @@ export const EnumDeleteButton = ({
         excludeFromTabOrder
         variant="ghost"
         size="sm"
-        className="ml-auto h-6 text-red-800"
+        className="ml-auto h-6 text-danger"
         onPress={() => {
           setShowDeleteModal(true);
         }}
@@ -70,7 +70,7 @@ export const EnumDeleteButton = ({
         description={
           <>
             Are you sure you want to delete the enum{" "}
-            <span className="font-semibold text-gray-800">{value}</span>?
+            <span className="font-semibold text-foreground">{value}</span>?
           </>
         }
         isOpen={showDeleteModal}

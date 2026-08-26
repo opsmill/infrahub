@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { AuthContext } from "@/entities/authentication/ui/auth-provider";
 import { getAppInfo } from "@/entities/config/domain/use-cases/get-app-info";
 import { ConfigContext } from "@/entities/config/ui/config-provider";
+import { ThemeProvider } from "@/entities/config/ui/theme-provider";
 import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
 import { hasGlobalPermission } from "@/entities/permission/domain/use-cases/has-global-permission";
 import { getAccountProfile } from "@/entities/user-profile/domain/use-cases/get-account-profile";
@@ -33,9 +34,24 @@ function renderAccountMenu() {
   );
 }
 
+function renderAccountMenuWithTheme(darkTheme: boolean) {
+  return render(
+    <ConfigContext value={{ ...config, experimental_features: { dark_theme: darkTheme } }}>
+      <ThemeProvider>
+        <AuthContext value={auth}>
+          <AccountMenu />
+        </AuthContext>
+      </ThemeProvider>
+    </ConfigContext>
+  );
+}
+
 describe("AccountMenu", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The theme persists to storage and to the document element, both of which outlive a render.
+    localStorage.clear();
+    document.documentElement.classList.remove("dark");
     vi.mocked(getAccountProfile).mockResolvedValue({
       name: { value: "admin" },
       label: { value: "Admin" },
@@ -74,5 +90,42 @@ describe("AccountMenu", () => {
     expect(component.getByRole("menuitem", { name: "Global preferences" }).elements()).toHaveLength(
       0
     );
+  });
+
+  test("tags only the option that switches into the pre-release theme", async () => {
+    vi.mocked(hasGlobalPermission).mockResolvedValue(false);
+    // Start from an explicit choice. Which item is on offer follows the theme on screen, and this
+    // test is about the tag rather than about whatever the default policy currently resolves to.
+    localStorage.setItem("infrahub.theme.choice", "dark");
+
+    const component = await renderAccountMenuWithTheme(true);
+    await component.getByTestId("authenticated-menu-trigger").click();
+
+    // The page is dark, so the switch offers the way back out — and leaving alpha is not itself an
+    // alpha step, so this item carries no tag.
+    const toLight = component.getByRole("menuitem", { name: /Light theme/ });
+    await expect.element(toLight).toBeVisible();
+    await expect.element(toLight).not.toHaveTextContent("alpha");
+
+    await toLight.click();
+    await expect.poll(() => document.documentElement.classList.contains("dark")).toBe(false);
+
+    // Now the switch offers the way in, which is the step that warrants the warning.
+    await component.getByTestId("authenticated-menu-trigger").click();
+    const toDark = component.getByRole("menuitem", { name: /Dark theme/ });
+    await expect.element(toDark).toBeVisible();
+    await expect.element(toDark).toHaveTextContent("alpha");
+  });
+
+  test("hides the theme switch when the deployment does not enable it", async () => {
+    vi.mocked(hasGlobalPermission).mockResolvedValue(false);
+
+    const component = await renderAccountMenuWithTheme(false);
+    await component.getByTestId("authenticated-menu-trigger").click();
+
+    await expect
+      .element(component.getByRole("menuitem", { name: "Account settings" }))
+      .toBeVisible();
+    expect(component.getByRole("menuitem", { name: /theme/i }).elements()).toHaveLength(0);
   });
 });

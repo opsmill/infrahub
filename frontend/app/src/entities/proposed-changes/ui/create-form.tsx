@@ -131,7 +131,7 @@ export const ProposedChangeCreateForm = () => {
 
           <Icon
             icon="mdi:arrow-bottom"
-            className="shrink-0 text-gray-500 text-xl md:mt-8 md:-rotate-90"
+            className="shrink-0 text-subtle-muted text-xl md:mt-8 md:-rotate-90"
           />
 
           <FormField
@@ -209,7 +209,7 @@ export const ProposedChangeCreateForm = () => {
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-100 p-4 text-red-800 text-sm">
+        <div className="rounded-md bg-danger-surface p-4 text-danger text-sm">
           {(error as Error).message}
         </div>
       )}

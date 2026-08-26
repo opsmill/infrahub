@@ -1,6 +1,7 @@
 import {
   Autocomplete,
   Button,
+  Card,
   ListBox,
   Popover,
   Select,
@@ -68,25 +69,25 @@ function SortListContainer({ schema, children }: SortListContainerProps) {
 
   if (isDefaultOrder) {
     return (
-      <div className="inset-shadow-[0_1px_2px_rgb(255,255,255),0_1px_4px_rgba(0,0,0,0.1)] rounded-lg border bg-stone-200/50 shadow-[0_1px_1px_rgba(0,0,0,0.02)]">
-        <Row className="h-6 pl-2 font-medium text-stone-500 text-xs">
+      <Card variant="secondary" className="rounded-lg">
+        <Row className="h-6 pl-2 font-medium text-subtle text-xs">
           <CheckIcon className="size-3.5 text-cyan-600" />
           Default order · applied now
         </Row>
         {children}
-      </div>
+      </Card>
     );
   }
 
   return (
     <div className="border border-transparent">
-      <Row className="h-6 pl-2 font-medium text-stone-500 text-xs">
+      <Row className="h-6 pl-2 font-medium text-subtle text-xs">
         <SlidersHorizontalIcon className="size-3.5" />
         Custom order
         <Button
           variant="ghost"
           size="xxs"
-          className="ml-auto text-stone-500"
+          className="ml-auto text-subtle"
           onPress={() => setCustomSort([])}
         >
           {defaultSort ? (

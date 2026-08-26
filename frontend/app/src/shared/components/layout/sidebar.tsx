@@ -48,6 +48,7 @@ export function Sidebar({ className, children, ...props }: React.ComponentProps<
 
   return (
     <Card
+      variant="secondary"
       className={classNames(
         "group w-64 shrink-0 overflow-hidden transition-[width] duration-200 ease-linear data-[state=collapsed]:w-14",
         className
@@ -68,7 +69,7 @@ export function SidebarTrigger({ className, onPress, ...props }: ButtonProps) {
       variant="ghost"
       shape="square"
       size="sm"
-      className={classNames("text-gray-400 data-hovered:text-neutral-600", className)}
+      className={classNames("text-subtle-muted data-hovered:text-subtle", className)}
       onPress={(event) => {
         onPress?.(event);
         toggleSidebar();

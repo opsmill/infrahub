@@ -109,6 +109,7 @@ class TestComputedAttributeTransformQuery:
                                     "id": "repo-001",
                                     "__typename": "CoreGenericRepository",
                                     "name": {"value": "my-repo"},
+                                    "commit": {"value": "abc123"},
                                 }
                             },
                             "query": {"node": {"id": "query-001", "name": {"value": "my-query"}}},
