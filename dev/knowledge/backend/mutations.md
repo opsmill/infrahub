@@ -141,6 +141,10 @@ peers the manager already read rather than reading them again:
   schemas of the nodes declare, and `NodeManager.prefetch_relationships()` narrows it further to the
   relationships the caller names — reading a node's every edge would pull in the relationships that
   point *at* it, such as the objects created from an object template or the nodes using a profile.
+- The peers of a prefetched relationship come back as nodes rather than ids, so a caller that
+  prefetched walks them without reading them back. Applying an object template leans on this: each
+  level of subtemplates arrives with the read of the level above it (see
+  [Object Templates](templates.md)).
 
 ### The peers a mutation already holds
 
