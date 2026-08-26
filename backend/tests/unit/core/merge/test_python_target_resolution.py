@@ -256,6 +256,39 @@ async def test_attributes_selected_by_different_changes_do_not_share_subscribers
     assert _ids(by_identity[DEVICE, "label"]) == frozenset({"d9"})
 
 
+async def test_an_updated_node_of_the_target_kind_is_its_own_target() -> None:
+    """The reverse lookup reaches a node only through the group its last compute subscribed it to.
+
+    A node that never computed is in no group, so relying on the lookup alone leaves it stale.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[LABEL], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(
+        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"description"}))]
+    )
+
+    assert _identities(targets) == [(DEVICE, "label")]
+    assert _ids(targets[0]) == frozenset({"d1"})
+
+
+async def test_a_deleted_id_is_resolved_apart_from_the_live_ids() -> None:
+    """A deleted id empties the lookup it shares, so it must not travel with the live ids."""
+    subscribers = RecordingSubscriberSource(subscribers={"s1": [("d1", DEVICE)]}, empties_lookup={"s2"})
+    resolver = _resolver(read_sets=[SUMMARY], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(
+        changes=[
+            MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"})),
+            MergeChange(node_id="s2", kind=SITE, action="deleted"),
+        ]
+    )
+
+    assert sorted(subscribers.calls) == [("s1",), ("s2",)]
+    assert _identities(targets) == [(DEVICE, "summary")]
+    assert _ids(targets[0]) == frozenset({"d1"})
+
+
 async def test_a_change_with_no_subscribed_reader_adds_no_target() -> None:
     """An empty lookup is an answer, not a failure, so it must not produce an id-less submission."""
     subscribers = RecordingSubscriberSource(subscribers={})

@@ -65,10 +65,15 @@ class PythonSubscriberSource(Protocol):
 
 @dataclass(frozen=True)
 class _Selection:
-    """Why one change signature selects one attribute, and how exactly."""
+    """Why one change signature selects one attribute, and how exactly.
 
-    self_target: bool
+    ``self_ids`` and ``reader_lookup`` are independent: a changed node can be both a target of
+    its own and a source whose readers have to be resolved.
+    """
+
     widen: bool
+    self_ids: bool
+    reader_lookup: bool
     precise: bool
 
 
@@ -78,18 +83,30 @@ class _Accumulator:
     attribute_name: str
     self_ids: set[str] = field(default_factory=set)
     source_ids: set[str] = field(default_factory=set)
+    deleted_source_ids: set[str] = field(default_factory=set)
     precise: bool = True
     whole_kind: bool = False
 
-    def add(self, *, selection: _Selection, node_ids: set[str]) -> None:
+    def add(self, *, selection: _Selection, node_ids: set[str], deleted: bool) -> None:
         if selection.widen:
             self.whole_kind = True
-        elif selection.self_target:
-            self.self_ids.update(node_ids)
         else:
-            self.source_ids.update(node_ids)
+            if selection.self_ids:
+                self.self_ids.update(node_ids)
+            if selection.reader_lookup:
+                sources = self.deleted_source_ids if deleted else self.source_ids
+                sources.update(node_ids)
         if not selection.precise:
             self.precise = False
+
+    @property
+    def lookups(self) -> tuple[frozenset[str], ...]:
+        """The id sets to resolve readers for, deleted nodes apart from live ones.
+
+        A deleted node id empties the lookup it shares with live ids, which would drop the readers
+        of the live changes with it.
+        """
+        return tuple(frozenset(ids) for ids in (self.source_ids, self.deleted_source_ids) if ids)
 
 
 class PythonTargetResolver:
@@ -138,7 +155,7 @@ class PythonTargetResolver:
                 accumulator = accumulators.setdefault(
                     key, _Accumulator(kind=attribute.kind, attribute_name=attribute.attribute_name)
                 )
-                accumulator.add(selection=selection, node_ids=node_ids)
+                accumulator.add(selection=selection, node_ids=node_ids, deleted=signature.action == DELETED)
 
         targets = [await self._build_target(accumulator=accumulators[key]) for key in sorted(accumulators)]
         return [target for target in targets if target is not None]
@@ -149,13 +166,14 @@ class PythonTargetResolver:
         whole_kind = accumulator.whole_kind
         if whole_kind:
             log.info("Widening the recompute of %s to its whole kind: the read set is undeterminable", identity)
-        elif accumulator.source_ids:
-            try:
-                refs = await self._subscribers_for(frozenset(accumulator.source_ids))
-            except Exception:
-                log.exception("Widening the recompute of %s to its whole kind: the reader lookup failed", identity)
-                whole_kind = True
-            else:
+        else:
+            for node_ids in accumulator.lookups:
+                try:
+                    refs = await self._subscribers_for(node_ids)
+                except Exception:
+                    log.exception("Widening the recompute of %s to its whole kind: the reader lookup failed", identity)
+                    whole_kind = True
+                    break
                 target_ids.update(ref.id for ref in refs if ref.kind == accumulator.kind)
 
         if whole_kind:
@@ -212,36 +230,46 @@ def _select(*, signature: ChangeSignature, attribute: PythonAttributeReadSet) ->
     """
     if signature.action == CREATED:
         # A created node subscribes to no query group yet, so it can only be its own target.
-        return _Selection(self_target=True, widen=False, precise=True) if attribute.kind == signature.kind else None
+        return (
+            _Selection(widen=False, self_ids=True, reader_lookup=False, precise=True)
+            if attribute.kind == signature.kind
+            else None
+        )
 
     if signature.action not in {UPDATED, DELETED}:
         raise ValueError(f"Unknown change action: {signature.action!r}")
 
-    return _select_reader(signature=signature, read_set=attribute.read_set)
+    return _select_reader(signature=signature, read_set=attribute.read_set, target_kind=attribute.kind)
 
 
-def _select_reader(*, signature: ChangeSignature, read_set: TransformReadSet) -> _Selection | None:
+def _select_reader(*, signature: ChangeSignature, read_set: TransformReadSet, target_kind: str) -> _Selection | None:
     """Decide whether an update or a deletion of ``signature.kind`` moves what the query reads.
 
     The field filter is dropped for one kind at a time, never for the whole read set: a query that
     reads a derived field of one kind still rejects an unread field of another. Collapsing the set
     would leave a chained level selecting nodes the change cannot affect.
+
+    An updated node of the target kind is also a target of its own, not only a source to resolve
+    readers for. The reverse lookup finds it only through the query group it subscribed to on its
+    last successful compute, so a node that never computed would stay stale.
     """
     if read_set.depends_on_everything:
-        return _Selection(self_target=False, widen=True, precise=False)
+        return _Selection(widen=True, self_ids=False, reader_lookup=False, precise=False)
 
     if signature.kind not in read_set.read_kinds:
         return None
 
     if signature.action == DELETED:
         # Every field the query read is gone with the node, so dropping the field filter is exact.
-        return _Selection(self_target=False, widen=False, precise=True)
+        return _Selection(widen=False, self_ids=False, reader_lookup=True, precise=True)
+
+    self_ids = signature.kind == target_kind
 
     if not signature.changed_fields or signature.kind in read_set.imprecise_kinds:
         # Nothing to filter on, or a derived read whose backing fields cannot be named.
-        return _Selection(self_target=False, widen=False, precise=False)
+        return _Selection(widen=False, self_ids=self_ids, reader_lookup=True, precise=False)
 
     if signature.changed_fields & read_set.read_fields.get(signature.kind, frozenset()):
-        return _Selection(self_target=False, widen=False, precise=True)
+        return _Selection(widen=False, self_ids=self_ids, reader_lookup=True, precise=True)
 
     return None

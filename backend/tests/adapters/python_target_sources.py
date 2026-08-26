@@ -25,12 +25,24 @@ class StaticPythonReadSetSource:
 class RecordingSubscriberSource:
     """Serves subscribers from a fixed node-to-subscriber map and records every lookup."""
 
-    def __init__(self, subscribers: dict[str, list[tuple[str, str]]]) -> None:
+    def __init__(
+        self,
+        subscribers: dict[str, list[tuple[str, str]]],
+        empties_lookup: set[str] | None = None,
+    ) -> None:
         self.subscribers_by_node = subscribers
+        self.empties_lookup = empties_lookup or set()
         self.calls: list[tuple[str, ...]] = []
 
     async def subscribers(self, *, node_ids: list[str], branch: str) -> list[SubscriberRef]:
+        """Report the subscribers of the given nodes, one entry per matching group.
+
+        ``empties_lookup`` reproduces a measured server behaviour: a deleted node id in the members
+        filter returns nothing at all, so the live ids sharing that lookup lose their readers too.
+        """
         self.calls.append(tuple(node_ids))
+        if self.empties_lookup & set(node_ids):
+            return []
         return [
             SubscriberRef(id=subscriber_id, kind=kind)
             for node_id in node_ids

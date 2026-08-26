@@ -92,9 +92,7 @@ class AffectedTarget:
     bounded over-approximation was used instead of an exact derivation.
 
     ``whole_kind`` marks a target whose nodes could not be resolved at all, so every
-    node of ``target_kind`` has to be recomputed. Such a target carries no node ids,
-    which is why the submission planner has to treat it as a case of its own rather
-    than chunking an empty id set into nothing.
+    node of ``target_kind`` has to be recomputed. Such a target carries no node ids.
     """
 
     family: RecomputeFamily
@@ -173,8 +171,8 @@ class CoalescedSubmission:
     ids for deduplication and orders the submissions deterministically; the flow re-derives its
     own query filter and does not read it.
 
-    ``whole_kind`` carries the widened case through to the flow: there are no node ids to send, and
-    every node of ``target_kind`` has to be recomputed.
+    ``whole_kind`` records the widened case: there are no node ids to send, and every node of
+    ``target_kind`` has to be recomputed. No process flow acts on it yet.
     """
 
     family: RecomputeFamily

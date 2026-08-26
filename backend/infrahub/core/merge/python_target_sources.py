@@ -24,8 +24,13 @@ class DatabasePythonReadSetSource:
     """Read sets for every Python transform computed attribute declared on a branch.
 
     The schema is what says which attributes exist; the analyzed transform queries are what says
-    what each of them reads. An attribute the gather could not resolve keeps an imprecise read set
-    rather than disappearing, so the resolver widens it instead of skipping it.
+    what each of them reads. An attribute whose transform the gather did not find keeps an imprecise
+    read set rather than disappearing, so the resolver widens it instead of skipping it.
+
+    Raises:
+        Exception: the gather resolves the repository and query peers strictly, so a missing peer
+            fails the whole index rather than degrading one attribute.
+
     """
 
     def __init__(self, db: InfrahubDatabase) -> None:
