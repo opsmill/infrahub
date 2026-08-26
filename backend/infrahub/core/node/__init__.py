@@ -16,6 +16,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     ComputedAttributeKind,
     InfrahubKind,
+    MetadataOptions,
     RelationshipCardinality,
     RelationshipKind,
 )
@@ -39,7 +40,7 @@ from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExha
 from infrahub.pools.default_allocator import DefaultPoolAllocator
 from infrahub.pools.noop_allocator import NoOpPoolAllocator
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
-from infrahub.templates.node_applier import NodeTemplateApplier
+from infrahub.templates.node_applier import NodeTemplateApplier, get_relationship_names_to_read
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
@@ -135,6 +136,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._relationships: list[str] = []
         self._node_changelog: NodeChangelog | None = None
         self._creation_context: NodeCreationContext | None = None
+        self._object_template: CoreObjectTemplate | None = None
 
     def _set_created_at(self, value: Timestamp | None) -> None:
         self._metadata.created_at = value
@@ -194,14 +196,19 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             raise ValueError(f"{name} is not a relationship of {self.get_kind()}")
         return relationship
 
-    def mark_relationships_as_fetched(self) -> None:
-        """Record that the peers of every relationship of this node have already been read.
+    def mark_relationships_as_fetched(self, names: set[str] | None = None) -> None:
+        """Record that the peers of these relationships have already been read.
+
+        `names` restricts the marking to the relationships bearing one of these names; without it
+        every relationship of this node is marked.
 
         A relationship marked this way is not read from the database on its first access. Only mark
         them when the peers they hold are known to match the database, or when this node is a preview
         that is never saved.
         """
         for rel_name in self._relationships:
+            if names is not None and rel_name not in names:
+                continue
             self.get_relationship(rel_name).has_fetched_relationships = True
 
     def get_relationship_by_identifier(self, identifier: str) -> RelationshipManager:
@@ -495,10 +502,31 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 }
             )
 
+    async def _read_object_template(self, db: InfrahubDatabase, object_template_field: dict) -> CoreObjectTemplate:
+        """Read the template this node is created from, together with the relationships it is read for."""
+        branch = self.get_branch_based_on_support_type()
+        template: CoreObjectTemplate = await registry.manager.find_object(
+            db=db,
+            kind=self._schema.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME).peer,
+            id=object_template_field.get("id"),
+            hfid=object_template_field.get("hfid"),
+            branch=branch,
+        )
+        await registry.manager.prefetch_relationships(
+            db=db,
+            nodes=[template],
+            names=get_relationship_names_to_read(schema=template.get_schema()),
+            branch=branch,
+            include_metadata=MetadataOptions.SOURCE,
+        )
+        return template
+
     async def handle_object_template(
         self, fields: dict, db: InfrahubDatabase, errors: list, process_pools: bool = True
     ) -> set[str]:
         """Fill the `fields` parameters with values from an object template if one is in use.
+
+        The template is read from the database unless `_object_template` already holds the one to apply.
 
         Returns the set of field names that have pending pool allocations (deferred in preview mode).
         """
@@ -507,12 +535,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             return set()
 
         try:
-            template: CoreObjectTemplate = await registry.manager.find_object(
-                db=db,
-                kind=self._schema.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME).peer,
-                id=object_template_field.get("id"),
-                hfid=object_template_field.get("hfid"),
-                branch=self.get_branch_based_on_support_type(),
+            template: CoreObjectTemplate = self._object_template or await self._read_object_template(
+                db=db, object_template_field=object_template_field
             )
         except NodeNotFoundError:
             errors.append(
@@ -527,6 +551,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             )
             return set()
 
+        self._object_template = template
+        # Hand the template over as the node it is: it has just been read, and the relationship layer
+        # links a node it is given directly, where an id would send it back to the database. The rest
+        # of the payload is kept, as it carries the metadata of the relationship.
+        fields[OBJECT_TEMPLATE_RELATIONSHIP_NAME] = {**object_template_field, "id": template}
         pool_allocator = DefaultPoolAllocator(db=db, branch=self._branch) if process_pools else NoOpPoolAllocator()
         applier = NodeTemplateApplier(db=db, branch=self._branch, pool_allocator=pool_allocator)
         applied_fields = await applier.apply(
@@ -1404,10 +1433,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 return relationship.name
 
         return None
-
-    async def get_object_template(self, db: InfrahubDatabase) -> CoreObjectTemplate | None:
-        object_template: RelationshipManager | None = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
-        return await object_template.get_peer(db=db) if object_template is not None else None
 
     def get_relationships(
         self, kind: RelationshipKind, exclude: Sequence[str] | None = None
