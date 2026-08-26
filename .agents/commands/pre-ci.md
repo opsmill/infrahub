@@ -8,6 +8,7 @@ allowed-tools:
   - Bash(git rev-parse:*)
   - Bash(uv run invoke:*)
   - Bash(uv run ruff check:*)
+  - Bash(uv run yamllint:*)
   - Bash(uv lock --check:*)
   - Bash(uv lock:*)
   - Bash(pnpm --dir frontend/app:*)
@@ -42,11 +43,13 @@ Run this first. Everything after it is conditional on the result.
 ```bash
 BASE_REF=$(git rev-parse --verify --quiet origin/develop >/dev/null 2>&1 && echo origin/develop || echo origin/stable)
 MERGE_BASE=$(git merge-base HEAD "$BASE_REF")
-{ git diff --name-only "$MERGE_BASE"...HEAD; git status --porcelain | cut -c4-; } | sort -u
+{ git diff --name-only "$MERGE_BASE"...HEAD; git status --porcelain | cut -c4- | sed 's/.* -> //'; } | sort -u
 ```
 
 The list covers **both committed and uncommitted** work — CI sees the former, you are about to
-push the latter, so both must pass.
+push the latter, so both must pass. The `sed` unwraps `git status`'s rename form
+(`R  old -> new`), which would otherwise be classified as the single literal path `old -> new`
+and match no area at all.
 
 Classify the paths using the same globs as `.github/file-filters.yml`. Each area below is that
 file's `<area>_all` list, so local gating matches the `files-changed` outputs CI branches on:
@@ -54,8 +57,14 @@ file's `<area>_all` list, so local gating matches the `files-changed` outputs CI
 | Area | Paths | Enables |
 |---|---|---|
 | **frontend** | `frontend/app/**`, `frontend/packages/**`, `frontend/package.json`, `frontend/pnpm-workspace.yaml`, `frontend/pnpm-lock.yaml`, `schema/openapi.json`, `frontend/app/src/shared/api/rest/types.generated.ts`, `development/**`, `tasks/**`, `.github/workflows/ci.yml`, `.github/file-filters.yml` | Phases 1A, 3B |
-| **backend** | `backend/**`, `python_sdk`, `python_testcontainers/**`, `development/**`, `tasks/**`, `**/pyproject.toml`, `**/uv.lock`, `.github/workflows/ci.yml`, `.github/file-filters.yml`, plus **any** `**/*.py` (the `python-lint` job also fires on the `python` filter, so `models/`, `utilities/` and root scripts count) | Phases 1B, 2B, 4B, 4D, 5 |
+| **backend** | `backend/**`, `python_sdk`, `development/**`, `tasks/**`, `**/pyproject.toml`, `**/uv.lock`, `.github/workflows/ci.yml`, `.github/file-filters.yml` | Phases 1B, 2B, 4B, 4D, 5 |
+| **python** | any other `**/*.py` — `models/`, `utilities/`, `python_testcontainers/`, `tests/`, root scripts | Phases 1B, 2B |
 | **docs** | `docs/**`, `**/*.{md,mdx}`, `.vale/**`, `.vale.ini`, `package.json`, `package-lock.json`, `development/**`, `tasks/**`, `python_sdk` | Phases 1C, 4C |
+| **yaml** | `**/*.{yml,yaml}`, `**/pyproject.toml`, `**/uv.lock` | Phase 2C |
+
+`python` is deliberately narrower than `backend`. The `python-lint` job fires on `backend ||
+python`, but `backend-tests-unit`, `graphql-schema` and `json-schema` gate on `backend` alone —
+so a change to `models/` or a root script must run the lint phases and **not** the slow ones.
 
 Three frontend validation jobs are gated on their own narrow filters rather than the whole
 frontend area — check these paths separately:
@@ -71,10 +80,11 @@ If `--all` was passed, or if you cannot determine the base ref, treat every area
 **State the detected areas before running anything**, e.g.
 `Detected changes: frontend, docs. Skipping backend phases.`
 
-In Phases 1, 2 and 4 the sub-step letter encodes the area — **A** = frontend, **B** = backend,
-**C** = docs, **D** = schema — so a phase skips letters where an area has nothing to do at that
-stage. Phase 2 has a `2B` and no `2A` because the frontend has no fast check of its own. Phase 3
-is the exception: it is entirely frontend, so `3A`–`3E` enumerate its individual CI jobs.
+In Phases 1, 2 and 4 the sub-step letter encodes the area — **A** = frontend, **B** = backend or
+python, **C** = docs (yaml in Phase 2), **D** = schema — so a phase skips letters where an area
+has nothing to do at that stage. Phase 2 has no `2A` because the frontend has no fast check of
+its own. Phase 3 is the exception: it is entirely frontend, so `3A`–`3E` enumerate its individual
+CI jobs.
 
 > **Phase 3A always runs, even with no frontend changes.** The `frontend-lint` job in
 > `ci.yml` has **no path filter** — it runs on every PR. A backend-only change still fails CI if
@@ -92,7 +102,7 @@ These modify files and must complete before any lint check.
 pnpm --dir frontend/app run biome:fix
 ```
 
-**1B. Python** — *if backend changed*
+**1B. Python** — *if backend or python changed*
 
 ```bash
 uv run invoke format
@@ -111,7 +121,7 @@ uv run invoke docs.format
 **Send all applicable commands in a SINGLE message as parallel Bash calls.** Do not run them one
 at a time.
 
-**2B. Python** — *if backend changed*
+**2B. Python** — *if backend or python changed*
 
 1. `uv run invoke main.lint` — report any ruff issues.
 2. `uv run ruff check . --exclude python_sdk` — the exact command CI's `python-lint` job runs.
@@ -121,6 +131,14 @@ at a time.
    whole-repo check proves CI will pass.
 3. `uv lock --check` — ensures `uv.lock` matches `pyproject.toml`. If it fails, run `uv lock` and
    commit the updated lockfile.
+
+**2C. YAML** — *if yaml changed*
+
+1. `uv run yamllint -s .` — the exact command CI's `yaml-lint` job runs. **Easy to miss**: that
+   job fires on any `**/*.{yml,yaml}` change, so a workflow, compose file or schema YAML edit
+   with no Python in it still has a check to pass. Run the command directly rather than
+   `uv run invoke lint`, which bundles unrelated steps; `.yamllint.yml` already ignores `.venv`,
+   `node_modules` and the vendored submodules.
 
 ---
 
@@ -194,10 +212,11 @@ Verifies the generated bindings match `schema/error-catalogue.json`. On failure,
 
 **4B. Backend** — *if backend changed*
 
-1. `uv run invoke backend.lint` — run separately from `main.lint` to avoid
-   `uv run invoke lint`, which includes a `yamllint -s .` step that fails on vendored packages in
-   `.venv`. Its ruff step covers `backend` only, the same coverage gap noted in Phase 2B; the
-   ty and mypy output is what this check adds. CI splits these: `ty` runs in `python-lint`, while
+1. `uv run invoke backend.lint` — call this task directly rather than `uv run invoke lint`, which
+   bundles `main.lint`, `backend.lint` and `yamllint` into one run and so ignores the area gating
+   Phases 2B and 2C apply. Its ruff step covers `backend` only, the same coverage gap noted in
+   Phase 2B; the ty and mypy output is what this check adds. CI splits these: `ty` runs in
+   `python-lint`, while
    `mypy` runs as a step inside `backend-tests-integration` and `backend-tests-functional`.
 2. `uv run invoke backend.validate-generated` — ensures generated schema and protocol files are
    current. If it fails, run `uv run invoke backend.generate` and report the regenerated files.
@@ -253,6 +272,7 @@ Summarize in a table. Include **every** row; mark rows as `skipped (no <area> ch
 | Main Python lint | python-lint | ... |
 | Ruff (CI parity) | python-lint | ... |
 | Lockfile sync | uv-check (`uv-check.yml`) | ... |
+| YAML lint (`yamllint -s .`) | yaml-lint | ... |
 | Backend lint (ty) | python-lint | ... |
 | Backend lint (mypy) | backend-tests-integration, backend-tests-functional | ... |
 | Generated files | backend-validate-generated | ... |
