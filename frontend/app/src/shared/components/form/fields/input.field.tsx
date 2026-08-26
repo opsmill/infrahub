@@ -1,5 +1,6 @@
 import React from "react";
 import { Button } from "react-aria-components";
+import { useFormState } from "react-hook-form";
 
 import { Row } from "@/shared/components/container";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
@@ -36,6 +37,8 @@ const InputField = ({
   multiline,
   ...props
 }: InputFieldProps) => {
+  const { isSubmitting, isValidating } = useFormState();
+
   return (
     <FormField
       key={name}
@@ -74,10 +77,14 @@ const InputField = ({
                       }}
                       onKeyDown={(event) => {
                         // Keep the input's Enter-to-submit behavior.
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          event.currentTarget.form?.requestSubmit();
-                        }
+                        if (event.key !== "Enter") return;
+                        // An Enter confirming an IME composition commits text, not the form.
+                        if (event.nativeEvent.isComposing) return;
+                        event.preventDefault();
+                        // The pending submit button is not natively disabled, so an
+                        // unguarded requestSubmit() would fire a second mutation.
+                        if (isSubmitting || isValidating) return;
+                        event.currentTarget.form?.requestSubmit();
                       }}
                       autoFocus={autoFocus || override}
                       onBlur={() => setOverride(false)}
