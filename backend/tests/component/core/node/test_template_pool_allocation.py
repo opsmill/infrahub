@@ -585,14 +585,6 @@ async def device_schema_with_component_pools(
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Reading the template a level at a time also creates the components a level at a time, so a "
-        "component and the component it holds no longer take adjacent addresses from a shared pool. "
-        "Remove this marker once the walk creates the components depth first again."
-    ),
-    strict=True,
-)
 async def test_one_pool_shared_by_two_component_levels_allocates_depth_first(
     db: InfrahubDatabase,
     default_branch: Branch,
