@@ -158,6 +158,14 @@ The `EventMeta` class provides rich context:
 
 Use `EventMeta.from_parent()` to create child events that maintain hierarchy.
 
+## Scoping branch for webhook matching
+
+Webhook branch scoping matches an event against `meta.context.branch` (see [Webhooks](webhooks.md)). Branch-agnostic lifecycle events set this branch deliberately rather than inheriting the caller's context, so a Default-Branch-scoped webhook matches them predictably:
+
+- Proposed change merge and review events (merged, approved, rejected, and the approval/rejection revoke variants) are stamped to the default branch, so scoping is independent of the branch the mutation ran on.
+- `branch.merged` is stamped to the default branch as well, since the merge lands there. Its payload still carries the merged branch in `branch_name` / `branch_id`; only the scoping branch is the default one.
+- `branch.created` and `branch.deleted` are still stamped to the global branch, pending a general rule for branch-agnostic node events.
+
 ## Querying Events
 
 Events can be queried through:
