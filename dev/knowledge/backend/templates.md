@@ -13,8 +13,8 @@ Object Templates are user-defined "shape" objects: a template node holds default
 | `backend/infrahub/core/schema/definitions/core/template.py` | `core_object_template` and `core_object_component_template` generics — the core base kinds every template inherits from. |
 | `backend/infrahub/core/schema/schema_branch.py` | Generation of per-kind template schemas from `generate_template`-enabled nodes (`manage_object_template_schemas`, `add_relationships_to_template`, etc.). |
 | `backend/infrahub/core/relationship/constraints/template_resource_pool_exclusive.py` | Constraint preventing both a fixed value and a pool reference being set on the same template field. |
-| `backend/infrahub/core/node/create.py` | `handle_template_relationships()` recursively materializes component-template peers as real instances. |
-| `backend/infrahub/core/node/__init__.py` | `Node._apply_template()` (around line 480) is the call site that invokes `NodeTemplateApplier` during `Node.new()`. |
+| `backend/infrahub/core/node/create.py` | `handle_template_relationships()` materializes component-template peers as real instances, a level of the template at a time. |
+| `backend/infrahub/core/node/__init__.py` | `Node.handle_object_template()` is the call site that constructs and invokes `NodeTemplateApplier` during node field processing. |
 
 ## Core Kinds
 
@@ -33,12 +33,12 @@ Template schemas are generated during schema processing in `process_pre_validati
 
 2. **`generate_object_template_from_node()`** — builds the bare `TemplateSchema`: copies attributes that have `support_templates`, sets the `template_name__value` HFID, wires `inherit_from` to `CoreObjectTemplate` (or the auto-generated parent template if the source node inherits from one).
 
-3. **`add_relationships_to_template()` (~line 2669)** — walks the source node's relationships and copies the propagatable ones onto the template, with adjustments:
+3. **`add_relationships_to_template()`** — walks the source node's relationships and copies the propagatable ones onto the template, with adjustments:
    - Filters out `GENERICGROUP` and `PROFILE` peers, and any kind not in `[COMPONENT, PARENT, ATTRIBUTE, GENERIC]`.
    - For `COMPONENT` and `PARENT` peers, retargets the peer to the corresponding `Template*` kind so the template can hold a reference to a *subtemplate* instead of a real object.
    - Calls `_create_resource_pool_relationship()` for IP-typed peers and `_create_attribute_resource_pool_relationship()` for `Number` attributes — see [Resource Pool Integration](#resource-pool-integration).
 
-4. **`manage_object_template_relationships()` (~line 2535)** — adds an `object_template` relationship (kind `TEMPLATE`, identifier `node__objecttemplate`) on every template-eligible node so an instance can record which template it was created from.
+4. **`manage_object_template_relationships()`** — adds an `object_template` relationship (kind `TEMPLATE`, identifier `node__objecttemplate`) on every template-eligible node so an instance can record which template it was created from.
 
 These methods run before `process_post_validation`, which is also when `add_groups()` adds `member_of_groups` / `subscriber_of_groups` to *all* schemas (templates included — peers there make the template node itself a group member). On templates, `add_groups()` additionally emits `member_of_groups_for_instances` and `subscriber_of_groups_for_instances` (kind `GENERIC`, distinct identifiers `template_group_member_for_instances` and `template_group_subscriber_for_instances`). Peers on those fields drive per-instance group membership at template application time without affecting the template itself — see [Group Propagation](#group-propagation).
 
@@ -62,7 +62,7 @@ When a user creates an object with `object_template={id: ...}`, `Node.handle_obj
 4. Merges only previously-absent keys back into `fields`, preserving user input.
 5. Returns the set of `pool_pending_fields` — fields whose pool allocation was deferred (e.g., because the chosen allocator is the no-op variant).
 
-After save, `handle_template_relationships()` (`core/node/create.py`) walks the new node's `COMPONENT` relationships and recursively materializes any subtemplate peers as their own real objects, recursing into their components.
+After save, `handle_template_relationships()` (`core/node/create.py`) walks the new node's `COMPONENT` relationships and materializes any subtemplate peers as their own real objects, then walks their components in turn — a whole level of the template at a time, so the level is read once rather than once per parent.
 
 ### What applying a template reads
 
@@ -76,24 +76,27 @@ names, once on the node it creates under the lock — from that single read: `No
 carries it, and `_do_create_node()` uses it instead of asking the saved node which template it came
 from.
 
-The peers of the template's component relationships are read the same way, with the relationships
-materializing them consults, and each component is then created from the ids and kinds those
-relationships carry.
+The peers of the template's component relationships come back with that read, so the subtemplates
+of the first level are already in memory; each component is then created from the ids and kinds
+those relationships carry.
 
-The cost of a create is then the template read (3 queries), the node's own uniqueness check and
-write, and 2 queries per component (its uniqueness check and its write). It does not grow with the
-number of objects created from the template before.
+`handle_template_relationships()` walks the template a level at a time rather than a parent at a
+time. The subtemplates a level names are all known before any of them is materialized, so the whole
+level is read at once — one relationship read covering every subtemplate of the level, which brings
+back the peers naming the level below. A level therefore costs the same read whether it hangs from
+one parent or from a hundred.
 
-That 2-query figure is for a component at the first level. A component that is itself a template
-holding components of its own costs more, because the recursion prefetches each subtemplate's
-relationships one parent at a time rather than once for the whole level. With the test schema's
-device -> interface -> SFP, an interface costs 2 and the SFP under it costs 6: a batched
-relationship read, a batched peer read (two queries, one for the node and one for its attributes),
-its own count constraint, its uniqueness check, and its write. The cost stays constant per
-interface however wide the tree gets, so it does not drift, but prefetching a whole level at once
-is the obvious next saving, tracked in
-[#10419](https://github.com/opsmill/infrahub/issues/10419). `test_template_reads.py` measures both
-depths.
+A level read costs 3 queries: one relationship read, plus one read of the peers it names (a node
+read and an attribute read). A create pays one of those for the template and one for each level of
+subtemplates under it. The rest of its cost is the 2 queries reading the template node itself, the
+node's own uniqueness check and write, and 2 queries per component — its uniqueness check and its
+write — plus a count constraint for any mandatory parent that component declares. None of it grows
+with the number of objects created from the template before.
+
+On the test schema's device -> interface -> SFP, a device created from a template carrying ten
+interfaces costs 30 queries, and one carrying five interfaces each holding an SFP costs 38.
+Widening a level costs only what its components cost; deepening the tree adds one level read.
+`test_template_reads.py` measures both depths and guards the per-level read.
 
 ### Group Propagation
 
