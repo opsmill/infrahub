@@ -61,7 +61,7 @@
 
 ## R6. Cleanup on PR close
 
-**Decision**: A separate tiny workflow `on: pull_request: types [closed]` (same branch guard) that deletes every asset named `pr-<n>-*` from the `bug-pipeline-assets` release.
+**Decision**: A separate tiny workflow `on: pull_request: types [closed]` (same branch guard) that commits the removal of the `pr-<n>/` folder from the `bug-pipeline-assets` orphan branch (updated for the T001 fallback).
 
 **Rationale**: closed-PR cleanup cannot live in the proof workflow (different event), and a dedicated workflow keeps permissions minimal (`contents: write` only).
 
