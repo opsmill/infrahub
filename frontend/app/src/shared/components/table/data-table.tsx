@@ -33,8 +33,14 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   gridTemplateColumns?: (columnCount: number) => string;
 }
 
+// `fit-content` keeps short columns shrink-to-fit while capping long ones. A bare
+// `auto` track has no ceiling, so a single long value grows the column past the
+// viewport — and because the first column is sticky, it then paints over the row
+// action menu and the horizontal scrollbar.
+const COLUMN_MAX_WIDTH = "20rem";
+
 const defaultGridTemplateColumns = (columnCount: number) =>
-  `repeat(${columnCount - 2}, auto) 1fr 2.5rem`;
+  `repeat(${columnCount - 2}, fit-content(${COLUMN_MAX_WIDTH})) 1fr 2.5rem`;
 
 export function DataTable<T extends NodeCore>({
   columnOrder,
