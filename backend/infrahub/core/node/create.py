@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, cast, overload
 
 from infrahub import lock
@@ -33,8 +34,29 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+@dataclass
+class TemplateComponent:
+    """A subtemplate to materialize, the schema of the object it describes, and what it holds.
+
+    `components` is filled in once the level below this subtemplate has been read.
+    """
+
+    subtemplate: CoreObjectTemplate
+    schema: NonGenericSchemaTypes
+    components: list[TemplateComponent] = field(default_factory=list)
+
+
+@dataclass
+class _SubtemplateParent:
+    """A template of the level being walked, and the list its components are recorded in."""
+
+    schema: MainSchemaTypes
+    template: CoreObjectTemplate
+    components: list[TemplateComponent]
+
+
 async def get_component_subtemplates(
-    db: InfrahubDatabase, obj: Node, template: CoreObjectTemplate, fields: list
+    db: InfrahubDatabase, schema: MainSchemaTypes, template: CoreObjectTemplate, fields: list
 ) -> list[CoreObjectTemplate]:
     """The subtemplates the component relationships of this template name.
 
@@ -42,7 +64,9 @@ async def get_component_subtemplates(
     subtemplates costs no query.
     """
     subtemplates: list[CoreObjectTemplate] = []
-    for relationship in obj.get_relationships(kind=RelationshipKind.COMPONENT, exclude=fields):
+    for relationship in schema.relationships:
+        if relationship.kind != RelationshipKind.COMPONENT or relationship.name in fields:
+            continue
         template_relationship_manager: RelationshipManager = getattr(template, relationship.name)
         for template_relationship in await template_relationship_manager.get_relationships(db=db):
             subtemplates.append(cast("CoreObjectTemplate", await template_relationship.get_peer(db=db)))
@@ -53,7 +77,9 @@ async def read_subtemplates(db: InfrahubDatabase, branch: Branch, subtemplates: 
     """Read a whole level of subtemplates, with the relationships materializing them consults.
 
     The peers those relationships name are read with them, which is what leaves the level below
-    already in memory by the time it is walked.
+    already in memory by the time it is walked. Those peers include the parents the level points
+    back at, which the walk already holds and reads again: the batched read has no way to be told a
+    node is in hand.
     """
     await registry.manager.prefetch_relationships(
         db=db,
@@ -66,6 +92,52 @@ async def read_subtemplates(db: InfrahubDatabase, branch: Branch, subtemplates: 
         branch=branch,
         include_metadata=MetadataOptions.SOURCE,
     )
+
+
+async def read_template_components(
+    db: InfrahubDatabase, branch: Branch, schema: MainSchemaTypes, template: CoreObjectTemplate, fields: list
+) -> list[TemplateComponent]:
+    """The tree of subtemplates under this template, read one level at a time.
+
+    The subtemplates a level names are all known before any of them is read, so a level is read once
+    for every parent it hangs from rather than once per parent. Reading a level names the level
+    below it, which is what the next turn of the loop reads. `template` itself was read that way by
+    the caller, which is why the walk starts with a level already in memory.
+    """
+    # The walk starts at the template itself; the components it names are what is returned.
+    components: list[TemplateComponent] = []
+    level = [_SubtemplateParent(schema=schema, template=template, components=components)]
+
+    while level:
+        next_level: list[_SubtemplateParent] = []
+        level_components: list[TemplateComponent] = []
+        for parent in level:
+            subtemplates = await get_component_subtemplates(
+                db=db, schema=parent.schema, template=parent.template, fields=fields
+            )
+            for subtemplate in subtemplates:
+                # We retrieve peer schema for each peer in case we are processing a relationship which is based on a generic
+                component = TemplateComponent(
+                    subtemplate=subtemplate,
+                    schema=registry.schema.get_node_schema(
+                        name=subtemplate.get_schema().kind.removeprefix("Template"), branch=branch, duplicate=False
+                    ),
+                )
+                parent.components.append(component)
+                level_components.append(component)
+                next_level.append(
+                    _SubtemplateParent(schema=component.schema, template=subtemplate, components=component.components)
+                )
+
+        if not level_components:
+            break
+
+        await read_subtemplates(
+            db=db, branch=branch, subtemplates=[component.subtemplate for component in level_components]
+        )
+        level = next_level
+
+    return components
 
 
 async def _peer_is_a_template(db: InfrahubDatabase, relationship: Relationship) -> bool:
@@ -215,32 +287,28 @@ async def create_component(
     constraint_runner: NodeConstraintRunner,
     parent_obj: Node,
     parent_template: CoreObjectTemplate,
-    subtemplate: CoreObjectTemplate,
+    component: TemplateComponent,
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> Node:
     """Create the object a subtemplate describes, as a component of the object holding it."""
-    # We retrieve peer schema for each peer in case we are processing a relationship which is based on a generic
-    obj_peer_schema = registry.schema.get_node_schema(
-        name=subtemplate.get_schema().kind.removeprefix("Template"),
-        branch=branch,
-        duplicate=False,
-    )
     obj_peer_data = await extract_peer_data(
         db=db,
-        template_peer=subtemplate,
-        obj_peer_schema=obj_peer_schema,
+        template_peer=component.subtemplate,
+        obj_peer_schema=component.schema,
         parent_obj=parent_obj,
         current_template=parent_template,
     )
 
-    obj_peer = await Node.init(schema=obj_peer_schema, db=db, branch=branch, at=at)
+    obj_peer = await Node.init(schema=component.schema, db=db, branch=branch, at=at)
     await obj_peer.new(db=db, **obj_peer_data)
     await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
 
-    await allocate_from_resource_pools(db=db, branch=branch, obj=obj_peer, template=subtemplate, at=at, user_id=user_id)
+    await allocate_from_resource_pools(
+        db=db, branch=branch, obj=obj_peer, template=component.subtemplate, at=at, user_id=user_id
+    )
 
-    template_profile_ids = await get_profile_ids(db=db, obj=subtemplate)
+    template_profile_ids = await get_profile_ids(db=db, obj=component.subtemplate)
     if template_profile_ids:
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
         await node_profiles_applier.apply_profiles(node=obj_peer)
@@ -248,6 +316,47 @@ async def create_component(
     await obj_peer.save(db=db, user_id=user_id)
     NodeCreationContext.record_if_active(node=obj_peer)
     return obj_peer
+
+
+async def create_components(
+    db: InfrahubDatabase,
+    branch: Branch,
+    constraint_runner: NodeConstraintRunner,
+    parent_obj: Node,
+    parent_template: CoreObjectTemplate,
+    components: list[TemplateComponent],
+    at: Timestamp | None = None,
+    user_id: str = SYSTEM_USER_ID,
+) -> None:
+    """Create the objects these subtemplates describe, depth first.
+
+    A component and the components it holds are created one after the other. A resource pool serving
+    more than one level hands its resources out in the order the components are created, so walking
+    the tree in any other order would move the resources each component is given.
+
+    The subtemplates were read before any of them is created, so this creates without reading.
+    """
+    for component in components:
+        obj_peer = await create_component(
+            db=db,
+            branch=branch,
+            constraint_runner=constraint_runner,
+            parent_obj=parent_obj,
+            parent_template=parent_template,
+            component=component,
+            at=at,
+            user_id=user_id,
+        )
+        await create_components(
+            db=db,
+            branch=branch,
+            constraint_runner=constraint_runner,
+            parent_obj=obj_peer,
+            parent_template=component.subtemplate,
+            components=component.components,
+            at=at,
+            user_id=user_id,
+        )
 
 
 async def handle_template_relationships(
@@ -259,47 +368,31 @@ async def handle_template_relationships(
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> None:
-    """Create the objects the components of a template describe, one level of the template at a time.
+    """Create the objects the components of a template describe.
 
-    The subtemplates of a level are all named before any of them is walked, so the level is read
-    once for every parent it hangs from rather than once per parent. `template` itself was read that
-    way by the caller, which is why the walk starts with a level already in memory.
+    The template is read a level at a time and the objects are created depth first. Those are two
+    different walks on purpose: reading a whole level at once costs one read per level rather than
+    one per parent, while creating a component together with the components it holds keeps the
+    order in which a resource pool shared by several levels is drawn from.
     """
+    components = await read_template_components(
+        db=db, branch=branch, schema=obj.get_schema(), template=template, fields=fields
+    )
+    if not components:
+        return
+
     component_registry = get_component_registry()
     constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
-
-    level: list[tuple[Node, CoreObjectTemplate]] = [(obj, template)]
-    while level:
-        parents_with_subtemplates: list[tuple[Node, CoreObjectTemplate, list[CoreObjectTemplate]]] = []
-        for parent_obj, parent_template in level:
-            subtemplates = await get_component_subtemplates(
-                db=db, obj=parent_obj, template=parent_template, fields=fields
-            )
-            parents_with_subtemplates.append((parent_obj, parent_template, subtemplates))
-
-        level_subtemplates = [
-            subtemplate for _, _, subtemplates in parents_with_subtemplates for subtemplate in subtemplates
-        ]
-        if not level_subtemplates:
-            return
-
-        await read_subtemplates(db=db, branch=branch, subtemplates=level_subtemplates)
-
-        next_level: list[tuple[Node, CoreObjectTemplate]] = []
-        for parent_obj, parent_template, subtemplates in parents_with_subtemplates:
-            for subtemplate in subtemplates:
-                obj_peer = await create_component(
-                    db=db,
-                    branch=branch,
-                    constraint_runner=constraint_runner,
-                    parent_obj=parent_obj,
-                    parent_template=parent_template,
-                    subtemplate=subtemplate,
-                    at=at,
-                    user_id=user_id,
-                )
-                next_level.append((obj_peer, subtemplate))
-        level = next_level
+    await create_components(
+        db=db,
+        branch=branch,
+        constraint_runner=constraint_runner,
+        parent_obj=obj,
+        parent_template=template,
+        components=components,
+        at=at,
+        user_id=user_id,
+    )
 
 
 async def get_profile_ids(db: InfrahubDatabase, obj: Node | CoreObjectTemplate) -> set[str]:
