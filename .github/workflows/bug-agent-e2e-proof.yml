@@ -50,37 +50,54 @@ jobs:
           fi
           TEST_FILES=$(git diff --name-only --diff-filter=AM "$BASE_SHA"...HEAD -- 'tests/e2e/**/test_*.py' | grep -v /tutorial/ || true)
           COUNT=$(echo "$TEST_FILES" | grep -c . || true)
+          DELETED_FILES=$(git diff --name-only --diff-filter=D "$BASE_SHA"...HEAD -- 'tests/e2e/**/test_*.py' | grep -v /tutorial/ || true)
+          DELETED_COUNT=$(echo "$DELETED_FILES" | grep -c . || true)
+          # Policy-D demotion: after a verified GREEN the pipeline removes the
+          # reproduction test, so a deletions-only push needs no proof run.
+          if [ "$PHASE" = "green" ] && [ "$COUNT" = "0" ] && [ "$DELETED_COUNT" -gt 0 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "phase=$PHASE" >> "$GITHUB_OUTPUT"
+            echo "demotion push: e2e reproduction removed after a verified GREEN -- skipping proof run" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           if [ "$COUNT" != "1" ]; then
             echo "::error::Expected exactly one added/modified e2e test file under tests/e2e/, found $COUNT: $TEST_FILES"
             exit 1
           fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
           echo "phase=$PHASE" >> "$GITHUB_OUTPUT"
           echo "test_file=$TEST_FILES" >> "$GITHUB_OUTPUT"
           echo "Phase: \`$PHASE\` / Test: \`$TEST_FILES\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Python
+        if: steps.phase.outputs.skip != 'true'
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install uv
+        if: steps.phase.outputs.skip != 'true'
         uses: astral-sh/setup-uv@v7
         with:
           version: "latest"
       - name: Install dependencies
+        if: steps.phase.outputs.skip != 'true'
         run: uv sync --all-groups
       # A broken verdict/embed script must fail the job here, never produce a wrong verdict.
       - name: Verify the proof scripts
+        if: steps.phase.outputs.skip != 'true'
         run: uv run pytest .github/scripts/tests/ -q
       - name: Install Playwright browsers
+        if: steps.phase.outputs.skip != 'true'
         run: uv run playwright install --with-deps chromium
       - name: Install tini
+        if: steps.phase.outputs.skip != 'true'
         run: sudo apt-get update && sudo apt-get install -y tini
 
       # RED runs on a test-only PR (code-identical to the base branch), so the
       # latest published image stands in for a build; if resolution or the pull
       # fails, build instead -- a missing image must not fake a verdict.
       - name: Select image (red -- pull the latest published release)
-        if: steps.phase.outputs.phase == 'red'
+        if: steps.phase.outputs.skip != 'true' && steps.phase.outputs.phase == 'red'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -98,7 +115,7 @@ jobs:
           fi
       # GREEN must contain the fix, so it always builds.
       - name: Build image (green)
-        if: steps.phase.outputs.phase == 'green'
+        if: steps.phase.outputs.skip != 'true' && steps.phase.outputs.phase == 'green'
         run: |
           uv run invoke dev.build
           echo "INFRAHUB_TESTING_IMAGE_VER=local" >> "$GITHUB_ENV"
@@ -108,6 +125,7 @@ jobs:
       # and the phase contract is enforced by the gate step from the verdict.
       - name: Run the reproduction test
         id: run
+        if: steps.phase.outputs.skip != 'true'
         env:
           TEST_FILE: ${{ steps.phase.outputs.test_file }}
         run: |
@@ -117,6 +135,7 @@ jobs:
 
       - name: Classify the run against the phase contract
         id: verdict
+        if: steps.phase.outputs.skip != 'true'
         env:
           PHASE: ${{ steps.phase.outputs.phase }}
         run: |
@@ -130,6 +149,7 @@ jobs:
 
       - name: Collect the newest screenshot
         id: shot
+        if: steps.phase.outputs.skip != 'true'
         run: |
           set -euo pipefail
           PNG=$(find test-results -name '*.png' -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -1 || true)
@@ -144,7 +164,7 @@ jobs:
       # Evidence is best-effort: a broken assets branch or push race must never
       # override the verdict, hence continue-on-error on both publish steps.
       - name: Check out the assets branch
-        if: steps.shot.outputs.found == 'true'
+        if: steps.phase.outputs.skip != 'true' && steps.shot.outputs.found == 'true'
         continue-on-error: true
         uses: actions/checkout@v7
         with:
@@ -153,7 +173,7 @@ jobs:
 
       - name: Publish the screenshot to the assets branch
         id: publish
-        if: steps.shot.outputs.found == 'true'
+        if: steps.phase.outputs.skip != 'true' && steps.shot.outputs.found == 'true'
         continue-on-error: true
         env:
           PHASE: ${{ steps.phase.outputs.phase }}
@@ -174,7 +194,7 @@ jobs:
       # Runs even when the verdict is unsatisfied so the PR body always carries
       # the latest evidence; only the gate below decides the job result.
       - name: Embed the proof in the PR description
-        if: always() && steps.phase.outcome == 'success'
+        if: always() && steps.phase.outputs.skip != 'true' && steps.phase.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           PHASE: ${{ steps.phase.outputs.phase }}
@@ -200,6 +220,7 @@ jobs:
             "${IMAGE_ARGS[@]}"
 
       - name: Gate on the phase contract
+        if: steps.phase.outputs.skip != 'true'
         env:
           PHASE: ${{ steps.phase.outputs.phase }}
           VERDICT: ${{ steps.verdict.outputs.verdict }}
@@ -214,7 +235,7 @@ jobs:
           esac
 
       - name: Upload run artifacts
-        if: always()
+        if: always() && steps.phase.outputs.skip != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: bug-e2e-proof-${{ github.event.pull_request.number }}-${{ steps.phase.outputs.phase }}-${{ github.run_attempt }}

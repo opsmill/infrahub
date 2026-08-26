@@ -56,7 +56,7 @@
 
 **Independent test**: close the replay PR → its `pr-<n>-*` assets disappear; `bug-pipeline-assets` release remains; PoC orphan branch untouched by production code.
 
-- [ ] T018 [US4] Write `.github/workflows/bug-agent-e2e-cleanup.yml`: `pull_request [closed]` + `startsWith(head.ref, 'ai-bug-pipeline-')` guard, permissions `contents: write` only, commits removal of the `pr-<pr>/` folder from orphan branch `bug-pipeline-assets` (tolerate absent branch/folder)
+- [X] T018 [US4] Write `.github/workflows/bug-agent-e2e-cleanup.yml`: `pull_request [closed]` + `startsWith(head.ref, 'ai-bug-pipeline-')` guard, permissions `contents: write` only, commits removal of the `pr-<pr>/` folder from orphan branch `bug-pipeline-assets` (tolerate absent branch/folder)
 
 ## Phase 7: Polish & validation
 

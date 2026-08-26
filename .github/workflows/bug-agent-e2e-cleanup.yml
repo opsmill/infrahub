@@ -1,0 +1,60 @@
+---
+# yamllint disable rule:truthy rule:line-length
+# Companion to the bug pipeline's E2E proof job: when a pipeline PR closes,
+# remove its pr-<n>/ screenshot folder from the bug-pipeline-assets orphan
+# branch so the branch tip only carries assets for open PRs.
+name: bug-agent-e2e-cleanup
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+# Serialize cleanups (no cancel-in-progress) so two closing PRs queue instead
+# of racing each other's push to the shared assets branch.
+concurrency:
+  group: bug-e2e-assets-cleanup
+
+jobs:
+  cleanup:
+    if: startsWith(github.event.pull_request.head.ref, 'ai-bug-pipeline-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      # Checking out a missing ref fails the job, so resolve the branch first.
+      - name: Check for the assets branch
+        id: branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/$REPO/branches/bug-pipeline-assets" --silent; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No bug-pipeline-assets branch -- nothing to clean up"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out the assets branch
+        if: steps.branch.outputs.exists == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: bug-pipeline-assets
+
+      - name: Remove the PR's asset folder
+        if: steps.branch.outputs.exists == 'true'
+        run: |
+          set -euo pipefail
+          if [ ! -d "pr-$PR_NUMBER" ]; then
+            echo "::notice::No pr-$PR_NUMBER folder on the assets branch -- nothing to clean up"
+            exit 0
+          fi
+          git config user.name "bug-agent-e2e-proof"
+          git config user.email "bug-agent-e2e-proof@users.noreply.github.com"
+          git rm -r --quiet "pr-$PR_NUMBER"
+          git commit -m "proof: remove assets for closed PR #$PR_NUMBER"
+          git push origin HEAD:bug-pipeline-assets
