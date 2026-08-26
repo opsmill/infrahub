@@ -24,7 +24,10 @@ interface DemoRow {
   label: string;
 }
 
-const buildColumns = (label: (row: DemoRow) => React.ReactNode): ColumnDef<DemoRow>[] => [
+const buildColumns = (
+  label: (row: DemoRow) => React.ReactNode,
+  tooltipLabel?: string
+): ColumnDef<DemoRow>[] => [
   {
     id: "identifier",
     header: () => <StickyLeftCell>Name</StickyLeftCell>,
@@ -33,6 +36,7 @@ const buildColumns = (label: (row: DemoRow) => React.ReactNode): ColumnDef<DemoR
         objectKind="TestingOverflowDemo"
         objectId={row.original.id}
         label={label(row.original)}
+        tooltipLabel={tooltipLabel}
       />
     ),
   },
@@ -182,5 +186,18 @@ describe("DataTable first column tooltip", () => {
     // absence rather than racing it.
     await new Promise((resolve) => setTimeout(resolve, 600));
     expect(component.getByRole("tooltip").query()).toBeNull();
+  });
+
+  test("shows the tooltip for a composed label when one is named explicitly", async () => {
+    // GIVEN a label built from markup rather than a plain string
+    const nodeLabelColumns = buildColumns(() => <span>{LONG_LABEL}</span>, LONG_LABEL);
+    const component = await renderTable(nodeLabelColumns, [rows[1]!]);
+
+    // WHEN
+    await initPointerTracking(component.locator);
+    await component.getByRole("link", { name: LONG_LABEL }).hover();
+
+    // THEN
+    await expect.element(component.getByRole("tooltip", { name: LONG_LABEL })).toBeVisible();
   });
 });

@@ -11,6 +11,11 @@ export interface TableIdentifierCellProps {
   objectKind: string;
   objectId: string;
   label: React.ReactNode;
+  /**
+   * Full text to show on hover. Only needed when `label` is composed markup rather
+   * than a plain string — a string label is used as its own tooltip.
+   */
+  tooltipLabel?: string;
   isSelected?: boolean;
   onClickCheckbox?: (e: PressEvent) => void;
   overrideParams?: overrideQueryParams[];
@@ -20,6 +25,7 @@ export function TableIdentifierCell({
   objectKind,
   objectId,
   label,
+  tooltipLabel,
   isSelected,
   onClickCheckbox,
   overrideParams,
@@ -32,8 +38,9 @@ export function TableIdentifierCell({
 
       {/* The label is truncated to keep the sticky column from covering the row
           actions, so surface the full value on hover. `Tooltip` renders its children
-          untouched when `message` is empty, which covers non-string labels. */}
-      <Tooltip message={typeof label === "string" ? label : undefined}>
+          untouched when `message` is empty, so a composed label with no
+          `tooltipLabel` simply gets no tooltip. */}
+      <Tooltip message={tooltipLabel ?? (typeof label === "string" ? label : undefined)}>
         <LinkButton
           variant="ghost"
           size="sm"

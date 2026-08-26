@@ -9,7 +9,7 @@ import {
 import React from "react";
 
 import { Row } from "@/shared/components/container";
-import { cellFooterStyle, cellsStyle } from "@/shared/components/table/style";
+import { COLUMN_MAX_WIDTH, cellFooterStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
@@ -37,8 +37,6 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
 // `auto` track has no ceiling, so a single long value grows the column past the
 // viewport — and because the first column is sticky, it then paints over the row
 // action menu and the horizontal scrollbar.
-const COLUMN_MAX_WIDTH = "20rem";
-
 const defaultGridTemplateColumns = (columnCount: number) =>
   `repeat(${columnCount - 2}, fit-content(${COLUMN_MAX_WIDTH})) 1fr 2.5rem`;
 

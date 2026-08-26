@@ -1,3 +1,16 @@
+/**
+ * How wide a column may grow before its contents truncate. Grid tracks sized `auto`
+ * have no ceiling, so without a cap one long value stretches the whole column past
+ * the viewport. Use with `fit-content()` so short columns still shrink to fit.
+ */
+export const COLUMN_MAX_WIDTH = "20rem";
+
+/**
+ * Cap for identifier columns that stack more than a bare label — a name alongside
+ * badges and a description needs more room before truncating.
+ */
+export const WIDE_COLUMN_MAX_WIDTH = "25rem";
+
 // `min-w-0` lets the cell shrink below its content's intrinsic width, which is what
 // makes the `truncate` classes on cell contents actually clip instead of growing the
 // column.

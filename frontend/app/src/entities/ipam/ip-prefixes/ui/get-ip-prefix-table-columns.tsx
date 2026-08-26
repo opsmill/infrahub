@@ -79,6 +79,9 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
                 {value}
               </Row>
             }
+            // The label is markup, so the prefix has to be named explicitly for the
+            // truncated value to stay readable on hover.
+            tooltipLabel={value}
           />
         );
       },
