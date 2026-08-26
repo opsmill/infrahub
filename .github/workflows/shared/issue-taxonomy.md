@@ -24,13 +24,15 @@ effort on them and do not second-guess them:
 
 - **`type/*`** comes from the issue form (`labels:` in the template). Never add one.
 - **`group/*`** is mapped from the form's Component dropdown by the `Labeler`
-  workflow (its `issue-component` job), for the four options that map exactly
-  (Frontend UI, API Server / GraphQL, Git Integration, CI/CD).
+  workflow, for the dropdown options that map to a label with no judgement
+  needed. That mapping is the `COMPONENT_TO_LABEL` table in
+  `.github/workflows/labeler.yml` (its `issue-component` job) — read it there,
+  it is the only place the option list lives.
 
 You therefore only need to supply `group/*` when that mapping could not decide:
-the reporter chose "Not Sure", "Python SDK", "infrahubctl CLI" or
-"Documentation & Examples", or the issue was created without the form (by an
-integration, or by hand). If a `group/*` label is already present, leave it alone.
+the reporter chose an option absent from `COMPONENT_TO_LABEL`, or the issue was
+created without the form (by an integration, or by hand). If a `group/*` label
+is already present, leave it alone.
 
 `category/*` is always yours — no dropdown captures it.
 

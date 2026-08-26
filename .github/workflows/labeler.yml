@@ -32,10 +32,13 @@ jobs:
   # actions/labeler cannot do this -- it matches changed files and branch names,
   # neither of which an issue has -- so this is a direct lookup instead.
   #
-  # Options deliberately NOT mapped, because they have no exact group/*
-  # equivalent and need judgement: "Python SDK", "infrahubctl CLI",
-  # "Documentation & Examples", "Not Sure". Those fall through to the agentic
-  # issue-triage-labeler.
+  # COMPONENT_TO_LABEL below is the single source of truth for which dropdown
+  # options are decided deterministically. The agentic issue-triage workflows
+  # read this table at runtime to know which options are already handled, so
+  # keep the name and the object literal shape when editing it: dropping an
+  # option here is what hands it to them, no other file needs updating.
+  # Options are deliberately left out when they have no exact group/*
+  # equivalent and need judgement.
   issue-component:
     if: github.event_name == 'issues'
     permissions:
