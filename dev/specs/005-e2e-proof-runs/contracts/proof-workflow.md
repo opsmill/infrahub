@@ -5,6 +5,7 @@
 - Event: `pull_request` `[opened, synchronize, reopened]`, base `stable`, `paths: tests/e2e/**`.
 - Job guard: `startsWith(github.event.pull_request.head.ref, 'ai-bug-pipeline-')`.
 - Concurrency group `bug-e2e-proof-<pr>`, `cancel-in-progress: true`.
+- Demotion skip: when the phase is GREEN and the PR diff contains only deletions under `tests/e2e/**/test_*.py` (no added/modified test), the job succeeds without running anything (policy-D demotion after a verified GREEN).
 - Permissions: `contents: write` (release assets), `pull-requests: write` (body PATCH). Never `pull_request_target`.
 
 ## Verdict script contract — `.github/scripts/e2e_proof_verdict.py`

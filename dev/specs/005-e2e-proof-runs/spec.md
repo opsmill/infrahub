@@ -97,6 +97,7 @@ After the fix is verified GREEN, the e2e reproduction is treated as evidence, no
 - The PR description is edited by other bots or humans between runs: the embed only touches its own marker-delimited sections and must not corrupt the pipeline's phase markers or other content.
 - Reviewer-agent compatibility: the proof job's body edits and the new sections must not break the existing reviewer triggers (`ai-bug-pipeline-*` + phase markers in the body).
 - A backend-only pipeline bug (no e2e test in the diff): the proof job does not run at all; the existing pipeline behavior is unchanged.
+- Demotion push (GREEN phase, the diff removes the e2e reproduction without adding/modifying one): the proof job skips successfully — the GREEN verdict from the pre-demotion run stands and the demoted cheaper-tier test is validated by the normal test jobs. In RED phase a deletion-only diff remains a hard failure.
 - Release-asset store unavailable or upload fails: the verdict must still stand (evidence is best-effort; verification is not), and the job reports the missing screenshot rather than failing the phase for it.
 - Inconclusive verdict (infra flake): a human or the reviewer re-runs the proof job; the test-writer agent escalates instead of looping after two consecutive inconclusive runs on the same commit.
 
