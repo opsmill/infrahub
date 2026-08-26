@@ -369,8 +369,8 @@ class ProposedChangeReview(Mutation):
         approved_by_ids = [node.id for _, node in approved_by.items()]
         rejected_by_ids = [node.id for _, node in rejected_by.items()]
         event: InfrahubEvent | None = None
-        # Proposed changes are branch-agnostic; scope the review events to the default branch so
-        # webhook branch matching is independent of the branch the review mutation ran on.
+        # Proposed changes are branch-agnostic
+        # scope the review events to the default branch so is independent of the branch the review mutation ran on.
         default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
         event_meta = EventMeta.from_context(context=context.get_context().to_event_context(), branch=default_branch)
 
