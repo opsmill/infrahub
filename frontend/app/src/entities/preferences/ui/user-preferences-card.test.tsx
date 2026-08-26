@@ -16,9 +16,19 @@ vi.mock("@/entities/preferences/domain/use-cases/upsert-user-preferences");
 const FIXED_INSTANT = new Date("2026-06-11T23:30:00Z");
 const EFFECTIVE_ZONE = "Asia/Tokyo";
 
+// Fixture invariant, mirroring the API: a non-USER source inherits its own {value, source} (nothing
+// is being shadowed), while a USER source states the layer it shadows — never USER itself.
 const baseEffective: EffectivePreferences = {
-  dateFormat: { value: "EU_DATETIME", source: "GLOBAL" },
-  timezone: { value: EFFECTIVE_ZONE, source: "GLOBAL" },
+  dateFormat: {
+    value: "EU_DATETIME",
+    source: "GLOBAL",
+    inherited: { value: "EU_DATETIME", source: "GLOBAL" },
+  },
+  timezone: {
+    value: EFFECTIVE_ZONE,
+    source: "GLOBAL",
+    inherited: { value: EFFECTIVE_ZONE, source: "GLOBAL" },
+  },
 };
 
 describe("UserPreferencesCard", () => {
@@ -163,8 +173,12 @@ describe("UserPreferencesCard", () => {
   test("pre-fills the form from the caller's own override", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: "EU_DATETIME", source: "USER" },
-      timezone: { value: "UTC", source: "USER" },
+      dateFormat: {
+        value: "EU_DATETIME",
+        source: "USER",
+        inherited: { value: null, source: "DEFAULT" },
+      },
+      timezone: { value: "UTC", source: "USER", inherited: { value: null, source: "DEFAULT" } },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -222,8 +236,12 @@ describe("UserPreferencesCard", () => {
   test("the (i) tooltip reflects the user's own preference when an override is set", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: "EU_DATETIME", source: "USER" },
-      timezone: { value: "UTC", source: "USER" },
+      dateFormat: {
+        value: "EU_DATETIME",
+        source: "USER",
+        inherited: { value: null, source: "DEFAULT" },
+      },
+      timezone: { value: "UTC", source: "USER", inherited: { value: null, source: "DEFAULT" } },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -245,7 +263,7 @@ describe("UserPreferencesCard", () => {
   test("the (i) tooltip's browser-locale example honours the timezone preference", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: null, source: "DEFAULT" },
+      dateFormat: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -274,7 +292,11 @@ describe("UserPreferencesCard", () => {
   test("the (i) tooltip reports the browser fallback when the stored zone can't be rendered here", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      timezone: { value: "Not/AZone", source: "USER" },
+      timezone: {
+        value: "Not/AZone",
+        source: "USER",
+        inherited: { value: null, source: "DEFAULT" },
+      },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -303,7 +325,11 @@ describe("UserPreferencesCard", () => {
   test("the (i) tooltip reports the browser fallback for an unrenderable organisation-default zone", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      timezone: { value: "Not/AZone", source: "GLOBAL" },
+      timezone: {
+        value: "Not/AZone",
+        source: "GLOBAL",
+        inherited: { value: "Not/AZone", source: "GLOBAL" },
+      },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -332,8 +358,8 @@ describe("UserPreferencesCard", () => {
   test("the (i) tooltip falls back to the browser source when neither user nor global is set", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: null, source: "DEFAULT" },
-      timezone: { value: null, source: "DEFAULT" },
+      dateFormat: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
+      timezone: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -383,8 +409,12 @@ describe("UserPreferencesCard", () => {
   test("re-selecting the current value clears the override with an explicit-null upsert", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: "EU_DATETIME", source: "USER" },
-      timezone: { value: "UTC", source: "USER" },
+      dateFormat: {
+        value: "EU_DATETIME",
+        source: "USER",
+        inherited: { value: null, source: "DEFAULT" },
+      },
+      timezone: { value: "UTC", source: "USER", inherited: { value: null, source: "DEFAULT" } },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -409,8 +439,16 @@ describe("UserPreferencesCard", () => {
   test("no longer renders a separate 'reset to global' button", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: "EU_DATETIME", source: "USER" },
-      timezone: { value: "Europe/Paris", source: "GLOBAL" },
+      dateFormat: {
+        value: "EU_DATETIME",
+        source: "USER",
+        inherited: { value: null, source: "DEFAULT" },
+      },
+      timezone: {
+        value: "Europe/Paris",
+        source: "GLOBAL",
+        inherited: { value: "Europe/Paris", source: "GLOBAL" },
+      },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -422,8 +460,8 @@ describe("UserPreferencesCard", () => {
   test("still renders and saves the form when the effective query resolves with no global values", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: null, source: "DEFAULT" },
-      timezone: { value: null, source: "DEFAULT" },
+      dateFormat: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
+      timezone: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
     });
 
     const component = await render(<UserPreferencesCard />);

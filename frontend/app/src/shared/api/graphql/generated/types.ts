@@ -296,14 +296,14 @@ export type BranchCreate = {
 };
 
 export type BranchCreateInput = {
-  /** @deprecated branched_from is set by the server and cannot be provided */
+  /** @deprecated branched_from is set by the server and cannot be provided. Will be removed after version 1.12. */
   branched_from?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['String']['input']>;
-  /** @deprecated Non isolated mode is not supported anymore */
+  /** @deprecated Non-isolated mode is not supported anymore. Will be removed after version 1.12. */
   is_isolated?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
-  /** @deprecated Branches can only be created from the default branch */
+  /** @deprecated Branches can only be created from the default branch. Will be removed after version 1.12. */
   origin_branch?: InputMaybe<Scalars['String']['input']>;
   sync_with_git?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -17686,6 +17686,7 @@ export type EdgedProfileIpamNamespace = {
  */
 export type EffectiveDateFormat = {
   __typename: 'EffectiveDateFormat';
+  inherited: InheritedDateFormat;
   source: PreferenceSource;
   value: Maybe<DateFormat>;
 };
@@ -17700,6 +17701,7 @@ export type EffectivePreferencesType = {
 /** An effective `timezone`: the resolved IANA name (null when nothing is set) and its source. */
 export type EffectiveTimezone = {
   __typename: 'EffectiveTimezone';
+  inherited: InheritedTimezone;
   source: PreferenceSource;
   value: Maybe<Scalars['String']['output']>;
 };
@@ -18307,6 +18309,20 @@ export type InfrahubTaskRetry = {
   __typename: 'InfrahubTaskRetry';
   ok: Maybe<Scalars['Boolean']['output']>;
   task: Maybe<TaskInfo>;
+};
+
+/** The date_format the caller would inherit with no override of their own; source is GLOBAL or DEFAULT. */
+export type InheritedDateFormat = {
+  __typename: 'InheritedDateFormat';
+  source: PreferenceSource;
+  value: Maybe<DateFormat>;
+};
+
+/** The timezone the caller would inherit with no override of their own; source is GLOBAL or DEFAULT. */
+export type InheritedTimezone = {
+  __typename: 'InheritedTimezone';
+  source: PreferenceSource;
+  value: Maybe<Scalars['String']['output']>;
 };
 
 /** Token for User Account */

@@ -6,12 +6,18 @@ import {
   resolveDatePreferences,
 } from "@/entities/preferences/domain/rules/resolve-date-preferences";
 
+// Fixture invariant, mirroring the API: a non-USER source inherits its own {value, source} (nothing
+// is being shadowed), while a USER source states the layer it shadows — never USER itself.
 describe("resolveDatePreferences", () => {
   test("maps a USER date-format key to its date-fns pattern", () => {
     // GIVEN a user-set EU date format
     const preferences: EffectivePreferences = {
-      dateFormat: { value: "EU_DATETIME", source: "USER" },
-      timezone: { value: null, source: "DEFAULT" },
+      dateFormat: {
+        value: "EU_DATETIME",
+        source: "USER",
+        inherited: { value: null, source: "DEFAULT" },
+      },
+      timezone: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
     };
 
     // WHEN resolved
@@ -24,8 +30,12 @@ describe("resolveDatePreferences", () => {
   test("maps a GLOBAL date-format key just like a USER one", () => {
     // GIVEN an org-wide date format
     const preferences: EffectivePreferences = {
-      dateFormat: { value: "US_12H", source: "GLOBAL" },
-      timezone: { value: null, source: "DEFAULT" },
+      dateFormat: {
+        value: "US_12H",
+        source: "GLOBAL",
+        inherited: { value: "US_12H", source: "GLOBAL" },
+      },
+      timezone: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
     };
 
     // WHEN resolved
@@ -38,8 +48,12 @@ describe("resolveDatePreferences", () => {
   test("keeps the USER timezone value", () => {
     // GIVEN a user-set timezone
     const preferences: EffectivePreferences = {
-      dateFormat: { value: null, source: "DEFAULT" },
-      timezone: { value: "Europe/Paris", source: "USER" },
+      dateFormat: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
+      timezone: {
+        value: "Europe/Paris",
+        source: "USER",
+        inherited: { value: null, source: "DEFAULT" },
+      },
     };
 
     // WHEN resolved
@@ -52,8 +66,16 @@ describe("resolveDatePreferences", () => {
   test("resolves a DEFAULT source to null so consumers use the browser locale/zone", () => {
     // GIVEN both fields left at their DEFAULT source (even with values present)
     const preferences: EffectivePreferences = {
-      dateFormat: { value: "EU_DATETIME", source: "DEFAULT" },
-      timezone: { value: "Europe/Paris", source: "DEFAULT" },
+      dateFormat: {
+        value: "EU_DATETIME",
+        source: "DEFAULT",
+        inherited: { value: "EU_DATETIME", source: "DEFAULT" },
+      },
+      timezone: {
+        value: "Europe/Paris",
+        source: "DEFAULT",
+        inherited: { value: "Europe/Paris", source: "DEFAULT" },
+      },
     };
 
     // WHEN resolved
@@ -66,8 +88,8 @@ describe("resolveDatePreferences", () => {
   test("resolves a non-DEFAULT source with a missing value to null", () => {
     // GIVEN a USER source but no stored value
     const preferences: EffectivePreferences = {
-      dateFormat: { value: null, source: "USER" },
-      timezone: { value: null, source: "USER" },
+      dateFormat: { value: null, source: "USER", inherited: { value: null, source: "DEFAULT" } },
+      timezone: { value: null, source: "USER", inherited: { value: null, source: "DEFAULT" } },
     };
 
     // WHEN resolved

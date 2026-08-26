@@ -14,9 +14,14 @@ export interface Preference<T = string> {
   source: PreferenceSource;
 }
 
+/** An effective preference plus the layer it would fall back to; `inherited` never reports USER. */
+export interface EffectivePreference<T = string> extends Preference<T> {
+  inherited: Preference<T>;
+}
+
 export interface EffectivePreferences {
-  dateFormat: Preference<DateFormatKey>;
-  timezone: Preference;
+  dateFormat: EffectivePreference<DateFormatKey>;
+  timezone: EffectivePreference;
 }
 
 // Org's own stored values, never merged with personal overrides.
