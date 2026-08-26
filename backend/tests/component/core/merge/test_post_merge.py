@@ -21,6 +21,31 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+def _build_dispatcher(
+    db: InfrahubDatabase,
+    source_branch: Branch,
+    destination_branch: Branch,
+    event_service: MemoryInfrahubEvent,
+) -> PostMergeDispatcher:
+    workflow = WorkflowLocalExecution()
+    return PostMergeDispatcher(
+        repository_merge_dispatcher=RepositoryMergeDispatcher(
+            db=db, source_branch=source_branch, destination_branch=destination_branch, workflow=workflow
+        ),
+        workflow=workflow,
+        event_service=event_service,
+        default_branch=destination_branch,
+        global_branch=registry.get_global_branch(),
+    )
+
+
+def _context(default_branch: Branch) -> InfrahubContext:
+    return InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+
+
 class TestPostMergeSchemaEvent:
     """A merge that applied schema changes emits a scoped SchemaUpdatedEvent for the destination branch.
 
@@ -28,30 +53,6 @@ class TestPostMergeSchemaEvent:
     refresh their derived values; its changed_elements scope keeps that recompute limited to the schema
     elements the merge actually changed.
     """
-
-    def _build_dispatcher(
-        self,
-        db: InfrahubDatabase,
-        source_branch: Branch,
-        destination_branch: Branch,
-        event_service: MemoryInfrahubEvent,
-    ) -> PostMergeDispatcher:
-        workflow = WorkflowLocalExecution()
-        return PostMergeDispatcher(
-            repository_merge_dispatcher=RepositoryMergeDispatcher(
-                db=db, source_branch=source_branch, destination_branch=destination_branch, workflow=workflow
-            ),
-            workflow=workflow,
-            event_service=event_service,
-            default_branch=destination_branch,
-            global_branch=registry.get_global_branch(),
-        )
-
-    def _context(self, default_branch: Branch) -> InfrahubContext:
-        return InfrahubContext.init(
-            branch=default_branch,
-            account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
-        )
 
     async def test_emits_scoped_schema_updated_event_when_schema_changed(
         self,
@@ -62,7 +63,7 @@ class TestPostMergeSchemaEvent:
     ) -> None:
         source_branch = await create_branch(branch_name="feature", db=db)
         memory_event = MemoryInfrahubEvent()
-        dispatcher = self._build_dispatcher(db, source_branch, default_branch, memory_event)
+        dispatcher = _build_dispatcher(db, source_branch, default_branch, memory_event)
 
         # A schema change confined to a derived-value definition on the destination branch.
         base_schema = registry.schema.get_schema_branch(name=default_branch.name)
@@ -77,7 +78,7 @@ class TestPostMergeSchemaEvent:
             branch=source_branch,
             proposed_change_id=None,
             node_events=[],
-            context=self._context(default_branch),
+            context=_context(default_branch),
             schema_diff=schema_diff,
             schema_hash=candidate.get_hash(),
         )
@@ -99,15 +100,58 @@ class TestPostMergeSchemaEvent:
     ) -> None:
         source_branch = await create_branch(branch_name="feature", db=db)
         memory_event = MemoryInfrahubEvent()
-        dispatcher = self._build_dispatcher(db, source_branch, default_branch, memory_event)
+        dispatcher = _build_dispatcher(db, source_branch, default_branch, memory_event)
 
         await dispatcher.dispatch_events(
             branch=source_branch,
             proposed_change_id=None,
             node_events=[],
-            context=self._context(default_branch),
+            context=_context(default_branch),
             schema_diff=None,
         )
 
         assert not [event for event in memory_event.events if isinstance(event, SchemaUpdatedEvent)]
         assert [event for event in memory_event.events if isinstance(event, BranchMergedEvent)]
+
+
+class TestPostMergeBranchMergedEvent:
+    """The branch-merged event is scoped to the default branch for webhook matching.
+
+    Webhook branch scoping matches the event's `infrahub.branch` related-resource label, so a
+    Default-Branch scoped webhook fires for a merge only when that label is the default branch. The
+    event payload still identifies the branch that was merged.
+    """
+
+    async def test_branch_merged_event_scoped_to_default_branch(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        car_person_schema: SchemaBranch,
+    ) -> None:
+        source_branch = await create_branch(branch_name="feature", db=db)
+        memory_event = MemoryInfrahubEvent()
+        dispatcher = _build_dispatcher(db, source_branch, default_branch, memory_event)
+
+        await dispatcher.dispatch_events(
+            branch=source_branch,
+            proposed_change_id=None,
+            node_events=[],
+            context=_context(default_branch),
+            schema_diff=None,
+        )
+
+        merged_events = [event for event in memory_event.events if isinstance(event, BranchMergedEvent)]
+        assert len(merged_events) == 1
+        event = merged_events[0]
+
+        # Payload identity keeps naming the branch that was merged.
+        assert event.branch_name == source_branch.name
+        assert event.branch_id == str(source_branch.get_uuid())
+
+        # The webhook scoping branch is the default branch, not the global branch.
+        branch_related = [
+            entry for entry in event.get_related() if entry.get("prefect.resource.role") == "infrahub.branch"
+        ]
+        assert len(branch_related) == 1
+        assert branch_related[0]["infrahub.resource.label"] == default_branch.name
