@@ -18,11 +18,17 @@ compatibility: Requires the project to use Towncrier for changelog management �
 - You're asked to "add a changelog entry", "create a news fragment", or "run towncrier".
 - A PR checklist or CI flags a missing changelog entry.
 
-When NOT to use: the project doesn't use Towncrier; pure internal refactors with no user-facing or maintenance impact; and changes the team has explicitly decided don't warrant an entry. (Most internal maintenance still gets a `housekeeping` fragment.)
+When NOT to use: the project doesn't use Towncrier; pure internal refactors with no user-facing or maintenance impact; and changes the team has explicitly decided don't warrant an entry. (The boundary for internal maintenance is below — don't add a `housekeeping` fragment by default.)
 
 **Exception — unreleased features need no fragment.** A fix or follow-up to a feature that has not
 shipped in any release is not user-observable: the feature's own `added` fragment already covers
 everything a user will ever see, and a `fixed` entry for something never released is noise.
+
+**`housekeeping` is not a catch-all.** It covers internal work a user could still notice — a
+dependency bump, a build or tooling change. A change with no user-facing effect at all (an internal
+type annotation, a behavior-preserving refactor, a lint or type-checker config cleanup that touches
+no source code, cleanup of internal docs or spec scaffolding) gets no fragment. When it's unclear
+whether a change is user-facing, ask instead of adding one by default.
 
 ## Quick Reference
 
@@ -78,6 +84,12 @@ uv run towncrier create -c "Migrated the frontend build to pnpm workspaces" +pnp
 
 ## Common Mistakes
 
+- **Getting the filename shape wrong.** It is `<issue-or-+slug>.<type>.md`; the type segment is
+  required, and a file without one is not picked up. Everything before it is either a GitHub issue
+  number or a `+`-prefixed slug, because `issue_format` turns a bare name straight into a GitHub
+  issue URL: `IFC-2747.fixed.md` ships a link to an issue that does not exist. The `+` marks the
+  entry as an orphan and suppresses the link, so `+ifc-2546-lorem-ipsum.changed.md` is valid — but
+  the ticket ID never appears in the output, so spend the slug on a description instead.
 - **Hand-writing the fragment file.** Use `towncrier create` so the name and location are correct.
 - **Placing it in a sub-package directory** (e.g. `backend/changelog/`) instead of the configured fragments directory.
 - **Describing the implementation.** "Refactored the auth-token cache layer" → instead say what the user sees: "Fixed users being unexpectedly logged out".

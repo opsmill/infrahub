@@ -11,6 +11,10 @@ Git workflow and commit conventions for the project.
 - **Bug fixes:** target the oldest branch that needs the fix — `stable` when the bug is in released
   code and the fix should ship in a patch release, `develop` when the code only exists there or the
   fix can wait for the next minor
+- **Repo-tooling/lint/CI-config changes:** target `develop` if the diff also edits runtime source —
+  converting call sites, changing behavior a new lint rule now gates — since what the code emits at
+  runtime changed regardless of how enabling it was triggered. Target `stable` only when the diff has
+  no source-code changes at all (pure config, docs, CI).
 - **Verify the base before cutting:** check that the code the ticket references actually exists on
   the chosen base (`git ls-tree <base> -- <path>`); follow-up tickets often reference modules that
   are only on `develop`
@@ -118,6 +122,18 @@ Add changelog fragments to `changelog/` using Towncrier. Use the `creating-chang
 - What was changed and why
 - Any notable implementation details
 - Testing performed
+
+**Scope to match the change.** A trivial, code-only fix with no behavior change ships as just the
+code diff — no spec-kit design record (`dev/specs/<feature>/`, see
+[Repository Organization](repository-organization.md)), no changelog fragment (see the
+`creating-changelog-entries` skill). Trim both before opening the PR if the workflow that produced
+the change generated them by default.
+
+**A lint- or rule-suppression PR ships the suppression only.** If resolving a lint violation
+(e.g. adding a justified `# noqa`) surfaces a pre-existing behavioral bug in the code you're
+annotating, don't fix the bug in the same PR — keep the diff limited to the annotation and file
+the bug separately. The justification comment may record what you found (see
+[Exception Handling](backend/exceptions.md)), but the fix belongs in its own PR.
 
 ## Critical Rules
 

@@ -98,6 +98,10 @@ cd frontend/app && pnpm biome:fix     # Format/lint frontend
 uv run invoke docs.lint               # Lint documentation
 ```
 
+`invoke lint` lints only `tasks`, `models`, `utilities`, `python_testcontainers` and `backend`, while
+CI runs `ruff check . --exclude python_sdk` over the whole repo — so a violation elsewhere passes
+locally and fails in CI. `/pre-ci` includes that whole-repo check.
+
 ### Build
 
 ```bash
@@ -130,7 +134,7 @@ checkout.
 
 ## Coding Standards
 
-- Backend: `dev/guidelines/backend/python.md` (load before writing backend Python — typing, exception handling) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
+- Backend: `dev/guidelines/backend/python.md` (load before writing backend Python — typing, imports), `dev/guidelines/backend/exceptions.md` (load when writing a `try`/`except`) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
 - Frontend: `frontend/app/AGENTS.md`
 - Git workflow: `dev/guidelines/git-workflow.md`
 - Markdown: `dev/guidelines/markdown.md`
@@ -166,6 +170,7 @@ CI validates that all generated files are committed — the `validate-generated-
 - Use type hints for Python (backend) and TypeScript types (frontend)
 - In `tasks/*.py`, use the shared helpers for project-scoped Docker Compose operations rather than hard-coding `docker compose` or service names: build the command with `get_compose_cmd` (it selects the required `--profile`/`--ansi never` options) plus `get_env_vars`, run it through `execute_command` (which handles `sudo`), and reference named services via the shared constants (e.g. `SERVICE_WORKER_NAME`). Literal `docker compose` is acceptable only for genuinely global, project-agnostic discovery commands.
 - Before pushing, run `/pre-ci` (`.agents/commands/pre-ci.md`) — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
+- Before writing a changelog fragment, PR description, or ADR that names a specific identifier, metric, or config default, grep the actual diff/code for it — state what landed, not what the plan intended. When a later fix changes a figure a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value and update every file that repeats it in the same commit
 
 ### Ask First
 
