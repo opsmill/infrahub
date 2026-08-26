@@ -7,7 +7,7 @@ import pytest
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
-from infrahub.core.query.node import NodeListGetRelationshipsQuery
+from infrahub.core.query.node import NodeListGetInfoQuery, NodeListGetRelationshipsQuery
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from tests.constants import TestKind
@@ -219,9 +219,47 @@ async def test_creating_from_a_nested_template_reads_no_peer_at_either_depth(
         counts[nbr_interfaces] = sum(counting_db.query_counts.values())
 
     # The interface costs the 2 queries a component costs at the first level; the SFP under it costs
-    # 6, because the recursion prefetches the relationships of each subtemplate one parent at a time
-    # rather than once for the whole level. What matters here is that the figure does not drift: the
-    # tree costs the same per interface however wide it gets.
+    # 3, those same 2 plus the count constraint on its mandatory parent. Reading the second level
+    # costs nothing per interface: a level of subtemplates is read once, not once per parent.
     per_interface = (counts[3] - counts[1]) / 2
     assert per_interface == (counts[5] - counts[3]) / 2, f"the cost per nested interface is not constant: {counts}"
-    assert per_interface <= 8, f"an interface and the SFP under it cost {per_interface} queries: {counts}"
+    assert per_interface <= 5, f"an interface and the SFP under it cost {per_interface} queries: {counts}"
+
+
+async def test_a_level_of_a_template_is_read_once_however_many_parents_it_hangs_from(
+    db: InfrahubDatabase, default_branch: Branch, device_schema: None
+) -> None:
+    """The subtemplates of a level are read together, so a level costs one read, not one per parent.
+
+    The device template holds interfaces, each of which holds an SFP. Those SFP subtemplates hang
+    from as many parents as there are interfaces, and are read once for all of them.
+    """
+    device_schema_obj = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+    relationship_reads = {}
+    node_reads = {}
+
+    for nbr_interfaces in (1, 3, 5):
+        name = f"levels-{nbr_interfaces}"
+        template = await _build_template(
+            db=db, branch=default_branch, name=name, nbr_interfaces=nbr_interfaces, with_sfp=True
+        )
+        counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+        await create_node(
+            data={"name": f"{name}-device", "object_template": {"id": template.id}},
+            db=counting_db,
+            branch=default_branch,
+            schema=device_schema_obj,
+        )
+
+        relationship_reads[nbr_interfaces] = counting_db.count_for(NodeListGetRelationshipsQuery.name)
+        node_reads[nbr_interfaces] = counting_db.count_for(NodeListGetInfoQuery.name)
+
+    # One relationship read per level: the template, the interface subtemplates, the SFP subtemplates.
+    assert set(relationship_reads.values()) == {3}, (
+        f"a level was read once per parent rather than once: {relationship_reads}"
+    )
+    # Each of those reads brings back the peers it names, which is how a level is in memory before
+    # it is walked. Nothing reads a subtemplate again afterwards, so the nodes read are those three
+    # sets of peers plus the template the create was given.
+    assert set(node_reads.values()) == {4}, f"a subtemplate was read back after the level it came in: {node_reads}"
