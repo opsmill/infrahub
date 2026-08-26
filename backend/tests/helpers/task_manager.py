@@ -16,19 +16,41 @@ server torn down and recreated at a URL the memo already holds would be skipped,
 so callers must only target session-lived servers.
 
 A failure is remembered the same way a success is. An unreachable Prefect test
-server does not fail fast — the setup blocks until the pytest timeout fires — so
-retrying it for every later test class costs that timeout each time and buries the
+server does not fail fast — the setup blocks until a timeout fires — so retrying
+it for every later test class costs that timeout each time and buries the
 original cause under a wall of identical errors.
+
+For that to work the setup has to fail *inside* the coroutine, which is why it
+carries its own timeout instead of leaning on the pytest one. pytest-timeout runs
+in signal mode, and SIGALRM is raised in whichever frame the main thread happens
+to be in — for an async fixture that is the event loop driver, several frames
+above the coroutine. Nothing here would see it, nothing would be remembered, and
+the next test would start the setup over again. Worse, the abandoned coroutine
+stays pending on the session-scoped loop and runs on in between later tests,
+hanging tests that never touch Prefect at all.
+
+A timed-out setup can leave a partially registered server behind. That is no worse
+than what the pytest timeout did, and the memo makes sure nothing builds on it.
 
 Tests that intentionally corrupt the shared task manager state must restore it
 themselves before yielding back, otherwise later tests will observe the corruption.
 """
 
+import asyncio
 from collections.abc import Awaitable, Callable
 
 from prefect.settings import get_current_settings
 
 from infrahub.workflows.initialization import setup_task_manager
+from tests.helpers.prefect_diagnostics import dump_prefect_test_server_diagnostics
+
+# Ceiling for one setup attempt. It has to stay under the 300s pytest timeout, so that a wedged
+# server is reported from inside the coroutine, and far enough above how long the registration
+# takes on a loaded CI runner (tens of seconds, the slowest calls bounded by Prefect's own 60s
+# client request timeout) that a slow run is never mistaken for a wedged one. That margin is the
+# one worth paying for: giving up too early is remembered, and would condemn a healthy server for
+# the rest of the session.
+SETUP_TIMEOUT_SECONDS = 180.0
 
 
 def _current_prefect_api_url() -> str | None:
@@ -40,9 +62,13 @@ class TaskManagerSetup:
         self,
         setup: Callable[[], Awaitable[None]] = setup_task_manager,
         server_key: Callable[[], str | None] = _current_prefect_api_url,
+        timeout: float = SETUP_TIMEOUT_SECONDS,
+        report_failure: Callable[[str], None] = dump_prefect_test_server_diagnostics,
     ) -> None:
         self._setup = setup
         self._server_key = server_key
+        self._timeout = timeout
+        self._report_failure = report_failure
         self._initialized: set[str | None] = set()
         self._failures: dict[str | None, BaseException] = {}
 
@@ -56,11 +82,13 @@ class TaskManagerSetup:
             return
 
         try:
-            await self._setup()
+            async with asyncio.timeout(self._timeout):
+                await self._setup()
         # The pytest timeout raises Failed, which derives from BaseException, and that is
         # the failure worth remembering most.
         except BaseException as exc:
             self._failures[server] = exc
+            self._report_failure(f"Prefect task manager setup failed for {server}: {exc!r}")
             raise
 
         self._initialized.add(server)
