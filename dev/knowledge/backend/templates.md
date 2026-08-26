@@ -84,6 +84,15 @@ The cost of a create is then the template read (3 queries), the node's own uniqu
 write, and 2 queries per component (its uniqueness check and its write). It does not grow with the
 number of objects created from the template before.
 
+That 2-query figure is for a component at the first level. A component that is itself a template
+holding components of its own costs more, because the recursion prefetches each subtemplate's
+relationships one parent at a time rather than once for the whole level: with the test schema's
+device -> interface -> SFP, an interface costs 2 and the SFP under it costs 6 (a batched
+relationship read, a batched peer read, its own count constraint, its uniqueness check and its
+write). The cost stays constant per interface however wide the tree gets, so it does not drift, but
+prefetching a whole level at once is the obvious next saving. `test_template_reads.py` measures both
+depths.
+
 ### Group Propagation
 
 `TEMPLATE_GROUP_FOR_INSTANCES_REL_MAP` (defined in `infrahub/templates/node_applier.py`) maps the template-only field names to the real group-membership relationship names:

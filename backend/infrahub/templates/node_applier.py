@@ -23,12 +23,9 @@ TEMPLATE_GROUP_FOR_INSTANCES_REL_MAP: dict[str, str] = {
     "subscriber_of_groups_for_instances": "subscriber_of_groups",
 }
 
-# Applying a template reads the values it carries and the components it holds; these are the
-# relationship kinds those live under. Every other kind is left unread, which matters most for
-# TEMPLATE: a template's TEMPLATE-kind relationship lists every object already created from it, so
-# reading it would make each create more expensive than the last. GROUP is left out too — a
-# template's own group memberships describe the template, not its instances, whose memberships come
-# from the `*_for_instances` relationships mapped above.
+# A hard list: a relationship kind that is not named here is never read when a template is applied,
+# so a kind newly added to a template has to be classified here.
+# `test_relationship_kinds_on_templates_are_classified` fails while one is left unclassified.
 TEMPLATE_APPLICATION_RELATIONSHIP_KINDS = frozenset(
     {
         RelationshipKind.ATTRIBUTE,

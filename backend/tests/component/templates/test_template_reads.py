@@ -24,7 +24,10 @@ async def device_schema(db: InfrahubDatabase, default_branch: Branch, register_c
     await load_schema(db=db, schema=DEVICE_SCHEMA, branch_name=default_branch.name)
 
 
-async def _build_template(db: InfrahubDatabase, branch: Branch, name: str, nbr_interfaces: int) -> Node:
+async def _build_template(
+    db: InfrahubDatabase, branch: Branch, name: str, nbr_interfaces: int, with_sfp: bool = False
+) -> Node:
+    """Build a device template, optionally giving each of its interfaces a subtemplate of its own."""
     template = await Node.init(db=db, schema=f"Template{TestKind.DEVICE}", branch=branch)
     await template.new(db=db, template_name=name, manufacturer="Acme", weight=1, airflow="Passive")
     await template.save(db=db)
@@ -39,6 +42,20 @@ async def _build_template(db: InfrahubDatabase, branch: Branch, name: str, nbr_i
             device=template.id,
         )
         await interface.save(db=db)
+
+        if not with_sfp:
+            continue
+
+        # The second level: this component of the device template carries a component of its own.
+        sfp = await Node.init(db=db, schema=f"Template{TestKind.SFP}", branch=branch)
+        await sfp.new(
+            db=db,
+            template_name=f"{name}-eth{idx}-sfp",
+            phys_type="SFP+ (10GE)",
+            serial_number=f"{name}-sn{idx}",
+            interface=interface.id,
+        )
+        await sfp.save(db=db)
 
     return template
 
@@ -160,3 +177,51 @@ async def test_materializing_a_component_costs_a_constant_number_of_queries(
     per_component = (counts[3] - counts[1]) / 2
     assert per_component == (counts[5] - counts[3]) / 2, f"the cost per component is not constant: {counts}"
     assert per_component <= 2, f"materializing a component costs {per_component} queries: {counts}"
+
+
+async def test_creating_from_a_nested_template_reads_no_peer_at_either_depth(
+    db: InfrahubDatabase, default_branch: Branch, device_schema: None
+) -> None:
+    """A component of a template can hold components of its own, and that depth costs no peer read.
+
+    The tests above stop at a device holding interfaces. Here each interface holds an SFP, so the
+    template is walked two levels deep and the second level is materialized from the ids and kinds
+    its relationships carry, exactly as the first is.
+    """
+    device_schema_obj = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+    counts = {}
+
+    for nbr_interfaces in (1, 3, 5):
+        name = f"nested-{nbr_interfaces}"
+        template = await _build_template(
+            db=db, branch=default_branch, name=name, nbr_interfaces=nbr_interfaces, with_sfp=True
+        )
+        counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+        device = await create_node(
+            data={"name": f"{name}-device", "object_template": {"id": template.id}},
+            db=counting_db,
+            branch=default_branch,
+            schema=device_schema_obj,
+        )
+
+        reloaded = await NodeManager.get_one(db=db, id=device.id, branch=default_branch, raise_on_error=True)
+        interfaces = await reloaded.interfaces.get_peers(db=db)
+        assert len(interfaces) == nbr_interfaces
+        serial_numbers = set()
+        for interface in interfaces.values():
+            sfp = await interface.sfp.get_peer(db=db)
+            assert sfp is not None, "the second level of the template was not materialized"
+            serial_numbers.add(sfp.serial_number.value)
+        assert serial_numbers == {f"{name}-sn{idx}" for idx in range(nbr_interfaces)}
+
+        assert counting_db.count_for(RelationshipGetPeerQuery.name) == 0
+        counts[nbr_interfaces] = sum(counting_db.query_counts.values())
+
+    # The interface costs the 2 queries a component costs at the first level; the SFP under it costs
+    # 6, because the recursion prefetches the relationships of each subtemplate one parent at a time
+    # rather than once for the whole level. What matters here is that the figure does not drift: the
+    # tree costs the same per interface however wide it gets.
+    per_interface = (counts[3] - counts[1]) / 2
+    assert per_interface == (counts[5] - counts[3]) / 2, f"the cost per nested interface is not constant: {counts}"
+    assert per_interface <= 8, f"an interface and the SFP under it cost {per_interface} queries: {counts}"
