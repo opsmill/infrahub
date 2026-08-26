@@ -194,6 +194,16 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             raise ValueError(f"{name} is not a relationship of {self.get_kind()}")
         return relationship
 
+    def mark_relationships_as_fetched(self) -> None:
+        """Record that the peers of every relationship of this node have already been read.
+
+        A relationship marked this way is not read from the database on its first access. Only mark
+        them when the peers they hold are known to match the database, or when this node is a preview
+        that is never saved.
+        """
+        for rel_name in self._relationships:
+            self.get_relationship(rel_name).has_fetched_relationships = True
+
     def get_relationship_by_identifier(self, identifier: str) -> RelationshipManager:
         for rel_schema in self._schema.relationships:
             if rel_schema.identifier == identifier:

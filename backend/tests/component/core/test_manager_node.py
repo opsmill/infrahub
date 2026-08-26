@@ -781,13 +781,16 @@ async def test_prefetch_relationships_covers_relationships_without_a_peer(
 
     assert counting_db.count_for(RelationshipGetPeerQuery.name) == 0
 
+    relationship_names = fetched.get_schema().relationship_names
+    assert all(fetched.get_relationship(rel_name).has_fetched_relationships for rel_name in relationship_names)
+
     peers_per_relationship = {
         rel_name: [
             str(rel.peer_id)
-            for rel in await getattr(fetched, rel_name).get_relationships(db=counting_db)
+            for rel in await fetched.get_relationship(rel_name).get_relationships(db=counting_db)
             if rel.peer_id
         ]
-        for rel_name in fetched.get_schema().relationship_names
+        for rel_name in relationship_names
     }
 
     assert peers_per_relationship == {
