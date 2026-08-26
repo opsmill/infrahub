@@ -38,6 +38,18 @@ function playwrightWithAlwaysOnInterception() {
 export default mergeConfig(
   viteConfig,
   defineConfig({
+    // react-stately's Virtualizer reads bare `process.env` (NODE_ENV / VIRT_ON) at render time,
+    // and `process` does not exist in browser mode, so opening ANY virtualized combobox (today
+    // only TimezoneField) dies with "ReferenceError: process is not defined". Substituting the
+    // two reads is the fix, and `"test"` specifically is the library's own sanctioned escape
+    // hatch: it disables virtualization so the popover renders all of its options. NODE_ENV
+    // "development" is NOT enough — virtualization stays on and the popover renders nothing.
+    // Tradeoff: virtualization itself is therefore never exercised under vitest. No first-party
+    // code reads `process.env`, so nothing else is affected by these substitutions.
+    define: {
+      "process.env.NODE_ENV": JSON.stringify("test"),
+      "process.env.VIRT_ON": "undefined",
+    },
     // Deps discovered mid-run trigger a re-optimization reload that resets vi.mock and
     // flakes the browser tests, so anything not seen by Vite's initial scan must be
     // pre-bundled here. Two groups below:

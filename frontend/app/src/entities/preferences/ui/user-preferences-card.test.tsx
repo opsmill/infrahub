@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { EffectivePreferences } from "@/entities/preferences/domain/model/preference";
@@ -170,6 +171,48 @@ describe("UserPreferencesCard", () => {
     expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
   });
 
+  test("falls the example back to the inherited organisation zone when the personal zone override is cleared", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      // A USER date format so the `Example:` line renders without touching that combobox.
+      dateFormat: {
+        value: "ISO_DATETIME",
+        source: "USER",
+        inherited: { value: null, source: "DEFAULT" },
+      },
+      timezone: {
+        value: "America/New_York",
+        source: "USER",
+        inherited: { value: EFFECTIVE_ZONE, source: "GLOBAL" },
+      },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    // Baseline first: the form pre-filled from the personal override, so 23:30Z reads as 19:30 the
+    // same day in America/New_York. Without it, a wrong zone below could not be told apart from the
+    // form never having pre-filled at all.
+    await expect.element(component.getByText("Example: 2026-06-11 19:30")).toBeVisible();
+
+    // Re-selecting the already-selected zone clears the override (onChange(null) →
+    // DEFAULT_FORM_FIELD_VALUE) — the exact state #10200 was reported in. Filter first: the option
+    // list holds every runtime zone.
+    await component.getByRole("button", { name: /timezone/i }).click();
+    await component.getByRole("searchbox").fill("America/New_York");
+    await component.getByRole("option", { name: "America/New_York", exact: true }).click();
+
+    // The example must now follow the INHERITED organisation zone (UTC+9 → the next calendar day),
+    // which the caller's own override was hiding.
+    await expect.element(component.getByText("Example: 2026-06-12 08:30")).toBeVisible();
+
+    // …and not the browser's zone, which is what the bug fell back to. On a machine already in
+    // Asia/Tokyo this guard contradicts the assertion above and fails loudly rather than passing
+    // for the wrong reason.
+    expect(
+      component.getByText(`Example: ${format(FIXED_INSTANT, "yyyy-MM-dd HH:mm")}`).elements()
+    ).toHaveLength(0);
+  });
+
   test("pre-fills the form from the caller's own override", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
@@ -315,6 +358,64 @@ describe("UserPreferencesCard", () => {
     const tooltip = component.getByRole("tooltip").element();
     expect(tooltip.textContent).not.toMatch(/2026/);
     expect(tooltip.textContent).not.toMatch(/Asia\/Tokyo/);
+
+    // Park the pointer away from the trigger so the tooltip closes before the next test renders.
+    await initPointerTracking(component.locator);
+  });
+
+  test("the timezone (i) tooltip names the organisation zone a user override is shadowing", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      timezone: {
+        value: "America/New_York",
+        source: "USER",
+        inherited: { value: EFFECTIVE_ZONE, source: "GLOBAL" },
+      },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /timezone/i })).toBeVisible();
+
+    // The timezone field is the second info trigger.
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.nth(1).hover();
+
+    // A renderable stored zone falls through the supportedTimezone pre-check to the shared
+    // provenance message, which names the layer the override is hiding.
+    await expect
+      .element(
+        component.getByRole("tooltip", {
+          name: `Your preference, overriding the organisation default: ${EFFECTIVE_ZONE}.`,
+        })
+      )
+      .toBeVisible();
+
+    // Park the pointer away from the trigger so the tooltip closes before the next test renders.
+    await initPointerTracking(component.locator);
+  });
+
+  test("the timezone (i) tooltip stays a bare 'Your preference.' when the override shadows nothing", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      timezone: { value: "UTC", source: "USER", inherited: { value: null, source: "DEFAULT" } },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /timezone/i })).toBeVisible();
+
+    // The timezone field is the second info trigger.
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.nth(1).hover();
+
+    // No organisation default to name, so no empty clause is appended — and no browser zone either,
+    // since the caller's own override is what is in effect.
+    await expect
+      .element(component.getByRole("tooltip", { name: "Your preference." }))
+      .toBeVisible();
 
     // Park the pointer away from the trigger so the tooltip closes before the next test renders.
     await initPointerTracking(component.locator);
