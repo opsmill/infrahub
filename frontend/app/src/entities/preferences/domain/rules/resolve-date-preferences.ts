@@ -1,18 +1,17 @@
 import type { ResolvedDatePreferences } from "@/shared/context/date-preferences-context";
 
 import type {
+  EffectivePreference,
   EffectivePreferences,
-  Preference,
 } from "@/entities/preferences/domain/model/preference";
 import { dateFormatPattern } from "@/entities/preferences/domain/rules/date-format";
 
 /**
- * The timezone a caller inherits when they set none of their own — the global layer, or null for the
- * browser zone. A `USER` source yields null: that value is exactly what clearing the field discards,
- * and the API resolves the inherited one away once an override wins.
+ * The value a caller inherits when they set none of their own: the global layer, or null for the
+ * client default. Read from the `inherited` layer, so a caller's own override does not hide it.
  */
-export function inheritedTimezone(timezone: Preference): string | null {
-  return timezone.source === "GLOBAL" ? (timezone.value ?? null) : null;
+export function inheritedValue<T>(preference: EffectivePreference<T>): T | null {
+  return preference.inherited.source === "GLOBAL" ? (preference.inherited.value ?? null) : null;
 }
 
 // A `DEFAULT` source (or missing value/data) resolves to null so consumers fall back to the browser locale/zone.

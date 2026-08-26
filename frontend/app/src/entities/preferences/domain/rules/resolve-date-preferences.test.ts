@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import type { EffectivePreferences } from "@/entities/preferences/domain/model/preference";
 import {
-  inheritedTimezone,
+  inheritedValue,
   resolveDatePreferences,
 } from "@/entities/preferences/domain/rules/resolve-date-preferences";
 
@@ -109,10 +109,10 @@ describe("resolveDatePreferences", () => {
   });
 });
 
-describe("inheritedTimezone", () => {
+describe("inheritedValue", () => {
   test("returns the GLOBAL value, which is what an unset field inherits", () => {
     expect(
-      inheritedTimezone({
+      inheritedValue({
         value: "Europe/Paris",
         source: "GLOBAL",
         inherited: { value: "Europe/Paris", source: "GLOBAL" },
@@ -122,7 +122,7 @@ describe("inheritedTimezone", () => {
 
   test("returns null for a DEFAULT source so the browser zone applies", () => {
     expect(
-      inheritedTimezone({
+      inheritedValue({
         value: null,
         source: "DEFAULT",
         inherited: { value: null, source: "DEFAULT" },
@@ -132,7 +132,7 @@ describe("inheritedTimezone", () => {
 
   test("ignores a value carried on a DEFAULT inherited layer, as the pattern resolver does", () => {
     expect(
-      inheritedTimezone({
+      inheritedValue({
         value: "Europe/Paris",
         source: "DEFAULT",
         inherited: { value: "Europe/Paris", source: "DEFAULT" },
@@ -146,7 +146,7 @@ describe("inheritedTimezone", () => {
     // simply wrong: it is what made the date-format preview drop to the browser zone (#10200)
     // instead of the organisation default while a personal timezone override was being cleared.
     expect(
-      inheritedTimezone({
+      inheritedValue({
         value: "Asia/Tokyo",
         source: "USER",
         inherited: { value: "Europe/Paris", source: "GLOBAL" },
@@ -156,7 +156,7 @@ describe("inheritedTimezone", () => {
 
   test("returns null for a USER override that shadows nothing", () => {
     expect(
-      inheritedTimezone({
+      inheritedValue({
         value: "Asia/Tokyo",
         source: "USER",
         inherited: { value: null, source: "DEFAULT" },
@@ -167,7 +167,7 @@ describe("inheritedTimezone", () => {
   test("reads the inherited layer of any field, not just the timezone", () => {
     // The rule is about the inherited layer, not about zones: a date-format key resolves identically.
     expect(
-      inheritedTimezone({
+      inheritedValue({
         value: "EU_DATETIME",
         source: "USER",
         inherited: { value: "ISO_DATETIME", source: "GLOBAL" },
