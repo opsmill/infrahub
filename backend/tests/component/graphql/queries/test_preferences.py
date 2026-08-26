@@ -373,10 +373,17 @@ async def test_effective_inherited_readable_without_manage_global_permission(
     """The asymmetry between the two queries is deliberate, not an oversight.
 
     `session_first_account` holds no role, group or permission, so the gated raw org read is denied.
-    The effective read still reports the org's timezone as this caller's `inherited` layer, because
-    that value already had to be disclosed for every field the caller does not override (it would
-    simply be labelled GLOBAL instead). `inherited` therefore widens no boundary: what stays gated is
-    the raw org row as a row — every field at once, including fields nobody has inherited.
+    The effective read still reports the org's timezone as this caller's `inherited` layer.
+
+    Be precise about what that costs, because the tempting version of this rationale is false:
+    `inherited` is returned for EVERY field, and `InfrahubGlobalPreferences` returns only
+    `date_format` and `timezone`, so on the read path this ungated query is now a complete substitute
+    for the gated one. The gate is not protecting those two values — a caller could already read
+    either by clearing their own override. What it protects is the *management* surface: reading the
+    org row as an editable scope, and writing it via `InfrahubSetPreferences(scope: GLOBAL)`.
+
+    So: do not add a field to `RawPreferencesType` and assume a mirrored `inherited` field inherits a
+    confidentiality boundary from this gate. It does not. Judge each new field on its own.
 
     `default_permission_backend` is mandatory. Without it the permission backend may be inactive, the
     gate would never raise, and the first half of this test would prove nothing.

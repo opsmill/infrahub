@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from graphene import Field
 
@@ -19,8 +19,12 @@ if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
 
 
-def _effective_field(resolved: ResolvedPreference, inherited: ResolvedPreference) -> dict:
-    """Plain dicts, not ResolvedPreference: the frozen dataclass has no `inherited` attribute for graphene to find."""
+def _effective_field(*, resolved: ResolvedPreference[Any], inherited: ResolvedPreference[Any]) -> dict[str, Any]:
+    """Plain dicts, not ResolvedPreference: the frozen dataclass has no `inherited` attribute for graphene to find.
+
+    Keyword-only on purpose: both arguments have the same type, so transposing them would type-check
+    while reporting a USER-sourced value as the inherited layer, which `inherited` promises never to do.
+    """
     return {
         "value": resolved.value,
         "source": resolved.source,
@@ -32,9 +36,12 @@ async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) ->
     """Resolve the caller's effective preferences (user override → global default → DEFAULT).
 
     Open to any authenticated caller. The global layer's values ARE reported here — labelled GLOBAL
-    when nothing shadows them, and as the `inherited` layer when a user override does. What this
-    query never exposes is the raw org row itself: the gated `InfrahubGlobalPreferences` remains the
-    only raw-scope read.
+    when nothing shadows them, and as the `inherited` layer when a user override does. Since
+    `inherited` is returned for every field, this query now discloses the same two org values that
+    the gated `InfrahubGlobalPreferences` returns. That is deliberate:
+    MANAGE_GLOBAL_PREFERENCES_PERMISSION gates the *management* surface — the ability to read the org
+    row as an editable scope and write it — not the confidentiality of two display settings a caller
+    could already see by clearing their own override.
     """
     graphql_context: GraphqlContext = info.context
     account_id = graphql_context.active_account_session.account_id
@@ -45,8 +52,10 @@ async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) ->
     preferences = await repository.get_for_owners(owner_ids={account_id, global_id})
     effective = EffectivePreferences(user=preferences.get(account_id), global_=preferences.get(global_id))
     return {
-        "date_format": _effective_field(effective.resolved_date_format(), effective.inherited_date_format()),
-        "timezone": _effective_field(effective.resolved_timezone(), effective.inherited_timezone()),
+        "date_format": _effective_field(
+            resolved=effective.resolved_date_format(), inherited=effective.inherited_date_format()
+        ),
+        "timezone": _effective_field(resolved=effective.resolved_timezone(), inherited=effective.inherited_timezone()),
     }
 
 
