@@ -16,11 +16,14 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
+# `inherited` is selected on every effective read rather than by a second query constant: an additive
+# field is a GraphQL non-breakage guarantee no test constant could prove, and selecting it everywhere
+# pins `source != USER => inherited == {value, source}` on all of the paths below.
 EFFECTIVE_QUERY = """
 query {
   InfrahubEffectivePreferences {
-    date_format { value source }
-    timezone { value source }
+    date_format { value source inherited { value source } }
+    timezone { value source inherited { value source } }
   }
 }
 """
@@ -74,9 +77,17 @@ async def test_effective_no_user_no_global_is_default(
     assert result.errors is None
     assert result.data is not None
     prefs = result.data["InfrahubEffectivePreferences"]
-    # Nothing defined anywhere: value null, source DEFAULT.
-    assert prefs["date_format"] == {"value": None, "source": "DEFAULT"}
-    assert prefs["timezone"] == {"value": None, "source": "DEFAULT"}
+    # Nothing defined anywhere: value null, source DEFAULT, and nothing to inherit either.
+    assert prefs["date_format"] == {
+        "value": None,
+        "source": "DEFAULT",
+        "inherited": {"value": None, "source": "DEFAULT"},
+    }
+    assert prefs["timezone"] == {
+        "value": None,
+        "source": "DEFAULT",
+        "inherited": {"value": None, "source": "DEFAULT"},
+    }
 
 
 async def test_effective_global_only_source_global(
@@ -93,9 +104,18 @@ async def test_effective_global_only_source_global(
     assert result.errors is None
     assert result.data is not None
     prefs = result.data["InfrahubEffectivePreferences"]
-    # No user override: resolved value comes from the global row, source GLOBAL.
-    assert prefs["date_format"] == {"value": "ISO_DATETIME", "source": "GLOBAL"}
-    assert prefs["timezone"] == {"value": "UTC", "source": "GLOBAL"}
+    # No user override: resolved value comes from the global row, source GLOBAL. Nothing is being
+    # shadowed, so the inherited layer is the resolved one — the invariant, restated on the wire.
+    assert prefs["date_format"] == {
+        "value": "ISO_DATETIME",
+        "source": "GLOBAL",
+        "inherited": {"value": "ISO_DATETIME", "source": "GLOBAL"},
+    }
+    assert prefs["timezone"] == {
+        "value": "UTC",
+        "source": "GLOBAL",
+        "inherited": {"value": "UTC", "source": "GLOBAL"},
+    }
 
 
 async def test_effective_user_override_source_user(
@@ -116,9 +136,19 @@ async def test_effective_user_override_source_user(
     assert result.errors is None
     assert result.data is not None
     prefs = result.data["InfrahubEffectivePreferences"]
-    # User override wins for both attributes: source USER, value is the user's.
-    assert prefs["date_format"] == {"value": "EU_DATETIME", "source": "USER"}
-    assert prefs["timezone"] == {"value": "Europe/Paris", "source": "USER"}
+    # User override wins for both attributes: source USER, value is the user's. The shadowed global
+    # layer stays readable as `inherited` — this is the case #10200 needed, so a client can preview
+    # what clearing the override would fall back to without re-reading the (gated) org row.
+    assert prefs["date_format"] == {
+        "value": "EU_DATETIME",
+        "source": "USER",
+        "inherited": {"value": "ISO_DATETIME", "source": "GLOBAL"},
+    }
+    assert prefs["timezone"] == {
+        "value": "Europe/Paris",
+        "source": "USER",
+        "inherited": {"value": "UTC", "source": "GLOBAL"},
+    }
 
 
 async def test_effective_mixed_per_attribute_sources(
@@ -138,10 +168,56 @@ async def test_effective_mixed_per_attribute_sources(
     assert result.errors is None
     assert result.data is not None
     prefs = result.data["InfrahubEffectivePreferences"]
-    # date_format: user override present -> USER.
-    assert prefs["date_format"] == {"value": "EU_DATETIME", "source": "USER"}
-    # timezone: no user override, global present -> GLOBAL.
-    assert prefs["timezone"] == {"value": "UTC", "source": "GLOBAL"}
+    # date_format: user override present -> USER, and it shadows nothing (the global row leaves the
+    # field unset), so the inherited layer is DEFAULT.
+    assert prefs["date_format"] == {
+        "value": "EU_DATETIME",
+        "source": "USER",
+        "inherited": {"value": None, "source": "DEFAULT"},
+    }
+    # timezone: no user override, global present -> GLOBAL, inheriting itself.
+    assert prefs["timezone"] == {
+        "value": "UTC",
+        "source": "GLOBAL",
+        "inherited": {"value": "UTC", "source": "GLOBAL"},
+    }
+
+
+async def test_effective_mixed_inherited_layers_per_attribute(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    """The inherited layer is resolved per attribute too: two USER-sourced fields can inherit differently.
+
+    Both fields are overridden, so both report USER, but only date_format shadows an org default. A
+    client cannot infer one field's inherited layer from the other's, nor from the resolved source.
+    """
+    # Global defines date_format only.
+    await PreferenceRepository(db=db).save(Preference(owner_id=GLOBAL_OWNER_ID, date_format="ISO_DATETIME"))
+    # User overrides both.
+    await PreferenceRepository(db=db).save(
+        Preference(owner_id=first_account.id, date_format="EU_DATETIME", timezone="Europe/Paris")
+    )
+
+    result = await run_query(db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account)
+    assert result.errors is None
+    assert result.data is not None
+    prefs = result.data["InfrahubEffectivePreferences"]
+    # USER shadowing GLOBAL: clearing this override would land on the org default.
+    assert prefs["date_format"] == {
+        "value": "EU_DATETIME",
+        "source": "USER",
+        "inherited": {"value": "ISO_DATETIME", "source": "GLOBAL"},
+    }
+    # USER shadowing nothing: clearing this override would land on the client's own default.
+    assert prefs["timezone"] == {
+        "value": "Europe/Paris",
+        "source": "USER",
+        "inherited": {"value": None, "source": "DEFAULT"},
+    }
 
 
 async def test_effective_is_private_per_caller(
@@ -168,14 +244,18 @@ async def test_effective_is_private_per_caller(
     assert result_b.errors is None
     assert result_a.data is not None
     assert result_b.data is not None
-    # Each caller sees only their own resolved value, sourced USER; A never sees B's.
+    # Each caller sees only their own resolved value, sourced USER; A never sees B's. What the two DO
+    # share is the inherited layer: the org default is common to everyone by design, so disclosing it
+    # here leaks nothing personal — the private part is the override, and that stays per-caller.
     assert result_a.data["InfrahubEffectivePreferences"]["timezone"] == {
         "value": "Europe/Paris",
         "source": "USER",
+        "inherited": {"value": "UTC", "source": "GLOBAL"},
     }
     assert result_b.data["InfrahubEffectivePreferences"]["timezone"] == {
         "value": "America/New_York",
         "source": "USER",
+        "inherited": {"value": "UTC", "source": "GLOBAL"},
     }
 
 
@@ -280,3 +360,45 @@ async def test_global_denied_for_normal_account(
     result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_first_account)
     assert result.errors is not None
     assert result.data is None or result.data.get("InfrahubGlobalPreferences") is None
+
+
+async def test_effective_inherited_readable_without_manage_global_permission(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    register_core_models_schema: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    """The asymmetry between the two queries is deliberate, not an oversight.
+
+    `session_first_account` holds no role, group or permission, so the gated raw org read is denied.
+    The effective read still reports the org's timezone as this caller's `inherited` layer, because
+    that value already had to be disclosed for every field the caller does not override (it would
+    simply be labelled GLOBAL instead). `inherited` therefore widens no boundary: what stays gated is
+    the raw org row as a row — every field at once, including fields nobody has inherited.
+
+    `default_permission_backend` is mandatory. Without it the permission backend may be inactive, the
+    gate would never raise, and the first half of this test would prove nothing.
+    """
+    await PreferenceRepository(db=db).save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
+    await PreferenceRepository(db=db).save(Preference(owner_id=first_account.id, timezone="Europe/Paris"))
+
+    # Half one: the gated raw org read is refused for this caller.
+    global_result = await run_query(
+        db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_first_account
+    )
+    assert global_result.errors is not None
+    assert global_result.data is None or global_result.data.get("InfrahubGlobalPreferences") is None
+
+    # Half two: the same caller still reads the org's value as their inherited layer, no errors.
+    effective_result = await run_query(
+        db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account
+    )
+    assert effective_result.errors is None
+    assert effective_result.data is not None
+    assert effective_result.data["InfrahubEffectivePreferences"]["timezone"] == {
+        "value": "Europe/Paris",
+        "source": "USER",
+        "inherited": {"value": "UTC", "source": "GLOBAL"},
+    }
