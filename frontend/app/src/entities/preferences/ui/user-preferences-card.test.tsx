@@ -221,10 +221,41 @@ describe("UserPreferencesCard", () => {
     await initPointerTracking(component.locator);
     await triggers.first().hover();
 
+    // Provenance only: the format is named by its label, never by a rendered date sample.
+    await expect
+      .element(
+        component.getByRole("tooltip", { name: "From the organisation default: dd/MM/yyyy HH:mm." })
+      )
+      .toBeVisible();
+
+    // Park the pointer away from the trigger so the tooltip closes before the next test renders.
+    await initPointerTracking(component.locator);
+  });
+
+  test("the (i) tooltip names the organisation default a user override is shadowing", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: {
+        value: "EU_DATETIME",
+        source: "USER",
+        inherited: { value: "ISO_DATETIME", source: "GLOBAL" },
+      },
+      timezone: { value: "UTC", source: "USER", inherited: { value: null, source: "DEFAULT" } },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.first().hover();
+
+    // "Your preference." alone left the placeholder's promise of an inherited value unexplained.
     await expect
       .element(
         component.getByRole("tooltip", {
-          name: /from the organisation default: 12\/06\/2026 08:30 \(dd\/MM\/yyyy HH:mm\)/i,
+          name: "Your preference, overriding the organisation default: yyyy-MM-dd HH:mm.",
         })
       )
       .toBeVisible();
@@ -233,7 +264,7 @@ describe("UserPreferencesCard", () => {
     await initPointerTracking(component.locator);
   });
 
-  test("the (i) tooltip reflects the user's own preference when an override is set", async () => {
+  test("the (i) tooltip stays a bare 'Your preference.' when the override shadows nothing", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
       dateFormat: {
@@ -252,6 +283,7 @@ describe("UserPreferencesCard", () => {
     await initPointerTracking(component.locator);
     await triggers.first().hover();
 
+    // No organisation default to name, so no empty clause is appended.
     await expect
       .element(component.getByRole("tooltip", { name: "Your preference." }))
       .toBeVisible();
@@ -260,7 +292,7 @@ describe("UserPreferencesCard", () => {
     await initPointerTracking(component.locator);
   });
 
-  test("the (i) tooltip's browser-locale example honours the timezone preference", async () => {
+  test("the date-format (i) tooltip names only the source, with no rendered date sample", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
       dateFormat: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
@@ -270,20 +302,19 @@ describe("UserPreferencesCard", () => {
 
     await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
 
-    // No date-format preference means the browser's locale renders it — still in the preferred zone.
-    const expected = FIXED_INSTANT.toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: EFFECTIVE_ZONE,
-    });
-
     const triggers = component.getByRole("button", { name: "Where this value comes from" });
     await initPointerTracking(component.locator);
     await triggers.first().hover();
 
+    // The tooltip describes saved state; a rendered sample would follow the LIVE timezone field and
+    // so disagree with both the organisation default and what saving would produce.
     await expect
-      .element(component.getByRole("tooltip", { name: `From your browser: ${expected}.` }))
+      .element(component.getByRole("tooltip", { name: "From your browser." }))
       .toBeVisible();
+
+    const tooltip = component.getByRole("tooltip").element();
+    expect(tooltip.textContent).not.toMatch(/2026/);
+    expect(tooltip.textContent).not.toMatch(/Asia\/Tokyo/);
 
     // Park the pointer away from the trigger so the tooltip closes before the next test renders.
     await initPointerTracking(component.locator);
