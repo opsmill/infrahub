@@ -1,18 +1,21 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from copy import deepcopy
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
-from infrahub.core.query.node import NodeListGetInfoQuery, NodeListGetRelationshipsQuery
+from infrahub.core.query.node import NodeListGetAttributeQuery, NodeListGetInfoQuery, NodeListGetRelationshipsQuery
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
+from infrahub.core.schema import RelationshipSchema
 from tests.constants import TestKind
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
-from tests.helpers.schema import DEVICE_SCHEMA, load_schema
+from tests.helpers.schema import DEVICE_SCHEMA, TAG, load_schema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -24,8 +27,33 @@ async def device_schema(db: InfrahubDatabase, default_branch: Branch, register_c
     await load_schema(db=db, schema=DEVICE_SCHEMA, branch_name=default_branch.name)
 
 
+@pytest.fixture
+async def device_schema_with_tagged_interfaces(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """The device schema, with an interface able to point at a tag: a peer that is not a subtemplate."""
+    schema = deepcopy(DEVICE_SCHEMA)
+    schema.nodes.append(deepcopy(TAG))
+    physical_interface = next(node for node in schema.nodes if node.kind == TestKind.PHYSICAL_INTERFACE)
+    physical_interface.relationships.append(
+        RelationshipSchema(
+            name="tag",
+            kind=RelationshipKind.ATTRIBUTE,
+            optional=True,
+            peer=TestKind.TAG,
+            cardinality=RelationshipCardinality.ONE,
+        )
+    )
+    await load_schema(db=db, schema=schema, branch_name=default_branch.name)
+
+
 async def _build_template(
-    db: InfrahubDatabase, branch: Branch, name: str, nbr_interfaces: int, with_sfp: bool = False
+    db: InfrahubDatabase,
+    branch: Branch,
+    name: str,
+    nbr_interfaces: int,
+    with_sfp: bool = False,
+    tag_id: str | None = None,
 ) -> Node:
     """Build a device template, optionally giving each of its interfaces a subtemplate of its own."""
     template = await Node.init(db=db, schema=f"Template{TestKind.DEVICE}", branch=branch)
@@ -34,13 +62,15 @@ async def _build_template(
 
     for idx in range(nbr_interfaces):
         interface = await Node.init(db=db, schema=f"Template{TestKind.PHYSICAL_INTERFACE}", branch=branch)
-        await interface.new(
-            db=db,
-            template_name=f"{name}-eth{idx}",
-            name=f"eth{idx}",
-            phys_type="SFP+ (10GE)",
-            device=template.id,
-        )
+        interface_data: dict[str, Any] = {
+            "template_name": f"{name}-eth{idx}",
+            "name": f"eth{idx}",
+            "phys_type": "SFP+ (10GE)",
+            "device": template.id,
+        }
+        if tag_id:
+            interface_data["tag"] = tag_id
+        await interface.new(db=db, **interface_data)
         await interface.save(db=db)
 
         if not with_sfp:
@@ -265,3 +295,58 @@ async def test_a_level_of_a_template_is_read_once_however_many_parents_it_hangs_
     # read has no way to be told a node is already in hand. What matters here is that neither figure
     # grows with the width of a level.
     assert set(node_reads.values()) == {4}, f"reading the subtemplates grew with the width of a level: {node_reads}"
+
+
+async def test_a_peer_a_component_carries_is_not_read_back_for_every_component(
+    db: InfrahubDatabase, default_branch: Branch, device_schema_with_tagged_interfaces: None
+) -> None:
+    """A peer a subtemplate names is handed to the object created from it, not read again per object.
+
+    The subtemplates arrive with the peers their relationships name, so a component that carries
+    one costs what a component without one costs: its uniqueness check and its write. Naming the
+    peer by its id instead sent both the kind check on the new object and the write back to the
+    database for a node already in memory, once per component.
+    """
+    tag = await Node.init(db=db, schema=TestKind.TAG, branch=default_branch)
+    await tag.new(db=db, name="uplink")
+    await tag.save(db=db)
+
+    device_schema_obj = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)
+    node_reads = {}
+    attribute_reads = {}
+    counts = {}
+
+    for nbr_interfaces in (1, 3, 5):
+        name = f"tagged-{nbr_interfaces}"
+        template = await _build_template(
+            db=db, branch=default_branch, name=name, nbr_interfaces=nbr_interfaces, tag_id=tag.id
+        )
+        counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+        device = await create_node(
+            data={"name": f"{name}-device", "object_template": {"id": template.id}},
+            db=counting_db,
+            branch=default_branch,
+            schema=device_schema_obj,
+        )
+
+        reloaded = await NodeManager.get_one(db=db, id=device.id, branch=default_branch, raise_on_error=True)
+        interfaces = await reloaded.interfaces.get_peers(db=db)
+        assert len(interfaces) == nbr_interfaces
+        assert {await interface.tag.get_peer_id(db=db) for interface in interfaces.values()} == {tag.id}, (
+            "the peer the template names was not written on the objects created from it"
+        )
+
+        node_reads[nbr_interfaces] = counting_db.count_for(NodeListGetInfoQuery.name)
+        attribute_reads[nbr_interfaces] = counting_db.count_for(NodeListGetAttributeQuery.name)
+        counts[nbr_interfaces] = sum(counting_db.query_counts.values())
+
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 0
+    # The template, the peers its relationships name, and the peers the subtemplate level names:
+    # three reads, whatever the number of components carrying the tag.
+    assert set(node_reads.values()) == {3}, f"the tag was read once per component: {node_reads}"
+    assert set(attribute_reads.values()) == {3}, f"the tag's attributes were read again: {attribute_reads}"
+    per_component = (counts[3] - counts[1]) / 2
+    assert per_component == (counts[5] - counts[3]) / 2 == 2, (
+        f"a component carrying a peer costs {per_component} queries rather than a check and a write: {counts}"
+    )
