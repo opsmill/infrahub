@@ -9,6 +9,7 @@ allowed-tools:
   - Bash(uv run invoke:*)
   - Bash(uv run ruff check:*)
   - Bash(uv run yamllint:*)
+  - Bash(uv run --directory python_testcontainers pytest:*)
   - Bash(uv lock --check:*)
   - Bash(uv lock:*)
   - Bash(pnpm --dir frontend/app:*)
@@ -41,10 +42,18 @@ them as `cd frontend/app && ...`.
 Run this first. Everything after it is conditional on the result.
 
 ```bash
-BASE_REF=$(git rev-parse --verify --quiet origin/develop >/dev/null 2>&1 && echo origin/develop || echo origin/stable)
+BASE_REF=$(for R in origin/develop origin/stable; do
+  git rev-parse --verify --quiet "$R" >/dev/null 2>&1 || continue
+  echo "$(git rev-list --count "$(git merge-base HEAD "$R")"..HEAD) $R"
+done | sort -n | head -1 | cut -d' ' -f2)
 MERGE_BASE=$(git merge-base HEAD "$BASE_REF")
 { git diff --name-only "$MERGE_BASE"...HEAD; git status --porcelain | cut -c4- | sed 's/.* -> //'; } | sort -u
 ```
+
+Both `develop` and `stable` exist, and a branch may be cut from either, so the loop picks
+whichever candidate leaves HEAD fewest commits ahead — that is the one this branch actually
+forked from. Preferring `develop` unconditionally would diff a `stable`-based branch against a
+merge base tens of commits back and report every area as changed.
 
 The list covers **both committed and uncommitted** work — CI sees the former, you are about to
 push the latter, so both must pass. The `sed` unwraps `git status`'s rename form
@@ -59,6 +68,7 @@ file's `<area>_all` list, so local gating matches the `files-changed` outputs CI
 | **frontend** | `frontend/app/**`, `frontend/packages/**`, `frontend/package.json`, `frontend/pnpm-workspace.yaml`, `frontend/pnpm-lock.yaml`, `schema/openapi.json`, `frontend/app/src/shared/api/rest/types.generated.ts`, `development/**`, `tasks/**`, `.github/workflows/ci.yml`, `.github/file-filters.yml` | Phases 1A, 3B |
 | **backend** | `backend/**`, `python_sdk`, `development/**`, `tasks/**`, `**/pyproject.toml`, `**/uv.lock`, `.github/workflows/ci.yml`, `.github/file-filters.yml` | Phases 1B, 2B, 4B, 4D, 5 |
 | **python** | any other `**/*.py` — `models/`, `utilities/`, `python_testcontainers/`, `tests/`, root scripts | Phases 1B, 2B |
+| **testcontainers** | `python_testcontainers/**`, `.github/workflows/*.yml` (any workflow, not just `ci.yml`) | Phase 5.2 |
 | **docs** | `docs/**`, `**/*.{md,mdx}`, `.vale/**`, `.vale.ini`, `package.json`, `package-lock.json`, `development/**`, `tasks/**`, `python_sdk` | Phases 1C, 4C |
 | **yaml** | `**/*.{yml,yaml}`, `**/pyproject.toml`, `**/uv.lock` | Phase 2C |
 
@@ -243,13 +253,26 @@ on a schema-only change is deliberately stricter than CI, and cheap.
 
 ---
 
-## Phase 5 — Backend unit tests
+## Phase 5 — Slow unit tests
 
-*If backend changed.* Run after all lint and validation checks pass.
+Run after all lint and validation checks pass.
+
+**5.1** — *if backend changed* (mirrors job `backend-tests-unit`):
 
 ```bash
 uv run invoke backend.test-unit
 ```
+
+**5.2** — *if testcontainers changed* (mirrors job `backend-testcontainers-unit`):
+
+```bash
+uv run --directory python_testcontainers pytest --rootdir=. -c pyproject.toml -vs tests
+```
+
+`python_testcontainers` is a **separate uv project** with its own `pyproject.toml` and lockfile,
+and 5.1 does not reach it — `backend.test-unit` runs `backend/tests/unit` only. CI runs this
+suite as a Python 3.10–3.14 matrix; one interpreter is enough locally. Note the job also fires on
+`.github/workflows/*.yml`, so a workflow edit alone puts it in scope.
 
 ---
 
@@ -281,6 +304,7 @@ Summarize in a table. Include **every** row; mark rows as `skipped (no <area> ch
 | Docs lint (markdownlint + vale) | markdown-lint, validate-documentation-style | ... |
 | Generated docs validation | validate-generated-documentation | ... |
 | Backend unit tests | backend-tests-unit | ... |
+| Testcontainers unit tests | backend-testcontainers-unit | ... |
 
 Then state one of:
 
