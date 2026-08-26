@@ -17,8 +17,6 @@ tools:
 network: defaults
 checkout:
   fetch-depth: 1
-imports:
-  - shared/issue-taxonomy.md
 safe-outputs:
   github-app:
     client-id: ${{ secrets.GH_AW_APP_ID }}
@@ -27,11 +25,28 @@ safe-outputs:
   add-labels:
     max: 30
     target: "*"
+    # Enumerated on purpose, not a group/* + category/* wildcard: this is the
+    # enforcement boundary, so it must be a closed set. rest.issues.addLabels
+    # CREATES a label that does not exist, so a wildcard would let one
+    # hallucinated name become a real repository label. Mirror the group/* and
+    # category/* entries of .github/labels.yml here, minus group/ux-design
+    # (human-applied). A label missing from this list is silently not applied.
     allowed:
-      - "group/*"
-      - "category/*"
-    blocked:
-      - group/ux-design
+      - group/backend
+      - group/frontend
+      - group/schema
+      - group/sync-engine
+      - group/ci
+      - category/scaling
+      - category/git-sync
+      - category/schema-lifecycle
+      - category/branching
+      - category/tasks
+      - category/generators-artifacts
+      - category/api
+      - category/error-reporting
+      - category/permissions
+      - category/pools
   missing-tool:
 ---
 
@@ -59,23 +74,40 @@ in the allowed list.
 ## Find the work
 
 Build the label lists from `.github/labels.yml` (see the classification rules below),
-then use `gh` to list open issues that are missing at least one axis. Run both
+then use `gh` to list open issues that are missing at least one axis. Run all three
 searches, negating every label of the axis so an issue only matches when it has none
-of them:
+of them.
+
+Every search carries `sort:created-asc`. Without it the search API returns results
+in relevance order and truncates at the limit, so the oldest issues — the ones this
+sweep exists to reach — would never appear while the unlabelled count stays above
+the limit.
 
 ```bash
 # missing a component label: negate every group/* label from the registry, e.g.
 gh issue list --state open --limit 100 \
-  --search 'is:open -label:group/backend -label:group/frontend ...one -label: per group/* entry...' \
+  --search 'is:open sort:created-asc -label:group/backend -label:group/frontend ...one -label: per group/* entry...' \
   --json number,title,labels
 
 # bugs missing a category label: negate every category/* label from the registry, e.g.
 gh issue list --state open --limit 100 \
-  --search 'is:open label:type/bug -label:category/scaling ...one -label: per category/* entry...' \
+  --search 'is:open sort:created-asc label:type/bug -label:category/scaling ...one -label: per category/* entry...' \
+  --json number,title,labels
+
+# issues carrying no type/* label at all and no category/*: negate every type/* and
+# every category/* entry from the registry. `type/*` comes from the issue form, so
+# issues opened by an integration or by hand never get one -- exactly the population
+# this sweep exists for, and invisible to the query above.
+gh issue list --state open --limit 100 \
+  --search 'is:open sort:created-asc ...one -label: per type/* entry... ...one -label: per category/* entry...' \
   --json number,title,labels
 ```
 
-Merge the two result sets and work through them **oldest first**. Process at most
+Results from the third search are candidates, not known bugs: give one a
+`category/*` only if the body describes something behaving incorrectly, per the
+category rule below. A feature request or question there gets `group/*` only.
+
+Merge the result sets and work through them **oldest first**. Process at most
 **15 issues per run** so the sweep stays inside its budget and rate limits. The next
 run picks up where this one stopped, so there is no need to rush through more.
 

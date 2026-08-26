@@ -104,14 +104,24 @@ jobs:
               return;
             }
 
-            // Never replace what is already there, only fill in what is missing.
-            const existing = new Set(
-              (context.payload.issue.labels || []).map((label) => label.name)
-            );
-            const toAdd = mapped.filter((label) => !existing.has(label));
+            // The dropdown is `multiple: true`, so a reporter can pick options that
+            // map to different groups. One group/* per issue is the taxonomy rule and
+            // picking the primary one needs judgement, so hand those to the agent.
+            if (mapped.length > 1) {
+              core.info(
+                `[${selected.join(', ')}] maps to ${mapped.join(', ')}, leaving this to the agentic labeler.`
+              );
+              return;
+            }
 
-            if (toAdd.length === 0) {
-              core.info(`Already labelled: ${mapped.join(', ')}`);
+            // The component axis is one label. If it already carries one -- set by a
+            // maintainer, or by a previous run -- leave it alone rather than adding a
+            // second one.
+            const existing = (context.payload.issue.labels || []).map((label) => label.name);
+            const existingGroup = existing.find((name) => name.startsWith('group/'));
+
+            if (existingGroup !== undefined) {
+              core.info(`Component axis already set to ${existingGroup}, leaving it alone.`);
               return;
             }
 
@@ -119,6 +129,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.issue.number,
-              labels: toAdd,
+              labels: mapped,
             });
-            core.info(`Added: ${toAdd.join(', ')}`);
+            core.info(`Added: ${mapped.join(', ')}`);

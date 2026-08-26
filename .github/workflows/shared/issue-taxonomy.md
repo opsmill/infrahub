@@ -29,10 +29,17 @@ effort on them and do not second-guess them:
   `.github/workflows/labeler.yml` (its `issue-component` job) — read it there,
   it is the only place the option list lives.
 
-You therefore only need to supply `group/*` when that mapping could not decide:
-the reporter chose an option absent from `COMPONENT_TO_LABEL`, or the issue was
-created without the form (by an integration, or by hand). If a `group/*` label
-is already present, leave it alone.
+That mapping only decides when the reporter's selection resolves to **exactly
+one** label. The dropdown is multi-select, so it can also resolve to two
+different labels (say *Frontend UI* plus *CI/CD*) — picking the primary one is
+judgement, so the workflow steps aside and leaves it to you. Selections that
+collapse to the same label (*API Server / GraphQL* plus *Git Integration*, both
+`group/backend`) still count as one and are handled without you.
+
+You therefore need to supply `group/*` when that mapping could not decide: no
+selected option appears in `COMPONENT_TO_LABEL`, the selection resolves to more
+than one label, or the issue was created without the form (by an integration, or
+by hand). If a `group/*` label is already present, leave it alone.
 
 `category/*` is always yours — no dropdown captures it.
 
