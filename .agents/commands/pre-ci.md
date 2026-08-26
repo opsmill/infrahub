@@ -1,18 +1,25 @@
 ---
-description: Run all locally-executable CI checks (format, lint, unit tests)
-argument-hint: "[--fast]"
+description: Run all locally-executable CI checks (format, lint, unit tests) for the areas you changed
+argument-hint: "[--fast] [--all]"
 allowed-tools:
+  - Bash(git merge-base:*)
+  - Bash(git diff:*)
+  - Bash(git status:*)
+  - Bash(git rev-parse:*)
   - Bash(uv run invoke:*)
   - Bash(uv run ruff check:*)
   - Bash(uv lock --check:*)
   - Bash(uv lock:*)
-  - Bash(pnpm --dir frontend/app run:*)
+  - Bash(pnpm --dir frontend/app:*)
+  - Bash(pnpm --dir frontend/packages/graph:*)
   - Bash(npx markdownlint*:*)
 ---
 
 # Pre-CI
 
-Run all locally-executable CI checks to catch issues before pushing.
+Run the locally-executable CI checks that apply to what you changed, so a push does not fail
+remotely. **Every check below mirrors a job in `.github/workflows/ci.yml` — keep them in
+parity.**
 
 **Every command runs from the repository root and must leave the working directory unchanged.**
 The parallel phases below share a single shell, so a `cd` in one command silently changes where
@@ -22,95 +29,241 @@ them as `cd frontend/app && ...`.
 
 **Options:**
 
-- `--fast` — Run only formatting and fast lint checks (~20s). Skips backend lint (ty/mypy), Betterer, docs lint, generated file and doc validation, schema validation, and unit tests.
+- `--fast` — Formatting and fast lint only (~20s). Skips backend lint (ty/mypy), Betterer, docs
+  lint, generated-file and doc validation, schema validation, and all unit tests.
+- `--all` — Skip detection and run every phase regardless of what changed.
+
+---
+
+## Phase 0 — Detect what changed
+
+Run this first. Everything after it is conditional on the result.
+
+```bash
+BASE_REF=$(git rev-parse --verify --quiet origin/develop >/dev/null 2>&1 && echo origin/develop || echo origin/stable)
+MERGE_BASE=$(git merge-base HEAD "$BASE_REF")
+{ git diff --name-only "$MERGE_BASE"...HEAD; git status --porcelain | cut -c4-; } | sort -u
+```
+
+The list covers **both committed and uncommitted** work — CI sees the former, you are about to
+push the latter, so both must pass.
+
+Classify the paths using the same globs as `.github/file-filters.yml`. Each area below is that
+file's `<area>_all` list, so local gating matches the `files-changed` outputs CI branches on:
+
+| Area | Paths | Enables |
+|---|---|---|
+| **frontend** | `frontend/app/**`, `frontend/packages/**`, `frontend/package.json`, `frontend/pnpm-workspace.yaml`, `frontend/pnpm-lock.yaml`, `schema/openapi.json`, `frontend/app/src/shared/api/rest/types.generated.ts`, `development/**`, `tasks/**`, `.github/workflows/ci.yml`, `.github/file-filters.yml` | Phases 1A, 3B |
+| **backend** | `backend/**`, `python_sdk`, `python_testcontainers/**`, `development/**`, `tasks/**`, `**/pyproject.toml`, `**/uv.lock`, `.github/workflows/ci.yml`, `.github/file-filters.yml`, plus **any** `**/*.py` (the `python-lint` job also fires on the `python` filter, so `models/`, `utilities/` and root scripts count) | Phases 1B, 2B, 4B, 4D, 5 |
+| **docs** | `docs/**`, `**/*.{md,mdx}`, `.vale/**`, `.vale.ini`, `package.json`, `package-lock.json`, `development/**`, `tasks/**`, `python_sdk` | Phases 1C, 4C |
+
+Three frontend validation jobs are gated on their own narrow filters rather than the whole
+frontend area — check these paths separately:
+
+| Trigger paths | Enables |
+|---|---|
+| `schema/openapi.json`, `frontend/app/src/shared/api/rest/types.generated.ts` | Phase 3C |
+| `schema/schema.graphql`, `frontend/app/src/shared/api/graphql/generated/**` | Phase 3D |
+| `schema/error-catalogue.json`, `frontend/app/src/shared/api/errors/catalogue.generated.ts`, `frontend/app/scripts/generate-error-bindings.mjs` | Phase 3E |
+
+If `--all` was passed, or if you cannot determine the base ref, treat every area as changed.
+
+**State the detected areas before running anything**, e.g.
+`Detected changes: frontend, docs. Skipping backend phases.`
+
+In Phases 1, 2 and 4 the sub-step letter encodes the area — **A** = frontend, **B** = backend,
+**C** = docs, **D** = schema — so a phase skips letters where an area has nothing to do at that
+stage. Phase 2 has a `2B` and no `2A` because the frontend has no fast check of its own. Phase 3
+is the exception: it is entirely frontend, so `3A`–`3E` enumerate its individual CI jobs.
+
+> **Phase 3A always runs, even with no frontend changes.** The `frontend-lint` job in
+> `ci.yml` has **no path filter** — it runs on every PR. A backend-only change still fails CI if
+> frontend lint is broken on your branch. Only the frontend *tests* (Phase 3B) are path-gated.
+
+---
 
 ## Phase 1 — Auto-fix formatting (sequential)
 
-Run these **sequentially** — they modify files and must complete before lint checks.
+These modify files and must complete before any lint check.
 
-### 1. Format all Python code
-
-```bash
-uv run invoke format
-```
-
-This auto-fixes formatting issues via ruff. Always run this first.
-
-### 2. Format documentation
-
-```bash
-uv run invoke docs.format
-```
-
-Auto-fixes markdown formatting issues.
-
-### 3. Format and lint frontend code (Biome)
+**1A. Frontend** — *if frontend changed*
 
 ```bash
 pnpm --dir frontend/app run biome:fix
 ```
 
-Auto-fixes formatting and lint issues in TypeScript/TSX files. If Biome reports errors that cannot be auto-fixed, report them to the user.
+**1B. Python** — *if backend changed*
 
-## Phase 2 — Fast checks (parallel)
+```bash
+uv run invoke format
+```
 
-**IMPORTANT: Send ALL 4 commands below in a SINGLE message with 4 parallel Bash tool calls.** Do NOT run them one at a time.
+**1C. Documentation** — *if docs changed*
 
-1. `uv run invoke main.lint` — If ruff reports issues, report them to the user.
-2. `uv run ruff check . --exclude python_sdk` — The exact command CI's `python-lint` job runs. This is not redundant with `main.lint`: that task lints only `tasks`, `models`, `utilities`, and `python_testcontainers`, and `backend.lint` only `backend`, so a violation anywhere else (`development/`, root-level scripts, `tests/`) passes locally and fails in CI. Only the whole-repo check proves CI will pass.
-3. `uv lock --check` — Ensures `uv.lock` matches `pyproject.toml`. If this fails, run `uv lock` and commit the updated lockfile.
-4. `pnpm --dir frontend/app run codegen:graphql` — Regenerates `graphql-env.d.ts` and `graphql-cache.d.ts` from `schema/schema.graphql`. If the files change, they need to be staged and committed.
-
----
-
-> **If `--fast` was specified, stop here** and report results. Show the summary table with slow checks marked as "skipped".
+```bash
+uv run invoke docs.format
+```
 
 ---
 
-## Phase 3 — Slow checks (parallel)
+## Phase 2 — Fast checks
 
-**IMPORTANT: Send ALL 7 commands below in a SINGLE message with 7 parallel Bash tool calls.** Do NOT run them one at a time.
+**Send all applicable commands in a SINGLE message as parallel Bash calls.** Do not run them one
+at a time.
 
-1. `uv run invoke backend.lint` — Run separately from main.lint to avoid `uv run invoke lint` which includes a `yamllint -s .` step that fails on vendored packages in `.venv`. Its ruff step covers `backend` only, the same coverage gap noted in Phase 2; the ty/mypy output is what this check adds.
-2. `pnpm --dir frontend/app run betterer` — Ensures no new TypeScript errors are introduced. The issue count must stay the same or decrease. If it increases, report the new issues to the user.
-3. `uv run invoke docs.lint` — Report any errors. Note: some pre-existing errors in `docs/docs/` may exist — only flag errors in files the user has changed.
-4. `uv run invoke backend.validate-generated` — Ensures generated schema and protocol files are up to date. If this fails, run `uv run invoke backend.generate` and report the regenerated files.
-5. `uv run invoke schema.validate-graphqlschema` — Ensures `schema/schema.graphql` is up to date. Regenerates the file then checks for uncommitted diffs. If validation fails, the correct file is already on disk — just stage and commit it.
-6. `uv run invoke schema.validate-jsonschema` — Ensures `schema/openapi.json` is up to date. Same approach as GraphQL schema validation.
-7. `uv run invoke docs.validate` — Ensures generated reference documentation (CLI, schema, events, repository config, config) is up to date. Regenerates the docs then checks for uncommitted diffs. If validation fails, the correct files are already on disk — stage and commit them.
+**2B. Python** — *if backend changed*
 
-## Phase 4 — Unit tests
+1. `uv run invoke main.lint` — report any ruff issues.
+2. `uv run ruff check . --exclude python_sdk` — the exact command CI's `python-lint` job runs.
+   Not redundant with `main.lint`: that task lints only `tasks`, `models`, `utilities`, and
+   `python_testcontainers`, and `backend.lint` only `backend`, so a violation anywhere else
+   (`development/`, root-level scripts, `tests/`) passes locally and fails in CI. Only the
+   whole-repo check proves CI will pass.
+3. `uv lock --check` — ensures `uv.lock` matches `pyproject.toml`. If it fails, run `uv lock` and
+   commit the updated lockfile.
 
-Run after all lint/validation checks pass.
+---
+
+> **If `--fast` was specified, stop here** and report results, marking slow checks as "skipped".
+
+---
+
+## Phase 3 — Frontend gate (CI parity)
+
+This is the **complete** set of frontend checks CI runs. Do not run a subset — a partial pass
+here is what lets `frontend-lint` and `frontend-tests` fail on the PR.
+
+All commands run from the repository root via `pnpm --dir`, per the note at the top of this
+file. If dependencies are stale, first run `pnpm --dir frontend/app install --frozen-lockfile`
+(CI always does).
+
+**3A. Lint trio — ALWAYS run, regardless of detected areas** (mirrors job `frontend-lint`).
+Send as parallel Bash calls:
+
+1. `pnpm --dir frontend/app exec biome ci .` — format + lint. Note `biome ci`, **not**
+   `biome check --write`: the `ci` variant is check-only and is what the job asserts.
+2. `pnpm --dir frontend/app run knip` — unused exports, files, and dependencies.
+3. `pnpm --dir frontend/app exec betterer ci` — TypeScript regression gate. Note `betterer ci`,
+   **not** bare `betterer`: the `ci` variant fails on any increase instead of rewriting the
+   snapshot. This is **not** the same as running `tsc`.
+
+**3B. Unit tests — if frontend changed** (mirrors job `frontend-tests`). Sequential:
+
+1. `pnpm --dir frontend/app exec playwright install chromium` — the suite runs in browser mode
+   and needs the browser present. One-off per machine; skip if already installed.
+2. `pnpm --dir frontend/app run test:coverage` — the app suite, as CI runs it. Plain `pnpm test`
+   passes the same specs but skips coverage collection.
+3. `pnpm --dir frontend/packages/graph run test` — the `@infrahub/graph` package suite. **Easy to
+   miss**: it is a separate step in the same CI job and lives outside `frontend/app`.
+
+**3C. OpenAPI types** — *if the Phase 0 OpenAPI trigger paths changed* (mirrors job
+`frontend-validate-openapi-types`):
+
+```bash
+pnpm --dir frontend/app run codegen:openapi && git diff --exit-code frontend/app/src/shared/api/rest/types.generated.ts
+```
+
+Regenerates the REST types from `schema/openapi.json`, then makes the same assertion CI does. A
+non-empty diff means the types were out of sync — stage and commit the regenerated file.
+
+**3D. GraphQL types** — *if the Phase 0 GraphQL trigger paths changed* (mirrors job
+`frontend-validate-graphql-types`):
+
+```bash
+pnpm --dir frontend/app run codegen:graphql && git diff --exit-code frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+```
+
+Regenerates the gql.tada output from `schema/schema.graphql`. On a non-empty diff, stage and
+commit both generated files.
+
+**3E. Error catalogue bindings** — *if the Phase 0 error-catalogue trigger paths changed*
+(mirrors job `frontend-validate-error-catalogue`):
+
+```bash
+pnpm --dir frontend/app run check:error-bindings
+```
+
+Verifies the generated bindings match `schema/error-catalogue.json`. On failure, run
+`pnpm --dir frontend/app run generate:error-bindings` and commit the result.
+
+---
+
+## Phase 4 — Slow backend and docs checks
+
+**Send all applicable commands in a SINGLE message as parallel Bash calls.**
+
+**4B. Backend** — *if backend changed*
+
+1. `uv run invoke backend.lint` — run separately from `main.lint` to avoid
+   `uv run invoke lint`, which includes a `yamllint -s .` step that fails on vendored packages in
+   `.venv`. Its ruff step covers `backend` only, the same coverage gap noted in Phase 2B; the
+   ty and mypy output is what this check adds. CI splits these: `ty` runs in `python-lint`, while
+   `mypy` runs as a step inside `backend-tests-integration` and `backend-tests-functional`.
+2. `uv run invoke backend.validate-generated` — ensures generated schema and protocol files are
+   current. If it fails, run `uv run invoke backend.generate` and report the regenerated files.
+
+**4C. Docs** — *if docs changed*
+
+1. `uv run invoke docs.lint` — markdownlint + vale, mirroring the `markdown-lint` and
+   `validate-documentation-style` jobs. Some pre-existing errors in `docs/docs/` may exist; only
+   flag errors in files the user changed. This does **not** cover the `documentation` job, which
+   runs `uv run invoke docs.build` — run that manually if you touched the Docusaurus config.
+2. `uv run invoke docs.validate` — ensures generated reference documentation (CLI, schema,
+   events, repository config, config) is current. If validation fails, the correct files are
+   already on disk — stage and commit them.
+
+**4D. Schema** — *if backend or `schema/**` changed*
+
+1. `uv run invoke schema.validate-graphqlschema` — ensures `schema/schema.graphql` is current.
+   Regenerates then checks for uncommitted diffs. On failure the correct file is already on disk;
+   stage and commit it.
+2. `uv run invoke schema.validate-jsonschema` — same approach for `schema/openapi.json`.
+
+Both CI jobs gate on the `backend` filter, which does **not** include `schema/**`. Running them
+on a schema-only change is deliberately stricter than CI, and cheap.
+
+---
+
+## Phase 5 — Backend unit tests
+
+*If backend changed.* Run after all lint and validation checks pass.
 
 ```bash
 uv run invoke backend.test-unit
 ```
 
-Report pass/fail summary.
+---
 
-## After All Checks
+## After all checks
 
-Summarize results in a table:
+Summarize in a table. Include **every** row; mark rows as `skipped (no <area> changes)` or
+`skipped (--fast)` rather than omitting them, so it is obvious what was not covered.
 
-| Check | Status |
-|-------|--------|
-| Python format | ... |
-| Docs format | ... |
-| Frontend format/lint | ... |
-| Main Python lint | ... |
-| Ruff (CI parity) | ... |
-| Lockfile sync | ... |
-| Frontend GraphQL types | ... |
-| Backend lint (ty/mypy) | ... |
-| TS regressions (Betterer) | ... |
-| Docs lint | ... |
-| Generated files | ... |
-| GraphQL schema validation | ... |
-| JSON schema validation | ... |
-| Generated docs validation | ... |
-| Unit tests | ... |
+| Check | CI job | Status |
+|-------|--------|--------|
+| Frontend format/lint (`biome ci`) | frontend-lint | ... |
+| Frontend unused exports (`knip`) | frontend-lint | ... |
+| Frontend TS regressions (`betterer ci`) | frontend-lint | ... |
+| Frontend unit tests (`test:coverage`) | frontend-tests | ... |
+| `@infrahub/graph` unit tests | frontend-tests | ... |
+| OpenAPI types | frontend-validate-openapi-types | ... |
+| Frontend GraphQL types | frontend-validate-graphql-types | ... |
+| Error catalogue bindings | frontend-validate-error-catalogue | ... |
+| Python format | python-lint | ... |
+| Main Python lint | python-lint | ... |
+| Ruff (CI parity) | python-lint | ... |
+| Lockfile sync | uv-check (`uv-check.yml`) | ... |
+| Backend lint (ty) | python-lint | ... |
+| Backend lint (mypy) | backend-tests-integration, backend-tests-functional | ... |
+| Generated files | backend-validate-generated | ... |
+| GraphQL schema validation | graphql-schema | ... |
+| JSON schema validation | json-schema | ... |
+| Docs lint (markdownlint + vale) | markdown-lint, validate-documentation-style | ... |
+| Generated docs validation | validate-generated-documentation | ... |
+| Backend unit tests | backend-tests-unit | ... |
 
-If `--fast` was used, show skipped checks as "skipped".
-If everything passed (or was skipped), tell the user they're ready to push.
-If anything failed, list the specific failures and suggest fixes.
+Then state one of:
+
+- **All applicable checks passed — safe to push.** Name the areas that were skipped and why.
+- **Failed.** List each failure with the exact command and suggested fix. Do not describe the
+  branch as ready to push.
