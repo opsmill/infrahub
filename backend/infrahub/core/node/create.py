@@ -212,16 +212,19 @@ async def extract_peer_data(
             obj_peer_data[rel_name] = parent_obj
             continue
 
-        rel_peer_ids = []
+        rel_peers = []
         for relationship in relationships:
             # deeper templates are handled in the next level of recursion
             if await _peer_is_a_template(db=db, relationship=relationship):
                 continue
-            rel_peer_ids.append({"id": relationship.peer_id})
+            # The subtemplate was read with the peers its relationships name, so hand over the node
+            # where it is in hand: an id sends the checks on the new object, and the write itself,
+            # back to the database for a node already in memory.
+            rel_peers.append({"id": relationship.get_peer_in_hand() or relationship.peer_id})
 
         # Only set the relationship data if there are actual peers to set
-        if rel_peer_ids:
-            obj_peer_data[rel_name] = rel_peer_ids
+        if rel_peers:
+            obj_peer_data[rel_name] = rel_peers
 
         if rel_manager.schema.kind == RelationshipKind.PROFILE:
             obj_peer_data[rel_name] = peer_ids

@@ -1,0 +1,1 @@
+Creating objects from an object template no longer reads back the objects its components point at, such as the transceiver model every interface of a device template names, once for each component created.
