@@ -12,12 +12,13 @@ import { FormField } from "@/shared/components/ui/form";
 import { formatWithPreferences } from "@/shared/context/date-preferences-context";
 import { supportedTimezone } from "@/shared/utils/date";
 
-import type { Preference } from "@/entities/preferences/domain/model/preference";
+import type { EffectivePreference } from "@/entities/preferences/domain/model/preference";
 import {
   buildDateFormatPresets,
   dateFormatLabel,
   dateFormatPattern,
 } from "@/entities/preferences/domain/rules/date-format";
+import { inheritedValue } from "@/entities/preferences/domain/rules/resolve-date-preferences";
 
 const EMPTY_VALUE_LABEL = "Automatic (inherited)";
 
@@ -33,23 +34,34 @@ export function toFieldValue(value: string | null): FormAttributeValue {
   return { source: { type: "user" }, value };
 }
 
-/** Explains where a field's effective value comes from, based on its resolved source. */
+/** Explains where a field's SAVED value comes from. Provenance only: no live form state, no rendered sample. */
 function sourceMessage(
-  preference: Preference,
+  preference: EffectivePreference,
   {
-    formatGlobalValue,
+    formatValue,
     browserValue,
-  }: { formatGlobalValue: (value: string) => string; browserValue: string }
+  }: {
+    /** Renders a stored value as a label. Required: each field must consciously choose one. */
+    formatValue: (value: string) => string;
+    /** The browser's own value, when the field has one worth naming. Omitted -> the clause is dropped. */
+    browserValue?: string;
+  }
 ): string {
+  const fromBrowser = browserValue ? `From your browser: ${browserValue}.` : "From your browser.";
+
   switch (preference.source) {
-    case "USER":
-      return "Your preference.";
+    case "USER": {
+      const shadowed = inheritedValue(preference);
+      return shadowed
+        ? `Your preference, overriding the organisation default: ${formatValue(shadowed)}.`
+        : "Your preference.";
+    }
     case "GLOBAL":
       return preference.value
-        ? `From the organisation default: ${formatGlobalValue(preference.value)}.`
-        : `From your browser: ${browserValue}.`;
+        ? `From the organisation default: ${formatValue(preference.value)}.`
+        : fromBrowser;
     default: // DEFAULT — browser locale fallback
-      return `From your browser: ${browserValue}.`;
+      return fromBrowser;
   }
 }
 
@@ -72,7 +84,7 @@ function SourceInfo({ message }: { message: string }) {
 
 interface PreferenceFieldProps {
   /** Effective preference used to resolve the (i) source tooltip. Omit it (e.g. global editing) to hide the tooltip. */
-  preference?: Preference;
+  preference?: EffectivePreference;
   emptyValueLabel?: string;
 }
 
@@ -99,12 +111,9 @@ export function DateFormatField({
   const example = (key: string) =>
     formatWithPreferences(now, { pattern: dateFormatPattern(key), timezone });
 
-  const message = preference
-    ? sourceMessage(preference, {
-        formatGlobalValue: (value) => `${example(value)} (${dateFormatLabel(value)})`,
-        browserValue: formatWithPreferences(now, { pattern: null, timezone }),
-      })
-    : null;
+  // Labels only, and no browserValue: a rendered sample here would follow the live `timezone` above,
+  // describing neither the saved value's source nor what saving would produce.
+  const message = preference ? sourceMessage(preference, { formatValue: dateFormatLabel }) : null;
 
   return (
     <DetailRow icon="mdi:calendar-text" label="Date format">
@@ -142,12 +151,12 @@ export function DateFormatField({
 /** Resolves the (i) hint for a timezone, correcting the source claim when this browser can't apply it.
  * A resolved zone this runtime cannot render is silently displayed in the browser's own zone, so the
  * hint must report that fallback rather than claim the stored zone is in effect. */
-function timezoneSourceMessage(preference: Preference, browserZone: string): string {
+function timezoneSourceMessage(preference: EffectivePreference, browserZone: string): string {
   if (preference.value && !supportedTimezone(preference.value)) {
     return `This browser can't display ${preference.value}; times are shown in ${browserZone}.`;
   }
   return sourceMessage(preference, {
-    formatGlobalValue: (value) => value,
+    formatValue: (value) => value,
     browserValue: browserZone,
   });
 }
