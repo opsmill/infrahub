@@ -77,7 +77,7 @@ def dump_prefect_test_server_diagnostics(reason: str, stream: TextIO | None = No
         for server in _servers:
             _dump_server(server, out=out)
         print("=" * 93, file=out)
-    except Exception:
+    except Exception:  # noqa: BLE001 - a broken diagnostic must not replace the failure it reports on
         print("Failed to report on the Prefect test server:", file=out)
         traceback.print_exc(file=out)
 
