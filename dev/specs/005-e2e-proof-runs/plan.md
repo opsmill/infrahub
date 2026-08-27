@@ -6,7 +6,7 @@
 
 ## Summary
 
-Give the bug pipeline a CI proof job so its agents can use the E2E tier: on `ai-bug-pipeline-*` PRs that add one e2e test, CI runs exactly that test, enforces the phase contract (assertion-failure before the fix marker, pass after), publishes each run's screenshot as a release asset, and idempotently embeds before/after evidence plus an expected-red note into the PR description. Pipeline prompts are updated so agents choose the E2E tier without local execution. Everything mechanical was validated by PoC PR #10411; this plan productionizes it with two changes over the PoC: release-asset storage (replacing the orphan branch) and the extracted, unit-tested verdict script.
+Give the bug pipeline a CI proof job so its agents can use the E2E tier: on `ai-bug-pipeline-*` PRs that add one e2e test, CI runs exactly that test, enforces the phase contract (assertion-failure before the fix marker, pass after), publishes each run's screenshot as a release asset, and idempotently embeds before/after evidence plus an expected-red note into the PR description. Pipeline prompts are updated so agents choose the E2E tier without local execution. Everything mechanical was validated by PoC PR #10411; this plan productionizes it with two changes over the PoC: a hardened storage lifecycle on the orphan branch (release assets were the preferred option but failed the T001 rendering validation — research R1) and the extracted, unit-tested verdict scripts.
 
 ## Technical Context
 
@@ -14,7 +14,7 @@ Give the bug pipeline a CI proof job so its agents can use the E2E tier: on `ai-
 
 **Primary Dependencies**: `gh` CLI (releases, PR body PATCH), `uv` + repo Python env, pytest-playwright suite at `tests/e2e/` (emits `playwright-junit.xml`), infrahub-testcontainers, `gh aw` compiler (v0.81.6) for the agent prompt locks
 
-**Storage**: release assets on permanent prerelease tag `bug-pipeline-assets` (see research R1)
+**Storage**: orphan branch `bug-pipeline-assets`, commit-SHA-pinned raw URLs (release assets failed rendering validation — research R1)
 
 **Testing**: unit tests for the verdict script (`.github/scripts/tests/`); end-to-end validation replays the PoC scenario (quickstart.md)
 
