@@ -9,6 +9,7 @@ allowed-tools:
   - Bash(sort:*)
   - Bash(uv run invoke:*)
   - Bash(uv run ruff check:*)
+  - Bash(uv run ruff format:*)
   - Bash(uv run ty check:*)
   - Bash(uv run yamllint:*)
   - Bash(uv run --directory python_testcontainers pytest:*)
@@ -146,12 +147,15 @@ at a time.
    `python_testcontainers`, and `backend.lint` only `backend`, so a violation anywhere else
    (`development/`, root-level scripts, `tests/`) passes locally and fails in CI. Only the
    whole-repo check proves CI will pass.
-3. `uv run ty check .` — the `python-lint` job's third step, whole-repo like CI. **Easy to
-   miss**: `ty` is otherwise only reachable through Phase 4B `backend.lint`, which the `python`
-   area does not enable, so a `models/` or root-script change would clear pre-ci and still fail
-   CI's ty step. The job's remaining step, `ruff format --check`, needs no entry here — Phase 1B
-   runs under the same gate and has already fixed formatting.
-4. `uv lock --check` — ensures `uv.lock` matches `pyproject.toml`. If it fails, run `uv lock` and
+3. `uv run ruff format --check --diff --exclude python_sdk .` — the `python-lint` job's format
+   step. Phase 1B does **not** make this redundant: `invoke format` only reformats `tasks`,
+   `models`, `utilities`, `python_testcontainers` and `backend`, so an unformatted file under
+   `development/`, `tests/` or the repo root survives it and fails CI. Same coverage gap as
+   step 2, one step later in the job.
+4. `uv run ty check .` — the job's third step, whole-repo like CI. **Easy to miss**: `ty` is
+   otherwise only reachable through Phase 4B `backend.lint`, which the `python` area does not
+   enable, so a `models/` or root-script change would clear pre-ci and still fail CI's ty step.
+5. `uv lock --check` — ensures `uv.lock` matches `pyproject.toml`. If it fails, run `uv lock` and
    commit the updated lockfile.
 
 **2C. YAML** — *if yaml changed*
@@ -303,7 +307,7 @@ Summarize in a table. Include **every** row; mark rows as `skipped (no <area> ch
 | OpenAPI types | frontend-validate-openapi-types | ... |
 | Frontend GraphQL types | frontend-validate-graphql-types | ... |
 | Error catalogue bindings | frontend-validate-error-catalogue | ... |
-| Python format | python-lint | ... |
+| Python format (`ruff format --check`) | python-lint | ... |
 | Main Python lint | python-lint | ... |
 | Ruff (CI parity) | python-lint | ... |
 | Lockfile sync | uv-check (`uv-check.yml`) | ... |
