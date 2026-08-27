@@ -10,12 +10,12 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class AffectedUniquenessDependentsQuery(Query):
+class DependentNodesQuery(Query):
     """Return the nodes of a kind related, through a named relationship, to any of a set of peer nodes.
 
     The path is traversed in the relationship's own direction, so a kind whose relationship points at
-    its own kind resolves only the nodes on the constrained side of the peers, not those on the
-    opposite side.
+    its own kind resolves only the nodes on the owning side of the peers, not those on the opposite
+    side.
 
     Considers edges at the timestamp on the input branch, default branch, and global branch, regardless
     of when the input branch forked from the default branch. That is, changes made on the default branch
@@ -27,7 +27,7 @@ class AffectedUniquenessDependentsQuery(Query):
     branch if changes conflict.
     """
 
-    name = "affected_uniqueness_dependents"
+    name = "relationship_dependents"
     type = QueryType.READ
 
     def __init__(
