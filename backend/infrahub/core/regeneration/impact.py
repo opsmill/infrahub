@@ -8,14 +8,11 @@ from infrahub.core.validators.uniqueness.dependent_resolver import UniquenessDep
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.log import get_logger
 from infrahub.message_bus.types import ProposedChangeSubscriber
 from infrahub.workers.dependencies import get_database
 
 from .impact_classifier import ChangedNodes, EveryTarget, QueryImpactClassifier, RelationshipReachedChanges
 from .models import TargetSelection
-
-log = get_logger()
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -66,14 +63,6 @@ async def get_field_level_impacted_subscribers(
     )
     assessment = classifier.assess(diff_summary=diff_summary)
 
-    log.debug(
-        "SELECTIVE_REGEN field-impact: "
-        f"branch={query_branch} subscriber_kind={subscriber_kind} "
-        f"unique_targets={query_report.only_has_unique_targets} "
-        f"readable_kinds={sorted(readable_fields_by_kind)} "
-        f"traversed_kinds={sorted(query_report.traversed_kinds)} assessment={type(assessment).__name__}"
-    )
-
     match assessment:
         case EveryTarget():
             return TargetSelection(ids=every_target, widened=True)
@@ -87,7 +76,6 @@ async def get_field_level_impacted_subscribers(
 
     subscribers = await _get_subscribers_for_nodes(node_ids=member_ids, branch=query_branch, client=client)
     ids = [subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == subscriber_kind]
-    log.debug(f"SELECTIVE_REGEN field-impact resolved subscribers: {len(ids)}")
     return TargetSelection(ids=ids, widened=False)
 
 
