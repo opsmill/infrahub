@@ -113,8 +113,7 @@ export function DateFormatField({
     timezone,
   });
 
-  // Labels only, and no browserValue: a rendered sample here would follow the live `timezone` above
-  // rather than describing where the value comes from.
+  // The tooltip names the format by its label only, never by a rendered sample.
   const message = preference
     ? sourceMessage(selected, preference.inherited, { formatValue: dateFormatLabel })
     : null;

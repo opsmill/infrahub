@@ -6,7 +6,7 @@ import {
   resolveDatePreferences,
 } from "@/entities/preferences/domain/rules/resolve-date-preferences";
 
-// Fixtures follow the `inherited` invariant documented on `EffectivePreference`.
+// A non-USER source inherits its own {value, source}; a USER source states the layer it shadows.
 describe("resolveDatePreferences", () => {
   test("maps a USER date-format key to its date-fns pattern", () => {
     // GIVEN a user-set EU date format
@@ -162,7 +162,6 @@ describe("inheritedValue", () => {
   });
 
   test("reads the inherited layer of any field, not just the timezone", () => {
-    // The rule is about the inherited layer, not about zones: a date-format key resolves identically.
     expect(
       inheritedValue({
         value: "EU_DATETIME",

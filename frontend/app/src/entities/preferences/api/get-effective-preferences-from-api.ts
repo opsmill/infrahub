@@ -1,7 +1,7 @@
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
-// Preferences resolved user → global → default; each field carries its resolved value and source,
-// plus the `inherited` layer it would fall back to if the caller's own override were cleared.
+// Each field carries its resolved value and source plus the layer it would fall back to, so a
+// client can preview clearing an override without a second round trip.
 const GET_EFFECTIVE_PREFERENCES = graphql(`
   query InfrahubEffectivePreferences {
     InfrahubEffectivePreferences {

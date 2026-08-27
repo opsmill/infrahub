@@ -6,7 +6,7 @@ import type { EffectivePreference } from "@/entities/preferences/domain/model/pr
 import { DateFormatField, toFieldValue } from "@/entities/preferences/ui/preference-fields";
 
 import { render } from "../../../../tests/components/render";
-import { initPointerTracking } from "../../../../tests/components/utils";
+import { closeTooltip, initPointerTracking } from "../../../../tests/components/utils";
 
 // Late-evening UTC: east of UTC this lands on the NEXT calendar day, so an example that ignored
 // the timezone cannot match by accident.
@@ -18,8 +18,8 @@ const GLOBAL_DATE_FORMAT: EffectivePreference = {
   inherited: { value: "EU_DATETIME", source: "GLOBAL" },
 };
 
-// One copy, shared by both zones below: a drift in the tooltip copy must break both tests, since the
-// point of the pair is that this string is the SAME whatever the timezone field holds.
+// Shared by both zones below, whose whole point is that this string does not depend on the
+// timezone the form holds.
 const EXPECTED_TOOLTIP = "Your preference, overriding the organisation default: dd/MM/yyyy HH:mm.";
 
 function renderField({
@@ -67,9 +67,8 @@ describe("DateFormatField example", () => {
   });
 });
 
-// Both the Example: line and the tooltip preview what saving would produce, but only the example
-// depends on the timezone field. These two tests differ only in the timezone the form holds: the
-// Example: differs, the tooltip does not.
+// Both the example and the tooltip preview what saving would produce, but only the example depends
+// on the timezone field.
 describe("DateFormatField tooltip", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -94,8 +93,7 @@ describe("DateFormatField tooltip", () => {
 
     await expect.element(component.getByRole("tooltip", { name: EXPECTED_TOOLTIP })).toBeVisible();
 
-    // Park the pointer away from the trigger so the tooltip closes before the next test renders.
-    await initPointerTracking(component.locator);
+    await closeTooltip(component.locator);
   });
 
   test("keeps that tooltip identical when the form's timezone moves the example", async () => {
@@ -113,7 +111,6 @@ describe("DateFormatField tooltip", () => {
 
     await expect.element(component.getByRole("tooltip", { name: EXPECTED_TOOLTIP })).toBeVisible();
 
-    // Park the pointer away from the trigger so the tooltip closes before the next test renders.
-    await initPointerTracking(component.locator);
+    await closeTooltip(component.locator);
   });
 });

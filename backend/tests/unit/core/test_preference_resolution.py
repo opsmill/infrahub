@@ -15,8 +15,7 @@ class ResolutionCase:
     global_: Preference | None
     expected_date_format: ResolvedPreference
     expected_timezone: ResolvedPreference
-    # No defaults: this table IS the spec for both projections, and a default would let a row's
-    # inherited expectation go silently unasserted.
+    # No defaults: a default would let a row's inherited expectation go silently unasserted.
     expected_inherited_date_format: ResolvedPreference
     expected_inherited_timezone: ResolvedPreference
 
@@ -69,8 +68,7 @@ RESOLUTION_CASES = [
         expected_inherited_timezone=ResolvedPreference(value="UTC", source=PreferenceSource.GLOBAL),
     ),
     ResolutionCase(
-        # A user override can shadow nothing at all: the global row exists but leaves both fields unset,
-        # so the inherited layer is DEFAULT even though the resolved layer is USER.
+        # A user override can shadow nothing: the global row exists but leaves both fields unset.
         name="user_override_shadows_nothing_when_global_row_leaves_fields_unset",
         user=Preference(owner_id="account-a", date_format=DateFormat.EU_DATETIME, timezone="Europe/Paris"),
         global_=Preference(owner_id="root"),
@@ -80,8 +78,7 @@ RESOLUTION_CASES = [
         expected_inherited_timezone=ResolvedPreference(value=None, source=PreferenceSource.DEFAULT),
     ),
     ResolutionCase(
-        # Same inherited outcome with no global layer at all: a missing layer and an empty row are
-        # indistinguishable to the inherited projection, exactly as they are to the resolved one.
+        # A missing global layer and an empty global row are indistinguishable to both projections.
         name="user_override_shadows_nothing_when_global_layer_is_missing",
         user=Preference(owner_id="account-a", date_format=DateFormat.US_12H, timezone="UTC"),
         global_=None,

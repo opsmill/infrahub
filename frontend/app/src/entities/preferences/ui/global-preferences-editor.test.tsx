@@ -88,8 +88,8 @@ describe("GlobalPreferencesEditor", () => {
   test("previews the browser's own rendering while no global date format is set", async () => {
     const component = await render(<GlobalPreferencesEditor />);
 
-    // Nothing to inherit at the global layer, so an unset format previews the locale rendering
-    // every viewer would get — in the global zone being edited.
+    // Nothing to inherit at the global layer, so an unset format previews the editing admin's own
+    // locale rendering — in the global zone being edited; other viewers see their own locale.
     const browserRendering = FIXED_INSTANT.toLocaleString(undefined, {
       dateStyle: "medium",
       timeStyle: "short",
