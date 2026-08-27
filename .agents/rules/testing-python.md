@@ -61,7 +61,11 @@ Skip tests that only exercise library behavior: plain `Enum` value/round-trip ch
 
 ## Pick the cheapest test tier
 
-If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them.
+If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them. When the changed logic seems to need the full integration fixture, first check whether it can be extracted as a pure function over directly-constructible data and unit-tested there.
+
+## Wiring tests parse source, never instrument it
+
+Never add a marker, attribute, or `type: ignore` to production code so a test can observe it. To assert wiring or a convention (the right decorator applied, with the right arguments), parse the module with `ast` + `inspect.getsource` — see `backend/tests/unit/workflows/test_flow_session_convention.py`.
 
 ## Don't leak process-global state
 

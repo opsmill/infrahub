@@ -1,17 +1,32 @@
+from __future__ import annotations
+
 import hashlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipCardinality
-from infrahub.core.node import Node
 from infrahub.core.schema import GenericSchema
-from infrahub.core.schema.schema_branch import SchemaBranch
 
 if TYPE_CHECKING:
-    from infrahub.core.relationship import RelationshipManager
+    from infrahub.core.node import Node
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.database import InfrahubDatabase
 
 
 RESOURCE_POOL_LOCK_NAMESPACE = "resource_pool"
 RELATIONSHIP_COUNT_LOCK_NAMESPACE = "relationship_count"
+
+
+async def apply_payload_for_lock_names(db: InfrahubDatabase, node: Node, data: dict[str, Any]) -> None:
+    """Apply a mutation payload to a node used only to compute lock names.
+
+    The peers this node already has in the database are left unread: the relationship lock names
+    are built from the peers the payload sets, and no pool is allocated. Marking the relationships
+    as fetched is what keeps `from_graphql` from reading them; this node is a preview that is never
+    saved, so the peers it ends up holding only have to cover the payload.
+    """
+    node.mark_relationships_as_fetched()
+
+    await node.from_graphql(db=db, data=data, process_pools=False)
 
 
 def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch) -> list[str]:
@@ -83,7 +98,7 @@ def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -
 
     # Check if relationships allocate resources or have cardinality one constraint
     for rel_name in node._relationships:
-        rel_manager: RelationshipManager = getattr(node, rel_name)
+        rel_manager = node.get_relationship(rel_name)
         for rel in rel_manager._relationships:
             if rel.from_pool and "id" in rel.from_pool:
                 lock_names.add(f"{RESOURCE_POOL_LOCK_NAMESPACE}.{rel.from_pool['id']}")
