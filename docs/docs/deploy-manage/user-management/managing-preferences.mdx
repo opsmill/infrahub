@@ -41,7 +41,7 @@ mutation {
 
 An omitted argument leaves that field unchanged. An explicit `null` clears the field, so it falls back to the organisation default or your browser default.
 
-Read your resolved values — the ones the interface renders with — with `InfrahubEffectivePreferences`. Each field returns its `value` and the `source` it resolved from (`USER`, `GLOBAL`, or `DEFAULT`).
+Read your resolved values — the ones the interface renders with — with `InfrahubEffectivePreferences`. Each field returns its `value` and the `source` it resolved from (`USER`, `GLOBAL`, or `DEFAULT`), plus an `inherited` layer holding what that field would resolve to if you set nothing of your own.
 
 ```graphql
 query {
@@ -49,14 +49,24 @@ query {
     date_format {
       value
       source
+      inherited {
+        value
+        source
+      }
     }
     timezone {
       value
       source
+      inherited {
+        value
+        source
+      }
     }
   }
 }
 ```
+
+`inherited` reports the organisation default, or `DEFAULT` with a `null` value when none is set — its `source` is therefore never `USER`. When you have no override of your own, it repeats the resolved value, since that value is already the one you inherit. It is readable without the `manage_global_preferences` permission, so an interface can show the organisation default that a personal override is shadowing.
 
   </TabItem>
 </Tabs>
