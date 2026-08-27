@@ -56,6 +56,10 @@ class MergeChange:
     action: str
     changed_fields: frozenset[str] = frozenset()
 
+    @property
+    def signature(self) -> ChangeSignature:
+        return ChangeSignature(kind=self.kind, action=self.action, changed_fields=self.changed_fields)
+
 
 @dataclass(frozen=True)
 class ChangeSignature:
@@ -64,6 +68,14 @@ class ChangeSignature:
     kind: str
     action: str
     changed_fields: frozenset[str]
+
+
+def group_ids_by_signature(changes: Iterable[MergeChange]) -> dict[ChangeSignature, set[str]]:
+    """Group the changed node ids by the signature whose derivation they all share."""
+    ids_by_signature: dict[ChangeSignature, set[str]] = {}
+    for change in changes:
+        ids_by_signature.setdefault(change.signature, set()).add(change.node_id)
+    return ids_by_signature
 
 
 @dataclass(frozen=True)
@@ -206,10 +218,7 @@ class CoalescedRecomputeBuilder:
         destination branch) is not recomputed here; it is reached by the ordinary live recompute
         that fires when this pass writes the value that reader depends on.
         """
-        ids_by_signature: dict[ChangeSignature, set[str]] = {}
-        for change in changes:
-            signature = ChangeSignature(kind=change.kind, action=change.action, changed_fields=change.changed_fields)
-            ids_by_signature.setdefault(signature, set()).add(change.node_id)
+        ids_by_signature = group_ids_by_signature(changes)
 
         accumulators: dict[tuple[str, str, str | None], _TargetAccumulator] = {}
         for signature, node_ids in ids_by_signature.items():

@@ -25,6 +25,7 @@ from .recompute_coalescing import (
     AffectedTarget,
     ChangeSignature,
     ReaderLookup,
+    group_ids_by_signature,
 )
 
 log = get_logger()
@@ -139,10 +140,7 @@ class PythonTargetResolver:
         once per distinct shape. Targets are deduplicated per (kind, attribute) across the whole
         change set and returned in a deterministic order.
         """
-        ids_by_signature: dict[ChangeSignature, set[str]] = {}
-        for change in changes:
-            signature = ChangeSignature(kind=change.kind, action=change.action, changed_fields=change.changed_fields)
-            ids_by_signature.setdefault(signature, set()).add(change.node_id)
+        ids_by_signature = group_ids_by_signature(changes)
 
         read_sets = await self._load_read_sets()
         accumulators: dict[tuple[str, str], _Accumulator] = {}

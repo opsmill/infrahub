@@ -124,12 +124,13 @@ async def test_an_update_selects_the_readers_of_the_changed_field_in_one_lookup(
     assert subscribers.calls == [("s1", "s2")]
     by_identity = dict(zip(_identities(targets), targets, strict=True))
     assert set(by_identity) == {(DEVICE, "summary"), (ROUTER, "tag")}
+    summary, tag = by_identity[DEVICE, "summary"], by_identity[ROUTER, "tag"]
     # The subscriber index reports a node once per matching group; the duplicate collapses.
-    assert _ids(by_identity[DEVICE, "summary"]) == frozenset({"d1", "d2"})
-    assert by_identity[DEVICE, "summary"].precise is True
+    assert _ids(summary) == frozenset({"d1", "d2"})
+    assert summary.precise is True
     # The site is read through a derived field, so the site change is a deliberate over-selection.
-    assert _ids(by_identity[ROUTER, "tag"]) == frozenset({"r1"})
-    assert by_identity[ROUTER, "tag"].precise is False
+    assert _ids(tag) == frozenset({"r1"})
+    assert tag.precise is False
 
 
 async def test_an_update_on_an_unread_field_selects_nothing() -> None:
@@ -221,10 +222,11 @@ async def test_an_unscoped_update_selects_on_the_kind_alone() -> None:
 
     by_identity = dict(zip(_identities(targets), targets, strict=True))
     assert set(by_identity) == {(DEVICE, "summary"), (ROUTER, "tag")}
-    assert _ids(by_identity[DEVICE, "summary"]) == frozenset({"d1"})
-    assert _ids(by_identity[ROUTER, "tag"]) == frozenset({"r1"})
-    assert by_identity[DEVICE, "summary"].precise is False
-    assert by_identity[ROUTER, "tag"].precise is False
+    summary, tag = by_identity[DEVICE, "summary"], by_identity[ROUTER, "tag"]
+    assert _ids(summary) == frozenset({"d1"})
+    assert _ids(tag) == frozenset({"r1"})
+    assert summary.precise is False
+    assert tag.precise is False
 
 
 async def test_deleted_nodes_select_their_readers() -> None:
@@ -237,6 +239,7 @@ async def test_deleted_nodes_select_their_readers() -> None:
     assert _identities(targets) == [(DEVICE, "summary")]
     assert _ids(targets[0]) == frozenset({"d1"})
     assert targets[0].precise is True
+    assert targets[0].whole_kind is False
 
 
 async def test_attributes_selected_by_different_changes_do_not_share_subscribers() -> None:
@@ -262,6 +265,7 @@ async def test_an_updated_node_of_the_target_kind_is_its_own_target() -> None:
 
     A node that never computed is in no group, so relying on the lookup alone leaves it stale.
     """
+    # No subscribers at all: this node belongs to no query group.
     subscribers = RecordingSubscriberSource(subscribers={})
     resolver = _resolver(read_sets=[LABEL], subscriber_source=subscribers)
 
