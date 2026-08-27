@@ -54,7 +54,8 @@ function sourceMessage(
   const fromBrowser = browserValue ? `From your browser: ${browserValue}.` : "From your browser.";
 
   if (own) {
-    return inherited.source === "GLOBAL" && inherited.value
+    // An own value equal to the organisation default overrides nothing worth naming.
+    return inherited.source === "GLOBAL" && inherited.value && inherited.value !== own
       ? `Your preference, overriding the organisation default: ${formatValue(inherited.value)}.`
       : "Your preference.";
   }

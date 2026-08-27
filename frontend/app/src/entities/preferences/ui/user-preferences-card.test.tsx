@@ -432,6 +432,46 @@ describe("UserPreferencesCard", () => {
     await closeTooltip(component.locator);
   });
 
+  test("the (i) tooltip drops the overriding clause when the override matches the organisation default", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: {
+        value: "EU_DATETIME",
+        source: "USER",
+        inherited: { value: "EU_DATETIME", source: "GLOBAL" },
+      },
+      timezone: {
+        value: EFFECTIVE_ZONE,
+        source: "USER",
+        inherited: { value: EFFECTIVE_ZONE, source: "GLOBAL" },
+      },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.first().hover();
+
+    await expect
+      .element(component.getByRole("tooltip", { name: "Your preference." }))
+      .toBeVisible();
+
+    await closeTooltip(component.locator);
+
+    // The timezone field is the second info trigger.
+    await initPointerTracking(component.locator);
+    await triggers.nth(1).hover();
+
+    await expect
+      .element(component.getByRole("tooltip", { name: "Your preference." }))
+      .toBeVisible();
+
+    await closeTooltip(component.locator);
+  });
+
   test("the date-format (i) tooltip names only the source, with no rendered date sample", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
