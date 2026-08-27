@@ -48,7 +48,7 @@
 
 **Independent test**: unit tests from T005 already assert NOTE phase behavior; quickstart replay confirms the rendered text on a live PR.
 
-- [ ] T017 [US3] Review the NOTE section wording end-to-end on the replay PR (quickstart step 3): RED text names the failing-by-design jobs (`E2E-testing-*`) and the authoritative check; GREEN text replaces it; adjust copy in `.github/scripts/e2e_proof_embed.py` if the live rendering is unclear
+- [X] T017 [US3] Review the NOTE section wording end-to-end on the replay PR (quickstart step 3): RED text names the failing-by-design jobs (`E2E-testing-*`) and the authoritative check; GREEN text replaces it; adjust copy in `.github/scripts/e2e_proof_embed.py` if the live rendering is unclear
 
 ## Phase 6: User Story 4 — bounded storage lifecycle (P3)
 
@@ -61,8 +61,8 @@
 ## Phase 7: Polish & validation
 
 - [X] T019 Run repo gates on everything touched: `yamllint` on both new workflows, `uv run ruff check` + repo mypy on `.github/scripts/`, `uv run invoke format`, and markdown lint on the edited prompt docs; fix findings
-- [ ] T020 Execute the quickstart end-to-end replay (quickstart steps 3, 5, 6) on a scratch `ai-bug-pipeline-99999-quickstart` branch pair: RED success + section, GREEN success + section, negative `does_not_reproduce`, reviewer-agent non-regression, cleanup on close; record run links in `specs/005-e2e-proof-runs/quickstart.md` under a Results heading
-- [ ] T021 Delete the scratch replay branch/PR artifacts and confirm `git status` clean, all commits pushed on `e2e-proof-runs-ifc-3059`
+- [X] T020 Execute the quickstart end-to-end replay (quickstart steps 3, 5, 6) on a scratch `ai-bug-pipeline-99999-quickstart` branch pair: RED success + section, GREEN success + section, negative `does_not_reproduce`, reviewer-agent non-regression, cleanup on close; record run links in `specs/005-e2e-proof-runs/quickstart.md` under a Results heading
+- [X] T021 Delete the scratch replay branch/PR artifacts and confirm `git status` clean, all commits pushed on `e2e-proof-runs-ifc-3059`
 
 ## Dependencies
 

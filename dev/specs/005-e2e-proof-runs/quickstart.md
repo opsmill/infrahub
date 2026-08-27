@@ -40,3 +40,15 @@ Expected: clean tree (locks already regenerated and committed with the prompt ed
 ## 5. Reviewer-agent non-regression
 
 On the replay PR from step 3 (which carries proof sections + both markers): confirm the Bug reviewer agent workflow still evaluates its gates normally (it triggers on `ai-bug-pipeline-*` + markers) and is not confused by the new sections.
+
+## Results (2026-08-27 replay, PR #10429)
+
+| Step | Outcome |
+|---|---|
+| RED phase | `red_confirmed` in 4m16s, published-image path, before screenshot embedded — [run 33061938451](https://github.com/opsmill/infrahub/actions/runs/33061938451) |
+| GREEN phase | `green_confirmed` in 6m55s incl. image build, after screenshot embedded, NOTE rewritten — [run 33067363784](https://github.com/opsmill/infrahub/actions/runs/33067363784) |
+| Detection guard | Two e2e tests in the diff → hard fail with explicit message ([run 33061729412](https://github.com/opsmill/infrahub/actions/runs/33061729412), from the pre-rebase head) |
+| Demotion push | No proof run triggered on the deletion-only head, as specified |
+| Reviewer agent | Ran and completed on the replay PR with the proof sections present (non-regression) |
+| Close + cleanup | `bug-agent-e2e-cleanup` succeeded; assets branch tip holds no `pr-10429/` folder |
+| Markers | `AGENT_TEST_COMPLETE` / `AGENT_FIX_COMPLETE` intact through four body embeds |
