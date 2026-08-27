@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
 from prefect import get_client
+from tests.helpers.events import query_events_by_name
 from tests.helpers.test_app import TestInfrahubApp
 
 from infrahub.core.constants.infrahubkind import PROPOSEDCHANGE
@@ -116,6 +117,55 @@ class TestProposedChangeReview(TestInfrahubApp):
             event_name="infrahub.proposed_change.rejected",
             resource_id=f"infrahub.proposed_change.{proposed_change.id}",
         )
+
+    async def test_review_event_scoped_to_default_branch(
+        self,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        car_person_schema: SchemaBranch,
+        unprivileged_client: InfrahubClient,
+        prefect_client: PrefectClient,
+    ) -> None:
+        """A review submitted through a non-default branch still scopes its event to the default branch.
+
+        Webhook branch scoping matches the event's `infrahub.branch` related-resource label, so the
+        review event must carry the default branch there regardless of the branch the mutation ran on.
+        """
+        source_branch = await create_branch(branch_name="branch-pc-review-scope", db=db)
+
+        proposed_change = await client.create(
+            kind=PROPOSEDCHANGE,
+            data={
+                "source_branch": source_branch.name,
+                "destination_branch": "main",
+                "name": "test-pc-review-scope",
+            },
+        )
+        await proposed_change.save()
+
+        response = await unprivileged_client.execute_graphql(
+            query=self.review_query,
+            variables={"data": {"id": str(proposed_change.id), "decision": "APPROVE"}},
+            branch_name=source_branch.name,
+        )
+        assert response["CoreProposedChangeReview"]["ok"] is True
+
+        resource_id = f"infrahub.proposed_change.{proposed_change.id}"
+        await self.assert_event(
+            prefect_client=prefect_client,
+            event_name="infrahub.proposed_change.approved",
+            resource_id=resource_id,
+        )
+
+        events = await query_events_by_name(
+            client=prefect_client,
+            event_name="infrahub.proposed_change.approved",
+            resource_id=resource_id,
+        )
+        assert len(events) == 1
+        branch_related = [related for related in events[0].related if related.role == "infrahub.branch"]
+        assert len(branch_related) == 1
+        assert branch_related[0]["infrahub.resource.label"] == "main"
 
     async def test_cancel_approve(
         self,

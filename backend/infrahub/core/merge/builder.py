@@ -113,7 +113,6 @@ async def build_branch_merge_orchestrator(
         workflow=workflow,
         event_service=event_service,
         default_branch=destination_branch,
-        global_branch=registry.get_global_branch(),
         logger=logger,
     )
 

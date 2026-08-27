@@ -54,14 +54,12 @@ class PostMergeDispatcher:
         workflow: InfrahubWorkflow,
         event_service: InfrahubEventService,
         default_branch: Branch,
-        global_branch: Branch,
         logger: InfrahubLogger | None = None,
     ) -> None:
         self.repository_merge_dispatcher = repository_merge_dispatcher
         self.workflow = workflow
         self.event_service = event_service
         self.default_branch = default_branch
-        self.global_branch = global_branch
         self.log = logger or get_logger()
 
     async def run_follow_ups(
@@ -130,7 +128,7 @@ class PostMergeDispatcher:
             branch_name=branch.name,
             branch_id=str(branch.get_uuid()),
             proposed_change_id=proposed_change_id,
-            meta=EventMeta.from_context(context=event_context, branch=self.global_branch),
+            meta=EventMeta.from_context(context=event_context, branch=self.default_branch),
         )
 
         events: list[InfrahubEvent] = [merge_event]

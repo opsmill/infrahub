@@ -369,7 +369,9 @@ class ProposedChangeReview(Mutation):
         approved_by_ids = [node.id for _, node in approved_by.items()]
         rejected_by_ids = [node.id for _, node in rejected_by.items()]
         event: InfrahubEvent | None = None
-        event_meta = EventMeta.from_context(context=context.get_context().to_event_context())
+        # Proposed changes are branch-agnostic; scope the review events to the default branch regardless of the branch the review mutation ran on.
+        default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+        event_meta = EventMeta.from_context(context=context.get_context().to_event_context(), branch=default_branch)
 
         match decision:
             case ProposedChangeApprovalDecision.APPROVE:
