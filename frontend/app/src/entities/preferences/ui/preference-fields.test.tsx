@@ -20,7 +20,7 @@ const GLOBAL_DATE_FORMAT: EffectivePreference = {
 
 // One copy, shared by both zones below: a drift in the tooltip copy must break both tests, since the
 // point of the pair is that this string is the SAME whatever the timezone field holds.
-const EXPECTED_TOOLTIP = "From the organisation default: dd/MM/yyyy HH:mm.";
+const EXPECTED_TOOLTIP = "Your preference, overriding the organisation default: dd/MM/yyyy HH:mm.";
 
 function renderField({
   timezone,
@@ -67,9 +67,9 @@ describe("DateFormatField example", () => {
   });
 });
 
-// The Example: line previews what saving would produce, so it follows the live timezone field. The
-// tooltip explains where the SAVED value came from, so it must not move with that field at all.
-// These two tests differ only in the timezone the form holds: the Example: differs, the tooltip does not.
+// Both the Example: line and the tooltip preview what saving would produce, but only the example
+// depends on the timezone field. These two tests differ only in the timezone the form holds: the
+// Example: differs, the tooltip does not.
 describe("DateFormatField tooltip", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });

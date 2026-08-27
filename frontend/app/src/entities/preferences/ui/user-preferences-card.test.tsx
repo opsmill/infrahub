@@ -101,7 +101,8 @@ describe("UserPreferencesCard", () => {
   test("shows a live example next to the date-format control that updates on selection", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
+    // Pristine, the preview already stands in for the inherited organisation format.
+    await expect.element(component.getByText("Example: 12/06/2026 08:30")).toBeVisible();
 
     await component.getByRole("button", { name: /date format/i }).click();
 
@@ -155,18 +156,20 @@ describe("UserPreferencesCard", () => {
     expect(exampleIndex).toBeGreaterThan(controlIndex);
   });
 
-  test("hides the example again when the override is cleared by re-selecting it", async () => {
+  test("returns the example to the inherited format when the override is cleared", async () => {
     const component = await render(<UserPreferencesCard />);
 
     await component.getByRole("button", { name: /date format/i }).click();
 
-    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
-    await expect.element(component.getByText("Example: 12/06/2026 08:30")).toBeVisible();
+    await component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }).click();
+    await expect.element(component.getByText("Example: 2026-06-12 08:30")).toBeVisible();
 
+    // Re-selecting the already-selected format clears the override.
     await component.getByRole("button", { name: /date format/i }).click();
 
-    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
-    expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
+    await component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }).click();
+    // The inherited organisation format, not a blank row: the preview previews what saving produces.
+    await expect.element(component.getByText("Example: 12/06/2026 08:30")).toBeVisible();
   });
 
   test("falls the example back to the inherited organisation zone when the personal zone override is cleared", async () => {
