@@ -98,6 +98,30 @@ async def test_wait_that_never_resumes_is_marked_crashed(
     )
 
 
+async def test_wait_that_resumes_is_left_alone(prefect_client: PrefectClient, scaled_zombie_automation: None) -> None:
+    """A retry wait that resumes is a live process and must survive the countdown.
+
+    The run goes silent for most of a window while it waits out its backoff -- the engine stops
+    heartbeating for the whole delay -- and then resumes. The resumed run's first heartbeat has to
+    renew the countdown, so the run is still untouched well past the expiry the retry-wait
+    transition had armed.
+    """
+    flow_run_id = await create_waiting_run(prefect_client)
+    await emit_flow_run_event("prefect.flow-run.heartbeat", flow_run_id)
+    await emit_flow_run_event("prefect.flow-run.AwaitingRetry", flow_run_id)
+
+    # The backoff: silent for most of the window the transition armed.
+    await asyncio.sleep(SCALED_WINDOW.total_seconds() * 0.8)
+    await emit_flow_run_event("prefect.flow-run.heartbeat", flow_run_id)
+
+    # Now past the transition's expiry but short of the resumed heartbeat's: crashed here means
+    # the resumed run's heartbeat did not renew the countdown.
+    await asyncio.sleep(SCALED_WINDOW.total_seconds() * 0.7)
+    run = await prefect_client.read_flow_run(flow_run_id)
+    assert run.state is not None
+    assert run.state.type == StateType.SCHEDULED
+
+
 async def test_wait_transition_restarts_the_countdown(
     prefect_client: PrefectClient, scaled_zombie_automation: None
 ) -> None:
