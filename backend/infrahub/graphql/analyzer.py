@@ -416,7 +416,7 @@ class GraphQLQueryReport:
         return kinds
 
     @cached_property
-    def relationship_reached_paths(self) -> dict[str, tuple[ReachedPath, ...]]:
+    def relationship_reached_paths_by_kind(self) -> dict[str, tuple[ReachedPath, ...]]:
         """The relationship chains reaching each related kind that can be narrowed to its owning roots."""
         return ReachedPathResolver(queries=self.queries).resolve()
 

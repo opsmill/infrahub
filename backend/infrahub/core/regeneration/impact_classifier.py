@@ -78,7 +78,7 @@ class QueryImpactClassifier:
     only_has_unique_targets: bool
     traversed_kinds: set[str]
     readable_fields_by_kind: dict[str, set[str]]
-    reached_paths: dict[str, tuple[ReachedPath, ...]] = field(default_factory=dict)
+    reached_paths_by_kind: dict[str, tuple[ReachedPath, ...]] = field(default_factory=dict)
 
     def assess(self, diff_summary: list[NodeDiff]) -> ImpactAssessment:
         if not self.only_has_unique_targets:
@@ -102,7 +102,7 @@ class QueryImpactClassifier:
             changed_ids = self._changed_node_ids(diff_summary=diff_summary, kinds={kind: fields})
             if not changed_ids:
                 continue
-            paths = self.reached_paths.get(kind)
+            paths = self.reached_paths_by_kind.get(kind)
             if paths is None:
                 # A change on this related kind cannot be mapped back to specific members, so every
                 # target has to run rather than risk leaving one stale.

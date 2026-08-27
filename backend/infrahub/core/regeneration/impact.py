@@ -59,7 +59,7 @@ async def get_field_level_impacted_subscribers(
         only_has_unique_targets=query_report.only_has_unique_targets,
         traversed_kinds=query_report.traversed_kinds,
         readable_fields_by_kind=readable_fields_by_kind,
-        reached_paths=query_report.relationship_reached_paths,
+        reached_paths_by_kind=query_report.relationship_reached_paths_by_kind,
     )
     assessment = classifier.assess(diff_summary=diff_summary)
 

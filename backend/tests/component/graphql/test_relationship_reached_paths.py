@@ -54,7 +54,7 @@ async def _reached_paths(db: InfrahubDatabase, branch: Branch, query: str) -> di
     report = InfrahubGraphQLQueryAnalyzer(
         query=query, schema=gql_params.schema, branch=branch, schema_branch=schema_branch
     ).query_report
-    return report.relationship_reached_paths
+    return report.relationship_reached_paths_by_kind
 
 
 class TestReachedPathsFromQueryCarSchema(TestInfrahubApp):
