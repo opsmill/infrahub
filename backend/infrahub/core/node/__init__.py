@@ -1179,28 +1179,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 updated_relationship = await rel.save(db=db, user_id=user_id, at=update_at)
                 node_changelog.add_relationship(relationship_changelog=updated_relationship)
 
-<<<<<<< HEAD
-        # Analyze if the node has a parent and add it to the changelog if missing
-        if (
-            len(processed_relationships) != len(self._relationships)
-            and (parent_relationship := self._get_parent_relationship_name())
-            and parent_relationship not in processed_relationships
-        ):
-            rel = self.get_relationship(name=parent_relationship)
-            if parent := await rel.get_parent(db=db):
-                node_changelog.add_parent_from_relationship(parent=parent)
-
-||||||| 1a4dc249d
-        if len(processed_relationships) != len(self._relationships):
-            # Analyze if the node has a parent and add it to the changelog if missing
-            if parent_relationship := self._get_parent_relationship_name():
-                if parent_relationship not in processed_relationships:
-                    rel = self.get_relationship(name=parent_relationship)
-                    if parent := await rel.get_parent(db=db):
-                        node_changelog.add_parent_from_relationship(parent=parent)
-
-=======
->>>>>>> origin/stable
         # Recompute Jinja2 computed attributes affected by the updated fields
         await self._recompute_local_jinja2(
             db=db, fields=fields, node_changelog=node_changelog, update_at=update_at, user_id=user_id
