@@ -201,6 +201,10 @@ class GraphQLSchemaRegistry:
             branch_details = self._branch_details_by_hash[schema_hash]
         else:
             branch_details = self.cache_branch(branch=branch, schema_branch=schema_branch, schema_hash=schema_hash)
+            # A manager claims the registered types it is made of while it generates its schema.
+            # Generate it before retiring the branch's previous hash, otherwise every type the two
+            # schema versions share is pruned here and rebuilt from scratch by the caller.
+            branch_details.gql_manager.get_graphql_schema()
 
         self._add_branch_hash(branch_name=branch.name, schema_hash=schema_hash)
         self._activate_branch_hash(branch_name=branch.name, schema_hash=schema_hash)
