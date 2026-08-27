@@ -27,11 +27,15 @@ async def device_schema(db: InfrahubDatabase, default_branch: Branch, register_c
     await load_schema(db=db, schema=DEVICE_SCHEMA, branch_name=default_branch.name)
 
 
-@pytest.fixture
+@pytest.fixture(params=[RelationshipCardinality.ONE, RelationshipCardinality.MANY], ids=["one", "many"])
 async def device_schema_with_tagged_interfaces(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, request: pytest.FixtureRequest
 ) -> None:
-    """The device schema, with an interface able to point at a tag: a peer that is not a subtemplate."""
+    """The device schema, with an interface able to point at a tag: a peer that is not a subtemplate.
+
+    Once per cardinality: the create query reads the peers of a relationship of cardinality many in one
+    batch, a path a single peer never takes.
+    """
     schema = deepcopy(DEVICE_SCHEMA)
     schema.nodes.append(deepcopy(TAG))
     physical_interface = next(node for node in schema.nodes if node.kind == TestKind.PHYSICAL_INTERFACE)
@@ -41,7 +45,7 @@ async def device_schema_with_tagged_interfaces(
             kind=RelationshipKind.ATTRIBUTE,
             optional=True,
             peer=TestKind.TAG,
-            cardinality=RelationshipCardinality.ONE,
+            cardinality=request.param,
         )
     )
     await load_schema(db=db, schema=schema, branch_name=default_branch.name)
@@ -327,9 +331,10 @@ async def test_a_peer_a_component_carries_is_not_read_back_for_every_component(
         reloaded = await NodeManager.get_one(db=db, id=device.id, branch=default_branch, raise_on_error=True)
         interfaces = await reloaded.interfaces.get_peers(db=db)
         assert len(interfaces) == nbr_interfaces
-        assert {await interface.tag.get_peer_id(db=db) for interface in interfaces.values()} == {tag.id}, (
-            "the peer the template names was not written on the objects created from it"
-        )
+        for interface in interfaces.values():
+            assert [rel.peer_id for rel in await interface.tag.get_relationships(db=db)] == [tag.id], (
+                "the peer the template names was not written on the objects created from it"
+            )
 
         node_reads[nbr_interfaces] = counting_db.count_for(NodeListGetInfoQuery.name)
         attribute_reads[nbr_interfaces] = counting_db.count_for(NodeListGetAttributeQuery.name)

@@ -174,7 +174,11 @@ the mutation then works from it rather than reading it back:
   (`RelationshipManager.get_peer_id()`) and reads the peer only when it is named by a
   human-friendly id or a default filter value, which reading is the only way to resolve;
 - the peer-kind constraint trusts the kind a peer states, and reads only the peers named by an id;
-- `Relationship.get_create_data()` writes the edge from the peer it holds.
+- the create query reads the peers of a relationship of cardinality many in one call, and only those
+  held by id (`RelationshipManager.read_peers_not_in_hand()`); `Relationship.get_create_data()` then
+  writes the edge from the peer it holds. Before that, the create query batched every peer of such a
+  relationship through `get_peers()`, which reads whatever it is given — a component created from a
+  template read back, once per component, a peer the template read had already brought back.
 
 Passing a node keeps the rest of the payload for that relationship (its source, its owner) only if
 the node replaces the `id` inside it rather than the payload itself.
