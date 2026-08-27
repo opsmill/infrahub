@@ -43,7 +43,12 @@ Generators can be executed in several ways, depending on your workflow and where
    When you open a Proposed Change that affects the Generator's targets, the Generator runs as part of Infrahub's CI checks. Review the results in the Checks and Data tabs of the Proposed Change. This behavior can also be disabled per Generator in the repository configuration file.
 4. Automatically via Events and Actions
 
-   You can configure Infrahub Event rules and Actions to trigger Generators automatically based on changes in your data. This enables fully automated execution aligned with your workflows.
+   Configure a group trigger rule on the target group, or a node trigger rule on a node kind, and tie it to a Generator action. Adding a member to the group then runs the Generator against that member. Each rule has a `branch_scope` that decides which branches it fires on, and it defaults to the default branch. See [event rules](../events/event-rules) and [event actions](../events/event-actions).
+5. Automatically after a merge
+
+   The Generators the merge affected run again on the target branch, unless the Generator sets `execute_after_merge` to `false`. See [Execution lifecycle](#execution-lifecycle).
+
+A data change or a new group member does not start a run by itself. One of the paths above has to run the Generator: the proposed change pipeline, the post-merge run, a manual run, or a trigger rule that matches. On the default branch, with no proposed change involved, that leaves a manual run or a trigger rule scoped to the default branch.
 
 ## Per-target execution model
 
@@ -208,7 +213,9 @@ You add objects to a target group through the `member_of_groups` relationship, w
 Adding or removing group members changes what gets targeted on the next Generator run:
 
 - **Add an object to the group**: it becomes a target and gets its own Generator run next time the definition executes
-- **Remove an object from the group**: it is no longer targeted (existing generated objects are not automatically cleaned up — see [known limitation #3289](https://github.com/opsmill/infrahub/issues/3289))
+- **Remove an object from the group**: it is no longer targeted (existing generated objects are not automatically cleaned up, see [known limitation #3289](https://github.com/opsmill/infrahub/issues/3289))
+
+The membership change itself does not start a run. To run the Generator against a member as soon as it joins the group, tie a group trigger rule to a Generator action. See [event rules](../events/event-rules) and [event actions](../events/event-actions).
 
 ### Standard groups vs. Generator groups
 
