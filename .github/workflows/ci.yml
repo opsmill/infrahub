@@ -302,7 +302,10 @@ jobs:
     needs:
       - files-changed
       - prepare-environment
-    runs-on: "ubuntu-latest"
+    # mypy is single-threaded, so extra cores do not help it; only a faster core
+    # does. The arm64 runners have a higher per-core throughput than the x64
+    # ones and are free for public repositories.
+    runs-on: "ubuntu-24.04-arm"
     timeout-minutes: 15
     steps:
       - name: "Check out repository code"
