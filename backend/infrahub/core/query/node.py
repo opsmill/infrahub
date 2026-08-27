@@ -51,8 +51,6 @@ from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
-
     from neo4j.graph import Node as Neo4jNode
 
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
@@ -212,25 +210,13 @@ class NodeCreateAllQuery(NodeQuery):
         relationships: list[RelationshipCreateData] = []
         for rel_name in self.node._relationships:
             rel_manager: RelationshipManager = getattr(self.node, rel_name)
-            peers: Mapping[str, Node] = {}
-            # This is a create query, so the node has no relationships in the database yet: only
-            # resolve peers when there are locally-set relationships to write.
-            if rel_manager.schema.cardinality == "many" and len(rel_manager._relationships):
-                # Fetch all relationship peers through a single database call for performances.
-                peers = await rel_manager.get_peers(db=db, branch_agnostic=self.branch_agnostic)
+            # This is a create query, so the node has no relationships in the database yet: only the
+            # locally-set relationships are written. Their peers are read in one call, and a peer the
+            # caller handed over as a node is not read back.
+            if rel_manager.schema.cardinality == "many":
+                await rel_manager.read_peers_not_in_hand(db=db, branch_agnostic=self.branch_agnostic)
 
             for rel in rel_manager._relationships:
-                if rel_manager.schema.cardinality == "many":
-                    try:
-                        rel.set_peer(value=peers[rel.get_peer_id()])
-                    except KeyError:
-                        pass
-                    except ValueError:
-                        # Relationship has not been initialized yet, it means the peer does not exist in db yet
-                        # typically because it will be allocated from a resource pool. In that case, the peer
-                        # will be fetched using `rel.resolve` later.
-                        pass
-
                 rel_create_data = await rel.get_create_data(db=db, at=at)
                 if rel_create_data.peer_branch_level > deepest_branch_level or (
                     deepest_branch_name == GLOBAL_BRANCH_NAME and rel_create_data.peer_branch == registry.default_branch

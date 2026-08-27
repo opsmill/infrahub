@@ -36,7 +36,7 @@ mutate_create()
                       -> add_human_friendly_id()
                       -> add_display_label()
                       -> NodeCreateAllQuery  # bulk Neo4j insert
-            -> handle_template_relationships()  # recursive template instantiation
+            -> handle_template_relationships()  # template instantiation, read a level at a time
        -> apply profiles if applicable
   -> emit NodeCreatedEvent
 ```
@@ -160,6 +160,10 @@ peers the manager already read rather than reading them again:
   schemas of the nodes declare, and `NodeManager.prefetch_relationships()` narrows it further to the
   relationships the caller names — reading a node's every edge would pull in the relationships that
   point *at* it, such as the objects created from an object template or the nodes using a profile.
+- The peers of a prefetched relationship come back as nodes rather than ids, so a caller that
+  prefetched walks them without reading them back. Applying an object template leans on this: each
+  level of subtemplates arrives with the read of the level above it (see
+  [Object Templates](templates.md)).
 
 ### The peers a mutation already holds
 
@@ -170,7 +174,11 @@ the mutation then works from it rather than reading it back:
   (`RelationshipManager.get_peer_id()`) and reads the peer only when it is named by a
   human-friendly id or a default filter value, which reading is the only way to resolve;
 - the peer-kind constraint trusts the kind a peer states, and reads only the peers named by an id;
-- `Relationship.get_create_data()` writes the edge from the peer it holds.
+- the create query reads the peers of a relationship of cardinality many in one call, and only those
+  held by id (`RelationshipManager.read_peers_not_in_hand()`); `Relationship.get_create_data()` then
+  writes the edge from the peer it holds. Before that, the create query batched every peer of such a
+  relationship through `get_peers()`, which reads whatever it is given — a component created from a
+  template read back, once per component, a peer the template read had already brought back.
 
 Passing a node keeps the rest of the payload for that relationship (its source, its owner) only if
 the node replaces the `id` inside it rather than the payload itself.

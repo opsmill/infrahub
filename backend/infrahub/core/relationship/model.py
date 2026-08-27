@@ -192,17 +192,20 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         return self.peer_id
 
     def get_peer_kind(self) -> str:
-        if not self._peer or isinstance(self._peer, str):
-            return self.schema.peer
-
-        return self._peer.get_kind()
+        peer = self.get_peer_in_hand()
+        return peer.get_kind() if peer is not None else self.schema.peer
 
     def get_concrete_peer_kind(self) -> str | None:
         """Return the peer's concrete kind, or None when only the schema's (possibly generic) peer kind is known."""
-        if self._peer and not isinstance(self._peer, str):
-            return self._peer.get_kind()
+        peer = self.get_peer_in_hand()
+        return peer.get_kind() if peer is not None else self._resolved_peer_kind
 
-        return self._resolved_peer_kind
+    def get_peer_in_hand(self) -> Node | None:
+        """Return the peer as the node it is, or None when this relationship holds only its id."""
+        if self._peer is None or isinstance(self._peer, str):
+            return None
+
+        return self._peer
 
     @property
     def node_id(self) -> str:
@@ -1120,6 +1123,29 @@ class RelationshipManager[RelationshipManagerPeerType]:
             branch_agnostic=branch_agnostic,
             include_metadata=include_metadata,
         )
+
+    async def read_peers_not_in_hand(self, db: InfrahubDatabase, branch_agnostic: bool = False) -> None:
+        """Read, in one query, the peers the relationships hold only the id of, and hand each its node.
+
+        A relationship already holding its peer as a node is left as it is: the caller handed the node
+        over, and reading it back is what this avoids. A relationship without a peer id yet, such as one
+        waiting on a resource pool, or naming its peer by a default filter value, is left to
+        `Relationship.resolve()`, which reads it the only way it can be read.
+        """
+        peer_ids = [
+            rel.peer_id
+            for rel in self._relationships
+            if rel.peer_id and is_valid_uuid(rel.peer_id) and rel.get_peer_in_hand() is None
+        ]
+        if not peer_ids:
+            return
+
+        peers = await registry.manager.get_many(
+            db=db, ids=peer_ids, branch=self.branch, branch_agnostic=branch_agnostic
+        )
+        for rel in self._relationships:
+            if rel.get_peer_in_hand() is None and rel.peer_id in peers:
+                rel.set_peer(value=peers[rel.peer_id])
 
     def get_branch_based_on_support_type(self) -> Branch:
         """If the attribute is branch aware, return the Branch object associated with this attribute.
