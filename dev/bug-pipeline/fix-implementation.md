@@ -58,8 +58,9 @@ the existing order (Step 8 updates the PR body, Step 9 pushes last) guarantees t
 do not reorder it. After pushing, wait for the check to finish
 (`gh pr checks <pr_number> --watch`): if it reports anything other than GREEN, revisit
 your fix. On `inconclusive` (setup error, timeout), do not loop pushing retries:
-a human or the reviewer re-runs the job. Local verification still applies unchanged to
-every other tier.
+a human or the reviewer re-runs the job, and after two consecutive `inconclusive` runs
+on the same commit you must escalate as described in your main prompt. Local
+verification still applies unchanged to every other tier.
 
 ## Step 6: Pre-CI checks
 
@@ -161,9 +162,12 @@ which regression test the PR leaves behind. This is the ONE exception to the
   (`pytestmark = pytest.mark.shard_<name>`), and add a one-line justification to the
   PR body stating why no cheaper tier can express it.
 
-Commit the decision and push. After a demote, the proof job no longer finds an e2e test
-in the PR diff and fails its detection step; that failure is expected on a demoted PR --
-do not loop on it.
+Commit the decision and push. After the demote push the reproduction was added and
+removed within the same PR, so the PR's net diff no longer touches `tests/e2e/**` and
+the `bug-agent-e2e-proof` workflow does not trigger at all -- no new check appears on
+the final head. The pre-demotion GREEN verdict and both screenshots remain embedded in
+the PR description as the evidence of record. There is nothing to wait for or re-run
+after the demote push.
 
 ## When to stop
 

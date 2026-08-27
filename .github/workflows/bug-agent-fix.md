@@ -196,14 +196,16 @@ Run the specific test the test-writer wrote using the same runner they used:
 **E2E carve-out -- do NOT run an e2e test locally.** For a reproduction test under
 `tests/e2e/`, GREEN verification is the `bug-agent-e2e-proof` job's GREEN phase, not a
 local run: after your push, the job re-runs exactly that test in CI and must report
-`green_confirmed`. The job reads the `AGENT_FIX_COMPLETE` marker in the PR body
+`green_confirmed`. The job reads the `<!-- AGENT_FIX_COMPLETE -->` marker in the PR body
 to select its phase, so the marker MUST be present BEFORE you push the fix commits --
 the existing order (Step 8 updates the PR body, Step 9 pushes last) guarantees this;
 do not reorder it. After pushing, wait for the check to finish
 (`gh pr checks <pr_number> --watch`): if it reports anything other than GREEN, revisit
 your fix. On `inconclusive` (setup error, timeout), do not loop pushing retries:
-a human or the reviewer re-runs the job. Local verification still applies unchanged to
-every other tier.
+a human or the reviewer re-runs the job, and after two consecutive `inconclusive` runs
+on the same commit you must escalate: post a comment explaining what was tried, add the
+label `state/needs-human-fix`, and **STOP**. Local verification still applies unchanged
+to every other tier.
 
 ### Step 6: Pre-CI checks
 
@@ -267,10 +269,10 @@ contract, post a comment on the issue explaining the scope, add the label
   repository and fill in every section using the context from this task.
   Do not skip or remove any section. For sections where you have nothing meaningful to add
   (e.g., Screenshots), write "N/A" rather than inventing content.
-- Make sure the literal text `AGENT_FIX_COMPLETE` appears somewhere in the PR body.
-  The downstream gate scans the PR body for this exact substring; if it is missing,
-  the pipeline halts. The `bug-agent-e2e-proof` job also reads it to select its
-  GREEN phase.
+- Make sure the hidden marker `<!-- AGENT_FIX_COMPLETE -->` appears somewhere in the
+  PR body. The downstream gate scans the PR body for the `AGENT_FIX_COMPLETE`
+  substring; if it is missing, the pipeline halts. The `bug-agent-e2e-proof` job also
+  reads it to select its GREEN phase.
 
 ### Step 9: Push
 
@@ -307,9 +309,12 @@ which regression test the PR leaves behind. This is the ONE exception to the
   (`pytestmark = pytest.mark.shard_<name>`), and add a one-line justification to the
   PR body stating why no cheaper tier can express it.
 
-Commit the decision and push. After a demote, the proof job no longer finds an e2e test
-in the PR diff and fails its detection step; that failure is expected on a demoted PR --
-do not loop on it.
+Commit the decision and push. After the demote push the reproduction was added and
+removed within the same PR, so the PR's net diff no longer touches `tests/e2e/**` and
+the `bug-agent-e2e-proof` workflow does not trigger at all -- no new check appears on
+the final head. The pre-demotion GREEN verdict and both screenshots remain embedded in
+the PR description as the evidence of record. There is nothing to wait for or re-run
+after the demote push.
 
 ## Revision mode
 

@@ -120,9 +120,11 @@ In the PR body's Replication test section, set **Verification** to
 in the failure-output block; do NOT invent local failure output. If the job reports
 `does_not_reproduce`, the test passed on buggy code -- treat it like a locally passing
 test and fix your assertions. If it reports `inconclusive` (setup error, timeout,
-collection failure, wrong number of test files), do NOT loop pushing retries: a human or
-the reviewer re-runs the job, and after two consecutive `inconclusive` runs on the same
-commit you must escalate as described in your main prompt.
+collection failure), do NOT loop pushing retries: a human or the reviewer re-runs the
+job, and after two consecutive `inconclusive` runs on the same commit you must escalate
+as described in your main prompt. Separately, adding more than one e2e test file (or
+zero) fails the proof job's detection step outright, before any verdict exists -- fix
+the PR diff so it adds exactly one file.
 
 ## Step 8: Format and lint
 
