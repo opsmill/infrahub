@@ -2,6 +2,7 @@
 description: Run all locally-executable CI checks (format, lint, unit tests) for the areas you changed
 argument-hint: "[--fast] [--all]"
 allowed-tools:
+  - Bash(git fetch:*)
   - Bash(git merge-base:*)
   - Bash(git diff:*)
   - Bash(git ls-files:*)
@@ -45,22 +46,43 @@ them as `cd frontend/app && ...`.
 Run this first. Everything after it is conditional on the result.
 
 ```bash
-BASE_REF=origin/stable
-if git rev-parse --verify --quiet origin/develop >/dev/null 2>&1; then
-  git merge-base --is-ancestor "$(git merge-base HEAD origin/stable)" \
-    "$(git merge-base HEAD origin/develop)" && BASE_REF=origin/develop
+git fetch --quiet origin stable develop 2>/dev/null || echo "WARNING: base refs may be stale"
+
+BASE_REF=""
+for R in origin/stable origin/develop; do
+  git rev-parse --verify --quiet "$R" >/dev/null || continue
+  if [ -z "$BASE_REF" ] || git merge-base --is-ancestor \
+       "$(git merge-base HEAD "$BASE_REF")" "$(git merge-base HEAD "$R")"; then
+    BASE_REF=$R
+  fi
+done
+
+if [ -z "$BASE_REF" ]; then
+  echo "No base ref resolved - treat every area as changed"
+else
+  MERGE_BASE=$(git merge-base HEAD "$BASE_REF")
+  { git diff --name-only --no-renames "$MERGE_BASE"...HEAD
+    git diff --name-only --no-renames HEAD
+    git ls-files --others --exclude-standard
+  } | sort -u
 fi
-MERGE_BASE=$(git merge-base HEAD "$BASE_REF")
-{ git diff --name-only --no-renames "$MERGE_BASE"...HEAD
-  git diff --name-only --no-renames HEAD
-  git ls-files --others --exclude-standard
-} | sort -u
 ```
 
-Both `develop` and `stable` exist, and a branch may be cut from either, so pick the candidate
-whose merge base sits **closer to HEAD** — that is the one this branch actually forked from.
-Preferring `develop` unconditionally would diff a `stable`-based branch against a merge base tens
-of commits back and report every area as changed.
+A branch may be cut from either `stable` or `develop`, so pick the candidate whose merge base
+sits **closer to HEAD** — that is the one this branch actually forked from. Preferring `develop`
+unconditionally would diff a `stable`-based branch against a merge base tens of commits back and
+report every area as changed. When the two merge bases are identical the choice is arbitrary and
+harmless, because `MERGE_BASE` comes out the same either way.
+
+Every ref is existence-checked, including the first: on a fork or a remote that carries only one
+of the two branches, an unguarded `git merge-base HEAD origin/stable` aborts the block and leaves
+`MERGE_BASE` empty, which silently detects *nothing*. An empty `BASE_REF` must fall through to
+the all-areas path below instead.
+
+The `git fetch` is what makes the comparison trustworthy: stale refs move a merge base backwards,
+which usually just over-detects, but between *two* candidates a stale ref can also flip the
+choice and narrow the diff. Detection is the whole point of this phase, so refresh first and warn
+if the fetch fails — offline, treat the result as best-effort and prefer `--all`.
 
 The list covers **both committed and uncommitted** work — CI sees the former, you are about to
 push the latter, so both must pass. `--no-renames` matters: with rename detection on, a moved
@@ -78,6 +100,7 @@ file's `<area>_all` list, so local gating matches the `files-changed` outputs CI
 | **python** | any other `**/*.py` — `models/`, `utilities/`, `python_testcontainers/`, `tests/`, root scripts | Phases 1B, 2B |
 | **testcontainers** | `python_testcontainers/**`, `.github/workflows/*.yml` (any workflow, not just `ci.yml`) | Phase 5.2 |
 | **docs** | `docs/**`, `**/*.{md,mdx}`, `.vale/**`, `.vale.ini`, `package.json`, `package-lock.json`, `development/**`, `tasks/**`, `python_sdk` | Phases 1C, 4C |
+| **schema** | `schema/**` | Phase 4D |
 | **yaml** | `**/*.{yml,yaml}`, `**/pyproject.toml`, `**/uv.lock` | Phase 2C |
 
 `python` is deliberately narrower than `backend`. The `python-lint` job fires on `backend ||
@@ -257,15 +280,16 @@ Verifies the generated bindings match `schema/error-catalogue.json`. On failure,
    events, repository config, config) is current. If validation fails, the correct files are
    already on disk — stage and commit them.
 
-**4D. Schema** — *if backend or `schema/**` changed*
+**4D. Schema** — *if backend or schema changed*
 
 1. `uv run invoke schema.validate-graphqlschema` — ensures `schema/schema.graphql` is current.
    Regenerates then checks for uncommitted diffs. On failure the correct file is already on disk;
    stage and commit it.
 2. `uv run invoke schema.validate-jsonschema` — same approach for `schema/openapi.json`.
 
-Both CI jobs gate on the `backend` filter, which does **not** include `schema/**`. Running them
-on a schema-only change is deliberately stricter than CI, and cheap.
+Both CI jobs gate on the `backend` filter, which does **not** include `schema/**` — that is why
+Phase 0 carries a `schema` area of its own. Running these on a schema-only change is deliberately
+stricter than CI, and cheap.
 
 ---
 
