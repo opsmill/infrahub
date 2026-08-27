@@ -39,7 +39,10 @@ async def create_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
 
 
 async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
-    """Update the registry for a branch if the schema hash has changed or the branch was rebased."""
+    """Update the registry for a branch when it no longer matches the database.
+
+    A changed schema hash reloads the schema; any other field difference only replaces the cached ``Branch``.
+    """
     existing_branch: Branch = registry.branch[branch.name]
 
     if not existing_branch.schema_hash:
@@ -63,7 +66,7 @@ async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
                 worker=WORKER_IDENTITY,
             )
             registry.branch[branch.name] = branch
-        elif existing_branch.status != branch.status:
+        elif existing_branch.model_dump(exclude={"schema_hash"}) != branch.model_dump(exclude={"schema_hash"}):
             log.info(f"Updating registry branch cache for {branch.name=}")
             registry.branch[branch.name] = branch
         return

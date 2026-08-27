@@ -45,3 +45,37 @@ async def test_refresh_branches_continues_past_a_branch_it_cannot_refresh(
     assert failures[0]["exc_info"]
 
     assert registry.branch[stale_branch.name].branched_from == rebased_branch.branched_from
+
+
+async def test_refresh_branches_syncs_a_field_that_only_changed_in_the_database(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    """A change that leaves the schema hash, branched_from and status alone must still reach the cache."""
+    branch = await create_branch(db=db, branch_name="described-branch")
+
+    # Stands in for a BranchUpdate that ran on another worker
+    updated_branch = await Branch.get_by_name(db=db, name=branch.name)
+    updated_branch.description = "written on another worker"
+    await updated_branch.save(db=db)
+    assert registry.branch[branch.name].description != updated_branch.description
+
+    await refresh_branches(db=db)
+
+    assert registry.branch[branch.name].description == updated_branch.description
+
+
+async def test_refresh_branches_leaves_an_unchanged_branch_alone(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    """A freshly loaded copy of an unchanged branch must compare equal to the cached one, or every sweep replaces it."""
+    branch = await create_branch(db=db, branch_name="quiet-branch")
+    cached = registry.branch[branch.name]
+
+    await refresh_branches(db=db)
+    await refresh_branches(db=db)
+
+    assert registry.branch[branch.name] is cached
