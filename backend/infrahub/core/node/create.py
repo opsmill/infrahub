@@ -217,9 +217,7 @@ async def extract_peer_data(
             # deeper templates are handled in the next level of recursion
             if await _peer_is_a_template(db=db, relationship=relationship):
                 continue
-            # The subtemplate was read with the peers its relationships name, so hand over the node
-            # where it is in hand: an id sends the checks on the new object, and the write itself,
-            # back to the database for a node already in memory.
+            # The peer is already read, so an id would send the checks and the write back to the database.
             rel_peers.append({"id": relationship.get_peer_in_hand() or relationship.peer_id})
 
         # Only set the relationship data if there are actual peers to set
