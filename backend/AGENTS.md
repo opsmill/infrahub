@@ -41,7 +41,10 @@ backend Python, including:
 - Naming conventions
 - Query patterns
 - Type hints
-- Exception handling (catch the narrowest types the call path actually raises)
+
+Exception handling lives in `dev/guidelines/backend/exceptions.md` — load it when writing a
+`try`/`except` or suppressing ruff's blind-except rule (catch the narrowest types the call path
+actually raises).
 
 When planning or implementing a backend feature, also walk
 `dev/guidelines/backend/checklist.md` — migrations, query efficiency (set-based, no N+1),
@@ -77,6 +80,9 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 - New database indexes
 - Core schema definition changes
 - New GraphQL mutations/queries
+- New REST endpoints — serve SDK/client needs through existing GraphQL queries first; every REST
+  endpoint is a second public contract that ripples into `schema/openapi.json` and the generated
+  frontend REST types
 
 ### Never Do
 
@@ -88,7 +94,9 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 
 ### Guidelines
 
-- `dev/guidelines/backend/python.md` - Python coding standards — load before writing backend Python (typing, imports, exception handling, docstrings)
+- `dev/guidelines/backend/python.md` - Python coding standards — load before writing backend Python (typing, imports, docstrings)
+- `dev/guidelines/backend/exceptions.md` - Exception handling — load when adding or changing a `try`/`except`, or when ruff flags a blind except
+- `dev/guidelines/backend/asgi-middleware.md` - ASGI middleware — load when adding or changing middleware in `server.py`
 - `dev/guidelines/backend/checklist.md` - feature checklist — walk when planning or implementing a backend feature (migrations, query efficiency, permissions)
 - Use the `creating-changelog-entries` skill - Changelog fragment creation
 
@@ -122,7 +130,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/guides/backend/creating-events.md` - Creating new events
 - `dev/guides/backend/creating-async-tasks.md` - How to create an async task, with a pre-submit checklist. Load when adding a `@task`/`@flow`.
 - `dev/guides/backend/creating-messages.md` - Creating message bus messages
-- `dev/guides/backend/creating-migrations.md` - Choosing a migration base class, `GRAPH_VERSION` bookkeeping, batching, and transaction retry. Load when adding a graph or schema migration.
+- `dev/guides/backend/creating-migrations.md` - Choosing a migration base class, `GRAPH_VERSION` bookkeeping, batching, transaction retry, and error handling. Load when adding a graph or schema migration or fixing data a migration got wrong.
 
 ### ADRs (Why we decided)
 

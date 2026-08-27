@@ -95,6 +95,14 @@ async def validate_schema(db: InfrahubDatabase, branch: Branch) -> bool:
     # ... implementation
 ```
 
+### InfrahubBatch is concurrent, not ordered
+
+The SDK's `InfrahubBatch` runs everything added to it concurrently when executed — grouping tasks
+into one batch (or into a "phase" of batches) is not a serialization mechanism. When tasks must not
+overlap (e.g. writes touching overlapping vertices whose idempotency guards only protect
+*sequential* reruns), cap the batch's max concurrent execution to 1 or run the items in a plain
+loop.
+
 ## Naming Conventions
 
 ### Workflow and Task Names
@@ -321,6 +329,8 @@ A write whose only purpose is observability — persisting a Prefect artifact th
 ### Post-commit follow-up work is best-effort
 
 Work dispatched *after* an operation has already committed — the recompute and event-send follow-ups after a merge, for example — must not be able to fail or roll back the committed operation. The contract to follow for such work is log-and-continue: catch per item, log the skipped item at exception level so a partial failure is greppable rather than silent, and carry on with the rest of the batch so one failed dispatch never aborts the others. Guaranteeing eventual consistency after a transient dispatch failure is the job of a separate reconciliation/backfill job, not of the best-effort path — do not bolt retries onto it. (Not every post-commit path enforces this yet — the merge recompute does per-item; verify before assuming a given caller isolates failures.)
+
+The same holds for a single side effect inline in a request handler — a telemetry or notification event sent before the response — not only for per-item batch work. Confirm first that the call can fail in a way the caller cares about (see [Exception Handling](../../guidelines/backend/exceptions.md)); if it does need isolating, dispatch it as a background task that runs after the response instead of wrapping it in `try`/`except` in the handler.
 
 ### Transient database errors are retried at the transaction layer, not by task retry
 

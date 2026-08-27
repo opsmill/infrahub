@@ -47,6 +47,8 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 
 - **Repository Organization**: [guidelines/repository-organization.md](guidelines/repository-organization.md) - How to organize content in dev/
 - **Python Backend**: [guidelines/backend/python.md](guidelines/backend/python.md)
+- **Python Exception Handling**: [guidelines/backend/exceptions.md](guidelines/backend/exceptions.md)
+- **ASGI Middleware**: [guidelines/backend/asgi-middleware.md](guidelines/backend/asgi-middleware.md)
 - **TypeScript Frontend**: [guidelines/frontend/typescript.md](guidelines/frontend/typescript.md)
 - **Git Workflow**: [guidelines/git-workflow.md](guidelines/git-workflow.md)
 - **Markdown Formatting**: [guidelines/markdown.md](guidelines/markdown.md)

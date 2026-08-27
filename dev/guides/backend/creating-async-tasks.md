@@ -50,9 +50,9 @@ from infrahub.workers.dependencies import get_database
 
 
 @flow(name="my-workflow", flow_run_name="Process {resource_id}")
-async def my_workflow(resource_id: str, context: InfrahubContext) -> None:
+async def my_workflow(resource_id: str, branch: str, context: InfrahubContext) -> None:
     log = get_run_logger()
-    log.info(f"Starting workflow for {resource_id}")
+    log.info(f"Starting workflow for {resource_id} on branch {branch}")
 
     database = await get_database()
     async with database.start_session() as db:
@@ -169,6 +169,17 @@ async def my_workflow(branch: str, node_id: str, context: InfrahubContext) -> No
     # ... rest of implementation
 ```
 
+`add_tags()` is enough for tags that only annotate a run for a human reading the task list. A tag
+another system *filters* on must also be passed at submission — see the caution below and Step 6.
+
+**Caution:** `add_tags()` rebuilds the tag list from the tags present at flow start, not from
+what an earlier `add_tags()` call in this same run just set — so if this flow (or a shared helper
+it calls, e.g. a recompute dispatcher) calls `add_tags` more than once, only the last call's own
+additions survive. Any tag another system filters on (the branch tag, for branch-filtered task
+queries) must be passed as a *creation* tag — via `tags=` on `submit_workflow`/`ExecuteWorkflow`,
+or the deployment's static `tags=` — not solely through an in-flow `add_tags()` call. See
+[Tagging System](../../knowledge/backend/async-tasks.md#tagging-system).
+
 ### Step 6: Invoke the Workflow
 
 Trigger the workflow from application code:
@@ -176,11 +187,16 @@ Trigger the workflow from application code:
 ```python
 from infrahub.workers.dependencies import get_workflow
 from infrahub.workflows.catalogue import MY_WORKFLOW
+from infrahub.workflows.constants import WorkflowTag
 
 workflow = await get_workflow()
-await workflow.submit(
+await workflow.submit_workflow(
     workflow=MY_WORKFLOW,
-    parameters={"resource_id": "abc123"},
+    context=context,
+    parameters={"resource_id": "abc123", "branch": branch},
+    # Creation tag: branch-scoped task queries filter on this, and a tag added from
+    # inside the run does not reach that filter.
+    tags=[WorkflowTag.BRANCH.render(identifier=branch)],
 )
 ```
 
