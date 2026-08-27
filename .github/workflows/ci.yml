@@ -303,7 +303,7 @@ jobs:
       - files-changed
       - prepare-environment
     runs-on: "ubuntu-latest"
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
@@ -327,6 +327,8 @@ jobs:
         run: "uv run ruff format --check --diff --exclude python_sdk ."
       - name: "Linting: ty check"
         run: "uv run ty check ."
+      - name: "Linting: mypy"
+        run: "uv run invoke backend.mypy"
 
   markdown-lint:
     if: |
@@ -470,7 +472,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "infrahub-testcontainers-check"]
     strategy:
       fail-fast: false
       matrix:
@@ -514,7 +516,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "backend-tests-unit", "infrahub-testcontainers-check"]
     strategy:
       fail-fast: false
       matrix:
@@ -580,7 +582,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "backend-tests-unit", "infrahub-testcontainers-check"]
     strategy:
       fail-fast: false
       matrix:
@@ -614,9 +616,6 @@ jobs:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
-      - name: "Mypy Tests"
-        if: matrix.shard == 'a'
-        run: "uv run invoke backend.mypy"
       - name: "Validate integration test shards"
         if: matrix.shard == 'b'
         run: "uv run invoke backend.validate-integration-shards"
@@ -637,7 +636,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "backend-tests-unit", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
     timeout-minutes: 30
@@ -665,8 +664,6 @@ jobs:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
-      - name: "Mypy Tests"
-        run: "uv run invoke backend.mypy"
       - name: "Functional Tests"
         run: "uv run invoke backend.test-functional"
       - name: "Coveralls : Functional Tests"
@@ -685,7 +682,7 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.backend == 'true' ||
       needs.files-changed.outputs.testcontainers == 'true')
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "backend-tests-unit"]
     strategy:
       fail-fast: false
       matrix:
@@ -1116,6 +1113,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - backend-tests-unit
       - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
@@ -1228,6 +1226,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - backend-tests-unit
       - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
@@ -1307,6 +1306,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - backend-tests-unit
       - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
@@ -1324,6 +1324,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - backend-tests-unit
       - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
