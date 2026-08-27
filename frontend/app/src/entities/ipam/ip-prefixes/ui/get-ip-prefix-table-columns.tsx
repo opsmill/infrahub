@@ -72,11 +72,14 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
             isSelected={row.getIsSelected()}
             onClickCheckbox={getToggleSelectedRowHandler({ row, table })}
             label={
-              <Row className="gap-2.5">
+              // The ancestor markers stay outside the truncating element, so the
+              // ellipsis lands on the text itself rather than the row being clipped
+              // mid-character, and the markers keep their size in a capped column.
+              <Row className="min-w-0 gap-2.5">
                 {[...Array(ipPrefixNode.ancestors.count)].map((_, i) => (
-                  <div className="size-1 rounded-full bg-custom-blue-600/40" key={i} />
+                  <div className="size-1 shrink-0 rounded-full bg-custom-blue-600/40" key={i} />
                 ))}
-                {value}
+                <span className="truncate">{value}</span>
               </Row>
             }
             // The label is markup, so the prefix has to be named explicitly for the

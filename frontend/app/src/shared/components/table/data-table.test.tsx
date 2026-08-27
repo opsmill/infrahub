@@ -123,6 +123,30 @@ describe("DataTable first column overflow", () => {
     expect(link.scrollWidth).toBeLessThanOrEqual(link.clientWidth);
   });
 
+  test("renders an ellipsis for a composed label that truncates its own text", async () => {
+    // GIVEN a label shaped like the IP prefix column: markers alongside the value,
+    // with only the value truncating.
+    const composedColumns = buildColumns(() => (
+      <span className="flex min-w-0 gap-1">
+        <span className="size-1 shrink-0 rounded-full bg-black" />
+        <span className="truncate" data-testid="composed-value">
+          {LONG_LABEL}
+        </span>
+      </span>
+    ));
+    await renderTable(composedColumns, [rows[1]!]);
+
+    // THEN the ellipsis lands on the text, not on an ancestor that would clip the
+    // whole row mid-character.
+    const value = document.querySelector<HTMLElement>('[data-testid="composed-value"]')!;
+    expect(value.scrollWidth).toBeGreaterThan(value.clientWidth);
+    expect(getComputedStyle(value).textOverflow).toBe("ellipsis");
+
+    // And the markers keep their width instead of collapsing in the capped column.
+    const marker = document.querySelector<HTMLElement>('[data-testid="identifier-cell"] .size-1')!;
+    expect(marker.getBoundingClientRect().width).toBeGreaterThan(0);
+  });
+
   test("keeps the sticky footer above the sticky row actions", async () => {
     // GIVEN a table that renders its count footer
     await render(
