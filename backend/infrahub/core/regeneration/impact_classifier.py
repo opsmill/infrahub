@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .predicates import relevant_node_changes
 
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
+
+    from .models import ReachedPath
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,50 +30,88 @@ class ChangedNodes:
     node_ids: list[str]
 
 
-type ImpactAssessment = EveryTarget | ChangedNodes
+@dataclass(frozen=True, slots=True)
+class ReachedChange:
+    """Changed nodes of one related kind, paired with the chains that resolve them to owning roots.
+
+    The kind may be reached by more than one relationship chain; the changed nodes are mapped back
+    through every one and the resolved owners are unioned.
+    """
+
+    node_ids: list[str]
+    paths: tuple[ReachedPath, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class RelationshipReachedChanges:
+    """Changes that narrow to members, split by how each is mapped back to a group member.
+
+    ``direct_member_node_ids`` already are group members; ``reached`` still needs its relationship
+    chain walked back to the owning members. The two resolve independently and their members union.
+    """
+
+    direct_member_node_ids: list[str]
+    reached: list[ReachedChange]
+
+
+type ImpactAssessment = EveryTarget | ChangedNodes | RelationshipReachedChanges
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
 class QueryImpactClassifier:
-    """Route a diff onto a query's subscribers from the query's read surface alone.
+    """Classify a diff against one query's read surface, without any id lookup.
 
-    Holds what one query analysis established on one branch, so a caller assessing several diffs
-    against the same query builds it once. The routing is decided without any id lookup, which
-    keeps the rule -- when narrowing is sound and when it is not -- independent of storage.
+    Holds what a single query analysis established on one branch, so several diffs can be
+    assessed against the same query without rebuilding it, and the narrowing rule stays
+    independent of storage.
 
-    Narrowing is sound only when the query pins a single object per root **and** no relevant change
-    lands on a kind the query reaches through a relationship. Unique targeting says nothing about
-    such a kind, and a node read that way is never tracked as a member of the query's target group,
-    so it cannot be mapped back to a subscriber. Those changes widen to every target: over-executing
-    is acceptable, leaving a stale output behind is not.
+    Narrowing needs the query to pin one object per root. A change on a root kind maps straight
+    to its members. A change on a kind reached through a relationship maps back only when the
+    chains down to it were reconstructed; otherwise it widens to every target.
 
-    A kind read both at a root and through a relationship counts as traversed. The two read paths
-    are indistinguishable once a change is in hand, so treating it as mappable would narrow away the
-    members reached only by the relationship.
+    A kind read both at a root and through a relationship widens: the two read paths are
+    indistinguishable once a change is in hand, so narrowing would drop the members reached only
+    by the relationship.
     """
 
     query_branch: str
     only_has_unique_targets: bool
     traversed_kinds: set[str]
     readable_fields_by_kind: dict[str, set[str]]
+    reached_paths_by_kind: dict[str, tuple[ReachedPath, ...]] = field(default_factory=dict)
 
     def assess(self, diff_summary: list[NodeDiff]) -> ImpactAssessment:
-        changed_node_ids = self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
-        if self._must_widen(diff_summary=diff_summary, changed_node_ids=changed_node_ids):
-            return EveryTarget()
-
-        return ChangedNodes(node_ids=changed_node_ids)
-
-    def _must_widen(self, *, diff_summary: list[NodeDiff], changed_node_ids: list[str]) -> bool:
         if not self.only_has_unique_targets:
             # Any number of objects can answer the query, so a changed node cannot be traced back to
             # the targets reading it.
-            return bool(changed_node_ids)
+            has_relevant_change = bool(
+                self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
+            )
+            return EveryTarget() if has_relevant_change else ChangedNodes(node_ids=[])
 
-        traversed_fields_by_kind = {
-            kind: fields for kind, fields in self.readable_fields_by_kind.items() if kind in self.traversed_kinds
+        root_fields_by_kind = {
+            kind: fields for kind, fields in self.readable_fields_by_kind.items() if kind not in self.traversed_kinds
         }
-        return bool(self._changed_node_ids(diff_summary=diff_summary, kinds=traversed_fields_by_kind))
+        member_node_ids = self._changed_node_ids(diff_summary=diff_summary, kinds=root_fields_by_kind)
+
+        reached: list[ReachedChange] = []
+        for kind in sorted(self.traversed_kinds):
+            fields = self.readable_fields_by_kind.get(kind)
+            if not fields:
+                continue
+            changed_ids = self._changed_node_ids(diff_summary=diff_summary, kinds={kind: fields})
+            if not changed_ids:
+                continue
+            paths = self.reached_paths_by_kind.get(kind)
+            if paths is None:
+                # A change on this related kind cannot be mapped back to specific members, so every
+                # target has to run rather than risk leaving one stale.
+                return EveryTarget()
+            reached.append(ReachedChange(node_ids=changed_ids, paths=paths))
+
+        if reached:
+            return RelationshipReachedChanges(direct_member_node_ids=member_node_ids, reached=reached)
+        return ChangedNodes(node_ids=member_node_ids)
 
     def _changed_node_ids(self, *, diff_summary: list[NodeDiff], kinds: dict[str, set[str]]) -> list[str]:
         return relevant_node_changes(

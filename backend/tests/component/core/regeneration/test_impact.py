@@ -10,7 +10,7 @@ from infrahub.core.regeneration.impact import get_field_level_impacted_subscribe
 from infrahub.core.regeneration.models import TargetSelection
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff
-from tests.helpers.schema import CAR_SCHEMA, load_schema
+from tests.helpers.schema import CAR_SCHEMA, RACK_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -151,17 +151,17 @@ class TestFieldLevelImpact(TestInfrahubApp):
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
 
-    async def test_related_node_change_selects_subscriber(
+    async def test_related_node_change_narrows_to_the_owning_member(
         self,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
     ) -> None:
-        """A change to a field the query reads on a *related* node still selects the subscriber.
+        """A change to a field the query reads on a *related* node narrows to the members owning it.
 
-        The changed owner is not itself a query-group member, so it cannot be mapped back to a
-        subscriber by membership lookup. Leaving the subscriber unselected would under-execute and ship
-        a stale artifact, so the impact mapping has to widen instead of returning nothing.
+        The changed owner is not itself a query-group member, so the relationship the query traverses
+        to reach it is walked back to the cars pointing at that owner, and only their subscribers are
+        selected -- not every member of the definition.
         """
         resolved = await self._resolve(
             dataset=dataset,
@@ -176,4 +176,161 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=True)
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
+
+    async def test_unread_related_field_change_selects_nothing(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> None:
+        """A change to a related field the query does not read resolves to no subscriber.
+
+        Field-level precision holds through the relationship: only a change to a field the query
+        actually reads off the owner can implicate the cars that read it.
+        """
+        resolved = await self._resolve(
+            dataset=dataset,
+            default_branch=default_branch,
+            client=client,
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["person_id"],
+                    kind=TestKind.PERSON,
+                    branch=default_branch.name,
+                    field_names=["height"],
+                )
+            ],
+        )
+        assert resolved == TargetSelection(ids=[], widened=False)
+
+
+QUERY_RACK_WITH_CARD = """
+query GetImpactRack($ids: [ID!]!) {
+    TestingRack(ids: $ids) {
+        edges {
+            node {
+                name { value }
+                slots { edges { node {
+                    card { node { name { value } } }
+                } } }
+            }
+        }
+    }
+}
+"""
+
+
+class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
+    """Narrow a change reached through a relationship whose owner is a generic.
+
+    The query pins its root rack by id and reads ``name`` off a card reached through the rack's slots.
+    The slot is a concrete ``TestingPowerSlot`` labelled with the ``TestingSlot`` generic, so the
+    reverse traversal keyed on the generic label walks the card change back through the slot to the
+    rack.
+    """
+
+    @pytest.fixture(scope="class")
+    async def dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> dict[str, Any]:
+        await load_schema(db=db, schema=RACK_SCHEMA, update_db=True)
+
+        card = await Node.init(db=db, schema="TestingCard")
+        await card.new(db=db, name="card-1")
+        await card.save(db=db)
+
+        slot = await Node.init(db=db, schema="TestingPowerSlot")
+        await slot.new(db=db, name="slot-1", card=card)
+        await slot.save(db=db)
+
+        rack = await Node.init(db=db, schema="TestingRack")
+        await rack.new(db=db, name="rack-1", slots=[slot])
+        await rack.save(db=db)
+
+        # A second rack with its own slot and card: the reverse traversal must reach only the rack that
+        # owns the changed card, never every member of the group.
+        other_card = await Node.init(db=db, schema="TestingCard")
+        await other_card.new(db=db, name="card-2")
+        await other_card.save(db=db)
+
+        other_slot = await Node.init(db=db, schema="TestingPowerSlot")
+        await other_slot.new(db=db, name="slot-2", card=other_card)
+        await other_slot.save(db=db)
+
+        other_rack = await Node.init(db=db, schema="TestingRack")
+        await other_rack.new(db=db, name="rack-2", slots=[other_slot])
+        await other_rack.save(db=db)
+
+        subscriber = await Node.init(db=db, schema=TestKind.TAG)
+        await subscriber.new(db=db, name="rack-artifact")
+        await subscriber.save(db=db)
+
+        other_subscriber = await Node.init(db=db, schema=TestKind.TAG)
+        await other_subscriber.new(db=db, name="other-rack-artifact")
+        await other_subscriber.save(db=db)
+
+        stored_query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+        await stored_query.new(
+            db=db, name="GetImpactRack", query=QUERY_RACK_WITH_CARD, models=["TestingRack", "TestingCard"]
+        )
+        await stored_query.save(db=db)
+
+        # Each rack stands for a separate definition, so it gets its own group with its own subscriber.
+        # Subscribers resolve per group, so narrowing to one rack must return only that rack's group's
+        # subscriber -- the other rack's subscriber proves the traversal did not widen.
+        query_group = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERYGROUP)
+        await query_group.new(
+            db=db, name="rack-impact-targets", query=stored_query, members=[rack], subscribers=[subscriber]
+        )
+        await query_group.save(db=db)
+
+        other_group = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERYGROUP)
+        await other_group.new(
+            db=db,
+            name="other-rack-impact-targets",
+            query=stored_query,
+            members=[other_rack],
+            subscribers=[other_subscriber],
+        )
+        await other_group.save(db=db)
+
+        return {
+            "rack_id": rack.id,
+            "other_rack_id": other_rack.id,
+            "card_id": card.id,
+            "subscriber_id": subscriber.id,
+            "other_subscriber_id": other_subscriber.id,
+        }
+
+    async def test_generic_owner_reached_change_narrows_to_the_owning_member(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> None:
+        """A change on a card reached through a generic-owned relationship narrows to its rack alone.
+
+        Both racks are members of the group, so a widen would return both subscribers. The reverse
+        traversal keyed on the generic slot label reaches only the slot holding the changed card, and
+        through it only the owning rack, so a single subscriber comes back.
+        """
+        resolved = await get_field_level_impacted_subscribers(
+            query_payload=QUERY_RACK_WITH_CARD,
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["card_id"],
+                    kind="TestingCard",
+                    branch=default_branch.name,
+                    field_names=["name"],
+                )
+            ],
+            query_branch=default_branch.name,
+            subscriber_kind=TestKind.TAG,
+            every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
+            client=client,
+        )
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import deque
+from collections import defaultdict, deque
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -40,11 +40,14 @@ from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from infrahub_sdk.utils import extract_fields
 
 from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
 from infrahub.core.schema import AttributePathParsingError, GenericSchema
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graphql.utils import extract_schema_models
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema import MainSchemaTypes, SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -272,6 +275,97 @@ class GraphQLQueryNode:
         return models
 
 
+def _reached_path_sort_key(path: ReachedPath) -> tuple[tuple[str, str, str], ...]:
+    return tuple((hop.node_kind, hop.relationship_identifier, hop.relationship_direction.value) for hop in path.hops)
+
+
+@dataclass(frozen=True)
+class ReachedPathResolver:
+    """Reconstruct, from a query's node tree, the relationship chains reaching each related kind.
+
+    A kind maps to every relationship chain that reaches it; a kind reached as a generic peer is
+    resolved to the generic's concrete implementations, since a data change reports the concrete kind.
+    A kind is absent -- so a change there widens -- when a way it is reached cannot be pinned: a hop
+    along it is an inline/named fragment refinement, or the kind is also read at a root.
+    """
+
+    queries: list[GraphQLQueryNode]
+
+    def resolve(self) -> dict[str, tuple[ReachedPath, ...]]:
+        root_kinds = {
+            query_model.model.kind for query in self.queries for query_model in query.get_models() if query_model.root
+        }
+        chains_by_kind: dict[str, set[ReachedPath]] = defaultdict(set)
+        ambiguous_kinds: set[str] = set()
+        for query in self.queries:
+            for node in self._iter_object_nodes(query):
+                if node.at_root or node.infrahub_model is None:
+                    continue
+                chain = self._hop_chain_to_root(node)
+                for kind in self._reached_kinds(node):
+                    if chain is None:
+                        ambiguous_kinds.add(kind)
+                    else:
+                        chains_by_kind[kind].add(chain)
+
+        return {
+            kind: tuple(sorted(chains, key=_reached_path_sort_key))
+            for kind, chains in chains_by_kind.items()
+            if kind not in ambiguous_kinds and kind not in root_kinds
+        }
+
+    def _reached_kinds(self, node: GraphQLQueryNode) -> list[str]:
+        """The concrete kinds a related node stands for: a generic's implementations, else its own."""
+        model = node.infrahub_model
+        if model is None:
+            return []
+        if isinstance(model, GenericSchema):
+            return [implementation.kind for implementation in node.infrahub_node_models]
+        return [model.kind]
+
+    def _iter_object_nodes(self, node: GraphQLQueryNode) -> Iterator[GraphQLQueryNode]:
+        """Yield every node in the subtree that stands for an Infrahub object."""
+        if node.infrahub_model is not None:
+            yield node
+        for child in node.children:
+            yield from self._iter_object_nodes(child)
+
+    def _hop_chain_to_root(self, node: GraphQLQueryNode) -> ReachedPath | None:
+        """The chain of reverse relationship hops from a related node back to the query root, or None when a hop cannot be pinned.
+
+        Returns None when a hop's field is not a relationship on its owner (an inline or named
+        fragment refinement), which cannot resolve a changed node to a reverse relationship.
+        """
+        hops: list[RelationshipHop] = []
+        current = node
+        while not current.at_root:
+            owner = self._nearest_object_ancestor(current)
+            if owner is None or owner.infrahub_model is None:
+                return None
+            relationship = owner.infrahub_model.get_relationship_or_none(name=current.path)
+            if relationship is None or not relationship.identifier:
+                return None
+            hops.append(
+                RelationshipHop(
+                    node_kind=owner.infrahub_model.kind,
+                    relationship_identifier=relationship.identifier,
+                    relationship_direction=relationship.direction,
+                )
+            )
+            current = owner
+
+        return ReachedPath(hops=tuple(hops))
+
+    def _nearest_object_ancestor(self, node: GraphQLQueryNode) -> GraphQLQueryNode | None:
+        """The closest ancestor that stands for an Infrahub object, skipping structural nodes."""
+        parent = node.parent
+        while parent is not None:
+            if parent.infrahub_model is not None:
+                return parent
+            parent = parent.parent
+        return None
+
+
 @dataclass
 class GraphQLQueryReport:
     queries: list[GraphQLQueryNode]
@@ -320,6 +414,11 @@ class GraphQLQueryReport:
                     kinds.add(query_model.model.kind)
 
         return kinds
+
+    @cached_property
+    def relationship_reached_paths_by_kind(self) -> dict[str, tuple[ReachedPath, ...]]:
+        """The relationship chains reaching each related kind that can be narrowed to its owning roots."""
+        return ReachedPathResolver(queries=self.queries).resolve()
 
     def fields_by_kind(self, kind: str) -> list[str]:
         fields: list[str] = []

@@ -126,12 +126,6 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                     impacted=impacted,
                 )
             ]
-            self.log.debug(
-                f"SELECTIVE_REGEN select [{definition.definition_name}]: "
-                f"regenerate_all_members={regenerate_all_members} forced={forced} "
-                f"members={len(member_ids)} mapped_subscribers={len(subscriber_by_member)} "
-                f"impacted={len(impacted)} rendered={len(rendered_members)}"
-            )
             if not rendered_members:
                 continue
             members = _narrow_members_filter(rendered_members, len(member_ids))

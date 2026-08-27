@@ -2,7 +2,30 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntFlag, StrEnum
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from infrahub.core.constants import RelationshipDirection
+
+
+@dataclass(frozen=True, slots=True)
+class RelationshipHop:
+    """One relationship hop, expressed from the owner object that carries the relationship.
+
+    ``node_kind`` owns ``relationship_identifier``; ``relationship_direction`` is that relationship's
+    direction on the owner.
+    """
+
+    node_kind: str
+    relationship_identifier: str
+    relationship_direction: RelationshipDirection
+
+
+@dataclass(frozen=True, slots=True)
+class ReachedPath:
+    """The relationship chain a query follows from a root object down to a related kind."""
+
+    hops: tuple[RelationshipHop, ...]
 
 
 @dataclass(frozen=True, slots=True)
