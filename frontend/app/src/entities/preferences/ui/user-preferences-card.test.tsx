@@ -595,6 +595,61 @@ describe("UserPreferencesCard", () => {
     await initPointerTracking(component.locator);
   });
 
+  test("the (i) tooltip reports the browser fallback once a renderable override stops shadowing an unrenderable organisation zone", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      timezone: {
+        value: "America/New_York",
+        source: "USER",
+        inherited: { value: "Not/AZone", source: "GLOBAL" },
+      },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /timezone/i })).toBeVisible();
+
+    const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // The timezone field is the second info trigger.
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.nth(1).hover();
+
+    await expect
+      .element(
+        component.getByRole("tooltip", {
+          name: "Your preference, overriding the organisation default: Not/AZone.",
+        })
+      )
+      .toBeVisible();
+
+    // Park the pointer away from the trigger so the tooltip closes before the next test renders.
+    await initPointerTracking(component.locator);
+
+    // Re-selecting the already-selected zone clears the override. Filter first: the option list
+    // holds every runtime zone.
+    await component.getByRole("button", { name: /timezone/i }).click();
+    await component.getByRole("searchbox").fill("America/New_York");
+    await component.getByRole("option", { name: "America/New_York", exact: true }).click();
+
+    await initPointerTracking(component.locator);
+    await triggers.nth(1).hover();
+
+    // The unrenderable inherited zone is what saving would put in effect, so the hint must report
+    // its browser fallback rather than the renderable zone the row still shows as saved.
+    await expect
+      .element(
+        component.getByRole("tooltip", {
+          name: `This browser can't display Not/AZone; times are shown in ${browserZone}.`,
+        })
+      )
+      .toBeVisible();
+
+    // Park the pointer away from the trigger so the tooltip closes before the next test renders.
+    await initPointerTracking(component.locator);
+  });
+
   test("the (i) tooltip falls back to the browser source when neither user nor global is set", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
