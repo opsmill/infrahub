@@ -172,6 +172,120 @@ describe("UserPreferencesCard", () => {
     await expect.element(component.getByText("Example: 12/06/2026 08:30")).toBeVisible();
   });
 
+  test("returns the example to the inherited format when a saved override is cleared", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: {
+        value: "ISO_DATETIME",
+        source: "USER",
+        inherited: { value: "EU_DATETIME", source: "GLOBAL" },
+      },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByText("Example: 2026-06-12 08:30")).toBeVisible();
+
+    await component.getByRole("button", { name: /date format/i }).click();
+    await component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }).click();
+
+    await expect.element(component.getByText("Example: 12/06/2026 08:30")).toBeVisible();
+  });
+
+  test("switches the date-format (i) tooltip to the organisation default when the field is cleared", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: {
+        value: "ISO_DATETIME",
+        source: "USER",
+        inherited: { value: "EU_DATETIME", source: "GLOBAL" },
+      },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.first().hover();
+
+    await expect
+      .element(
+        component.getByRole("tooltip", {
+          name: "Your preference, overriding the organisation default: dd/MM/yyyy HH:mm.",
+        })
+      )
+      .toBeVisible();
+
+    // Park the pointer so the tooltip closes before the combobox is opened.
+    await initPointerTracking(component.locator);
+
+    await component.getByRole("button", { name: /date format/i }).click();
+    await component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }).click();
+
+    await initPointerTracking(component.locator);
+    await triggers.first().hover();
+
+    // Nothing has been saved, so only the pending state can explain the row the user is looking at.
+    await expect
+      .element(
+        component.getByRole("tooltip", {
+          name: "From the organisation default: dd/MM/yyyy HH:mm.",
+        })
+      )
+      .toBeVisible();
+
+    // Park the pointer away from the trigger so the tooltip closes before the next test renders.
+    await initPointerTracking(component.locator);
+  });
+
+  test("switches the timezone (i) tooltip to the organisation default when the field is cleared", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      timezone: {
+        value: "America/New_York",
+        source: "USER",
+        inherited: { value: EFFECTIVE_ZONE, source: "GLOBAL" },
+      },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    // The timezone field is the second info trigger.
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.nth(1).hover();
+
+    await expect
+      .element(
+        component.getByRole("tooltip", {
+          name: `Your preference, overriding the organisation default: ${EFFECTIVE_ZONE}.`,
+        })
+      )
+      .toBeVisible();
+
+    // Park the pointer so the tooltip closes before the combobox is opened.
+    await initPointerTracking(component.locator);
+
+    // Filter first: the option list holds every runtime zone.
+    await component.getByRole("button", { name: /timezone/i }).click();
+    await component.getByRole("searchbox").fill("America/New_York");
+    await component.getByRole("option", { name: "America/New_York", exact: true }).click();
+
+    await initPointerTracking(component.locator);
+    await triggers.nth(1).hover();
+
+    await expect
+      .element(
+        component.getByRole("tooltip", {
+          name: `From the organisation default: ${EFFECTIVE_ZONE}.`,
+        })
+      )
+      .toBeVisible();
+
+    // Park the pointer away from the trigger so the tooltip closes before the next test renders.
+    await initPointerTracking(component.locator);
+  });
+
   test("falls the example back to the inherited organisation zone when the personal zone override is cleared", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
