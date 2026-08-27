@@ -13,6 +13,18 @@ Rules inherit from the `CoreTriggerRule` generic. Two rule kinds exist because m
 | `CoreNodeTriggerRule` | mutations on specific nodes | An attribute change on `InfraDevice`, a relationship update on `InfraInterface` |
 | `CoreGroupTriggerRule` | changes to group membership | A member added to `provisioning_circuits`, a member removed from `arista_devices` |
 
+## Branch scope
+
+Every rule has a `branch_scope` that limits which branches its events are matched on. The scope is matched against the branch the event was emitted on.
+
+| Scope | Fires on |
+|---|---|
+| `default_branch` (default) | The default branch only |
+| `other_branches` | Every branch except the default branch |
+| `all_branches` | Every branch |
+
+A rule created without changing this field fires on the default branch only. Set `other_branches` when the automation should run inside branches and proposed changes, so its results are reviewed before they reach the default branch.
+
 ## Match filters
 
 By default, a rule fires for any event of the configured type. To narrow it down, add match filters. All conditions must be satisfied — match filters use logical AND, not OR.
