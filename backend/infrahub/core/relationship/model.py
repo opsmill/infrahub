@@ -192,17 +192,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         return self.peer_id
 
     def get_peer_kind(self) -> str:
-        if not self._peer or isinstance(self._peer, str):
-            return self.schema.peer
-
-        return self._peer.get_kind()
+        peer = self.get_peer_in_hand()
+        return peer.get_kind() if peer is not None else self.schema.peer
 
     def get_concrete_peer_kind(self) -> str | None:
         """Return the peer's concrete kind, or None when only the schema's (possibly generic) peer kind is known."""
-        if self._peer and not isinstance(self._peer, str):
-            return self._peer.get_kind()
-
-        return self._resolved_peer_kind
+        peer = self.get_peer_in_hand()
+        return peer.get_kind() if peer is not None else self._resolved_peer_kind
 
     def get_peer_in_hand(self) -> Node | None:
         """Return the peer as the node it is, or None when this relationship holds only its id."""

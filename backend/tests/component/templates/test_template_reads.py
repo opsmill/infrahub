@@ -300,13 +300,7 @@ async def test_a_level_of_a_template_is_read_once_however_many_parents_it_hangs_
 async def test_a_peer_a_component_carries_is_not_read_back_for_every_component(
     db: InfrahubDatabase, default_branch: Branch, device_schema_with_tagged_interfaces: None
 ) -> None:
-    """A peer a subtemplate names is handed to the object created from it, not read again per object.
-
-    The subtemplates arrive with the peers their relationships name, so a component that carries
-    one costs what a component without one costs: its uniqueness check and its write. Naming the
-    peer by its id instead sent both the kind check on the new object and the write back to the
-    database for a node already in memory, once per component.
-    """
+    """A peer a subtemplate names is handed to the object created from it, not read again per object."""
     tag = await Node.init(db=db, schema=TestKind.TAG, branch=default_branch)
     await tag.new(db=db, name="uplink")
     await tag.save(db=db)
