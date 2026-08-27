@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 
+import e2e_proof_embed
+import pytest
 from e2e_proof_embed import ProofResult, apply_proof_sections, sanitize_reason
 
 RUN_URL = "https://github.com/opsmill/infrahub/actions/runs/123"
@@ -129,3 +131,135 @@ def test_empty_body_gets_only_the_sections() -> None:
     result = _apply_red("")
     assert result.startswith("<!-- E2E_PROOF:RED:BEGIN -->")
     assert result.count("<!-- E2E_PROOF:NOTE:BEGIN -->") == 1
+
+
+def test_mid_body_section_replaced_in_place_with_trailing_prose_intact() -> None:
+    body = (
+        "Intro paragraph.\n\n"
+        "<!-- E2E_PROOF:RED:BEGIN -->\nstale content\n<!-- E2E_PROOF:RED:END -->\n\n"
+        "Trailing prose that must survive."
+    )
+    result = _apply_red(body, reason="fresh reason")
+    assert result.startswith("Intro paragraph.\n\n<!-- E2E_PROOF:RED:BEGIN -->")
+    assert "stale content" not in result
+    assert "fresh reason" in _section(result, "RED")
+    assert "<!-- E2E_PROOF:RED:END -->\n\nTrailing prose that must survive." in result
+    assert result.index("<!-- E2E_PROOF:RED:BEGIN -->") < result.index("Trailing prose that must survive.")
+
+
+def test_green_image_url_gets_the_after_label() -> None:
+    result = apply_proof_sections(
+        BODY,
+        ProofResult(phase="green", verdict="green_confirmed", reason="passes", run_url=RUN_URL, image_url=IMAGE_URL),
+    )
+    assert f"![after]({IMAGE_URL})" in _section(result, "GREEN")
+
+
+def test_orphaned_begin_marker_is_repaired_and_user_content_preserved() -> None:
+    body = "Intro.\n\n<!-- E2E_PROOF:RED:BEGIN -->\nUser content stranded after an orphaned marker.\n\nMore user prose."
+    result = _apply_red(body, reason="fresh reason")
+    assert "User content stranded after an orphaned marker." in result
+    assert "More user prose." in result
+    assert result.count("<!-- E2E_PROOF:RED:BEGIN -->") == 1
+    assert result.count("<!-- E2E_PROOF:RED:END -->") == 1
+    assert "fresh reason" in _section(result, "RED")
+    assert result.index("More user prose.") < result.index("<!-- E2E_PROOF:RED:BEGIN -->")
+
+
+def test_orphaned_begin_before_a_complete_pair_does_not_swallow_user_content() -> None:
+    body = (
+        "Intro.\n\n"
+        "<!-- E2E_PROOF:RED:BEGIN -->\n"
+        "User content between an orphan and a real pair.\n\n"
+        "<!-- E2E_PROOF:RED:BEGIN -->\nold section\n<!-- E2E_PROOF:RED:END -->\n\n"
+        "Closing prose."
+    )
+    result = _apply_red(body, reason="fresh reason")
+    assert "User content between an orphan and a real pair." in result
+    assert "Closing prose." in result
+    assert result.count("<!-- E2E_PROOF:RED:BEGIN -->") == 1
+    assert result.count("<!-- E2E_PROOF:RED:END -->") == 1
+    assert "fresh reason" in _section(result, "RED")
+    # The repair only strips markers: the stale pair's inner text stays as
+    # plain body text rather than risking a delete of user content.
+    assert "old section" in result
+    assert "old section" not in _section(result, "RED")
+
+
+_MAIN_ARGS = [
+    "--repo",
+    "opsmill/infrahub",
+    "--pr",
+    "42",
+    "--phase",
+    "red",
+    "--verdict",
+    "red_confirmed",
+    "--reason",
+    "test failed on its assertion",
+    "--run-url",
+    RUN_URL,
+]
+
+
+def test_main_never_patches_an_already_current_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    current = _apply_red(BODY)
+    patches: list[str] = []
+    monkeypatch.setattr(e2e_proof_embed, "_fetch_body", lambda _repo, _pr: current)
+    monkeypatch.setattr(e2e_proof_embed, "_patch_body", lambda _repo, _pr, body: patches.append(body))
+    assert e2e_proof_embed.main(_MAIN_ARGS) == 0
+    assert patches == []
+
+
+def test_main_marker_loss_race_is_retried_once_then_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    fetches: list[int] = []
+    patches: list[str] = []
+
+    def fake_fetch(_repo: str, _pr: int) -> str:
+        fetches.append(1)
+        # Odd fetches feed the transform; even fetches verify the PATCH and
+        # simulate a concurrent editor's stale write dropping the marker.
+        if len(fetches) % 2 == 1:
+            return BODY
+        return "A stale body without the pipeline phase markers."
+
+    monkeypatch.setattr(e2e_proof_embed, "_fetch_body", fake_fetch)
+    monkeypatch.setattr(e2e_proof_embed, "_patch_body", lambda _repo, _pr, body: patches.append(body))
+    with pytest.raises(RuntimeError, match="AGENT_TEST_COMPLETE"):
+        e2e_proof_embed.main(_MAIN_ARGS)
+    assert len(patches) == 2
+    assert len(fetches) == 4
+
+
+def test_main_marker_loss_race_recovers_on_the_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    fetches: list[int] = []
+    patches: list[str] = []
+
+    def fake_fetch(_repo: str, _pr: int) -> str:
+        fetches.append(1)
+        if len(fetches) == 2:
+            return "A stale body without the pipeline phase markers."
+        if len(fetches) == 4:
+            return patches[-1]
+        return BODY
+
+    monkeypatch.setattr(e2e_proof_embed, "_fetch_body", fake_fetch)
+    monkeypatch.setattr(e2e_proof_embed, "_patch_body", lambda _repo, _pr, body: patches.append(body))
+    assert e2e_proof_embed.main(_MAIN_ARGS) == 0
+    assert len(patches) == 2
+
+
+def test_gh_calls_carry_a_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    timeouts: list[object] = []
+
+    class FakeCompleted:
+        stdout = '{"body": ""}'
+
+    def fake_run(_cmd: list[str], **kwargs: object) -> FakeCompleted:
+        timeouts.append(kwargs.get("timeout"))
+        return FakeCompleted()
+
+    monkeypatch.setattr(e2e_proof_embed.subprocess, "run", fake_run)
+    e2e_proof_embed._fetch_body("opsmill/infrahub", 42)  # noqa: SLF001
+    e2e_proof_embed._patch_body("opsmill/infrahub", 42, "x")  # noqa: SLF001
+    assert timeouts == [60, 60]

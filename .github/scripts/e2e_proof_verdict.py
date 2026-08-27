@@ -59,8 +59,10 @@ def _structural_problem(cases: list[ET.Element]) -> str | None:
 def _evaluate_red(failure: ET.Element | None) -> tuple[str, str]:
     if failure is None:
         return DOES_NOT_REPRODUCE, "test passed without the fix applied -- it does not reproduce the bug"
-    excerpt = _one_line((failure.get("message") or "") + " " + (failure.text or ""))
-    if "AssertionError" in (failure.get("message") or "") + (failure.text or ""):
+    # The space keeps a message/text boundary from fabricating the keyword.
+    combined = (failure.get("message") or "") + " " + (failure.text or "")
+    excerpt = _one_line(combined)
+    if "AssertionError" in combined:
         return RED_CONFIRMED, f"test failed on its assertion: {excerpt}"
     return INCONCLUSIVE, f"test failed but not on an assertion: {excerpt}"
 

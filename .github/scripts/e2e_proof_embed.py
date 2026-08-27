@@ -6,8 +6,12 @@ Usage: e2e_proof_embed.py --repo <owner/repo> --pr <n> --phase {red,green}
 
 Owns the three ``E2E_PROOF:RED|GREEN|NOTE`` marker pairs in the PR body: each
 section is replaced in place when present and appended once when absent, and
-nothing outside the markers is modified. The body is fetched and patched via
-the ``gh`` CLI; the transform itself is a pure string function.
+nothing outside the markers is modified. An unpaired BEGIN/END marker is
+stripped and the section appended fresh, so a replace can never span user
+content next to an orphaned marker. After PATCHing, the body is re-fetched to
+verify the pipeline phase markers survived a concurrent edit; the whole
+fetch-transform-PATCH cycle is redone once, then raises. The body is fetched
+and patched via the ``gh`` CLI; the transform itself is a pure string function.
 """
 
 from __future__ import annotations
@@ -73,9 +77,14 @@ def _upsert_section(body: str, name: str, content: str) -> str:
     begin = f"<!-- E2E_PROOF:{name}:BEGIN -->"
     end = f"<!-- E2E_PROOF:{name}:END -->"
     block = f"{begin}\n{content}\n{end}"
-    pattern = re.compile(re.escape(begin) + r".*?" + re.escape(end), re.DOTALL)
-    if pattern.search(body):
-        return pattern.sub(lambda _match: block, body, count=1)
+    if body.count(begin) != body.count(end):
+        # An orphaned marker would let the paired replace swallow user content,
+        # so strip the markers and fall through to a fresh append.
+        body = body.replace(begin, "").replace(end, "")
+    else:
+        pattern = re.compile(re.escape(begin) + r".*?" + re.escape(end), re.DOTALL)
+        if pattern.search(body):
+            return pattern.sub(lambda _match: block, body, count=1)
     if not body.strip():
         return block + "\n"
     return body.rstrip() + "\n\n" + block + "\n"
@@ -93,6 +102,7 @@ def _fetch_body(repo: str, pr: int) -> str:
         check=True,
         capture_output=True,
         text=True,
+        timeout=60,
     )
     return json.loads(result.stdout).get("body") or ""
 
@@ -103,11 +113,17 @@ def _patch_body(repo: str, pr: int, body: str) -> None:
         check=True,
         capture_output=True,
         text=True,
+        timeout=60,
     )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """CLI entry point; returns the process exit code."""
+    """CLI entry point; returns the process exit code.
+
+    Raises:
+        RuntimeError: When the pipeline phase markers are still missing after the retried PATCH.
+
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", required=True)
     parser.add_argument("--pr", type=int, required=True)
@@ -122,23 +138,33 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--image-url", default=None)
     args = parser.parse_args(argv)
 
-    body = _fetch_body(args.repo, args.pr)
-    new_body = apply_proof_sections(
-        body,
-        ProofResult(
-            phase=args.phase,
-            verdict=args.verdict,
-            reason=args.reason,
-            run_url=args.run_url,
-            image_url=args.image_url,
-        ),
+    result = ProofResult(
+        phase=args.phase,
+        verdict=args.verdict,
+        reason=args.reason,
+        run_url=args.run_url,
+        image_url=args.image_url,
     )
-    if new_body == body:
-        print(f"PR body already up to date for phase {args.phase}")
-        return 0
-    _patch_body(args.repo, args.pr, new_body)
-    print(f"PR body updated for phase {args.phase}")
-    return 0
+    # A concurrent editor PATCHing from a stale body can overwrite this update
+    # and drop the pipeline phase markers, so verify after PATCHing and redo
+    # the whole cycle once before giving up.
+    missing: list[str] = []
+    for _attempt in range(2):
+        body = _fetch_body(args.repo, args.pr)
+        new_body = apply_proof_sections(body, result)
+        if new_body == body:
+            print(f"PR body already up to date for phase {args.phase}")
+            return 0
+        _patch_body(args.repo, args.pr, new_body)
+        required = ["AGENT_TEST_COMPLETE"]
+        if "AGENT_FIX_COMPLETE" in body:
+            required.append("AGENT_FIX_COMPLETE")
+        persisted = _fetch_body(args.repo, args.pr)
+        missing = [marker for marker in required if marker not in persisted]
+        if not missing:
+            print(f"PR body updated for phase {args.phase}")
+            return 0
+    raise RuntimeError(f"pipeline phase markers lost after PATCH despite a retry: {', '.join(missing)}")
 
 
 if __name__ == "__main__":

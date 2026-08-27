@@ -25,18 +25,25 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
       # Checking out a missing ref fails the job, so resolve the branch first.
+      # Only a 404 means there is nothing to clean; a rate limit, 5xx, or
+      # network failure must fail the job instead of silently skipping.
       - name: Check for the assets branch
         id: branch
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
-          set -euo pipefail
-          if gh api "repos/$REPO/branches/bug-pipeline-assets" --silent; then
+          set -uo pipefail
+          API_ERROR=$(gh api "repos/$REPO/branches/bug-pipeline-assets" --silent 2>&1)
+          API_STATUS=$?
+          if [ "$API_STATUS" -eq 0 ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
+          elif grep -q "HTTP 404" <<<"$API_ERROR"; then
             echo "::notice::No bug-pipeline-assets branch -- nothing to clean up"
             echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Could not resolve the bug-pipeline-assets branch: $API_ERROR"
+            exit 1
           fi
 
       - name: Check out the assets branch
@@ -57,4 +64,15 @@ jobs:
           git config user.email "bug-agent-e2e-proof@users.noreply.github.com"
           git rm -r --quiet "pr-$PR_NUMBER"
           git commit -m "proof: remove assets for closed PR #$PR_NUMBER"
-          git push origin HEAD:bug-pipeline-assets
+          # Retry around concurrent writers so a push race cannot drop the removal.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:bug-pipeline-assets; then
+              exit 0
+            fi
+            if [ "$attempt" != "3" ]; then
+              git fetch origin bug-pipeline-assets
+              git rebase FETCH_HEAD
+            fi
+          done
+          echo "::error::Could not push the cleanup commit to bug-pipeline-assets after 3 attempts"
+          exit 1

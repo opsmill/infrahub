@@ -30,12 +30,18 @@ usage: e2e_proof_embed.py --repo <owner/repo> --pr <n> --phase {red,green}
 - Replaces only the content between its own `E2E_PROOF:*` marker pairs; appends missing sections at the end of the body.
 - Also rewrites the `E2E_PROOF:NOTE` section per phase (red → expected-red explanation naming the proof job as authoritative; green → note that all jobs are expected to pass).
 - MUST leave `AGENT_TEST_COMPLETE` / `AGENT_FIX_COMPLETE` and all content outside the marker pairs byte-identical.
+- Marker repair: when a section's BEGIN/END counts mismatch (an orphaned marker), the script strips every occurrence of that pair's markers from the body and appends the section fresh — a paired replace must never span user content between an orphaned BEGIN and a later END.
+- Post-PATCH verification: after PATCHing, the script re-fetches the body and checks the pipeline phase markers survived (`AGENT_TEST_COMPLETE`, plus `AGENT_FIX_COMPLETE` when it was present in the pre-PATCH body); on a lost-update race it redoes the fetch-transform-PATCH cycle once and raises after the second failure (the workflow's `continue-on-error` on the embed step absorbs the failure).
 - Idempotent: running twice with the same inputs yields the same body.
 - `--reason` is truncated to 200 characters and markdown-neutralized (backticks/brackets/angle-brackets escaped) before insertion (critique E1).
 
 ## Asset naming contract
 
 `pr-<pr>/<phase>-<run_id>.png` committed to orphan branch `bug-pipeline-assets` (T001 reversed the release-asset option — research R1); embed URLs are commit-SHA-pinned raw URLs; the publish commit deletes the older `pr-<pr>/<phase>-*.png`; cleanup workflow (`pull_request` `[closed]`, same branch guard) commits removal of `pr-<pr>/`.
+
+- Orphan bootstrap: when `bug-pipeline-assets` does not exist at publish time, the publish step creates it from an orphan commit instead of skipping the evidence.
+- Push retry: both the publish and cleanup pushes retry up to 3 attempts with a fetch/rebase between attempts, so a concurrent push to the shared branch cannot permanently lose a commit. The publish step stays best-effort overall (`continue-on-error`); the cleanup job fails after exhausted retries.
+- Cleanup branch check: only an HTTP 404 (branch absent) counts as nothing-to-clean; any other API failure (rate limit, 5xx, network) fails the cleanup job.
 
 ## Agent prompt contract (E2E tier addition)
 

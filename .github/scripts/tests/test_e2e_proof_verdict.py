@@ -150,3 +150,52 @@ def test_stdout_is_exactly_the_two_contract_lines(tmp_path: Path, capsys: pytest
     assert len(out_lines) == 2
     assert out_lines[0].startswith("verdict=")
     assert out_lines[1].startswith("reason=")
+
+
+ASSERTION_IN_MESSAGE_ONLY_CASE = (
+    '<testcase classname="tests.e2e.test_bug" name="test_bug_repro" time="12.3">'
+    '<failure message="AssertionError: expected the chip to be visible">'
+    "Traceback with no keyword of its own"
+    "</failure></testcase>"
+)
+
+BOUNDARY_CONCATENATION_CASE = (
+    '<testcase classname="tests.e2e.test_bug" name="test_bug_repro" time="12.3">'
+    '<failure message="fatal: unexpected Assertion">'
+    "Error: browser crashed before the check ran"
+    "</failure></testcase>"
+)
+
+
+def test_red_assertion_only_in_message_is_confirmed(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    junit = _write_junit(tmp_path, ASSERTION_IN_MESSAGE_ONLY_CASE)
+    exit_code, verdict, _ = _run("red", junit, capsys)
+    assert exit_code == 0
+    assert verdict == "red_confirmed"
+
+
+def test_message_text_boundary_does_not_fabricate_an_assertion(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    junit = _write_junit(tmp_path, BOUNDARY_CONCATENATION_CASE)
+    exit_code, verdict, reason = _run("red", junit, capsys)
+    assert exit_code == 1
+    assert verdict == "inconclusive"
+    assert "not on an assertion" in reason
+
+
+def test_truncated_xml_is_inconclusive(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    junit = tmp_path / "playwright-junit.xml"
+    junit.write_text('<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest"><testcase')
+    exit_code, verdict, reason = _run("red", junit, capsys)
+    assert exit_code == 1
+    assert verdict == "inconclusive"
+    assert reason == "junit report is not valid XML"
+
+
+def test_error_alongside_passing_case_is_inconclusive(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    junit = _write_junit(tmp_path, SETUP_ERROR_CASE, PASSING_CASE)
+    exit_code, verdict, reason = _run("red", junit, capsys)
+    assert exit_code == 1
+    assert verdict == "inconclusive"
+    assert "infrastructure" in reason
