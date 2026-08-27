@@ -1327,10 +1327,13 @@ class NodeManager:
 
         node_schema = node.get_schema()
         for rel_schema in node_schema.relationships:
-            if insert_peer_node and prefetch_relationship_names is not None:
-                if rel_schema.name not in prefetch_relationship_names:
-                    # The query did not cover this relationship, leave it to be read on demand.
-                    continue
+            if (
+                insert_peer_node
+                and prefetch_relationship_names is not None
+                and rel_schema.name not in prefetch_relationship_names
+            ):
+                # The query did not cover this relationship, leave it to be read on demand.
+                continue
             peer_ids = grouped_peer_nodes.get_peer_ids(
                 node_id=node.get_id(),
                 rel_name=rel_schema.get_identifier(),

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol, Sequence, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Protocol, Sequence, TypeVar, cast, overload
 
 from infrahub_sdk.template.exceptions import JinjaTemplateError
 from infrahub_sdk.utils import is_valid_uuid
@@ -513,7 +513,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         )
         await registry.manager.prefetch_relationships(
             db=db,
-            nodes=[template],
+            nodes=[cast("Node", template)],
             names=get_relationship_names_to_read(schema=template.get_schema()),
             branch=branch,
             include_metadata=MetadataOptions.SOURCE,
