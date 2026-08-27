@@ -26,15 +26,14 @@ if TYPE_CHECKING:
 from tests.component.core.agnostic_retirement.support import (
     FailingRetirementDatabase,
     RetirementFailureError,
-    create_widget,
     delete_node,
 )
 from tests.helpers.agnostic_edges import (
-    EdgeState,
     assert_attribute_retired_at,
     assert_relationship_retired_at,
     attribute_global_edges,
     attribute_owning_edges,
+    create_widget,
     edge_summary,
     existence_edges,
     open_edge_types,
@@ -418,8 +417,8 @@ class TestAgnosticRetirementOnDelete:
         before = await attribute_global_edges(db=db, node_id=holder.id, attribute_name="serial")
         assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED", "HAS_SOURCE"}
         reserved_before = await pool_reservation_edges(db=db, pool_id=serial_pool.id, identifier=holder.id)
-        assert reserved_before == [
-            EdgeState(edge_type="IS_RESERVED", branch=GLOBAL_BRANCH_NAME, status="active", to_time=None)
+        assert [(edge.edge_type, edge.branch, edge.status, edge.to_time) for edge in reserved_before] == [
+            ("IS_RESERVED", GLOBAL_BRANCH_NAME, "active", None)
         ]
 
         deleted_at = Timestamp()

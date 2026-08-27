@@ -1,8 +1,9 @@
-"""Graph-shape readers and shared assertions for the branch-agnostic retirement tests.
+"""Object builders, graph-shape readers, and shared assertions for the branch-agnostic tests.
 
-These read edges directly rather than going through the node manager: the subject of the assertions
-is which edges carry a `to` timestamp and which do not, and a read through the manager would hide the
-very states the tests exist to pin down.
+The readers go to the edges directly rather than through the node manager: the subject of the
+assertions is which edges carry a `to` timestamp and which do not, and a read through the manager
+would hide the very states the tests exist to pin down. The builders that write raw Cypher do so
+because the shape they produce is one no current code path can reach.
 """
 
 from __future__ import annotations
@@ -11,11 +12,31 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.node import Node
+from tests.helpers.schema.agnostic_retirement import GADGET_KIND, WIDGET_KIND
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+
+
+async def create_widget(
+    db: InfrahubDatabase, branch: Branch, name: str, serial: int, at: Timestamp | None = None, **kwargs: Any
+) -> Node:
+    """A widget carrying a branch-agnostic `serial` and an optional branch-agnostic `gadget` peer."""
+    widget = await Node.init(db=db, schema=WIDGET_KIND, branch=branch)
+    await widget.new(db=db, name=name, serial=serial, **kwargs)
+    await widget.save(db=db, at=at)
+    return widget
+
+
+async def create_gadget(db: InfrahubDatabase, branch: Branch, name: str, at: Timestamp | None = None) -> Node:
+    """The peer on the far side of a widget's branch-agnostic relationship."""
+    gadget = await Node.init(db=db, schema=GADGET_KIND, branch=branch)
+    await gadget.new(db=db, name=name)
+    await gadget.save(db=db, at=at)
+    return gadget
 
 
 @dataclass(frozen=True)
@@ -25,6 +46,7 @@ class EdgeState:
     edge_type: str
     branch: str
     status: str
+    from_time: str
     to_time: str | None
 
     @property
@@ -62,6 +84,11 @@ def open_active_edges(edges: list[EdgeState]) -> list[EdgeState]:
 
 def open_edge_types(edges: list[EdgeState]) -> set[str]:
     return {edge.edge_type for edge in open_edges(edges)}
+
+
+def inverted_edges(edges: list[EdgeState]) -> list[EdgeState]:
+    """The edges that end before they start, which a close stamped earlier than `from` would produce."""
+    return [edge for edge in edges if edge.to_time is not None and edge.to_time < edge.from_time]
 
 
 def edge_summary(edges: list[EdgeState]) -> list[tuple[str, str, str]]:
@@ -107,7 +134,8 @@ async def attribute_global_edges(db: InfrahubDatabase, node_id: str, attribute_n
         WITH DISTINCT a
         MATCH (a)-[e]-()
         WHERE e.branch = $global_branch
-        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status, e.to AS to_time
+        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
+               e.from AS from_time, e.to AS to_time
         """,
         params={"node_id": node_id, "attribute_name": attribute_name, "global_branch": GLOBAL_BRANCH_NAME},
     )
@@ -127,7 +155,8 @@ async def relationship_global_edges(db: InfrahubDatabase, node_id: str, identifi
         WITH DISTINCT r
         MATCH (r)-[e]-()
         WHERE e.branch = $global_branch
-        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status, e.to AS to_time
+        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
+               e.from AS from_time, e.to AS to_time
         """,
         params={"node_id": node_id, "identifier": identifier, "global_branch": GLOBAL_BRANCH_NAME},
     )
@@ -168,7 +197,8 @@ async def global_edges_by_vertex_uuid(db: InfrahubDatabase, vertex_uuid: str) ->
         WHERE v:Attribute OR v:Relationship
         MATCH (v)-[e]-()
         WHERE e.branch = $global_branch
-        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status, e.to AS to_time
+        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
+               e.from AS from_time, e.to AS to_time
         """,
         params={"vertex_uuid": vertex_uuid, "global_branch": GLOBAL_BRANCH_NAME},
     )
@@ -182,7 +212,8 @@ async def attribute_owning_edges(db: InfrahubDatabase, node_id: str, attribute_n
         MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
         WITH DISTINCT a
         MATCH (:Node)-[e:HAS_ATTRIBUTE]->(a)
-        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status, e.to AS to_time
+        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
+               e.from AS from_time, e.to AS to_time
         """,
         params={"node_id": node_id, "attribute_name": attribute_name},
     )
@@ -194,7 +225,8 @@ async def existence_edges(db: InfrahubDatabase, node_id: str) -> list[EdgeState]
     results = await db.execute_query(
         query="""
         MATCH (n:Node {uuid: $node_id})-[e:IS_PART_OF]->(:Root)
-        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status, e.to AS to_time
+        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
+               e.from AS from_time, e.to AS to_time
         """,
         params={"node_id": node_id},
     )
@@ -338,7 +370,8 @@ async def pool_reservation_edges(db: InfrahubDatabase, pool_id: str, identifier:
     results = await db.execute_query(
         query="""
         MATCH (:Node {uuid: $pool_id})-[e:IS_RESERVED {identifier: $identifier}]->(:AttributeValue)
-        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status, e.to AS to_time
+        RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
+               e.from AS from_time, e.to AS to_time
         """,
         params={"pool_id": pool_id, "identifier": identifier},
     )

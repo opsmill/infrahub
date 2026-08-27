@@ -13,11 +13,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.query.branch_agnostic_retirement import RetireBranchAgnosticFieldsQuery
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode
-from tests.helpers.schema.agnostic_retirement import WIDGET_KIND
 
 if TYPE_CHECKING:
     from neo4j import Record
@@ -70,13 +68,6 @@ class FailingBranchRetirementDatabase(FailingRetirementDatabase):
     """Fails the branch-deletion retirement query instead of the node-deletion one."""
 
     failing_query_name = RetireBranchAgnosticFieldsQuery.name
-
-
-async def create_widget(db: InfrahubDatabase, branch: Branch, name: str, serial: int, **kwargs: Any) -> Node:
-    widget = await Node.init(db=db, schema=WIDGET_KIND, branch=branch)
-    await widget.new(db=db, name=name, serial=serial, **kwargs)
-    await widget.save(db=db)
-    return widget
 
 
 async def delete_node(db: InfrahubDatabase, node_id: str, branch: Branch, at: Timestamp) -> None:

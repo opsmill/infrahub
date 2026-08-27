@@ -28,11 +28,12 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
-from tests.component.core.agnostic_retirement.support import create_widget, delete_node
+from tests.component.core.agnostic_retirement.support import delete_node
 from tests.helpers.agnostic_edges import (
     assert_attribute_retired_at,
     assert_relationship_retired_at,
     attribute_global_edges,
+    create_widget,
     edge_summary,
     open_edge_types,
     relationship_global_edges,

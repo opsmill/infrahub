@@ -37,7 +37,6 @@ from tests.adapters.workflow import WorkflowRecorder
 from tests.component.core.agnostic_retirement.support import (
     FailingRetirementDatabase,
     RetirementFailureError,
-    create_widget,
     delete_node,
 )
 from tests.helpers.agnostic_edges import (
@@ -45,6 +44,7 @@ from tests.helpers.agnostic_edges import (
     assert_relationship_retired_at,
     attribute_global_edges,
     attribute_vertex_uuid,
+    create_widget,
     edge_summary,
     global_edges_by_vertex_uuid,
     open_edge_types,
