@@ -20,10 +20,9 @@ if TYPE_CHECKING:
 
 
 def _effective_field(*, resolved: ResolvedPreference[Any], inherited: ResolvedPreference[Any]) -> dict[str, Any]:
-    """Plain dicts, not ResolvedPreference: the frozen dataclass has no `inherited` attribute for graphene to find.
+    """Shape one field as the plain nested dicts graphene resolves.
 
-    Keyword-only on purpose: both arguments have the same type, so transposing them would type-check
-    while reporting a USER-sourced value as the inherited layer, which `inherited` promises never to do.
+    Keyword-only because both arguments share a type, so a transposition would type-check.
     """
     return {
         "value": resolved.value,
@@ -35,13 +34,9 @@ def _effective_field(*, resolved: ResolvedPreference[Any], inherited: ResolvedPr
 async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) -> dict:  # noqa: ARG001
     """Resolve the caller's effective preferences (user override → global default → DEFAULT).
 
-    Open to any authenticated caller. The global layer's values ARE reported here — labelled GLOBAL
-    when nothing shadows them, and as the `inherited` layer when a user override does. Since
-    `inherited` is returned for every field, this query now discloses the same two org values that
-    the gated `InfrahubGlobalPreferences` returns. That is deliberate:
-    MANAGE_GLOBAL_PREFERENCES_PERMISSION gates the *management* surface — the ability to read the org
-    row as an editable scope and write it — not the confidentiality of two display settings a caller
-    could already see by clearing their own override.
+    Open to any authenticated caller. Every field also carries the layer it shadows, so the
+    organisation's own values are readable here for each field, whether or not the caller overrides
+    it. Nothing about this response is gated on a permission.
     """
     graphql_context: GraphqlContext = info.context
     account_id = graphql_context.active_account_session.account_id

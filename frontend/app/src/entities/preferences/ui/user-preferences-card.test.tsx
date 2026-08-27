@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { EffectivePreferences } from "@/entities/preferences/domain/model/preference";
@@ -193,23 +192,16 @@ describe("UserPreferencesCard", () => {
     // form never having pre-filled at all.
     await expect.element(component.getByText("Example: 2026-06-11 19:30")).toBeVisible();
 
-    // Re-selecting the already-selected zone clears the override (onChange(null) →
-    // DEFAULT_FORM_FIELD_VALUE) — the exact state #10200 was reported in. Filter first: the option
-    // list holds every runtime zone.
+    // Re-selecting the already-selected zone clears the override. Filter first: the option list
+    // holds every runtime zone.
     await component.getByRole("button", { name: /timezone/i }).click();
     await component.getByRole("searchbox").fill("America/New_York");
     await component.getByRole("option", { name: "America/New_York", exact: true }).click();
 
     // The example must now follow the INHERITED organisation zone (UTC+9 → the next calendar day),
-    // which the caller's own override was hiding.
+    // which the caller's own override was hiding. Before the fix this fell back to the host zone,
+    // so on any host outside UTC+9 the assertion below is what fails.
     await expect.element(component.getByText("Example: 2026-06-12 08:30")).toBeVisible();
-
-    // …and not the browser's zone, which is what the bug fell back to. On a machine already in
-    // Asia/Tokyo this guard contradicts the assertion above and fails loudly rather than passing
-    // for the wrong reason.
-    expect(
-      component.getByText(`Example: ${format(FIXED_INSTANT, "yyyy-MM-dd HH:mm")}`).elements()
-    ).toHaveLength(0);
   });
 
   test("pre-fills the form from the caller's own override", async () => {

@@ -16,9 +16,8 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
-# `inherited` is selected on every effective read rather than by a second query constant: an additive
-# field is a GraphQL non-breakage guarantee no test constant could prove, and selecting it everywhere
-# pins `source != USER => inherited == {value, source}` on all of the paths below.
+# `inherited` is selected on every effective read, which pins `source != USER => inherited ==
+# {value, source}` on all of the paths below.
 EFFECTIVE_QUERY = """
 query {
   InfrahubEffectivePreferences {
@@ -136,9 +135,8 @@ async def test_effective_user_override_source_user(
     assert result.errors is None
     assert result.data is not None
     prefs = result.data["InfrahubEffectivePreferences"]
-    # User override wins for both attributes: source USER, value is the user's. The shadowed global
-    # layer stays readable as `inherited` — this is the case #10200 needed, so a client can preview
-    # what clearing the override would fall back to without re-reading the (gated) org row.
+    # The shadowed global layer stays readable as `inherited`, so a client can preview what clearing
+    # the override would fall back to without reading the gated org row.
     assert prefs["date_format"] == {
         "value": "EU_DATETIME",
         "source": "USER",
@@ -370,23 +368,10 @@ async def test_effective_inherited_readable_without_manage_global_permission(
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    """The asymmetry between the two queries is deliberate, not an oversight.
+    """A permissionless caller is refused the raw org read but still receives the inherited layer.
 
-    `session_first_account` holds no role, group or permission, so the gated raw org read is denied.
-    The effective read still reports the org's timezone as this caller's `inherited` layer.
-
-    Be precise about what that costs, because the tempting version of this rationale is false:
-    `inherited` is returned for EVERY field, and `InfrahubGlobalPreferences` returns only
-    `date_format` and `timezone`, so on the read path this ungated query is now a complete substitute
-    for the gated one. The gate is not protecting those two values — a caller could already read
-    either by clearing their own override. What it protects is the *management* surface: reading the
-    org row as an editable scope, and writing it via `InfrahubSetPreferences(scope: GLOBAL)`.
-
-    So: do not add a field to `RawPreferencesType` and assume a mirrored `inherited` field inherits a
-    confidentiality boundary from this gate. It does not. Judge each new field on its own.
-
-    `default_permission_backend` is mandatory. Without it the permission backend may be inactive, the
-    gate would never raise, and the first half of this test would prove nothing.
+    The asymmetry is deliberate: the permission gates the ability to manage organisation defaults,
+    not the readability of the values themselves.
     """
     await PreferenceRepository(db=db).save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
     await PreferenceRepository(db=db).save(Preference(owner_id=first_account.id, timezone="Europe/Paris"))

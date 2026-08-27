@@ -140,10 +140,8 @@ describe("inheritedValue", () => {
   });
 
   test("returns the GLOBAL layer a USER override shadows, which is what clearing it restores", () => {
-    // Previously asserted null, on the rationale that the inherited value was "unknowable here"
-    // because the API resolved it away once an override won. The API now reports it, so null is
-    // simply wrong: it is what made the date-format preview drop to the browser zone (#10200)
-    // instead of the organisation default while a personal timezone override was being cleared.
+    // A caller's own override must not hide the layer beneath it: that layer is what clearing the
+    // override restores, so the preview needs it while the field is empty.
     expect(
       inheritedValue({
         value: "Asia/Tokyo",
