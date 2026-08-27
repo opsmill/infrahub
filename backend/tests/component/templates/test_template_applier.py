@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind, RelationshipCardinality
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipKind
 from infrahub.core.initialization import initialize_registry
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
@@ -15,9 +15,9 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import AttributeSchema, RelationshipSchema, SchemaRoot
 from infrahub.pools.default_allocator import DefaultPoolAllocator
 from infrahub.pools.noop_allocator import NoOpPoolAllocator
-from infrahub.templates.node_applier import NodeTemplateApplier
+from infrahub.templates.node_applier import TEMPLATE_APPLICATION_RELATIONSHIP_KINDS, NodeTemplateApplier
 from tests.constants import TestKind
-from tests.helpers.schema import TAG, load_schema
+from tests.helpers.schema import DEVICE_SCHEMA, TAG, load_schema
 from tests.helpers.schema.device import DEVICE, INTERFACE, INTERFACE_HOLDER
 
 if TYPE_CHECKING:
@@ -739,3 +739,46 @@ class TestNodeTemplateApplierGroupForInstances:
         _validate_template_fields(
             fields=fields, user_fields=user_fields, excluded_fields=["member_of_groups", "subscriber_of_groups"]
         )
+
+
+# The relationship kinds that appear on a template and are deliberately not read when it is applied.
+# GROUP covers the template's own group memberships, which describe the template rather than its
+# instances — the memberships an instance inherits travel through the `*_for_instances` fields in
+# TEMPLATE_GROUP_FOR_INSTANCES_REL_MAP. TEMPLATE covers `related_nodes`, which lists every object
+# already created from the template, a list creating one more never consults. HIERARCHY covers a
+# template's own place in a hierarchy, which a node created from it does not inherit.
+TEMPLATE_RELATIONSHIP_KINDS_NOT_READ = frozenset(
+    {RelationshipKind.GROUP, RelationshipKind.HIERARCHY, RelationshipKind.TEMPLATE}
+)
+
+
+@pytest.fixture
+async def device_schema_with_components(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """The device schema in full, whose templates carry components nested two levels deep."""
+    await load_schema(db=db, schema=DEVICE_SCHEMA)
+
+
+async def test_relationship_kinds_on_templates_are_classified(
+    db: InfrahubDatabase, default_branch: Branch, device_schema_with_components: None
+) -> None:
+    """Every relationship kind reachable on a template is either read when applying one or listed as not read.
+
+    TEMPLATE_APPLICATION_RELATIONSHIP_KINDS is a hard list, so a kind that starts appearing on
+    templates would otherwise be silently left unread. This fails until it is classified.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    template_schemas = [
+        schema for schema in schema_branch.get_all(duplicate=False).values() if schema.is_template_schema
+    ]
+    assert template_schemas, "no template schema was generated, this test would assert nothing"
+
+    kinds_on_templates = {rel.kind for schema in template_schemas for rel in schema.relationships}
+    unclassified = kinds_on_templates - TEMPLATE_APPLICATION_RELATIONSHIP_KINDS - TEMPLATE_RELATIONSHIP_KINDS_NOT_READ
+
+    assert not unclassified, (
+        f"{sorted(unclassified)} appears on a template but is neither read when one is applied nor "
+        "listed as deliberately unread. Add it to TEMPLATE_APPLICATION_RELATIONSHIP_KINDS in "
+        "infrahub/templates/node_applier.py, or to TEMPLATE_RELATIONSHIP_KINDS_NOT_READ here."
+    )

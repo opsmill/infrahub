@@ -43,8 +43,15 @@ Application data nodes. Labels: `Node`, `CoreNode`, `{kind}`, plus inherited sch
 | Property | Type | Description |
 |----------|------|-------------|
 | `uuid` | string | UUID |
-| `kind` | string | Node type (also in labels) |
+| `kind` | string | Concrete node kind (also in labels) |
 | `branch_support` | string | `"aware"`, `"local"`, or `"agnostic"` |
+
+The `kind` property always holds the *concrete* kind; generic kinds exist only as labels. A Cypher
+filter on `n.kind` therefore never matches a generic — it silently returns zero rows. Match
+generics via labels, and remember a label-based sum double-counts nodes that inherit several of the
+requested generics. When a query input must be concrete-only, accept `list[NodeSchema]` and derive
+the kind strings internally, so passing a `GenericSchema` fails type-checking instead of returning
+a silent zero at runtime.
 
 ### Relationship
 
@@ -234,6 +241,9 @@ Implementation: `Branch.get_query_filter_path()` in `backend/infrahub/core/branc
 ```
 
 Outbound on `n1`, inbound on `n2`.
+
+A node is never its own relationship peer: instance-level self-loops (`n1` = `n2`) are unsupported.
+Same-kind relationships between two distinct nodes are the supported case (the unidirectional form).
 
 ### Node Existence
 

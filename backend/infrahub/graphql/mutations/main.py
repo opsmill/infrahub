@@ -30,7 +30,7 @@ from infrahub.lock import InfrahubMultiLock
 from infrahub.log import get_log_data, get_logger
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
-from ...core.node.lock_utils import get_lock_names_on_object_mutation
+from ...core.node.lock_utils import apply_payload_for_lock_names, get_lock_names_on_object_mutation
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:
@@ -290,7 +290,7 @@ class InfrahubMutationMixin:
             id=obj.get_id(),
             branch=branch,
         )
-        await preview_obj.from_graphql(db=db, data=data, process_pools=False)
+        await apply_payload_for_lock_names(db=db, node=preview_obj, data=data)
 
         schema_branch = db.schema.get_schema_branch(name=branch.name)
         lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
@@ -363,8 +363,9 @@ class InfrahubMutationMixin:
             if field_to_remove in fields:
                 fields.remove(field_to_remove)
 
-        after_mutate_profile_ids = await get_profile_ids(db=db, obj=obj)
-        if after_mutate_profile_ids or (not after_mutate_profile_ids and obj.uses_profiles()):
+        # A node already holding values from a profile needs the applier either way, so which
+        # profiles it is linked to does not have to be read.
+        if obj.uses_profiles() or await get_profile_ids(db=db, obj=obj):
             node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
             updated_field_names = await node_profiles_applier.apply_profiles(node=obj)
             fields += updated_field_names

@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
+pytestmark = pytest.mark.shard_b
+
 
 async def wait_for_all_tasks_to_be_completed(client: InfrahubClient) -> None:
     while (  # noqa: ASYNC110

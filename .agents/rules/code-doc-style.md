@@ -2,8 +2,8 @@
 paths:
   - "backend/**/*.py"
   - "python_testcontainers/**/*.py"
-  - "frontend/app/src/**/*.ts"
-  - "frontend/app/src/**/*.tsx"
+  - "frontend/**/*.ts"
+  - "frontend/**/*.tsx"
 ---
 
 # Code documentation style
@@ -39,6 +39,8 @@ Do not reference Jira tickets, GitHub issues, or spec-kit identifiers in docstri
 
 Why: these belong in the commit message and PR description. In source, they become noise once the ticket is closed and the codebase has moved on.
 
+Spec **vocabulary** goes the same way as spec IDs. A phrase coined in a spec ("the unsound package-directory floor") means nothing to a reader who never read that spec, and test names and docstrings are read by people who never will. Say what the code does in plain terms instead.
+
 Where IDs *do* belong:
 
 - Commit messages, PR titles/descriptions
@@ -51,3 +53,4 @@ Where IDs *do* belong:
 - Documents the contract of a public function (inputs, outputs, errors raised) when it crosses a module boundary.
 - Stays silent by default. If code needs a comment to explain *what* it does, rename or extract until it doesn't. A comment that restates the code is worse than none — noise that rots the moment the code changes.
 - When a why-comment is warranted, one sentence. If the why needs a paragraph, it belongs in the function's docstring or a `dev/knowledge/` page, not inline. Reviewers repeatedly ask for multi-line inline comments to be condensed.
+- Don't narrate the approach *not* taken. A paragraph on the alternative rejected, or the call deliberately avoided, belongs in the PR description; keep the line stating what the code does. Reviewers repeatedly ask for these paragraphs to be deleted. A negative statement that is part of the contract stays — "this never raises", "does not commit the transaction", "not thread-safe".

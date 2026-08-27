@@ -16,6 +16,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     ComputedAttributeKind,
     InfrahubKind,
+    MetadataOptions,
     RelationshipCardinality,
     RelationshipKind,
 )
@@ -40,7 +41,7 @@ from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExha
 from infrahub.pools.default_allocator import DefaultPoolAllocator
 from infrahub.pools.noop_allocator import NoOpPoolAllocator
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
-from infrahub.templates.node_applier import NodeTemplateApplier
+from infrahub.templates.node_applier import NodeTemplateApplier, get_relationship_names_to_read
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
@@ -136,6 +137,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._relationships: list[str] = []
         self._node_changelog: NodeChangelog | None = None
         self._creation_context: NodeCreationContext | None = None
+        self._object_template: CoreObjectTemplate | None = None
 
     def _set_created_at(self, value: Timestamp | None) -> None:
         self._metadata.created_at = value
@@ -194,6 +196,21 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if not isinstance(relationship, RelationshipManager):
             raise ValueError(f"{name} is not a relationship of {self.get_kind()}")
         return relationship
+
+    def mark_relationships_as_fetched(self, names: set[str] | None = None) -> None:
+        """Record that the peers of these relationships have already been read.
+
+        `names` restricts the marking to the relationships bearing one of these names; without it
+        every relationship of this node is marked.
+
+        A relationship marked this way is not read from the database on its first access. Only mark
+        them when the peers they hold are known to match the database, or when this node is a preview
+        that is never saved.
+        """
+        for rel_name in self._relationships:
+            if names is not None and rel_name not in names:
+                continue
+            self.get_relationship(rel_name).has_fetched_relationships = True
 
     def get_relationship_by_identifier(self, identifier: str) -> RelationshipManager:
         for rel_schema in self._schema.relationships:
@@ -486,10 +503,31 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 }
             )
 
+    async def _read_object_template(self, db: InfrahubDatabase, object_template_field: dict) -> CoreObjectTemplate:
+        """Read the template this node is created from, together with the relationships it is read for."""
+        branch = self.get_branch_based_on_support_type()
+        template: CoreObjectTemplate = await registry.manager.find_object(
+            db=db,
+            kind=self._schema.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME).peer,
+            id=object_template_field.get("id"),
+            hfid=object_template_field.get("hfid"),
+            branch=branch,
+        )
+        await registry.manager.prefetch_relationships(
+            db=db,
+            nodes=[template],
+            names=get_relationship_names_to_read(schema=template.get_schema()),
+            branch=branch,
+            include_metadata=MetadataOptions.SOURCE,
+        )
+        return template
+
     async def handle_object_template(
         self, fields: dict, db: InfrahubDatabase, errors: list, process_pools: bool = True
     ) -> set[str]:
         """Fill the `fields` parameters with values from an object template if one is in use.
+
+        The template is read from the database unless `_object_template` already holds the one to apply.
 
         Returns the set of field names that have pending pool allocations (deferred in preview mode).
         """
@@ -498,12 +536,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             return set()
 
         try:
-            template: CoreObjectTemplate = await registry.manager.find_object(
-                db=db,
-                kind=self._schema.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME).peer,
-                id=object_template_field.get("id"),
-                hfid=object_template_field.get("hfid"),
-                branch=self.get_branch_based_on_support_type(),
+            template: CoreObjectTemplate = self._object_template or await self._read_object_template(
+                db=db, object_template_field=object_template_field
             )
         except NodeNotFoundError:
             errors.append(
@@ -518,6 +552,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             )
             return set()
 
+        self._object_template = template
+        # Hand the template over as the node it is: it has just been read, and the relationship layer
+        # links a node it is given directly, where an id would send it back to the database. The rest
+        # of the payload is kept, as it carries the metadata of the relationship.
+        fields[OBJECT_TEMPLATE_RELATIONSHIP_NAME] = {**object_template_field, "id": template}
         pool_allocator = DefaultPoolAllocator(db=db, branch=self._branch) if process_pools else NoOpPoolAllocator()
         applier = NodeTemplateApplier(db=db, branch=self._branch, pool_allocator=pool_allocator)
         applied_fields = await applier.apply(
@@ -1134,14 +1173,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 updated_relationship = await rel.save(db=db, user_id=user_id, at=update_at)
                 node_changelog.add_relationship(relationship_changelog=updated_relationship)
 
-        if len(processed_relationships) != len(self._relationships):
-            # Analyze if the node has a parent and add it to the changelog if missing
-            if parent_relationship := self._get_parent_relationship_name():
-                if parent_relationship not in processed_relationships:
-                    rel = self.get_relationship(name=parent_relationship)
-                    if parent := await rel.get_parent(db=db):
-                        node_changelog.add_parent_from_relationship(parent=parent)
-
         # Recompute Jinja2 computed attributes affected by the updated fields
         await self._recompute_local_jinja2(
             db=db, fields=fields, node_changelog=node_changelog, update_at=update_at, user_id=user_id
@@ -1161,12 +1192,27 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         node_changelog.display_label = await self.get_display_label(db=db)
 
         if node_changelog.has_changes:
+            await self._add_parent_to_changelog(
+                db=db, node_changelog=node_changelog, processed_relationships=processed_relationships
+            )
             self._set_updated_at(update_at)
             self._set_updated_by(user_id)
             update_branch = self.get_branch_based_on_support_type()
             if update_branch.is_default or update_branch.is_global:
                 await self._save_metadata(db=db, branch=update_branch)
         return node_changelog
+
+    async def _add_parent_to_changelog(
+        self, db: InfrahubDatabase, node_changelog: NodeChangelog, processed_relationships: list[str]
+    ) -> None:
+        """Report the node's parent when the update did not go through the parent relationship itself."""
+        parent_relationship = self._get_parent_relationship_name()
+        if not parent_relationship or parent_relationship in processed_relationships:
+            return
+
+        relationship_manager = self.get_relationship(name=parent_relationship)
+        if parent := await relationship_manager.get_parent(db=db):
+            node_changelog.add_parent_from_relationship(parent=parent)
 
     async def save(
         self,
@@ -1400,10 +1446,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 return relationship.name
 
         return None
-
-    async def get_object_template(self, db: InfrahubDatabase) -> CoreObjectTemplate | None:
-        object_template: RelationshipManager | None = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
-        return await object_template.get_peer(db=db) if object_template is not None else None
 
     def get_relationships(
         self, kind: RelationshipKind, exclude: Sequence[str] | None = None

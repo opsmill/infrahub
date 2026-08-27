@@ -311,7 +311,7 @@ exports[`fix ts error`] = {
       [56, 30, 8, "tsc: Argument of type \'null | { id: string; } | { id: string; }[]\' is not assignable to parameter of type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n  Type \'{ id: string; }\' is not assignable to type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n    Property \'__typename\' is missing in type \'{ id: string; }\' but required in type \'NodeCore\'.", "288015442"],
       [89, 30, 8, "tsc: Argument of type \'null | { id: string; } | { id: string; }[]\' is not assignable to parameter of type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n  Type \'{ id: string; }\' is not assignable to type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n    Property \'__typename\' is missing in type \'{ id: string; }\' but required in type \'NodeCore\'.", "288015442"]
     ],
-    "src/shared/components/inputs/dropdown.tsx:3857595507": [
+    "src/shared/components/inputs/dropdown.tsx:728325872": [
       [202, 24, 14, "tsc: \'formData.value\' is possibly \'undefined\'.", "945600486"]
     ],
     "src/shared/components/inputs/enum.tsx:2232478749": [

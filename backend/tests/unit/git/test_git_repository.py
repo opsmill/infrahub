@@ -206,6 +206,46 @@ async def test_init_repoints_origin_after_location_change(
     assert relocated.get_branches_from_remote()["main"].commit == commit_b
 
 
+async def test_pull_infrahub_default_branch_pulls_repository_default_branch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pulling the Infrahub default branch must pull the repository's own default branch.
+
+    When the two differ, the remote has no branch named after the Infrahub default branch,
+    so pulling the unmapped name fails and flips the repository into an error state.
+    """
+    repos_dir = tmp_path / "repositories"
+    repos_dir.mkdir()
+    monkeypatch.setattr(registry, "_default_branch", "main")
+    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
+
+    source_dir = tmp_path / "source-repo"
+    source_dir.mkdir()
+    source = Repo.init(source_dir, initial_branch="production")
+    with source.config_writer() as cfg:
+        cfg.set_value("user", "name", "Test")
+        cfg.set_value("user", "email", "test@test.local")
+    (source_dir / "data.txt").write_text("v1\n", encoding="utf-8")
+    source.index.add(["data.txt"])
+    source.index.commit("commit 1")
+
+    repository = await InfrahubRepository.new(
+        id=UUIDT.new(),
+        name="production-default-repo",
+        location=str(source_dir),
+        default_branch_name="production",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+
+    (source_dir / "data.txt").write_text("v2\n", encoding="utf-8")
+    source.index.add(["data.txt"])
+    new_commit = source.index.commit("commit 2").hexsha
+
+    commit_after = await repository.pull(branch_name="main", update_commit_value=False)
+    assert commit_after == new_commit
+
+
 def test_check_connectivity_ignores_cwd_git_pointer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Git operations must not be affected by a broken .git worktree pointer in the process current working directory."""
     source_dir = tmp_path / "source-repo"

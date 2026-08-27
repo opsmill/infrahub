@@ -13,8 +13,8 @@ Object Templates are user-defined "shape" objects: a template node holds default
 | `backend/infrahub/core/schema/definitions/core/template.py` | `core_object_template` and `core_object_component_template` generics — the core base kinds every template inherits from. |
 | `backend/infrahub/core/schema/schema_branch.py` | Generation of per-kind template schemas from `generate_template`-enabled nodes (`manage_object_template_schemas`, `add_relationships_to_template`, etc.). |
 | `backend/infrahub/core/relationship/constraints/template_resource_pool_exclusive.py` | Constraint preventing both a fixed value and a pool reference being set on the same template field. |
-| `backend/infrahub/core/node/create.py` | `handle_template_relationships()` recursively materializes component-template peers as real instances. |
-| `backend/infrahub/core/node/__init__.py` | `Node._apply_template()` (around line 480) is the call site that invokes `NodeTemplateApplier` during `Node.new()`. |
+| `backend/infrahub/core/node/create.py` | `handle_template_relationships()` reads the template's component peers a level at a time, then materializes them as real instances depth first. |
+| `backend/infrahub/core/node/__init__.py` | `Node.handle_object_template()` is the call site that constructs and invokes `NodeTemplateApplier` during node field processing. |
 
 ## Core Kinds
 
@@ -33,12 +33,12 @@ Template schemas are generated during schema processing in `process_pre_validati
 
 2. **`generate_object_template_from_node()`** — builds the bare `TemplateSchema`: copies attributes that have `support_templates`, sets the `template_name__value` HFID, wires `inherit_from` to `CoreObjectTemplate` (or the auto-generated parent template if the source node inherits from one).
 
-3. **`add_relationships_to_template()` (~line 2669)** — walks the source node's relationships and copies the propagatable ones onto the template, with adjustments:
+3. **`add_relationships_to_template()`** — walks the source node's relationships and copies the propagatable ones onto the template, with adjustments:
    - Filters out `GENERICGROUP` and `PROFILE` peers, and any kind not in `[COMPONENT, PARENT, ATTRIBUTE, GENERIC]`.
    - For `COMPONENT` and `PARENT` peers, retargets the peer to the corresponding `Template*` kind so the template can hold a reference to a *subtemplate* instead of a real object.
    - Calls `_create_resource_pool_relationship()` for IP-typed peers and `_create_attribute_resource_pool_relationship()` for `Number` attributes — see [Resource Pool Integration](#resource-pool-integration).
 
-4. **`manage_object_template_relationships()` (~line 2535)** — adds an `object_template` relationship (kind `TEMPLATE`, identifier `node__objecttemplate`) on every template-eligible node so an instance can record which template it was created from.
+4. **`manage_object_template_relationships()`** — adds an `object_template` relationship (kind `TEMPLATE`, identifier `node__objecttemplate`) on every template-eligible node so an instance can record which template it was created from.
 
 These methods run before `process_post_validation`, which is also when `add_groups()` adds `member_of_groups` / `subscriber_of_groups` to *all* schemas (templates included — peers there make the template node itself a group member). On templates, `add_groups()` additionally emits `member_of_groups_for_instances` and `subscriber_of_groups_for_instances` (kind `GENERIC`, distinct identifiers `template_group_member_for_instances` and `template_group_subscriber_for_instances`). Peers on those fields drive per-instance group membership at template application time without affecting the template itself — see [Group Propagation](#group-propagation).
 
@@ -62,7 +62,50 @@ When a user creates an object with `object_template={id: ...}`, `Node.handle_obj
 4. Merges only previously-absent keys back into `fields`, preserving user input.
 5. Returns the set of `pool_pending_fields` — fields whose pool allocation was deferred (e.g., because the chosen allocator is the no-op variant).
 
-After save, `handle_template_relationships()` (`core/node/create.py`) walks the new node's `COMPONENT` relationships and recursively materializes any subtemplate peers as their own real objects, recursing into their components.
+After save, `handle_template_relationships()` (`core/node/create.py`) walks the new node's `COMPONENT` relationships and materializes any subtemplate peers as their own real objects, then walks their components in turn. It reads the subtemplates a level at a time and creates the objects depth first — see [What applying a template reads](#what-applying-a-template-reads) for why those are two different walks.
+
+### What applying a template reads
+
+Creating an object from a template reads the template once, with the relationships applying it
+consults (`get_relationship_names_to_read()` in `templates/node_applier.py`: the kinds ATTRIBUTE,
+COMPONENT, GENERIC, PARENT and PROFILE). The template's own group memberships describe the template,
+and its TEMPLATE-kind `related_nodes` names every object already created from it, so neither is read.
+
+`create_node()` applies the template twice — once on the preview node it builds to work out the lock
+names, once on the node it creates under the lock — from that single read: `Node._object_template`
+carries it, and `_do_create_node()` uses it instead of asking the saved node which template it came
+from.
+
+The peers of the template's component relationships come back with that read, so the subtemplates
+of the first level are already in memory; each component is then created from the ids and kinds
+those relationships carry.
+
+`handle_template_relationships()` reads the subtemplates a level at a time rather than a parent at
+a time. The subtemplates a level names are all known before any of them is read, so the whole level
+is read at once — one relationship read covering every subtemplate of the level, which brings back
+the peers naming the level below. A level therefore costs the same read whether it hangs from one
+parent or from a hundred.
+
+The objects are created in a separate, depth-first walk over what that read produced
+(`read_template_components()` then `create_components()`). The two walks are deliberately different:
+a component and the components it holds are created one after the other, because a resource pool
+that serves more than one level hands its resources out in the order the components are created.
+Creating a whole level at a time would move the resource each component is given.
+`test_template_pool_allocation.py` pins that order.
+
+A level read costs 3 queries: one relationship read, plus one read of the peers it names (a node
+read and an attribute read). Those peers are the level below *and* the parents the level points back
+at, which the walk already holds and reads again — the batched read has no way to be told a node is
+in hand. A create pays one of those reads for the template and one for each level of subtemplates
+under it. The rest of its cost is the 2 queries reading the template node itself, the node's own
+uniqueness check and write, and 2 queries per component — its uniqueness check and its write — plus
+a count constraint for any mandatory parent that component declares. None of it grows with the
+number of objects created from the template before.
+
+On the test schema's device -> interface -> SFP, a device created from a template carrying ten
+interfaces costs 30 queries, and one carrying five interfaces each holding an SFP costs 38.
+Widening a level costs only what its components cost; deepening the tree adds one level read.
+`test_template_reads.py` measures both depths and guards the per-level read.
 
 ### Group Propagation
 
@@ -112,6 +155,7 @@ Templates can reference resource pools instead of fixed values. The integration 
 | Path | Coverage |
 |------|----------|
 | `backend/tests/component/templates/test_template_applier.py` | End-to-end behaviour of `NodeTemplateApplier` (attributes, relationships, resource pools, `*_for_instances` group propagation). |
+| `backend/tests/component/core/node/test_template_pool_allocation.py` | Resource pools on templates, including the order a pool shared by two component levels is drawn from. |
 | `backend/tests/component/core/schema_manager/test_template_resource_pool_relationships.py` | Schema-level emission of `_from_resource_pool` rels for IP and Number cases. |
 | `backend/tests/component/core/schema_manager/test_template_group_relationships.py` | Schema-level emission of `member_of_groups_for_instances` / `subscriber_of_groups_for_instances` on templates. |
 | `backend/tests/integration/templates/` | Lifecycle tests (template attribute updates, resource pool wiring). |
