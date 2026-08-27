@@ -54,7 +54,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
 
-validated_database = {}
+validated_database: dict[str, bool] = {}
 R = TypeVar("R")
 
 log = get_logger()
