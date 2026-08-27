@@ -136,7 +136,7 @@ class TestPostMergeBranchMergedEvent:
             branch=source_branch,
             proposed_change_id=None,
             node_events=[],
-            context=_context(default_branch),
+            context=_context(source_branch),
             schema_diff=None,
         )
 
