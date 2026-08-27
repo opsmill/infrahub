@@ -82,6 +82,25 @@ mutate_upsert()
             -> handle file idempotency (checksum comparison)
 ```
 
+## Transaction Retry
+
+`retry_db_transaction` (in `backend/infrahub/database/__init__.py`) replays the *entire* wrapped
+function when Neo4j raises a `TransientError` — or a `ClientError` coded
+`Neo.ClientError.Statement.EntityNotFound`. Its placement is therefore semantics-bearing, not
+decoration:
+
+- Wrap only a scope whose writes are fully contained in a transaction the retry can roll back. The
+  create path is the trap: `create_node()` commits its own transaction and then does post-commit
+  work (profiles, response reads), so a decorator on the whole mutation replays a commit that
+  already succeeded and creates a duplicate node. The update path keeps its response build inside
+  `db.start_transaction()`, which is what makes it replay-safe.
+- Skip the retry when `db.is_transaction` — a caller-supplied transaction is already failed after a
+  `TransientError`, and replaying inside it raises instead of recovering; the caller owns the retry.
+- Check whether an already-retried caller reaches the code: nested retries multiply attempts.
+  Upsert is the case to watch, and today it is safe — it reaches only the undecorated
+  `mutate_create` and `_call_mutate_update`, never the decorated `mutate_update`, so it is the
+  single retry point. Routing it through a decorated method would start multiplying attempts.
+
 ## Relationship Resolution During Mutations
 
 ### RelationshipManager.update()

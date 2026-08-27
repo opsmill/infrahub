@@ -234,51 +234,15 @@ def test_my_function(test_case: MyFunctionTestCase) -> None:
 
 ### Complex Test Cases
 
-For tests with complex inputs or expected outputs, the dataclass can contain nested objects:
-
-```python
-from dataclasses import dataclass
-
-from infrahub.core.schema import NodeSchema, SchemaRoot
-
-
-@dataclass
-class SchemaValidationTestCase:
-    name: str
-    """Descriptive name for the test scenario."""
-
-    schema: SchemaRoot
-    """The schema to validate."""
-
-    expected_errors: list[str]
-    """List of expected validation error messages."""
-
-
-SCHEMA_VALIDATION_TEST_CASES: list[SchemaValidationTestCase] = [
-    SchemaValidationTestCase(
-        name="missing_required_field",
-        schema=SchemaRoot(
-            nodes=[
-                NodeSchema(
-                    namespace="Test",
-                    name="Device",
-                    attributes=[],
-                )
-            ]
-        ),
-        expected_errors=["Node TestDevice requires at least one attribute"],
-    ),
-]
-```
+Case fields can hold nested objects (a `SchemaRoot`, a list of expected error messages) — the
+structure above scales unchanged; keep constructing them with keyword arguments.
 
 ### When to Use This Pattern
 
-Use the dataclass test case pattern when:
+Reach for the dataclass test case pattern when several scenarios share one structure and only the data
+varies — it keeps the pytest ids readable as the list grows.
 
-- Testing a function with multiple input/output scenarios
-- Test cases share a common structure
-- You want readable test IDs in pytest output
-- The test logic is the same but data varies
+Whichever you pick, the case data lives in the `parametrize` decorator. Don't parametrize over the keys of a module-level dict and look the values up inside the test — the reader has to hold two places in their head to see what a case actually asserts, and the pytest id no longer tells them.
 
 For simpler cases with only 2-3 scenarios, standard `@pytest.mark.parametrize` with tuples may be sufficient:
 
@@ -318,6 +282,53 @@ If you find yourself wanting to mock:
 1. **Refactor for testability** - Extract the dependency behind an interface
 2. **Move up the test pyramid** - A component test requiring extensive mocking to simulate an end-to-end flow is often better written as an integration or functional test
 3. **Question the test scope** - If testing requires mocking half the system, the unit under test may be too large
+
+### Don't shape production code to serve its own test
+
+Production code must not change shape just so a test can observe it — no return value added to a
+mutating method, no marker attribute stamped on a wrapper, no `type: ignore` absorbed to make a
+hook attachable. If you need to verify a side effect happened, assert against the actual state it
+changed — e.g. read the fake cache/store the method wrote to — rather than trusting a return value
+added for that purpose.
+
+To verify *wiring* — a convention held across a module, the right decorator applied — parse the
+source instead of instrumenting it. `ast.parse` over `inspect.getsource`/`inspect.getsourcelines`
+reads the shape off the tree with zero production hooks:
+`backend/tests/unit/workflows/test_flow_session_convention.py` walks each registered flow's own
+source for `service.database` session-opening calls, and the same technique reads decorator names
+and arguments off a module tree. Behavioral coverage (does the decorator retry?) belongs on the
+decorator's own tests; the wiring test only proves it is attached.
+
+```python
+# ❌ Bad - return value exists only so the test can assert on it
+class StaleEntryCleaner:
+    def __init__(self, cache: InfrahubCache) -> None:
+        self._cache = cache
+
+    async def clear_expired(self) -> list[str]:
+        deleted = await self._cache.list_keys(filter_pattern="stale:*")
+        for key in deleted:
+            await self._cache.delete(key)
+        return deleted          # nothing in production reads this
+
+# ✅ Good - no return; the test asserts against the fake store it wrote to
+class StaleEntryCleaner:
+    def __init__(self, cache: InfrahubCache) -> None:
+        self._cache = cache
+
+    async def clear_expired(self) -> None:
+        for key in await self._cache.list_keys(filter_pattern="stale:*"):
+            await self._cache.delete(key)
+
+async def test_clears_expired_entries() -> None:
+    cache = MemoryCache()
+    await cache.set(key="stale:1", value="value")
+    cleaner = StaleEntryCleaner(cache=cache)
+
+    await cleaner.clear_expired()
+
+    assert cache.storage == {}   # seeded above, so an empty store is a real transition
+```
 
 ### Acceptable exceptions
 
@@ -360,6 +371,14 @@ not an ambient fact; treat it like any other injected collaborator (see
 
 Use monotonic time for durations. Wall-clock time (`datetime.now`) is for timestamps that get
 stored or displayed, and it can jump backwards.
+
+### Waiting on async effects: poll, don't sleep
+
+In integration-tier tests the clock cannot be injected — a consumer or worker really does need
+wall-clock time to act. Never guess that duration with a fixed `asyncio.sleep(n)` before
+asserting: on a loaded CI runner the test flakes, and on a fast machine it wastes the time. Poll
+the expected state in a small loop with a deadline, so the test waits exactly as long as the
+outcome takes and fails with a timeout when it never arrives.
 
 ## Exception Testing
 
@@ -409,7 +428,9 @@ The exact-match principle above is not limited to error messages — it applies 
 - **Don't stop at non-emptiness when a specific result is expected.** `assert result` (or `assert len(result) > 0`) is fine for an existence-only contract, but it does not verify *which* result came back — assert the specific expected value when that is part of the behavior under test. And avoid checks that don't even establish non-emptiness: `assert result != frozenset()` is `True` for an empty `list`/`dict`, so it passes when nothing was returned.
 - **Assert a positive count where the number matters.** A test that only checks "no failures" can pass while measuring zero of the thing it claims to test — e.g. if a workflow/name string changes so nothing is counted. Assert that the expected count is `> 0` (or the exact number) so a silently-zero run fails.
 - **Make the scenario actually hold.** A "missing row" test must not create the row; a "no second object" test must prove the count is one. Verify the setup produces the state under test.
+- **Make removal assertions branch-attributable.** A "data is gone" check must read on the branch that held the data, and assert the data resolved *before* the operation as well as after — a read on the wrong branch raises the same not-found either way, so the assertion passes whether or not the code ran.
 - **Denial tests must verify nothing changed.** When asserting an operation is rejected, also reload the target and assert its state is unchanged (or that no row was created/deleted). Asserting only that an error was returned does not prove the write was actually blocked.
+- **When a result is reachable via more than one code path, assert an intermediate signal too.** If "the lookup was never attempted" and "the lookup ran and found nothing" converge on the same final value (e.g. both produce an empty filter), asserting only that final value can't tell a working implementation from a regressed one that silently skipped the lookup. Also assert what was queried or which branch ran — a signal only the intended path produces.
 - **Assert persistence from storage, not from the layer the code wrote.** When the contract is that state reaches (or is restored in) the database, reload it from the DB (e.g. `Branch.get_by_name` and check `active_schema_hash`) instead of reading back the in-memory registry/cache the code under test updated — that assertion is self-confirming and cannot detect a failure to persist.
 - **Pin literal expected values — don't derive them with the code's own dependencies.** Computing the expectation with the same serializer/formatter the implementation calls (`ujson.dumps`, `yaml.dump`, the function under test itself) makes the assertion a tautology: it passes even when the library's output changes. Write the raw expected string into the test.
 - **A "does not raise" test still needs an assertion.** When the contract is that an exception is swallowed, also assert a side effect that only the guarded path produces (state set before the raiser was called). With no assertion, a regression that returns early before the guard passes identically.

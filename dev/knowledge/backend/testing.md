@@ -111,6 +111,12 @@ async def test_query_performance(aio_benchmark, db):
     await aio_benchmark(expensive_query, db=db)
 ```
 
+**The benchmark's input must actually exercise what it claims to measure.** When a performance
+change is conditional on a specific input shape (a particular field selection, a branch of an
+`if`, a fast path), add or update a benchmark whose input takes that path. A benchmark that takes a
+different path measures the neighbour instead and honestly reports "no change" — so on a perf PR,
+check that the input drives the changed code before reading anything into the result, either way.
+
 ### Query Benchmark Tests (`backend/tests/query_benchmark/`)
 
 Dedicated database query performance testing. Measures query execution time and efficiency using database snapshots for comparison.
