@@ -91,7 +91,7 @@ An artifact is the cached output of a Transformation, so Infrahub regenerates it
 - **A proposed change pipeline runs.** Artifacts are regenerated on the source branch, for the definitions and targets the change affects.
 - **A branch is merged.** Infrahub regenerates the artifacts the merge affected, on the target branch. Set [`INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE`](../reference/configuration) to `false` to regenerate every definition after every merge instead.
 - **An artifact definition is created or updated.** Every current member of the target group is regenerated, on the branch where the definition changed. Importing a repository commit that changes the definition has the same effect.
-- **You request a pass.** Use the **Regenerate** button in the UI, `POST /api/artifact/generate/{artifact_definition_id}`, the Python SDK, or the `artifact_generate` Ansible module. A request limited to specific members processes only those members.
+- **You request a pass.** In the UI, **Generate** on an artifact definition runs a pass over every member, and **Re-generate** on a single artifact runs a pass limited to that artifact. The same is available through `POST /api/artifact/generate/{artifact_definition_id}`, with an optional `nodes` list to limit the pass, and through the Python SDK or the `artifact_generate` Ansible module.
 
 Inside a pass, four kinds of change decide what is regenerated or cleaned up:
 
