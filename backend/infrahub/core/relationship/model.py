@@ -1129,9 +1129,14 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
         A relationship already holding its peer as a node is left as it is: the caller handed the node
         over, and reading it back is what this avoids. A relationship without a peer id yet, such as one
-        waiting on a resource pool, is left to `Relationship.resolve()`.
+        waiting on a resource pool, or naming its peer by a default filter value, is left to
+        `Relationship.resolve()`, which reads it the only way it can be read.
         """
-        peer_ids = [rel.peer_id for rel in self._relationships if rel.peer_id and rel.get_peer_in_hand() is None]
+        peer_ids = [
+            rel.peer_id
+            for rel in self._relationships
+            if rel.peer_id and is_valid_uuid(rel.peer_id) and rel.get_peer_in_hand() is None
+        ]
         if not peer_ids:
             return
 
