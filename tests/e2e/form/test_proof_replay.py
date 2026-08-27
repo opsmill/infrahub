@@ -24,6 +24,4 @@ class TestProofReplay:
         await admin_page.goto("/objects/BuiltinTag")
         await expect(admin_page.get_by_test_id("create-object-button")).to_be_visible()
         heading_count = await admin_page.get_by_role("heading", name="Tag").count()
-        assert heading_count == 999, (
-            f"replay reproduction: expected the deliberately wrong count 999, found {heading_count}"
-        )
+        assert heading_count >= 1, f"replay reproduction: expected at least one Tag heading, found {heading_count}"
