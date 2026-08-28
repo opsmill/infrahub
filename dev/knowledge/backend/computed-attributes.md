@@ -39,7 +39,7 @@ These changes are handled by Prefect background tasks triggered by `NodeCreatedE
 
 **When**: A branch merge or rebase changes nodes that feed computed attributes.
 
-A merge or rebase does not emit one event and one flow per changed node. It runs a single coalesced recompute for the whole change set, writes the results in bulk, and chains any value that reads them. The three families (computed attributes, display labels, human-friendly ids) share this path, and the per-node triggers are suppressed for merge/rebase/recompute-origin events so the change is processed once. Python transform computed attributes join the pass when `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE` is on, which is the default, while their per-node automations keep firing as well. See [merge-recompute.md](merge-recompute.md).
+A merge or rebase runs a single coalesced recompute for the whole change set, writes the results in bulk, and chains any value that reads them. For computed attributes, display labels and human-friendly ids it replaces the per-node path entirely: their triggers are suppressed for merge/rebase/recompute-origin events, so the change is processed once. Python transform computed attributes join the pass when `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE` is on, which is the default, but their per-node automations keep firing, so that family is processed twice until those automations are gated. See [merge-recompute.md](merge-recompute.md).
 
 ## Self-Targeting Filter (`targets_self`)
 

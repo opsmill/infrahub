@@ -349,6 +349,25 @@ async def test_a_pair_the_schema_pass_refreshes_is_dropped() -> None:
     assert _identities(with_schema_change) == [(DEVICE, "label")]
 
 
+async def test_an_undeterminable_pair_is_never_covered_by_the_schema_pass() -> None:
+    """The schema pass builds its candidates from the transforms it could gather.
+
+    A pair nothing could analyze is exactly the pair it never submits, so treating it as covered
+    here would leave it stale on a schema-changing merge.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[UNKNOWN], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(
+        branch=BRANCH,
+        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"name"}))],
+        schema_changed_elements=ChangedElementSet(changed_fields={DEVICE: frozenset({"name"})}),
+    )
+
+    assert _identities(targets) == [(OWNER, "digest")]
+    assert targets[0].whole_kind is True
+
+
 async def test_a_schema_change_none_of_the_attributes_read_drops_nothing() -> None:
     """The schema pass selects nothing here, so dropping anything would leave a value stale."""
     subscribers = RecordingSubscriberSource(subscribers={"d1": [("d1", DEVICE)]})

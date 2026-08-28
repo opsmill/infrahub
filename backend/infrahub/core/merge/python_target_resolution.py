@@ -254,12 +254,17 @@ def _covered_by_schema_pass(
     The same scoping decision runs on both sides, so what one selects is exactly what the other can
     drop. A pair it does not select is left alone here: the diff-driven narrowing is the only thing
     that reaches it.
+
+    An attribute whose read set could not be determined is never covered. The schema pass builds its
+    candidates from the transforms it could gather, so a pair nothing could analyze is exactly the
+    pair it never submits, and dropping it here would leave it stale.
     """
+    determinable = [attribute for attribute in read_sets if not attribute.read_set.depends_on_everything]
     scoper = RecomputeScoper(
         derivers={
             ComputedAttributeKind.TRANSFORM_PYTHON: PythonTransformDependencyDeriver(
                 read_sets={
-                    (branch, attribute.kind, attribute.attribute_name): attribute.read_set for attribute in read_sets
+                    (branch, attribute.kind, attribute.attribute_name): attribute.read_set for attribute in determinable
                 }
             )
         }
@@ -272,7 +277,7 @@ def _covered_by_schema_pass(
                 attribute_name=attribute.attribute_name,
                 computed_kind=ComputedAttributeKind.TRANSFORM_PYTHON,
             )
-            for attribute in read_sets
+            for attribute in determinable
         ],
         changed_elements=changed_elements,
     )
