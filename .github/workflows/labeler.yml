@@ -1,16 +1,11 @@
 ---
 # yamllint disable rule:truthy
-# Rule-based labelling: pull requests get group/* labels from the paths of
-# their changed files (.github/labeler.yml). Issues carry nothing an
-# actions/labeler glob can match, so their labelling is handled by the
-# issue-triage-labeler and issue-triage-sweep agentic workflows instead.
-name: "Labeler"
-
+name: "Pull Request Labeler"
 on:
-  pull_request:
+  - pull_request
 
 jobs:
-  pull-request:
+  triage:
     if: github.event.pull_request.head.repo.fork == false
     permissions:
       contents: read
