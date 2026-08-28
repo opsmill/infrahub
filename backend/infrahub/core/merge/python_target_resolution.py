@@ -48,11 +48,16 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class PythonAttributeReadSet:
-    """One Python transform computed attribute and the schema elements its query reads."""
+    """One Python transform computed attribute and the schema elements its query reads.
+
+    ``analyzed`` is ``False`` when the transform behind the attribute could not be reached at all,
+    which is what tells the coverage decision that no other pass knows about this pair either.
+    """
 
     kind: str
     attribute_name: str
     read_set: TransformReadSet
+    analyzed: bool = True
 
 
 class PythonReadSetSource(Protocol):
@@ -252,15 +257,15 @@ def _covered_by_schema_pass(
     """The (kind, attribute) pairs the schema-scoped backfill refreshes for this schema change.
 
     The same scoping decision runs on both sides, so what one selects is exactly what the other can
-    drop. An undeterminable read set is the exception: the schema pass builds its candidates from the
-    transforms it could gather, so a pair nothing could analyze is one it never submits either.
+    drop. An unreachable transform is the exception: the schema pass builds its candidates from the
+    transforms it could gather, so a pair it never saw is a pair it never submits.
     """
-    determinable = [attribute for attribute in read_sets if not attribute.read_set.depends_on_everything]
+    candidates = [attribute for attribute in read_sets if attribute.analyzed]
     scoper = RecomputeScoper(
         derivers={
             ComputedAttributeKind.TRANSFORM_PYTHON: PythonTransformDependencyDeriver(
                 read_sets={
-                    (branch, attribute.kind, attribute.attribute_name): attribute.read_set for attribute in determinable
+                    (branch, attribute.kind, attribute.attribute_name): attribute.read_set for attribute in candidates
                 }
             )
         }
@@ -273,7 +278,7 @@ def _covered_by_schema_pass(
                 attribute_name=attribute.attribute_name,
                 computed_kind=ComputedAttributeKind.TRANSFORM_PYTHON,
             )
-            for attribute in determinable
+            for attribute in candidates
         ],
         changed_elements=changed_elements,
     )

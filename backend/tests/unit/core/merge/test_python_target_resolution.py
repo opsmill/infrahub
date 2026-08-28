@@ -63,6 +63,10 @@ TAG = PythonAttributeReadSet(
 )
 # The transform query could not be analyzed at all.
 UNKNOWN = PythonAttributeReadSet(kind=OWNER, attribute_name="digest", read_set=TransformReadSet.imprecise())
+# The transform itself could not be reached, so no other pass knows about this attribute either.
+UNREACHABLE = PythonAttributeReadSet(
+    kind=OWNER, attribute_name="hash", read_set=TransformReadSet.imprecise(), analyzed=False
+)
 
 
 def _resolver(
@@ -349,14 +353,14 @@ async def test_a_pair_the_schema_pass_refreshes_is_dropped() -> None:
     assert _identities(with_schema_change) == [(DEVICE, "label")]
 
 
-async def test_an_undeterminable_pair_is_never_covered_by_the_schema_pass() -> None:
+async def test_only_a_pair_the_schema_pass_can_see_is_covered() -> None:
     """The schema pass builds its candidates from the transforms it could gather.
 
-    A pair nothing could analyze is exactly the pair it never submits, so treating it as covered
-    here would leave it stale on a schema-changing merge.
+    A pair it never saw stays here, or nothing would refresh it. A pair it did see is dropped even
+    when the read set is imprecise, since it refreshes the whole kind for that one too.
     """
     subscribers = RecordingSubscriberSource(subscribers={})
-    resolver = _resolver(read_sets=[UNKNOWN], subscriber_source=subscribers)
+    resolver = _resolver(read_sets=[UNKNOWN, UNREACHABLE], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
         branch=BRANCH,
@@ -364,7 +368,7 @@ async def test_an_undeterminable_pair_is_never_covered_by_the_schema_pass() -> N
         schema_changed_elements=ChangedElementSet(changed_fields={DEVICE: frozenset({"name"})}),
     )
 
-    assert _identities(targets) == [(OWNER, "digest")]
+    assert _identities(targets) == [(OWNER, "hash")]
     assert targets[0].whole_kind is True
 
 

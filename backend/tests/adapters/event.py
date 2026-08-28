@@ -19,7 +19,7 @@ class MemoryInfrahubEvent(InfrahubEventService):
 
 
 class FailingKindInfrahubEvent(MemoryInfrahubEvent):
-    """Records every event but raises on the ones of a given type."""
+    """Raises on the events of a given type, which are not recorded, and records the rest."""
 
     def __init__(self, failing_kind: type[InfrahubEvent]) -> None:
         super().__init__()

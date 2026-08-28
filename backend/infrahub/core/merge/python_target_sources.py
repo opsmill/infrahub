@@ -70,6 +70,7 @@ class DatabasePythonReadSetSource:
                 kind=kind,
                 attribute_name=attribute.name,
                 read_set=analyzed.get((kind, attribute.name), TransformReadSet.imprecise()),
+                analyzed=(kind, attribute.name) in analyzed,
             )
             for kind, attributes in attributes_per_kind.items()
             for attribute in attributes
