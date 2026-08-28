@@ -38,15 +38,16 @@ function playwrightWithAlwaysOnInterception() {
 export default mergeConfig(
   viteConfig,
   defineConfig({
-    // react-stately's Virtualizer reads bare `process.env` inside getVisibleLayoutInfos(), which
-    // browser mode has no `process` for, so opening any virtualized list throws a ReferenceError.
-    // Both keys need a value: NODE_ENV is read first, so defining VIRT_ON alone still throws.
-    // VIRT_ON is the library's opt-out from a jsdom workaround — under NODE_ENV=test with unmocked
-    // clientWidth/clientHeight it swaps the overscanned rect for the whole content size, because
-    // jsdom measures every element as 0x0 and would otherwise render nothing. Chromium reports real
-    // sizes, so we want the normal path: setting VIRT_ON keeps virtualization genuinely exercised.
+    // react-stately's Virtualizer reads bare `process.env.VIRT_ON` inside getVisibleLayoutInfos(),
+    // which browser mode has no `process` for, so opening any virtualized list throws a
+    // ReferenceError. (Its `process.env.NODE_ENV` read needs nothing — Vite substitutes that key
+    // itself.) VIRT_ON is the library's opt-out from a jsdom workaround: under NODE_ENV=test with
+    // unmocked clientWidth/clientHeight it swaps the overscanned rect for the whole content size,
+    // because jsdom measures every element as 0x0 and would otherwise render nothing. Chromium
+    // reports real sizes, so setting it takes the normal path and keeps virtualization exercised.
+    // Load-bearing: without it the timezone combobox cannot be opened, which is how the three
+    // "override cleared" tests in user-preferences-card.test.tsx reproduce #10200.
     define: {
-      "process.env.NODE_ENV": JSON.stringify("test"),
       "process.env.VIRT_ON": JSON.stringify("1"),
     },
     // Deps discovered mid-run trigger a re-optimization reload that resets vi.mock and
