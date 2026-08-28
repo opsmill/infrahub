@@ -34,15 +34,9 @@ def test_only_the_requested_python_attribute_is_selected() -> None:
     assert pitch["pitch"].transform == "TShirtPitch"
     assert list(slogan) == ["slogan"]
     assert slogan["slogan"].transform == "TShirtSlogan"
-
-
-def test_a_jinja2_attribute_selects_nothing() -> None:
-    """The flow only knows how to run a transform, so a Jinja2 attribute is not its work."""
-    assert _python_transform_attributes(node_schema=_two_python_attributes(), attribute_name="description") == {}
-
-
-def test_an_unknown_attribute_selects_nothing() -> None:
-    assert _python_transform_attributes(node_schema=_two_python_attributes(), attribute_name="missing") == {}
+    # The flow only knows how to run a transform, and a name off the kind is nobody's work.
+    assert _python_transform_attributes(node_schema=node_schema, attribute_name="description") == {}
+    assert _python_transform_attributes(node_schema=node_schema, attribute_name="missing") == {}
 
 
 def test_partition_transform_results_persists_only_string_values() -> None:

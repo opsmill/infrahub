@@ -142,12 +142,9 @@ class CoalescedRecompute:
 class PythonTargetDeriver(Protocol):
     """The Python transform computed attributes a merge or rebase change set affects.
 
-    A Python transform declares no dependency graph, so this derivation needs the database and the
-    API client; keeping it behind an interface is what keeps them out of the coalesced pass itself.
-
-    ``schema_changed_elements`` names the schema elements a merge changed. It lets the derivation
-    drop the pairs the schema-driven backfill already refreshes, and is ``None`` wherever no schema
-    change is replayed.
+    ``schema_changed_elements`` names the schema elements a merge changed, so the derivation can drop
+    the pairs the schema-driven backfill already refreshes. It is ``None`` wherever no schema change
+    is replayed, which is every rebase and every chained level.
     """
 
     async def resolve(
@@ -580,7 +577,6 @@ class MergeRecomputeCoordinator:
         context: EventContext,
         schema_changed_elements: ChangedElementSet | None = None,
     ) -> list[CoalescedSubmission]:
-        # Two derivations read the change set, so a one-shot iterable would leave the second empty.
         change_list = list(changes)
         coalesced = self.builder.build(changes=change_list, branch=branch)
         python_targets = await self.python_deriver.resolve(
@@ -650,7 +646,6 @@ class RecomputeChainSubmitter:
             for node in written
         ]
         coalesced = self.builder.build(changes=changes, branch=branch)
-        # A chained level replays data writes, never a schema change, so nothing is covered elsewhere.
         python_targets = await self.python_deriver.resolve(changes=changes, branch=branch, schema_changed_elements=None)
         return await self.submitter.submit(
             coalesced=coalesced.with_targets(python_targets), context=context, recompute_depth=next_depth

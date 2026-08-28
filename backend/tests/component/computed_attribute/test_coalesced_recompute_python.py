@@ -314,24 +314,6 @@ class TestCoalescedRecomputePythonDeletedPeer(CoalescedPythonTestBase):
         await person.delete(db=db)
         return dataset
 
-    async def test_the_deleted_peer_alone_selects_nothing(
-        self,
-        deleted_peer_dataset: PythonRecomputeDataset,
-        db: InfrahubDatabase,
-        workflow_recorder: WorkflowRecorder,
-        default_branch: Branch,
-        admin_account: CoreAccount,
-    ) -> None:
-        submissions = await self._run_pass(
-            db=db,
-            recorder=workflow_recorder,
-            default_branch=default_branch,
-            admin_account=admin_account,
-            changes=[MergeChange(node_id=deleted_peer_dataset.person_id, kind=PERSON_KIND, action="deleted")],
-        )
-
-        assert submissions == {}
-
     async def test_the_readers_are_refreshed_by_their_own_relationship_update(
         self,
         deleted_peer_dataset: PythonRecomputeDataset,

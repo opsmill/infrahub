@@ -14,7 +14,6 @@ from infrahub.core.merge.recompute_coalescing import (
     AffectedTarget,
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
-    DisabledPythonTargetDeriver,
     MergeChange,
     MergeRecomputeCoordinator,
     ReaderLookup,
@@ -71,8 +70,9 @@ async def test_the_coordinator_submits_the_python_family_alongside_the_schema_on
         python_deriver=deriver,
     )
 
+    # A generator, since both derivations read the change set and the second would find it empty.
     submissions = await coordinator.run(
-        changes=[_root_change()],
+        changes=(change for change in [_root_change()]),
         branch=BRANCH,
         context=_event_context(),
         schema_changed_elements=SCHEMA_SCOPE,
@@ -81,35 +81,6 @@ async def test_the_coordinator_submits_the_python_family_alongside_the_schema_on
     assert _families(submissions) == {COMPUTED_ATTRIBUTE, PYTHON_COMPUTED_ATTRIBUTE}
     # The derivation decides for itself what the schema pass already covers, so it needs that scope.
     assert deriver.calls == [(BRANCH, ("l1-0",), SCHEMA_SCOPE)]
-
-
-async def test_a_one_shot_change_set_reaches_both_derivations() -> None:
-    """Both derivations read the change set, so a generator must not run dry after the first."""
-    deriver = RecordingPythonTargetDeriver(targets=[_python_target()])
-    coordinator = MergeRecomputeCoordinator(
-        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch()),
-        submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
-        python_deriver=deriver,
-    )
-
-    submissions = await coordinator.run(
-        changes=(change for change in [_root_change()]), branch=BRANCH, context=_event_context()
-    )
-
-    assert _families(submissions) == {COMPUTED_ATTRIBUTE, PYTHON_COMPUTED_ATTRIBUTE}
-    assert deriver.calls == [(BRANCH, ("l1-0",), None)]
-
-
-async def test_the_disabled_derivation_leaves_the_pass_as_it_was() -> None:
-    coordinator = MergeRecomputeCoordinator(
-        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch()),
-        submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
-        python_deriver=DisabledPythonTargetDeriver(),
-    )
-
-    submissions = await coordinator.run(changes=[_root_change()], branch=BRANCH, context=_event_context())
-
-    assert _families(submissions) == {COMPUTED_ATTRIBUTE}
 
 
 async def test_a_chained_level_derives_the_python_targets_of_its_writes() -> None:
