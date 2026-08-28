@@ -163,30 +163,19 @@ async def relationship_global_edges(db: InfrahubDatabase, node_id: str, identifi
     return [EdgeState(**dict(result)) for result in results]
 
 
-async def attribute_vertex_uuid(db: InfrahubDatabase, node_id: str, attribute_name: str) -> str:
-    """The attribute vertex's own uuid, captured while the vertex is still reachable from its node."""
-    results = await db.execute_query(
-        query="""
-        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
-        RETURN DISTINCT a.uuid AS uuid
-        """,
-        params={"node_id": node_id, "attribute_name": attribute_name},
-    )
-    (result,) = results
-    return result["uuid"]
+def attribute_vertex_uuid(node: Node, attribute_name: str) -> str:
+    """The attribute vertex's own uuid, as the loaded node already knows it."""
+    vertex_uuid = node.get_attribute(name=attribute_name).id
+    assert vertex_uuid is not None, f"{node.get_kind()} has no saved {attribute_name} attribute"
+    return vertex_uuid
 
 
-async def relationship_vertex_uuid(db: InfrahubDatabase, node_id: str, identifier: str) -> str:
-    """The relationship vertex's own uuid, captured while the vertex is still reachable from its node."""
-    results = await db.execute_query(
-        query="""
-        MATCH (:Node {uuid: $node_id})-[:IS_RELATED]-(r:Relationship {name: $identifier})
-        RETURN DISTINCT r.uuid AS uuid
-        """,
-        params={"node_id": node_id, "identifier": identifier},
-    )
-    (result,) = results
-    return result["uuid"]
+def relationship_vertex_uuid(node: Node, relationship_name: str) -> str:
+    """The relationship vertex's own uuid, as the loaded node already knows it."""
+    relationship = node.get_relationship(name=relationship_name).get_one()
+    assert relationship is not None, f"{node.get_kind()} holds no {relationship_name} peer"
+    assert relationship.id is not None, f"{node.get_kind()} has an unsaved {relationship_name} peer"
+    return str(relationship.id)
 
 
 async def global_edges_by_vertex_uuid(db: InfrahubDatabase, vertex_uuid: str) -> list[EdgeState]:
