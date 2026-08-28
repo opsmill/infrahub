@@ -46,9 +46,8 @@ its base: `stable`, `develop`, a `release-*` branch, whichever long-lived branch
 `git fetch` the candidates first so the base is not stale, then collect paths from three places:
 `git diff --name-only --no-renames <merge-base>...HEAD` for committed work, the same command
 against `HEAD` for staged and unstaged work, and `git ls-files --others --exclude-standard` for
-untracked files. Keep `--no-renames` — it reports both sides of a rename, so the area that *lost*
-a file is still flagged. Do not substitute `git status --porcelain`, which collapses
-`R  old -> new` into one path that matches no area.
+untracked files. Keep `--no-renames`: without it a rename reports only the new path, so the area
+that *lost* the file is never flagged.
 
 Run only the phases for the areas that changed, plus those marked always-run. **When unsure about
 the base, or whether a path counts, include it.** Over-running is cheap; a missed area is a red PR.
