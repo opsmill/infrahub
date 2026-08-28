@@ -19,29 +19,17 @@ definition. Do not rely on a from-memory idea of what a label means.
 
 ## What is already handled without you
 
-Two things are decided deterministically by other workflows, so do not spend
-effort on them and do not second-guess them:
+**`type/*`** comes from the issue form (`labels:` in the template). It is the
+one axis decided without judgement, so never add or second-guess one.
 
-- **`type/*`** comes from the issue form (`labels:` in the template). Never add one.
-- **`group/*`** is mapped from the form's Component dropdown by the `Labeler`
-  workflow, for the dropdown options that map to a label with no judgement
-  needed. That mapping is the `COMPONENT_TO_LABEL` table in
-  `.github/workflows/labeler.yml` (its `issue-component` job) — read it there,
-  it is the only place the option list lives.
+Both classification axes are yours: `group/*` when the issue is missing one,
+`category/*` always — no form field captures it.
 
-That mapping only decides when the reporter's selection resolves to **exactly
-one** label. The dropdown is multi-select, so it can also resolve to two
-different labels (say *Frontend UI* plus *CI/CD*) — picking the primary one is
-judgement, so the workflow steps aside and leaves it to you. Selections that
-collapse to the same label (*API Server / GraphQL* plus *Git Integration*, both
-`group/backend`) still count as one and are handled without you.
-
-You therefore need to supply `group/*` when that mapping could not decide: no
-selected option appears in `COMPONENT_TO_LABEL`, the selection resolves to more
-than one label, or the issue was created without the form (by an integration, or
-by hand). If a `group/*` label is already present, leave it alone.
-
-`category/*` is always yours — no dropdown captures it.
+The form's Component dropdown, when the body has one, is the reporter's own
+claim about the area. Treat it as evidence, not as the answer: it is
+multi-select, it offers options broader than any one label (*Python SDK*,
+*Not Sure*), and reporters often guess. The body's actual symptoms win when
+they disagree with it.
 
 ## 1. Component — `group/*`, exactly one, only if missing
 

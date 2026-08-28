@@ -1,23 +1,17 @@
 ---
 # yamllint disable rule:truthy
-# Rule-based labelling. Both jobs are deterministic on purpose: they derive
-# labels from structured data (changed paths, issue form fields), never from
-# judgement. Anything needing judgement is handled by the issue-triage-labeler
-# and issue-triage-sweep agentic workflows instead.
+# Rule-based labelling: pull requests get group/* labels from the paths of
+# their changed files (.github/labeler.yml). Issues carry nothing an
+# actions/labeler glob can match, so their labelling is handled by the
+# issue-triage-labeler and issue-triage-sweep agentic workflows instead.
 name: "Labeler"
 
 on:
   pull_request:
-  issues:
-    # Only on open. Re-running on `edited` would re-add a label a maintainer
-    # had deliberately removed; late-filled Component fields are picked up by
-    # the weekly issue-triage-sweep instead.
-    types: [opened]
 
 jobs:
-  # Pull requests: label from the paths of the changed files (.github/labeler.yml).
   pull-request:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
+    if: github.event.pull_request.head.repo.fork == false
     permissions:
       contents: read
       pull-requests: write
@@ -27,108 +21,3 @@ jobs:
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
           sync-labels: true
-
-  # Issues: map the issue form's Component dropdown to a group/* label.
-  # actions/labeler cannot do this -- it matches changed files and branch names,
-  # neither of which an issue has -- so this is a direct lookup instead.
-  #
-  # COMPONENT_TO_LABEL below is the single source of truth for which dropdown
-  # options are decided deterministically. The agentic issue-triage workflows
-  # read this table at runtime to know which options are already handled, so
-  # keep the name and the object literal shape when editing it: dropping an
-  # option here is what hands it to them, no other file needs updating.
-  # Options are deliberately left out when they have no exact group/*
-  # equivalent and need judgement.
-  issue-component:
-    if: github.event_name == 'issues'
-    permissions:
-      contents: read
-      issues: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Map Component dropdown to group/* labels
-        uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553  # v9
-        with:
-          script: |
-            const COMPONENT_TO_LABEL = {
-              'frontend ui': 'group/frontend',
-              'api server / graphql': 'group/backend',
-              'git integration': 'group/backend',
-              'ci/cd': 'group/ci',
-            };
-
-            const body = context.payload.issue.body || '';
-
-            // Two shapes occur in practice:
-            //   1. "### Component\n\n<comma separated>"  - created via the issue forms
-            //   2. "**Component:** <comma separated>"    - created by hand or by tooling
-            // Split on headings rather than using one big regex, so a missing
-            // trailing section or CRLF line endings cannot break the match.
-            const section = body
-              .split(/^###[ \t]+/m)
-              .slice(1)
-              .find((chunk) => /^Component[ \t]*\r?\n/.test(chunk));
-
-            let raw = section === undefined
-              ? null
-              : section.replace(/^Component[ \t]*\r?\n/, '');
-
-            if (raw === null) {
-              const inline = body.match(/^\*\*Component:?\*\*[ \t]*(.+)$/m);
-              raw = inline ? inline[1] : null;
-            }
-
-            if (raw === null) {
-              core.info('No Component section found, leaving this to the agentic labeler.');
-              return;
-            }
-
-            const selected = raw
-              .split(',')
-              .map((value) => value.trim().toLowerCase())
-              .filter(Boolean);
-
-            if (selected.length === 0) {
-              core.info('Component section is empty, leaving this to the agentic labeler.');
-              return;
-            }
-
-            const mapped = [...new Set(
-              selected.map((value) => COMPONENT_TO_LABEL[value]).filter(Boolean)
-            )];
-
-            if (mapped.length === 0) {
-              core.info(
-                `No exact mapping for [${selected.join(', ')}], leaving this to the agentic labeler.`
-              );
-              return;
-            }
-
-            // The dropdown is `multiple: true`, so a reporter can pick options that
-            // map to different groups. One group/* per issue is the taxonomy rule and
-            // picking the primary one needs judgement, so hand those to the agent.
-            if (mapped.length > 1) {
-              core.info(
-                `[${selected.join(', ')}] maps to ${mapped.join(', ')}, leaving this to the agentic labeler.`
-              );
-              return;
-            }
-
-            // The component axis is one label. If it already carries one -- set by a
-            // maintainer, or by a previous run -- leave it alone rather than adding a
-            // second one.
-            const existing = (context.payload.issue.labels || []).map((label) => label.name);
-            const existingGroup = existing.find((name) => name.startsWith('group/'));
-
-            if (existingGroup !== undefined) {
-              core.info(`Component axis already set to ${existingGroup}, leaving it alone.`);
-              return;
-            }
-
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.issue.number,
-              labels: mapped,
-            });
-            core.info(`Added: ${mapped.join(', ')}`);

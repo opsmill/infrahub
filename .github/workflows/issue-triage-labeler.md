@@ -8,6 +8,12 @@ on:
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
 engine: claude
 timeout-minutes: 10
+# Give the reporter a head start: people who label their own issue usually do
+# it within minutes of opening it. The agent then classifies whatever is still
+# missing (its process re-reads the live labels, not the stale event payload).
+steps:
+  - name: Wait out the reporter's own labelling
+    run: sleep 600
 permissions:
   contents: read
   issues: read
@@ -72,19 +78,14 @@ here, and the only labels you may apply are the ones in the allowed list.
 
 ## Process
 
-1. Read the issue title, body and existing labels from the GitHub context.
-2. Decide whether the component axis is yours to fill. Read the `COMPONENT_TO_LABEL`
-   table in `.github/workflows/labeler.yml`, then map every option listed in the
-   body's `Component` section through it and discard duplicates. If that leaves
-   **exactly one** label, the deterministic `Labeler` workflow (its
-   `issue-component` job) is handling it, so **do not add a `group/*` label** even
-   if none is visible yet (that workflow may still be running). Judge this from the
-   dropdown value, never from whether the label has appeared.
-3. Otherwise — no selected option is in the table, the selection resolves to more
-   than one label, or there is no Component section at all — pick the `group/*`
-   label yourself. If one is already present, leave it alone.
-4. Decide the `category/*` label, which is always yours. If one is already present,
-   leave it alone.
-5. If the body is too vague to classify with confidence (for example a one-line report
+1. Fetch the issue with the GitHub issue tools to get its **current** title, body
+   and labels. This run was deliberately delayed to give the reporter time to
+   label the issue themselves, so the event payload in the GitHub context is
+   stale — never judge the existing labels from it.
+2. Pick the `group/*` label, weighing the body's symptoms together with the
+   Component dropdown value if the body has one. If a `group/*` label is already
+   present, leave it alone.
+3. Decide the `category/*` label. If one is already present, leave it alone.
+4. If the body is too vague to classify with confidence (for example a one-line report
    with no reproduction and no area named), apply nothing and stop. Do not guess.
-6. Apply the labels you have decided on. Do not post a comment explaining yourself.
+5. Apply the labels you have decided on. Do not post a comment explaining yourself.
