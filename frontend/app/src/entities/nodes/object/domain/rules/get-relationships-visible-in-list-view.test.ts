@@ -81,4 +81,79 @@ describe("getRelationshipsVisibleInListView", () => {
     expect(result).toHaveLength(1);
     expect(result[0]!.kind).toBe("Attribute");
   });
+
+  it("should keep excluding 'extra' relationships when called without revealed names", () => {
+    // GIVEN
+    const visible = generateRelationshipSchema({
+      name: "site",
+      kind: "Attribute",
+      cardinality: "one",
+      display: "default",
+    });
+    const hidden = generateRelationshipSchema({
+      name: "tags",
+      kind: "Attribute",
+      cardinality: "many",
+      display: "extra",
+    });
+
+    // WHEN
+    const result = getRelationshipsVisibleInListView([visible, hidden]);
+
+    // THEN
+    expect(result).toEqual([visible]);
+  });
+
+  it("should return an 'extra' relationship when its name is revealed", () => {
+    // GIVEN
+    const visible = generateRelationshipSchema({
+      name: "site",
+      kind: "Attribute",
+      cardinality: "one",
+      display: "default",
+    });
+    const revealed = generateRelationshipSchema({
+      name: "tags",
+      kind: "Attribute",
+      cardinality: "many",
+      display: "extra",
+    });
+    const stillHidden = generateRelationshipSchema({
+      name: "owner",
+      kind: "Attribute",
+      cardinality: "one",
+      display: "extra",
+    });
+
+    // WHEN
+    const result = getRelationshipsVisibleInListView(
+      [visible, revealed, stillHidden],
+      new Set(["tags"])
+    );
+
+    // THEN
+    expect(result).toEqual([visible, revealed]);
+  });
+
+  it("should still exclude a cardinality-many generic relationship even when revealed", () => {
+    // GIVEN
+    const visible = generateRelationshipSchema({
+      name: "site",
+      kind: "Attribute",
+      cardinality: "one",
+      display: "default",
+    });
+    const genericMany = generateRelationshipSchema({
+      name: "members",
+      kind: "Generic",
+      cardinality: "many",
+      display: "extra",
+    });
+
+    // WHEN
+    const result = getRelationshipsVisibleInListView([visible, genericMany], new Set(["members"]));
+
+    // THEN
+    expect(result).toEqual([visible]);
+  });
 });

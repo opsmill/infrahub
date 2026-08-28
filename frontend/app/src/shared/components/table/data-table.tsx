@@ -5,6 +5,7 @@ import {
   getCoreRowModel,
   type RowSelectionOptions,
   useReactTable,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import React from "react";
 
@@ -25,6 +26,7 @@ import {
 export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columnOrder?: ColumnOrderState;
   columns: ColumnDef<T>[];
+  columnVisibility?: VisibilityState;
   count?: number;
   data: Array<T>;
   isLoading?: boolean;
@@ -40,6 +42,7 @@ const defaultGridTemplateColumns = (columnCount: number) =>
 export function DataTable<T extends NodeCore>({
   columnOrder,
   columns,
+  columnVisibility,
   count,
   data,
   isLoading,
@@ -60,6 +63,7 @@ export function DataTable<T extends NodeCore>({
     getRowId: (row) => row.id,
     state: {
       columnOrder,
+      columnVisibility,
     },
   });
 
