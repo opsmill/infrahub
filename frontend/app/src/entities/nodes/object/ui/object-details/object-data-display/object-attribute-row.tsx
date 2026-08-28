@@ -36,10 +36,13 @@ export function ObjectAttributeRow({
         <>
           <ObjectAttributeValue attributeSchema={attributeSchema} attributeData={attributeData} />
 
+          {attributeData.is_protected && <LockIcon className="size-3.5 text-foreground-muted" />}
+
           <MetaDetailsTooltip
             updatedAt={attributeData.updated_at}
             source={attributeData.source}
             owner={attributeData.owner}
+            triggerClassName="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
             isProtected={attributeData.is_protected}
             header={
               !attributeSchema.read_only && (
@@ -65,8 +68,6 @@ export function ObjectAttributeRow({
               )
             }
           />
-
-          {attributeData.is_protected && <LockIcon className="size-3.5 text-foreground-muted" />}
 
           {attributeSchema.display === "extra" && <ExtraFieldIndicator className="ml-auto" />}
         </>
