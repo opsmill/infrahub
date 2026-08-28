@@ -34,8 +34,8 @@ never `cd frontend/app && ...`.
 
 **Options:**
 
-- `--fast` — Formatting and fast lint only (~20s). Skips backend lint (ty/mypy), Betterer, docs
-  lint, generated-file and doc validation, schema validation, and all unit tests.
+- `--fast` — Formatting and fast lint only (~20s). Skips mypy, Betterer, docs lint,
+  generated-file and doc validation, schema validation, and all unit tests.
 - `--all` — Skip detection and run every phase regardless of what changed.
 
 ---
@@ -50,14 +50,17 @@ the phases for the areas that changed, plus those marked always-run.
 **When unsure about the base, or whether a path counts, include it.** Over-running is cheap;
 a missed area is a red PR.
 
-Classify the paths using the same globs as `.github/file-filters.yml`. Each area below is that
-file's `<area>_all` list, so local gating matches the `files-changed` outputs CI branches on:
+Classify the paths using the globs from `.github/file-filters.yml`, so local gating matches the
+`files-changed` outputs CI branches on. Two areas deviate deliberately: **python** is narrower
+than CI's `python_all`, so a `models/` or root-script change runs the lint phases and not the
+slow ones; **schema** has no CI filter at all — `backend_all` excludes `schema/**`, so Phase 4D
+would otherwise never run on a schema-only change.
 
 | Area | Paths | Enables |
 |---|---|---|
 | **frontend** | `frontend/app/**`, `frontend/packages/**`, `frontend/package.json`, `frontend/pnpm-workspace.yaml`, `frontend/pnpm-lock.yaml`, `schema/openapi.json`, `frontend/app/src/shared/api/rest/types.generated.ts`, `development/**`, `tasks/**`, `.github/workflows/ci.yml`, `.github/file-filters.yml` | Phases 1A, 3B |
-| **backend** | `backend/**`, `python_sdk`, `development/**`, `tasks/**`, `**/pyproject.toml`, `**/uv.lock`, `.github/workflows/ci.yml`, `.github/file-filters.yml` | Phases 1B, 2B, 4B, 4D, 5 |
-| **python** | any other `**/*.py` — `models/`, `utilities/`, `python_testcontainers/`, `tests/`, root scripts | Phases 1B, 2B |
+| **backend** | `backend/**`, `python_sdk`, `development/**`, `tasks/**`, `**/pyproject.toml`, `**/uv.lock`, `.github/workflows/ci.yml`, `.github/file-filters.yml` | Phases 1B, 2B, 4B, 4D, 5.1 |
+| **python** | any other `**/*.py` — `models/`, `utilities/`, `python_testcontainers/`, `tests/`, root scripts | Phases 1B, 2B, 4C.2 |
 | **testcontainers** | `python_testcontainers/**`, `.github/workflows/*.yml` (any workflow, not just `ci.yml`) | Phase 5.2 |
 | **docs** | `docs/**`, `**/*.{md,mdx}`, `.vale/**`, `.vale.ini`, `package.json`, `package-lock.json`, `development/**`, `tasks/**`, `python_sdk` | Phases 1C, 4C |
 | **schema** | `schema/**` | Phase 4D |
@@ -119,7 +122,10 @@ uv run invoke docs.format
 2. `uv run ruff check . --exclude python_sdk`
 3. `uv run ruff format --check --diff --exclude python_sdk .`
 4. `uv run ty check .`
-5. `uv lock --check` — on failure run `uv lock` and commit the updated lockfile.
+5. `uv lock --check` — root project (job `infrahub-uv-check`). On failure run `uv lock` and
+   commit the updated lockfile.
+6. `uv lock --check --directory python_testcontainers` — same for the separate
+   `python_testcontainers` project (job `infrahub-testcontainers-uv-check`).
 
 Steps 2–4 are CI's `python-lint` job verbatim and are repo-wide; the `invoke` tasks reach only
 `tasks`, `models`, `utilities`, `python_testcontainers` and `backend`, so a violation under
@@ -194,14 +200,17 @@ pnpm --dir frontend/app run check:error-bindings
 2. `uv run invoke backend.validate-generated` — on failure run `uv run invoke backend.generate`
    and report the regenerated files.
 
-**4C. Docs** — *if docs changed*
+**4C. Docs** — *if docs changed; step 2 also if python changed*
 
 1. `uv run invoke docs.lint` — markdownlint + vale, mirroring `markdown-lint` and
    `validate-documentation-style`. Pre-existing errors in `docs/docs/` may exist; only flag those
    in changed files. Does **not** cover the `documentation` job, which runs
    `uv run invoke docs.build` — run that manually if you touched the Docusaurus config.
 2. `uv run invoke docs.validate` — generated reference docs (CLI, schema, events, repository
-   config, config). On failure the correct files are already on disk; stage and commit them.
+   config, config). **Run this if docs *or* python changed**: it mirrors
+   `validate-generated-documentation`, which fires on `python || documentation` because these
+   docs are generated from Python source. On failure the correct files are already on disk;
+   stage and commit them.
 
 **4D. Schema** — *if backend or schema changed*
 
@@ -250,7 +259,7 @@ Summarize in a table. Include **every** row; mark rows as `skipped (no <area> ch
 | Python format (`ruff format --check`) | python-lint | ... |
 | Main Python lint | python-lint | ... |
 | Ruff (CI parity) | python-lint | ... |
-| Lockfile sync | uv-check (`uv-check.yml`) | ... |
+| Lockfiles (root + testcontainers) | infrahub-uv-check, infrahub-testcontainers-uv-check | ... |
 | YAML lint (`yamllint -s .`) | yaml-lint | ... |
 | Type check (`ty check .`) | python-lint | ... |
 | Backend lint (mypy) | backend-tests-integration, backend-tests-functional | ... |
