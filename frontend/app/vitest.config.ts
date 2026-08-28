@@ -38,12 +38,16 @@ function playwrightWithAlwaysOnInterception() {
 export default mergeConfig(
   viteConfig,
   defineConfig({
-    // react-stately >=3.49 reads bare `process.env` at module-evaluation time, which browser mode has no
-    // `process` for, so opening a virtualized combobox throws. `"test"` is that library's escape
-    // hatch: it disables virtualization so a popover renders all of its options.
+    // react-stately's Virtualizer reads bare `process.env` inside getVisibleLayoutInfos(), which
+    // browser mode has no `process` for, so opening any virtualized list throws a ReferenceError.
+    // Both keys need a value: NODE_ENV is read first, so defining VIRT_ON alone still throws.
+    // VIRT_ON is the library's opt-out from a jsdom workaround — under NODE_ENV=test with unmocked
+    // clientWidth/clientHeight it swaps the overscanned rect for the whole content size, because
+    // jsdom measures every element as 0x0 and would otherwise render nothing. Chromium reports real
+    // sizes, so we want the normal path: setting VIRT_ON keeps virtualization genuinely exercised.
     define: {
       "process.env.NODE_ENV": JSON.stringify("test"),
-      "process.env.VIRT_ON": "undefined",
+      "process.env.VIRT_ON": JSON.stringify("1"),
     },
     // Deps discovered mid-run trigger a re-optimization reload that resets vi.mock and
     // flakes the browser tests, so anything not seen by Vite's initial scan must be
