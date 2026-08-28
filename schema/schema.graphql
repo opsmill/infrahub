@@ -5765,7 +5765,9 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   """Current commit hash being tracked"""
   commit: TextAttribute
   credential: NestedEdgedCoreCredential!
-  """Default branch name in the Git repository"""
+  """
+  Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch.
+  """
   default_branch: TextAttribute
   """Description of the repository"""
   description: TextAttribute
@@ -5804,7 +5806,9 @@ input CoreRepositoryCreateInput {
   """Current commit hash being tracked"""
   commit: TextAttributeCreate
   credential: RelatedNodeInput
-  """Default branch name in the Git repository"""
+  """
+  Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch.
+  """
   default_branch: TextAttributeCreate
   """Description of the repository"""
   description: TextAttributeCreate
@@ -5940,7 +5944,9 @@ input CoreRepositoryUpdateInput {
   """Current commit hash being tracked"""
   commit: TextAttributeUpdate
   credential: RelatedNodeInput
-  """Default branch name in the Git repository"""
+  """
+  Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch.
+  """
   default_branch: TextAttributeUpdate
   """Description of the repository"""
   description: TextAttributeUpdate
@@ -5976,7 +5982,9 @@ input CoreRepositoryUpsertInput {
   """Current commit hash being tracked"""
   commit: TextAttributeUpdate
   credential: RelatedNodeInput
-  """Default branch name in the Git repository"""
+  """
+  Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch.
+  """
   default_branch: TextAttributeUpdate
   """Description of the repository"""
   description: TextAttributeUpdate

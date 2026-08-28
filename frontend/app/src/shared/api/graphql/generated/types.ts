@@ -296,14 +296,14 @@ export type BranchCreate = {
 };
 
 export type BranchCreateInput = {
-  /** @deprecated branched_from is set by the server and cannot be provided */
+  /** @deprecated branched_from is set by the server and cannot be provided. Will be removed after version 1.12. */
   branched_from?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['String']['input']>;
-  /** @deprecated Non isolated mode is not supported anymore */
+  /** @deprecated Non-isolated mode is not supported anymore. Will be removed after version 1.12. */
   is_isolated?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
-  /** @deprecated Branches can only be created from the default branch */
+  /** @deprecated Branches can only be created from the default branch. Will be removed after version 1.12. */
   origin_branch?: InputMaybe<Scalars['String']['input']>;
   sync_with_git?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -12758,7 +12758,7 @@ export type CoreRepository = CoreGenericRepository & CoreNode & CoreTaskTarget &
   /** Current commit hash being tracked */
   commit: Maybe<TextAttribute>;
   credential: NestedEdgedCoreCredential;
-  /** Default branch name in the Git repository */
+  /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch: Maybe<TextAttribute>;
   /** Description of the repository */
   description: Maybe<TextAttribute>;
@@ -13142,7 +13142,7 @@ export type CoreRepositoryCreateInput = {
   /** Current commit hash being tracked */
   commit?: InputMaybe<TextAttributeCreate>;
   credential?: InputMaybe<RelatedNodeInput>;
-  /** Default branch name in the Git repository */
+  /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch?: InputMaybe<TextAttributeCreate>;
   /** Description of the repository */
   description?: InputMaybe<TextAttributeCreate>;
@@ -13406,7 +13406,7 @@ export type CoreRepositoryUpdateInput = {
   /** Current commit hash being tracked */
   commit?: InputMaybe<TextAttributeUpdate>;
   credential?: InputMaybe<RelatedNodeInput>;
-  /** Default branch name in the Git repository */
+  /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch?: InputMaybe<TextAttributeUpdate>;
   /** Description of the repository */
   description?: InputMaybe<TextAttributeUpdate>;
@@ -13443,7 +13443,7 @@ export type CoreRepositoryUpsertInput = {
   /** Current commit hash being tracked */
   commit?: InputMaybe<TextAttributeUpdate>;
   credential?: InputMaybe<RelatedNodeInput>;
-  /** Default branch name in the Git repository */
+  /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch?: InputMaybe<TextAttributeUpdate>;
   /** Description of the repository */
   description?: InputMaybe<TextAttributeUpdate>;
