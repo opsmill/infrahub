@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, assert_never
 
-from infrahub.git.closure_builder.post_processing import MANIFEST_PATH
 from infrahub.git.fingerprint.blob_resolver import GitBlobResolver
 from infrahub.git.fingerprint.hasher import FingerprintHasher, canonical_json
 from infrahub.git.fingerprint.registry import FingerprintKind, FingerprintRegistry
@@ -51,23 +50,6 @@ def fold_commit_id(
     if watch_required and watch is None:
         return commit
     return None
-
-
-class ClosurePathSelector:
-    """Select the dependency paths that contribute to a fingerprint's hashed closure.
-
-    The manifest is excluded even though it is merged into every definition's stored
-    dependencies: its blob changes on any unrelated or comment-only edit, which would churn
-    every definition's fingerprint. Its output-affecting fields are folded in separately as
-    parsed scalars, so dropping its bytes keeps the fingerprint stable against manifest
-    noise while remaining sensitive to the fields that actually matter.
-    """
-
-    def __init__(self, *, excluded_paths: frozenset[str]) -> None:
-        self._excluded_paths = excluded_paths
-
-    def select(self, dependencies: Iterable[str]) -> list[str]:
-        return [path for path in dependencies if path not in self._excluded_paths]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -135,13 +117,11 @@ class FingerprintComposer:
         hasher: FingerprintHasher,
         blob_resolver: BlobResolver,
         registry: FingerprintRegistry,
-        closure_selector: ClosurePathSelector,
         commit: str,
     ) -> None:
         self._hasher = hasher
         self._blob_resolver = blob_resolver
         self._registry = registry
-        self._closure_selector = closure_selector
         self._commit = commit
 
     @property
@@ -257,8 +237,7 @@ class FingerprintComposer:
         )
 
     def _closure_term(self, dependencies: Iterable[str]) -> str:
-        hashed_paths = self._closure_selector.select(dependencies)
-        pairs = self._blob_resolver.resolve(hashed_paths)
+        pairs = self._blob_resolver.resolve(list(dependencies))
         return canonical_json([[path, blob_sha] for path, blob_sha in pairs])
 
 
@@ -268,6 +247,5 @@ def build_fingerprint_composer(*, repo: Repo, commit: str) -> FingerprintCompose
         hasher=FingerprintHasher(),
         blob_resolver=GitBlobResolver(repo=repo, commit=commit),
         registry=FingerprintRegistry(),
-        closure_selector=ClosurePathSelector(excluded_paths=frozenset({MANIFEST_PATH})),
         commit=commit,
     )

@@ -69,12 +69,12 @@ query GetSourceOnlyDevice($ids: [ID!]!) {
 # Each closure is set by hand rather than built by an import: these scenarios drive the
 # selection gate, and the closure builder has its own tests. The shape matches what an import
 # persists for a generator that declared its containing directory in `watch.files` - its own
-# source file plus that directory's contents - together with the repository manifest, which is
-# part of every closure. The closures are disjoint so a file edit selects exactly one generator.
-DEPENDENCIES_A = [".infrahub.yml", "generators/a/__init__.py", "generators/a/a.py", "generators/a/helpers.py"]
-DEPENDENCIES_A2 = [".infrahub.yml", "generators/a2/__init__.py", "generators/a2/a2.py"]
-DEPENDENCIES_B = [".infrahub.yml", "generators/b/__init__.py", "generators/b/b.py"]
-DEPENDENCIES_SOURCE_ONLY = [".infrahub.yml", "generators/new/__init__.py", "generators/new/new.py"]
+# source file plus that directory's contents. The closures are disjoint so a file edit selects
+# exactly one generator.
+DEPENDENCIES_A = ["generators/a/__init__.py", "generators/a/a.py", "generators/a/helpers.py"]
+DEPENDENCIES_A2 = ["generators/a2/__init__.py", "generators/a2/a2.py"]
+DEPENDENCIES_B = ["generators/b/__init__.py", "generators/b/b.py"]
+DEPENDENCIES_SOURCE_ONLY = ["generators/new/__init__.py", "generators/new/new.py"]
 
 GENERATOR_SCHEMA = SchemaRoot(
     nodes=[

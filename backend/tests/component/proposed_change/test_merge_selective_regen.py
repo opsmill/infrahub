@@ -193,7 +193,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
             query=query,
             repository=repo,
             template_path="templates/device.j2",
-            dependencies=[".infrahub.yml", "templates/device.j2"],
+            dependencies=["templates/device.j2"],
             dependencies_complete=True,
         )
         await transform.save(db=db)
@@ -227,7 +227,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
             convert_query_response=False,
             execute_in_proposed_change=False,
             execute_after_merge=True,
-            dependencies=[".infrahub.yml", "generators/device.py"],
+            dependencies=["generators/device.py"],
             dependencies_complete=True,
         )
         await gendef.save(db=db)

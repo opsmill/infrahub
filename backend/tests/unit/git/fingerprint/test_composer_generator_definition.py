@@ -2,19 +2,18 @@ from __future__ import annotations
 
 from infrahub_sdk.schema.repository import InfrahubWatchConfig
 
-from infrahub.git.closure_builder.post_processing import MANIFEST_PATH
 from infrahub.git.fingerprint.composer import GeneratorDefinitionFingerprintInput
 from infrahub.git.fingerprint.registry import FingerprintKind, FingerprintRegistry
 from tests.unit.git.fingerprint.conftest import build_composer
 
-BLOBS = {"generators/tags.py": "sha-gen", MANIFEST_PATH: "sha-manifest"}
+BLOBS = {"generators/tags.py": "sha-gen"}
 
 
 def _input(**overrides: object) -> GeneratorDefinitionFingerprintInput:
     defaults: dict[str, object] = {
         "name": "tags",
         "query_name": "q",
-        "dependencies": (MANIFEST_PATH, "generators/tags.py"),
+        "dependencies": ("generators/tags.py",),
         "dependencies_complete": True,
         "watch": InfrahubWatchConfig(files=[]),
         "parameters": {"name": "name__value"},
@@ -61,7 +60,7 @@ def test_changes_on_file_path_within_an_unchanged_closure() -> None:
     repointing `file_path` at a sibling leaves the closure and every blob sha identical.
     """
     blobs = {**BLOBS, "generators/sibling.py": "sha-sibling"}
-    closure = (MANIFEST_PATH, "generators/sibling.py", "generators/tags.py")
+    closure = ("generators/sibling.py", "generators/tags.py")
 
     base = _digest(blobs=blobs, dependencies=closure, file_path="generators/tags.py")
     repointed = _digest(blobs=blobs, dependencies=closure, file_path="generators/sibling.py")
@@ -82,5 +81,15 @@ def test_incomplete_closure_folds_commit_id_despite_present_watch() -> None:
     assert unstable_1 != unstable_2
 
 
-def test_excludes_manifest_blob_from_closure() -> None:
-    assert _digest() == _digest(blobs={**BLOBS, MANIFEST_PATH: "sha-manifest-edited"})
+def test_hashes_a_declared_manifest_entry_like_any_other_file() -> None:
+    """A closure carrying `.infrahub.yml` is only carrying it because `watch` named it.
+
+    Nothing merges the manifest in on its own any more, so it gets no special treatment:
+    its blob is hashed and an edit to it moves the fingerprint.
+    """
+    closure = (".infrahub.yml", "generators/tags.py")
+    blobs = {**BLOBS, ".infrahub.yml": "sha-manifest"}
+
+    base = _digest(blobs=blobs, dependencies=closure)
+    manifest_edited = _digest(blobs={**blobs, ".infrahub.yml": "sha-manifest-edited"}, dependencies=closure)
+    assert base != manifest_edited

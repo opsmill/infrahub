@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.git.closure_builder.post_processing import MANIFEST_PATH
-from infrahub.git.fingerprint.composer import ClosurePathSelector, FingerprintComposer
+from infrahub.git.fingerprint.composer import FingerprintComposer
 from infrahub.git.fingerprint.hasher import FingerprintHasher
 from infrahub.git.fingerprint.registry import FingerprintRegistry
 
@@ -35,6 +34,5 @@ def build_composer(
         hasher=FingerprintHasher(),
         blob_resolver=StaticBlobResolver(blob_shas or {}),
         registry=registry or FingerprintRegistry(),
-        closure_selector=ClosurePathSelector(excluded_paths=frozenset({MANIFEST_PATH})),
         commit=commit,
     )
