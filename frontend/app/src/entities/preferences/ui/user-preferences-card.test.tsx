@@ -16,7 +16,6 @@ vi.mock("@/entities/preferences/domain/use-cases/upsert-user-preferences");
 const FIXED_INSTANT = new Date("2026-06-11T23:30:00Z");
 const EFFECTIVE_ZONE = "Asia/Tokyo";
 
-// A non-USER source inherits its own {value, source}; a USER source states the layer it shadows.
 const baseEffective: EffectivePreferences = {
   dateFormat: {
     value: "EU_DATETIME",
@@ -224,7 +223,6 @@ describe("UserPreferencesCard", () => {
     await initPointerTracking(component.locator);
     await triggers.first().hover();
 
-    // Nothing has been saved, so only the pending state can explain the row the user is looking at.
     await expect
       .element(
         component.getByRole("tooltip", {
@@ -287,7 +285,6 @@ describe("UserPreferencesCard", () => {
     await initPointerTracking(component.locator);
     await triggers.first().hover();
 
-    // Provenance only: the format is named by its label, never by a rendered date sample.
     await expect
       .element(
         component.getByRole("tooltip", { name: "From the organisation default: dd/MM/yyyy HH:mm." })
@@ -408,7 +405,6 @@ describe("UserPreferencesCard", () => {
     await initPointerTracking(component.locator);
     await triggers.first().hover();
 
-    // Provenance only: the source is named, never illustrated with a rendered date sample.
     await expect
       .element(component.getByRole("tooltip", { name: "From your browser." }))
       .toBeVisible();

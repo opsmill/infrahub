@@ -37,7 +37,7 @@ export function toFieldValue(value: string | null): FormAttributeValue {
   return { source: { type: "user" }, value };
 }
 
-/** Explains where a field's PENDING value comes from — what saving the form as it stands would produce. */
+/** Explains where a field's pending value comes from — what saving the form as it stands would produce. */
 function sourceMessage(
   own: string | null,
   inherited: Preference,
@@ -45,7 +45,7 @@ function sourceMessage(
     formatValue,
     browserValue,
   }: {
-    /** Renders a stored value as a label. Required: each field must consciously choose one. */
+    /** Renders a stored value as a label. */
     formatValue: (value: string) => string;
     /** The browser's own value, when the field has one worth naming. Omitted -> the clause is dropped. */
     browserValue?: string;
@@ -114,7 +114,6 @@ export function DateFormatField({
     timezone,
   });
 
-  // The tooltip names the format by its label only, never by a rendered sample.
   const message = preference
     ? sourceMessage(selected, preference.inherited, { formatValue: dateFormatLabel })
     : null;

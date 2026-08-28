@@ -6,7 +6,6 @@ import {
   resolveDatePreferences,
 } from "@/entities/preferences/domain/rules/resolve-date-preferences";
 
-// A non-USER source inherits its own {value, source}; a USER source states the layer it shadows.
 describe("resolveDatePreferences", () => {
   test("maps a USER date-format key to its date-fns pattern", () => {
     // GIVEN a user-set EU date format

@@ -8,7 +8,7 @@ import { dateFormatPattern } from "@/entities/preferences/domain/rules/date-form
 
 /**
  * The value a caller inherits when they set none of their own: the global layer, or null for the
- * client default. Read from the `inherited` layer, so a caller's own override does not hide it.
+ * client default.
  */
 export function inheritedValue<T>(preference: EffectivePreference<T>): T | null {
   return preference.inherited.source === "GLOBAL" ? (preference.inherited.value ?? null) : null;

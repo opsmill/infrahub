@@ -375,14 +375,12 @@ async def test_effective_inherited_readable_without_manage_global_permission(
     await PreferenceRepository(db=db).save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
     await PreferenceRepository(db=db).save(Preference(owner_id=first_account.id, timezone="Europe/Paris"))
 
-    # Half one: the gated raw org read is refused for this caller.
     global_result = await run_query(
         db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_first_account
     )
     assert global_result.errors is not None
     assert global_result.data is None or global_result.data.get("InfrahubGlobalPreferences") is None
 
-    # Half two: the same caller still reads the org's value as their inherited layer, no errors.
     effective_result = await run_query(
         db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account
     )

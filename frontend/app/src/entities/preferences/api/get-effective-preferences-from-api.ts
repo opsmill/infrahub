@@ -1,7 +1,7 @@
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 // Each field carries its resolved value and source plus the layer it would fall back to, so a
-// client can preview clearing an override without a second round trip.
+// client can preview clearing an override.
 const GET_EFFECTIVE_PREFERENCES = graphql(`
   query InfrahubEffectivePreferences {
     InfrahubEffectivePreferences {

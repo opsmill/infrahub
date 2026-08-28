@@ -52,8 +52,8 @@ class EffectivePreferences:
     value (a missing layer counts as "nothing set"). DEFAULT carries a None value: the backend does
     not know the clients' built-in defaults, it only reports that neither layer sets the field.
 
-    The `inherited_*` projection runs the same resolution with the user layer suppressed, so it
-    reports what the caller would fall back to and can only ever be GLOBAL or DEFAULT, never USER.
+    The `inherited_*` projection reports what the caller would fall back to, so its source can
+    only ever be GLOBAL or DEFAULT, never USER.
     """
 
     user: Preference | None

@@ -20,10 +20,7 @@ if TYPE_CHECKING:
 
 
 def _effective_field(*, resolved: ResolvedPreference[Any], inherited: ResolvedPreference[Any]) -> dict[str, Any]:
-    """Shape one field as the plain nested dicts graphene resolves.
-
-    Keyword-only because both arguments share a type, so a transposition would type-check.
-    """
+    """Shape one field as the plain nested dicts graphene resolves."""
     return {
         "value": resolved.value,
         "source": resolved.source,
@@ -36,7 +33,7 @@ async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) ->
 
     Open to any authenticated caller. Every field also carries the layer it shadows, so the
     organisation's own values are readable here for each field, whether or not the caller overrides
-    it. Nothing about this response is gated on a permission.
+    it.
     """
     graphql_context: GraphqlContext = info.context
     account_id = graphql_context.active_account_session.account_id

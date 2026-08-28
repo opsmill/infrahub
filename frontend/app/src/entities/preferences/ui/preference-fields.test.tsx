@@ -18,8 +18,7 @@ const GLOBAL_DATE_FORMAT: EffectivePreference = {
   inherited: { value: "EU_DATETIME", source: "GLOBAL" },
 };
 
-// Shared by both zones below, whose whole point is that this string does not depend on the
-// timezone the form holds.
+// Shared by both zones below: this string does not depend on the timezone the form holds.
 const EXPECTED_TOOLTIP = "Your preference, overriding the organisation default: dd/MM/yyyy HH:mm.";
 
 function renderField({
