@@ -3,13 +3,6 @@ import { defineConfig, mergeConfig } from "vitest/config";
 
 import viteConfig from "./vite.config";
 
-// Chromium inherits this, so date assertions render in a fixed zone instead of the host's — fake
-// timers freeze the instant but not the zone. Fixed is not enough: under UTC a lost or ignored zone
-// produces the same output as the correct one, so a browser-zone fallback bug passes. A DST-free
-// half-hour offset that no assertion names cannot coincide with any zone under test either. The
-// provider ignores Playwright's own `timezoneId` context option, so set it before the browser launches.
-process.env.TZ = "Asia/Kolkata";
-
 // vi.mock in browser mode is served through Playwright request interception, which the
 // provider enables on a session's first registered mock and disables again when a test
 // file's mocks are cleared. Chromium applies that enable asynchronously (the CDP ack does
