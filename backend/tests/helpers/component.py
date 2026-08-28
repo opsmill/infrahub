@@ -16,8 +16,7 @@ if TYPE_CHECKING:
 async def build_worker_component(*, db: InfrahubDatabase, cache: InfrahubCache) -> InfrahubComponent:
     """A task-worker component whose heartbeat is already recorded in ``cache``.
 
-    A flow that waits for the schema to converge reads the worker registry out of the cache. With no
-    heartbeat there it finds no worker at all, and waits for the whole timeout before giving up.
+    Without it a flow waiting for the schema finds no worker and burns the whole timeout.
     """
     component = InfrahubComponent(cache=cache, db=db, message_bus=BusRecorder(), component_type=ComponentType.GIT_AGENT)
     await component.refresh_heartbeat()

@@ -349,7 +349,6 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
             python_deriver=await build_python_target_deriver(db=db),
         )
-        # A rebase emits no schema-updated event, so no backfill covers any of the derived targets.
         await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
 
 

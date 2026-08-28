@@ -176,8 +176,7 @@ class PostMergeDispatcher:
             with log_exception_guard(self.log, f"Failed to send post-merge event '{type(event).__name__}'"):
                 await self.event_service.send(event=event)
                 if isinstance(event, SchemaUpdatedEvent) and event.changed_elements is not None:
-                    # The coalesced pass drops what this backfill covers, so only a sent event may
-                    # license the drop; the guard above would otherwise absorb the failure silently.
+                    # The pass drops what this backfill covers, so only a sent event may license it.
                     schema_changed_elements = ChangedElementSet.from_payload(event.changed_elements)
 
         with log_exception_guard(self.log, "Failed to submit the coalesced post-merge recompute"):

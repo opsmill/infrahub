@@ -252,12 +252,8 @@ def _covered_by_schema_pass(
     """The (kind, attribute) pairs the schema-scoped backfill refreshes for this schema change.
 
     The same scoping decision runs on both sides, so what one selects is exactly what the other can
-    drop. A pair it does not select is left alone here: the diff-driven narrowing is the only thing
-    that reaches it.
-
-    An attribute whose read set could not be determined is never covered. The schema pass builds its
-    candidates from the transforms it could gather, so a pair nothing could analyze is exactly the
-    pair it never submits, and dropping it here would leave it stale.
+    drop. An undeterminable read set is the exception: the schema pass builds its candidates from the
+    transforms it could gather, so a pair nothing could analyze is one it never submits either.
     """
     determinable = [attribute for attribute in read_sets if not attribute.read_set.depends_on_everything]
     scoper = RecomputeScoper(
@@ -285,11 +281,7 @@ def _covered_by_schema_pass(
 
 
 def _log_selection(*, branch: str, selected: list[AffectedTarget], covered: list[tuple[str, str]]) -> None:
-    """Report what the pass recomputes, so an operator can tell narrowing from widening.
-
-    A change set that affects no Python attribute says nothing: on a deployment without any, this
-    runs on every merge, every rebase and every chained level.
-    """
+    """Report what the pass recomputes, so an operator can tell narrowing from widening."""
     if not selected and not covered:
         return
 

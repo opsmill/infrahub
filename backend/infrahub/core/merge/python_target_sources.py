@@ -42,8 +42,7 @@ class DatabasePythonReadSetSource:
         self.component = component
 
     async def read_sets(self, *, branch: str) -> list[PythonAttributeReadSet]:
-        # A worker still behind on the schema declares no Python attribute at all, and an empty
-        # index reads exactly like a branch with nothing to refresh.
+        # A worker behind on the schema declares no Python attribute, which reads as nothing to do.
         await wait_for_schema_to_converge(
             branch_name=branch, component=self.component, db=self.db, log=get_run_logger()
         )
@@ -90,8 +89,8 @@ class ClientSubscriberSource:
 async def build_python_target_deriver(*, db: InfrahubDatabase) -> PythonTargetDeriver:
     """Build the derivation for one recompute pass, inert while the switch is off.
 
-    The switch is read before anything else is resolved: a deployment that leaves the family to the
-    per-node automations must not pay for the client and the component, nor be able to fail on them.
+    The switch is read first, so a deployment that leaves the family to the per-node automations
+    resolves neither the client nor the component.
     """
     if not config.SETTINGS.main.coalesce_python_recompute_after_merge:
         return DisabledPythonTargetDeriver()

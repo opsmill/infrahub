@@ -18,6 +18,7 @@ from tests.adapters.event import FailingKindInfrahubEvent, MemoryInfrahubEvent
 from tests.adapters.python_target_sources import RecordingPythonTargetDeriver
 
 if TYPE_CHECKING:
+    from infrahub.computed_attribute.scoping import ChangedElementSet
     from infrahub.core.branch import Branch
     from infrahub.core.merge.recompute_coalescing import PythonTargetDeriver
     from infrahub.core.models import SchemaDiff
@@ -53,6 +54,30 @@ def _derived_value_schema_diff(default_branch: Branch) -> tuple[SchemaDiff, str]
     candidate.set(name="TestCar", schema=car)
     candidate.process()
     return base_schema.diff(other=candidate), candidate.get_hash()
+
+
+async def _schema_scope_handed_over(
+    db: InfrahubDatabase,
+    source_branch: Branch,
+    default_branch: Branch,
+    event_service: MemoryInfrahubEvent,
+) -> ChangedElementSet | None:
+    """The schema scope the post-merge dispatch handed to the coalesced pass."""
+    deriver = RecordingPythonTargetDeriver(targets=[])
+    dispatcher = _build_dispatcher(db, source_branch, default_branch, event_service, deriver)
+    schema_diff, schema_hash = _derived_value_schema_diff(default_branch)
+
+    await dispatcher.dispatch_events(
+        branch=source_branch,
+        proposed_change_id=None,
+        node_events=[],
+        context=_context(default_branch),
+        schema_diff=schema_diff,
+        schema_hash=schema_hash,
+    )
+
+    assert len(deriver.calls) == 1
+    return deriver.calls[0][2]
 
 
 def _context(default_branch: Branch) -> InfrahubContext:
@@ -122,63 +147,27 @@ class TestPostMergeSchemaEvent:
         assert not [event for event in memory_event.events if isinstance(event, SchemaUpdatedEvent)]
         assert [event for event in memory_event.events if isinstance(event, BranchMergedEvent)]
 
-    async def test_a_schema_event_that_went_out_scopes_the_coalesced_pass(
+    async def test_the_pass_is_scoped_only_when_the_schema_event_went_out(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         register_core_models_schema: SchemaBranch,
         car_person_schema: SchemaBranch,
     ) -> None:
-        """The pass drops the pairs this backfill covers, so it has to be told what changed."""
+        """The coalesced pass drops the pairs this backfill covers, so a failed event covers nothing.
+
+        The send failure is absorbed so that one bad event cannot abort the rest, which is why the
+        scope cannot be handed over before the send.
+        """
         source_branch = await create_branch(branch_name="feature", db=db)
-        deriver = RecordingPythonTargetDeriver(targets=[])
-        dispatcher = _build_dispatcher(db, source_branch, default_branch, MemoryInfrahubEvent(), deriver)
-        schema_diff, schema_hash = _derived_value_schema_diff(default_branch)
 
-        await dispatcher.dispatch_events(
-            branch=source_branch,
-            proposed_change_id=None,
-            node_events=[],
-            context=_context(default_branch),
-            schema_diff=schema_diff,
-            schema_hash=schema_hash,
-        )
-
-        assert len(deriver.calls) == 1
-        _, _, scope = deriver.calls[0]
+        scope = await _schema_scope_handed_over(db, source_branch, default_branch, MemoryInfrahubEvent())
         assert scope is not None
         assert "display_labels" in scope.changed_fields.get("TestCar", frozenset())
 
-    async def test_a_failed_schema_event_leaves_the_coalesced_pass_unscoped(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        register_core_models_schema: SchemaBranch,
-        car_person_schema: SchemaBranch,
-    ) -> None:
-        """A backfill whose event never went out covers nothing, so the pass must drop nothing.
-
-        The send failure is absorbed so it cannot abort the remaining events, which is exactly why
-        the scope cannot be handed over before the send.
-        """
-        source_branch = await create_branch(branch_name="feature", db=db)
-        deriver = RecordingPythonTargetDeriver(targets=[])
-        event_service = FailingKindInfrahubEvent(failing_kind=SchemaUpdatedEvent)
-        dispatcher = _build_dispatcher(db, source_branch, default_branch, event_service, deriver)
-        schema_diff, schema_hash = _derived_value_schema_diff(default_branch)
-
-        await dispatcher.dispatch_events(
-            branch=source_branch,
-            proposed_change_id=None,
-            node_events=[],
-            context=_context(default_branch),
-            schema_diff=schema_diff,
-            schema_hash=schema_hash,
-        )
-
-        # The merge event still went out, so the failure was absorbed rather than aborting the rest.
-        assert [type(event).__name__ for event in event_service.events] == ["BranchMergedEvent"]
-        assert deriver.calls == [(default_branch.name, (), None)]
+        failing = FailingKindInfrahubEvent(failing_kind=SchemaUpdatedEvent)
+        assert await _schema_scope_handed_over(db, source_branch, default_branch, failing) is None
+        assert [type(event).__name__ for event in failing.events] == ["BranchMergedEvent"]
 
 
 class TestPostMergeBranchMergedEvent:

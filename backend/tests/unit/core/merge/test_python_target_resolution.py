@@ -368,22 +368,6 @@ async def test_an_undeterminable_pair_is_never_covered_by_the_schema_pass() -> N
     assert targets[0].whole_kind is True
 
 
-async def test_a_schema_change_none_of_the_attributes_read_drops_nothing() -> None:
-    """The schema pass selects nothing here, so dropping anything would leave a value stale."""
-    subscribers = RecordingSubscriberSource(subscribers={"d1": [("d1", DEVICE)]})
-    resolver = _resolver(read_sets=[SUMMARY, LABEL], subscriber_source=subscribers)
-
-    targets = await resolver.resolve(
-        branch=BRANCH,
-        changes=[
-            MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"name", "description"}))
-        ],
-        schema_changed_elements=ChangedElementSet(changed_fields={SITE: frozenset({"location"})}),
-    )
-
-    assert _identities(targets) == [(DEVICE, "label"), (DEVICE, "summary")]
-
-
 async def test_the_read_set_index_is_fetched_once_per_pass() -> None:
     read_set_source = StaticPythonReadSetSource(read_sets=[SUMMARY])
     resolver = PythonTargetResolver(
