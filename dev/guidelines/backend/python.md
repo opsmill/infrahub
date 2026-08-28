@@ -351,7 +351,18 @@ class _Selection:
     reader_lookup: bool = False
 
 # ✅ Good - each legal case is a type; invalid mixes cannot be built
-_Selection = _Widen | _SelfTarget | _ReaderLookup
+@dataclass
+class Widen: ...
+
+@dataclass
+class SelfTarget:
+    ids: list[str]
+
+@dataclass
+class ReaderLookup:
+    reader_kind: str
+
+Selection = Widen | SelfTarget | ReaderLookup
 ```
 
 ### Do not narrow a type in an override (Liskov / `ty`)
