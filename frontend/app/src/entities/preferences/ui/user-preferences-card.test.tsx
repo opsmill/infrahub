@@ -5,7 +5,7 @@ import { getEffectivePreferences } from "@/entities/preferences/domain/use-cases
 import { upsertUserPreferences } from "@/entities/preferences/domain/use-cases/upsert-user-preferences";
 
 import { render } from "../../../../tests/components/render";
-import { closeTooltip, initPointerTracking } from "../../../../tests/components/utils";
+import { initPointerTracking } from "../../../../tests/components/utils";
 import { UserPreferencesCard } from "./user-preferences-card";
 
 vi.mock("@/entities/preferences/domain/use-cases/get-effective-preferences");
@@ -216,7 +216,7 @@ describe("UserPreferencesCard", () => {
       )
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
 
     await component.getByRole("button", { name: /date format/i }).click();
     await component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }).click();
@@ -233,7 +233,7 @@ describe("UserPreferencesCard", () => {
       )
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 
   test("switches the timezone (i) tooltip to the organisation default when the field is cleared", async () => {
@@ -261,7 +261,7 @@ describe("UserPreferencesCard", () => {
       )
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
 
     // Filter first: the option list holds every runtime zone.
     await component.getByRole("button", { name: /timezone/i }).click();
@@ -279,7 +279,7 @@ describe("UserPreferencesCard", () => {
       )
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 
   test("falls the example back to the inherited organisation zone when the personal zone override is cleared", async () => {
@@ -372,7 +372,7 @@ describe("UserPreferencesCard", () => {
       )
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 
   test("the (i) tooltip names the organisation default a user override is shadowing", async () => {
@@ -402,7 +402,7 @@ describe("UserPreferencesCard", () => {
       )
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 
   test("the (i) tooltip stays a bare 'Your preference.' when the override shadows nothing", async () => {
@@ -429,7 +429,7 @@ describe("UserPreferencesCard", () => {
       .element(component.getByRole("tooltip", { name: "Your preference." }))
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 
   test("the (i) tooltip drops the overriding clause when the override matches the organisation default", async () => {
@@ -459,7 +459,7 @@ describe("UserPreferencesCard", () => {
       .element(component.getByRole("tooltip", { name: "Your preference." }))
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
 
     // The timezone field is the second info trigger.
     await initPointerTracking(component.locator);
@@ -469,7 +469,7 @@ describe("UserPreferencesCard", () => {
       .element(component.getByRole("tooltip", { name: "Your preference." }))
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 
   test("the date-format (i) tooltip names only the source, with no rendered date sample", async () => {
@@ -495,7 +495,7 @@ describe("UserPreferencesCard", () => {
     expect(tooltip.textContent).not.toMatch(/2026/);
     expect(tooltip.textContent).not.toMatch(/Asia\/Tokyo/);
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 
   test("the timezone (i) tooltip names the organisation zone a user override is shadowing", async () => {
@@ -527,7 +527,7 @@ describe("UserPreferencesCard", () => {
       )
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 
   test("the timezone (i) tooltip stays a bare 'Your preference.' when the override shadows nothing", async () => {
@@ -551,7 +551,7 @@ describe("UserPreferencesCard", () => {
       .element(component.getByRole("tooltip", { name: "Your preference." }))
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 
   test("the (i) tooltip reports the browser fallback when the stored zone can't be rendered here", async () => {
@@ -583,7 +583,7 @@ describe("UserPreferencesCard", () => {
       )
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 
   test("the (i) tooltip reports the browser fallback for an unrenderable organisation-default zone", async () => {
@@ -615,7 +615,7 @@ describe("UserPreferencesCard", () => {
       )
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 
   test("the (i) tooltip reports the browser fallback once a renderable override stops shadowing an unrenderable organisation zone", async () => {
@@ -647,7 +647,7 @@ describe("UserPreferencesCard", () => {
       )
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
 
     // Re-selecting the already-selected zone clears the override. Filter first: the option list
     // holds every runtime zone.
@@ -668,7 +668,7 @@ describe("UserPreferencesCard", () => {
       )
       .toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 
   test("the (i) tooltip falls back to the browser source when neither user nor global is set", async () => {

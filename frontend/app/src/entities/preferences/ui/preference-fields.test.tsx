@@ -6,7 +6,7 @@ import type { EffectivePreference } from "@/entities/preferences/domain/model/pr
 import { DateFormatField, toFieldValue } from "@/entities/preferences/ui/preference-fields";
 
 import { render } from "../../../../tests/components/render";
-import { closeTooltip, initPointerTracking } from "../../../../tests/components/utils";
+import { initPointerTracking } from "../../../../tests/components/utils";
 
 // Late-evening UTC: east of UTC this lands on the NEXT calendar day, so an example that ignored
 // the timezone cannot match by accident.
@@ -93,7 +93,7 @@ describe("DateFormatField tooltip", () => {
 
     await expect.element(component.getByRole("tooltip", { name: EXPECTED_TOOLTIP })).toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 
   test("keeps that tooltip identical when the form's timezone moves the example", async () => {
@@ -111,6 +111,6 @@ describe("DateFormatField tooltip", () => {
 
     await expect.element(component.getByRole("tooltip", { name: EXPECTED_TOOLTIP })).toBeVisible();
 
-    await closeTooltip(component.locator);
+    await initPointerTracking(component.locator);
   });
 });
