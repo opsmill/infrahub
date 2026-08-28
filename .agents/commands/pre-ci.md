@@ -7,7 +7,6 @@ allowed-tools:
   - Bash(git diff:*)
   - Bash(git ls-files:*)
   - Bash(git rev-parse:*)
-  - Bash(sort:*)
   - Bash(uv run invoke:*)
   - Bash(uv run ruff check:*)
   - Bash(uv run ruff format:*)
@@ -53,10 +52,7 @@ Run only the phases for the areas that changed, plus those marked always-run. **
 the base, or whether a path counts, include it.** Over-running is cheap; a missed area is a red PR.
 
 Classify the paths using the globs from `.github/file-filters.yml`, so local gating matches the
-`files-changed` outputs CI branches on. Two areas deviate deliberately: **python** is narrower
-than CI's `python_all`, so a `models/` or root-script change runs the lint phases and not the
-slow ones; **schema** has no CI filter at all — `backend_all` excludes `schema/**`, so Phase 4D
-would otherwise never run on a schema-only change.
+`files-changed` outputs CI branches on.
 
 | Area | Paths | Enables |
 |---|---|---|
@@ -129,9 +125,7 @@ uv run invoke docs.format
 6. `uv lock --check --directory python_testcontainers` — same for the separate
    `python_testcontainers` project (job `infrahub-testcontainers-uv-check`).
 
-Steps 2–4 are CI's `python-lint` job verbatim and are repo-wide; the `invoke` tasks reach only
-`tasks`, `models`, `utilities`, `python_testcontainers` and `backend`, so a violation under
-`development/`, `tests/` or the repo root would otherwise pass locally and fail CI.
+Steps 2–4 are CI's `python-lint` job verbatim, and repo-wide — the `invoke` tasks are not.
 
 **2C. YAML** — *if yaml changed*
 
@@ -197,8 +191,8 @@ pnpm --dir frontend/app run check:error-bindings
 **4B. Backend** — *if backend changed*
 
 1. `uv run invoke backend.lint` — call this task directly, not `uv run invoke lint`, which
-   bundles `main.lint`, `backend.lint` and `yamllint` and so ignores the gating of Phases 2B and
-   2C. **mypy is what this phase adds** over those.
+   bundles `main.lint`, `backend.lint` and `yamllint`. **mypy is what this phase adds** over
+   Phase 2.
 2. `uv run invoke backend.validate-generated` — on failure run `uv run invoke backend.generate`
    and report the regenerated files.
 
@@ -208,11 +202,9 @@ pnpm --dir frontend/app run check:error-bindings
    `validate-documentation-style`. Pre-existing errors in `docs/docs/` may exist; only flag those
    in changed files. Does **not** cover the `documentation` job, which runs
    `uv run invoke docs.build` — run that manually if you touched the Docusaurus config.
-2. `uv run invoke docs.validate` — generated reference docs (CLI, schema, events, repository
-   config, config). **Run this if docs or *any* Python changed** — `backend/` included: it
-   mirrors `validate-generated-documentation`, which fires on `python || documentation`, and CI's
-   `python` filter is `**/*.py`. These docs are generated from Python source, and 4B step 2 does
-   not cover them. On failure the correct files are already on disk; stage and commit them.
+2. `uv run invoke docs.validate` — reference docs generated from Python source (CLI, schema,
+   events, repository config, config). On failure the correct files are already on disk; stage
+   and commit them.
 
 **4D. Schema** — *if backend or schema changed*
 
@@ -238,8 +230,7 @@ uv run invoke backend.test-unit
 uv run --directory python_testcontainers pytest --rootdir=. -c pyproject.toml -vs tests
 ```
 
-`python_testcontainers` is a separate uv project, so 5.1 does not reach this suite. CI runs it as
-a Python 3.10–3.14 matrix; one interpreter is enough locally.
+CI runs this as a Python 3.10–3.14 matrix; one interpreter is enough locally.
 
 ---
 
