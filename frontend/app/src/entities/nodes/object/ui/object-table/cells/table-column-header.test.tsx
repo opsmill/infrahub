@@ -74,7 +74,12 @@ const seedFiltersInUrl = (filters: Array<{ name: string; value: unknown }>) =>
     `${window.location.pathname}?filters=${encodeURIComponent(JSON.stringify(filters))}`
   );
 
+const seedHiddenColumnsInUrl = (columns: string) =>
+  window.history.replaceState(null, "", `${window.location.pathname}?hide_columns=${columns}`);
+
 const getSortInUrl = () => new URLSearchParams(window.location.search).get("sort");
+
+const getHiddenColumnsInUrl = () => new URLSearchParams(window.location.search).get("hide_columns");
 
 describe("TableColumnHeader", () => {
   beforeEach(() => {
@@ -82,7 +87,7 @@ describe("TableColumnHeader", () => {
     store.set(nodeSchemasAtom, [siteSchema]);
   });
 
-  test("offers both sort directions then a filter entry for a sortable attribute column", async () => {
+  test("offers both sort directions, a filter entry, then hide for a sortable attribute column", async () => {
     // GIVEN
     const component = await render(
       <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
@@ -100,7 +105,52 @@ describe("TableColumnHeader", () => {
     const itemLabels = Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]')).map(
       (item) => item.textContent
     );
-    expect(itemLabels).toEqual(["Sort ascending", "Sort descending", "Filter"]);
+    expect(itemLabels).toEqual(["Sort ascending", "Sort descending", "Filter", "Hide column"]);
+  });
+
+  test("names the column in the hide param when hiding it from the header", async () => {
+    // GIVEN
+    const component = await render(
+      <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Name" }).click();
+    await component.getByRole("menuitem", { name: "Hide column" }).click();
+
+    // THEN
+    await expect.poll(getHiddenColumnsInUrl).toBe("name");
+  });
+
+  test("leaves an active sort on the same field untouched when hiding the column", async () => {
+    // GIVEN
+    seedSortInUrl("name__value__asc");
+    const component = await render(
+      <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Name" }).click();
+    await component.getByRole("menuitem", { name: "Hide column" }).click();
+
+    // THEN
+    await expect.poll(getHiddenColumnsInUrl).toBe("name");
+    expect(getSortInUrl()).toBe("name__value__asc");
+  });
+
+  test("appends to an already hidden column instead of replacing it", async () => {
+    // GIVEN
+    seedHiddenColumnsInUrl("description");
+    const component = await render(
+      <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Name" }).click();
+    await component.getByRole("menuitem", { name: "Hide column" }).click();
+
+    // THEN
+    await expect.poll(getHiddenColumnsInUrl).toBe("description,name");
   });
 
   test("replaces the whole custom sort with a single-field sort", async () => {
