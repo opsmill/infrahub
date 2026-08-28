@@ -72,6 +72,19 @@ def collect_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
     ...
 ```
 
+**Exception — `tasks/*.py`:** keep `infrahub.*` and other heavy/optional imports function-local
+here. `tasks/__init__.py` eagerly imports every task submodule into the Invoke `Collection`, so a
+top-level backend import in any `tasks/*.py` file would load the full backend package on every
+`invoke` command, even unrelated ones (`invoke --list`, `invoke docs.*`, ...). This is a
+deliberate, documented exception: `pyproject.toml`'s `"tasks/**.py"` per-file-ignore disables the
+"import not at top level" lint rule for exactly this reason. Keep lightweight, always-needed
+imports (stdlib, `invoke`, sibling `.shared`/`.utils` modules) at the top; defer the rest into the
+function that needs them.
+
+The exception covers a thin task wrapper, not logic that happens to live in `tasks/`. A task body
+needing a dozen deferred imports is telling you the logic belongs in a module of its own, which the
+task then imports once — put it there and the deferred imports mostly disappear with it.
+
 ## Data Structures
 
 Use the appropriate data structure based on context. Do not use Pydantic everywhere.
@@ -342,6 +355,14 @@ async def set(self, key: str, value: str, expires: KVTTL | int | None = None) ->
 
 To branch on or read from a typed object, use `isinstance` so the type checker can narrow it; reaching for `getattr(obj, "attr", default)` defeats type analysis. When guarding a schema object, cover the whole family that carries the attribute — `isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema))` — since profiles and templates inherit node behavior and a `NodeSchema`-only check silently drops them.
 
+### Don't write "one or many" unions — take the plural form and let callers wrap
+
+A parameter typed `T | Sequence[T]` forces runtime `isinstance` dispatch on every consumer, and when `T` includes `str` the dispatch is a trap: a bare string satisfies `Sequence[str]`, so it falls into the "many" branch and gets iterated character-by-character. Declare the plural form only — `list[str]` or `tuple[str]` — and have callers pass `[value]`.
+Prefer a concrete container over `Sequence[str]` when the element type is or includes `str`: mypy
+rejects a bare `str` for `list[str]`, but accepts it for `Sequence[str]`, so the annotation alone
+still lets the character-iteration bug through. Reserve `Sequence[T]` for a parameter that
+deliberately accepts any sequence of a non-string `T`. In existing code that already carries such a union, exclude `str` before the `Sequence` check (`if isinstance(data, str) or not isinstance(data, Sequence): data = [data]`), and whenever an annotation widens, widen the runtime check in step and test with a bare `str` and a `tuple`.
+
 ### Deterministic serialization for hashes and cache keys
 
 When a JSON string feeds a hash, fingerprint, or cache key, its output must be deterministic. Do **not** pass `default=str` to `json.dumps` there: it silently serializes unexpected types via `str()`, which can embed run-specific data (memory addresses) and break determinism. Serialize an explicit, canonical shape (sorted keys, known field types) and let unknown types raise instead of being coerced.
@@ -355,6 +376,23 @@ So when a bug is caused by a **wrong type being passed** (e.g. a class where a `
 1. Find why it was missed — usually `arg-type` / `invalid-argument-type` is suppressed for that module.
 2. Re-enable the rule for that module and fix the whole typing chain it surfaces. Grandfather unrelated pre-existing violations with a scoped `# type: ignore[code]  # reason`, not by leaving the rule off.
 3. Fix the source. Never widen a parameter's type to silence the checker when the real contract is narrower — that entrenches the defect. mypy enforces argument types by default (modules opt out), so fix there; re-enabling ty's `invalid-argument-type` is a deliberate directory-wide effort, not a per-file exception.
+
+## Path Matching
+
+When matching a request path (or any string) against an exclusion or allow-list, never rely on
+`path.startswith(prefix)` alone — it also matches unrelated paths that merely share the prefix as
+a substring, e.g. `/healthcheck` incorrectly matches an excluded `/health`. Require the prefix to
+be the whole path or a slash-delimited ancestor:
+
+```python
+# ❌ Bad - "/healthcheck" bypasses an exclusion meant for "/health"
+if any(path.startswith(excluded) for excluded in excluded_paths):
+    return True
+
+# ✅ Good - exact match or a genuine descendant
+if any(path == excluded or path.startswith(f"{excluded}/") for excluded in excluded_paths):
+    return True
+```
 
 ## Python Version Compatibility
 
@@ -408,108 +446,6 @@ Exceptions where positional arguments are acceptable:
 - Well-known stdlib patterns: `range(10)`, `print("message")`
 - First argument when it's unambiguous: `log.info("message")`
 
-## Exception Handling
-
-Catch only the exceptions you expect and know how to handle. Do not use bare `except:` or a broad `except Exception` to wrap code you haven't verified can raise something you can recover from — it swallows `KeyboardInterrupt`/`SystemExit` intent, hides bugs (typos, `AttributeError`, misconfiguration) behind the same handler as the error you meant to catch, and makes failures silent.
-
-```python
-# ❌ Bad - swallows everything, including programming errors
-try:
-    node = await get_node(db=db, node_id=node_id)
-except Exception:
-    node = None
-
-# ✅ Good - catch only what get_node is documented to raise
-try:
-    node = await get_node(db=db, node_id=node_id)
-except NodeNotFoundError:
-    node = None
-```
-
-Guidelines:
-
-- **Name the exceptions.** Catch the narrowest type(s) that the called code actually raises. If several are handled the same way, group them: `except (NodeNotFoundError, BranchNotFoundError):`.
-- **Check the hierarchy before narrowing.** Infrahub's exception types are mostly direct `Error` subclasses, not a tree — `QueryTimeoutError` is a *sibling* of `DatabaseError`, so catching `DatabaseError` does not cover query timeouts. Verify in `backend/infrahub/exceptions.py` which types the call path actually raises before writing the tuple.
-- **Keep the `try` body small.** Wrap only the statement that can raise, not a whole block, so an unexpected error elsewhere isn't caught by accident.
-- **Never silence.** A bare `except Exception: pass` hides real failures. If there is genuinely nothing to do, comment why, and at minimum `log.debug(...)`.
-- **Re-raise what you can't handle.** If you must catch broadly to add context or clean up, re-raise afterwards (`raise` to preserve the traceback, or `raise NewError(...) from exc` to chain).
-
-```python
-# ✅ Good - broad catch is acceptable only to add context, then re-raise
-try:
-    await run_migration(db=db)
-except Exception as exc:
-    log.error("Migration failed", error=str(exc))
-    raise
-```
-
-A broad `except Exception` is justified only at a top-level boundary (a task worker loop, a request handler) whose job is to prevent one failure from taking down the process — and even there, log the exception and re-raise or record it, never discard it.
-
-### Best-effort side effects degrade to a safe fallback
-
-A second broad-catch case is a best-effort side effect whose failure must not abort a primary
-operation that has already succeeded: a cache write for an optimization, an observability emit, a
-capture step feeding later work. Here the broad `except Exception` deliberately does not re-raise,
-because propagating would undo committed, correct work. This is not silencing, and it is legitimate
-only when all of the following hold:
-
-- The failure is logged.
-- It is converted into an explicit, documented fallback that is at least as safe as the side effect
-  never having run, never a silently narrower result. When the side effect feeds a later selection
-  or dispatch, the fallback must over-execute, not under-execute.
-- It is positioned so the failure cannot corrupt the primary operation's committed result (do the
-  best-effort work either fully before the point of no return or fully after it, never straddling
-  it).
-
-```python
-# ✅ Good - a best-effort capture that must never fail the committed operation
-try:
-    summary = serialize_diff(branch_diff)
-    cache.set(key, summary)          # only after the operation has committed
-except Exception as exc:
-    log.warning("Merge diff capture failed; falling back to full regeneration", error=str(exc))
-    key = None                        # explicit, safe (over-executing) fallback signal
-```
-
-## ASGI Middleware
-
-<!-- Extracted from specs/ifc-2886-priority-api-backpressure on 2026-07-26 -->
-
-Write middleware as **pure ASGI** — `async def __call__(self, scope, receive, send)`, subclassing
-nothing — when it runs on every request, may short-circuit a request, or sits anywhere near
-streaming or background tasks:
-
-```python
-class SomeMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
-        self.app = app
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
-        ...
-```
-
-The `@app.middleware("http")` decorator wraps `BaseHTTPMiddleware`, which buffers the entire
-response and interferes with streaming responses and background tasks. Reserve it for
-non-hot-path work where that cost is irrelevant.
-
-Rules that follow from the ASGI contract:
-
-- Always pass non-`http` scopes (`websocket`, `lifespan`) straight through untouched.
-- Short-circuit by constructing and sending the response yourself. Middleware runs outside the
-  exception-handler scope, so raising will not reach FastAPI's registered handlers, and those
-  handlers cannot attach custom response headers.
-- Registration order is inverted: Starlette inserts each `add_middleware(...)` at the front, so
-  the **last** registered runs **first** (outermost). Put a gate that must run before auth,
-  routing, and telemetry last in `server.py`.
-- Anything resolved by `Depends(...)` — including the authenticated user — is not available;
-  dependencies resolve per route, after all middleware.
-
-Worked example: `backend/infrahub/api/admission/middleware.py`, with the reasoning in
-[API Backpressure](../../knowledge/backend/api-backpressure.md#why-its-built-this-way).
-
 ## Testing
 
 - Unit tests: no external dependencies only file access
@@ -522,5 +458,7 @@ For additional information around testing patterns refer to [./testing.md](./tes
 
 ## See Also
 
+- [Exception Handling](exceptions.md) - Catching, scoping, and suppressing exceptions
+- [ASGI Middleware](asgi-middleware.md) - Writing FastAPI/Starlette middleware
 - [Backend Architecture](../../knowledge/backend/architecture.md) - Backend architecture overview
 - [Git Workflow](../git-workflow.md) - Git workflow and commit conventions

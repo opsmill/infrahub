@@ -12,6 +12,7 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreMenuItem
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeToProcess
+from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
@@ -20,6 +21,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
 from tests.constants import TestKind
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.schema import DEVICE_SCHEMA
 
 
@@ -827,3 +829,43 @@ async def test_get_one_global(db: InfrahubDatabase, default_branch: Branch, base
     assert obj2.nbr_seats.value == 4
     assert obj2.color.value == "#444444"
     assert obj2.is_electric.value is True
+
+
+async def test_prefetch_relationships_covers_relationships_without_a_peer(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="John", height=180)
+    await person.save(db=db)
+
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="accord", nbr_seats=5, owner=person.id)
+    await car.save(db=db)
+
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+    fetched = await NodeManager.get_one(
+        db=counting_db, id=person.id, branch=default_branch, prefetch_relationships=True, raise_on_error=True
+    )
+
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 0
+
+    relationship_names = fetched.get_schema().relationship_names
+    assert all(fetched.get_relationship(rel_name).has_fetched_relationships for rel_name in relationship_names)
+
+    peers_per_relationship = {
+        rel_name: [
+            str(rel.peer_id)
+            for rel in await fetched.get_relationship(rel_name).get_relationships(db=counting_db)
+            if rel.peer_id
+        ]
+        for rel_name in relationship_names
+    }
+
+    assert peers_per_relationship == {
+        "cars": [car.id],
+        "cars_driven": [],
+        "member_of_groups": [],
+        "subscriber_of_groups": [],
+        "profiles": [],
+    }
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 0

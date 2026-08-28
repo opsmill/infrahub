@@ -72,6 +72,29 @@ export const Button = ({ variant, size, className, ref, ...props }: ButtonProps)
 );
 ```
 
+## Theme tokens
+
+Style with the semantic theme tokens (`bg-surface`, `text-foreground-muted`, ...) instead of raw
+palette classes, so surfaces follow the active light/dark theme. When migrating a hard-coded color
+to a token:
+
+- **A token swap is a visual change unless the rendered value is identical.** Check the token's
+  computed value in both themes against the class it replaces before claiming "light theme
+  unchanged" in a PR, and list any deliberate visual change in the description. A solid fill
+  replaced by a translucent overlay, or `neutral-100` replaced by a `stone-600/10` wash, is a
+  user-visible change even though the diff looks mechanical.
+- **Stay in the theme's palette family.** Don't map a surface to a `gray-*`-backed token when the
+  surrounding theme uses `neutral`/`stone` — pick the token whose family and shade match what the
+  surface rendered before.
+- **Keep readable text at WCAG AA (4.5:1).** Secondary text (labels, badges, nav items, hints) takes
+  the muted-foreground tier; the faintest tier is only for decorative or placeholder content that
+  may fall below AA. Demoting readable text to the faintest tier is the most-repeated review finding.
+- **Fixed-scheme surfaces don't take theme tokens.** A component hardcoded to one scheme (an
+  always-dark code viewer) needs values readable on that surface; a token that flips with the theme
+  is unreadable in one mode.
+- **Identical sibling controls take identical tokens**, and a token added to `theme.css` needs a
+  consumer in the same PR.
+
 ## Forbidden
 
 | Don't | Do |

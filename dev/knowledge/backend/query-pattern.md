@@ -152,7 +152,11 @@ class MyQuery(Query):
 
 ### Pagination
 
-Pagination (`LIMIT`/`OFFSET`) is automatically appended based on constructor parameters. To write pagination directly in your query, set `insert_limit = False`:
+Pagination (`LIMIT`/`OFFSET`) is automatically appended based on constructor parameters. Pass `limit` and `offset` through to `super().__init__()` — a subclass that keeps its own copies leaves the base `self.limit`/`self.offset` at `None`, and `execute()` reads those to decide how to run: with both unset it takes the `query_with_size_limit()` path, which re-runs the query in `query_size_limit` chunks with offsets of its own. The subclass then pages twice, against itself.
+
+Automatic pagination is only correct over a total order: give the query an `ORDER BY` on a unique key (add `elementId(n)` as a tiebreaker when the sort property is not unique). Neo4j does not guarantee disjoint pages otherwise, so chunked reads can skip or repeat rows.
+
+To write pagination directly in your query, set `insert_limit = False`:
 
 > **List reads default to a page limit (e.g. `Branch.get_list` defaults to `limit=1000`).** Any check that must reason over *all* matching rows — "is any branch merging?", "are there duplicates?" — must not rely on an unbounded read of a default page. Narrow the query with a filter (a status/kind predicate) or paginate explicitly; otherwise the check silently ignores everything past the first page once the table grows.
 >
@@ -327,122 +331,38 @@ class MyQuery(Query):
 | Result dataclass | `{QueryName}Result` | `NodeGetListQueryResult` |
 | Query method | `get_data()` | Yields typed results as a Generator |
 
-### Pattern Examples
+### Reading values out of a result
 
-The following examples show common patterns for building dataclasses within the `get_data()` method.
+Every shape follows the same `get_data()` loop; only the accessor changes. Pick it by the column's
+shape and let it do the typing, rather than indexing the raw record and casting:
 
-**Scalar values** (`RETURN n.uuid AS uuid, n.kind AS kind`):
-
-```python
-@dataclass(frozen=True)
-class ScalarResult:
-    uuid: str
-    kind: str
-
-# In get_data():
-def get_data(self) -> Generator[ScalarResult, None, None]:
-    for result in self.get_results():
-        yield ScalarResult(
-            uuid=result.get_as_type("uuid", str),
-            kind=result.get_as_type("kind", str),
-        )
-```
-
-**Node properties** (`RETURN n.uuid AS node_uuid, n.kind AS node_kind, elementId(n) AS db_id`):
+| Column shape | Accessor |
+|---|---|
+| A scalar | `get_as_type("uuid", str)` |
+| A scalar that may be absent | `get_as_optional_type("description", str)` |
+| A string (shorthand, returns `str | None`) | `get_as_str("node_uuid")` |
+| A `collect(...)` list | `get_as_list_of_type("related_uuids", str)` |
+| A whole node or relationship | `get("n")` |
 
 ```python
 @dataclass(frozen=True)
-class NodePropertiesResult:
-    uuid: str
-    kind: str
-    db_id: str
-
-# In get_data():
-def get_data(self) -> Generator[NodePropertiesResult, None, None]:
-    for result in self.get_results():
-        yield NodePropertiesResult(
-            uuid=result.get_as_str("node_uuid"),
-            kind=result.get_as_str("node_kind"),
-            db_id=result.get_as_str("db_id"),
-        )
-```
-
-**Node + relationship properties** (`RETURN n.uuid AS node_uuid, r.branch AS rel_branch, r.status AS rel_status`):
-
-```python
-@dataclass(frozen=True)
-class NodeWithRelResult:
-    node_uuid: str
-    rel_branch: str
-    rel_status: str
-
-# In get_data():
-def get_data(self) -> Generator[NodeWithRelResult, None, None]:
-    for result in self.get_results():
-        yield NodeWithRelResult(
-            node_uuid=result.get_as_str("node_uuid"),
-            rel_branch=result.get_as_str("rel_branch"),
-            rel_status=result.get_as_str("rel_status"),
-        )
-```
-
-**Collection of properties** (`RETURN n.uuid AS primary_uuid, collect(peer.uuid) AS related_uuids`):
-
-```python
-@dataclass(frozen=True)
-class CollectionResult:
-    primary_uuid: str
-    related_uuids: tuple[str, ...]  # tuple for frozen dataclass
-
-# In get_data():
-def get_data(self) -> Generator[CollectionResult, None, None]:
-    for result in self.get_results():
-        yield CollectionResult(
-            primary_uuid=result.get_as_str("primary_uuid"),
-            related_uuids=tuple(r_uuid for r_uuid in result.get("related_uuids")),
-        )
-```
-
-**Optional values**:
-
-```python
-@dataclass(frozen=True)
-class OptionalResult:
+class NodeWithPeers:
     uuid: str
     description: str | None
+    peer_uuids: tuple[str, ...]  # tuple, so the dataclass can stay frozen
 
-# In get_data():
-def get_data(self) -> Generator[OptionalResult, None, None]:
+def get_data(self) -> Generator[NodeWithPeers, None, None]:
     for result in self.get_results():
-        yield OptionalResult(
+        yield NodeWithPeers(
             uuid=result.get_as_type("uuid", str),
             description=result.get_as_optional_type("description", str),
+            peer_uuids=tuple(result.get_as_list_of_type("peer_uuids", str)),
         )
 ```
 
-### Query Method Patterns
 
-```python
-# Multiple results (standard pattern):
-# Query returns: RETURN n.uuid AS node_uuid, n.name AS node_name
-def get_data(self) -> Generator[MyQueryResult, None, None]:
-    for result in self.get_results():
-        yield MyQueryResult(
-            uuid=result.get_as_str("node_uuid"),
-            name=result.get_as_str("node_name"),
-        )
-
-# Single result:
-# Query returns: RETURN n.uuid AS node_uuid, n.name AS node_name
-def get_data(self) -> MyQueryResult | None:
-    result = self.get_result()
-    if result is None:
-        return None
-    return MyQueryResult(
-        uuid=result.get_as_str("node_uuid"),
-        name=result.get_as_str("node_name"),
-    )
-```
+For a query expected to yield at most one row, return `MyQueryResult | None` from a
+`self.get_result()` check instead of a generator.
 
 ### Guidelines
 
@@ -454,25 +374,9 @@ def get_data(self) -> MyQueryResult | None:
 - Use `get_as_str()`, `get_as_type()` for scalars, `get_as_optional_type()` for nullable values
 - Use `Generator` return type since `get_results()` returns a generator
 
-### Why Return Only Needed Properties
-
-Returning entire nodes (`RETURN n`) transfers all properties from the database, even those you don't use. This wastes:
-
-1. **Network bandwidth** between Neo4j and the application
-2. **Memory** for deserializing and storing unused data
-3. **CPU cycles** for parsing unnecessary properties
-
-```cypher
--- Bad: Returns all properties of n, r, and p
-MATCH (n:Node)-[r:REL]->(p:Peer)
-RETURN n, r, p
-
--- Good: Returns only the 3 properties actually needed
-MATCH (n:Node)-[r:REL]->(p:Peer)
-RETURN n.uuid AS node_uuid, n.name AS node_name, r.branch AS rel_branch
-```
-
-Use `elementId(n) AS db_id` when you need the database ID, rather than returning the full node just to access `node.element_id`.
+Use `elementId(n) AS db_id` when you need the database ID, rather than returning the full node just
+to access `node.element_id` (see [Return Labels](#return-labels) for why whole-node returns waste
+bandwidth and memory).
 
 ## Internals
 

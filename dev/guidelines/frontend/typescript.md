@@ -27,7 +27,8 @@ type LinkProps =
 
 - Prefix: `use*`
 - Let TypeScript infer return types (annotate only when complex)
-- Include all deps in useEffect/useCallback/useMemo arrays
+- Include all deps in the `useEffect` array. Don't reach for `useMemo`/`useCallback`/`memo` at all — the
+  React Compiler memoizes for you (see [react.md](../../knowledge/frontend/react.md))
 
 ## Type Safety
 
@@ -64,6 +65,21 @@ if (!proposedChangeData.source_branch?.value) {
   return <NoDataFound message="Proposed change is missing a source branch." />;
 }
 const sourceBranchValue = proposedChangeData.source_branch.value; // narrowed
+```
+
+"Safe by construction" is still a type lie — seeding a `Map` from the same array you look it up
+against doesn't make the non-null assertion any less of one:
+
+```tsx
+// ❌ Bad — "safe by construction" is still a type lie
+const itemsByUuid = new Map(nodes.map((n) => [n.uuid, createItem(n)]));
+const item = itemsByUuid.get(node.uuid)!; // n was in the same array, so... trust me
+
+// ✅ Good — pair values upfront so there is no re-lookup to assert past
+const entries = nodes.map((n) => ({ node: n, item: createItem(n) }));
+for (const { node, item } of entries) {
+  /* item is already paired, no lookup needed */
+}
 ```
 
 ### Reading route params

@@ -111,6 +111,12 @@ async def test_query_performance(aio_benchmark, db):
     await aio_benchmark(expensive_query, db=db)
 ```
 
+**The benchmark's input must actually exercise what it claims to measure.** When a performance
+change is conditional on a specific input shape (a particular field selection, a branch of an
+`if`, a fast path), add or update a benchmark whose input takes that path. A benchmark that takes a
+different path measures the neighbour instead and honestly reports "no change" — so on a perf PR,
+check that the input drives the changed code before reading anything into the result, either way.
+
 ### Query Benchmark Tests (`backend/tests/query_benchmark/`)
 
 Dedicated database query performance testing. Measures query execution time and efficiency using database snapshots for comparison.
@@ -431,6 +437,29 @@ it. Two rules follow:
   (200) rows and the API rejects a larger `limit`, so once that page is full a before/after
   comparison saturates and can never be true again. Read newest-first
   (`FlowRunSort.EXPECTED_START_TIME_DESC`) and identify the run by its id or parameters instead.
+
+### A Component Test Process Talks to Two Prefect Servers
+
+There is no single "the Prefect server" in a component test process. Two fixtures each provide one,
+and which is current depends on the fixtures the test asked for:
+
+| Fixture | Scope | Server |
+|---------|-------|--------|
+| `prefect_test_fixture` (autouse, `component/conftest.py`) | session | ephemeral `prefect_test_harness` subprocess |
+| `prefect` (`tests/conftest.py`) | **module** | `prefect_container`, via a `temporary_settings` override of `PREFECT_API_URL` |
+
+The `prefect` override lasts only as long as the module that requested it. A test that does not
+depend on `prefect` therefore falls back to the harness server, even in a process where the
+container is running — `component/api/conftest.py::workflow_local` and
+`TestInfrahubApp.workflow_local` sit on opposite sides of this line.
+
+**Never memoize server-side registration per process.** `setup_task_manager` registers blocks,
+worker pools, deployments and builtin triggers against whichever server is current, so a
+process-wide "already done" flag lets the first server's setup satisfy fixtures pointing at the
+second. The second server then has no deployments, and `setup_triggers` raises `KeyError` on the
+empty deployment mapping rather than failing anywhere near the cause.
+`tests/helpers/task_manager.py` keys its memo on `get_current_settings().api.url` for this reason;
+anything else cached against a Prefect server needs the same treatment.
 
 ### Functional Tests with `TestInfrahubApp`
 

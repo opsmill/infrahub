@@ -963,7 +963,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         if repo is not None:
             try:
                 commit_before = str(repo.head.commit)
-                repo.remotes.origin.pull(branch_name)
+                repo.remotes.origin.pull(self._get_mapped_remote_branch(branch_name=branch_name))
             except GitCommandError as exc:
                 await self._raise_enriched_error(error=exc, branch_name=branch_name)
 

@@ -1,0 +1,1 @@
+Creating objects from an object template is now significantly faster, and no longer slows down as more objects are created from the same template. Bulk loads from templates, such as loading object files or synchronizing with the SDK, benefit the most.

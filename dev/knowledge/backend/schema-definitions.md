@@ -54,7 +54,7 @@ core_standard_webhook = NodeSchema(
 | `on_delete` | `RelationshipDeleteBehavior \| None` | `None` | `None` (no-action) or `cascade` |
 | `allow_override` | `AllowOverrideType` | `ANY` | Whether inheriting nodes can override this relationship |
 | `read_only` | `bool` | `False` | Prevents user modification |
-| `deprecation` | `str \| None` | `None` | Deprecation message shown to users |
+| `deprecation` | `str \| None` | `None` | Deprecation message shown to users; name the version after which the field is removed (applies to GraphQL `deprecation_reason` too) |
 | `common_parent` | `str \| None` | `None` | Constrains peer's parent to match this object's parent |
 | `common_relatives` | `list[str] \| None` | `None` | Peer relationships that must share the same set of peers |
 

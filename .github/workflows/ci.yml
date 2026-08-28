@@ -676,12 +676,26 @@ jobs:
       (needs.files-changed.outputs.backend == 'true' ||
       needs.files-changed.outputs.testcontainers == 'true')
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
+    strategy:
+      fail-fast: false
+      matrix:
+        # Shard membership lives in the test files (module-level pytestmark); keep
+        # this list in sync with _SHARD_MARKERS in
+        # backend/tests/integration_docker/conftest.py.
+        shard: [a, b]
     runs-on:
       group: huge-runners
     timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
       PYTEST_XDIST_WORKER_COUNT: 1
+      # Huge runners host several jobs per machine: bound each stack's neo4j
+      # instead of letting it size its heap from the host's memory, and tear
+      # throwaway stacks down with a 1s grace period.
+      INFRAHUB_TESTING_DB_HEAP_INITIAL_SIZE: 1g
+      INFRAHUB_TESTING_DB_HEAP_MAX_SIZE: 1g
+      INFRAHUB_TESTING_DB_PAGECACHE_SIZE: 512m
+      INFRAHUB_TESTING_STOP_TIMEOUT: 1
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
     steps:
       - name: "Check out repository code"
@@ -720,7 +734,7 @@ jobs:
         run: "uv run invoke dev.build"
       - name: "Run tests"
         # Use tini to properly propagate cancellation signal to pytest, so that containers are properly destroyed
-        run: "exec tini -s -g -- uv run pytest backend/tests/integration_docker/"
+        run: "exec tini -s -g -- uv run pytest backend/tests/integration_docker/ -m shard_${{ matrix.shard }}"
 
   # ---------------------------------------------------
   # DISABLING Memgraph for now :(
@@ -1184,7 +1198,7 @@ jobs:
             playwright-junit.xml
       - name: Publish e2e results
         if: always() && github.event.pull_request.head.repo.fork == false
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: playwright-junit.xml
           check_name: "E2E pytest (${{ matrix.shard }})"

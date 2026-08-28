@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 # a merge's lock holder is gone the next merge-watcher scan (cron, every minute) flips it quickly.
 MERGING_TIMEOUT_SECONDS = 90
 DETECTION_TIMEOUT_SECONDS = 180
+pytestmark = pytest.mark.shard_b
+
 POLL_INTERVAL_SECONDS = 3
 
 
