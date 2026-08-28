@@ -310,7 +310,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     changelog_collector = DiffChangelogCollector(
         diff=default_branch_diff, branch=user_branch, db=db, migration_tracker=MigrationTracker(migrations=migrations)
     )
-    for action, node_changelog in changelog_collector.collect_changelogs():
+    for action, node_changelog in await changelog_collector.collect_changelogs():
         mutation_action = MutationAction.from_diff_action(diff_action=action)
         meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)
         meta.origin = NodeMutationOrigin.REBASE

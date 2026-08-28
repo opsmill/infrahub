@@ -10,6 +10,7 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.exceptions import SchemaNotFoundError
 
+from .enrichment import enrichment_peers_enabled, enrichment_primary_enabled
 from .models import (
     AttributeChangelog,
     NodeChangelog,
@@ -70,8 +71,17 @@ class DiffChangelogCollector:
             rel_schema = schema.get_relationship(name=relationship_name)
             return rel_schema.peer
 
-    def _process_node(self, node: EnrichedDiffNode) -> NodeChangelog:
+    async def _load_node_hfid(self, node_id: str, node_kind: str) -> list[str] | None:
+        """Load the merged node to read its hfid -- one DB load per changed node (the diff carries no hfid)."""
+        from infrahub.core.manager import NodeManager  # noqa: PLC0415  # circular import: manager -> node -> changelog
+
+        node = await NodeManager.get_one(db=self._db, id=node_id, kind=node_kind, branch=self._branch)
+        return await node.get_hfid(db=self._db) if node else None
+
+    async def _process_node(self, node: EnrichedDiffNode) -> NodeChangelog:
         node_changelog = NodeChangelog(node_id=node.uuid, node_kind=node.kind, display_label=node.label)
+        if enrichment_primary_enabled():
+            node_changelog.hfid = await self._load_node_hfid(node_id=node.uuid, node_kind=node.kind)
         try:
             schema = self._db.schema.get(node_changelog.node_kind, branch=self._branch, duplicate=False)
         except SchemaNotFoundError:
@@ -156,6 +166,9 @@ class DiffChangelogCollector:
                                 node_kind=node.node_kind,
                                 relationship_name=relationship.name,
                             )
+                            if enrichment_peers_enabled():
+                                # peer_label is carried by the diff -- no per-peer load needed.
+                                changelog_rel.peer_display_label = entry.peer_label
                         if rel_prop.previous_value:
                             changelog_rel.peer_id_previous = rel_prop.previous_value
                             changelog_rel.peer_kind_previous = self.get_peer_kind(
@@ -201,6 +214,8 @@ class DiffChangelogCollector:
                 peer_kind=self.get_peer_kind(
                     peer_id=peer.peer_id, node_kind=node.node_kind, relationship_name=relationship.name
                 ),
+                # peer_label is carried by the diff -- no per-peer load needed.
+                peer_display_label=peer.peer_label if enrichment_peers_enabled() else None,
                 peer_status=peer.action,
             )
             for peer_prop in peer.properties:
@@ -228,10 +243,10 @@ class DiffChangelogCollector:
 
         node.add_relationship(relationship_changelog=changelog_rel)
 
-    def collect_changelogs(self) -> Sequence[tuple[DiffAction, NodeChangelog]]:
+    async def collect_changelogs(self) -> Sequence[tuple[DiffAction, NodeChangelog]]:
         self._populate_diff_nodes()
         changelogs = [
-            (node.action, self._process_node(node=node))
+            (node.action, await self._process_node(node=node))
             for node in self._diff.nodes
             if node.action != DiffAction.UNCHANGED
         ]

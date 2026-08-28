@@ -8,7 +8,7 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
-from infrahub.core.changelog.enrichment import enrichment_primary_enabled
+from infrahub.core.changelog.enrichment import enrichment_primary_enabled, enrichment_primary_recompute_enabled
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
@@ -211,13 +211,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 return True
         return False
 
-    async def get_hfid(self, db: InfrahubDatabase, include_kind: bool = False) -> list[str] | None:
+    async def get_hfid(
+        self, db: InfrahubDatabase, include_kind: bool = False, force_recompute: bool = False
+    ) -> list[str] | None:
         """Return the Human friendly id of the node."""
         if not self._schema.human_friendly_id:
             return None
 
         hfid_values: list[str] | None = None
-        if self._human_friendly_id:
+        if self._human_friendly_id and not force_recompute:
             hfid_values = self._human_friendly_id.get_value(node=self, at=self._at)
         if not hfid_values:
             hfid_values = [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
@@ -1116,7 +1118,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         node_changelog.display_label = await self.get_display_label(db=db)
         if enrichment_primary_enabled():
-            node_changelog.hfid = await self.get_hfid(db=db)
+            node_changelog.hfid = await self.get_hfid(db=db, force_recompute=enrichment_primary_recompute_enabled())
         return node_changelog
 
     async def _update(
@@ -1171,7 +1173,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         node_changelog.display_label = await self.get_display_label(db=db)
         if enrichment_primary_enabled():
-            node_changelog.hfid = await self.get_hfid(db=db)
+            node_changelog.hfid = await self.get_hfid(db=db, force_recompute=enrichment_primary_recompute_enabled())
 
         if node_changelog.has_changes:
             self._set_updated_at(update_at)
@@ -1213,7 +1215,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db)
         )
         if enrichment_primary_enabled():
-            node_changelog.hfid = await self.get_hfid(db=db)
+            node_changelog.hfid = await self.get_hfid(db=db, force_recompute=enrichment_primary_recompute_enabled())
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)

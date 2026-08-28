@@ -7,7 +7,7 @@ from graphene import Boolean, InputField, InputObjectType, List, Mutation, Strin
 from infrahub_sdk.utils import compare_lists
 
 from infrahub.core.account import GlobalPermission, ObjectPermission
-from infrahub.core.changelog.enrichment import enrichment_primary_enabled
+from infrahub.core.changelog.enrichment import enrichment_primary_enabled, enrichment_primary_recompute_enabled
 from infrahub.core.changelog.models import NodeChangelog, RelationshipChangelogGetter
 from infrahub.core.constants import (
     InfrahubKind,
@@ -193,7 +193,7 @@ class RelationshipAdd(Mutation):
             node_id=source.get_id(), node_kind=source.get_kind(), display_label=display_label
         )
         if enrichment_primary_enabled():
-            node_changelog.hfid = await source.get_hfid(db=graphql_context.db)
+            node_changelog.hfid = await source.get_hfid(db=graphql_context.db, force_recompute=enrichment_primary_recompute_enabled())
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
         _validate_cardinality_add(data=data, rel_schema=rel_schema, existing_peers=existing_peers)
@@ -280,7 +280,7 @@ class RelationshipRemove(Mutation):
             node_id=source.get_id(), node_kind=source.get_kind(), display_label=display_label
         )
         if enrichment_primary_enabled():
-            node_changelog.hfid = await source.get_hfid(db=graphql_context.db)
+            node_changelog.hfid = await source.get_hfid(db=graphql_context.db, force_recompute=enrichment_primary_recompute_enabled())
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
         _validate_optional_remove(data=data, rel_schema=rel_schema, existing_peers=existing_peers)

@@ -3,9 +3,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Self, cast
 from uuid import UUID
 
+from opentelemetry import trace
 from pydantic import BaseModel, Field, PrivateAttr, computed_field, field_validator, model_validator
 
-from infrahub.core.changelog.enrichment import enrichment_full_enabled
+from infrahub.core.changelog.enrichment import (
+    enrichment_peers_enabled,
+    enrichment_peers_optimized_enabled,
+    enrichment_peers_recompute_enabled,
+    get_webhook_enrichment_level,
+)
 from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality, RelationshipKind
 
 if TYPE_CHECKING:
@@ -461,50 +467,104 @@ class RelationshipChangelogGetter:
     def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
         self._db = db
         self._branch = branch
+        self._peer_labels: dict[str, tuple[str, list[str] | None]] | None = None
 
     async def get_changelogs(self, primary_changelog: NodeChangelog) -> list[NodeChangelog]:
         """Return secondary changelogs based on this update.
 
         These will typically include updates to relationships on other nodes.
         """
-        schema_branch = self._db.schema.get_schema_branch(name=self._branch.name)
-        node_schema = schema_branch.get(name=primary_changelog.node_kind, duplicate=False)
-        secondaries: list[NodeChangelog] = []
+        with trace.get_tracer(__name__).start_as_current_span("changelog.enrichment") as span:
+            span.set_attribute("enrichment.level", get_webhook_enrichment_level().value)
+            if enrichment_peers_optimized_enabled():
+                await self._prefetch_peer_labels(primary_changelog)
+            schema_branch = self._db.schema.get_schema_branch(name=self._branch.name)
+            node_schema = schema_branch.get(name=primary_changelog.node_kind, duplicate=False)
+            secondaries: list[NodeChangelog] = []
 
+            for relationship in primary_changelog.relationships.values():
+                if isinstance(relationship, RelationshipCardinalityOneChangelog):
+                    secondaries.extend(
+                        await self._parse_cardinality_one_relationship(
+                            relationship=relationship,
+                            node_schema=node_schema,
+                            primary_changelog=primary_changelog,
+                            schema_branch=schema_branch,
+                        )
+                    )
+                elif isinstance(relationship, RelationshipCardinalityManyChangelog):
+                    secondaries.extend(
+                        await self._parse_cardinality_many_relationship(
+                            relationship=relationship,
+                            node_schema=node_schema,
+                            primary_changelog=primary_changelog,
+                            schema_branch=schema_branch,
+                        )
+                    )
+
+            span.set_attribute("enrichment.peer_count", len(secondaries))
+            return secondaries
+
+    def _collect_peer_refs(self, primary_changelog: NodeChangelog) -> list[str]:
+        """Peer ids referenced by this update, in one flat list for a batched load."""
+        ids: list[str] = []
         for relationship in primary_changelog.relationships.values():
             if isinstance(relationship, RelationshipCardinalityOneChangelog):
-                secondaries.extend(
-                    await self._parse_cardinality_one_relationship(
-                        relationship=relationship,
-                        node_schema=node_schema,
-                        primary_changelog=primary_changelog,
-                        schema_branch=schema_branch,
-                    )
-                )
+                ids += [str(pid) for pid in (relationship.peer_id, relationship.peer_id_previous) if pid]
             elif isinstance(relationship, RelationshipCardinalityManyChangelog):
-                secondaries.extend(
-                    await self._parse_cardinality_many_relationship(
-                        relationship=relationship,
-                        node_schema=node_schema,
-                        primary_changelog=primary_changelog,
-                        schema_branch=schema_branch,
-                    )
-                )
+                ids += [peer.peer_id for peer in relationship.peers if peer.peer_id]
+        return ids
 
-        return secondaries
+    async def _prefetch_peer_labels(self, primary_changelog: NodeChangelog) -> None:
+        """Resolve every peer's display_label / hfid in a single batched query.
 
-    async def _load_peer_labels(self, peer_id: str, peer_kind: str) -> tuple[str, list[str] | None]:
-        """Naively load the peer node to read its materialized display_label / hfid.
-
-        Deliberately one DB load per peer -- this is the cost under test. A missing peer falls
-        back to the pre-enrichment placeholder rather than failing the mutation.
+        When the HFID is distant, the relationships it reads are prefetched with the batch so the
+        recompute resolves its peers from memory instead of one query per node.
         """
         from infrahub.core.manager import NodeManager  # noqa: PLC0415  # circular import: manager -> node -> changelog
 
-        peer = await NodeManager.get_one(db=self._db, id=peer_id, kind=peer_kind, branch=self._branch)
-        if peer is None:
-            return "n/a", None
-        return await peer.get_display_label(db=self._db), await peer.get_hfid(db=self._db)
+        recompute = enrichment_peers_recompute_enabled()
+        peer_ids = self._collect_peer_refs(primary_changelog)
+        with trace.get_tracer(__name__).start_as_current_span("changelog.load_peers_batch") as span:
+            span.set_attribute("enrichment.peer_count", len(peer_ids))
+            span.set_attribute("enrichment.recompute", recompute)
+            self._peer_labels = {}
+            if not peer_ids:
+                return
+            peers = await NodeManager.get_many(
+                db=self._db, ids=peer_ids, branch=self._branch, prefetch_relationships=recompute
+            )
+            for peer_id, peer in peers.items():
+                self._peer_labels[peer_id] = (
+                    await peer.get_display_label(db=self._db),
+                    await peer.get_hfid(db=self._db, force_recompute=recompute),
+                )
+
+    async def _load_peer_labels(self, peer_id: str, peer_kind: str) -> tuple[str, list[str] | None]:
+        """Read a peer's display_label / hfid.
+
+        When labels were prefetched in a batch they are read from that cache; otherwise the peer is
+        loaded on its own -- one DB load per peer, the cost the naive variant is measuring. A distant
+        HFID additionally resolves its relationship peer per node here. A missing peer falls back to
+        the pre-enrichment placeholder rather than failing the mutation.
+        """
+        from infrahub.core.manager import NodeManager  # noqa: PLC0415  # circular import: manager -> node -> changelog
+
+        if self._peer_labels is not None:
+            return self._peer_labels.get(peer_id, ("n/a", None))
+
+        recompute = enrichment_peers_recompute_enabled()
+        with trace.get_tracer(__name__).start_as_current_span("changelog.load_peer") as span:
+            span.set_attribute("enrichment.peer_kind", peer_kind)
+            span.set_attribute("enrichment.recompute", recompute)
+            peer = await NodeManager.get_one(db=self._db, id=peer_id, kind=peer_kind, branch=self._branch)
+            if peer is None:
+                span.set_attribute("enrichment.peer_found", False)
+                return "n/a", None
+            span.set_attribute("enrichment.peer_found", True)
+            return await peer.get_display_label(db=self._db), await peer.get_hfid(
+                db=self._db, force_recompute=recompute
+            )
 
     async def _parse_cardinality_one_relationship(
         self,
@@ -612,7 +672,7 @@ class RelationshipChangelogGetter:
         secondaries: list[NodeChangelog] = []
         peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
         if peer_relation:
-            full = enrichment_full_enabled()
+            full = enrichment_peers_enabled()
             display_label, hfid = await self._load_peer_labels(peer_id=peer_id, peer_kind=peer_kind) if full else ("n/a", None)
             node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label=display_label, hfid=hfid)
             if peer_relation.cardinality == RelationshipCardinality.ONE:
@@ -652,7 +712,7 @@ class RelationshipChangelogGetter:
         secondaries: list[NodeChangelog] = []
         peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
         if peer_relation:
-            full = enrichment_full_enabled()
+            full = enrichment_peers_enabled()
             display_label, hfid = await self._load_peer_labels(peer_id=peer_id, peer_kind=peer_kind) if full else ("n/a", None)
             node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label=display_label, hfid=hfid)
             if peer_relation.cardinality == RelationshipCardinality.ONE:

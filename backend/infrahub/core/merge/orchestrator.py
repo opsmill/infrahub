@@ -114,7 +114,7 @@ class BranchMergeOrchestrator:
                 tracking_id=BranchTrackingId(name=self.source_branch.name),
             )
             changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=self.source_branch, db=self.db)
-            node_events = changelog_collector.collect_changelogs()
+            node_events = await changelog_collector.collect_changelogs()
 
             if await self.schema_analyzer.has_schema_changes():
                 self.log.info("Applying schema migrations after merge")
