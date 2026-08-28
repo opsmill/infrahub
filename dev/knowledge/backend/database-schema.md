@@ -374,15 +374,9 @@ These filters apply to *any* query whose contract mentions "active" or "current"
 
 Neo4j rejects some writes with errors that are safe to replay on a fresh transaction (a lock contention deadlock, or an entity that a concurrent transaction removed mid-statement). Infrahub retries these at the transaction layer with the `retry_db_transaction` decorator.
 
-`retry_db_transaction(name=...)` wraps an `async` method that owns its transaction. On a retriable error it re-runs the whole method after an exponential backoff with jitter, up to `retry_limit` attempts; a non-retriable error propagates immediately. The retriable set is defined by `is_retriable_db_error` in `database/__init__.py`:
+`retry_db_transaction(name=...)` wraps an `async` method that owns its transaction. On a retriable error — `is_retriable_db_error` accepts `TransientError` (deadlock, lock timeout) and `EntityNotFound`, nothing else — it re-runs the whole method after an exponential backoff with jitter, configured by the `INFRAHUB_DB_RETRY_*` settings; a non-retriable error propagates immediately.
 
-| Error | Retriable |
-|-------|-----------|
-| `neo4j.exceptions.TransientError` (deadlock, lock timeout) | Yes |
-| `ClientError` with code `Neo.ClientError.Statement.EntityNotFound` | Yes |
-| Any other exception | No |
-
-Backoff is configured under the `database` settings (`INFRAHUB_DB_RETRY_*` environment variables): `retry_limit`, `retry_base_delay`, `retry_max_delay`, `retry_jitter_max`.
+**A new session escapes the caller's transaction.** `start_transaction()` carries the current session forward, but `start_session()` builds a fresh session straight from the driver — writes made through it commit on their own, whatever transaction the caller holds, so a caller rollback keeps them. Code handed a `db` runs its queries on that `db`; a helper that opens per-task sessions for concurrency must fall back to running sequentially on the caller's `db` when `db.is_transaction`.
 
 **The retry must run at the transaction owner.** A method decorated with `retry_db_transaction` opens the transaction it retries. Code running *inside* that transaction (a query loop, a nested helper) must let a retriable error propagate to the owner rather than catching it and returning a failed result: a caught error still leaves the transaction poisoned, so the commit fails with a non-retryable `TransactionError` and the replay never happens. Only paths that run outside any transaction (they skip the transaction wrapper and have no owner to replay them) record the error as a failure instead. Gate that choice on `db.is_transaction`.
 
