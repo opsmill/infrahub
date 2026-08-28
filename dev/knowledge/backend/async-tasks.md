@@ -350,9 +350,27 @@ Because the discriminant is intrinsic to every run, historical runs type correct
 
 ## Liveness and zombie detection
 
-A running flow emits a `prefect.flow-run.heartbeat` event on a fixed interval while it executes. The `crash-zombie-flows` system automation watches for the absence of these events: it keeps a per-run countdown that every expected event restarts, and marks a run `CRASHED` once the countdown lapses. This reaps runs whose worker process died without recording a terminal state, which would otherwise stay `RUNNING` indefinitely.
+A running flow emits a `prefect.flow-run.heartbeat` event on a fixed interval while it executes. The `crash-zombie-flows` system automation watches for the absence of these events and marks a run `CRASHED` once its countdown lapses. This reaps runs whose worker process died without recording a terminal state, which would otherwise stay `RUNNING` indefinitely.
 
-A run waiting out a retry backoff emits nothing while it waits. The retry-wait transition is therefore registered as an expected event, anchoring the countdown at the start of that silence, and the detection window is sized above the longest configured retry backoff so a run waiting between attempts is not mistaken for a dead process. The window is derived from the webhook send retry delay plus a margin rather than hardcoded, so the relationship holds if the backoff changes. A run whose process genuinely died still lapses the window and is crashed, at the cost of the widened detection latency.
+### An event either renews the countdown or ends the watch
+
+A Prefect proactive trigger has two event sets, and they do opposite things. This is the single most important thing to know before editing the trigger, because the two are easy to confuse and the failure mode is silent:
+
+- an event in **`after`** opens or restarts the per-run countdown;
+- an event that is only in **`expect`** *satisfies* the window instead. It pushes the bucket's count to the threshold, so at expiry the proactive `count < threshold` test fails, the action never fires, and the bucket is then deleted. The run is left unwatched until an `after` event opens a new one.
+
+So "expected" does not mean "renews". Ending the watch is the correct outcome only for the terminal states, where the run has finished and must stop being watched. Any other event the trigger expects means the run is still alive, so it must appear in **both** sets. A unit test asserts that the expected set only ever adds terminal states on top of the renewing ones, because getting this wrong disarms detection for the affected run rather than producing an obvious error.
+
+### Retry waits
+
+A run waiting out a retry backoff is silent for the whole wait: the flow engine tears down its heartbeat thread before it sleeps out the delay, and Prefect excludes in-process retries (`empirical_policy.retry_type == "in_process"`) from the worker scheduled-run query, so nothing else reports on the run either. Two consequences:
+
+- The retry-wait transition renews the countdown, anchoring it at the start of the silence it explains, so the whole window is available to the backoff. Were it merely expected, it would end the watch and a run whose process died inside the wait would never be crashed.
+- The window is sized above the longest configured retry backoff so a legitimate wait is not mistaken for a dead process. It is derived from the webhook send retry delay plus a margin rather than hardcoded, so the relationship holds if the backoff changes.
+
+Because a dead in-process retry wait is never re-submitted by a worker, crashing it has no false-positive path: the run has no way forward other than the process that just died. The cost of the widened window is detection latency, not correctness.
+
+Note when reasoning about which events fire: on resume, Prefect renames the state, so the event is `prefect.flow-run.Retrying`, not `...Running`. The client-side return value of a state proposal keeps the locally-proposed name, so it is not a reliable guide to the emitted event.
 
 ## Key Locations
 
