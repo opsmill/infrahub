@@ -313,6 +313,31 @@ anchor). Does **not** depend on Phase 3.
   **All three passed on the first run**, which is the expected result: T044 already shipped the widened anchor. The evidence that they are load-bearing is the mutation check — restoring `AND anchor.to IS NULL` in `queries.py` (the runtime anchor) fails shape (a) with `HAS_VALUE` and `IS_PROTECTED` left open, and the migration reports `Closed 0`. That is exactly the reported damage going unrepaired, and it is the concrete proof FR-011a is load-bearing rather than defensive. Worth recording: shapes (b) and (c) pass under **either** anchor, because each still has one open owning/`IS_RELATED` edge for the narrow anchor to find. Only shape (a) — every owning edge closed — is anchor-sensitive, so T042's "which only the widened anchor can reach" applies to (a) alone.
 - [ ] T043 [P] [US2] Write a component test asserting `m077` is safe to re-run: a second run reports zero, so an interrupted upgrade is resumable (SC-004a) Delivered as `.../m077_retire_agnostic_property_edges/test_rerun.py`, one test over a database holding all four situations at once — a plain orphan (attribute **and** relationship), a half-closed orphan, a detached vertex, and a live object — so the claim covers the whole migration rather than the removal pass alone, which is all `test_hard_delete.py`'s narrower re-run test covered. Asserts the second run reports `Closed 0` / `Removed 0` / `Skipped 0` and `nbr_migrations_executed == 0`, and compares every field's edge summary before and after the second run, so a re-run that re-stamped an already-closed edge with a fresh time would fail even though the count read zero.
 
+  **Superseded 2026-08-27 — the T039-T043 notes above describe an interim state.** Two later
+  maintainer decisions changed what shipped, and neither is reflected in the paragraphs above.
+
+  1. **There is no skipped-candidate report.** A candidate whose retirement time the graph does not
+     record is no longer left alone and counted; the close falls back to the run time
+     (`coalesce(derived_at, $at)`), which releases the value instead of leaving it reserved forever.
+     Such a field is unreadable on every branch anyway — nothing dates its release because nothing
+     recorded its owner leaving — so the run time shifts no branch's view of it.
+     `CountUnstampableAgnosticFieldsQuery`, `UnstampableAgnosticFieldCount` and the third pass in
+     `execute` are gone, and no `Skipped N` line is emitted. T041's point 1 above still stands as a
+     fact about the runner — a non-empty `errors` does abort the upgrade, and C4 still needs
+     amending — but it no longer describes this migration.
+  2. **The per-shape test files are gone.** `test_close.py`, `test_half_closed.py`,
+     `test_hard_delete.py`, `test_shared_value.py`, `test_unrepairable.py` and `test_rerun.py` were
+     consolidated into `test_repair.py`: one class that builds every damaged shape into a single
+     graph, runs the migration, verifies the whole graph, runs it again, and asserts the identical
+     expectations still hold. Idempotency is therefore pinned for every shape rather than the four
+     `test_rerun.py` carried, and the closure count is one exact total across all of them.
+     `test_retention.py` stays separate — a branch forked into that graph would read every object in
+     it that is still live, leaving the migration nothing to repair. The mutation findings recorded
+     above were re-run against the consolidated suite and still hold, with one exception: reverting
+     the stamp to `coalesce(owner_gone_at, owning_closed_at)` now passes, because resolving the owner
+     from its newest existence edge already prevents the back-dating the later-of-two comparison was
+     added to stop.
+
   Mutation check, and the finding is worth keeping: **idempotence is doubly guarded**, so a single-site mutation is not caught. Dropping `edge_to_close.to IS NULL` from the write subquery alone still passes, because the shared predicate's quick filter has already dropped the candidate for want of an open global edge; dropping the quick filter's `global_edge.to IS NULL` alone still passes, because the write guard catches it. Only removing both makes the second run report `Closed 9`, which fails the test. Either guard alone is sufficient for SC-004a — a useful robustness property, not a redundancy to clean up.
 - [ ] T044 [US2] Implement `Migration076` in `backend/infrahub/core/migrations/graph/m076_retire_agnostic_property_edges.py` as an `ArbitraryMigration` with `minimum_version: int = 75`, modelled on `m075_finish_deleting_branches.py`: read branches with `Branch.get_list(db=db)` (the registry may be unpopulated in an upgrade process), run the query's unbounded form **with the widened anchor** (T011), batch at the existing `MAX_AGNOSTIC_PEER_BATCH_SIZE` (500) cap, report **both** counts via `get_migration_console()`, and return `MigrationResult(errors=[...])` without raising (FR-016) Delivered as `Migration077` in the package `backend/infrahub/core/migrations/graph/m077_retire_agnostic_property_edges/` (`__init__.py`, `migration.py`, `queries.py`), `minimum_version = 76`, per T058. Four deviations from the text above, all deliberate:
 
