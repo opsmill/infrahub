@@ -14,10 +14,13 @@ from infrahub.core.registry import registry
 from infrahub.events.branch_action import BranchMergedEvent
 from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from tests.adapters.event import MemoryInfrahubEvent
+from tests.adapters.event import FailingKindInfrahubEvent, MemoryInfrahubEvent
+from tests.adapters.python_target_sources import RecordingPythonTargetDeriver
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.merge.recompute_coalescing import PythonTargetDeriver
+    from infrahub.core.models import SchemaDiff
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
@@ -27,6 +30,7 @@ def _build_dispatcher(
     source_branch: Branch,
     destination_branch: Branch,
     event_service: MemoryInfrahubEvent,
+    python_deriver: PythonTargetDeriver,
 ) -> PostMergeDispatcher:
     workflow = WorkflowLocalExecution()
     return PostMergeDispatcher(
@@ -36,8 +40,19 @@ def _build_dispatcher(
         workflow=workflow,
         event_service=event_service,
         default_branch=destination_branch,
-        python_deriver=DisabledPythonTargetDeriver(),
+        python_deriver=python_deriver,
     )
+
+
+def _derived_value_schema_diff(default_branch: Branch) -> tuple[SchemaDiff, str]:
+    """A schema change confined to a derived-value definition, with the candidate's hash."""
+    base_schema = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate = base_schema.duplicate()
+    car = candidate.get(name="TestCar", duplicate=True)
+    car.display_labels = ["nbr_seats__value"]
+    candidate.set(name="TestCar", schema=car)
+    candidate.process()
+    return base_schema.diff(other=candidate), candidate.get_hash()
 
 
 def _context(default_branch: Branch) -> InfrahubContext:
@@ -64,16 +79,9 @@ class TestPostMergeSchemaEvent:
     ) -> None:
         source_branch = await create_branch(branch_name="feature", db=db)
         memory_event = MemoryInfrahubEvent()
-        dispatcher = _build_dispatcher(db, source_branch, default_branch, memory_event)
+        dispatcher = _build_dispatcher(db, source_branch, default_branch, memory_event, DisabledPythonTargetDeriver())
 
-        # A schema change confined to a derived-value definition on the destination branch.
-        base_schema = registry.schema.get_schema_branch(name=default_branch.name)
-        candidate = base_schema.duplicate()
-        car = candidate.get(name="TestCar", duplicate=True)
-        car.display_labels = ["nbr_seats__value"]
-        candidate.set(name="TestCar", schema=car)
-        candidate.process()
-        schema_diff = base_schema.diff(other=candidate)
+        schema_diff, schema_hash = _derived_value_schema_diff(default_branch)
 
         await dispatcher.dispatch_events(
             branch=source_branch,
@@ -81,14 +89,14 @@ class TestPostMergeSchemaEvent:
             node_events=[],
             context=_context(default_branch),
             schema_diff=schema_diff,
-            schema_hash=candidate.get_hash(),
+            schema_hash=schema_hash,
         )
 
         schema_events = [event for event in memory_event.events if isinstance(event, SchemaUpdatedEvent)]
         assert len(schema_events) == 1
         event = schema_events[0]
         assert event.branch_name == default_branch.name
-        assert event.schema_hash == candidate.get_hash()
+        assert event.schema_hash == schema_hash
         assert event.changed_elements is not None
         assert "display_labels" in event.changed_elements.changed_fields.get("TestCar", [])
 
@@ -101,7 +109,7 @@ class TestPostMergeSchemaEvent:
     ) -> None:
         source_branch = await create_branch(branch_name="feature", db=db)
         memory_event = MemoryInfrahubEvent()
-        dispatcher = _build_dispatcher(db, source_branch, default_branch, memory_event)
+        dispatcher = _build_dispatcher(db, source_branch, default_branch, memory_event, DisabledPythonTargetDeriver())
 
         await dispatcher.dispatch_events(
             branch=source_branch,
@@ -113,6 +121,64 @@ class TestPostMergeSchemaEvent:
 
         assert not [event for event in memory_event.events if isinstance(event, SchemaUpdatedEvent)]
         assert [event for event in memory_event.events if isinstance(event, BranchMergedEvent)]
+
+    async def test_a_schema_event_that_went_out_scopes_the_coalesced_pass(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        car_person_schema: SchemaBranch,
+    ) -> None:
+        """The pass drops the pairs this backfill covers, so it has to be told what changed."""
+        source_branch = await create_branch(branch_name="feature", db=db)
+        deriver = RecordingPythonTargetDeriver(targets=[])
+        dispatcher = _build_dispatcher(db, source_branch, default_branch, MemoryInfrahubEvent(), deriver)
+        schema_diff, schema_hash = _derived_value_schema_diff(default_branch)
+
+        await dispatcher.dispatch_events(
+            branch=source_branch,
+            proposed_change_id=None,
+            node_events=[],
+            context=_context(default_branch),
+            schema_diff=schema_diff,
+            schema_hash=schema_hash,
+        )
+
+        assert len(deriver.calls) == 1
+        _, _, scope = deriver.calls[0]
+        assert scope is not None
+        assert "display_labels" in scope.changed_fields.get("TestCar", frozenset())
+
+    async def test_a_failed_schema_event_leaves_the_coalesced_pass_unscoped(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        car_person_schema: SchemaBranch,
+    ) -> None:
+        """A backfill whose event never went out covers nothing, so the pass must drop nothing.
+
+        The send failure is absorbed so it cannot abort the remaining events, which is exactly why
+        the scope cannot be handed over before the send.
+        """
+        source_branch = await create_branch(branch_name="feature", db=db)
+        deriver = RecordingPythonTargetDeriver(targets=[])
+        event_service = FailingKindInfrahubEvent(failing_kind=SchemaUpdatedEvent)
+        dispatcher = _build_dispatcher(db, source_branch, default_branch, event_service, deriver)
+        schema_diff, schema_hash = _derived_value_schema_diff(default_branch)
+
+        await dispatcher.dispatch_events(
+            branch=source_branch,
+            proposed_change_id=None,
+            node_events=[],
+            context=_context(default_branch),
+            schema_diff=schema_diff,
+            schema_hash=schema_hash,
+        )
+
+        # The merge event still went out, so the failure was absorbed rather than aborting the rest.
+        assert [type(event).__name__ for event in event_service.events] == ["BranchMergedEvent"]
+        assert deriver.calls == [(default_branch.name, (), None)]
 
 
 class TestPostMergeBranchMergedEvent:
@@ -132,7 +198,7 @@ class TestPostMergeBranchMergedEvent:
     ) -> None:
         source_branch = await create_branch(branch_name="feature", db=db)
         memory_event = MemoryInfrahubEvent()
-        dispatcher = _build_dispatcher(db, source_branch, default_branch, memory_event)
+        dispatcher = _build_dispatcher(db, source_branch, default_branch, memory_event, DisabledPythonTargetDeriver())
 
         await dispatcher.dispatch_events(
             branch=source_branch,
