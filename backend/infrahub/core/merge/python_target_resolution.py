@@ -77,17 +77,25 @@ class PythonSubscriberSource(Protocol):
 
 
 @dataclass(frozen=True)
-class _Selection:
-    """Why one change signature selects one attribute, and how exactly.
+class _Widen:
+    """The change affects the attribute, but which nodes cannot be established."""
+
+
+@dataclass(frozen=True)
+class _Narrow:
+    """The change affects the attribute, and these are the nodes to recompute.
 
     ``self_ids`` and ``reader_lookup`` are independent: a changed node can be both a target of
-    its own and a source whose readers have to be resolved.
+    its own and a source whose readers have to be resolved. ``precise`` records whether the
+    field filter held, which the submission carries so a chained level can tell the two apart.
     """
 
-    widen: bool
     self_ids: bool
     reader_lookup: bool
     precise: bool
+
+
+_Selection = _Widen | _Narrow
 
 
 @dataclass
@@ -101,14 +109,16 @@ class _Accumulator:
     whole_kind: bool = False
 
     def add(self, *, selection: _Selection, node_ids: set[str], deleted: bool) -> None:
-        if selection.widen:
+        if isinstance(selection, _Widen):
             self.whole_kind = True
-        else:
-            if selection.self_ids:
-                self.self_ids.update(node_ids)
-            if selection.reader_lookup:
-                sources = self.deleted_source_ids if deleted else self.source_ids
-                sources.update(node_ids)
+            self.precise = False
+            return
+
+        if selection.self_ids:
+            self.self_ids.update(node_ids)
+        if selection.reader_lookup:
+            sources = self.deleted_source_ids if deleted else self.source_ids
+            sources.update(node_ids)
         if not selection.precise:
             self.precise = False
 
@@ -330,13 +340,8 @@ def _select(*, signature: ChangeSignature, attribute: PythonAttributeReadSet) ->
 
     """
     if signature.action == CREATED:
-        # A created node subscribes to no query group yet, so only itself is selected. Readers of
-        # an unfiltered query are missed here, as they are on the live path.
-        return (
-            _Selection(widen=False, self_ids=True, reader_lookup=False, precise=True)
-            if attribute.kind == signature.kind
-            else None
-        )
+        # A created node subscribes to no query group yet, so it can only be its own target.
+        return _Narrow(self_ids=True, reader_lookup=False, precise=True) if attribute.kind == signature.kind else None
 
     if signature.action not in {UPDATED, DELETED}:
         raise ValueError(f"Unknown change action: {signature.action!r}")
@@ -356,22 +361,22 @@ def _select_reader(*, signature: ChangeSignature, read_set: TransformReadSet, ta
     last successful compute, so a node that never computed would stay stale.
     """
     if read_set.depends_on_everything:
-        return _Selection(widen=True, self_ids=False, reader_lookup=False, precise=False)
+        return _Widen()
 
     if signature.kind not in read_set.read_kinds:
         return None
 
     if signature.action == DELETED:
         # Every field the query read is gone with the node, so dropping the field filter is exact.
-        return _Selection(widen=False, self_ids=False, reader_lookup=True, precise=True)
+        return _Narrow(self_ids=False, reader_lookup=True, precise=True)
 
     self_ids = signature.kind == target_kind
 
     if not signature.changed_fields or signature.kind in read_set.imprecise_kinds:
         # Nothing to filter on, or a derived read whose backing fields cannot be named.
-        return _Selection(widen=False, self_ids=self_ids, reader_lookup=True, precise=False)
+        return _Narrow(self_ids=self_ids, reader_lookup=True, precise=False)
 
     if signature.changed_fields & read_set.read_fields.get(signature.kind, frozenset()):
-        return _Selection(widen=False, self_ids=self_ids, reader_lookup=True, precise=True)
+        return _Narrow(self_ids=self_ids, reader_lookup=True, precise=True)
 
     return None
