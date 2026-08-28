@@ -1,8 +1,7 @@
 """Fixtures for the branch-agnostic repair migration.
 
-Every shape under test is one a current code path cannot produce -- that is precisely why the
-migration exists -- so the fixtures build them with raw Cypher and the assertions read the edges
-directly rather than going through the node manager.
+No current code path produces the shapes under test, so they are built with raw Cypher and read back
+edge by edge rather than through the node manager, which would hide the states being pinned down.
 """
 
 from __future__ import annotations
@@ -95,8 +94,7 @@ async def attribute_value_count(db: InfrahubDatabase) -> int:
 async def close_global_owning_edge(db: InfrahubDatabase, field_uuid: str, at: Timestamp) -> None:
     """Close the field vertex's open global owning edge, leaving its property edges untouched.
 
-    Object deletion used to do exactly this -- close `HAS_ATTRIBUTE` and leave `HAS_VALUE` open --
-    which is the half-closed shape only a widened anchor can still reach.
+    Object deletion used to leave exactly this shape behind.
     """
     results = await db.execute_query(
         query="""
@@ -158,9 +156,8 @@ async def close_one_relationship_arm(db: InfrahubDatabase, field_uuid: str, peer
 async def remove_existence_edges(db: InfrahubDatabase, node_id: str) -> None:
     """Strip the node's existence edges outright, leaving the node vertex and its fields in place.
 
-    No branch reads the node as live and no deletion time is recorded anywhere, so no honest
-    retirement stamp can be derived for its fields -- the state the migration must report rather
-    than repair.
+    Nothing then records when its fields stopped being readable, so no retirement time is derivable
+    for them.
     """
     results = await db.execute_query(
         query="""
@@ -194,9 +191,7 @@ async def duplicate_node_vertex(db: InfrahubDatabase, node_id: str, at: Timestam
     """Copy the node vertex the way a kind or inheritance change does, leaving two vertices on one uuid.
 
     The copy takes over every active outbound edge and the original keeps a `deleted` mirror of each,
-    so the field vertices end up shared between a stale owner and the live one that supersedes it. A
-    node uuid is not a unique vertex once this has happened, which is what makes a stamp derived from
-    every linked owner at once unsafe.
+    so the field vertices end up shared between a stale owner and the live one that supersedes it.
     """
     results = await db.execute_query(
         query="""
