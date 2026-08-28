@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any
 from unittest.mock import patch
 
@@ -12,6 +13,7 @@ from infrahub.core.diff.model.diff import BaseDiffElement
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreGenericRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -20,7 +22,9 @@ from infrahub.database import InfrahubDatabase
 from infrahub.git.models import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY
 from infrahub.workflows.models import WorkflowDefinition
+from tests.adapters.workflow import WorkflowRecorder
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
@@ -123,11 +127,20 @@ async def test_diff_get_files_repository(
     ):
         branch2 = await create_branch(branch_name="branch2", db=db)
 
+        repo01 = await NodeManager.get_one(
+            db=db,
+            id=repos_in_main["repo01"].id,
+            kind=CoreGenericRepository,
+            branch=branch2,
+            raise_on_error=True,
+        )
+
         diff = await BranchDiffer.init(branch=branch2, db=db, service=service)
 
         resp = await diff.get_files_repository(
             branch_name=branch2.name,
-            repository=repos_in_main["repo01"],
+            repository=repo01,
+            repository_display_label="repo01",
             commit_from="aaaaaa",
             commit_to="ccccccc",
         )
@@ -234,6 +247,161 @@ async def test_diff_get_files_repositories_for_branch_case02(
     assert len(resp) == 3
     assert isinstance(resp, list)
     assert sorted([fde.location for fde in resp]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
+
+
+@dataclass
+class RepositoryCommitRangeTestCase:
+    name: str
+    """Descriptive name for the test scenario (used as test ID)."""
+
+    commit_at_diff_from: str | None
+    """Commit on the repository at the start of the range, None when it had not been synced yet."""
+
+    commit_at_diff_to: str | None
+    """Commit on the repository at the end of the range, None when the commit was cleared."""
+
+    expect_git_diff: bool
+    """Whether the repository is expected to reach the git workflow."""
+
+
+REPOSITORY_COMMIT_RANGE_TEST_CASES: list[RepositoryCommitRangeTestCase] = [
+    RepositoryCommitRangeTestCase(
+        name="first_synced_inside_the_range",
+        commit_at_diff_from=None,
+        commit_at_diff_to="ffffffffff",
+        expect_git_diff=False,
+    ),
+    RepositoryCommitRangeTestCase(
+        name="commit_cleared_inside_the_range",
+        commit_at_diff_from="ffffffffff",
+        commit_at_diff_to=None,
+        expect_git_diff=False,
+    ),
+    RepositoryCommitRangeTestCase(
+        name="never_synced",
+        commit_at_diff_from=None,
+        commit_at_diff_to=None,
+        expect_git_diff=False,
+    ),
+    RepositoryCommitRangeTestCase(
+        name="empty_commit_at_diff_from",
+        commit_at_diff_from="",
+        commit_at_diff_to="ffffffffff",
+        expect_git_diff=False,
+    ),
+    RepositoryCommitRangeTestCase(
+        name="empty_commit_at_diff_to",
+        commit_at_diff_from="ffffffffff",
+        commit_at_diff_to="",
+        expect_git_diff=False,
+    ),
+    RepositoryCommitRangeTestCase(
+        name="commit_changed_inside_the_range",
+        commit_at_diff_from="ffffffffff",
+        commit_at_diff_to="aaaaaaaaaa",
+        expect_git_diff=True,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [pytest.param(tc, id=tc.name) for tc in REPOSITORY_COMMIT_RANGE_TEST_CASES],
+)
+async def test_diff_get_files_repositories_for_branch_commit_range(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    repos_in_main: dict[str, Node],
+    test_case: RepositoryCommitRangeTestCase,
+) -> None:
+    """A repository only reaches the git workflow when it has a commit at both ends of the range."""
+    branch2 = await create_branch(branch_name="branch2", db=db)
+
+    repo03 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
+    await repo03.new(
+        db=db,
+        name="repo03",
+        location="git@github.com:user/repo03.git",
+        commit=test_case.commit_at_diff_from,
+    )
+    # Node.save stamps its own timestamp, so the writes and both range boundaries are spaced
+    # explicitly to keep them off the same microsecond, where a boundary becomes a sort-order tie.
+    base = Timestamp()
+    await repo03.save(db=db, at=base)
+
+    repo03.commit.value = test_case.commit_at_diff_to
+    await repo03.save(db=db, at=base.add(seconds=20))
+
+    workflow = WorkflowRecorder()
+    workflow.execute_results[GIT_REPOSITORIES_DIFF_NAMES_ONLY.name] = GitDiffNamesOnlyResponse(
+        files_changed=["readme.md"], files_removed=[], files_added=[]
+    )
+    service = await InfrahubServices.new(database=db, workflow=workflow)
+    diff = await BranchDiffer.init(
+        branch=branch2,
+        db=db,
+        service=service,
+        diff_from=base.add(seconds=10),
+        diff_to=base.add(seconds=30),
+    )
+
+    resp = await diff.get_files_repositories_for_branch(branch=branch2)
+
+    if test_case.expect_git_diff:
+        assert [call["parameters"]["model"].repository_id for call in workflow.execute_calls] == [repo03.id]
+        assert [(element.repository_id, element.location) for element in resp] == [(repo03.id, "readme.md")]
+    else:
+        assert workflow.execute_calls == []
+        assert resp == []
+
+
+async def test_diff_get_files_repositories_for_branch_skips_only_the_repository_without_commit(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    repos_in_main: dict[str, Node],
+) -> None:
+    """A repository with no commit at one end must not stop the others in the same range from reporting."""
+    branch2 = await create_branch(branch_name="branch2", db=db)
+
+    repo03 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
+    await repo03.new(db=db, name="repo03", location="git@github.com:user/repo03.git")
+    base = Timestamp()
+    await repo03.save(db=db, at=base)
+
+    time_updated = base.add(seconds=20)
+
+    repo03.commit.value = "ffffffffff"
+    await repo03.save(db=db, at=time_updated)
+
+    repo01 = await NodeManager.get_one(
+        db=db,
+        id=repos_in_main["repo01"].id,
+        kind=CoreGenericRepository,
+        branch=branch2,
+        raise_on_error=True,
+    )
+    repo01.commit.value = "dddddddddd"
+    await repo01.save(db=db, at=time_updated)
+
+    workflow = WorkflowRecorder()
+    workflow.execute_results[GIT_REPOSITORIES_DIFF_NAMES_ONLY.name] = GitDiffNamesOnlyResponse(
+        files_changed=["readme.md"], files_removed=[], files_added=[]
+    )
+    service = await InfrahubServices.new(database=db, workflow=workflow)
+    diff = await BranchDiffer.init(
+        branch=branch2,
+        db=db,
+        service=service,
+        diff_from=base.add(seconds=10),
+        diff_to=base.add(seconds=30),
+    )
+
+    resp = await diff.get_files_repositories_for_branch(branch=branch2)
+
+    assert [call["parameters"]["model"].repository_id for call in workflow.execute_calls] == [repo01.id]
+    assert [(element.repository_id, element.repository_display_label, element.location) for element in resp] == [
+        (repo01.id, "repo01", "readme.md")
+    ]
 
 
 async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repos_in_main: dict[str, Node]) -> None:
