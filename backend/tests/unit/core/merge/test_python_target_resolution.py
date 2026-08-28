@@ -386,6 +386,22 @@ async def test_only_a_pair_the_schema_pass_can_see_is_covered() -> None:
     assert targets[0].whole_kind is True
 
 
+async def test_every_lookup_of_a_pass_runs_on_the_branch_it_was_asked_for() -> None:
+    """One resolver serves several branches, so the branch travels per call, not per instance.
+
+    A rebase recomputes on the user branch while a merge recomputes on the destination, and a
+    lookup sent to the wrong branch answers with that branch's query groups.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={"s1": [("d1", DEVICE)]})
+    resolver = _resolver(read_sets=[SUMMARY], subscriber_source=subscribers)
+    change = MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"}))
+
+    await resolver.resolve(branch=BRANCH, changes=[change])
+    await resolver.resolve(branch="user-branch", changes=[change])
+
+    assert subscribers.branches == [BRANCH, "user-branch"]
+
+
 async def test_the_read_set_index_is_fetched_once_per_pass() -> None:
     read_set_source = StaticPythonReadSetSource(read_sets=[SUMMARY])
     resolver = IndexedPythonTargetResolver(

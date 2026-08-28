@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Protocol
 
 from infrahub import config
 from infrahub.computed_attribute.gather import gather_python_transform_attributes
@@ -29,6 +30,98 @@ if TYPE_CHECKING:
     from .recompute_coalescing import PythonTargetResolver
 
 
+@dataclass(frozen=True)
+class DeclaredAttribute:
+    """One Python transform computed attribute a branch's schema declares."""
+
+    kind: str
+    attribute_name: str
+
+
+class DeclaredPythonAttributes(Protocol):
+    """The Python transform computed attributes a branch's schema declares."""
+
+    async def declared(self, *, branch: str) -> list[DeclaredAttribute]: ...
+
+
+class AnalyzedPythonReadSets(Protocol):
+    """The read set of every attribute whose transform query could be resolved and analyzed.
+
+    An attribute missing from the result has no transform to compute it. Raises whatever the
+    resolution raises, so the caller decides what a failure costs.
+    """
+
+    async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, TransformReadSet]: ...
+
+
+class SchemaDeclaredPythonAttributes:
+    """The declared attributes, read from the branch's schema once its workers agree on it."""
+
+    def __init__(self, db: InfrahubDatabase, component: InfrahubComponent) -> None:
+        self.db = db
+        self.component = component
+
+    def _attributes_per_kind(self, *, branch: str) -> dict[str, list[AttributeSchema]]:
+        return registry.schema.get_schema_branch(name=branch).computed_attributes.get_python_attributes_per_node()
+
+    async def declared(self, *, branch: str) -> list[DeclaredAttribute]:
+        if not registry.schema.has_schema_branch(name=branch):
+            # The kinds of an unregistered branch are unknown, so there is nothing to widen to.
+            # Every active branch is registered when the registry loads, so this stays unreached.
+            log.warning("Skipping the Python computed attributes of %s: no schema is registered for it", branch)
+            return []
+
+        # Before the wait, which costs its full timeout whenever no worker publishes a schema hash.
+        if not self._attributes_per_kind(branch=branch):
+            return []
+
+        # A worker behind on the schema declares no Python attribute, which reads as nothing to do.
+        await wait_for_schema_to_converge(
+            branch_name=branch, component=self.component, db=self.db, log=get_run_logger()
+        )
+        return [
+            DeclaredAttribute(kind=kind, attribute_name=attribute.name)
+            for kind, attributes in self._attributes_per_kind(branch=branch).items()
+            for attribute in attributes
+        ]
+
+
+class GatheredPythonReadSets:
+    """The read sets, mapped from the transform queries the gather resolved and analyzed.
+
+    A query whose root is not pinned to a single object gets an imprecise read set. Readers come
+    from query-group membership, which records what the last run read: when any number of objects
+    can answer the query, a node enters or leaves the result set without anything changing on the
+    nodes already in it, so a created node is invisible to the existing subscribers and a deleted
+    one leaves no membership behind. The schema-scoped backfill maps the same queries without this
+    restriction: it refreshes whole kinds and never resolves a reader.
+    """
+
+    def __init__(self, db: InfrahubDatabase) -> None:
+        self.db = db
+
+    async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, TransformReadSet]:
+        schema_branch = registry.schema.get_schema_branch(name=branch)
+        gathered = await gather_python_transform_attributes(db=self.db, branch_name=branch)
+
+        read_sets: dict[DeclaredAttribute, TransformReadSet] = {}
+        for item in gathered:
+            attribute = DeclaredAttribute(
+                kind=item.computed_attribute.kind, attribute_name=item.computed_attribute.attribute.name
+            )
+            report = item.query_analyzer.query_report
+            if not report.only_has_unique_targets:
+                log.info(
+                    "Widening the recompute of %s.%s: its transform query is not pinned to one object",
+                    attribute.kind,
+                    attribute.attribute_name,
+                )
+                read_sets[attribute] = TransformReadSet.imprecise()
+                continue
+            read_sets[attribute] = transform_read_set_from_query_report(report=report, schema_branch=schema_branch)
+        return read_sets
+
+
 class DatabasePythonReadSetSource:
     """Read sets for every Python transform computed attribute whose transform exists.
 
@@ -41,66 +134,35 @@ class DatabasePythonReadSetSource:
     then, so selecting it here only submits work that raises.
     """
 
-    def __init__(self, db: InfrahubDatabase, component: InfrahubComponent) -> None:
-        self.db = db
-        self.component = component
-
-    def _declared_attributes(self, *, branch: str) -> dict[str, list[AttributeSchema]]:
-        return registry.schema.get_schema_branch(name=branch).computed_attributes.get_python_attributes_per_node()
+    def __init__(self, declared_attributes: DeclaredPythonAttributes, read_sets: AnalyzedPythonReadSets) -> None:
+        self.declared_attributes = declared_attributes
+        self.read_sets_source = read_sets
 
     async def read_sets(self, *, branch: str) -> list[PythonAttributeReadSet]:
-        if not registry.schema.has_schema_branch(name=branch):
-            # The kinds of an unregistered branch are unknown, so there is nothing to widen to.
-            # Every active branch is registered when the registry loads, so this stays unreached.
-            log.warning("Skipping the Python computed attributes of %s: no schema is registered for it", branch)
-            return []
-
-        # Before the wait, which costs its full timeout whenever no worker publishes a schema hash.
-        if not self._declared_attributes(branch=branch):
-            return []
-
-        # A worker behind on the schema declares no Python attribute, which reads as nothing to do.
-        await wait_for_schema_to_converge(
-            branch_name=branch, component=self.component, db=self.db, log=get_run_logger()
-        )
-        schema_branch = registry.schema.get_schema_branch(name=branch)
-        attributes_per_kind = schema_branch.computed_attributes.get_python_attributes_per_node()
-        if not attributes_per_kind:
+        declared = await self.declared_attributes.declared(branch=branch)
+        if not declared:
             return []
 
         try:
-            gathered_items = await gather_python_transform_attributes(db=self.db, branch_name=branch)
+            analyzed = await self.read_sets_source.analyzed(branch=branch)
         except Exception:
             log.exception("Widening every Python computed attribute on %s: the read-set gather failed", branch)
             return [
                 PythonAttributeReadSet(
-                    kind=kind,
-                    attribute_name=attribute.name,
+                    kind=attribute.kind,
+                    attribute_name=attribute.attribute_name,
                     read_set=TransformReadSet.imprecise(),
                     gathered=False,
                 )
-                for kind, attributes in attributes_per_kind.items()
-                for attribute in attributes
+                for attribute in declared
             ]
 
-        gathered_read_sets = {
-            (
-                item.computed_attribute.kind,
-                item.computed_attribute.attribute.name,
-            ): transform_read_set_from_query_report(
-                report=item.query_analyzer.query_report, schema_branch=schema_branch
-            )
-            for item in gathered_items
-        }
         return [
             PythonAttributeReadSet(
-                kind=kind,
-                attribute_name=attribute.name,
-                read_set=gathered_read_sets[kind, attribute.name],
+                kind=attribute.kind, attribute_name=attribute.attribute_name, read_set=analyzed[attribute]
             )
-            for kind, attributes in attributes_per_kind.items()
-            for attribute in attributes
-            if (kind, attribute.name) in gathered_read_sets
+            for attribute in declared
+            if attribute in analyzed
         ]
 
 
@@ -124,6 +186,9 @@ async def build_python_target_resolver(*, db: InfrahubDatabase) -> PythonTargetR
         return DisabledPythonTargetResolver()
 
     return IndexedPythonTargetResolver(
-        read_set_source=DatabasePythonReadSetSource(db=db, component=await get_component()),
+        read_set_source=DatabasePythonReadSetSource(
+            declared_attributes=SchemaDeclaredPythonAttributes(db=db, component=await get_component()),
+            read_sets=GatheredPythonReadSets(db=db),
+        ),
         subscriber_source=ClientSubscriberSource(client=get_client()),
     )
