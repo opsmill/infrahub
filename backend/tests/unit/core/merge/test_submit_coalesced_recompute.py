@@ -8,6 +8,7 @@ from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
     DISPLAY_LABEL,
     HFID,
+    PYTHON_COMPUTED_ATTRIBUTE,
     AffectedTarget,
     CoalescedRecompute,
     CoalescedRecomputeSubmitter,
@@ -17,8 +18,10 @@ from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     DISPLAY_LABELS_PROCESS_JINJA2,
     HFID_PROCESS,
+    TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
 from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.workflow import WorkflowRecorder
@@ -125,6 +128,77 @@ def test_plan_chunks_a_union_larger_than_the_submission_limit() -> None:
     # Every id is submitted exactly once, in a deterministic order.
     rebuilt = tuple(node_id for submission in submissions for node_id in submission.node_ids)
     assert rebuilt == tuple(sorted(ids))
+
+
+def _python_target(*, whole_kind: bool, node_ids: frozenset[str] = frozenset()) -> AffectedTarget:
+    lookups = (
+        frozenset()
+        if whole_kind
+        else frozenset({ReaderLookup(source_kind=TARGET_KIND, filter_key="ids", source_node_ids=node_ids)})
+    )
+    return AffectedTarget(
+        family=PYTHON_COMPUTED_ATTRIBUTE,
+        target_kind=TARGET_KIND,
+        attribute_name="digest",
+        reads_across_relationship=False,
+        reader_lookups=lookups,
+        precise=not whole_kind,
+        whole_kind=whole_kind,
+    )
+
+
+def test_plan_gives_a_widened_target_one_submission_of_its_own() -> None:
+    """A widened target carries no ids, and chunking an empty id set would submit nothing at all."""
+    coalesced = CoalescedRecompute(branch="main", targets=frozenset({_python_target(whole_kind=True)}))
+
+    submissions = CoalescedRecomputeSubmitter.plan(coalesced)
+
+    assert [(s.family, s.target_kind, s.attribute_name, s.node_ids, s.whole_kind) for s in submissions] == [
+        (PYTHON_COMPUTED_ATTRIBUTE, TARGET_KIND, "digest", (), True)
+    ]
+
+
+async def test_submit_dispatches_the_transform_flow_for_a_python_target() -> None:
+    recorder = WorkflowRecorder()
+    coalesced = CoalescedRecompute(
+        branch="main", targets=frozenset({_python_target(whole_kind=False, node_ids=frozenset({"n2", "n1"}))})
+    )
+
+    await CoalescedRecomputeSubmitter(workflow=recorder).submit(coalesced=coalesced, context=_event_context())
+
+    calls = recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM)
+    assert len(calls) == 1
+    assert calls[0]["parameters"] == {
+        "branch_name": "main",
+        "node_kind": TARGET_KIND,
+        "object_ids": ["n1", "n2"],
+        "computed_attribute_name": "digest",
+        "computed_attribute_kind": TARGET_KIND,
+        "context": _event_context(),
+    }
+    assert calls[0]["tags"] == [WorkflowTag.BRANCH.render(identifier="main")]
+
+
+async def test_submit_sends_a_widened_target_to_the_fan_out_flow() -> None:
+    """A widened target has no ids, so the flow that resolves the kind itself has to run instead.
+
+    Sending it to the per-id flow would recompute nothing, which is the skip the flag exists to
+    prevent.
+    """
+    recorder = WorkflowRecorder()
+    coalesced = CoalescedRecompute(branch="main", targets=frozenset({_python_target(whole_kind=True)}))
+
+    await CoalescedRecomputeSubmitter(workflow=recorder).submit(coalesced=coalesced, context=_event_context())
+
+    assert recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM) == []
+    calls = recorder.get_submit_calls_for(TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES)
+    assert len(calls) == 1
+    assert calls[0]["parameters"] == {
+        "branch_name": "main",
+        "computed_attribute_name": "digest",
+        "computed_attribute_kind": TARGET_KIND,
+        "context": _event_context(),
+    }
 
 
 class _FailFirstWorkflow(WorkflowRecorder):

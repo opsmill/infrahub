@@ -221,6 +221,11 @@ class MainSettings(BaseSettings):
         description="When enabled, only the generators and artifact definitions affected by a merge "
         "are re-executed; when disabled, every generator and artifact definition is re-executed.",
     )
+    coalesce_python_recompute_after_merge: bool = Field(
+        default=True,
+        description="When enabled, the coalesced merge and rebase pass recomputes Python transform "
+        "computed attributes; when disabled, one task per changed node recomputes them.",
+    )
     merge_failure_grace_period_seconds: int = Field(
         default=180,
         ge=0,
