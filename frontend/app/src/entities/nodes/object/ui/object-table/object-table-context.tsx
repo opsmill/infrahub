@@ -4,6 +4,10 @@ import React from "react";
 import { QSP } from "@/shared/config/qsp";
 import { uniqueItemsArray } from "@/shared/utils/array";
 
+import {
+  type ColumnSurface,
+  OBJECT_COLUMN_SURFACE,
+} from "@/entities/nodes/columns/domain/model/column-surface";
 import { type Filter, FilterSchema } from "@/entities/nodes/filters/domain/model/filter";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
@@ -17,6 +21,7 @@ export type ObjectTableContextProps = {
   baseSchema: ModelSchema;
   selectedSchema: ModelSchema;
   permission: Permission;
+  columnSurface: ColumnSurface;
 };
 
 export const ObjectTableContext = React.createContext<ObjectTableContextProps | null>(null);
@@ -24,9 +29,11 @@ export const ObjectTableContext = React.createContext<ObjectTableContextProps | 
 export const ObjectTableProvider = ({
   children,
   schema,
+  columnSurface = OBJECT_COLUMN_SURFACE,
 }: {
   children?: React.ReactNode;
   schema: ModelSchema;
+  columnSurface?: ColumnSurface;
 }) => {
   const [{ filters, kind: kindInQsp }, setObjectTableQueryParams] = useQueryStates(
     {
@@ -85,6 +92,7 @@ export const ObjectTableProvider = ({
               baseSchema: schema,
               selectedSchema,
               permission,
+              columnSurface,
             }}
           >
             {children}
