@@ -52,7 +52,9 @@ Run only the phases for the areas that changed, plus those marked always-run. **
 the base, or whether a path counts, include it.** Over-running is cheap; a missed area is a red PR.
 
 Classify the paths using the globs from `.github/file-filters.yml`, so local gating matches the
-`files-changed` outputs CI branches on.
+`files-changed` outputs CI branches on. Two rows are intentional exceptions — do not "correct"
+them: **python** is narrowed to keep the slow phases off `models/` and root-script changes, and
+**schema** is local-only, since `backend_all` has no `schema/**` entry for it to mirror.
 
 | Area | Paths | Enables |
 |---|---|---|
