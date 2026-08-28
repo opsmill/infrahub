@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from fastapi import APIRouter, Depends, Query, Request
 from infrahub_sdk.schema.generated.read import (
-    BaseNodeSchemaRead,
     GenericSchemaRead,
     NodeSchemaRead,
     ProfileSchemaRead,
@@ -42,7 +41,6 @@ from infrahub.core.models import (  # noqa: TC001
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import (
     GenericSchema,
-    MainSchemaTypes,
     NodeSchema,
     ProfileSchema,
     SchemaRoot,
@@ -64,6 +62,7 @@ from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elem
 from infrahub.exceptions import BranchStatusError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import define_global_permission_from_branch
+from infrahub.schema.read_schema import build_read_schema
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import SCHEMA_VALIDATE_MIGRATION
@@ -81,17 +80,6 @@ if TYPE_CHECKING:
 
 log = get_logger()
 router = APIRouter(prefix="/schema")
-
-
-def _api_schema_from_schema[TApiSchema: BaseNodeSchemaRead](
-    model: type[TApiSchema], schema: MainSchemaTypes
-) -> TApiSchema:
-    data = schema.model_dump()
-    data["relationships"] = [
-        relationship.model_dump() for relationship in schema.relationships if not relationship.internal_peer
-    ]
-    data["hash"] = schema.get_hash()
-    return model(**data)
 
 
 class SchemaReadAPI(BaseModel):
@@ -250,22 +238,22 @@ async def get_schema(
     return SchemaReadAPI(
         main=registry.schema.get_schema_branch(name=branch.name).get_hash(),
         nodes=[
-            _api_schema_from_schema(model=NodeSchemaRead, schema=value)
+            build_read_schema(model=NodeSchemaRead, schema=value)
             for value in all_schemas
             if isinstance(value, NodeSchema) and value.namespace != "Internal"
         ],
         generics=[
-            _api_schema_from_schema(model=GenericSchemaRead, schema=value)
+            build_read_schema(model=GenericSchemaRead, schema=value)
             for value in all_schemas
             if isinstance(value, GenericSchema) and value.namespace != "Internal"
         ],
         profiles=[
-            _api_schema_from_schema(model=ProfileSchemaRead, schema=value)
+            build_read_schema(model=ProfileSchemaRead, schema=value)
             for value in all_schemas
             if isinstance(value, ProfileSchema) and value.namespace != "Internal"
         ],
         templates=[
-            _api_schema_from_schema(model=TemplateSchemaRead, schema=value)
+            build_read_schema(model=TemplateSchemaRead, schema=value)
             for value in all_schemas
             if isinstance(value, TemplateSchema) and value.namespace != "Internal"
         ],
@@ -307,7 +295,7 @@ async def get_schema_by_kind(
     if isinstance(schema, TemplateSchema):
         key = "template"
 
-    return _api_schema_from_schema(model=api_schema[key], schema=schema)
+    return build_read_schema(model=api_schema[key], schema=schema)
 
 
 @router.get("/json_schema/{schema_kind}")
