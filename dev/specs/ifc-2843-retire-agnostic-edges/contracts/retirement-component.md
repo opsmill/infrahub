@@ -154,11 +154,11 @@ none treats its own occurrence as a release trigger (FR-009).
 | Branch deletion | before the branch's `IS_PART_OF` edges are removed — retention reads them |
 | Schema removals | in the same statement as the removal itself |
 
-## C4 — Repair migration (not yet built)
+## C4 — Repair migration
 
 ```text
-minimum_version  = 75
-GRAPH_VERSION    : 75 -> 76
+minimum_version  = 76
+GRAPH_VERSION    : 76 -> 77
 ```
 
 **Guarantees**
@@ -183,4 +183,5 @@ GRAPH_VERSION    : 75 -> 76
 
 **Blocked on**
 
-- The Ask-First migration gate (tasks T001), which is still open.
+- Nothing. The Ask-First migration gate (tasks T001) was signed off 2026-08-25 and the migration
+  shipped as `m077_retire_agnostic_property_edges`.

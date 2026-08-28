@@ -120,6 +120,17 @@ workflow change, no auth change.
 predicate and the runtime enforcement points touch no migration and proceed. The repair migration
 (`m076`, the `GRAPH_VERSION` bump, and the hard-delete) stays blocked until the gate is signed off.
 
+**Status (2026-08-25): signed off — gate closed.** The maintainer approved the repair migration,
+the `GRAPH_VERSION` bump, and the irreversible hard-delete of `Attribute` / `Relationship` vertices
+carrying no linked node vertex. Slice 5 (R06) is unblocked.
+
+Two numbers in this gate's description were stale at sign-off time and the approval covers the
+corrected ones, per T058: the migration is **`m077`**, not `m076` (the `m076` slot is occupied by
+`m076_heal_missing_attribute_rows`), and the version bump is **76 -> 77**, not 75 -> 76
+(`GRAPH_VERSION` is already 76 on the base branch). The substance of what was approved — one
+additive graph migration that closes unretained global edges and hard-deletes node-less
+`Attribute` / `Relationship` vertices, announcing its irreversibility first — is unchanged.
+
 ## Project Structure
 
 ### Documentation (this feature)
