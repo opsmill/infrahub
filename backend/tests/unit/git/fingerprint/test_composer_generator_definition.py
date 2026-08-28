@@ -18,6 +18,7 @@ def _input(**overrides: object) -> GeneratorDefinitionFingerprintInput:
         "dependencies_complete": True,
         "watch": InfrahubWatchConfig(files=[]),
         "parameters": {"name": "name__value"},
+        "file_path": "generators/tags.py",
         "class_name": "Generator",
         "convert_query_response": False,
         "target_group_id": "group-1",
@@ -51,6 +52,20 @@ def test_changes_on_parameters_class_name_convert_and_group() -> None:
     assert base != _digest(class_name="Other")
     assert base != _digest(convert_query_response=True)
     assert base != _digest(target_group_id="group-2")
+
+
+def test_changes_on_file_path_within_an_unchanged_closure() -> None:
+    """Moving the entry point between two files already in the closure moves the fingerprint.
+
+    A generator whose `watch` names its directory carries every file in that directory, so
+    repointing `file_path` at a sibling leaves the closure and every blob sha identical.
+    """
+    blobs = {**BLOBS, "generators/sibling.py": "sha-sibling"}
+    closure = (MANIFEST_PATH, "generators/sibling.py", "generators/tags.py")
+
+    base = _digest(blobs=blobs, dependencies=closure, file_path="generators/tags.py")
+    repointed = _digest(blobs=blobs, dependencies=closure, file_path="generators/sibling.py")
+    assert base != repointed
 
 
 def test_folds_commit_id_only_when_watch_absent() -> None:

@@ -24,6 +24,7 @@ def _python_input(**overrides: object) -> PythonTransformationFingerprintInput:
         "dependencies": (MANIFEST_PATH, "transforms/report.py"),
         "dependencies_complete": True,
         "watch": InfrahubWatchConfig(files=[]),
+        "file_path": "transforms/report.py",
         "class_name": "Report",
         "convert_query_response": False,
     }
@@ -82,6 +83,25 @@ def test_python_changes_on_class_name_and_convert_query_response() -> None:
     base = digest()
     assert base != digest(class_name="Other")
     assert base != digest(convert_query_response=True)
+
+
+def test_python_changes_on_file_path_within_an_unchanged_closure() -> None:
+    """Moving the entry point between two files already in the closure moves the fingerprint.
+
+    A transform whose `watch` names its directory carries every file in that directory, so
+    repointing `file_path` at a sibling leaves the closure and every blob sha identical.
+    """
+    blobs = {**PY_BLOBS, "transforms/sibling.py": "sha-sibling"}
+    closure = (MANIFEST_PATH, "transforms/report.py", "transforms/sibling.py")
+
+    def digest(file_path: str) -> str:
+        registry = FingerprintRegistry()
+        _seed_query(registry)
+        return build_composer(blob_shas=blobs, registry=registry).compose_transformation(
+            _python_input(dependencies=closure, file_path=file_path)
+        )
+
+    assert digest("transforms/report.py") != digest("transforms/sibling.py")
 
 
 def test_python_excludes_manifest_blob_from_closure() -> None:

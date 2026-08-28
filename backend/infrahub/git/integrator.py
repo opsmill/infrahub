@@ -64,6 +64,7 @@ from infrahub.exceptions import (
     TransformError,
 )
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
+from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.closure_builder.dispatcher import build_default_closure_builder
 from infrahub.git.fingerprint.composer import (
     ArtifactDefinitionFingerprintInput,
@@ -1239,6 +1240,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     dependencies_complete=definition.closure.complete,
                     watch=definition.config.watch,
                     parameters=definition.config.parameters,
+                    file_path=canonicalize_path(str(definition.config.file_path)),
                     class_name=definition.config.class_name,
                     convert_query_response=definition.config.convert_query_response,
                     target_group_id=await self._resolve_target_group_id(
@@ -1434,6 +1436,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     dependencies=tuple(transform.dependencies),
                     dependencies_complete=transform.dependencies_complete,
                     watch=transform.watch,
+                    file_path=canonicalize_path(transform.file_path),
                     class_name=transform.class_name,
                     convert_query_response=transform.convert_query_response,
                 )

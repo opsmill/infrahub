@@ -83,6 +83,7 @@ class PythonTransformationFingerprintInput:
     dependencies: tuple[str, ...]
     dependencies_complete: bool
     watch: InfrahubWatchConfig | None
+    file_path: str
     class_name: str
     convert_query_response: bool
 
@@ -115,6 +116,7 @@ class GeneratorDefinitionFingerprintInput:
     dependencies_complete: bool
     watch: InfrahubWatchConfig | None
     parameters: dict[str, Any]
+    file_path: str
     class_name: str
     convert_query_response: bool
     target_group_id: str | None
@@ -161,6 +163,10 @@ class FingerprintComposer:
         ]
         match inputs:
             case PythonTransformationFingerprintInput():
+                # The closure is a sorted set of paths, so it cannot say which of them is the
+                # entry point: when `watch` names a directory, moving the entry point to another
+                # file already in that directory leaves the closure identical.
+                terms.append(f"file_path={inputs.file_path}")
                 terms.append(f"class_name={inputs.class_name}")
                 terms.append(f"convert_query_response={inputs.convert_query_response}")
                 # A Python transform's dependencies are auto-detected as its source file alone,
@@ -210,6 +216,7 @@ class FingerprintComposer:
             f"query_fingerprint={query_fingerprint or ''}",
             f"closure={self._closure_term(inputs.dependencies)}",
             f"parameters={canonical_json(inputs.parameters)}",
+            f"file_path={inputs.file_path}",
             f"class_name={inputs.class_name}",
             f"convert_query_response={inputs.convert_query_response}",
             f"target_group_id={inputs.target_group_id}",
