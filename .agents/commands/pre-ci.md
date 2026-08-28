@@ -5,7 +5,6 @@ allowed-tools:
   - Bash(git fetch:*)
   - Bash(git merge-base:*)
   - Bash(git diff:*)
-  - Bash(git status:*)
   - Bash(git ls-files:*)
   - Bash(git rev-parse:*)
   - Bash(sort:*)
@@ -44,11 +43,15 @@ never `cd frontend/app && ...`.
 
 Identify which areas below this branch touched — committed, staged, and untracked — relative to
 its base: `stable`, `develop`, a `release-*` branch, whichever long-lived branch it forked from.
-Fetch the candidates first so the base is not stale, and keep both sides of a rename. Run only
-the phases for the areas that changed, plus those marked always-run.
+`git fetch` the candidates first so the base is not stale, then collect paths from three places:
+`git diff --name-only --no-renames <merge-base>...HEAD` for committed work, the same command
+against `HEAD` for staged and unstaged work, and `git ls-files --others --exclude-standard` for
+untracked files. Keep `--no-renames` — it reports both sides of a rename, so the area that *lost*
+a file is still flagged. Do not substitute `git status --porcelain`, which collapses
+`R  old -> new` into one path that matches no area.
 
-**When unsure about the base, or whether a path counts, include it.** Over-running is cheap;
-a missed area is a red PR.
+Run only the phases for the areas that changed, plus those marked always-run. **When unsure about
+the base, or whether a path counts, include it.** Over-running is cheap; a missed area is a red PR.
 
 Classify the paths using the globs from `.github/file-filters.yml`, so local gating matches the
 `files-changed` outputs CI branches on. Two areas deviate deliberately: **python** is narrower
@@ -59,7 +62,7 @@ would otherwise never run on a schema-only change.
 | Area | Paths | Enables |
 |---|---|---|
 | **frontend** | `frontend/app/**`, `frontend/packages/**`, `frontend/package.json`, `frontend/pnpm-workspace.yaml`, `frontend/pnpm-lock.yaml`, `schema/openapi.json`, `frontend/app/src/shared/api/rest/types.generated.ts`, `development/**`, `tasks/**`, `.github/workflows/ci.yml`, `.github/file-filters.yml` | Phases 1A, 3B |
-| **backend** | `backend/**`, `python_sdk`, `development/**`, `tasks/**`, `**/pyproject.toml`, `**/uv.lock`, `.github/workflows/ci.yml`, `.github/file-filters.yml` | Phases 1B, 2B, 4B, 4D, 5.1 |
+| **backend** | `backend/**`, `python_sdk`, `development/**`, `tasks/**`, `**/pyproject.toml`, `**/uv.lock`, `.github/workflows/ci.yml`, `.github/file-filters.yml` | Phases 1B, 2B, 4B, 4C.2, 4D, 5.1 |
 | **python** | any other `**/*.py` — `models/`, `utilities/`, `python_testcontainers/`, `tests/`, root scripts | Phases 1B, 2B, 4C.2 |
 | **testcontainers** | `python_testcontainers/**`, `.github/workflows/*.yml` (any workflow, not just `ci.yml`) | Phase 5.2 |
 | **docs** | `docs/**`, `**/*.{md,mdx}`, `.vale/**`, `.vale.ini`, `package.json`, `package-lock.json`, `development/**`, `tasks/**`, `python_sdk` | Phases 1C, 4C |
@@ -200,17 +203,17 @@ pnpm --dir frontend/app run check:error-bindings
 2. `uv run invoke backend.validate-generated` — on failure run `uv run invoke backend.generate`
    and report the regenerated files.
 
-**4C. Docs** — *if docs changed; step 2 also if python changed*
+**4C. Docs** — *if docs changed; step 2 also if any Python changed*
 
 1. `uv run invoke docs.lint` — markdownlint + vale, mirroring `markdown-lint` and
    `validate-documentation-style`. Pre-existing errors in `docs/docs/` may exist; only flag those
    in changed files. Does **not** cover the `documentation` job, which runs
    `uv run invoke docs.build` — run that manually if you touched the Docusaurus config.
 2. `uv run invoke docs.validate` — generated reference docs (CLI, schema, events, repository
-   config, config). **Run this if docs *or* python changed**: it mirrors
-   `validate-generated-documentation`, which fires on `python || documentation` because these
-   docs are generated from Python source. On failure the correct files are already on disk;
-   stage and commit them.
+   config, config). **Run this if docs or *any* Python changed** — `backend/` included: it
+   mirrors `validate-generated-documentation`, which fires on `python || documentation`, and CI's
+   `python` filter is `**/*.py`. These docs are generated from Python source, and 4B step 2 does
+   not cover them. On failure the correct files are already on disk; stage and commit them.
 
 **4D. Schema** — *if backend or schema changed*
 
