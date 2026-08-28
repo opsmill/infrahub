@@ -351,14 +351,14 @@ class _Selection:
     reader_lookup: bool = False
 
 # ✅ Good - each legal case is a type; invalid mixes cannot be built
-@dataclass
+@dataclass(frozen=True)
 class Widen: ...
 
-@dataclass
+@dataclass(frozen=True)
 class SelfTarget:
     ids: list[str]
 
-@dataclass
+@dataclass(frozen=True)
 class ReaderLookup:
     reader_kind: str
 
