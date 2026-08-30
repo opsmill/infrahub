@@ -20,7 +20,7 @@ Watch the CI for a pull request, and when something fails, fix it the careful wa
 
 Push-without-local-reproduction is allowed **only** when the failure cannot be reproduced locally (genuine CI-only divergence). Never push a speculative fix when local reproduction is possible.
 
-This skill is project-agnostic: it discovers how to reproduce CI failures from the project's own context (workflow definitions, `AGENTS.md`/`CLAUDE.md`/`CONTRIBUTING.md`, `Makefile`/`Taskfile`/`justfile`, `package.json` scripts, `pyproject.toml`/`tox.ini`, `pre-commit` config) rather than assuming a fixed toolchain.
+This skill is project-agnostic: it discovers how to reproduce CI failures from the project's own context (workflow definitions, `AGENTS.md`/`CLAUDE.md`/`CONTRIBUTING.md`, `Makefile`/`Taskfile`/`justfile`, `package.json` scripts, `pyproject.toml`/`tox.ini`, `prek.toml` config) rather than assuming a fixed toolchain.
 
 ## Execution Mode
 
@@ -105,7 +105,7 @@ Every fix attempt produces exactly one new commit on the branch, appended to `fi
 
 5. **Refuse to operate on long-lived branches.** If `branch` is the repository's default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`), a long-standing integration branch (`main`, `master`, `stable`, `develop`, `dev`, `trunk`), or a release branch (`release/*`, `release-*`, version-named branches), STOP. This skill is for feature PRs only.
 
-6. **Discover the project's local toolchain** (used by Phases 2–4). Read whatever project context exists — `AGENTS.md`/`CLAUDE.md`/`CONTRIBUTING.md`, `Makefile`/`Taskfile`/`justfile`, `package.json` scripts, `pyproject.toml`/`tox.ini`, `.pre-commit-config.yaml` — and note:
+6. **Discover the project's local toolchain** (used by Phases 2–4). Read whatever project context exists — `AGENTS.md`/`CLAUDE.md`/`CONTRIBUTING.md`, `Makefile`/`Taskfile`/`justfile`, `package.json` scripts, `pyproject.toml`/`tox.ini`, `prek.toml` — and note:
 
    - The lint/format gate (the command developers run before pushing).
    - The test runner(s) and how to target a single test.
@@ -176,7 +176,7 @@ genuinely 0 commits behind an hour ago is not proof it still is now.
 
    | Track | Typical job names | Local reproduction strategy |
    |---|---|---|
-   | **lint** | lint, pre-commit, format, static analysis | Re-run the specific failing hook/rule on the specific failing files (Phase 3.lint) |
+   | **lint** | lint, prek, format, static analysis | Re-run the specific failing hook/rule on the specific failing files (Phase 3.lint) |
    | **test** | unit tests, integration tests | Re-run the exact failing test case(s) with the project's test runner (Phase 3.test) |
    | **build** | build, compile, typecheck, packaging | Re-run the project's build/typecheck command (Phase 3.build) |
    | **e2e** | e2e, acceptance, browser tests, anything needing heavy infrastructure | Target the single failing test; never the full suite (Phase 3.e2e) |
@@ -218,12 +218,12 @@ genuinely 0 commits behind an hour ago is not proof it still is now.
 
 The reproduction strategy depends on the track. Pick the matching subsection. In every subsection, the concrete commands come from the project's own toolchain (Phase 0 step 6) — the examples below illustrate the narrowing pattern, not a required tool.
 
-### 3.lint — Lint / Format / Pre-Commit
+### 3.lint — Lint / Format / Prek
 
 Narrow first: run only the hook(s) or rule(s) that failed, on only the file(s) they flagged.
 
 1. From the failed-job log, identify the specific hook/rule id and the file paths it complained about.
-2. Reproduce that check in isolation against just those files — e.g. with pre-commit: `pre-commit run <hook-id> --files <file1> <file2>`; with a direct linter: point it at the flagged files only.
+2. Reproduce that check in isolation against just those files — e.g. with prek: `prek run <hook-id> --files <file1> <file2>`; with a direct linter: point it at the flagged files only.
 3. If the narrow run doesn't reproduce, widen one notch — the same check across all files.
 4. Only as a last resort, run the project's full lint/format gate the way CI runs it.
 5. If the failure reproduces:
@@ -403,7 +403,7 @@ docs to update.>
 - **One fix per iteration.** Don't stack speculative changes. Apply one targeted change, push, and let CI tell you whether it worked.
 - **Reproduce before you push.** A push without local reproduction is allowed only when the failure is genuinely CI-only — and you must say so explicitly in `attempt_log` and the final report.
 - **Reproduce as narrowly as possible.** Run the **specific** failing tests/hooks, not the whole suite. Target the exact test ID, the exact hook against the exact files. Widen one notch at a time only when a narrower invocation didn't match. Falling back to the full suite is a last resort and must be recorded in `attempt_log`. Never re-run an entire E2E suite.
-- **No `--no-verify`.** Pre-commit hooks are typically the same checks CI runs. Bypassing them locally just delays the failure; fix the underlying issue.
+- **No `--no-verify`.** Prek hooks are typically the same checks CI runs. Bypassing them locally just delays the failure; fix the underlying issue.
 - **No force-push outside revert.** Each fix is a new commit appended to the branch. The only force-push this skill performs is the Phase 6 revert, and only after explicit user approval.
 - **Don't merge.** Even when CI goes green, this skill does not merge the PR. Report and stop.
 - **Stay on the PR's branch.** Never switch branches mid-loop; never edit files while a debugger or paused test run holds state on a different branch.

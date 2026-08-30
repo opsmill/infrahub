@@ -111,7 +111,7 @@ For each conflict that arises during the rebase:
    ```
 
 2. Confirm the commit history looks correct (same number of local commits, no duplicates).
-3. If the project defines fast validation commands (formatters, linters), run them to catch any issues introduced by conflict resolution. Discover them from the project's own context — for example `AGENTS.md`/`CONTAINER`-style docs, a `Makefile`/`Taskfile`/`justfile`, `package.json` scripts, `pyproject.toml`/`tox.ini`, or a `pre-commit` config. Run whatever the project actually defines, then fix any issues introduced by conflict resolution. If the project defines no such commands, skip this step.
+3. If the project defines fast validation commands (formatters, linters), run them to catch any issues introduced by conflict resolution. Discover them from the project's own context — for example `AGENTS.md`/`CONTAINER`-style docs, a `Makefile`/`Taskfile`/`justfile`, `package.json` scripts, `pyproject.toml`/`tox.ini`, or a `prek.toml` config. Run whatever the project actually defines, then fix any issues introduced by conflict resolution. If the project defines no such commands, skip this step.
 
 ### 5. Force Push & Monitor CI (only when `push` argument is provided)
 
