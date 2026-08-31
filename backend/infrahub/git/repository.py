@@ -32,6 +32,21 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
+def _describe_push_rejection(summary: str) -> str:
+    """Prefix a per-ref push rejection summary with the reason the remote refused it.
+
+    The matched substrings are per-ref status messages emitted by ``git push`` (and by
+    server-side hooks of common git hosting providers), which never reach stderr: a
+    rejected ref is not a failed command, so the only signal is the ref's summary line.
+    """
+    lowered = summary.lower()
+    if any(marker in lowered for marker in ("hook declined", "protected branch", "permission denied", "not allowed")):
+        return f"the remote denied the update (missing push permission or branch protection): {summary}"
+    if any(marker in lowered for marker in ("non-fast-forward", "fetch first")):
+        return f"the remote branch has commits that are missing locally (non-fast-forward): {summary}"
+    return summary
+
+
 @dataclass
 class PendingObjectImport:
     """A repository object import waiting to run: which commit to import from and which Infrahub branch to import into."""
@@ -307,7 +322,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             if push_info.flags & push_info.ERROR:
                 raise RepositoryError(
                     identifier=self.name,
-                    message=f"Unable to push the branch {remote_branch} to the remote for repository {self.name}: {push_info.summary.strip()}",
+                    message=(
+                        f"Unable to push the branch {remote_branch} to the remote for repository {self.name}: "
+                        f"{_describe_push_rejection(summary=push_info.summary.strip())}"
+                    ),
                 )
 
         return True
@@ -319,7 +337,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         Raises:
             ValueError: When no worktree exists for the destination branch.
-            RepositoryError: When the underlying ``git merge`` command fails.
+            RepositoryError: When the underlying ``git merge`` command fails, or when the remote
+                rejects the push; in both cases the destination worktree is left on its pre-merge
+                commit and the commit recorded in the graph is unchanged.
+            GitCommandError: When the push fails before the remote reports a per-ref status; the
+                destination worktree is likewise left on its pre-merge commit.
 
         """
         repo = self.get_git_repo_worktree(identifier=dest_branch)
@@ -343,10 +365,17 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         if commit_after == commit_before:
             return False
 
+        if self.has_origin and push_remote:
+            try:
+                await self.push(branch_name=dest_branch)
+            except (GitCommandError, RepositoryError):
+                # Left on the unpushed merge commit, a retry would find nothing to merge
+                # and return before ever reaching the push again.
+                repo.git.reset("--hard", commit_before)
+                raise
+
         self.create_commit_worktree(commit_after)
         await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
-        if self.has_origin and push_remote:
-            await self.push(branch_name=dest_branch)
 
         return str(commit_after)
 
