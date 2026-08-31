@@ -8,7 +8,6 @@ from infrahub.core.relationship.dependent_resolver import DependentNodeResolver
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.message_bus.types import ProposedChangeSubscriber
 from infrahub.workers.dependencies import get_database
 
 from .impact_classifier import ChangedNodes, EveryTarget, QueryImpactClassifier, RelationshipReachedChanges
@@ -74,8 +73,8 @@ async def get_field_level_impacted_subscribers(
         case _ as unreachable:
             assert_never(unreachable)
 
-    subscribers = await _get_subscribers_for_nodes(node_ids=member_ids, branch=query_branch, client=client)
-    ids = [subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == subscriber_kind]
+    subscribers = await fetch_subscriber_refs(client=client, node_ids=member_ids, branch=query_branch)
+    ids = [subscriber.id for subscriber in subscribers if subscriber.kind == subscriber_kind]
     return TargetSelection(ids=ids, widened=False)
 
 
@@ -106,10 +105,3 @@ class ReachedMemberResolver:
                     )
                 members |= peer_uuids
         return members
-
-
-async def _get_subscribers_for_nodes(
-    node_ids: list[str], branch: str, client: InfrahubClient
-) -> list[ProposedChangeSubscriber]:
-    refs = await fetch_subscriber_refs(client=client, node_ids=node_ids, branch=branch)
-    return [ProposedChangeSubscriber(subscriber_id=ref.id, kind=ref.kind) for ref in refs]
