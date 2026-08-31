@@ -111,6 +111,36 @@ ASSESS_CASES = [
         ],
         expected=ChangedNodes(node_ids=[]),
     ),
+    # display_label / human_friendly_id are computed: a read records the computed field name, but a
+    # change to the backing field that moves the value is reported under the backing field's name.
+    # Such a read must be treated as imprecise for its kind -- any change to the kind is relevant --
+    # or the reader is left stale.
+    AssessCase(
+        name="unique_targets_display_label_root_change_narrows_to_that_node",
+        only_has_unique_targets=True,
+        diff_summary=[node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["name"])],
+        expected=ChangedNodes(node_ids=["dev1"]),
+        traversed_kinds=set(),
+        readable_fields_by_kind={"TestDevice": {"display_label"}},
+    ),
+    AssessCase(
+        name="unique_targets_display_label_change_on_several_nodes_narrows_to_each",
+        only_has_unique_targets=True,
+        diff_summary=[
+            node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["name"]),
+            node_diff(node_id="dev2", kind="TestDevice", branch=BRANCH, field_names=["name"]),
+        ],
+        expected=ChangedNodes(node_ids=["dev1", "dev2"]),
+        traversed_kinds=set(),
+        readable_fields_by_kind={"TestDevice": {"display_label"}},
+    ),
+    AssessCase(
+        name="unique_targets_display_label_read_through_a_relationship_widens",
+        only_has_unique_targets=True,
+        diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["name"])],
+        readable_fields_by_kind={"TestDevice": {"name"}, "TestInterface": {"display_label"}},
+        expected=EveryTarget(),
+    ),
 ]
 
 
