@@ -161,7 +161,7 @@ async def gather_trigger_computed_attribute_python(
             db=db, branch_name=branch.name, repositories=repositories
         )
         for computed_attribute in computed_attributes:
-            all_computed_attributes[computed_attribute.name][branch.name] = computed_attribute
+            all_computed_attributes[computed_attribute.computed_attribute.key_name][branch.name] = computed_attribute
 
     for branches in all_computed_attributes.values():
         branches_with_diff_from_main = []
