@@ -22,7 +22,7 @@ from infrahub.core.merge.recompute_coalescing import (
 from infrahub.core.recompute.bulk_write import WrittenNode
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.events.models import EventBranchContext, EventContext
-from tests.adapters.python_target_sources import RecordingPythonTargetDeriver
+from tests.adapters.python_target_sources import RecordingPythonTargetResolver, ResolveCall
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.merge_recompute.dataset import build_chain_schema, chain_kind
 
@@ -63,11 +63,11 @@ def _families(submissions: list) -> set[str]:
 
 
 async def test_the_coordinator_submits_the_python_family_alongside_the_schema_ones() -> None:
-    deriver = RecordingPythonTargetDeriver(targets=[_python_target()])
+    resolver = RecordingPythonTargetResolver(targets=[_python_target()])
     coordinator = MergeRecomputeCoordinator(
         builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch()),
         submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
-        python_deriver=deriver,
+        python_resolver=resolver,
     )
 
     # A generator, since both derivations read the change set and the second would find it empty.
@@ -80,18 +80,18 @@ async def test_the_coordinator_submits_the_python_family_alongside_the_schema_on
 
     assert _families(submissions) == {COMPUTED_ATTRIBUTE, PYTHON_COMPUTED_ATTRIBUTE}
     # The derivation decides for itself what the schema pass already covers, so it needs that scope.
-    assert deriver.calls == [(BRANCH, ("l1-0",), SCHEMA_SCOPE)]
+    assert resolver.calls == [ResolveCall(branch=BRANCH, node_ids=("l1-0",), schema_scope=SCHEMA_SCOPE)]
 
 
 async def test_a_chained_level_derives_the_python_targets_of_its_writes() -> None:
     """A Python attribute reading a value the pass just wrote is reached by the next chain level."""
-    deriver = RecordingPythonTargetDeriver(targets=[_python_target()])
+    resolver = RecordingPythonTargetResolver(targets=[_python_target()])
     recorder = WorkflowRecorder()
 
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch()),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
-        python_deriver=deriver,
+        python_resolver=resolver,
     ).submit(
         written=[WrittenNode(node_id="l1-0", kind=chain_kind(1), fields=("name",))],
         branch=BRANCH,
@@ -101,7 +101,7 @@ async def test_a_chained_level_derives_the_python_targets_of_its_writes() -> Non
 
     assert _families(submissions) == {COMPUTED_ATTRIBUTE, PYTHON_COMPUTED_ATTRIBUTE}
     # A chained level replays data writes, never a schema change.
-    assert deriver.calls == [(BRANCH, ("l1-0",), None)]
+    assert resolver.calls == [ResolveCall(branch=BRANCH, node_ids=("l1-0",), schema_scope=None)]
     python_calls = [
         call for call in recorder.submit_calls if call["parameters"].get("computed_attribute_kind") == PYTHON_KIND
     ]

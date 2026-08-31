@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.core.query_group.subscribers import SubscriberRef
@@ -54,12 +55,19 @@ class RecordingSubscriberSource:
         ]
 
 
-class RecordingPythonTargetDeriver:
+@dataclass(frozen=True)
+class ResolveCall:
+    branch: str
+    node_ids: tuple[str, ...]
+    schema_scope: ChangedElementSet | None
+
+
+class RecordingPythonTargetResolver:
     """Serves a fixed target list and records the branch, node ids and schema scope of every call."""
 
     def __init__(self, targets: list[AffectedTarget]) -> None:
         self.targets = targets
-        self.calls: list[tuple[str, tuple[str, ...], ChangedElementSet | None]] = []
+        self.calls: list[ResolveCall] = []
 
     async def resolve(
         self,
@@ -68,7 +76,13 @@ class RecordingPythonTargetDeriver:
         branch: str,
         schema_changed_elements: ChangedElementSet | None,
     ) -> list[AffectedTarget]:
-        self.calls.append((branch, tuple(change.node_id for change in changes), schema_changed_elements))
+        self.calls.append(
+            ResolveCall(
+                branch=branch,
+                node_ids=tuple(change.node_id for change in changes),
+                schema_scope=schema_changed_elements,
+            )
+        )
         return self.targets
 
 

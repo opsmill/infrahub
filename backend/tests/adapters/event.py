@@ -18,7 +18,7 @@ class MemoryInfrahubEvent(InfrahubEventService):
         self.events.append(event)
 
 
-class FailingKindInfrahubEvent(MemoryInfrahubEvent):
+class FailingInfrahubEvent(MemoryInfrahubEvent):
     """Raises on the events of a given type, which are not recorded, and records the rest."""
 
     def __init__(self, failing_kind: type[InfrahubEvent]) -> None:

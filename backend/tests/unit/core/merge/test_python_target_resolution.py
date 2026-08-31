@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.computed_attribute.scoping import ChangedElementSet
-from infrahub.core.merge.python_target_resolution import PythonAttributeReadSet, PythonTargetResolver
+from infrahub.core.merge.python_target_resolution import IndexedPythonTargetResolver, PythonAttributeReadSet
 from infrahub.core.merge.recompute_coalescing import (
     PYTHON_COMPUTED_ATTRIBUTE,
     SELF_FILTER,
@@ -73,8 +73,8 @@ def _resolver(
     *,
     read_sets: list[PythonAttributeReadSet],
     subscriber_source: PythonSubscriberSource,
-) -> PythonTargetResolver:
-    return PythonTargetResolver(
+) -> IndexedPythonTargetResolver:
+    return IndexedPythonTargetResolver(
         read_set_source=StaticPythonReadSetSource(read_sets=read_sets),
         subscriber_source=subscriber_source,
     )
@@ -374,7 +374,7 @@ async def test_only_a_pair_the_schema_pass_can_see_is_covered() -> None:
 
 async def test_the_read_set_index_is_fetched_once_per_pass() -> None:
     read_set_source = StaticPythonReadSetSource(read_sets=[SUMMARY])
-    resolver = PythonTargetResolver(
+    resolver = IndexedPythonTargetResolver(
         read_set_source=read_set_source,
         subscriber_source=RecordingSubscriberSource(subscribers={"s1": [("d1", DEVICE)]}),
     )

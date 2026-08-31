@@ -27,7 +27,7 @@ from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
 from infrahub.core.merge.merge_locker import MergeLocker
-from infrahub.core.merge.python_target_sources import build_python_target_deriver
+from infrahub.core.merge.python_target_sources import build_python_target_resolver
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
@@ -339,7 +339,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     for event in events:
         await event_service.send(event)
 
-    python_deriver = await build_python_target_deriver(db=db)
+    python_resolver = await build_python_target_resolver(db=db)
     with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
         schema_name = (
             user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
@@ -348,7 +348,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         coordinator = MergeRecomputeCoordinator(
             builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
             submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
-            python_deriver=python_deriver,
+            python_resolver=python_resolver,
         )
         await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
 

@@ -18,7 +18,7 @@ from infrahub import config
 from infrahub.computed_attribute.scoping import ChangedElementSet
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.core.merge.python_target_sources import build_python_target_deriver
+from infrahub.core.merge.python_target_sources import build_python_target_resolver
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
@@ -173,7 +173,7 @@ class CoalescedPythonTestBase(ScopedRecomputeTestBase):
                 schema_branch=registry.schema.get_schema_branch(name=default_branch.name)
             ),
             submitter=CoalescedRecomputeSubmitter(workflow=recorder),
-            python_deriver=await build_python_target_deriver(db=db),
+            python_resolver=await build_python_target_resolver(db=db),
         )
 
         await coordinator.run(
