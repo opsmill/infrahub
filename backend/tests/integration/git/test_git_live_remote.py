@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -480,6 +482,68 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             raise_on_error=True,
         )
         assert updated.commit.value == merged_commit
+
+    async def test_merge_writeback_failure_after_push_resets_worktree_for_sync_repair(
+        self,
+        protected_branch_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """A failure recording the merge after a successful push resets the worktree behind the remote.
+
+        The pushed merge commit exists only on the remote afterwards, which is the state the
+        periodic synchronization repairs: it detects the destination branch as updated, pulls the
+        merge commit and records it in the graph.
+        """
+        repo_name = protected_branch_dataset["repo_name"]
+
+        infrahub_repo = await InfrahubRepository.init(
+            id=protected_branch_dataset["node_id"],
+            name=repo_name,
+            client=client,
+        )
+
+        await infrahub_repo.create_branch_in_git(branch_name="recorded-change", push_origin=False)
+        branch_repo = infrahub_repo.get_git_repo_worktree(identifier="recorded-change")
+        (Path(str(branch_repo.working_dir)) / "recorded_change.txt").write_text("recorded change\n")
+        branch_repo.index.add(["recorded_change.txt"])
+        merge_commit = str(branch_repo.index.commit("recorded-change: add recorded_change.txt"))
+
+        main_repo = infrahub_repo.get_git_repo_worktree(identifier="main")
+        commit_before = str(main_repo.head.commit)
+
+        # The merge fast-forwards the destination to the source tip, so the commit worktree
+        # directory is known ahead of time and can be blocked to fail the writeback after the push.
+        blocked_directory = infrahub_repo.directory_commits / merge_commit
+        blocked_directory.mkdir()
+        (blocked_directory / "blocker.txt").write_text("blocking worktree creation\n")
+
+        try:
+            with pytest.raises(RepositoryError, match=rf"'{re.escape(str(blocked_directory))}' already exists"):
+                await infrahub_repo.merge(source_branch="recorded-change", dest_branch="main")
+        finally:
+            shutil.rmtree(blocked_directory)
+
+        assert str(main_repo.head.commit) == commit_before
+
+        main_repo.remotes.origin.fetch()
+        assert str(main_repo.commit("origin/main")) == merge_commit
+
+        await infrahub_repo.fetch()
+        _, updated_branches = await infrahub_repo.compare_local_remote()
+        assert updated_branches == ["main"]
+
+        pulled_commit = await infrahub_repo.pull(branch_name="main")
+        assert pulled_commit == merge_commit
+        assert str(main_repo.head.commit) == merge_commit
+
+        updated: CoreRepository = await NodeManager.get_one(
+            db=db,
+            id=protected_branch_dataset["node_id"],
+            kind=InfrahubKind.REPOSITORY,
+            raise_on_error=True,
+        )
+        assert updated.commit.value == merge_commit
 
     async def test_sync_from_remote_detects_new_commit(
         self,
