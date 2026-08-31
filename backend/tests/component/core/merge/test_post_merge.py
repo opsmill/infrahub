@@ -8,7 +8,7 @@ from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge.post_merge import PostMergeDispatcher
-from infrahub.core.merge.recompute_coalescing import DisabledPythonTargetDeriver
+from infrahub.core.merge.python_target_resolution import DisabledPythonTargetDeriver
 from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispatcher
 from infrahub.core.registry import registry
 from infrahub.events.branch_action import BranchMergedEvent

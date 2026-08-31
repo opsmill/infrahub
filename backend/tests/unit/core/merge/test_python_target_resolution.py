@@ -63,9 +63,9 @@ TAG = PythonAttributeReadSet(
 )
 # The transform query could not be analyzed at all.
 UNKNOWN = PythonAttributeReadSet(kind=OWNER, attribute_name="digest", read_set=TransformReadSet.imprecise())
-# The transform itself could not be reached, so no other pass knows about this attribute either.
-UNREACHABLE = PythonAttributeReadSet(
-    kind=OWNER, attribute_name="hash", read_set=TransformReadSet.imprecise(), analyzed=False
+# The gather never returned this transform, so no other pass knows about this attribute either.
+UNGATHERED = PythonAttributeReadSet(
+    kind=OWNER, attribute_name="hash", read_set=TransformReadSet.imprecise(), gathered=False
 )
 
 
@@ -356,11 +356,11 @@ async def test_a_pair_the_schema_pass_refreshes_is_dropped() -> None:
 async def test_only_a_pair_the_schema_pass_can_see_is_covered() -> None:
     """The schema pass builds its candidates from the transforms it could gather.
 
-    A pair it never saw stays here, or nothing would refresh it. A pair it did see is dropped even
+    A pair it never gathered stays here, or nothing would refresh it. A pair it gathered is dropped even
     when the read set is imprecise, since it refreshes the whole kind for that one too.
     """
     subscribers = RecordingSubscriberSource(subscribers={})
-    resolver = _resolver(read_sets=[UNKNOWN, UNREACHABLE], subscriber_source=subscribers)
+    resolver = _resolver(read_sets=[UNKNOWN, UNGATHERED], subscriber_source=subscribers)
 
     targets = await resolver.resolve(
         branch=BRANCH,

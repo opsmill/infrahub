@@ -14,8 +14,7 @@ from infrahub.log import get_logger, get_run_logger
 from infrahub.workers.dependencies import get_client, get_component
 from infrahub.workflows.utils import wait_for_schema_to_converge
 
-from .python_target_resolution import PythonAttributeReadSet, PythonTargetResolver
-from .recompute_coalescing import DisabledPythonTargetDeriver, PythonTargetDeriver
+from .python_target_resolution import DisabledPythonTargetDeriver, PythonAttributeReadSet, PythonTargetResolver
 
 log = get_logger()
 
@@ -25,6 +24,8 @@ if TYPE_CHECKING:
     from infrahub.core.query_group.subscribers import SubscriberRef
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubComponent
+
+    from .recompute_coalescing import PythonTargetDeriver
 
 
 class DatabasePythonReadSetSource:
@@ -52,25 +53,25 @@ class DatabasePythonReadSetSource:
             return []
 
         try:
-            gathered = await gather_python_transform_attributes(db=self.db, branch_name=branch)
+            gathered_items = await gather_python_transform_attributes(db=self.db, branch_name=branch)
         except Exception:
             log.exception("Widening every Python computed attribute on %s: the read-set gather failed", branch)
-            gathered = []
-        analyzed = {
+            gathered_items = []
+        gathered_read_sets = {
             (
                 item.computed_attribute.kind,
                 item.computed_attribute.attribute.name,
             ): transform_read_set_from_query_report(
                 report=item.query_analyzer.query_report, schema_branch=schema_branch
             )
-            for item in gathered
+            for item in gathered_items
         }
         return [
             PythonAttributeReadSet(
                 kind=kind,
                 attribute_name=attribute.name,
-                read_set=analyzed.get((kind, attribute.name), TransformReadSet.imprecise()),
-                analyzed=(kind, attribute.name) in analyzed,
+                read_set=gathered_read_sets.get((kind, attribute.name), TransformReadSet.imprecise()),
+                gathered=(kind, attribute.name) in gathered_read_sets,
             )
             for kind, attributes in attributes_per_kind.items()
             for attribute in attributes
