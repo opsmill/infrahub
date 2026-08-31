@@ -113,6 +113,38 @@ Reveal needs three legs, and only the object list has all three:
 `get-object-relationships-from-api.ts` has no equivalent injectable seam, which is why relationship
 tabs are hide-only.
 
+## Where to actually see reveal working
+
+Reveal looks broken until you know where to point it, because **nothing in the demo dataset is
+hidden by default**. Every attribute on `InfraDevice` and friends is `display: "default"`, so the
+Columns popover there lists only already-visible fields and `show_columns` never appears. That is
+correct behaviour, not a bug — and it is the first thing to check before concluding the feature is
+half-wired.
+
+`show_columns` only has meaning where a *schema author* marked a field `display: "extra"`. Across
+the 128 kinds in the demo schema there are eleven, on three kinds:
+
+| Kind | `extra` fields | Demo objects |
+|---|---|---|
+| `CoreAccountGroup` | `origin` | 6 — **use this one** |
+| `CoreFileObject` | `file_type`, `file_name`, `checksum`, `storage_id`, `file_size` | 0 |
+| `InfraCircuitContract` | the same five, inherited | 0 |
+
+So the working manual check is `/objects/CoreAccountGroup`: the popover offers **Origin** unchecked,
+ticking it writes `?show_columns=origin`, and the request gains `origin { id value __typename }`.
+Note the cells then render `-` because `origin` is null on all six groups — an empty cell is the
+correct outcome and does *not* mean the fetch leg failed. Confirm against the request body, not the
+rendered value.
+
+Query the live schema for candidates rather than grepping `models/`, which sets `display` nowhere:
+
+```bash
+curl -s "http://localhost:8000/api/schema?branch=main" -H "X-INFRAHUB-KEY: $KEY" \
+  | python3 -c "import json,sys; d=json.load(sys.stdin); print('\n'.join(
+      f\"{n['kind']}.{a['name']}\" for n in d['nodes']+d['generics']
+      for a in n.get('attributes',[]) if a.get('display')=='extra'))"
+```
+
 ## The IPAM `display: "extra"` divergence
 
 IPAM's **attribute** filters exclude only a hardcoded name list — they check neither `display` nor
