@@ -33,15 +33,15 @@ log = get_logger()
 
 
 def _describe_push_rejection(summary: str) -> str:
-    """Prefix a per-ref push rejection summary with the reason the remote refused it.
+    """Prefix a per-ref push rejection summary with the likely reason the remote refused it.
 
-    The matched substrings are per-ref status messages emitted by ``git push`` (and by
-    server-side hooks of common git hosting providers), which never reach stderr: a
-    rejected ref is not a failed command, so the only signal is the ref's summary line.
+    The matched substrings come from the per-ref status line of ``git push``: a rejected
+    ref is not a failed command, so no ``GitCommandError`` is raised and the stderr-based
+    error enrichment never sees the rejection.
     """
     lowered = summary.lower()
     if any(marker in lowered for marker in ("hook declined", "protected branch", "permission denied", "not allowed")):
-        return f"the remote denied the update (missing push permission or branch protection): {summary}"
+        return f"the remote refused the update (for example missing push permission or branch protection): {summary}"
     if any(marker in lowered for marker in ("non-fast-forward", "fetch first")):
         return f"the remote branch has commits that are missing locally (non-fast-forward): {summary}"
     return summary
@@ -336,17 +336,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         After the rebase we need to resync the data
 
         Raises:
-            ValueError: When no worktree exists for the destination branch.
-            RepositoryError: When the underlying ``git merge`` command fails, or when the remote
-                rejects the push; in both cases the destination worktree is left on its pre-merge
-                commit and the commit recorded in the graph is unchanged.
-            GitCommandError: When the push fails before the remote reports a per-ref status; the
-                destination worktree is likewise left on its pre-merge commit.
+            RepositoryError: When no worktree exists for the destination branch, when the
+                underlying ``git merge`` command fails, or when the remote rejects the push; after
+                a failed merge or push the destination worktree is left on its pre-merge commit
+                and the commit recorded in the graph is unchanged.
 
         """
         repo = self.get_git_repo_worktree(identifier=dest_branch)
-        if not repo:
-            raise ValueError(f"Unable to identify the worktree for the branch : {dest_branch}")
 
         commit_before = str(repo.head.commit)
         commit = self.get_commit_value(branch_name=source_branch, remote=False)
@@ -366,13 +362,25 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             return False
 
         if self.has_origin and push_remote:
+            pushed = False
             try:
                 await self.push(branch_name=dest_branch)
-            except (GitCommandError, RepositoryError):
-                # Left on the unpushed merge commit, a retry would find nothing to merge
-                # and return before ever reaching the push again.
-                repo.git.reset("--hard", commit_before)
-                raise
+                pushed = True
+            finally:
+                if not pushed:
+                    # Left on the unpushed merge commit, a retry would find nothing to merge
+                    # and return before ever reaching the push again.
+                    try:
+                        repo.git.reset("--hard", commit_before)
+                    except GitCommandError:
+                        # Raising here would mask the push failure that explains why the merge
+                        # was not delivered.
+                        log.exception(
+                            f"Failed to reset the worktree of branch {dest_branch} to {commit_before} after a "
+                            "failed push; the merge cannot be retried until the worktree is reset manually.",
+                            repository=self.name,
+                            branch=dest_branch,
+                        )
 
         self.create_commit_worktree(commit_after)
         await self.update_commit_value(branch_name=dest_branch, commit=commit_after)

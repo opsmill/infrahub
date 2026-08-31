@@ -388,19 +388,19 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         commit_before = str(main_repo.head.commit)
         graph_commit_before = repository.commit.value
 
-        _install_remote_branch_rejection_hook(gogs_server.container, repo_name)
+        _install_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
         try:
             with pytest.raises(
                 RepositoryError,
                 match=(
                     rf"^Unable to push the branch main to the remote for repository {repo_name}: "
-                    r"the remote denied the update \(missing push permission or branch protection\): "
+                    r"the remote refused the update \(for example missing push permission or branch protection\): "
                     r"\[remote rejected\] \(pre-receive hook declined\)$"
                 ),
             ):
                 await infrahub_repo.merge(source_branch="blocked-change", dest_branch="main")
         finally:
-            _remove_remote_branch_rejection_hook(gogs_server.container, repo_name)
+            _remove_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
 
         assert str(main_repo.head.commit) == commit_before
 
@@ -451,19 +451,19 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         main_repo = infrahub_repo.get_git_repo_worktree(identifier="main")
         commit_before = str(main_repo.head.commit)
 
-        _install_remote_branch_rejection_hook(gogs_server.container, repo_name)
+        _install_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
         try:
             with pytest.raises(
                 RepositoryError,
                 match=(
                     rf"^Unable to push the branch main to the remote for repository {repo_name}: "
-                    r"the remote denied the update \(missing push permission or branch protection\): "
+                    r"the remote refused the update \(for example missing push permission or branch protection\): "
                     r"\[remote rejected\] \(pre-receive hook declined\)$"
                 ),
             ):
                 await infrahub_repo.merge(source_branch="retried-change", dest_branch="main")
         finally:
-            _remove_remote_branch_rejection_hook(gogs_server.container, repo_name)
+            _remove_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
 
         merged_commit = await infrahub_repo.merge(source_branch="retried-change", dest_branch="main")
 
