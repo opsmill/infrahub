@@ -81,7 +81,7 @@ from tests.helpers.constants import (
     PREFECT_TEST_SERVER_PORT_RANGE,
 )
 from tests.helpers.file_repo import FileRepo
-from tests.helpers.prefect_diagnostics import register_prefect_test_server
+from tests.helpers.prefect_diagnostics import register_prefect_test_server, timeout_diagnostics_section
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import find_available_prefect_port
 from tests.test_data import dataset01 as ds01
@@ -106,6 +106,25 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         if list(item.iter_markers("httpx_mock")):
             continue
         item.add_marker(default_marker)
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_makereport(
+    item: pytest.Item, call: pytest.CallInfo[None]
+) -> Generator[None, pytest.TestReport, pytest.TestReport]:
+    """Make a test the Prefect server wedged carry that server's stacks into the failure.
+
+    A wedged server takes its whole worker down through timeouts that describe nothing but the
+    test they killed. The report has to be added here, before the report is logged: xdist ships
+    it to the controller at that point, and anything attached later never leaves the worker.
+    """
+    report = yield
+    section = timeout_diagnostics_section(
+        nodeid=item.nodeid, when=call.when, exception=call.excinfo.value if call.excinfo else None
+    )
+    if section is not None:
+        report.sections.append(section)
+    return report  # noqa: B901 - a pytest wrapper hook yields, then returns the result it wrapped
 
 
 @pytest.fixture(scope="module", autouse=True)
