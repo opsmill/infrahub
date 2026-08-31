@@ -51,18 +51,25 @@ query GatherGraphQLQuerySubscribers($members: [ID!]) {
 
 def reads_unscopable_derived_field(
     readable_fields_by_kind: Mapping[str, set[str]],
-    get_node_schema: Callable[[str], MainSchemaTypes],
+    get_node_schema: Callable[[str], MainSchemaTypes | None],
 ) -> bool:
     """Whether the query reads a display_label / human_friendly_id composed from a related peer.
 
     Such a read cannot be narrowed: the change that moves the value lands on a peer the read set
     never names, so the field-level match cannot see it, and the query has to fall back to every
-    target. A read of a derived field with no declared path is treated the same way, conservatively.
+    target. A read of a derived field with no declared path, or on a kind absent from the schema,
+    is treated the same way -- conservatively, so scopability that cannot be verified widens rather
+    than raises.
     """
     for kind, fields in readable_fields_by_kind.items():
-        for field_name in fields & IMPRECISE_READ_FIELDS:
-            if not derived_read_is_scopable(node_schema=get_node_schema(kind), field_name=field_name):
-                return True
+        derived_reads = fields & IMPRECISE_READ_FIELDS
+        if not derived_reads:
+            continue
+        node_schema = get_node_schema(kind)
+        if node_schema is None or any(
+            not derived_read_is_scopable(node_schema=node_schema, field_name=field_name) for field_name in derived_reads
+        ):
+            return True
     return False
 
 
@@ -108,7 +115,9 @@ async def get_field_level_impacted_subscribers(
         readable_fields_by_kind=readable_fields_by_kind,
         depends_on_everything=reads_unscopable_derived_field(
             readable_fields_by_kind=readable_fields_by_kind,
-            get_node_schema=lambda kind: query_schema_branch.get(name=kind, duplicate=False),
+            get_node_schema=lambda kind: (
+                query_schema_branch.get(name=kind, duplicate=False) if query_schema_branch.has(name=kind) else None
+            ),
         ),
     )
     assessment = classifier.assess(diff_summary=diff_summary)

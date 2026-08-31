@@ -67,6 +67,12 @@ UNSCOPABLE_CASES = [
         },
         expected=True,
     ),
+    UnscopableCase(
+        name="derived_read_on_a_kind_absent_from_the_schema_widens",
+        readable_fields_by_kind={"TestGone": {"display_label"}},
+        schemas={},
+        expected=True,
+    ),
 ]
 
 
@@ -75,7 +81,7 @@ def test_reads_unscopable_derived_field(case: UnscopableCase) -> None:
     assert (
         reads_unscopable_derived_field(
             readable_fields_by_kind=case.readable_fields_by_kind,
-            get_node_schema=lambda kind: case.schemas[kind],
+            get_node_schema=lambda kind: case.schemas.get(kind),
         )
         is case.expected
     )
