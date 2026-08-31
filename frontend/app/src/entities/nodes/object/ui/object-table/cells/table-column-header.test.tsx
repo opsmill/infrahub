@@ -1,7 +1,10 @@
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { store } from "@/shared/stores";
 
+import { IP_ADDRESS_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/rules/column-surfaces";
+import { ObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import { PERMISSION_ALLOW_ALL } from "@/entities/permission/domain/model/permission";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../../../tests/components/render";
@@ -13,6 +16,11 @@ import {
 import { TableColumnHeader } from "./table-column-header";
 
 const nameAttribute = generateAttributeSchema({ name: "name", label: "Name", kind: "Text" });
+const descriptionAttribute = generateAttributeSchema({
+  name: "description",
+  label: "Description",
+  kind: "Text",
+});
 const jsonAttribute = generateAttributeSchema({ name: "config", label: "Config", kind: "JSON" });
 
 const siteRelationship = generateRelationshipSchema({
@@ -56,12 +64,27 @@ const siteSchema = generateNodeSchema({
 
 const schema = generateNodeSchema({
   order_by: ["name__value"],
-  attributes: [
-    nameAttribute,
-    generateAttributeSchema({ name: "description", label: "Description", kind: "Text" }),
-    jsonAttribute,
-  ],
+  attributes: [nameAttribute, descriptionAttribute, jsonAttribute],
   relationships: [siteRelationship, tagsRelationship, ownerRelationship],
+});
+
+/**
+ * An IP address table's schema: `ip_prefix` is a `Generic` relationship, which only
+ * `IP_ADDRESS_COLUMN_SURFACE` offers as a column — the object surface drops it entirely.
+ */
+const ipAddressSchema = generateNodeSchema({
+  kind: "IpamIPAddress",
+  order_by: ["address__value"],
+  attributes: [descriptionAttribute],
+  relationships: [
+    generateRelationshipSchema({
+      name: "ip_prefix",
+      label: "IP Prefix",
+      peer: "IpamIPPrefix",
+      kind: "Generic",
+      cardinality: "one",
+    }),
+  ],
 });
 
 const seedSortInUrl = (sort: string) =>
@@ -151,6 +174,33 @@ describe("TableColumnHeader", () => {
 
     // THEN
     await expect.poll(getHiddenColumnsInUrl).toBe("description,name");
+  });
+
+  test("keeps a column only the table's own surface knows when hiding another one", async () => {
+    // GIVEN an IP address table with `ip_prefix` already hidden — a column the object surface has
+    // no candidate for, so writing under that surface would erase it from the param.
+    seedHiddenColumnsInUrl("ip_prefix");
+    const component = await render(
+      <ObjectTableContext
+        value={{
+          filters: [],
+          setFilters: vi.fn(),
+          baseSchema: ipAddressSchema,
+          selectedSchema: ipAddressSchema,
+          permission: PERMISSION_ALLOW_ALL,
+          columnSurface: IP_ADDRESS_COLUMN_SURFACE,
+        }}
+      >
+        <TableColumnHeader schema={ipAddressSchema} columnSchema={descriptionAttribute} />
+      </ObjectTableContext>
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Description" }).click();
+    await component.getByRole("menuitem", { name: "Hide column" }).click();
+
+    // THEN
+    await expect.poll(getHiddenColumnsInUrl).toBe("ip_prefix,description");
   });
 
   test("replaces the whole custom sort with a single-field sort", async () => {

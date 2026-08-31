@@ -36,8 +36,14 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   gridTemplateColumns?: (columnCount: number) => string;
 }
 
+/**
+ * The last two tracks belong to the identity and actions columns, so only the columns in between
+ * get an `auto` track. `repeat()` requires a positive integer: once every field column is hidden
+ * there is nothing in between, and emitting `repeat(0, auto)` would make the CSSOM reject the whole
+ * declaration — collapsing the grid to one implicit column and splitting every row in two.
+ */
 const defaultGridTemplateColumns = (columnCount: number) =>
-  `repeat(${columnCount - 2}, auto) 1fr 2.5rem`;
+  columnCount <= 2 ? "1fr 2.5rem" : `repeat(${columnCount - 2}, auto) 1fr 2.5rem`;
 
 export function DataTable<T extends NodeCore>({
   columnOrder,

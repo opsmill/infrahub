@@ -53,7 +53,8 @@ export const getObjects: GetObjects = async ({
   attributesOptions,
   relationshipsOptions,
 }) => {
-  const revealed = revealedFields?.length ? new Set(revealedFields) : undefined;
+  // `new Set(undefined)` is the empty set, which is exactly "reveal nothing" — no need to branch.
+  const revealed = new Set(revealedFields);
   const attributesVisible = getAttributesVisible(schema.attributes ?? [], revealed);
   const relationshipsVisible = getRelationshipsVisible(schema.relationships ?? [], revealed);
 

@@ -5,7 +5,7 @@ import {
   IpAddressTable,
   type IpAddressTableProps,
 } from "@/entities/ipam/ip-addresses/ui/ip-address-table";
-import { IP_ADDRESS_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/model/column-surface";
+import { IP_ADDRESS_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/rules/column-surfaces";
 import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectsManagerToolbar } from "@/entities/nodes/object/ui/objects-manager-toolbar";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";

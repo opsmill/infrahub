@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
 
-import { RELATIONSHIP_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/model/column-surface";
+import { RELATIONSHIP_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/rules/column-surfaces";
 
 import { render } from "../../../../../tests/components/render";
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
@@ -45,8 +45,6 @@ const getParamInUrl = (param: string) => new URLSearchParams(window.location.sea
 const getHiddenColumnsInUrl = () => getParamInUrl("hide_columns");
 const getShownColumnsInUrl = () => getParamInUrl("show_columns");
 
-const countMenuItems = () => document.querySelectorAll('[role="menu"] [role="menuitem"]').length;
-
 describe("ColumnsEditor", () => {
   beforeEach(() => {
     window.history.replaceState(null, "", window.location.pathname);
@@ -63,7 +61,7 @@ describe("ColumnsEditor", () => {
     await expect.element(component.getByRole("menuitem", { name: "Name" })).toBeVisible();
     await expect.element(component.getByRole("menuitem", { name: "Description" })).toBeVisible();
     await expect.element(component.getByRole("menuitem", { name: "Internal note" })).toBeVisible();
-    expect(countMenuItems()).toBe(3);
+    expect(component.getByRole("menuitem").elements()).toHaveLength(3);
   });
 
   test("marks a column the surface shows by default as visible", async () => {
@@ -202,6 +200,22 @@ describe("ColumnsEditor", () => {
     await expect
       .element(component.getByRole("button", { name: "Reset columns" }))
       .not.toBeInTheDocument();
+  });
+
+  // A kind switch leaves the params naming fields the new schema does not have. The trust boundary
+  // drops every one, so nothing renders wrong and the badge counts zero — but the param is still in
+  // the URL and still travels in a shared link, so reset has to stay reachable to clear it.
+  test("still offers a working reset when the params name only fields the schema lacks", async () => {
+    // GIVEN
+    seedColumnsInUrl({ shown: "gone_from_this_schema" });
+    const component = await render(<ColumnsEditor schema={objectSchema} />);
+
+    // WHEN
+    await component.getByRole("button", { name: "Reset columns" }).click();
+
+    // THEN
+    await expect.poll(getShownColumnsInUrl).toBeNull();
+    await expect.poll(getHiddenColumnsInUrl).toBeNull();
   });
 
   test("filters the list down to the columns matching the search", async () => {

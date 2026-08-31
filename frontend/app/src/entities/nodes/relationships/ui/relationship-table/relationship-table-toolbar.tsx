@@ -1,6 +1,6 @@
 import { Row } from "@/shared/components/container";
 
-import { RELATIONSHIP_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/model/column-surface";
+import { RELATIONSHIP_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/rules/column-surfaces";
 import { ColumnsPicker } from "@/entities/nodes/columns/ui/columns-picker";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
