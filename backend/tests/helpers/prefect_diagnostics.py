@@ -100,6 +100,13 @@ def timeout_diagnostics_section(nodeid: str, when: str, exception: BaseException
 
     Any other failure is left alone. The report costs the server a signal, the run a two second
     wait and the log three hundred lines, which only a suspected wedge earns.
+
+    The message is the only mark pytest-timeout leaves on the failure, so a test failing itself
+    with one that opens the same way would be reported on too. That is the right way round to be
+    wrong: a false positive costs an already-failing test two seconds and a log tail, and the
+    server survives being asked what it is doing, while matching on the plugin's own frames
+    instead would stop reporting the day its internals change — silently, and back to a wedge
+    that CI cannot describe.
     """
     if not isinstance(exception, pytest.fail.Exception) or not str(exception).startswith(TIMEOUT_MESSAGE_PREFIX):
         return None
