@@ -268,6 +268,8 @@ async def process_transform(
         log.warning(f"Skipping recompute of '{computed_attribute_name}' for node {skipped_id}: {reason}")
 
     dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
+    # The sibling flows read this off `object_ids`, which cannot work here: a live whole-kind
+    # refresh sends ids too, and labelling it as coalesced would stamp it with the wrong origin.
     await dispatcher.dispatch(
         writes=writes,
         branch_name=branch_name,

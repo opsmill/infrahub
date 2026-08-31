@@ -99,5 +99,4 @@ class TestMergeFanoutPython(ScopedRecomputeTestBase):
         )
 
         assert self._fanned_out_ids(workflow_recorder) == car_ids
-        # Dropping either one leaves a widened target writing as live, so no chained level follows.
         assert self._chain_parameters(workflow_recorder) == [(True, 2)]

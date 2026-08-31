@@ -411,8 +411,7 @@ class TestCoalescedRecomputePythonUngatheredTransform(CoalescedPythonTestBase):
     ) -> None:
         """The backfill of a schema-changing merge covers the gathered pair, and only that one.
 
-        Both read sets are imprecise to the scoper, so it would select the ungathered pair too and
-        the pass would drop a pair nothing else refreshes.
+        Both read sets are imprecise to the scoper, so the gathered flag is all that separates them.
         """
         submissions = await self._run_pass(
             db=db,
