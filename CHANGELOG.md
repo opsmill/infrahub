@@ -11,6 +11,27 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.10.10](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.10) - 2026-08-31
+
+### Added
+
+- Added the optional INFRAHUB_DB_MAX_CONNECTION_LIFETIME and INFRAHUB_DB_LIVENESS_CHECK_TIMEOUT database settings to protect queries from hanging on pooled connections that a firewall, NAT gateway or load balancer silently dropped while idle
+- Traces can now be exported to an OTLP collector that terminates TLS with a private or self-signed certificate. `INFRAHUB_TRACE_TLS_CA_BUNDLE` points at the certificate authority bundle used to verify the collector, and `INFRAHUB_TRACE_TLS_INSECURE` skips verification entirely in test environments. See the [observability documentation](https://docs.infrahub.app/deploy-manage/install-configure/install/observability-stack#exporting-to-a-collector-that-uses-tls) for the supported combinations.
+
+### Changed
+
+- Creating and updating objects is now faster: a mutation reads the peers of the relationships in its payload once, instead of once per validation step, and reading an object together with its relationships no longer costs an extra query for each relationship without a peer. Bulk loads and repeated upserts of unchanged data benefit the most.
+- Creating objects from an object template is now faster when the objects it creates share a related object, such as the transceiver model used by every interface of a device template.
+- Creating objects from an object template is now significantly faster, and no longer slows down as more objects are created from the same template. Bulk loads from templates, such as loading object files or synchronizing with the SDK, benefit the most.
+
+### Fixed
+
+- `INFRAHUB_TRACE_INSECURE` now takes effect: the gRPC OTLP trace exporter connects without TLS when it is true (the default), instead of always attempting a TLS connection and failing against plaintext collectors with `StatusCode.UNAVAILABLE`. An endpoint with an explicit `https://` scheme still uses TLS regardless of the setting. ([#9869](https://github.com/opsmill/infrahub/issues/9869))
+
+### Housekeeping
+
+- Updated the base Python version of the Infrahub container image and the development environment from 3.13.11 to 3.13.15.
+
 ## [Infrahub - v1.10.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.9) - 2026-08-19
 
 ### Fixed

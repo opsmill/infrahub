@@ -1,1 +1,0 @@
-Added the optional INFRAHUB_DB_MAX_CONNECTION_LIFETIME and INFRAHUB_DB_LIVENESS_CHECK_TIMEOUT database settings to protect queries from hanging on pooled connections that a firewall, NAT gateway or load balancer silently dropped while idle
