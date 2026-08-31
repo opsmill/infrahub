@@ -81,7 +81,7 @@ def test_reads_unscopable_derived_field(case: UnscopableCase) -> None:
     assert (
         reads_unscopable_derived_field(
             readable_fields_by_kind=case.readable_fields_by_kind,
-            get_node_schema=lambda kind: case.schemas.get(kind),
+            get_node_schema=case.schemas.get,
         )
         is case.expected
     )
