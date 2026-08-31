@@ -271,6 +271,13 @@ BRANCH_MERGED = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+BRANCH_PURGE_TASKS = WorkflowDefinition(
+    name="branch-purge-tasks",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.branch.tasks",
+    function="purge_deleted_branch_tasks",
+)
+
 BRANCH_MERGE_POST_PROCESS = WorkflowDefinition(
     name="branch-merge-post-process",
     type=WorkflowType.CORE,
@@ -689,6 +696,7 @@ WORKFLOWS = [
     BRANCH_MERGE_MUTATION,
     BRANCH_MERGE_POST_PROCESS,
     BRANCH_MIGRATE,
+    BRANCH_PURGE_TASKS,
     BRANCH_REBASE,
     BRANCH_VALIDATE,
     CLEAN_UP_DEADLOCKS,
