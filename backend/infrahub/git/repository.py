@@ -27,6 +27,7 @@ from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from git import Repo
     from infrahub_sdk.client import InfrahubClient
 
 log = get_logger()
@@ -335,11 +336,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         After the rebase we need to resync the data
 
+        On any failure the destination worktree is reset to its pre-merge commit. Before the push
+        has succeeded this leaves local git, the graph and the remote consistent at the pre-merge
+        state, so a later merge attempt can re-derive the merge. If recording the merge fails after
+        a successful push, the reset leaves the local clone trailing the remote instead, a state
+        the periodic synchronization repairs by pulling the pushed merge commit and recording it.
+
         Raises:
             RepositoryError: When no worktree exists for the destination branch, when the
-                underlying ``git merge`` command fails, or when the remote rejects the push; after
-                a failed merge or push the destination worktree is left on its pre-merge commit
-                and the commit recorded in the graph is unchanged.
+                underlying ``git merge`` command fails, or when the remote rejects the push.
 
         """
         repo = self.get_git_repo_worktree(identifier=dest_branch)
@@ -370,22 +375,37 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 if not pushed:
                     # Left on the unpushed merge commit, a retry would find nothing to merge
                     # and return before ever reaching the push again.
-                    try:
-                        repo.git.reset("--hard", commit_before)
-                    except GitCommandError:
-                        # Raising here would mask the push failure that explains why the merge
-                        # was not delivered.
-                        log.exception(
-                            f"Failed to reset the worktree of branch {dest_branch} to {commit_before} after a "
-                            "failed push; the merge cannot be retried until the worktree is reset manually.",
-                            repository=self.name,
-                            branch=dest_branch,
-                        )
+                    self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
 
-        self.create_commit_worktree(commit_after)
-        await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
+        recorded = False
+        try:
+            self.create_commit_worktree(commit_after)
+            await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
+            recorded = True
+        finally:
+            if not recorded:
+                # Trailing the remote is a state the periodic synchronization repairs by pulling
+                # and recording the missing commit; a worktree left on a merge commit that is
+                # recorded nowhere is never revisited.
+                self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
 
         return str(commit_after)
+
+    def _reset_to_pre_merge_commit(self, repo: Repo, dest_branch: str, commit_before: str) -> None:
+        """Best-effort reset of a merge destination worktree while recovering from a failed merge.
+
+        This never raises: the failure being recovered from is the one that explains why the merge
+        was not delivered, and it must propagate unmasked.
+        """
+        try:
+            repo.git.reset("--hard", commit_before)
+        except GitCommandError:
+            log.exception(
+                f"Failed to reset the worktree of branch {dest_branch} to {commit_before} while recovering "
+                "from a failed merge; manual reconciliation may be required before the merge can be retried.",
+                repository=self.name,
+                branch=dest_branch,
+            )
 
     async def rebase(
         self, branch_name: str, source_branch: str = "main", push_remote: bool = True
