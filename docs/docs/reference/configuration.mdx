@@ -130,6 +130,8 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 | `INFRAHUB_DB_PATH_TRAVERSAL_QUERY_TIMEOUT` | Server-side transaction timeout in seconds for each point-to-point path-traversal query. Point-to-point traversal runs many small queries one depth at a time, so a single query that exceeds this budget marks a doomed search: it is aborted and the shallower paths found so far are returned with a truncation depth, rather than the whole request failing. | number | 30 |
 | `INFRAHUB_DB_REACHABLE_NODES_QUERY_TIMEOUT` | Server-side transaction timeout in seconds for reachable-nodes queries; the query is aborted once it is exceeded. | number | 75 |
 | `INFRAHUB_DB_MAX_CONNECTION_POOL_SIZE` | Maximum number of connections the driver keeps in its pool per remote address. | integer | 100 |
+| `INFRAHUB_DB_MAX_CONNECTION_LIFETIME` | Maximum age in seconds of a pooled connection before the driver discards it and dials a fresh one. Unset by default, leaving the driver's own default (3600s) in charge. Set it below the idle timeout of every firewall, NAT gateway or load balancer between Infrahub and the database: such middleboxes silently evict idle flows, and a request sent on an evicted connection hangs until TCP gives up instead of failing fast. | None | None |
+| `INFRAHUB_DB_LIVENESS_CHECK_TIMEOUT` | Idle time in seconds after which a pooled connection is ping-tested before reuse, so a connection closed by the server (e.g. a database restart) is replaced transparently instead of failing the request. Costs one extra round trip per reuse of a connection that was idle this long. Unset by default, leaving the driver's own default in charge: no liveness check. | None | None |
 
 ## Broker
 
