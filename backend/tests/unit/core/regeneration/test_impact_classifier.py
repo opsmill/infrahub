@@ -33,6 +33,7 @@ class AssessCase:
     expected: ImpactAssessment
     traversed_kinds: set[str] = field(default_factory=lambda: set(TRAVERSED_KINDS))
     readable_fields_by_kind: dict[str, set[str]] = field(default_factory=lambda: dict(READABLE_FIELDS))
+    depends_on_everything: bool = False
 
 
 ASSESS_CASES = [
@@ -141,6 +142,24 @@ ASSESS_CASES = [
         readable_fields_by_kind={"TestDevice": {"name"}, "TestInterface": {"display_label"}},
         expected=EveryTarget(),
     ),
+    # A query that reads a derived value composed from a peer the read set cannot name cannot be
+    # narrowed, so any relevant change widens to every target, and no relevant change selects nothing.
+    AssessCase(
+        name="depends_on_everything_relevant_change_widens",
+        only_has_unique_targets=True,
+        diff_summary=[node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["name"])],
+        readable_fields_by_kind={"TestDevice": {"display_label"}},
+        depends_on_everything=True,
+        expected=EveryTarget(),
+    ),
+    AssessCase(
+        name="depends_on_everything_unread_change_selects_nothing",
+        only_has_unique_targets=True,
+        diff_summary=[node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["description"])],
+        readable_fields_by_kind={"TestDevice": {"name"}},
+        depends_on_everything=True,
+        expected=ChangedNodes(node_ids=[]),
+    ),
 ]
 
 
@@ -151,6 +170,7 @@ def test_assess(case: AssessCase) -> None:
         only_has_unique_targets=case.only_has_unique_targets,
         traversed_kinds=case.traversed_kinds,
         readable_fields_by_kind=case.readable_fields_by_kind,
+        depends_on_everything=case.depends_on_everything,
     )
 
     assessment = classifier.assess(diff_summary=case.diff_summary)
