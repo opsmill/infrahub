@@ -128,6 +128,7 @@ class TraceTransportProtocol(StrEnum):
 class BrokerDriver(StrEnum):
     RabbitMQ = "rabbitmq"
     NATS = "nats"
+    Redis = "redis"
 
     @property
     def driver_module_path(self) -> str:
@@ -136,6 +137,8 @@ class BrokerDriver(StrEnum):
                 return "infrahub.services.adapters.message_bus.nats"
             case BrokerDriver.RabbitMQ:
                 return "infrahub.services.adapters.message_bus.rabbitmq"
+            case BrokerDriver.Redis:
+                return "infrahub.services.adapters.message_bus.redis"
 
     @property
     def driver_class_name(self) -> str:
@@ -144,6 +147,8 @@ class BrokerDriver(StrEnum):
                 return "NATSMessageBus"
             case BrokerDriver.RabbitMQ:
                 return "RabbitMQMessageBus"
+            case BrokerDriver.Redis:
+                return "RedisMessageBus"
 
 
 class CacheDriver(StrEnum):
@@ -462,6 +467,8 @@ class BrokerSettings(BaseSettings):
         default_ports: dict[bool, int] = {True: 5671, False: 5672}
         if self.driver == BrokerDriver.NATS:
             return self.port or 4222
+        if self.driver == BrokerDriver.Redis:
+            return self.port or 6379
         return self.port or default_ports[self.tls_enabled]
 
 

@@ -2,7 +2,7 @@
 
 > Part of: `dev/knowledge/backend/` | Related: [ADR-0004](../../adr/0004-message-bus.md), [Creating Messages Guide](../../guides/backend/creating-messages.md)
 
-Infrahub uses a message bus (RabbitMQ or NATS) for asynchronous inter-component communication, focusing on broadcast notifications and rapid-response RPC operations.
+Infrahub uses a message bus (RabbitMQ, NATS, or Redis Streams) for asynchronous inter-component communication, focusing on broadcast notifications and rapid-response RPC operations.
 
 ## When to Use Message Bus vs Workflows
 

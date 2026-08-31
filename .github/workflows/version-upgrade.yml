@@ -18,6 +18,11 @@ env:
   INFRAHUB_DB_PORT: 7687
   INFRAHUB_DB_PROTOCOL: bolt
   INFRAHUB_BROKER_ADDRESS: message-queue
+  # TEMPORARY (Redis message bus evaluation): the source version predates the
+  # Redis driver, so upgrades keep running against RabbitMQ. Revert before merge.
+  INFRAHUB_BROKER_DRIVER: rabbitmq
+  INFRAHUB_BROKER_USERNAME: infrahub
+  INFRAHUB_BROKER_PASSWORD: infrahub
   INFRAHUB_LOG_LEVEL: CRITICAL
   INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
   INFRAHUB_IMAGE_VER: "local"

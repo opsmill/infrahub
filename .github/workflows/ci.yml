@@ -25,6 +25,9 @@ env:
   VMAGENT_PORT: 0
   PYTEST_XDIST_WORKER_COUNT: 4
   INFRAHUB_USE_TEST_CONTAINERS: 1
+  # TEMPORARY (Redis message bus evaluation): run every job against the Redis
+  # broker driver. Revert before merge.
+  INFRAHUB_BROKER_DRIVER: redis
   VALE_VERSION: "3.12.0"
   GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
   METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
@@ -1227,6 +1230,14 @@ jobs:
       needs.files-changed.outputs.e2e == 'true'
     runs-on:
       group: huge-runners
+    env:
+      # TEMPORARY (Redis message bus evaluation): this job pulls the latest
+      # released image, which predates the Redis driver, so it must keep
+      # running against RabbitMQ. Revert before merge.
+      INFRAHUB_BROKER_DRIVER: rabbitmq
+      INFRAHUB_BROKER_ADDRESS: message-queue
+      INFRAHUB_BROKER_USERNAME: infrahub
+      INFRAHUB_BROKER_PASSWORD: infrahub
     steps:
       - name: Check out repository code
         uses: actions/checkout@v7
