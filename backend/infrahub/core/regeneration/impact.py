@@ -53,12 +53,12 @@ def reads_unscopable_derived_field(
     readable_fields_by_kind: Mapping[str, set[str]],
     get_node_schema: Callable[[str], MainSchemaTypes | None],
 ) -> bool:
-    """Whether the query reads a display_label / human_friendly_id composed from a related peer.
+    """Whether the query reads a computed field whose value is composed from a related peer.
 
     Such a read cannot be narrowed: the change that moves the value lands on a peer the read set
     never names, so the field-level match cannot see it, and the query has to fall back to every
-    target. A read of a derived field with no declared path, or on a kind absent from the schema,
-    is treated the same way -- conservatively, so scopability that cannot be verified widens rather
+    target. A read whose value has no declared path, or on a kind absent from the schema, is
+    treated the same way -- conservatively, so scopability that cannot be verified widens rather
     than raises.
     """
     for kind, fields in readable_fields_by_kind.items():
