@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 from prefect import flow
 
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge.python_target_resolution import DisabledPythonTargetDeriver
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
     RECOMPUTE_CHAIN_DEPTH_FLOOR,
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
-    DisabledPythonTargetDeriver,
     RecomputeChainSubmitter,
     max_recompute_chain_depth,
 )

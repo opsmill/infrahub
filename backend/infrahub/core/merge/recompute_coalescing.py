@@ -156,19 +156,6 @@ class PythonTargetDeriver(Protocol):
     ) -> list[AffectedTarget]: ...
 
 
-class DisabledPythonTargetDeriver:
-    """The derivation while the coalescing switch is off: the per-node automations own the work."""
-
-    async def resolve(
-        self,
-        *,
-        changes: Iterable[MergeChange],  # noqa: ARG002
-        branch: str,  # noqa: ARG002
-        schema_changed_elements: ChangedElementSet | None,  # noqa: ARG002
-    ) -> list[AffectedTarget]:
-        return []
-
-
 @dataclass
 class _ResolvedTarget:
     family: RecomputeFamily

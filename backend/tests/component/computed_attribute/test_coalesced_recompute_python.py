@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Generator
 import pytest
 
 from infrahub import config
+from infrahub.computed_attribute.scoping import ChangedElementSet
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.python_target_sources import build_python_target_deriver
@@ -53,6 +54,7 @@ CAR_KIND = "TestCar"
 PERSON_KIND = "TestPerson"
 NAME_ATTRIBUTE = "computed_desc_python"
 OWNER_ATTRIBUTE = "computed_desc_python_owner"
+UNGATHERED_ATTRIBUTE = "computed_desc_python_ungathered"
 
 # Stands for a target the pass could not narrow, so every node of the kind is refreshed.
 WHOLE_KIND = "whole-kind"
@@ -79,6 +81,23 @@ def _schema_with_an_owner_reading_transform() -> SchemaRoot:
     return schema
 
 
+def _schema_with_an_ungathered_transform() -> SchemaRoot:
+    """The same schema, plus an attribute whose transform is absent from the database.
+
+    The gather returns no read set for it, and neither does the schema-scoped backfill: it builds
+    its own candidates from the same gather.
+    """
+    schema = _schema_with_an_owner_reading_transform()
+    car = next(node for node in schema.nodes if node.kind == CAR_KIND)
+    attribute = deepcopy(car.get_attribute(name=OWNER_ATTRIBUTE))
+    attribute.name = UNGATHERED_ATTRIBUTE
+    attribute.computed_attribute = ComputedAttribute(
+        kind=ComputedAttributeKind.TRANSFORM_PYTHON, transform="transform_missing"
+    )
+    car.attributes.append(attribute)
+    return schema
+
+
 @dataclass
 class PythonRecomputeDataset:
     """Two cars owned by one person, both subscribed to the owner-reading transform's query."""
@@ -87,7 +106,7 @@ class PythonRecomputeDataset:
     person_id: str
 
 
-async def _seed(db: InfrahubDatabase, branch: Branch) -> PythonRecomputeDataset:
+async def _seed(db: InfrahubDatabase, branch: Branch, schema: SchemaRoot) -> PythonRecomputeDataset:
     repo = await create_transform01(db=db, branch_name=branch.name)
 
     query_owner = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
@@ -105,7 +124,7 @@ async def _seed(db: InfrahubDatabase, branch: Branch) -> PythonRecomputeDataset:
     )
     await transform_owner.save(db=db)
 
-    await load_schema(db=db, schema=_schema_with_an_owner_reading_transform(), update_db=True)
+    await load_schema(db=db, schema=schema, update_db=True)
 
     person = await Node.init(db=db, schema=PERSON_KIND)
     await person.new(db=db, name="owner01")
@@ -147,6 +166,7 @@ class CoalescedPythonTestBase(ScopedRecomputeTestBase):
         default_branch: Branch,
         admin_account: CoreAccount,
         changes: Iterable[MergeChange],
+        schema_changed_elements: ChangedElementSet | None = None,
     ) -> dict[str, list[str] | str]:
         coordinator = MergeRecomputeCoordinator(
             builder=CoalescedRecomputeBuilder(
@@ -160,6 +180,7 @@ class CoalescedPythonTestBase(ScopedRecomputeTestBase):
             changes=changes,
             branch=default_branch.name,
             context=self._context(admin_account, default_branch),
+            schema_changed_elements=schema_changed_elements,
         )
 
         submissions: dict[str, list[str] | str] = {}
@@ -187,7 +208,7 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
         client: InfrahubClient,
         admin_account: CoreAccount,
     ) -> PythonRecomputeDataset:
-        return await _seed(db=db, branch=default_branch)
+        return await _seed(db=db, branch=default_branch, schema=_schema_with_an_owner_reading_transform())
 
     async def test_created_nodes_submit_one_recompute_per_attribute(
         self,
@@ -309,7 +330,7 @@ class TestCoalescedRecomputePythonDeletedPeer(CoalescedPythonTestBase):
         client: InfrahubClient,
         admin_account: CoreAccount,
     ) -> PythonRecomputeDataset:
-        dataset = await _seed(db=db, branch=default_branch)
+        dataset = await _seed(db=db, branch=default_branch, schema=_schema_with_an_owner_reading_transform())
         person = await NodeManager.get_one(db=db, id=dataset.person_id, raise_on_error=True)
         await person.delete(db=db)
         return dataset
@@ -337,3 +358,76 @@ class TestCoalescedRecomputePythonDeletedPeer(CoalescedPythonTestBase):
         )
 
         assert submissions == {OWNER_ATTRIBUTE: sorted(deleted_peer_dataset.car_ids)}
+
+
+class TestCoalescedRecomputePythonUngatheredTransform(CoalescedPythonTestBase):
+    """An attribute the gather never returned is widened here, since nothing else refreshes it."""
+
+    @pytest.fixture(scope="class")
+    async def ungathered_dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        client: InfrahubClient,
+        admin_account: CoreAccount,
+    ) -> PythonRecomputeDataset:
+        return await _seed(db=db, branch=default_branch, schema=_schema_with_an_ungathered_transform())
+
+    async def test_an_attribute_without_a_read_set_refreshes_its_whole_kind(
+        self,
+        ungathered_dataset: PythonRecomputeDataset,
+        db: InfrahubDatabase,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        submissions = await self._run_pass(
+            db=db,
+            recorder=workflow_recorder,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            changes=[
+                MergeChange(
+                    node_id=ungathered_dataset.person_id,
+                    kind=PERSON_KIND,
+                    action="updated",
+                    changed_fields=frozenset({"name"}),
+                )
+            ],
+        )
+
+        assert submissions == {
+            OWNER_ATTRIBUTE: sorted(ungathered_dataset.car_ids),
+            UNGATHERED_ATTRIBUTE: WHOLE_KIND,
+        }
+
+    async def test_a_pair_the_schema_pass_never_gathered_is_not_dropped(
+        self,
+        ungathered_dataset: PythonRecomputeDataset,
+        db: InfrahubDatabase,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        """The backfill of a schema-changing merge covers the gathered pair, and only that one.
+
+        Both read sets are imprecise to the scoper, so it would select the ungathered pair too and
+        the pass would drop a pair nothing else refreshes.
+        """
+        submissions = await self._run_pass(
+            db=db,
+            recorder=workflow_recorder,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            changes=[
+                MergeChange(
+                    node_id=ungathered_dataset.person_id,
+                    kind=PERSON_KIND,
+                    action="updated",
+                    changed_fields=frozenset({"name"}),
+                )
+            ],
+            schema_changed_elements=ChangedElementSet(changed_fields={PERSON_KIND: frozenset({"name"})}),
+        )
+
+        assert submissions == {UNGATHERED_ATTRIBUTE: WHOLE_KIND}

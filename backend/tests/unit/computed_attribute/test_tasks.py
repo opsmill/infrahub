@@ -1,7 +1,7 @@
 from copy import deepcopy
 from typing import Any
 
-from infrahub.computed_attribute.tasks import _partition_transform_results, _python_transform_attributes
+from infrahub.computed_attribute.tasks import _partition_transform_results, _requested_python_transform_attribute
 from infrahub.core.constants import ComputedAttributeKind
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
 from infrahub.core.schema import NodeSchema
@@ -27,16 +27,16 @@ def test_only_the_requested_python_attribute_is_selected() -> None:
     """A kind with two attributes would otherwise run its transform twice per submission."""
     node_schema = _two_python_attributes()
 
-    pitch = _python_transform_attributes(node_schema=node_schema, attribute_name="pitch")
-    slogan = _python_transform_attributes(node_schema=node_schema, attribute_name="slogan")
+    pitch = _requested_python_transform_attribute(node_schema=node_schema, attribute_name="pitch")
+    slogan = _requested_python_transform_attribute(node_schema=node_schema, attribute_name="slogan")
 
-    assert list(pitch) == ["pitch"]
-    assert pitch["pitch"].transform == "TShirtPitch"
-    assert list(slogan) == ["slogan"]
-    assert slogan["slogan"].transform == "TShirtSlogan"
+    assert pitch is not None
+    assert pitch.transform == "TShirtPitch"
+    assert slogan is not None
+    assert slogan.transform == "TShirtSlogan"
     # The flow only knows how to run a transform, and a name off the kind is nobody's work.
-    assert _python_transform_attributes(node_schema=node_schema, attribute_name="description") == {}
-    assert _python_transform_attributes(node_schema=node_schema, attribute_name="missing") == {}
+    assert _requested_python_transform_attribute(node_schema=node_schema, attribute_name="description") is None
+    assert _requested_python_transform_attribute(node_schema=node_schema, attribute_name="missing") is None
 
 
 def test_partition_transform_results_persists_only_string_values() -> None:

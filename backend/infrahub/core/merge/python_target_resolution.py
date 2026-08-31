@@ -50,14 +50,14 @@ if TYPE_CHECKING:
 class PythonAttributeReadSet:
     """One Python transform computed attribute and the schema elements its query reads.
 
-    ``analyzed`` is ``False`` when the transform behind the attribute could not be reached at all,
-    which is what tells the coverage decision that no other pass knows about this pair either.
+    ``gathered`` is ``False`` when the transform behind the attribute was never returned by the
+    gather, which is what tells the coverage decision that no other pass knows about this pair.
     """
 
     kind: str
     attribute_name: str
     read_set: TransformReadSet
-    analyzed: bool = True
+    gathered: bool = True
 
 
 class PythonReadSetSource(Protocol):
@@ -251,16 +251,29 @@ class PythonTargetResolver:
         return cached
 
 
+class DisabledPythonTargetDeriver:
+    """The derivation while the coalescing switch is off: the per-node automations own the work."""
+
+    async def resolve(
+        self,
+        *,
+        changes: Iterable[MergeChange],  # noqa: ARG002
+        branch: str,  # noqa: ARG002
+        schema_changed_elements: ChangedElementSet | None,  # noqa: ARG002
+    ) -> list[AffectedTarget]:
+        return []
+
+
 def _covered_by_schema_pass(
     *, read_sets: list[PythonAttributeReadSet], branch: str, changed_elements: ChangedElementSet
 ) -> set[tuple[str, str]]:
     """The (kind, attribute) pairs the schema-scoped backfill refreshes for this schema change.
 
-    The same scoping decision runs on both sides, so what one selects is exactly what the other can
-    drop. An unreachable transform is the exception: the schema pass builds its candidates from the
-    transforms it could gather, so a pair it never saw is a pair it never submits.
+    Both sides run the same scoper over the same candidates, so what one selects is what the other
+    can drop. Only a gathered pair qualifies: the schema pass builds its candidates from the
+    transforms it could gather, so a pair it never gathered is a pair it never submits.
     """
-    candidates = [attribute for attribute in read_sets if attribute.analyzed]
+    candidates = [attribute for attribute in read_sets if attribute.gathered]
     scoper = RecomputeScoper(
         derivers={
             ComputedAttributeKind.TRANSFORM_PYTHON: PythonTransformDependencyDeriver(
