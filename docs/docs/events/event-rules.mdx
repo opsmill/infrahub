@@ -82,7 +82,7 @@ After saving, the rule appears in the trigger rules list as inactive. Activate i
 
 A group trigger rule fires a [Generator action](./event-actions#configure-a-generator-action); to change group membership from an event, use a node trigger rule with a group action instead.
 
-## Where rules live and where they fire
+## Where trigger rules are stored and evaluated
 
 Infrahub reads trigger rules from the default branch only; a rule created on another branch does not fire. Create rules on the default branch, and use `branch_scope` to control which branches they fire on:
 
