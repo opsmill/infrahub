@@ -213,6 +213,48 @@ async def test_gather_trigger_computed_attribute_python(
     assert triggers_by_kind["TestCar"].trigger.match_related["infrahub.field.name"] == ["name"]
 
 
+async def test_two_attributes_sharing_a_transform_each_get_an_automation(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_computed_attr: None,
+    transform01: Node,
+) -> None:
+    """One transform can feed several attributes, and each one needs its own automation.
+
+    They share a query, so nothing else fires for the attribute left out.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    car_schema = schema_branch.get_node("TestCar")
+    car_schema.attributes.append(
+        AttributeSchema(
+            name="computed_desc_python_second",
+            kind="Text",
+            read_only=True,
+            optional=True,
+            computed_attribute=ComputedAttribute(
+                kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+                transform="transform01",
+            ),
+        )
+    )
+    schema_branch.set(name="TestCar", schema=car_schema)
+    registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
+    default_branch.update_schema_hash()
+    schema_branch.process()
+    await default_branch.save(db=db)
+
+    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    assert {trigger.name for trigger in triggers} == {
+        "TestCar_computed_desc_python",
+        "TestCar_computed_desc_python_second",
+    }
+    assert {trigger.name for trigger in trigger_queries} == {
+        "TestCar_computed_desc_python::kind::TestCar",
+        "TestCar_computed_desc_python_second::kind::TestCar",
+    }
+
+
 async def test_gather_trigger_computed_attribute_python_only_on_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
