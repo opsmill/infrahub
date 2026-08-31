@@ -1,1 +1,0 @@
-Report the Prefect test server's own thread stacks on a component test killed by pytest-timeout, so a wedged server is diagnosable from the CI log instead of only showing up as timeouts in unrelated tests.
