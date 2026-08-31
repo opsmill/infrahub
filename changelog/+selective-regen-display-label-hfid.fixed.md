@@ -1,0 +1,1 @@
+Fixed selective regeneration skipping generators and artifacts whose query reads an object's display label or human-friendly ID when a change to a backing field moved that value, leaving them stale after a merge; they are now regenerated.
