@@ -122,7 +122,7 @@ class _Accumulator:
         return tuple(frozenset(ids) for ids in (self.source_ids, self.deleted_source_ids) if ids)
 
 
-class PythonTargetResolver:
+class IndexedPythonTargetResolver:
     """Map a merge or rebase change set to the Python computed attributes it affects.
 
     One instance serves one pass: the read-set index is fetched once per branch, and reader
@@ -251,8 +251,8 @@ class PythonTargetResolver:
         return cached
 
 
-class DisabledPythonTargetDeriver:
-    """The derivation while the coalescing switch is off: the per-node automations own the work."""
+class DisabledPythonTargetResolver:
+    """The resolver used while the coalescing switch is off: the per-node automations own the work."""
 
     async def resolve(
         self,

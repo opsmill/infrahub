@@ -14,7 +14,7 @@ from infrahub.log import get_logger, get_run_logger
 from infrahub.workers.dependencies import get_client, get_component
 from infrahub.workflows.utils import wait_for_schema_to_converge
 
-from .python_target_resolution import DisabledPythonTargetDeriver, PythonAttributeReadSet, PythonTargetResolver
+from .python_target_resolution import DisabledPythonTargetResolver, IndexedPythonTargetResolver, PythonAttributeReadSet
 
 log = get_logger()
 
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubComponent
 
-    from .recompute_coalescing import PythonTargetDeriver
+    from .recompute_coalescing import PythonTargetResolver
 
 
 class DatabasePythonReadSetSource:
@@ -88,16 +88,16 @@ class ClientSubscriberSource:
         return await fetch_subscriber_refs(client=self.client, node_ids=node_ids, branch=branch)
 
 
-async def build_python_target_deriver(*, db: InfrahubDatabase) -> PythonTargetDeriver:
-    """Build the derivation for one recompute pass, inert while the switch is off.
+async def build_python_target_resolver(*, db: InfrahubDatabase) -> PythonTargetResolver:
+    """Build the resolver for one recompute pass, inert while the switch is off.
 
     The switch is read first, so a deployment that leaves the family to the per-node automations
     resolves neither the client nor the component.
     """
     if not config.SETTINGS.main.coalesce_python_recompute_after_merge:
-        return DisabledPythonTargetDeriver()
+        return DisabledPythonTargetResolver()
 
-    return PythonTargetResolver(
+    return IndexedPythonTargetResolver(
         read_set_source=DatabasePythonReadSetSource(db=db, component=await get_component()),
         subscriber_source=ClientSubscriberSource(client=get_client()),
     )

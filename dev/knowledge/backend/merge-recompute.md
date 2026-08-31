@@ -30,7 +30,7 @@ The builder, submitter, and coordinator live in `core/merge/recompute_coalescing
 
 **Location:** `core/merge/python_target_resolution.py` (the narrowing), `core/merge/python_target_sources.py` (the database and client sources)
 
-A Python transform declares no dependency graph. What it reads is only known from its GraphQL query, and which nodes read a given node is only known from the query groups those nodes subscribed to when they last computed. Both are database facts, so this family is derived behind an interface (`PythonTargetDeriver`) instead of from the schema branch the builder holds. `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE` selects the real derivation or an inert one.
+A Python transform declares no dependency graph. What it reads is only known from its GraphQL query, and which nodes read a given node is only known from the query groups those nodes subscribed to when they last computed. Both are database facts, so this family is derived behind an interface (`PythonTargetResolver`) instead of from the schema branch the builder holds. `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE` selects the real resolver or an inert one.
 
 The derivation applies the same per-action rules as the other families: a created node is its own target, an update selects the readers of the changed fields, a deletion selects the readers too. On top of that:
 
@@ -94,8 +94,8 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 
 | File | What |
 |------|------|
-| `core/merge/recompute_coalescing.py` | `CoalescedRecomputeBuilder`, `CoalescedRecomputeSubmitter`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter`, `PythonTargetDeriver`, `max_recompute_chain_depth` |
-| `core/merge/python_target_resolution.py` | `PythonTargetResolver`: maps a change signature to the affected Python `(kind, attribute)` pairs and their node ids |
+| `core/merge/recompute_coalescing.py` | `CoalescedRecomputeBuilder`, `CoalescedRecomputeSubmitter`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter`, `PythonTargetResolver`, `max_recompute_chain_depth` |
+| `core/merge/python_target_resolution.py` | `IndexedPythonTargetResolver`: maps a change signature to the affected Python `(kind, attribute)` pairs and their node ids |
 | `core/merge/python_target_sources.py` | The read-set and subscriber sources behind that resolver, and the factory the switch selects |
 | `display_labels/scoping.py`, `hfid/scoping.py` | `derive_display_label_targets` / `derive_hfid_targets`: the builder's derivation step, mapping a changed `(kind, field)` set to the display-label and HFID values it affects (computed attributes use `computed_attribute/scoping.py`) |
 | `core/recompute/bulk_write.py` | `BulkRecomputeWriter`, `AttributeValueWrite`, `WrittenNode` |

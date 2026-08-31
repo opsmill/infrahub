@@ -8,30 +8,31 @@ from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge.post_merge import PostMergeDispatcher
-from infrahub.core.merge.python_target_resolution import DisabledPythonTargetDeriver
+from infrahub.core.merge.python_target_resolution import DisabledPythonTargetResolver
 from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispatcher
 from infrahub.core.registry import registry
 from infrahub.events.branch_action import BranchMergedEvent
 from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from tests.adapters.event import FailingKindInfrahubEvent, MemoryInfrahubEvent
-from tests.adapters.python_target_sources import RecordingPythonTargetDeriver
+from tests.adapters.event import FailingInfrahubEvent, MemoryInfrahubEvent
+from tests.adapters.python_target_sources import RecordingPythonTargetResolver
 
 if TYPE_CHECKING:
     from infrahub.computed_attribute.scoping import ChangedElementSet
     from infrahub.core.branch import Branch
-    from infrahub.core.merge.recompute_coalescing import PythonTargetDeriver
+    from infrahub.core.merge.recompute_coalescing import PythonTargetResolver
     from infrahub.core.models import SchemaDiff
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
 def _build_dispatcher(
+    *,
     db: InfrahubDatabase,
     source_branch: Branch,
     destination_branch: Branch,
     event_service: MemoryInfrahubEvent,
-    python_deriver: PythonTargetDeriver,
+    python_resolver: PythonTargetResolver,
 ) -> PostMergeDispatcher:
     workflow = WorkflowLocalExecution()
     return PostMergeDispatcher(
@@ -41,7 +42,7 @@ def _build_dispatcher(
         workflow=workflow,
         event_service=event_service,
         default_branch=destination_branch,
-        python_deriver=python_deriver,
+        python_resolver=python_resolver,
     )
 
 
@@ -63,8 +64,14 @@ async def _schema_scope_handed_over(
     event_service: MemoryInfrahubEvent,
 ) -> ChangedElementSet | None:
     """The schema scope the post-merge dispatch handed to the coalesced pass."""
-    deriver = RecordingPythonTargetDeriver(targets=[])
-    dispatcher = _build_dispatcher(db, source_branch, default_branch, event_service, deriver)
+    resolver = RecordingPythonTargetResolver(targets=[])
+    dispatcher = _build_dispatcher(
+        db=db,
+        source_branch=source_branch,
+        destination_branch=default_branch,
+        event_service=event_service,
+        python_resolver=resolver,
+    )
     schema_diff, schema_hash = _derived_value_schema_diff(default_branch)
 
     await dispatcher.dispatch_events(
@@ -76,8 +83,8 @@ async def _schema_scope_handed_over(
         schema_hash=schema_hash,
     )
 
-    assert len(deriver.calls) == 1
-    return deriver.calls[0][2]
+    assert len(resolver.calls) == 1
+    return resolver.calls[0].schema_scope
 
 
 def _context(default_branch: Branch) -> InfrahubContext:
@@ -104,7 +111,13 @@ class TestPostMergeSchemaEvent:
     ) -> None:
         source_branch = await create_branch(branch_name="feature", db=db)
         memory_event = MemoryInfrahubEvent()
-        dispatcher = _build_dispatcher(db, source_branch, default_branch, memory_event, DisabledPythonTargetDeriver())
+        dispatcher = _build_dispatcher(
+            db=db,
+            source_branch=source_branch,
+            destination_branch=default_branch,
+            event_service=memory_event,
+            python_resolver=DisabledPythonTargetResolver(),
+        )
 
         schema_diff, schema_hash = _derived_value_schema_diff(default_branch)
 
@@ -134,7 +147,13 @@ class TestPostMergeSchemaEvent:
     ) -> None:
         source_branch = await create_branch(branch_name="feature", db=db)
         memory_event = MemoryInfrahubEvent()
-        dispatcher = _build_dispatcher(db, source_branch, default_branch, memory_event, DisabledPythonTargetDeriver())
+        dispatcher = _build_dispatcher(
+            db=db,
+            source_branch=source_branch,
+            destination_branch=default_branch,
+            event_service=memory_event,
+            python_resolver=DisabledPythonTargetResolver(),
+        )
 
         await dispatcher.dispatch_events(
             branch=source_branch,
@@ -165,7 +184,7 @@ class TestPostMergeSchemaEvent:
         assert scope is not None
         assert "display_labels" in scope.changed_fields.get("TestCar", frozenset())
 
-        failing = FailingKindInfrahubEvent(failing_kind=SchemaUpdatedEvent)
+        failing = FailingInfrahubEvent(failing_kind=SchemaUpdatedEvent)
         assert await _schema_scope_handed_over(db, source_branch, default_branch, failing) is None
         assert [type(event).__name__ for event in failing.events] == ["BranchMergedEvent"]
 
@@ -187,7 +206,13 @@ class TestPostMergeBranchMergedEvent:
     ) -> None:
         source_branch = await create_branch(branch_name="feature", db=db)
         memory_event = MemoryInfrahubEvent()
-        dispatcher = _build_dispatcher(db, source_branch, default_branch, memory_event, DisabledPythonTargetDeriver())
+        dispatcher = _build_dispatcher(
+            db=db,
+            source_branch=source_branch,
+            destination_branch=default_branch,
+            event_service=memory_event,
+            python_resolver=DisabledPythonTargetResolver(),
+        )
 
         await dispatcher.dispatch_events(
             branch=source_branch,

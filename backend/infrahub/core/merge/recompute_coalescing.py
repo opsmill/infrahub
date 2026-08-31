@@ -139,10 +139,10 @@ class CoalescedRecompute:
         return CoalescedRecompute(branch=self.branch, targets=self.targets | frozenset(targets))
 
 
-class PythonTargetDeriver(Protocol):
+class PythonTargetResolver(Protocol):
     """The Python transform computed attributes a merge or rebase change set affects.
 
-    ``schema_changed_elements`` names the schema elements a merge changed, so the derivation can drop
+    ``schema_changed_elements`` names the schema elements a merge changed, so the resolver can drop
     the pairs the schema-driven backfill already refreshes. It is ``None`` wherever no schema change
     is replayed, which is every rebase and every chained level.
     """
@@ -550,11 +550,11 @@ class MergeRecomputeCoordinator:
         self,
         builder: CoalescedRecomputeBuilder,
         submitter: CoalescedRecomputeSubmitter,
-        python_deriver: PythonTargetDeriver,
+        python_resolver: PythonTargetResolver,
     ) -> None:
         self.builder = builder
         self.submitter = submitter
-        self.python_deriver = python_deriver
+        self.python_resolver = python_resolver
 
     async def run(
         self,
@@ -566,7 +566,7 @@ class MergeRecomputeCoordinator:
     ) -> list[CoalescedSubmission]:
         change_list = list(changes)
         coalesced = self.builder.build(changes=change_list, branch=branch)
-        python_targets = await self.python_deriver.resolve(
+        python_targets = await self.python_resolver.resolve(
             changes=change_list, branch=branch, schema_changed_elements=schema_changed_elements
         )
         return await self.submitter.submit(coalesced=coalesced.with_targets(python_targets), context=context)
@@ -593,11 +593,11 @@ class RecomputeChainSubmitter:
         self,
         builder: CoalescedRecomputeBuilder,
         submitter: CoalescedRecomputeSubmitter,
-        python_deriver: PythonTargetDeriver,
+        python_resolver: PythonTargetResolver,
     ) -> None:
         self.builder = builder
         self.submitter = submitter
-        self.python_deriver = python_deriver
+        self.python_resolver = python_resolver
 
     async def submit(
         self,
@@ -633,7 +633,9 @@ class RecomputeChainSubmitter:
             for node in written
         ]
         coalesced = self.builder.build(changes=changes, branch=branch)
-        python_targets = await self.python_deriver.resolve(changes=changes, branch=branch, schema_changed_elements=None)
+        python_targets = await self.python_resolver.resolve(
+            changes=changes, branch=branch, schema_changed_elements=None
+        )
         return await self.submitter.submit(
             coalesced=coalesced.with_targets(python_targets), context=context, recompute_depth=next_depth
         )
