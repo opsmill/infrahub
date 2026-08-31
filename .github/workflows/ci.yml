@@ -1126,11 +1126,8 @@ jobs:
     runs-on:
       group: huge-runners
     timeout-minutes: 60
-    # ci.yml has no top-level permissions block; a job-level one restricts this job
-    # to exactly what is listed, so contents: read (checkout) must be explicit.
     permissions:
       contents: read
-      checks: write # Publish e2e results (junit check run)
     strategy:
       fail-fast: false
       matrix:
@@ -1207,15 +1204,6 @@ jobs:
           path: |
             test-results/
             playwright-junit.xml
-      - name: Publish e2e results
-        if: always() && github.event.pull_request.head.repo.fork == false
-        uses: mikepenz/action-junit-report@v6
-        with:
-          report_paths: playwright-junit.xml
-          check_name: "E2E pytest (${{ matrix.shard }})"
-          include_passed: false
-          detailed_summary: true
-          fail_on_failure: false # pytest already fails the job; only annotate
       # Leftover containers here mean the session-fixture teardown did not run.
       - name: Containers after tests
         if: always()
