@@ -78,4 +78,20 @@ describe("ColumnsPicker", () => {
       .element(component.getByRole("button", { name: "Columns" }).getByText("1", { exact: true }))
       .toBeVisible();
   });
+
+  // The count answers "how many columns depart from the default", so a param the schema cannot
+  // match counts nothing — there is no column on screen to point at. Whether the param is still
+  // there to be cleared is the editor's reset question, tested in columns-editor.test.tsx.
+  test("shows no count when the params name only fields the schema lacks", async () => {
+    // GIVEN
+    seedColumnsInUrl({ shown: "gone_from_this_schema" });
+
+    // WHEN
+    const component = await render(<ColumnsPicker schema={objectSchema} />);
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Columns" }).getByText(/^\d+$/))
+      .not.toBeInTheDocument();
+  });
 });

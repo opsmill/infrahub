@@ -1,5 +1,4 @@
-import type { VisibilityState } from "@tanstack/react-table";
-
+import type { ColumnVisibilityState } from "@/entities/nodes/columns/domain/model/column-visibility-state";
 import type { ColumnField } from "@/entities/nodes/columns/domain/rules/get-column-fields";
 
 /**
@@ -7,9 +6,9 @@ import type { ColumnField } from "@/entities/nodes/columns/domain/rules/get-colu
  *
  * Both lists arrive from the URL, so either may name a field this schema never had — an old shared
  * link, a kind switch, or a relationship tab reading the same params against a different schema.
- * Such a name is dropped here rather than reaching TanStack, where an unknown column id would
+ * Such a name is dropped here rather than reaching the table, where an unknown column id would
  * silently do nothing. A name that agrees with its surface's default is dropped too: it is not a
- * departure, so it must not count towards the picker's badge or its reset affordance.
+ * departure, so it must not count towards the picker's badge.
  *
  * A name in BOTH params is a contradictory link, and hiding wins. With two named params there is no
  * ordering to fall back on, and hiding is the safer reading: a link that says "hide this" never
@@ -19,7 +18,7 @@ export function getColumnVisibilityState(
   hiddenNames: readonly string[],
   shownNames: readonly string[],
   columnFields: ColumnField[]
-): VisibilityState {
+): ColumnVisibilityState {
   const defaultVisibilityByName = new Map(
     columnFields.map((field) => [field.name, field.isDefaultVisible])
   );
@@ -39,13 +38,22 @@ export function getColumnVisibilityState(
 }
 
 /**
- * The revealed field names, validated exactly as the visibility state is and **sorted**: this value
- * feeds a react-query cache key, so `internal_note,owner_note` and `owner_note,internal_note` must
- * produce the same array.
+ * The revealed field names, read straight off the state above and **sorted**: this value feeds a
+ * react-query cache key, so `internal_note,owner_note` and `owner_note,internal_note` must produce
+ * the same array.
+ *
+ * It takes both lists for the same reason the state does. A version blind to the hide list could not
+ * apply the contradictory-link rule, so every caller would have to re-apply it — and the point of
+ * this module is that no caller ever has to.
  */
 export function getRevealedFields(
+  hiddenNames: readonly string[],
   shownNames: readonly string[],
   columnFields: ColumnField[]
 ): string[] {
-  return Object.keys(getColumnVisibilityState([], shownNames, columnFields)).sort();
+  const visibility = getColumnVisibilityState(hiddenNames, shownNames, columnFields);
+
+  return Object.keys(visibility)
+    .filter((name) => visibility[name])
+    .sort();
 }

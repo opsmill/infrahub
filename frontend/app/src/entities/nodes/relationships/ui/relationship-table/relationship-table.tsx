@@ -5,7 +5,7 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { QSP } from "@/shared/config/qsp";
 
 import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/ip-namespaces/domain/model/ip-namespace";
-import { RELATIONSHIP_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/model/column-surface";
+import { RELATIONSHIP_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/rules/column-surfaces";
 import { useColumnVisibility } from "@/entities/nodes/columns/ui/hooks/use-column-visibility";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";

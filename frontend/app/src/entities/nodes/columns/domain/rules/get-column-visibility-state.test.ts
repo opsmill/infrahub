@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   OBJECT_COLUMN_SURFACE,
   RELATIONSHIP_COLUMN_SURFACE,
-} from "@/entities/nodes/columns/domain/model/column-surface";
+} from "@/entities/nodes/columns/domain/rules/column-surfaces";
 import { getColumnFields } from "@/entities/nodes/columns/domain/rules/get-column-fields";
 import {
   getColumnVisibilityState,
@@ -132,7 +132,7 @@ describe("getColumnVisibilityState", () => {
 
     // WHEN
     const state = getColumnVisibilityState(["description"], ["internal_note"], columnFields);
-    const revealed = getRevealedFields(["internal_note"], columnFields);
+    const revealed = getRevealedFields(["description"], ["internal_note"], columnFields);
 
     // THEN
     expect({ state, revealed }).toEqual({ state: { description: false }, revealed: [] });
@@ -150,7 +150,7 @@ describe("getRevealedFields", () => {
 
     // WHEN
     const revealedLists = noteOrders.map((shownNames) =>
-      getRevealedFields(shownNames, columnFields)
+      getRevealedFields([], shownNames, columnFields)
     );
 
     // THEN
@@ -166,9 +166,25 @@ describe("getRevealedFields", () => {
     const shownNames = ["description", "gone_from_this_schema", "internal_note"];
 
     // WHEN
-    const revealed = getRevealedFields(shownNames, columnFields);
+    const revealed = getRevealedFields([], shownNames, columnFields);
 
     // THEN
     expect(revealed).toEqual(["internal_note"]);
+  });
+
+  it("reveals nothing a hidden name contradicts, without the caller re-applying the rule", () => {
+    // GIVEN
+    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const contradictedNames = ["internal_note"];
+
+    // WHEN
+    const revealed = getRevealedFields(
+      contradictedNames,
+      [...contradictedNames, "owner_note"],
+      columnFields
+    );
+
+    // THEN
+    expect(revealed).toEqual(["owner_note"]);
   });
 });

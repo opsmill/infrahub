@@ -5,7 +5,7 @@ import {
   IP_PREFIX_COLUMN_SURFACE,
   OBJECT_COLUMN_SURFACE,
   RELATIONSHIP_COLUMN_SURFACE,
-} from "@/entities/nodes/columns/domain/model/column-surface";
+} from "@/entities/nodes/columns/domain/rules/column-surfaces";
 import { getColumnFields } from "@/entities/nodes/columns/domain/rules/get-column-fields";
 
 import {

@@ -4,10 +4,8 @@ import React from "react";
 import { QSP } from "@/shared/config/qsp";
 import { uniqueItemsArray } from "@/shared/utils/array";
 
-import {
-  type ColumnSurface,
-  OBJECT_COLUMN_SURFACE,
-} from "@/entities/nodes/columns/domain/model/column-surface";
+import type { ColumnSurface } from "@/entities/nodes/columns/domain/model/column-surface";
+import { OBJECT_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/rules/column-surfaces";
 import { type Filter, FilterSchema } from "@/entities/nodes/filters/domain/model/filter";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
@@ -111,4 +109,16 @@ export function useObjectTableContext() {
   }
 
   return context;
+}
+
+/**
+ * The column surface of the table this component sits in, falling back to the object surface.
+ *
+ * Non-throwing, unlike `useObjectTableContext`: a table cell may render outside any provider, and
+ * the object surface is the right reading of "no table said otherwise". Every table that offers
+ * column controls does sit inside `ObjectTableProvider`, so the fallback is a default rather than
+ * a guess about which surface a real table uses.
+ */
+export function useColumnSurface(): ColumnSurface {
+  return React.use(ObjectTableContext)?.columnSurface ?? OBJECT_COLUMN_SURFACE;
 }

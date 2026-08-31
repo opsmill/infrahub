@@ -43,8 +43,10 @@ export function getColumnFields(schema: ModelSchema, surface: ColumnSurface): Co
     candidates,
     R.filter((field) => !surface.excludeField(field)),
     R.filter((field) => !surface.fixedColumnIds.includes(field.name)),
-    // A field can reach this list twice — `getIpAddressRelationshipsVisibleInListView` prepends
-    // `ip_prefix` on top of the generic list — and a duplicate name is a duplicate column id.
+    // Defensive: a field *could* reach this list twice, and a duplicate name is a duplicate column
+    // id. `getIpAddressRelationshipsVisibleInListView` prepends `ip_prefix` on top of the generic
+    // list, which today drops it again as a `Generic` relationship — so no duplicate occurs. Give
+    // `ip_prefix` a kind the list view accepts and the prepend would start duplicating it.
     R.uniqueBy((field) => field.name),
     (fields) => surface.orderFields(fields),
     R.map((field) => ({

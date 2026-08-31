@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { queryClient } from "@/shared/api/rest/client";
 import { store } from "@/shared/stores";
 
-import { OBJECT_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/model/column-surface";
+import { OBJECT_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/rules/column-surfaces";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { ObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";

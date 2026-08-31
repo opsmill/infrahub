@@ -23,6 +23,7 @@ import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
 import { TableColumnHeaderSimple } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-simple";
+import { useColumnSurface } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import {
   SORT_DIRECTION,
   type Sort,
@@ -309,12 +310,14 @@ function ColumnHeaderMenu({
  * A separate component because `schema` is optional on the menu: the hook cannot be called
  * conditionally in `ColumnHeaderMenu`.
  *
- * The default surface is safe here even on IPAM and relationship tables, because `hideColumn`
- * never consults the candidate list — hiding is surface-independent, so the header can write a
- * valid `hide_columns` list without knowing which table it sits in.
+ * The surface must come from the table's own context, not the default. `hideColumn` itself is
+ * surface-independent, but the hook's write path re-serialises the *validated* lists, so a name
+ * only another surface has a candidate for — `ip_prefix` on an IP address table — would be erased
+ * from `hide_columns` by a write made under the object surface.
  */
 function HideColumnMenuItem({ schema, field }: { schema: ModelSchema; field: string }) {
-  const { hideColumn } = useColumnVisibility(schema);
+  const columnSurface = useColumnSurface();
+  const { hideColumn } = useColumnVisibility(schema, columnSurface);
 
   return (
     <MenuItem textValue="Hide column" onAction={() => hideColumn(field)}>
