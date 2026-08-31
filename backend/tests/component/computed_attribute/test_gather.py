@@ -300,6 +300,63 @@ async def test_gather_trigger_computed_attribute_python_only_on_branch(
     assert trigger.branch == "branch_with_computed_attr"
 
 
+async def test_a_branch_that_repoints_a_transform_keeps_its_own_automation(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_computed_attr: None,
+    transform01: Node,
+    repo01: Node,
+) -> None:
+    """A branch can point an attribute at another transform, which reads other fields.
+
+    Both transforms sit in the same repository, so the commit is equal on the two branches and
+    nothing but the transform separates them. The branch still needs its own field filter.
+    """
+    seats_query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY, branch=default_branch)
+    await seats_query.new(
+        db=db,
+        name="query_seats",
+        query="query { TestCar { edges { node { nbr_seats { value } } } } }",
+        models=["TestCar"],
+    )
+    await seats_query.save(db=db)
+
+    seats_transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON, branch=default_branch)
+    await seats_transform.new(
+        db=db,
+        name="transform_seats",
+        file_path="transform.py",
+        class_name="Transform",
+        query=seats_query,
+        repository=repo01,
+    )
+    await seats_transform.save(db=db)
+
+    branch = await create_branch(branch_name="branch_with_other_transform", db=db)
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    car_schema = schema_branch.get_node("TestCar")
+    car_schema.get_attribute(name="computed_desc_python").computed_attribute.transform = "transform_seats"
+    schema_branch.set(name="TestCar", schema=car_schema)
+    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
+    branch.update_schema_hash()
+    schema_branch.process()
+    await branch.save(db=db)
+
+    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    assert {trigger.generate_name() for trigger in triggers} == {
+        "computed_attr_python::main::TestCar_computed_desc_python",
+        "computed_attr_python::branch_with_other_transform::TestCar_computed_desc_python",
+    }
+    assert {
+        (trigger.branch, tuple(sorted(trigger.trigger.match_related["infrahub.field.name"])))
+        for trigger in trigger_queries
+    } == {
+        ("main", ("name",)),
+        ("branch_with_other_transform", ("nbr_seats",)),
+    }
+
+
 async def test_gather_trigger_computed_attribute_python_fires_once_per_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
