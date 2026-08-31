@@ -12762,7 +12762,7 @@ export type CoreRepository = CoreGenericRepository & CoreNode & CoreTaskTarget &
   /** Current commit hash being tracked */
   commit: Maybe<TextAttribute>;
   credential: NestedEdgedCoreCredential;
-  /** Default branch name in the Git repository */
+  /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch: Maybe<TextAttribute>;
   /** Description of the repository */
   description: Maybe<TextAttribute>;
@@ -13146,7 +13146,7 @@ export type CoreRepositoryCreateInput = {
   /** Current commit hash being tracked */
   commit?: InputMaybe<TextAttributeCreate>;
   credential?: InputMaybe<RelatedNodeInput>;
-  /** Default branch name in the Git repository */
+  /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch?: InputMaybe<TextAttributeCreate>;
   /** Description of the repository */
   description?: InputMaybe<TextAttributeCreate>;
@@ -13410,7 +13410,7 @@ export type CoreRepositoryUpdateInput = {
   /** Current commit hash being tracked */
   commit?: InputMaybe<TextAttributeUpdate>;
   credential?: InputMaybe<RelatedNodeInput>;
-  /** Default branch name in the Git repository */
+  /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch?: InputMaybe<TextAttributeUpdate>;
   /** Description of the repository */
   description?: InputMaybe<TextAttributeUpdate>;
@@ -13447,7 +13447,7 @@ export type CoreRepositoryUpsertInput = {
   /** Current commit hash being tracked */
   commit?: InputMaybe<TextAttributeUpdate>;
   credential?: InputMaybe<RelatedNodeInput>;
-  /** Default branch name in the Git repository */
+  /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch?: InputMaybe<TextAttributeUpdate>;
   /** Description of the repository */
   description?: InputMaybe<TextAttributeUpdate>;
