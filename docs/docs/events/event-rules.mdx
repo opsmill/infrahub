@@ -80,6 +80,20 @@ A group trigger rule fires when a group's membership changes (member added or re
 
 After saving, the rule appears in the trigger rules list as inactive. Activate it when you're ready to start matching events.
 
+:::warning
+A group trigger rule supports only Generator actions. Attaching a group action to a group trigger rule fails when Infrahub configures the rules, and while such a rule exists no other trigger rule change is applied ([#10463](https://github.com/opsmill/infrahub/issues/10463)). Existing rules keep firing; deleting the rule restores configuration.
+:::
+
+## Where rules live and where they fire
+
+Infrahub reads trigger rules from the default branch only. A rule created on another branch is never evaluated, and no error reports this: the rule is stored on the branch, but it does not fire there or anywhere else.
+
+Create rules on the default branch, and use `branch_scope` to control which branches they fire on:
+
+- `default_branch` (the default): the rule fires only for events on the default branch.
+- `other_branches`: the rule fires only for events on other branches. Use this when the outcome should be reviewed in a proposed change before it reaches the default branch.
+- `all_branches`: the rule fires everywhere.
+
 ## Related
 
 - [Event actions](./event-actions) — the outcomes that rules fire
