@@ -14,9 +14,14 @@ from typing import TYPE_CHECKING, Generator
 
 import pytest
 
-from infrahub import config
+from infrahub import config, lock
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.computed_attribute.scoping import ChangedElementSet
+from infrahub.context import InfrahubContext
+from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.python_target_sources import build_python_target_resolver
 from infrahub.core.merge.recompute_coalescing import (
@@ -430,3 +435,53 @@ class TestCoalescedRecomputePythonUngatheredTransform(CoalescedPythonTestBase):
         )
 
         assert submissions == {UNGATHERED_ATTRIBUTE: WHOLE_KIND}
+
+
+class TestCoalescedRecomputePythonRebase(CoalescedPythonTestBase):
+    """The real rebase flow, which derives this family after its own database work has finished."""
+
+    @pytest.fixture(scope="class")
+    async def rebase_dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        client: InfrahubClient,
+        admin_account: CoreAccount,
+    ) -> tuple[PythonRecomputeDataset, str]:
+        """A branch forked before the owner is renamed on the default branch.
+
+        The rename is what the rebase replays, and the cars read the owner, so a narrowed pass
+        selects exactly those two.
+        """
+        lock.initialize_lock(local_only=True)
+        dataset = await _seed(db=db, branch=default_branch, schema=_schema_with_an_owner_reading_transform())
+        branch_name = "rebase_python"
+        await create_branch(branch_name=branch_name, db=db)
+
+        person = await NodeManager.get_one(db=db, id=dataset.person_id, raise_on_error=True)
+        person.name.value = "owner02"
+        await person.save(db=db)
+        return dataset, branch_name
+
+    async def test_the_rebase_flow_narrows_the_python_family(
+        self,
+        rebase_dataset: tuple[PythonRecomputeDataset, str],
+        db: InfrahubDatabase,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        dataset, branch_name = rebase_dataset
+        context = InfrahubContext.init(
+            branch=default_branch,
+            account=AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=admin_account.id),
+        )
+
+        await rebase_branch(branch=branch_name, context=context, send_events=True)
+
+        scoped = workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM)
+        widened = workflow_recorder.get_submit_calls_for(TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES)
+
+        assert widened == []
+        assert len(scoped) == 1
+        assert sorted(scoped[0]["parameters"]["object_ids"]) == sorted(dataset.car_ids)

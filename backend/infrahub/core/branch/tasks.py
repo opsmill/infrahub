@@ -339,18 +339,22 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     for event in events:
         await event_service.send(event)
 
-    python_resolver = await build_python_target_resolver(db=db)
-    with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
-        schema_name = (
-            user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
-        )
-        schema_branch = registry.schema.get_schema_branch(name=schema_name)
-        coordinator = MergeRecomputeCoordinator(
-            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-            submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
-            python_resolver=python_resolver,
-        )
-        await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
+    # The rebase session closed further up, and this pass runs queries of its own.
+    async with database.start_session() as recompute_db:
+        python_resolver = await build_python_target_resolver(db=recompute_db)
+        with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
+            schema_name = (
+                user_branch.name
+                if user_branch.name in registry.get_altered_schema_branches()
+                else registry.default_branch
+            )
+            schema_branch = registry.schema.get_schema_branch(name=schema_name)
+            coordinator = MergeRecomputeCoordinator(
+                builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+                submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
+                python_resolver=python_resolver,
+            )
+            await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
