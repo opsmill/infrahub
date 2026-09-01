@@ -267,13 +267,12 @@ async def process_transform(
     for skipped_id, reason in skipped:
         log.warning(f"Skipping recompute of '{computed_attribute_name}' for node {skipped_id}: {reason}")
 
-    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
     # Coalesced origin must not be inferred from `object_ids`: a live whole-kind refresh sends ids too.
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch, coalesced=coalesced)
     await dispatcher.dispatch(
         writes=writes,
         branch_name=branch_name,
         context=context,
-        coalesced=coalesced,
         recompute_depth=recompute_depth,
     )
     log.info(
@@ -403,12 +402,11 @@ async def process_jinja2(
             if value != node.computed_attribute_value:
                 writes.append(AttributeValueWrite(node_id=node.node_id, field=attribute.name, value=value))
 
-    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch, coalesced=object_ids is not None)
     await dispatcher.dispatch(
         writes=writes,
         branch_name=branch_name,
         context=context,
-        coalesced=object_ids is not None,
         recompute_depth=recompute_depth,
     )
 
