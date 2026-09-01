@@ -54,9 +54,11 @@ class BranchFlowRunPurger:
         purged_total = 0
         while flow_runs:
             attempted_ids = [flow_run.id for flow_run in flow_runs]
+            deleted_calls = 0
             for flow_run in flow_runs:
                 try:
                     await self.client.delete_flow_run(flow_run_id=flow_run.id)
+                    deleted_calls += 1
                 # A single failed delete must not abort the rest of the batch.
                 except Exception as exc:
                     self.log.warning(
@@ -65,6 +67,9 @@ class BranchFlowRunPurger:
 
             flow_runs = await self._read(flow_run_filter=flow_run_filter, branch_name=branch_name)
             if flow_runs is None:
+                # The re-read that confirms removals failed, so fall back to the delete calls that
+                # returned this batch rather than dropping them from the count.
+                purged_total += deleted_calls
                 break
             # Progress is measured by what actually left the store, not by delete calls that returned:
             # a delete can report success yet leave the run in place under eventual consistency.

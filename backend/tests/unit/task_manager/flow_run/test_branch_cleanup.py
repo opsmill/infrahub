@@ -95,6 +95,27 @@ class PersistingDeletePurgeClient(InMemoryPurgeClient):
         self.deleted.append(flow_run_id)
 
 
+class ReadFailsAfterFirstPurgeClient(InMemoryPurgeClient):
+    """The first read (and its deletes) succeed; the re-read that would confirm the removals fails."""
+
+    def __init__(self, flow_runs: list[FlowRun]) -> None:
+        super().__init__(flow_runs)
+        self._reads = 0
+
+    async def read_flow_runs(
+        self,
+        flow_filter: FlowFilter | None = None,
+        flow_run_filter: FlowRunFilter | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+        sort: FlowRunSort | None = None,
+    ) -> list[FlowRun]:
+        self._reads += 1
+        if self._reads >= 2:
+            raise RuntimeError("read boom")
+        return await super().read_flow_runs(flow_run_filter=flow_run_filter, limit=limit)
+
+
 def _purger(client: RetentionPrefectClient, batch_size: int = 100) -> BranchFlowRunPurger:
     return BranchFlowRunPurger(
         client=client, filter_builder=FlowRunFilterBuilder(), log=get_run_logger(), batch_size=batch_size
@@ -198,6 +219,20 @@ class TestBranchFlowRunPurger:
             "Stopped purging flow runs for deleted branch 'feature-x': 2 run(s) could not be removed"
         ]
         assert _messages(caplog, logging.INFO) == ["Purged 0 flow run(s) for deleted branch 'feature-x'"]
+
+    async def test_counts_removals_when_the_confirming_read_fails(self, caplog: pytest.LogCaptureFixture) -> None:
+        caplog.set_level(logging.INFO, logger=LOGGER_NAME)
+        runs = [make_run() for _ in range(2)]
+        client = ReadFailsAfterFirstPurgeClient(flow_runs=runs)
+
+        await _purger(client).purge_for_branch(branch_name=BRANCH_NAME)
+
+        # Both deletes succeeded before the confirming re-read failed, so they are still counted.
+        assert client.deleted == [run.id for run in runs]
+        assert _messages(caplog, logging.WARNING) == [
+            "Failed to read flow runs for deleted branch 'feature-x': read boom"
+        ]
+        assert _messages(caplog, logging.INFO) == ["Purged 2 flow run(s) for deleted branch 'feature-x'"]
 
     async def test_a_read_failure_does_not_propagate(self, caplog: pytest.LogCaptureFixture) -> None:
         caplog.set_level(logging.INFO, logger=LOGGER_NAME)
