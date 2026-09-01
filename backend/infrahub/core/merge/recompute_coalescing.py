@@ -565,10 +565,8 @@ async def _resolve_python_targets(
 ) -> list[AffectedTarget]:
     """The affected Python targets, or every declared one widened when the resolution fails.
 
-    The four families are submitted together and this is the only one that reads the database, so
-    letting its failure out would drop the three that cannot fail with it. Returning nothing instead
-    is not an option: the per-node automations ignore a replayed change, so nothing else would
-    refresh these values.
+    Never raises: this is the only family that reads the database, and the four are submitted
+    together.
     """
     try:
         return await resolver.resolve(changes=changes, branch=branch, schema_changed_elements=schema_changed_elements)
