@@ -93,7 +93,63 @@ to a token:
   always-dark code viewer) needs values readable on that surface; a token that flips with the theme
   is unreadable in one mode.
 - **Identical sibling controls take identical tokens**, and a token added to `theme.css` needs a
-  consumer in the same PR.
+  consumer in the same PR. The one exception is a **deliberately seeded family** — a complete set
+  (`--success`/`--warning`/`--info`, `--diff-*`) added ahead of the migration that will consume it,
+  where landing the vocabulary first is what makes that migration mechanical instead of a design
+  exercise. Seeding is only honest when the family is complete, its values are derived from the
+  call sites it will replace, and the consuming ticket exists. A single unconsumed token is still
+  dead code.
+
+## Arbitrary values
+
+`lint/nursery/noTailwindArbitraryValue` runs at **`error`** in `frontend/app`. It reports arbitrary
+*values* (`w-[400px]`) and arbitrary *properties* (`[color:red]`). It does **not** report arbitrary
+variants — `data-[state=open]:`, `has-[:checked]:`, `[&>svg]:`, `supports-[…]` are a different
+grammar node and are structurally exempt, so there is no need to work around false positives.
+
+Two things about the config are worth knowing before you change it:
+
+- The rule reads `class`/`className` plus the attributes listed in `biome.jsonc`. This codebase has
+  **24 class-carrying props** (`loadingClassName`, `textareaClassName`, `scrollBarClassName`, …), and
+  a class arriving through one that is not listed is invisible to the rule. Add new ones to
+  `options.attributes` when you introduce them.
+- `options.functions` is **not** needed here. Biome inspects call arguments by default, so listing
+  `classNames`/`cn`/`tv` changes nothing — measured, not assumed.
+
+Prefer, in order: an on-scale utility (`min-w-33`) → an existing token (`text-xxs`, `bg-accent`) →
+a new token in `theme.css` → a suppression. Reach for a suppression last, and only for one of these:
+
+| Prefix | When it applies |
+|---|---|
+| `calc:` | The value is derived from the viewport or the parent, so no constant expresses it |
+| `no-utility:` | Tailwind has no utility or theme namespace for the property (`mask-image`, `content-visibility`, a `transition-[…]` property list, the `inherit` keyword) |
+| `third-party:` | A CSS variable someone else's library injects at runtime, which we cannot declare |
+| `pixel-nudge:` | Sub-grid alignment with no design meaning (a half-pixel hairline, centring a dot on a corner) |
+| `structure:` | An intrinsic grid track list (`min-content`, `auto`, `minmax`) — structure, not a design value |
+| `one-off:` | Genuinely single-site in the product, where a token would imply reuse that does not exist |
+
+Never suppress a **colour** — colour is exactly what breaks in the other theme. Never suppress a
+value that is on a scale which already has tokens, and never suppress a value used more than once:
+two occurrences make it a decision, and a decision deserves a token.
+
+Write the reason as `<prefix>: <why>`, which keeps the exceptions auditable:
+
+```bash
+grep -rn "noTailwindArbitraryValue:" src | sed 's/.*noTailwindArbitraryValue: //' | cut -d: -f1 | sort | uniq -c
+```
+
+### Suppression syntax depends on where the class sits
+
+Both of these gotchas cost real debugging time, and neither fails loudly:
+
+- **The `biome-ignore` must be the comment immediately before the node.** Wrapping a long reason
+  onto a second comment line silently voids the suppression — the diagnostic stays and nothing
+  tells you why. Keep the reason on one line.
+- **In JSX *children* position, use `{/* biome-ignore … */}`.** A `//` comment there is not a
+  comment at all: it renders as literal text on the page. `lint/suspicious/noCommentText` catches
+  it, but only if you are reading the full lint output. Everywhere else — above a `return (` root
+  element, inside a `classNames(...)` argument list, in an object literal — use `//`, because a JSX
+  comment in those positions is a parse error.
 
 ## Forbidden
 
@@ -101,7 +157,9 @@ to a token:
 |-------|-----|
 | Inline `style={{}}` | Tailwind classes |
 | CSS modules | Tailwind utilities |
-| `bg-[#1e40af]` | `bg-custom-blue-700` (use theme) |
+| `bg-[#1e40af]`, `bg-[var(--accent)]` | `bg-accent` — a token in `@theme` already generates the utility |
+| `w-[132px]`, `max-w-[200px]` | `w-33`, `max-w-50` — the 0.25rem spacing scale is the token scale |
+| `text-[10px]` | `text-xxs` |
 | `bg-white`, `bg-gray-50`, `bg-gray-100` | `bg-content`, `bg-content-muted`, `bg-content-strong` |
 | `bg-white dark:bg-stone-900` | `bg-content` — one token already carries both themes |
 | `text-indigo-500`, `text-indigo-700` for an open or active state | `text-active`, `bg-active/10` |
