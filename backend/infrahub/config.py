@@ -223,8 +223,9 @@ class MainSettings(BaseSettings):
     )
     coalesce_python_recompute_after_merge: bool = Field(
         default=True,
-        description="When enabled, the coalesced merge and rebase pass recomputes Python transform "
-        "computed attributes; when disabled, one task per changed node recomputes them.",
+        description="When enabled, the coalesced merge and rebase pass also recomputes Python transform "
+        "computed attributes, alongside the per-node tasks that still run; when disabled, only those "
+        "per-node tasks recompute them.",
     )
     merge_failure_grace_period_seconds: int = Field(
         default=180,

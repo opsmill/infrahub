@@ -130,6 +130,10 @@ class IndexedPythonTargetResolver:
     same changes share a single union query instead of one query per changed node. Keying the
     memo on the id set rather than sharing one union across every attribute is what keeps an
     attribute from inheriting the subscribers of changes that cannot affect it.
+
+    Both caches live and die with the instance, and every flow run builds its own, so each level of
+    a chain gathers the index again. A process-wide cache would have to key on something that moves
+    when a transform query is edited, which the schema hash does not.
     """
 
     def __init__(
@@ -259,7 +263,7 @@ class DisabledPythonTargetResolver:
         *,
         changes: Iterable[MergeChange],  # noqa: ARG002
         branch: str,  # noqa: ARG002
-        schema_changed_elements: ChangedElementSet | None,  # noqa: ARG002
+        schema_changed_elements: ChangedElementSet | None = None,  # noqa: ARG002
     ) -> list[AffectedTarget]:
         return []
 
@@ -327,7 +331,8 @@ def _select(*, signature: ChangeSignature, attribute: PythonAttributeReadSet) ->
 
     """
     if signature.action == CREATED:
-        # A created node subscribes to no query group yet, so it can only be its own target.
+        # A created node subscribes to no query group yet, so only itself is selected. Readers of
+        # an unfiltered query are missed here, as they are on the live path.
         return (
             _Selection(widen=False, self_ids=True, reader_lookup=False, precise=True)
             if attribute.kind == signature.kind
