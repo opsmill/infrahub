@@ -6,7 +6,7 @@ import {
   OBJECT_COLUMN_SURFACE,
   RELATIONSHIP_COLUMN_SURFACE,
 } from "@/entities/nodes/columns/domain/rules/column-surfaces";
-import { getColumnFields } from "@/entities/nodes/columns/domain/rules/get-column-fields";
+import { getColumnCandidates } from "@/entities/nodes/columns/domain/rules/get-column-candidates";
 
 import {
   generateAttributeSchema,
@@ -14,7 +14,7 @@ import {
   generateRelationshipSchema,
 } from "../../../../../../tests/fake/schema";
 
-describe("getColumnFields", () => {
+describe("getColumnCandidates", () => {
   it("lists a default-visible attribute as visible by default, falling back to its name for a label", () => {
     // GIVEN
     const schema = generateNodeSchema({
@@ -26,7 +26,7 @@ describe("getColumnFields", () => {
     });
 
     // WHEN
-    const fields = getColumnFields(schema, OBJECT_COLUMN_SURFACE);
+    const fields = getColumnCandidates(schema, OBJECT_COLUMN_SURFACE);
 
     // THEN
     expect(
@@ -48,7 +48,7 @@ describe("getColumnFields", () => {
     });
 
     // WHEN
-    const fields = getColumnFields(schema, OBJECT_COLUMN_SURFACE);
+    const fields = getColumnCandidates(schema, OBJECT_COLUMN_SURFACE);
 
     // THEN
     expect(fields.map(({ name, isDefaultVisible }) => ({ name, isDefaultVisible }))).toEqual([
@@ -69,7 +69,7 @@ describe("getColumnFields", () => {
     });
 
     // WHEN
-    const fields = getColumnFields(schema, OBJECT_COLUMN_SURFACE);
+    const fields = getColumnCandidates(schema, OBJECT_COLUMN_SURFACE);
 
     // THEN
     expect(fields.map(({ name }) => name)).toEqual(["name"]);
@@ -90,7 +90,7 @@ describe("getColumnFields", () => {
     });
 
     // WHEN
-    const fields = getColumnFields(schema, OBJECT_COLUMN_SURFACE);
+    const fields = getColumnCandidates(schema, OBJECT_COLUMN_SURFACE);
 
     // THEN
     expect(
@@ -112,8 +112,8 @@ describe("getColumnFields", () => {
     });
 
     // WHEN
-    const objectFields = getColumnFields(schema, OBJECT_COLUMN_SURFACE);
-    const ipAddressFields = getColumnFields(schema, IP_ADDRESS_COLUMN_SURFACE);
+    const objectFields = getColumnCandidates(schema, OBJECT_COLUMN_SURFACE);
+    const ipAddressFields = getColumnCandidates(schema, IP_ADDRESS_COLUMN_SURFACE);
 
     // THEN
     expect({
@@ -127,7 +127,7 @@ describe("getColumnFields", () => {
     const schema = generateNodeSchema({ attributes: [] });
 
     // WHEN
-    const fields = getColumnFields(schema, OBJECT_COLUMN_SURFACE);
+    const fields = getColumnCandidates(schema, OBJECT_COLUMN_SURFACE);
 
     // THEN
     expect(fields.map(({ name }) => name)).toEqual([]);
@@ -151,7 +151,7 @@ describe("getColumnFields", () => {
     });
 
     // WHEN
-    const fields = getColumnFields(schema, OBJECT_COLUMN_SURFACE);
+    const fields = getColumnCandidates(schema, OBJECT_COLUMN_SURFACE);
 
     // THEN
     expect(fields.map(({ name }) => name)).toEqual(["name", "site", "description"]);
@@ -169,7 +169,7 @@ describe("getColumnFields", () => {
     });
 
     // WHEN
-    const fields = getColumnFields(schema, IP_ADDRESS_COLUMN_SURFACE);
+    const fields = getColumnCandidates(schema, IP_ADDRESS_COLUMN_SURFACE);
 
     // THEN
     expect(fields.map(({ name }) => name)).toEqual(["description", "internal_note"]);
@@ -185,7 +185,7 @@ describe("getColumnFields", () => {
     });
 
     // WHEN
-    const fields = getColumnFields(schema, IP_ADDRESS_COLUMN_SURFACE);
+    const fields = getColumnCandidates(schema, IP_ADDRESS_COLUMN_SURFACE);
 
     // THEN
     expect(fields.map(({ name }) => name)).toEqual(["ip_prefix"]);
@@ -209,7 +209,7 @@ describe("getColumnFields", () => {
       RELATIONSHIP_COLUMN_SURFACE,
       IP_ADDRESS_COLUMN_SURFACE,
       IP_PREFIX_COLUMN_SURFACE,
-    ].map((surface) => getColumnFields(schema, surface).map(({ name }) => name));
+    ].map((surface) => getColumnCandidates(schema, surface).map(({ name }) => name));
 
     // THEN
     expect(fieldsBySurface).toEqual([
@@ -235,7 +235,7 @@ describe("getColumnFields", () => {
       RELATIONSHIP_COLUMN_SURFACE,
       IP_ADDRESS_COLUMN_SURFACE,
       IP_PREFIX_COLUMN_SURFACE,
-    ].map((surface) => getColumnFields(schema, surface));
+    ].map((surface) => getColumnCandidates(schema, surface));
 
     // THEN
     expect(

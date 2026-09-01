@@ -25,13 +25,13 @@ interface ColumnsPickerProps {
  * params instead.
  */
 export function ColumnsPicker({ schema, surface }: ColumnsPickerProps) {
-  const { customizedCount } = useColumnVisibility(schema, surface);
+  const { customizedColumnCount } = useColumnVisibility(schema, surface);
 
   return (
     <PopoverTrigger>
       <Button variant="input" size="sm">
         <Columns3Icon /> Columns
-        {customizedCount > 0 && <CountBadge count={customizedCount} />}
+        {customizedColumnCount > 0 && <CountBadge count={customizedColumnCount} />}
       </Button>
 
       <Popover placement="bottom start">

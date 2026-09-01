@@ -19,7 +19,7 @@ entities/nodes/columns/
 │   │   └── column-visibility-state.ts      # the override map the rules produce and the table consumes
 │   └── rules/
 │       ├── column-surfaces.ts              # the four concrete surface configs
-│       ├── get-column-fields.ts            # candidate list per surface, each with isDefaultVisible
+│       ├── get-column-candidates.ts        # candidate list per surface, each with isDefaultVisible
 │       ├── get-column-visibility-state.ts  # the URL trust boundary → TanStack VisibilityState
 │       └── toggle-column.ts                # pure rewrites of the two URL name lists
 └── ui/
@@ -68,7 +68,7 @@ Neither param ever lists every visible column. A name appears only where it **de
 surface's default, so a schema that later gains a column shows that column on an old shared link.
 That is a deliberate product decision, not an oversight.
 
-`getColumnVisibilityState` drops any name the current `columnFields` does not contain
+`getColumnVisibilityState` drops any name the current `columnCandidates` does not contain
 (`get-column-visibility-state.ts:24-34`), which is what makes an old link safe across a schema
 change, a kind switch, and a relationship tab reading the same params against a different schema. It
 also drops a name that agrees with its default, so such a name counts towards neither the picker's
@@ -96,7 +96,7 @@ The invariant lives in exactly one place. `getColumnVisibilityState` is the sing
 answer that boundary already reached — it has no hide list to re-derive the rule from:
 
 ```ts
-const visibility = getColumnVisibilityState(hiddenNames, shownNames, columnFields);
+const visibility = getColumnVisibilityState(hiddenNames, shownNames, columnCandidates);
 return Object.keys(visibility).filter((name) => visibility[name]).sort();
 ```
 
@@ -109,7 +109,7 @@ reaches a react-query cache key, so ordering must not change the hash.
 ## At least one field column always survives
 
 If applying the hide list would leave no field column visible, the trust boundary drops **exactly
-one** hide entry — the one for the first column in `columnFields` display order that the hide list
+one** hide entry — the one for the first column in `columnCandidates` display order that the hide list
 names (`keepOneFieldColumnVisible`, `get-column-visibility-state.ts:71-85`). That column returns to
 its default, which is necessarily visible, since only a default-visible column ever gets a `false`
 entry. Every other hide entry is kept, so as little of the request is discarded as possible. Display
@@ -134,7 +134,7 @@ to blame for the empty table, so there is none to relax.
 | IPAM prefixes | yes | no (`canReveal: false`) |
 | Relationship tabs | yes | no (`canReveal: false`) |
 
-`canReveal: false` is implemented as **"candidates == defaults"** (`get-column-fields.ts:40`), so the
+`canReveal: false` is implemented as **"candidates == defaults"** (`get-column-candidates.ts:43`), so the
 picker offers nothing to reveal and `show_columns` names are dropped by the trust boundary. There is
 no `if (isIpam)` anywhere.
 
@@ -275,7 +275,7 @@ which takes `schema` as a prop and names `RELATIONSHIP_COLUMN_SURFACE` explicitl
 table (`get-object-table-columns.tsx:51`, `:84`; `get-object-actions-column.tsx:15`;
 `relationships/ui/relationship-table/get-relationship-actions-column.tsx:27`), so they are not
 schema fields at all. They are listed as `fixedColumnIds` on every surface and filtered out of the
-candidate list (`get-column-fields.ts:45`), so they never reach the picker.
+candidate list (`get-column-candidates.ts:48`), so they never reach the picker.
 
 Those three ids are also why the grid template is `repeat(columnCount - 2, auto) 1fr 2.5rem`: the
 last two tracks are the identity and actions columns. Hiding every field column leaves two headers,
@@ -325,7 +325,7 @@ fewer.
    drops `ip_prefix` because its `RelationshipKind` defaults to `Generic`. So the shape is safe only
    by accident — a schema that gave that relationship an accepted kind (`Attribute`, `Parent`, or
    `Hierarchy` with cardinality one) would emit it twice. The picker's candidate list is deduped
-   defensively against exactly that (`get-column-fields.ts:50`), but the IPAM address builder has no
+   defensively against exactly that (`get-column-candidates.ts:53`), but the IPAM address builder has no
    such guard and would render two columns with the id `ip_prefix`. Filter the prefix relationship
    out of the spread instead of relying on its kind.
 

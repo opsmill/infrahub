@@ -1,5 +1,5 @@
 import type { ColumnVisibilityState } from "@/entities/nodes/columns/domain/model/column-visibility-state";
-import type { ColumnField } from "@/entities/nodes/columns/domain/rules/get-column-fields";
+import type { ColumnCandidate } from "@/entities/nodes/columns/domain/rules/get-column-candidates";
 
 /**
  * The single trust boundary for `?hide_columns=` and `?show_columns=`.
@@ -19,10 +19,10 @@ import type { ColumnField } from "@/entities/nodes/columns/domain/rules/get-colu
 export function getColumnVisibilityState(
   hiddenNames: readonly string[],
   shownNames: readonly string[],
-  columnFields: ColumnField[]
+  columnCandidates: ColumnCandidate[]
 ): ColumnVisibilityState {
   const defaultVisibilityByName = new Map(
-    columnFields.map((field) => [field.name, field.isDefaultVisible])
+    columnCandidates.map((field) => [field.name, field.isDefaultVisible])
   );
   const hideRequests = new Set(hiddenNames);
 
@@ -38,14 +38,14 @@ export function getColumnVisibilityState(
     ...Object.fromEntries(hidden.map((name) => [name, false] as const)),
   };
 
-  return keepOneFieldColumnVisible(visibility, columnFields);
+  return keepOneFieldColumnVisible(visibility, columnCandidates);
 }
 
 /**
  * The minimum: a table never ends up with zero field columns.
  *
  * **The rule.** If applying the hide list would leave no field column visible, exactly one hide
- * entry is dropped — the one for the FIRST column in `columnFields` display order that the hide list
+ * entry is dropped — the one for the FIRST column in `columnCandidates` display order that the hide list
  * names. That column returns to its default, which is necessarily visible, since only a
  * default-visible column ever gets a `false` entry. Every other hide entry is kept, so as little of
  * the request is discarded as possible. Display order, not param order, decides the survivor: the
@@ -70,13 +70,13 @@ export function getColumnVisibilityState(
  */
 function keepOneFieldColumnVisible(
   visibility: ColumnVisibilityState,
-  columnFields: ColumnField[]
+  columnCandidates: ColumnCandidate[]
 ): ColumnVisibilityState {
-  const isVisible = ({ name, isDefaultVisible }: ColumnField) =>
+  const isVisible = ({ name, isDefaultVisible }: ColumnCandidate) =>
     name in visibility ? visibility[name] : isDefaultVisible;
-  if (columnFields.some(isVisible)) return visibility;
+  if (columnCandidates.some(isVisible)) return visibility;
 
-  const survivor = columnFields.find(({ name }) => visibility[name] === false);
+  const survivor = columnCandidates.find(({ name }) => visibility[name] === false);
   if (!survivor) return visibility;
 
   const { [survivor.name]: _restored, ...withSurvivorVisible } = visibility;

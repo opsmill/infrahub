@@ -11,7 +11,7 @@ import type {
 } from "@/entities/schema/domain/model/schema";
 
 /** One column the picker may offer, and whether the surface shows it with neither param set. */
-export interface ColumnField {
+export interface ColumnCandidate {
   name: string;
   label: string;
   fieldSchema: FieldSchema;
@@ -27,7 +27,10 @@ export interface ColumnField {
  * `canReveal: false` is enforced by reading the surface's data rather than by identifying it —
  * `ColumnSurface` carries no identifier to branch on.
  */
-export function getColumnFields(schema: ModelSchema, surface: ColumnSurface): ColumnField[] {
+export function getColumnCandidates(
+  schema: ModelSchema,
+  surface: ColumnSurface
+): ColumnCandidate[] {
   const attributes = schema.attributes ?? [];
   const relationships = schema.relationships ?? [];
 
