@@ -166,9 +166,6 @@ class TestFieldLevelImpact(TestInfrahubApp):
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
 
-<<<<<<< HEAD
-    async def test_related_node_change_narrows_to_the_owning_member(
-=======
     async def test_display_label_backing_change_selects_subscriber(
         self,
         dataset: dict[str, Any],
@@ -198,8 +195,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
 
-    async def test_related_node_change_selects_subscriber(
->>>>>>> origin/stable
+    async def test_related_node_change_narrows_to_the_owning_member(
         self,
         dataset: dict[str, Any],
         default_branch: Branch,

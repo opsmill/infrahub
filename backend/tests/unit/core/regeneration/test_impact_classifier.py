@@ -65,11 +65,8 @@ class AssessCase:
     expected: ImpactAssessment
     traversed_kinds: set[str] = field(default_factory=lambda: set(TRAVERSED_KINDS))
     readable_fields_by_kind: dict[str, set[str]] = field(default_factory=lambda: dict(READABLE_FIELDS))
-<<<<<<< HEAD
     reached_paths_by_kind: dict[str, tuple[ReachedPath, ...]] = field(default_factory=dict)
-=======
     depends_on_everything: bool = False
->>>>>>> origin/stable
 
 
 ASSESS_CASES = [
@@ -148,7 +145,6 @@ ASSESS_CASES = [
         ],
         expected=ChangedNodes(node_ids=[]),
     ),
-<<<<<<< HEAD
     AssessCase(
         name="related_change_with_a_resolvable_path_narrows_to_the_reached_change",
         only_has_unique_targets=True,
@@ -202,7 +198,7 @@ ASSESS_CASES = [
         readable_fields_by_kind={"TestDevice": {"name"}, "TestInterface": {"description"}, "TestIP": {"address"}},
         reached_paths_by_kind={"TestInterface": (INTERFACE_PATH,)},
         expected=EveryTarget(),
-=======
+    ),
     # display_label / human_friendly_id are computed: a read records the computed field name, but a
     # change to the backing field that moves the value is reported under the backing field's name.
     # Such a read must be treated as imprecise for its kind -- any change to the kind is relevant --
@@ -250,7 +246,6 @@ ASSESS_CASES = [
         readable_fields_by_kind={"TestDevice": {"name"}},
         depends_on_everything=True,
         expected=ChangedNodes(node_ids=[]),
->>>>>>> origin/stable
     ),
 ]
 
@@ -262,11 +257,8 @@ def test_assess(case: AssessCase) -> None:
         only_has_unique_targets=case.only_has_unique_targets,
         traversed_kinds=case.traversed_kinds,
         readable_fields_by_kind=case.readable_fields_by_kind,
-<<<<<<< HEAD
         reached_paths_by_kind=case.reached_paths_by_kind,
-=======
         depends_on_everything=case.depends_on_everything,
->>>>>>> origin/stable
     )
 
     assessment = classifier.assess(diff_summary=case.diff_summary)

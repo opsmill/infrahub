@@ -3,16 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, assert_never
 
 from infrahub.core import registry
-<<<<<<< HEAD
 from infrahub.core.query_group.subscribers import fetch_subscriber_refs
 from infrahub.core.relationship.dependent_resolver import DependentNodeResolver
-=======
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.schema.schema_branch_computed.python_transform import (
     IMPRECISE_READ_FIELDS,
     derived_read_is_scopable,
 )
->>>>>>> origin/stable
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -27,31 +23,8 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
-<<<<<<< HEAD
     from infrahub.core.relationship.dependent_resolver import DependentNodeResolverInterface
-=======
     from infrahub.core.schema.schema_branch import SchemaBranch
-
-
-GATHER_GRAPHQL_QUERY_SUBSCRIBERS = """
-query GatherGraphQLQuerySubscribers($members: [ID!]) {
-  CoreGraphQLQueryGroup(members__ids: $members) {
-    edges {
-      node {
-        subscribers {
-          edges {
-            node {
-              id
-              __typename
-            }
-          }
-        }
-      }
-    }
-  }
-}
-"""
->>>>>>> origin/stable
 
 
 def reads_unscopable_derived_field(
@@ -118,14 +91,11 @@ async def get_field_level_impacted_subscribers(
         only_has_unique_targets=query_report.only_has_unique_targets,
         traversed_kinds=query_report.traversed_kinds,
         readable_fields_by_kind=readable_fields_by_kind,
-<<<<<<< HEAD
         reached_paths_by_kind=query_report.relationship_reached_paths_by_kind,
-=======
         depends_on_everything=reads_unscopable_derived_field(
             readable_fields_by_kind=readable_fields_by_kind,
             schema_branch=query_schema_branch,
         ),
->>>>>>> origin/stable
     )
     assessment = classifier.assess(diff_summary=diff_summary)
 
