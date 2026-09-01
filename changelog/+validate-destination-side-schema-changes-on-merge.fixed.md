@@ -1,0 +1,1 @@
+Merging a branch into a destination whose schema changed after the branch was created now validates the branch's data against that change, and runs the migrations it implies. Previously a branch that only changed data was merged without either, so the destination could end up holding data its own schema rejects.
