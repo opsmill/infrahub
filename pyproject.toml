@@ -277,6 +277,7 @@ module = "infrahub.core.query.relationship"
 disable_error_code = [
     "arg-type",
     "assignment",
+    "misc",
     "union-attr",
     "valid-type",
 ]

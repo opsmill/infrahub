@@ -233,7 +233,7 @@ def timed_query(driver: Driver, label: str, results: dict[str, str]) -> None:
         with driver.session() as session:
             value = session.run("RETURN 1 AS x").single(strict=True)["x"]
         results[label] = f"OK (returned {value}) in {time.monotonic() - start:.1f}s"
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         results[label] = f"{type(exc).__name__} after {time.monotonic() - start:.1f}s: {exc}"
 
 
