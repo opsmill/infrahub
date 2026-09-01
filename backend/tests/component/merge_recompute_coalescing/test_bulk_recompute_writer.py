@@ -71,7 +71,6 @@ def _dispatcher(
         db=db,
         writer=BulkRecomputeWriter(db=db, event_service=event_service),
         chain=chain,
-        coalesced=coalesced,
     )
 
 
