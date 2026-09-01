@@ -1153,10 +1153,6 @@ class RelationshipGetByIdentifierQuery(Query):
             self.full_identifiers = []
         self.excluded_namespaces = excluded_namespaces or []
 
-        # Always exclude relationships with internal nodes
-        if "Internal" not in self.excluded_namespaces:
-            self.excluded_namespaces.append("Internal")
-
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
