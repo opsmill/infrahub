@@ -104,7 +104,38 @@
         "useUniqueElementIds": "off"
       },
       "nursery": {
-        "useExhaustiveSwitchCases": "off"
+        "useExhaustiveSwitchCases": "off",
+        "noTailwindArbitraryValue": {
+          "level": "error",
+          "options": {
+            "attributes": [
+              "activeClassName",
+              "activeLinkClassName",
+              "breakClassName",
+              "breakLinkClassName",
+              "calendarClassName",
+              "containerClassName",
+              "iconClassName",
+              "keyClassName",
+              "labelClassName",
+              "leftClassName",
+              "loadingClassName",
+              "nextClassName",
+              "nextLinkClassName",
+              "pageClassName",
+              "pageLinkClassName",
+              "popperClassName",
+              "preClassName",
+              "previousClassName",
+              "previousLinkClassName",
+              "rightClassName",
+              "scrollBarClassName",
+              "textareaClassName",
+              "valueClassName",
+              "wrapperClassName"
+            ]
+          }
+        }
       },
       "performance": {
         "noAccumulatingSpread": "off",

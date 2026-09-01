@@ -57,6 +57,7 @@ export function IpamDetailsHeader({
 
       <NodeMetadataPopover objectId={ipPrefixNode.id} objectKind={ipPrefixNode.__typename} />
 
+      {/* biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: Tailwind has no mask-image utility; the fade length is local to this header */}
       <Row className="grow gap-2.5 overflow-hidden [mask-image:linear-gradient(to_right,black_calc(100%-10rem),transparent)]">
         {orderedFields.map((field, index) => {
           let displayValue: React.ReactNode = "-";

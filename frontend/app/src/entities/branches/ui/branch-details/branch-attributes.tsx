@@ -25,6 +25,7 @@ interface BranchAttributesProps {
 export function BranchAttributes({ branch }: BranchAttributesProps) {
   return (
     <Card className="w-fit">
+      {/* biome-ignore lint/nursery/noTailwindArbitraryValue: structure: single-site intrinsic track list; the sizes are structural, not design values */}
       <CardContent className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5">
         <BranchAttributeLabel>
           <IdCardIcon className="size-3.5" /> Name
