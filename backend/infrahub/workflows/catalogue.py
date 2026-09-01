@@ -276,6 +276,7 @@ BRANCH_PURGE_TASKS = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.branch.tasks",
     function="purge_deleted_branch_tasks",
+    default_priority=WorkflowPriority.LOW,
 )
 
 BRANCH_MERGE_POST_PROCESS = WorkflowDefinition(
