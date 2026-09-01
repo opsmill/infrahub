@@ -234,10 +234,26 @@ async def _find_existing_identity(*, db: InfrahubDatabase, external_identity: Ex
 async def _account_from_existing_identity(
     *, db: InfrahubDatabase, identity_node: Node, external_identity: ExternalIdentity
 ) -> CoreAccount:
-    """Return the account linked to an existing identity, refreshing its label when stale."""
-    account = await identity_node.get_relationship(name="account").get_peer(
-        db=db, peer_type=CoreAccount, raise_on_error=True
-    )
+    """Return the account linked to an existing identity, refreshing its label when stale.
+
+    Raises:
+        ProcessingError: When the identity has no account relationship left.
+
+    """
+    try:
+        account = await identity_node.get_relationship(name="account").get_peer(db=db, peer_type=CoreAccount)
+    except NodeNotFoundError:
+        account = None
+
+    if account is None:
+        raise ProcessingError(
+            message=(
+                f"The {external_identity.protocol} identity for provider "
+                f"'{external_identity.provider_name}' is not linked to an account. "
+                "Run 'infrahub upgrade' to remove the identities left behind by a deleted account."
+            )
+        )
+
     await _set_label_if_stale(db=db, account=account, display_name=external_identity.display_name)
     return account
 
