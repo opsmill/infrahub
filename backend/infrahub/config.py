@@ -487,7 +487,8 @@ class BrokerSettings(BaseSettings):
         return self.port or default_ports[self.tls_enabled]
 
 
-CACHE_URL_EXCLUSIVE_FIELDS = frozenset(
+# Scalar connection settings that a configured INFRAHUB_CACHE_URL supersedes.
+CACHE_URL_SUPERSEDED_FIELDS = frozenset(
     {"address", "port", "database", "username", "password", "tls_enabled", "tls_insecure", "tls_ca_file"}
 )
 
@@ -544,17 +545,30 @@ class CacheSettings(BaseSettings):
         return self.port or default_ports
 
     @model_validator(mode="after")
-    def validate_url_exclusivity(self) -> Self:
-        # The URL is only consulted by the Redis driver, so it is neither exclusive with the scalar
-        # fields nor parsed as a Redis URL for any other driver.
+    def validate_url(self) -> Self:
+        # The URL is only consulted by the Redis driver, so it is neither applied to nor parsed as a
+        # Redis URL for any other driver.
         if self.url is None or self.driver != CacheDriver.Redis:
             return self
-        explicit = self.model_fields_set & CACHE_URL_EXCLUSIVE_FIELDS
-        if explicit:
-            raise ValueError(
-                f"INFRAHUB_CACHE_URL cannot be combined with scalar connection settings; "
-                f"remove: {', '.join(sorted(explicit))}"
+
+        # The URL supersedes the scalar settings rather than being mutually exclusive with them:
+        # the shipped Compose files set every scalar connection variable unconditionally
+        # (INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_CACHE_ADDRESS:-cache} and so on), so rejecting the
+        # combination would make INFRAHUB_CACHE_URL unusable in a Docker deployment. A scalar left
+        # at its default carries no intent and is passed over silently; one set to something else is
+        # reported so an operator can see which of their settings the URL is overriding.
+        fields = type(self).model_fields
+        superseded = sorted(
+            name
+            for name in self.model_fields_set & CACHE_URL_SUPERSEDED_FIELDS
+            if getattr(self, name) != fields[name].get_default()
+        )
+        if superseded:
+            log.warning(
+                "INFRAHUB_CACHE_URL is set and supersedes the scalar cache connection settings",
+                superseded_settings=[f"INFRAHUB_CACHE_{name.upper()}" for name in superseded],
             )
+
         # Imported lazily to keep this low-level settings module free of the services package.
         from infrahub.services.adapters.cache.connection import validate_redis_url  # noqa: PLC0415
 
