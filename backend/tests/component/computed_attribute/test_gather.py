@@ -19,6 +19,7 @@ from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.events.constants import NODE_ORIGIN_LABEL
 from tests.helpers.trigger import branches_covered_by
 
 TRANSFORM_NAME = "transform_person_cars"
@@ -211,6 +212,24 @@ async def test_gather_trigger_computed_attribute_python(
     triggers_by_kind = _triggers_by_kind(trigger_queries)
     assert set(triggers_by_kind) == {"TestCar"}
     assert triggers_by_kind["TestCar"].trigger.match_related["infrahub.field.name"] == ["name"]
+
+
+async def test_the_python_automations_fire_whatever_the_origin(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_computed_attr: None,
+    transform01: Node,
+) -> None:
+    """These automations still cover a merge and a rebase, unlike the other three families.
+
+    The coalesced pass leans on that: when its own derivation fails it drops this family and
+    lets them do the work. Gating them on the live origin removes that cover, so the fallback in
+    ``_resolve_python_targets`` has to widen to the whole kind in the same change.
+    """
+    triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    assert [trigger.name for trigger in triggers if NODE_ORIGIN_LABEL in trigger.trigger.match] == []
+    assert [trigger.name for trigger in trigger_queries if NODE_ORIGIN_LABEL in trigger.trigger.match] == []
 
 
 async def test_two_attributes_sharing_a_transform_each_get_an_automation(

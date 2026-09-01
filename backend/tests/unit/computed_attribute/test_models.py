@@ -1,11 +1,8 @@
-import ast
-import inspect
 import uuid
 from datetime import timedelta
 
 from prefect.events.schemas.automations import Automation, EventTrigger, Posture
 
-from infrahub.computed_attribute import models
 from infrahub.computed_attribute.constants import (
     PROCESS_AUTOMATION_NAME,
     PROCESS_AUTOMATION_NAME_PREFIX,
@@ -153,21 +150,3 @@ class TestQueryFieldsInlineFragment:
 
         rendered = graphql_obj.render_graphql_query(query_filter="ids", filter_id="abc-123")
         assert "... on" not in rendered
-
-
-def test_the_python_trigger_definitions_are_not_origin_gated() -> None:
-    """The Python automations still fire on a merge and a rebase, unlike the other three families.
-
-    The coalesced pass leans on that: when its own derivation fails it drops the family and lets
-    these automations cover the work. Gating them on the live origin removes that cover, so the
-    fallback in ``_resolve_python_targets`` has to widen to the whole kind in the same change.
-    """
-    tree = ast.parse(inspect.getsource(models))
-    gated = {
-        node.name
-        for node in tree.body
-        if isinstance(node, ast.ClassDef)
-        and any(isinstance(child, ast.Name) and child.id == "NODE_ORIGIN_LABEL" for child in ast.walk(node))
-    }
-
-    assert gated == {"ComputedAttrJinja2TriggerDefinition"}
