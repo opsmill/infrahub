@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub import config
 from infrahub.services.adapters.cache import InfrahubCache
-from infrahub.services.adapters.cache.connection import build_redis_connection
+from infrahub.services.adapters.cache.connection import aclose_redis_connection, build_redis_connection
 
 if TYPE_CHECKING:
     from infrahub.message_bus.types import KVTTL
@@ -51,4 +51,4 @@ class RedisCache(InfrahubCache):
         return cls()
 
     async def close_connection(self) -> None:
-        await self.connection.aclose()
+        await aclose_redis_connection(self.connection)

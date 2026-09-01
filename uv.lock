@@ -110,7 +110,7 @@ wheels = [
 
 [[package]]
 name = "apprise"
-version = "1.10.0"
+version = "1.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -121,9 +121,9 @@ dependencies = [
     { name = "requests-oauthlib" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2f/74/9c16829d3e7e45ce7daf1b704687fa4fde7ea00d72eafe8de18c72bf5995/apprise-1.10.0.tar.gz", hash = "sha256:b768f32d99e45ed5f4c3eef1f67903e803c97f97ba61a531a5d0a45d40df90a8", size = 2188611, upload-time = "2026-04-26T14:23:51.928Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/44/5965c245998c72022297e2b515d9594281a97ed1442b3fa022c2c2324102/apprise-1.13.1.tar.gz", hash = "sha256:e7689dda71aaf739244d6c8690de13cb1361b8d0a79980fb48bb397455ca0bdd", size = 2520230, upload-time = "2026-08-31T02:12:01.472Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/f9/177a73589d34e676d10bc4c6a8328710e28af5907234e9f25bb149a04eec/apprise-1.10.0-py3-none-any.whl", hash = "sha256:e685303d3568bb7a057d6ddeafd27ee12fff183ca36483ad4bacc0b9b4efa82c", size = 1632292, upload-time = "2026-04-26T14:23:49.28Z" },
+    { url = "https://files.pythonhosted.org/packages/45/7d/6852bd3fc2eb48fa432cb22f5df11d1c902137dcecab93e0d8319b8c8e16/apprise-1.13.1-py3-none-any.whl", hash = "sha256:2ded6d00562dd2ae9eb6f1e6cc8d3fb66e06f7ede6efac0ad029031b633780f4", size = 1826431, upload-time = "2026-08-31T02:11:58.263Z" },
 ]
 
 [[package]]
@@ -2922,8 +2922,8 @@ wheels = [
 
 [[package]]
 name = "prefect"
-version = "3.6.24+21943.g82e29a9f6"
-source = { git = "https://github.com/fatih-acar/prefect.git?branch=feat%2Fredis-sentinel-on-22211#82e29a9f625d7faf2da07ed924bb48ee4e7f0caf" }
+version = "3.6.24+21992.ge0ca906b1"
+source = { git = "https://github.com/fatih-acar/prefect.git?branch=feat%2Fredis-sentinel-on-22211#e0ca906b16cc99113693c4683fbcb858b58fe826" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
@@ -2986,8 +2986,8 @@ dependencies = [
 
 [[package]]
 name = "prefect-redis"
-version = "0.2.1.dev21944+g82e29a9f6"
-source = { git = "https://github.com/fatih-acar/prefect.git?subdirectory=src%2Fintegrations%2Fprefect-redis&branch=feat%2Fredis-sentinel-on-22211#82e29a9f625d7faf2da07ed924bb48ee4e7f0caf" }
+version = "0.2.1.dev21993+ge0ca906b1"
+source = { git = "https://github.com/fatih-acar/prefect.git?subdirectory=src%2Fintegrations%2Fprefect-redis&branch=feat%2Fredis-sentinel-on-22211#e0ca906b16cc99113693c4683fbcb858b58fe826" }
 dependencies = [
     { name = "prefect" },
     { name = "redis" },

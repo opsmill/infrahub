@@ -27,7 +27,7 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
-from infrahub.exceptions import InitializationError, ProcessingError, RedisUrlError
+from infrahub.exceptions import InitializationError, ProcessingError
 from infrahub.log import get_logger
 from infrahub.tls.context_builder import TlsContextBuilder
 
@@ -556,12 +556,11 @@ class CacheSettings(BaseSettings):
                 f"remove: {', '.join(sorted(explicit))}"
             )
         # Imported lazily to keep this low-level settings module free of the services package.
-        from infrahub.services.adapters.cache.connection import parse_redis_url  # noqa: PLC0415
+        from infrahub.services.adapters.cache.connection import validate_redis_url  # noqa: PLC0415
 
-        try:
-            parse_redis_url(self.url.get_secret_value())
-        except RedisUrlError as exc:
-            raise ValueError(exc.message) from exc
+        # Raises a ValueError, which pydantic surfaces as a validation error; the message never
+        # echoes the URL, so credentials embedded in it are not leaked.
+        validate_redis_url(self.url.get_secret_value())
         return self
 
 
