@@ -538,6 +538,29 @@ class CoalescedRecomputeSubmitter:
         return submitted
 
 
+async def _resolve_python_targets(
+    *,
+    resolver: PythonTargetResolver,
+    changes: list[MergeChange],
+    branch: str,
+    schema_changed_elements: ChangedElementSet | None,
+) -> list[AffectedTarget]:
+    """The Python targets of a change set, or none of them when the derivation fails.
+
+    This family is the only one that reads the database and the API to derive its targets. The other
+    three come from the schema alone, so letting a failure here escape would cancel their submissions
+    too and leave the whole pass unrun.
+
+    Dropping the family is safe only while the per-node automations still fire on a merge and a
+    rebase. Once they are gated on the live origin, this fallback has to widen instead.
+    """
+    try:
+        return await resolver.resolve(changes=changes, branch=branch, schema_changed_elements=schema_changed_elements)
+    except Exception:
+        log.exception("Leaving the Python computed attributes of branch %s to the per-node automations", branch)
+        return []
+
+
 class MergeRecomputeCoordinator:
     """Build the coalesced recompute for a merge or rebase change set and submit it.
 
@@ -566,8 +589,11 @@ class MergeRecomputeCoordinator:
     ) -> list[CoalescedSubmission]:
         change_list = list(changes)
         coalesced = self.builder.build(changes=change_list, branch=branch)
-        python_targets = await self.python_resolver.resolve(
-            changes=change_list, branch=branch, schema_changed_elements=schema_changed_elements
+        python_targets = await _resolve_python_targets(
+            resolver=self.python_resolver,
+            changes=change_list,
+            branch=branch,
+            schema_changed_elements=schema_changed_elements,
         )
         return await self.submitter.submit(coalesced=coalesced.with_targets(python_targets), context=context)
 
@@ -633,8 +659,8 @@ class RecomputeChainSubmitter:
             for node in written
         ]
         coalesced = self.builder.build(changes=changes, branch=branch)
-        python_targets = await self.python_resolver.resolve(
-            changes=changes, branch=branch, schema_changed_elements=None
+        python_targets = await _resolve_python_targets(
+            resolver=self.python_resolver, changes=changes, branch=branch, schema_changed_elements=None
         )
         return await self.submitter.submit(
             coalesced=coalesced.with_targets(python_targets), context=context, recompute_depth=next_depth

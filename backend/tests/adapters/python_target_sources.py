@@ -86,6 +86,19 @@ class RecordingPythonTargetResolver:
         return self.targets
 
 
+class FailingPythonTargetResolver:
+    """Raises on every derivation, to prove the schema-derived families still reach the submitter."""
+
+    async def resolve(
+        self,
+        *,
+        changes: Iterable[MergeChange],
+        branch: str,
+        schema_changed_elements: ChangedElementSet | None,
+    ) -> list[AffectedTarget]:
+        raise RuntimeError("python target derivation rejected")
+
+
 class FailingSubscriberSource:
     """Raises on every lookup, to prove the resolver widens instead of skipping."""
 
