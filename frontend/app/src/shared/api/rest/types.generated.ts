@@ -1804,7 +1804,7 @@ export interface components {
             selective_execution_after_merge: boolean;
             /**
              * Coalesce Python Recompute After Merge
-             * @description When enabled, the coalesced merge and rebase pass recomputes Python transform computed attributes; when disabled, one task per changed node recomputes them.
+             * @description When enabled, the coalesced merge and rebase pass also recomputes Python transform computed attributes, alongside the per-node tasks that still run; when disabled, only those per-node tasks recompute them.
              * @default true
              */
             coalesce_python_recompute_after_merge: boolean;
