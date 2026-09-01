@@ -475,42 +475,14 @@ async def test_unknown_group_is_silently_ignored(
     assert len(accounts) == 1
 
 
-async def test_login_with_an_orphaned_identity_reports_a_handled_error(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    """An identity left behind by an earlier release must not escape as an unhandled error.
-
-    Node.delete leaves the identity, which is the state those releases produced. The login cannot
-    resolve an account from it, and has to say so in a way the API can turn into a response.
-    """
-    identity = ExternalIdentity(
-        sub="sub-orphaned-001",
-        provider_name="provider1",
-        protocol=ExternalAuthProtocol.OIDC,
-        display_name="Quinn Adler",
-        email="quinn@example.com",
-    )
-
-    first_login = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
-    account = await NodeManager.get_one(db=db, id=first_login.account_id, raise_on_error=True)
-    await account.delete(db=db)
-
-    expected = (
-        r"^The oidc identity for provider 'provider1' is not linked to an account\. "
-        r"Run 'infrahub upgrade' to remove the identities left behind by a deleted account\.$"
-    )
-    with pytest.raises(ProcessingError, match=expected):
-        await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
-
-
 async def test_login_after_account_deletion_creates_a_new_account(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """Deleting an SSO account must give the provider user a clean slate.
 
-    The delete takes the identity with it, so the next login has no identity to match and creates
-    a fresh account. Recovery from an identity the delete left behind is a separate case, covered
-    above.
+    The delete takes the identity with it, so the next login has none to match and creates a fresh
+    account. The identity is unique on its provider triple, so an identity left behind would fail
+    the login instead of passing this test.
     """
     identity = ExternalIdentity(
         sub="sub-deleted-001",

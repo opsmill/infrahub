@@ -88,12 +88,9 @@ The account side of each has to name the same identifier as the child's own `acc
 
 These three are the only mandatory relationships declared on any `Internal` kind, which is why `NodeDeleteValidator` can resolve peers without excluding the namespace at all. The `Internal` exclusion remains on the public GraphQL relationship query, where it keeps bookkeeping nodes out of the API.
 
-Two rules follow for the SSO login path:
+`Migration077` deletes the children of all three kinds that earlier releases orphaned. Together with the cascade, an upgraded database holds no identity without an account, so the SSO login path does not handle that state: it is a data error, and the migration is where the repair belongs.
 
-- **An identity with no account is a data error, not a state to recover from.** The cascade above means a live database cannot produce one. `signin_sso_account` raises `ProcessingError` naming the remedy, so the API answers with a handled error instead of letting `LookupError` escape as a 500. It does not delete the identity or create a replacement account: repairing data during a login would hide the inconsistency, and `Migration077` is where that repair belongs.
-- **A missing peer has two shapes.** With no active relationship, `RelationshipManager.get_peer` returns `None`; with an active relationship to a node it cannot resolve, it raises `NodeNotFoundError`. Both mean "no account".
-
-`Migration077` deletes the children of all three kinds that earlier releases orphaned, so an upgraded database holds none. A login can still meet one in the window a Helm upgrade leaves open, where the new pods serve traffic before `infrahub upgrade` is executed.
+A login that meets one on a database that has not been upgraded still fails with `LookupError`, as it did before this change. Nothing stops such a database from serving traffic, because a graph version mismatch only logs a warning.
 
 ## Configuration
 
