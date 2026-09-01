@@ -48,7 +48,8 @@ class DatabasePythonReadSetSource:
             branch_name=branch, component=self.component, db=self.db, log=get_run_logger()
         )
         if not registry.schema.has_schema_branch(name=branch):
-            # get_schema_branch would register an empty one, which reads as nothing to recompute.
+            # The kinds of an unregistered branch are unknown, so there is nothing to widen to.
+            # Both entry points resolve the branch from the registry first, so this stays unreached.
             log.warning("Skipping the Python computed attributes of %s: no schema is registered for it", branch)
             return []
 
