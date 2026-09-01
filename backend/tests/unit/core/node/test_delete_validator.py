@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RelationshipDeleteBehavior
 from infrahub.core.node.delete_validator import DeleteRelationshipType, NodeDeleteIndex
 from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.schema.definitions.core import core_models
@@ -84,3 +84,30 @@ def test_repository_cascade_reaches_exactly_expected_kinds(case: RepositoryCase)
         InfrahubKind.USERVALIDATOR,
     }
     assert reachable == expected_cascade
+
+
+def test_deleting_generator_target_cascades_to_generator_instance() -> None:
+    """Deleting the object a generator instance targets must cascade to the generator instance.
+
+    Artifacts already work this way: CoreArtifact.object peers to the CoreArtifactTarget generic,
+    which carries an `artifacts` relationship with on_delete=CASCADE, so deleting an artifact target
+    removes its artifacts. Generator instances have no equivalent: CoreGeneratorInstance.object peers
+    to CoreNode, which carries no cascade relationship back to the instance. Deleting a target object
+    therefore leaves an orphaned CoreGeneratorInstance whose mandatory `object` peer no longer exists.
+    """
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    schema_branch.process()
+    all_schemas = schema_branch.get_all(duplicate=False)
+
+    instance_schema = all_schemas[InfrahubKind.GENERATORINSTANCE]
+    target_kind = instance_schema.get_relationship(name="object").peer
+    target_schema = all_schemas[target_kind]
+
+    cascade_delete_peers = {
+        relationship.peer
+        for relationship in target_schema.relationships
+        if relationship.on_delete == RelationshipDeleteBehavior.CASCADE
+    }
+
+    assert InfrahubKind.GENERATORINSTANCE in cascade_delete_peers
