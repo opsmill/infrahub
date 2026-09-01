@@ -84,13 +84,9 @@ An account owns three kinds of bookkeeping node in the `Internal` namespace, eac
 
 All three are declared on the account side with `on_delete=CASCADE`, so a delete takes them with it. All three must be, not just the ones that cause visible trouble: a mandatory relationship that is not cascaded becomes a blocking dependent, and a refresh token exists for every account that has ever logged in, which would make those accounts impossible to delete.
 
-The account side of each has to name the same identifier as the child's own `account` relationship. An account-side relationship left without one gets a generated identifier, matches no edge in the graph, and the cascade silently skips that child.
-
 These three are the only mandatory relationships declared on any `Internal` kind, which is why `NodeDeleteValidator` can resolve peers without excluding the namespace at all. The `Internal` exclusion remains on the public GraphQL relationship query, where it keeps bookkeeping nodes out of the API.
 
-`Migration077` deletes the children of all three kinds that earlier releases orphaned. Together with the cascade, an upgraded database holds no identity without an account, so the SSO login path does not handle that state: it is a data error, and the migration is where the repair belongs.
-
-A login that meets one on a database that has not been upgraded still fails with `LookupError`, as it did before this change. Nothing stops such a database from serving traffic, because a graph version mismatch only logs a warning.
+The cascade is why the SSO login path does not handle an identity whose account is gone: it cannot happen, and repairing data during a login would hide the inconsistency.
 
 ## Configuration
 
