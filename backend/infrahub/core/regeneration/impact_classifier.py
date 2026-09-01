@@ -48,12 +48,17 @@ class QueryImpactClassifier:
     A kind read both at a root and through a relationship counts as traversed. The two read paths
     are indistinguishable once a change is in hand, so treating it as mappable would narrow away the
     members reached only by the relationship.
+
+    ``depends_on_everything`` marks a query whose read surface cannot be pinned down at all -- a read
+    of a derived value composed from a peer the read set never names -- so any relevant change widens
+    to every target.
     """
 
     query_branch: str
     only_has_unique_targets: bool
     traversed_kinds: set[str]
     readable_fields_by_kind: dict[str, set[str]]
+    depends_on_everything: bool = False
 
     def assess(self, diff_summary: list[NodeDiff]) -> ImpactAssessment:
         changed_node_ids = self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
@@ -63,9 +68,9 @@ class QueryImpactClassifier:
         return ChangedNodes(node_ids=changed_node_ids)
 
     def _must_widen(self, *, diff_summary: list[NodeDiff], changed_node_ids: list[str]) -> bool:
-        if not self.only_has_unique_targets:
-            # Any number of objects can answer the query, so a changed node cannot be traced back to
-            # the targets reading it.
+        if self.depends_on_everything or not self.only_has_unique_targets:
+            # A changed node cannot be traced back to the targets reading it: the query answers from
+            # an unbounded set, or reads a derived value moved by a peer the read set cannot name.
             return bool(changed_node_ids)
 
         traversed_fields_by_kind = {
