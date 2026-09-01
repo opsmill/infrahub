@@ -105,7 +105,7 @@ backend/infrahub/core/
     ├── schema/
     │   └── node_remove.py               # FR-007 — NodeRemoveMigrationQueryIn / QueryOut
     └── graph/
-        └── mNNN_repair_vertex_metadata.py   # FR-005 — new; number assigned at merge time
+        └── m077_repair_vertex_metadata.py   # FR-005 — new; re-check the number before merge
 
 backend/tests/component/core/
 ├── test_vertex_metadata_invariant.py    # SC-001 — the cross-product suite (new)
@@ -247,8 +247,8 @@ Idempotent by construction: a pure function of edges the migration does not modi
 touch `previous_updated_at/by` — snapshotting those would make a second run report changes and would
 also corrupt the merge-rollback pair that owns them. Ordering follows m050: Attribute, then
 Relationship, then Node (whose `updated_at` derives from the field vertices). Batched
-`IN TRANSACTIONS`. The migration number is assigned at merge time against whatever is on `develop`
-(m075 is the highest today).
+`IN TRANSACTIONS`. The migration is `m077` — `m076_heal_missing_attribute_rows` is the highest present
+on this branch's base. Re-check before merge: a migration landing on the base first forces a renumber.
 
 **Destructive, and deliberately not reversible.** m050 was purely additive — its `IS NULL` guard meant
 it could only fill blanks. Dropping that guard is what fixes the wrong values F1b leaves, and it makes
