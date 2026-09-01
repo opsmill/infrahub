@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-export const cellsStyle = "flex items-center gap-1.5 p-2 text-sm h-10";
-=======
 /**
  * How wide a column may grow before its contents truncate. Grid tracks sized `auto`
  * have no ceiling, so without a cap one long value stretches the whole column past
@@ -17,9 +14,7 @@ export const WIDE_COLUMN_MAX_WIDTH = "25rem";
 // `min-w-0` lets the cell shrink below its content's intrinsic width, which is what
 // makes the `truncate` classes on cell contents actually clip instead of growing the
 // column.
-export const cellsStyle =
-  "flex min-w-0 items-center gap-1.5 p-2 text-sm h-10 bg-white disabled:bg-white";
->>>>>>> origin/stable
+export const cellsStyle = "flex min-w-0 items-center gap-1.5 p-2 text-sm h-10";
 
 export const cellHeaderStyle =
   "z-1 sticky top-0 border-r border-y bg-table-cell-pinned disabled:bg-table-cell-pinned font-medium dark:backdrop-blur-md";

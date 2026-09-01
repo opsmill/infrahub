@@ -9,12 +9,8 @@ import {
 import React from "react";
 
 import { Row } from "@/shared/components/container";
-<<<<<<< HEAD
 import { StickyCellShadow } from "@/shared/components/table/sticky-cell-shadow";
-import { cellFooterStyle, cellsStyle } from "@/shared/components/table/style";
-=======
 import { COLUMN_MAX_WIDTH, cellFooterStyle, cellsStyle } from "@/shared/components/table/style";
->>>>>>> origin/stable
 import { classNames } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
