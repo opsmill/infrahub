@@ -19,7 +19,7 @@ function LoginPage() {
   const errors = location?.state?.errors as RestErrorItem[] | undefined;
 
   return (
-    // biome-ignore lint/nursery/noTailwindArbitraryValue: one-off: the only full-viewport vertical centring in the product
+    // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: viewport-relative padding (25vh) has no spacing token
     <div className="h-screen w-screen overflow-auto bg-background py-[25vh]">
       <div className="m-auto flex w-full max-w-sm flex-col items-center gap-6">
         <InfrahubLogo className="h-12" />

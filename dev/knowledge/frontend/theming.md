@@ -70,9 +70,13 @@ because `.dark` has no business overriding a dimension:
 
 ### Status, diff and accent families
 
-`--danger` is no longer alone. The status families follow one recipe — foreground `-700` light /
-`-400` dark, `-surface` as `--alpha(-500 / 15%)` light and `--alpha(-400 / 20%)` dark, `-strong`
-one step hotter:
+`--danger` is no longer alone. The status families broadly follow one recipe — foreground `-700`
+light, `-surface` as `--alpha(-500 / 15%)` light, `-strong` one step hotter than the foreground —
+but the dark values are tuned per family rather than mechanical, so **read `theme.css` rather than
+deriving them**. Two deliberate deviations exist today: `--warning` is `amber-300` in dark (its own
+dark twins in the codebase were `-300` far more often than `-400`, and `amber-400` reads far
+brighter than `rose-400` at the same step), and `--success-surface` stays
+`--alpha(green-500 / 15%)` in dark rather than moving to `-400 / 20%`.
 
 - `--success` (green), `--warning` (amber, plus `--warning-border`), `--info` (sky), `--danger`
   (rose, plus `--danger-strong`).

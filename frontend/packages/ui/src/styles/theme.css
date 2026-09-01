@@ -23,10 +23,9 @@
 
   /* Companions to --accent, covering the roles the legacy custom-blue ramp served with four
      interchangeable shades: a pale tint behind a selected row or badge, a saturated fill for
-     avatars and pulse dots, and the foreground that sits on that fill. --accent-surface at 10%
-     reproduces the dominant bg-custom-blue-700/10 exactly, so those call sites do not move.
-     NOTE: --accent-strong / --accent-foreground contrast wants a designer's sign-off; they are
-     defined to preserve today's behaviour and have no consumer yet. */
+     avatars and pulse dots, and the foreground that sits on that fill. The 10% alpha reproduces
+     the legacy accent tint it replaces, so those surfaces do not move.
+     NOTE: --accent-strong / --accent-foreground contrast wants a designer's sign-off. */
   --accent-surface: --alpha(var(--accent) / 10%);
   --accent-strong: #0987a8;
   --accent-foreground: var(--color-white);
@@ -59,8 +58,7 @@
 
   /* Highlighted text (<mark>). Not --warning-surface: a highlight is an annotation, not a
      warning, and coupling them would let a warning retune silently restyle marked text.
-     Intentionally not bridged into @theme: markdown.css reads var(--marked) directly and
-     nothing needs a bg-marked utility, so adding one would just be dead code. */
+     Not bridged into @theme: it is consumed as a raw var, and no utility is needed. */
   --marked: --alpha(var(--color-amber-400) / 35%);
 
   --info: var(--color-sky-700);
@@ -172,8 +170,8 @@
   --success-surface: --alpha(var(--color-green-500) / 15%);
   --success-strong: var(--color-green-500);
 
-  /* amber-300, not -400: the dark foreground twins already in the codebase are -300 nine times
-     out of eleven, and amber-400 reads far brighter than rose-400 at the same step. */
+  /* amber-300, not -400: amber-400 reads far brighter than rose-400 at the same step, and the
+     dark amber foregrounds already in the codebase sit predominantly at -300. */
   --warning: var(--color-amber-300);
   --warning-surface: --alpha(var(--color-amber-400) / 20%);
   --warning-strong: var(--color-amber-400);
@@ -363,8 +361,8 @@
    value from inside a calc() or minmax() that has no utility form. */
 @theme {
   /* One step below Tailwind's text-xs, for dense metadata: graph node labels, table sublabels.
-     Deliberately no --text-xxs--line-height: the value this replaces set font-size only, and
-     adding a line-height here would shift the 7 call sites already using text-xxs. */
+     Deliberately no --text-xxs--line-height: the value this replaces set font-size only, so
+     adding a line-height here would shift every existing text-xxs call site. */
   --text-xxs: 0.625rem;
 
   /* The term column of a definition-style row. Shared by the schema-driven object detail row and

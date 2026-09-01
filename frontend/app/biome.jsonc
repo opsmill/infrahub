@@ -115,9 +115,16 @@
               "breakLinkClassName",
               "calendarClassName",
               "containerClassName",
+              "contentClass",
+              "enter",
+              "enterFrom",
+              "enterTo",
               "iconClassName",
               "keyClassName",
               "labelClassName",
+              "leave",
+              "leaveFrom",
+              "leaveTo",
               "leftClassName",
               "loadingClassName",
               "nextClassName",
@@ -132,7 +139,17 @@
               "scrollBarClassName",
               "textareaClassName",
               "valueClassName",
+              "wrapperClass",
               "wrapperClassName"
+            ],
+            "functions": [
+              "classNames",
+              "clsx",
+              "cva",
+              "tv",
+              "twMerge",
+              "twJoin",
+              "tw"
             ]
           }
         }

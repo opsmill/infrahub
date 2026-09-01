@@ -113,8 +113,10 @@ Two things about the config are worth knowing before you change it:
   **24 class-carrying props** (`loadingClassName`, `textareaClassName`, `scrollBarClassName`, …), and
   a class arriving through one that is not listed is invisible to the rule. Add new ones to
   `options.attributes` when you introduce them.
-- `options.functions` is **not** needed here. Biome inspects call arguments by default, so listing
-  `classNames`/`cn`/`tv` changes nothing — measured, not assumed.
+- `options.functions` **is** needed, and defaults to empty. Without it, a helper call is only
+  checked when it sits directly inside a listed attribute (`className={classNames("w-[400px]")}`);
+  the same call assigned to a variable first is invisible to the rule. `classNames` is this
+  codebase's dominant helper at ~270 call sites, so it and its siblings are listed.
 
 Prefer, in order: an on-scale utility (`min-w-33`) → an existing token (`text-xxs`, `bg-accent`) →
 a new token in `theme.css` → a suppression. Reach for a suppression last, and only for one of these:
