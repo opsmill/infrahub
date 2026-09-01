@@ -22,7 +22,11 @@ from infrahub.core.merge.recompute_coalescing import (
 from infrahub.core.recompute.bulk_write import WrittenNode
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.events.models import EventBranchContext, EventContext
-from tests.adapters.python_target_sources import RecordingPythonTargetResolver, ResolveCall
+from tests.adapters.python_target_sources import (
+    FailingPythonTargetResolver,
+    RecordingPythonTargetResolver,
+    ResolveCall,
+)
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.merge_recompute.dataset import build_chain_schema, chain_kind
 
@@ -108,3 +112,40 @@ async def test_a_chained_level_derives_the_python_targets_of_its_writes() -> Non
     assert len(python_calls) == 1
     assert python_calls[0]["parameters"]["recompute_depth"] == 1
     assert python_calls[0]["parameters"]["coalesced"] is True
+
+
+async def test_a_failed_python_derivation_still_submits_the_schema_families() -> None:
+    """Only this family reads the database, so only this family may be lost when that read fails.
+
+    The other three are already derived by the time it runs, and the per-node automations still
+    cover the Python one until they are gated on the live origin.
+    """
+    workflow = WorkflowRecorder()
+    coordinator = MergeRecomputeCoordinator(
+        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch()),
+        submitter=CoalescedRecomputeSubmitter(workflow=workflow),
+        python_resolver=FailingPythonTargetResolver(),
+    )
+
+    submissions = await coordinator.run(changes=[_root_change()], branch=BRANCH, context=_event_context())
+
+    assert _families(submissions) == {COMPUTED_ATTRIBUTE}
+
+
+async def test_a_failed_python_derivation_still_chains_the_schema_families() -> None:
+    """The chained levels run the same derivation, and carry the same risk."""
+    workflow = WorkflowRecorder()
+    chain = RecomputeChainSubmitter(
+        builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch()),
+        submitter=CoalescedRecomputeSubmitter(workflow=workflow),
+        python_resolver=FailingPythonTargetResolver(),
+    )
+
+    submissions = await chain.submit(
+        written=[WrittenNode(node_id="l1-0", kind=chain_kind(1), fields=("name",))],
+        branch=BRANCH,
+        context=_event_context(),
+        depth=0,
+    )
+
+    assert _families(submissions) == {COMPUTED_ATTRIBUTE}
