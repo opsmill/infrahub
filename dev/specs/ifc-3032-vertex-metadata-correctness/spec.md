@@ -20,7 +20,7 @@ A cache that disagrees with the graph is worse than no cache, because the slow p
 
 > A vertex's `created_at/by` and `updated_at/by` MUST reflect the latest change **visible on the default branch** — i.e. the latest change carried by a `branch_level = 1` edge, whether that edge is on the default branch or on `-global-`.
 
-This is confirmed against the read path: vertex properties are read only when the query branch is default or global (`backend/infrahub/core/query/node.py:1386-1450`, `backend/infrahub/core/query/node.py:767-826`, `backend/infrahub/core/query/subquery.py:193`). User-branch reads derive metadata from edge `from` / `to` / `from_user_id` instead.
+This is confirmed against the read path: vertex properties are read only when the query branch is default or global (`core/query/node.py::NodeListGetInfoQuery._add_created_metadata_to_query` / `._add_updated_metadata_to_query`, `core/query/node.py::NodeListGetAttributeQuery._add_created_metadata_to_query` / `._add_updated_metadata_to_query`, and `core/query/subquery.py::build_subquery_order_metadata`). User-branch reads derive metadata from edge `from` / `to` / `from_user_id` instead.
 
 ### Root Cause
 
@@ -28,7 +28,7 @@ Write sites gate metadata on *"is the owning object's support branch default/glo
 
 ### Who Is Affected
 
-Anyone reading metadata on the default branch: UI "last updated" columns, `order_by` on `updated_at` (`backend/infrahub/core/query/subquery.py:193`), and API consumers auditing provenance.
+Anyone reading metadata on the default branch: UI "last updated" columns, `order_by` on `updated_at` (`core/query/subquery.py::build_subquery_order_metadata`), and API consumers auditing provenance.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -98,7 +98,7 @@ The four defects the fix must close, plus the two guard defects they depend on.
 
 ### F1 — Node vertex not bumped for agnostic field changes from a user branch (under-set)
 
-`backend/infrahub/core/node/__init__.py:1199-1201` gates `_save_metadata` on `self.get_branch_based_on_support_type()` — the *node's* support:
+`core/node/__init__.py::Node._update` gates `_save_metadata` on `self.get_branch_based_on_support_type()` — the *node's* support:
 
 ```python
 update_branch = self.get_branch_based_on_support_type()
@@ -108,7 +108,7 @@ if update_branch.is_default or update_branch.is_global:
 
 Aware node + agnostic attribute updated on `foo` → the gate resolves to `foo` → skipped, while the `HAS_VALUE` edge landed on `-global-` at level 1 and is visible on the default branch.
 
-The Attribute vertex itself is correct: `backend/infrahub/core/query/attribute.py:96-99` guards on `$branch_level = 1` against `attr.get_branch_based_on_support_type()`, as do the flag / node-property / delete variants.
+The Attribute vertex itself is correct: `core/query/attribute.py::AttributeUpdateValueQuery` guards on `$branch_level = 1` against `attr.get_branch_based_on_support_type()`, as do the flag / node-property / delete variants.
 
 No core-schema instance; reachable via user-defined schemas. This is the case named in the ticket seed.
 
@@ -120,15 +120,15 @@ Same gate, opposite direction. Agnostic node + aware attribute updated on `foo` 
 
 ### F2 — Create path gates field-vertex metadata on the node's branch (latent)
 
-`NodeCreateAllQuery` builds edges from the per-field branch — `backend/infrahub/core/attribute.py:683-694` downgrades agnostic fields (and local fields on agnostic nodes) to `-global-` / level 1 — but gates the vertex properties on `self.branch` (`backend/infrahub/core/query/node.py:266-281`). Under-set for an agnostic field on an aware node created on a branch; over-set for an aware field on an agnostic node.
+`NodeCreateAllQuery` builds edges from the per-field branch — `core/attribute.py::BaseAttribute.get_create_data` downgrades agnostic fields (and local fields on agnostic nodes) to `-global-` / level 1 — but gates the vertex properties on `self.branch` (`core/query/node.py::NodeCreateAllQuery.query_init`). Under-set for an agnostic field on an aware node created on a branch; over-set for an aware field on an agnostic node.
 
 Both self-heal — via merge, or via a later default-branch write — so this is latent rather than observable.
 
 ### F3 — Relationship create/delete stamp peer Node vertices unconditionally (low)
 
-`backend/infrahub/core/query/relationship.py:340-345` (create) and `:613-618` (delete) issue a bare `SET s.updated_at` / `SET d.updated_at` whenever the *relationship's* branch is level 1, stamping peers that may not exist on the default branch. `RelationshipDeleteAllQuery` (`:1366`, `:1409`) has the same shape.
+`core/query/relationship.py::RelationshipCreateQuery.query_init` and `::RelationshipDeleteQuery.query_init` issue a bare `SET s.updated_at` / `SET d.updated_at` whenever the *relationship's* branch is level 1, stamping peers that may not exist on the default branch. `core/query/relationship.py::RelationshipDeleteAllQuery.query_init` has the same shape.
 
-`RelationshipUpdatePropertyQuery` (`:460-487`) already guards this correctly, requiring a level-1 active `IS_RELATED` **and** a level-1 active `IS_PART_OF`. Self-corrects at merge; lowest severity.
+`core/query/relationship.py::RelationshipUpdatePropertyQuery` already guards this correctly, requiring a level-1 active `IS_RELATED` **and** a level-1 active `IS_PART_OF`. Self-corrects at merge; lowest severity.
 
 ### F5 — Twin handling on the delete guard
 
@@ -165,7 +165,7 @@ Three of them write level-1 edges from a level-2 branch, so the scalar is wrong 
 | `attribute_kind_update` | fixed, no global handling | `false` | consistent |
 | `node_relationship_remove` | fixed, no global handling | `false` | consistent |
 
-Sites: `backend/infrahub/core/migrations/query/attribute_add.py:74` and `:144-162`; `backend/infrahub/core/migrations/query/node_duplicate.py:163` and `:190`; `backend/infrahub/core/migrations/schema/node_remove.py:45`, `:116`, `:246`.
+Sites: `core/migrations/query/attribute_add.py::AttributeAddQuery`; `core/migrations/query/node_duplicate.py::NodeDuplicateQuery`; `core/migrations/schema/node_remove.py::NodeRemoveMigrationBaseQuery` and its `NodeRemoveMigrationQueryIn` / `NodeRemoveMigrationQueryOut` subclasses.
 
 **Merge does not repair these** — see User Story 3. Highest severity alongside F1 / F1b, because the owning node already exists on the default branch.
 
@@ -199,7 +199,7 @@ Enumerated by walking `core_models` and comparing each field's `branch` against 
 - **FR-005**: A repair migration MUST recompute metadata on `Node`, `Attribute`, and `Relationship` vertices, restricted to kinds where some field's branch support differs from the node's, in both directions. Dropping m050's `IS NULL` guard handles both the NULLs F6 leaves and the wrong values F1b leaves.
   *Verify:* SC-002.
 
-- **FR-006**: `dev/knowledge/backend/database-schema.md` MUST state the level-1-edge invariant in place of *"set only on default/global branches"* (lines 84–85), which is the buggy proxy stated as fact. Constitution II requires cross-branch side effects be documented.
+- **FR-006**: `dev/knowledge/backend/database-schema.md` MUST state the level-1-edge invariant in place of *"set only on default/global branches"* in its Node/Attribute/Relationship vertex-property tables, which is the buggy proxy stated as fact. Constitution II requires cross-branch side effects be documented.
 
 - **FR-007**: `attribute_add`, `node_duplicate`, and `node_remove` MUST gate each vertex's metadata write on that vertex's own edge level — the `on_global_branch` / `CASE WHEN ... = $global_branch` decision already computed in Cypher — rather than on the Python-side `set_metadata` scalar. The four consistent migrations keep `set_metadata` unchanged.
   *Verify:* on a feature branch, add an agnostic attribute to a branch-aware kind; assert the new Attribute vertex has `created_at` / `created_by` set and the Node's `updated_at` advanced, both readable on the default branch. A test MUST also pin that a level-2-only migration still writes no metadata.
@@ -211,7 +211,7 @@ All existing; no new entities.
 - **`Node` / `Attribute` / `Relationship` vertices** — carry `created_at/by`, `updated_at/by`, `previous_updated_at/by` properties; the denormalised metadata cache this feature corrects
 - **`BranchSupportType`** — `aware` / `local` / `agnostic`; the per-field and per-node setting whose divergence causes every finding
 - **The `-global-` branch, and edge `branch_level`** — `1` = default/global, `2` = user branch; `branch_level = 1` is the authoritative visibility test
-- **`NodeUpdateMetadataQuery`** — the write path for Node vertex metadata (`backend/infrahub/core/query/node.py:642-665`)
+- **`NodeUpdateMetadataQuery`** — the write path for Node vertex metadata (`core/query/node.py::NodeUpdateMetadataQuery`)
 - **`DiffMergeMetadataQuery`** — sets metadata at merge; unchanged by this feature, but its `node_uuids`-from-diff scope is why F6 is not self-healing
 - **`m050_backfill_vertex_metadata`** — the existing edge-derived recompute; its derivation is the oracle for both tests and the repair migration
 
@@ -250,13 +250,13 @@ All existing; no new entities.
 
 ## Assumptions
 
-- Vertex metadata is read only on default/global branches; user-branch reads derive from edges. Verified in code (`backend/infrahub/core/query/node.py:1386-1450`, `:767-826`, `backend/infrahub/core/query/subquery.py:193`), not assumed.
+- Vertex metadata is read only on default/global branches; user-branch reads derive from edges. Verified in code (`core/query/node.py::NodeListGetInfoQuery`, `core/query/node.py::NodeListGetAttributeQuery`, `core/query/subquery.py::build_subquery_order_metadata`), not assumed.
 - `DiffMergeMetadataQuery` correctly sets metadata at merge and needs no change — but it only covers nodes in the branch diff, which is why F6 is not self-healing.
 - m050's derivation (`max()` over level-1 edge `from` / `to`) is the authoritative recompute for both tests and repair.
 - **m050 sets only `created_at` / `updated_at`, not `created_by` / `updated_by`.** Since SC-001 asserts on the `_by` fields too, the repair migration (FR-005) extends the same derivation to the actor fields by taking the `from_user_id` of the edge that supplied the winning timestamp. This is a completion of m050's rule, not a new requirement.
 - The repair migration is the next available graph migration number (m050 through m075 are taken; the repair lands at m076 or later depending on what is on `develop` at merge time).
-- Resolved from the brief's open question — **an agnostic node's kind/inheritance can be migrated**: `node_duplicate` applies no `branch_support` restriction and explicitly preserves `-global-` edges (`backend/infrahub/core/migrations/query/node_duplicate.py:79-99`). F5 therefore fixes a live bug, not a latent one.
-- Resolved from the brief's open question — **the `local`-on-agnostic create/update split is treated as a separate defect**: `get_create_data` downgrades a `LOCAL` attribute on an `AGNOSTIC` node to `-global-` / level 1 (`backend/infrahub/core/attribute.py:687-689`) while `get_branch_based_on_support_type` special-cases only `AGNOSTIC` (`backend/infrahub/core/attribute.py:188-190`), so mismatch #4 is created at level 1 and updated at level 2. Whichever behaviour is intended, this feature's rule is edge-derived and therefore correct either way: metadata must match the edges actually written. The value-correctness question is recorded in Out of Scope.
+- Resolved from the brief's open question — **an agnostic node's kind/inheritance can be migrated**: `node_duplicate` applies no `branch_support` restriction and explicitly preserves `-global-` edges (`core/migrations/query/node_duplicate.py::NodeDuplicateQuery._render_sub_query_out` / `._render_sub_query_in`). F5 therefore fixes a live bug, not a latent one.
+- Resolved from the brief's open question — **the `local`-on-agnostic create/update split is treated as a separate defect**: `get_create_data` downgrades a `LOCAL` attribute on an `AGNOSTIC` node to `-global-` / level 1 (`core/attribute.py::BaseAttribute.get_create_data`) while `get_branch_based_on_support_type` special-cases only `AGNOSTIC` (`core/attribute.py::BaseAttribute.get_branch_based_on_support_type`), so mismatch #4 is created at level 1 and updated at level 2. Whichever behaviour is intended, this feature's rule is edge-derived and therefore correct either way: metadata must match the edges actually written. The value-correctness question is recorded in Out of Scope.
 - Resolved from the brief's open question — **`attribute_kind_update`, `attribute_rename`, and `node_relationship_remove` are left alone**: they write no `-global-` edges at all, so their `set_metadata` scalar is self-consistent with the edges they produce. Whether they *should* handle agnostic fields is a data-visibility question, recorded in Out of Scope.
 
 ## Out of Scope (v1)
