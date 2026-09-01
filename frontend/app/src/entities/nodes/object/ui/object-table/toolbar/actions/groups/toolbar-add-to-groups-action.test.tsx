@@ -50,6 +50,7 @@ describe("ToolbarAddToGroupsAction Component", () => {
           selectedSchema: schema,
           permission: PERMISSION_ALLOW_ALL,
           columnSurface: OBJECT_COLUMN_SURFACE,
+          supportsColumnVisibility: false,
         }}
       >
         <ToolbarAddToGroupsAction selectedRows={mockSelectedRows} />
@@ -96,6 +97,7 @@ describe("ToolbarAddToGroupsAction Component", () => {
           selectedSchema: schema,
           permission: PERMISSION_ALLOW_ALL,
           columnSurface: OBJECT_COLUMN_SURFACE,
+          supportsColumnVisibility: false,
         }}
       >
         <ToolbarAddToGroupsAction selectedRows={mockSelectedRows} />

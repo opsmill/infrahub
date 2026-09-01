@@ -20,6 +20,13 @@ export type ObjectTableContextProps = {
   selectedSchema: ModelSchema;
   permission: Permission;
   columnSurface: ColumnSurface;
+  /**
+   * Whether this table actually honours the column-visibility params. Only a table rendering
+   * `DataTable` with a `columnVisibility` state does; the toolbar and the column headers are shared
+   * with tables that render their own columns and would ignore a hide, so both controls ask here
+   * before offering anything. Off unless a manager opts in.
+   */
+  supportsColumnVisibility: boolean;
 };
 
 export const ObjectTableContext = React.createContext<ObjectTableContextProps | null>(null);
@@ -28,10 +35,12 @@ export const ObjectTableProvider = ({
   children,
   schema,
   columnSurface = OBJECT_COLUMN_SURFACE,
+  supportsColumnVisibility = false,
 }: {
   children?: React.ReactNode;
   schema: ModelSchema;
   columnSurface?: ColumnSurface;
+  supportsColumnVisibility?: boolean;
 }) => {
   const [{ filters, kind: kindInQsp }, setObjectTableQueryParams] = useQueryStates(
     {
@@ -91,6 +100,7 @@ export const ObjectTableProvider = ({
               selectedSchema,
               permission,
               columnSurface,
+              supportsColumnVisibility,
             }}
           >
             {children}
@@ -115,10 +125,27 @@ export function useObjectTableContext() {
  * The column surface of the table this component sits in, falling back to the object surface.
  *
  * Non-throwing, unlike `useObjectTableContext`: a table cell may render outside any provider, and
- * the object surface is the right reading of "no table said otherwise". Every table that offers
- * column controls does sit inside `ObjectTableProvider`, so the fallback is a default rather than
- * a guess about which surface a real table uses.
+ * the object surface is the right reading of "no table said otherwise".
+ *
+ * The fallback is not merely theoretical. Two of `RelationshipTable`'s three hosts
+ * (`ipam-details-relationship-page.tsx`, `repository-objects-manager.tsx`) render it with no
+ * provider at all — which is why `relationship-table-toolbar.tsx` takes `schema` as a prop and
+ * names its surface explicitly rather than reading it from here. Relationship headers reach this
+ * fallback today only because they pass `isDisabled`, so they render `TableColumnHeaderSimple` and
+ * never mount a menu. Drop that flag to enable header sorting and a relationship table's header
+ * would silently resolve the OBJECT surface: thread the surface in before you do.
  */
 export function useColumnSurface(): ColumnSurface {
   return React.use(ObjectTableContext)?.columnSurface ?? OBJECT_COLUMN_SURFACE;
+}
+
+/**
+ * Whether the table this component sits in honours the column-visibility params.
+ *
+ * Non-throwing, like `useColumnSurface`: a table cell may render outside any provider, and no
+ * provider means no table claimed the capability. `false` is therefore the correct reading both
+ * outside a provider and inside one that did not opt in.
+ */
+export function useSupportsColumnVisibility(): boolean {
+  return React.use(ObjectTableContext)?.supportsColumnVisibility ?? false;
 }

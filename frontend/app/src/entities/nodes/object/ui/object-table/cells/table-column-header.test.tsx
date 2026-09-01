@@ -1,9 +1,16 @@
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { store } from "@/shared/stores";
 
-import { IP_ADDRESS_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/rules/column-surfaces";
-import { ObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import {
+  IP_ADDRESS_COLUMN_SURFACE,
+  OBJECT_COLUMN_SURFACE,
+} from "@/entities/nodes/columns/domain/rules/column-surfaces";
+import {
+  ObjectTableContext,
+  type ObjectTableContextProps,
+} from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { PERMISSION_ALLOW_ALL } from "@/entities/permission/domain/model/permission";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
@@ -104,6 +111,27 @@ const getSortInUrl = () => new URLSearchParams(window.location.search).get("sort
 
 const getHiddenColumnsInUrl = () => new URLSearchParams(window.location.search).get("hide_columns");
 
+const buildTableContext = (
+  overrides: Partial<ObjectTableContextProps> = {}
+): ObjectTableContextProps => ({
+  filters: [],
+  setFilters: vi.fn(),
+  baseSchema: schema,
+  selectedSchema: schema,
+  permission: PERMISSION_ALLOW_ALL,
+  columnSurface: OBJECT_COLUMN_SURFACE,
+  supportsColumnVisibility: true,
+  ...overrides,
+});
+
+/** A table that honours the column-visibility params — the only kind offering the hide entry. */
+const InColumnVisibilityTable = ({
+  children,
+  ...overrides
+}: Partial<ObjectTableContextProps> & { children: ReactNode }) => (
+  <ObjectTableContext value={buildTableContext(overrides)}>{children}</ObjectTableContext>
+);
+
 describe("TableColumnHeader", () => {
   beforeEach(() => {
     window.history.replaceState(null, "", window.location.pathname);
@@ -113,7 +141,9 @@ describe("TableColumnHeader", () => {
   test("offers both sort directions, a filter entry, then hide for a sortable attribute column", async () => {
     // GIVEN
     const component = await render(
-      <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+      <InColumnVisibilityTable>
+        <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+      </InColumnVisibilityTable>
     );
 
     // WHEN
@@ -134,7 +164,9 @@ describe("TableColumnHeader", () => {
   test("names the column in the hide param when hiding it from the header", async () => {
     // GIVEN
     const component = await render(
-      <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+      <InColumnVisibilityTable>
+        <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+      </InColumnVisibilityTable>
     );
 
     // WHEN
@@ -149,7 +181,9 @@ describe("TableColumnHeader", () => {
     // GIVEN
     seedSortInUrl("name__value__asc");
     const component = await render(
-      <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+      <InColumnVisibilityTable>
+        <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+      </InColumnVisibilityTable>
     );
 
     // WHEN
@@ -165,7 +199,9 @@ describe("TableColumnHeader", () => {
     // GIVEN
     seedHiddenColumnsInUrl("description");
     const component = await render(
-      <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+      <InColumnVisibilityTable>
+        <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+      </InColumnVisibilityTable>
     );
 
     // WHEN
@@ -181,18 +217,13 @@ describe("TableColumnHeader", () => {
     // no candidate for, so writing under that surface would erase it from the param.
     seedHiddenColumnsInUrl("ip_prefix");
     const component = await render(
-      <ObjectTableContext
-        value={{
-          filters: [],
-          setFilters: vi.fn(),
-          baseSchema: ipAddressSchema,
-          selectedSchema: ipAddressSchema,
-          permission: PERMISSION_ALLOW_ALL,
-          columnSurface: IP_ADDRESS_COLUMN_SURFACE,
-        }}
+      <InColumnVisibilityTable
+        baseSchema={ipAddressSchema}
+        selectedSchema={ipAddressSchema}
+        columnSurface={IP_ADDRESS_COLUMN_SURFACE}
       >
         <TableColumnHeader schema={ipAddressSchema} columnSchema={descriptionAttribute} />
-      </ObjectTableContext>
+      </InColumnVisibilityTable>
     );
 
     // WHEN
@@ -482,5 +513,54 @@ describe("TableColumnHeader", () => {
     await expect
       .poll(() => new URLSearchParams(window.location.search).get("filters"))
       .toBe(JSON.stringify([{ name: "name__value", value: "atl" }]));
+  });
+  test("offers no hide entry on a table that does not support column visibility", async () => {
+    // GIVEN a table whose columns are its own — proposed changes, role management — which passes a
+    // schema to the header purely so the column can sort.
+    const component = await render(
+      <ObjectTableContext value={buildTableContext({ supportsColumnVisibility: false })}>
+        <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+      </ObjectTableContext>
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Name" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Filter" })).toBeVisible();
+    await expect
+      .element(component.getByRole("menuitem", { name: "Hide column" }))
+      .not.toBeInTheDocument();
+  });
+
+  test("offers no hide entry outside any table provider", async () => {
+    // GIVEN no provider at all: no table claimed the capability.
+    const component = await render(
+      <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Name" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Filter" })).toBeVisible();
+    await expect
+      .element(component.getByRole("menuitem", { name: "Hide column" }))
+      .not.toBeInTheDocument();
+  });
+
+  test("offers the hide entry on a table that supports column visibility", async () => {
+    // GIVEN
+    const component = await render(
+      <InColumnVisibilityTable>
+        <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+      </InColumnVisibilityTable>
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Name" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Hide column" })).toBeVisible();
   });
 });

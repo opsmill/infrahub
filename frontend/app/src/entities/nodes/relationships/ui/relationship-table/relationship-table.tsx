@@ -71,7 +71,10 @@ export function RelationshipTable({
       : undefined;
 
   const columns = [
-    ...getObjectTableColumns(relationshipSchema, { isDisabled: true }, identifierOverrideParams),
+    ...getObjectTableColumns(relationshipSchema, {
+      headerProps: { isDisabled: true },
+      identifierOverrideParams,
+    }),
     getRelationshipActionsColumn({
       parentId,
       parentKind,

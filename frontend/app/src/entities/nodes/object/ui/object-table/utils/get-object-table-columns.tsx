@@ -163,12 +163,21 @@ export function getObjectFieldsColumns(
   });
 }
 
+export interface GetObjectTableColumnsOptions {
+  /** Spread onto every schema-derived column header, e.g. `{ isDisabled: true }`. */
+  headerProps?: Partial<TableColumnHeaderProps>;
+  /** Extra query params to carry onto the identity column's links. */
+  identifierOverrideParams?: overrideQueryParams[];
+  /** An already-resolved, already-ordered field list; omit to derive the default visible set. */
+  fields?: Array<AttributeSchema | RelationshipSchema>;
+}
+
 export const getObjectTableColumns = (
   schema: ModelSchema,
-  headerProps?: Partial<TableColumnHeaderProps>,
-  identifierOverrideParams?: overrideQueryParams[],
-  fields?: Array<AttributeSchema | RelationshipSchema>
+  options: GetObjectTableColumnsOptions = {}
 ): Array<ColumnDef<NodeObject>> => {
+  const { headerProps, identifierOverrideParams, fields } = options;
+
   return [
     ...getObjectIdentifierColumns(schema, identifierOverrideParams),
     ...getObjectGenericColumns(schema),

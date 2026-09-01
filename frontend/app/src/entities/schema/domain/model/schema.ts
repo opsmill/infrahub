@@ -19,6 +19,13 @@ export type AttributeSchema =
   | components["schemas"]["GenericAttributeRead"];
 
 /**
+ * One schema field, whichever kind it is. Table and column code treats attributes and relationships
+ * uniformly — both carry a `name` and a `label`, and both become a column — so it takes the union
+ * rather than branching. Declare it once here; do not re-declare it per consumer.
+ */
+export type FieldSchema = AttributeSchema | RelationshipSchema;
+
+/**
  * Minimal field descriptor consumed by the filter UI. It is satisfied both by a real read
  * `AttributeSchema`/`RelationshipSchema` and by the lightweight synthetic descriptors the global
  * event filters build (e.g. `{ kind: "Dropdown", choices }` or `{ peer: "CoreAccount" }`). A truthy

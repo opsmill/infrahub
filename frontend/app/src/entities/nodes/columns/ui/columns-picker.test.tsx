@@ -13,12 +13,15 @@ const objectSchema = generateNodeSchema({
       kind: "Text",
       order_weight: 2000,
     }),
+    // A third default column, so hiding two of them is still a state the trust boundary allows: it
+    // refuses to leave the table with no field column, and would hand one of the two back.
+    generateAttributeSchema({ name: "status", label: "Status", kind: "Text", order_weight: 3000 }),
     generateAttributeSchema({
       name: "internal_note",
       label: "Internal note",
       kind: "Text",
       display: "extra",
-      order_weight: 3000,
+      order_weight: 4000,
     }),
   ],
   relationships: [],

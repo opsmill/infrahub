@@ -21,8 +21,12 @@ export function IpAddressManager({ schema: ipAddressSchema, baseFilters }: IpAdd
   }
 
   return (
-    <ObjectTableProvider schema={ipAddressSchema} columnSurface={IP_ADDRESS_COLUMN_SURFACE}>
-      <ObjectsManagerToolbar showColumnsPicker />
+    <ObjectTableProvider
+      schema={ipAddressSchema}
+      columnSurface={IP_ADDRESS_COLUMN_SURFACE}
+      supportsColumnVisibility
+    >
+      <ObjectsManagerToolbar />
       <IpAddressTable baseFilters={baseFilters} />
     </ObjectTableProvider>
   );

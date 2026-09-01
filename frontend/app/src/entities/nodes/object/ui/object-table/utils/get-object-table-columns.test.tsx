@@ -33,7 +33,7 @@ describe("getObjectTableColumns", () => {
 
     // WHEN
     const defaultColumns = getObjectTableColumns(schema);
-    const revealedColumns = getObjectTableColumns(schema, undefined, undefined, [extraAttribute]);
+    const revealedColumns = getObjectTableColumns(schema, { fields: [extraAttribute] });
 
     // THEN
     expect(defaultColumns.map(getColumnId)).not.toContain("internal_note");

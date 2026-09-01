@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 
+import type { ColumnVisibilityState } from "@/entities/nodes/columns/domain/model/column-visibility-state";
 import {
   OBJECT_COLUMN_SURFACE,
   RELATIONSHIP_COLUMN_SURFACE,
 } from "@/entities/nodes/columns/domain/rules/column-surfaces";
-import { getColumnFields } from "@/entities/nodes/columns/domain/rules/get-column-fields";
+import {
+  type ColumnField,
+  getColumnFields,
+} from "@/entities/nodes/columns/domain/rules/get-column-fields";
 import {
   getColumnVisibilityState,
   getRevealedFields,
@@ -29,6 +33,12 @@ const generateSchema = () =>
       generateRelationshipSchema({ name: "site", kind: "Attribute", cardinality: "one" }),
     ],
   });
+
+/** The columns actually on screen: the state's departures applied on top of the surface's defaults. */
+const getVisibleNames = (state: ColumnVisibilityState, columnFields: ColumnField[]) =>
+  columnFields
+    .filter(({ name, isDefaultVisible }) => state[name] ?? isDefaultVisible)
+    .map(({ name }) => name);
 
 describe("getColumnVisibilityState", () => {
   it("returns an empty state when both params are absent", () => {
@@ -132,10 +142,38 @@ describe("getColumnVisibilityState", () => {
 
     // WHEN
     const state = getColumnVisibilityState(["description"], ["internal_note"], columnFields);
-    const revealed = getRevealedFields(["description"], ["internal_note"], columnFields);
+    const revealed = getRevealedFields(state);
 
     // THEN
     expect({ state, revealed }).toEqual({ state: { description: false }, revealed: [] });
+  });
+
+  it("keeps the first column visible when the hide list names every column", () => {
+    // GIVEN
+    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const everyColumnName = columnFields.map((field) => field.name);
+
+    // WHEN
+    const state = getColumnVisibilityState(everyColumnName, [], columnFields);
+
+    // THEN
+    // The survivor is the first column in display order; every other hide request is kept.
+    expect(getVisibleNames(state, columnFields)).toEqual(["name"]);
+  });
+
+  // The picker greys out the last remaining item, so the only way to ask for an empty table is by
+  // hand — an edited or stale link. Junk, duplicates and a contradicting show list get it no further.
+  it("keeps a column visible when a crafted url hides every one of them", () => {
+    // GIVEN
+    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const everyColumnName = columnFields.map((field) => field.name);
+    const craftedHiddenNames = [...everyColumnName, "gone_from_this_schema", "name"];
+
+    // WHEN
+    const state = getColumnVisibilityState(craftedHiddenNames, everyColumnName, columnFields);
+
+    // THEN
+    expect(getVisibleNames(state, columnFields)).toEqual(["name"]);
   });
 });
 
@@ -150,7 +188,7 @@ describe("getRevealedFields", () => {
 
     // WHEN
     const revealedLists = noteOrders.map((shownNames) =>
-      getRevealedFields([], shownNames, columnFields)
+      getRevealedFields(getColumnVisibilityState([], shownNames, columnFields))
     );
 
     // THEN
@@ -166,7 +204,7 @@ describe("getRevealedFields", () => {
     const shownNames = ["description", "gone_from_this_schema", "internal_note"];
 
     // WHEN
-    const revealed = getRevealedFields([], shownNames, columnFields);
+    const revealed = getRevealedFields(getColumnVisibilityState([], shownNames, columnFields));
 
     // THEN
     expect(revealed).toEqual(["internal_note"]);
@@ -179,9 +217,11 @@ describe("getRevealedFields", () => {
 
     // WHEN
     const revealed = getRevealedFields(
-      contradictedNames,
-      [...contradictedNames, "owner_note"],
-      columnFields
+      getColumnVisibilityState(
+        contradictedNames,
+        [...contradictedNames, "owner_note"],
+        columnFields
+      )
     );
 
     // THEN

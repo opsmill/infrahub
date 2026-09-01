@@ -67,6 +67,15 @@ export function ColumnsEditor({ schema, surface }: ColumnsEditorProps) {
     return getRelationshipLabel(fieldSchema, peerSchema);
   };
 
+  // The visibility state holds only the departures from the surface's defaults, so a column neither
+  // param names is showing exactly when its surface shows it by default.
+  const isColumnVisible = ({ name, isDefaultVisible }: ColumnField) =>
+    name in columnVisibility ? columnVisibility[name] : isDefaultVisible;
+  // `getColumnVisibilityState` refuses to hide the last field column, so unchecking it would write a
+  // param the trust boundary immediately relaxes — a click with nothing to show for it. Greying the
+  // item out says why instead of letting the user hunt for the reason.
+  const visibleColumnCount = columnFields.filter(isColumnVisible).length;
+
   return (
     <Col className="min-w-56">
       <Autocomplete>
@@ -77,14 +86,20 @@ export function ColumnsEditor({ schema, surface }: ColumnsEditorProps) {
           emptyMessage="No fields match"
         >
           {columnFields.map((columnField) => {
-            const { name, fieldSchema, isDefaultVisible } = columnField;
+            const { name, fieldSchema } = columnField;
             const label = getHeaderLabel(columnField);
-            // The visibility state holds only the departures from the surface's defaults, so a
-            // column neither param names is showing exactly when its surface shows it by default.
-            const isVisible = name in columnVisibility ? columnVisibility[name] : isDefaultVisible;
+            const isVisible = isColumnVisible(columnField);
+            const isLastVisible = isVisible && visibleColumnCount === 1;
 
             return (
-              <MenuItem key={name} id={name} textValue={label} onAction={() => toggleColumn(name)}>
+              <MenuItem
+                key={name}
+                id={name}
+                textValue={label}
+                isDisabled={isLastVisible}
+                tooltip={isLastVisible ? "At least one column must stay visible" : undefined}
+                onAction={() => toggleColumn(name)}
+              >
                 <FieldSchemaIcon fieldSchema={fieldSchema} />
                 <span>{label}</span>
 

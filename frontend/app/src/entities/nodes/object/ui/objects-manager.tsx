@@ -24,8 +24,8 @@ export function ObjectsManager({ schema }: ObjectsTableManagerProps) {
   }
 
   return (
-    <ObjectTableProvider schema={schema}>
-      <ObjectsManagerToolbar showColumnsPicker />
+    <ObjectTableProvider schema={schema} supportsColumnVisibility>
+      <ObjectsManagerToolbar />
       <ObjectTable />
     </ObjectTableProvider>
   );

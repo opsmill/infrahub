@@ -5,11 +5,10 @@ import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/r
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
 import type {
   AttributeSchema,
+  FieldSchema,
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
-
-type FieldSchema = AttributeSchema | RelationshipSchema;
 
 /** One column the picker may offer, and whether the surface shows it with neither param set. */
 export interface ColumnField {
@@ -25,7 +24,8 @@ export interface ColumnField {
  * Candidates come from the very rule functions the surface's column builder uses, so they are
  * provably a superset of the defaults and provably renderable — the picker can never offer a
  * phantom column. A surface that cannot reveal collapses to its defaults, which is how
- * `canReveal: false` is enforced without any consumer branching on `surface.id`.
+ * `canReveal: false` is enforced by reading the surface's data rather than by identifying it —
+ * `ColumnSurface` carries no identifier to branch on.
  */
 export function getColumnFields(schema: ModelSchema, surface: ColumnSurface): ColumnField[] {
   const attributes = schema.attributes ?? [];

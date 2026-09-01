@@ -138,9 +138,11 @@ describe("ColumnsEditor", () => {
     await expect.poll(getShownColumnsInUrl).toBeNull();
   });
 
+  // The revealed note is what makes hiding both default columns a legal state at all: the trust
+  // boundary refuses to leave the table with no field column, and would hand `name` back otherwise.
   test("keeps the other hidden column when showing one of two", async () => {
     // GIVEN
-    seedColumnsInUrl({ hidden: "name,description" });
+    seedColumnsInUrl({ hidden: "name,description", shown: "internal_note" });
     const component = await render(<ColumnsEditor schema={objectSchema} />);
 
     // WHEN
@@ -148,6 +150,24 @@ describe("ColumnsEditor", () => {
 
     // THEN
     await expect.poll(getHiddenColumnsInUrl).toBe("name");
+  });
+
+  // Unchecking the last remaining box would write a param the trust boundary immediately relaxes —
+  // a click with nothing to show for it. The item is greyed out so the user can see why instead.
+  test("disables the last column left visible", async () => {
+    // GIVEN
+    seedColumnsInUrl({ hidden: "description" });
+
+    // WHEN
+    const component = await render(<ColumnsEditor schema={objectSchema} />);
+
+    // THEN
+    await expect
+      .element(component.getByRole("menuitem", { name: "Name" }))
+      .toHaveAttribute("aria-disabled", "true");
+    await expect
+      .element(component.getByRole("menuitem", { name: "Description" }))
+      .not.toHaveAttribute("aria-disabled");
   });
 
   test("leaves an existing sort in the url untouched", async () => {

@@ -36,7 +36,7 @@ export const ObjectTable = () => {
   }
 
   const columns = [
-    ...getObjectTableColumns(selectedSchema, undefined, undefined, builderFields),
+    ...getObjectTableColumns(selectedSchema, { fields: builderFields }),
     getObjectActionsColumn(permission),
   ];
   const flatData = data?.pages.flat() ?? [];
