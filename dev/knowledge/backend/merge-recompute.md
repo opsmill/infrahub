@@ -32,13 +32,19 @@ The builder, submitter, and coordinator live in `core/merge/recompute_coalescing
 
 A Python transform declares no dependency graph. What it reads is only known from its GraphQL query, and which nodes read a given node is only known from the query groups those nodes subscribed to when they last computed. Both are database facts, so this family is derived behind an interface (`PythonTargetResolver`) instead of from the schema branch the builder holds. `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE` selects the real resolver or an inert one.
 
-The derivation applies the same per-action rules as the other families: a created node is its own target, an update selects the readers of the changed fields, a deletion selects the readers too. On top of that:
+The derivation applies the same per-action rules as the other families: a created node is its own target, an update selects the readers of the changed fields and, when the updated node is of the target kind, that node itself, a deletion selects the readers too. On top of that:
 
 - **Read sets come from the analyzed transform queries.** A field the query does not read selects nothing. Imprecision is held per kind, so a query reading a derived field of one kind still rejects an unread field of another.
 - **Readers come from the query-group subscriber index**, one union query per set of changed ids, never one per changed node.
 - **A deleted node id is resolved in a lookup of its own.** Sharing one with live ids empties the whole result, which would drop the readers of the live changes. A deleted node holds no open membership edge any more, so its own lookup answers nothing; a reader that pointed at it is carried by its own relationship update, which the change set holds.
 - **Every signal that cannot be narrowed widens to the whole target kind**, and is logged. An undeterminable read set and a failed reader lookup both widen. A widened target carries no node ids and goes to `trigger_update_python_computed_attributes` instead of `computed_attribute_process_transform`; the `whole_kind` flag is what carries that case to the submission planner, since chunking an empty id set would produce no submission at all.
-- **A schema-changing merge already refreshes what its own scope selects**, one whole kind at a time, through `SchemaUpdatedEvent`. Those pairs are dropped here, decided by the same scoper both sides run over candidates from the same gather. The send is checked: `PostMergeDispatcher` scopes the pass only after the schema event went out. What nothing checks is that `computed_attribute_setup_python` reached its submission. That flow has no retry, so a failure there leaves the dropped pairs stale until the next change touches them.
+- **A schema-changing merge already refreshes what its own scope selects**, one whole kind at a time, through `SchemaUpdatedEvent`. Those pairs are dropped here, decided by the same scoper both sides run over candidates from the same gather. Only a pair the gather returned may be dropped; one it missed keeps an imprecise read set and stays in the pass. The send is checked: `PostMergeDispatcher` scopes the pass only after the schema event went out. What nothing checks is that `computed_attribute_setup_python` reached its submission. That flow has no retry, so a failure there leaves the dropped pairs stale until the next change touches them.
+
+Two costs come with this family, both on the coalesced path only. The read-set index is read after
+`wait_for_schema_to_converge`, which scans the worker keys in the cache; the order is deliberate,
+because a worker behind on the schema declares no Python attribute and reordering would read as
+nothing to do. And the index is rebuilt for every flow run, including the levels of a chain, since
+nothing that survives a process moves when a transform query is edited.
 
 `process_transform` recomputes the one attribute it is asked for. A kind with several Python attributes gets one submission per attribute, so processing the whole kind per submission would run each transform once per attribute.
 

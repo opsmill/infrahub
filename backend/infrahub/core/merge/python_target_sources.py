@@ -47,6 +47,11 @@ class DatabasePythonReadSetSource:
         await wait_for_schema_to_converge(
             branch_name=branch, component=self.component, db=self.db, log=get_run_logger()
         )
+        if not registry.schema.has_schema_branch(name=branch):
+            # get_schema_branch would register an empty one, which reads as nothing to recompute.
+            log.warning("Skipping the Python computed attributes of %s: no schema is registered for it", branch)
+            return []
+
         schema_branch = registry.schema.get_schema_branch(name=branch)
         attributes_per_kind = schema_branch.computed_attributes.get_python_attributes_per_node()
         if not attributes_per_kind:

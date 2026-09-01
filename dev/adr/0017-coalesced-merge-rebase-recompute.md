@@ -58,8 +58,9 @@ under-recomputes, and defers any source-branch redundancy skip.
 
 ### Neutral
 
-- Python-transform computed attributes and profile refresh stay on their own automations, outside
-  this pass.
+- Profile refresh stays on its own automations, outside this pass. Python-transform computed
+  attributes did too until IFC-3018 added them as a fourth family; a follow-up ADR records that
+  design.
 - Readers of a recompute write are handled by a schema-derived, depth-bounded chain submitter.
 
 ## Alternatives Considered
