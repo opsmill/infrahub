@@ -26,7 +26,7 @@ export function FilterKindSelect({
           className={classNames(
             inputStyle,
             "has-[>:last-child:focus]:border-ring has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-ring-halo",
-            "min-w-[132px] max-w-[300px] cursor-pointer"
+            "min-w-33 max-w-75 cursor-pointer"
           )}
         >
           <div className="flex grow flex-wrap gap-2">{value && schemaKindLabel[value]}</div>

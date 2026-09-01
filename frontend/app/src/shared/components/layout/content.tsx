@@ -29,7 +29,7 @@ export const ContentTitle = ({
 }: ContentTitleProps) => {
   return (
     <header
-      className={classNames("flex min-h-[4rem] items-center border-b bg-content px-4", className)}
+      className={classNames("flex min-h-16 items-center border-b bg-content px-4", className)}
       {...props}
     >
       <div className="flex flex-col gap-0.5 overflow-hidden pr-2">
