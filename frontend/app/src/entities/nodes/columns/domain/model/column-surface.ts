@@ -1,11 +1,13 @@
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
-
-export type ColumnSurfaceId = "object" | "relationship" | "ip-address" | "ip-prefix";
-
-type FieldSchema = AttributeSchema | RelationshipSchema;
+import type {
+  AttributeSchema,
+  FieldSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
 
 /**
- * Describes one table surface's column rules as data, so no consumer branches on `id`.
+ * Describes one table surface's column rules as data. There is deliberately no surface identifier:
+ * with nothing to branch on, a consumer *cannot* grow an `if (surface === "ipam")` — the rules can
+ * only be read from the fields below.
  *
  * `getDefault*` must be the very functions that surface's column builder calls, otherwise the
  * picker can offer a column the table cannot render. `canReveal` is false wherever the fetch path
@@ -16,7 +18,6 @@ type FieldSchema = AttributeSchema | RelationshipSchema;
  * that may not reach into `domain/rules`.
  */
 export interface ColumnSurface {
-  readonly id: ColumnSurfaceId;
   readonly fixedColumnIds: readonly string[];
   readonly getDefaultAttributes: (attributes: AttributeSchema[]) => AttributeSchema[];
   readonly getDefaultRelationships: (relationships: RelationshipSchema[]) => RelationshipSchema[];

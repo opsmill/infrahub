@@ -1,4 +1,4 @@
-import { parseAsJson, parseAsString, useQueryStates } from "nuqs";
+import { parseAsArrayOf, parseAsJson, parseAsString, useQueryStates } from "nuqs";
 import React from "react";
 
 import { Row } from "@/shared/components/container";
@@ -21,12 +21,27 @@ import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
+/**
+ * Column choices are cleared on a kind switch, exactly as filters are pruned to the new schema.
+ *
+ * The alternative — carrying them across — silently destroys them: `useColumnVisibility` writes back
+ * the *validated* lists, so a name the new kind has no column for is erased from the URL by the next
+ * hide the user makes under that kind. Clearing up front is the predictable half of that choice.
+ */
+const CLEARED_COLUMN_PARAMS = {
+  [QSP.HIDE_COLUMNS]: null,
+  [QSP.SHOW_COLUMNS]: null,
+} as const;
+
 export function ObjectTableSchemaSelector() {
   const [isOpen, setIsOpen] = React.useState(false);
   const [{ filters }, setObjectTableQueryParams] = useQueryStates(
     {
       [QSP.KIND]: parseAsString,
       [QSP.FILTER]: parseAsJson(FilterSchema).withDefault([]),
+      // Declared only so the kind switch can clear them; nothing here reads their value.
+      [QSP.HIDE_COLUMNS]: parseAsArrayOf(parseAsString),
+      [QSP.SHOW_COLUMNS]: parseAsArrayOf(parseAsString),
     },
     { history: "push" }
   );
@@ -67,6 +82,7 @@ export function ObjectTableSchemaSelector() {
               setObjectTableQueryParams({
                 kind: null,
                 filters: pruned,
+                ...CLEARED_COLUMN_PARAMS,
               });
               setIsOpen(false);
             }}
@@ -85,6 +101,7 @@ export function ObjectTableSchemaSelector() {
                   setObjectTableQueryParams({
                     kind: schema.kind,
                     filters: pruned,
+                    ...CLEARED_COLUMN_PARAMS,
                   });
                   setIsOpen(false);
                 }}

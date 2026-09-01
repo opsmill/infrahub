@@ -14,8 +14,12 @@ export interface IpPrefixManagerProps {
 
 export function IpPrefixManager({ schema: prefixSchema, baseFilters }: IpPrefixManagerProps) {
   return (
-    <ObjectTableProvider schema={prefixSchema} columnSurface={IP_PREFIX_COLUMN_SURFACE}>
-      <ObjectsManagerToolbar showColumnsPicker />
+    <ObjectTableProvider
+      schema={prefixSchema}
+      columnSurface={IP_PREFIX_COLUMN_SURFACE}
+      supportsColumnVisibility
+    >
+      <ObjectsManagerToolbar />
       <IpPrefixTable baseFilters={baseFilters} />
     </ObjectTableProvider>
   );

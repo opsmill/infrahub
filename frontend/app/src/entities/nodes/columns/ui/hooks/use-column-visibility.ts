@@ -17,14 +17,12 @@ import {
   hideColumn as hideColumnInLists,
   toggleColumn as toggleColumnInLists,
 } from "@/entities/nodes/columns/domain/rules/toggle-column";
-import type {
-  AttributeSchema,
-  ModelSchema,
-  RelationshipSchema,
-} from "@/entities/schema/domain/model/schema";
+import type { FieldSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
 
-// `replace`, not `push`: a checklist invites several toggles in a row, and under `push` each one
-// costs the user a separate Back press to undo. The params still travel in a shared link either way.
+// `replace`, not `push` — a tradeoff, not a free win. A checklist invites several toggles in a row,
+// and under `push` each one costs a separate Back press to undo. Under `replace` no column change is
+// undoable by Back at all: the way back is Reset, or re-toggling. We take that because per-toggle
+// history entries bury the page the user arrived from. The params travel in a shared link either way.
 const columnNamesParser = parseAsArrayOf(parseAsString).withOptions({ history: "replace" });
 
 interface ColumnVisibility {
@@ -35,7 +33,7 @@ interface ColumnVisibility {
   /** The revealed default-hidden field names, sorted, so a cache key built from them is stable. */
   revealedFields: string[];
   /** The ordered field schemas a column builder must turn into ColumnDefs. */
-  builderFields: Array<AttributeSchema | RelationshipSchema>;
+  builderFields: FieldSchema[];
   /** How many validated departures from the surface's defaults there are — what the badge counts. */
   customizedCount: number;
   /**
@@ -85,7 +83,9 @@ export function useColumnVisibility(
     shownNamesInQsp,
     columnFields
   );
-  const revealedFields = getRevealedFields(hiddenNamesInQsp, shownNamesInQsp, columnFields);
+  // Read off the state above rather than re-derived from the params: one pass through the trust
+  // boundary per render, and the two values cannot drift apart.
+  const revealedFields = getRevealedFields(columnVisibility);
   const builderFields = columnFields
     .filter((field) => field.isDefaultVisible || revealedFields.includes(field.name))
     .map((field) => field.fieldSchema);

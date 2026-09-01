@@ -23,7 +23,10 @@ import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
 import { TableColumnHeaderSimple } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-simple";
-import { useColumnSurface } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import {
+  useColumnSurface,
+  useSupportsColumnVisibility,
+} from "@/entities/nodes/object/ui/object-table/object-table-context";
 import {
   SORT_DIRECTION,
   type Sort,
@@ -213,7 +216,11 @@ function SortableRelationshipColumnHeader({
 
 interface ColumnHeaderMenuProps {
   columnSchema: AttributeSchema | RelationshipSchema;
-  /** The table's own schema — the hide entry is offered only where one is known. */
+  /**
+   * The table's own schema. On this component it means only "this header can sort" — whether the
+   * hide entry is offered is decided by the table's `supportsColumnVisibility` capability, not by
+   * this prop.
+   */
   schema?: ModelSchema;
   className?: string;
   activeSort?: Sort | null;
@@ -280,12 +287,7 @@ function ColumnHeaderMenu({
               <ListFilterIcon />
               <span>Filter</span>
             </MenuItem>
-            {schema ? (
-              <>
-                <MenuSeparator />
-                <HideColumnMenuItem schema={schema} field={columnSchema.name} />
-              </>
-            ) : null}
+            {schema ? <HideColumnMenuItem schema={schema} field={columnSchema.name} /> : null}
           </Menu>
         </Popover>
       </MenuTrigger>
@@ -308,7 +310,12 @@ function ColumnHeaderMenu({
 
 /**
  * A separate component because `schema` is optional on the menu: the hook cannot be called
- * conditionally in `ColumnHeaderMenu`.
+ * conditionally in `ColumnHeaderMenu`. It owns its leading separator too, so that gating the entry
+ * off cannot leave a dangling separator behind in the menu.
+ *
+ * Renders nothing unless the table honours the column-visibility params: this header is shared with
+ * tables that render their own columns (proposed changes, role management), where a hide would
+ * write `hide_columns` and change nothing — with no `ColumnsPicker` in their toolbar to undo it.
  *
  * The surface must come from the table's own context, not the default. `hideColumn` itself is
  * surface-independent, but the hook's write path re-serialises the *validated* lists, so a name
@@ -316,13 +323,19 @@ function ColumnHeaderMenu({
  * from `hide_columns` by a write made under the object surface.
  */
 function HideColumnMenuItem({ schema, field }: { schema: ModelSchema; field: string }) {
+  const supportsColumnVisibility = useSupportsColumnVisibility();
   const columnSurface = useColumnSurface();
   const { hideColumn } = useColumnVisibility(schema, columnSurface);
 
+  if (!supportsColumnVisibility) return null;
+
   return (
-    <MenuItem textValue="Hide column" onAction={() => hideColumn(field)}>
-      <EyeOffIcon />
-      <span>Hide column</span>
-    </MenuItem>
+    <>
+      <MenuSeparator />
+      <MenuItem textValue="Hide column" onAction={() => hideColumn(field)}>
+        <EyeOffIcon />
+        <span>Hide column</span>
+      </MenuItem>
+    </>
   );
 }

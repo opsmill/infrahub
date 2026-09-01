@@ -12,19 +12,15 @@ import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query
 import { SortPicker } from "@/entities/nodes/sort/ui/sort-picker";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 
-export interface ObjectsManagerToolbarProps {
-  /**
-   * Opt in to the Columns control. Off by default because this toolbar is shared with the
-   * role-management pages, whose tables render their own columns and ignore `columnVisibility` — a
-   * picker there would write the URL and change nothing. Only pass it from a manager whose table
-   * consumes `columnVisibility`.
-   */
-  showColumnsPicker?: boolean;
-}
-
-export function ObjectsManagerToolbar({ showColumnsPicker = false }: ObjectsManagerToolbarProps) {
-  const { selectedSchema, baseSchema, filters, permission, columnSurface } =
-    useObjectTableContext();
+export function ObjectsManagerToolbar() {
+  const {
+    selectedSchema,
+    baseSchema,
+    filters,
+    permission,
+    columnSurface,
+    supportsColumnVisibility,
+  } = useObjectTableContext();
 
   return (
     <Col className="shrink-0 gap-0">
@@ -37,7 +33,11 @@ export function ObjectsManagerToolbar({ showColumnsPicker = false }: ObjectsMana
 
         <SortPicker schema={selectedSchema} />
 
-        {showColumnsPicker && <ColumnsPicker schema={selectedSchema} surface={columnSurface} />}
+        {/* Only tables that honour the column-visibility params get the picker: elsewhere it
+            would write the URL and change nothing. */}
+        {supportsColumnVisibility && (
+          <ColumnsPicker schema={selectedSchema} surface={columnSurface} />
+        )}
 
         <FilterPicker schema={selectedSchema} filters={filters} />
 
