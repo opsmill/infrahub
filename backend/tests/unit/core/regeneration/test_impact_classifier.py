@@ -11,7 +11,7 @@ from infrahub.core.regeneration.impact_classifier import (
     ImpactAssessment,
     QueryImpactClassifier,
 )
-from tests.helpers.diff_summary import node_diff
+from tests.helpers.diff_summary import node_diff, node_diff_element
 
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
@@ -164,6 +164,22 @@ ASSESS_CASES = [
         name="depends_on_everything_no_change_on_branch_selects_nothing",
         only_has_unique_targets=True,
         diff_summary=[node_diff(node_id="owner1", kind="TestOwner", branch="other/branch", field_names=["name"])],
+        readable_fields_by_kind={"TestCar": {"display_label"}},
+        depends_on_everything=True,
+        expected=ChangedNodes(node_ids=[]),
+    ),
+    AssessCase(
+        name="depends_on_everything_context_only_node_selects_nothing",
+        only_has_unique_targets=True,
+        diff_summary=[
+            node_diff(
+                node_id="owner1",
+                kind="TestOwner",
+                branch=BRANCH,
+                action="UPDATED",
+                elements=[node_diff_element(name="name", action="UNCHANGED")],
+            )
+        ],
         readable_fields_by_kind={"TestCar": {"display_label"}},
         depends_on_everything=True,
         expected=ChangedNodes(node_ids=[]),
