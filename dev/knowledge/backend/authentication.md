@@ -72,6 +72,29 @@ Emission goes through the `AutoCreateEventEmitter` ABC. Two implementations exis
 
 See [Events System](events.md) for the broader event architecture and [`docs/docs/reference/infrahub-events/group.mdx`](../../../docs/docs/reference/infrahub-events/group.mdx) for full event payload shapes.
 
+## Account Lifecycle and Internal Children
+
+An account owns three kinds of bookkeeping node in the `Internal` namespace, each with a mandatory `account` relationship:
+
+| Kind | Identifier |
+|------|------------|
+| `InternalExternalIdentity` | `account__external_identity` |
+| `InternalAccountToken` | `account__token` |
+| `InternalRefreshToken` | `account__refreshtoken` |
+
+All three are declared on the account side with `on_delete=CASCADE`, so a delete takes them with it. All three must be, not just the ones that cause visible trouble: a mandatory relationship that is not cascaded becomes a blocking dependent, and a refresh token exists for every account that has ever logged in, which would make those accounts impossible to delete.
+
+The account side of each has to name the same identifier as the child's own `account` relationship. An account-side relationship left without one gets a generated identifier, matches no edge in the graph, and the cascade silently skips that child.
+
+These three are the only mandatory relationships declared on any `Internal` kind, which is why `NodeDeleteValidator` can resolve peers without excluding the namespace at all. The `Internal` exclusion remains on the public GraphQL relationship query, where it keeps bookkeeping nodes out of the API.
+
+Two rules follow for the SSO login path:
+
+- **An identity with no account is a data error, not a state to recover from.** The cascade above means a live database cannot produce one. `signin_sso_account` raises `ProcessingError` naming the remedy, so the API answers with a handled error instead of letting `LookupError` escape as a 500. It does not delete the identity or create a replacement account: repairing data during a login would hide the inconsistency, and `Migration077` is where that repair belongs.
+- **A missing peer has two shapes.** With no active relationship, `RelationshipManager.get_peer` returns `None`; with an active relationship to a node it cannot resolve, it raises `NodeNotFoundError`. Both mean "no account".
+
+`Migration077` deletes the children of all three kinds that earlier releases orphaned, so an upgraded database holds none. A login can still meet one in the window a Helm upgrade leaves open, where the new pods serve traffic before `infrahub upgrade` is executed.
+
 ## Configuration
 
 User-facing keys live under `security.*` in `config.py`:
