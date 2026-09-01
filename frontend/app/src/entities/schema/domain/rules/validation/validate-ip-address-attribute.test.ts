@@ -21,17 +21,15 @@ describe("validateIpAddressAttribute", () => {
     expect(validateIpAddressAttribute({}, value)).toEqual({ success: true, data: value });
   });
 
-  it.each([
-    "10.0.0.1/32",
-    "10.0.0.1/24",
-    "10.0.0.0/255.255.255.0",
-    "2001:db8::1/128",
-  ])("rejects %s for carrying a prefix", (value) => {
-    expect(validateIpAddressAttribute({}, value)).toEqual({
-      success: false,
-      error: "Must be a bare IP address, without a prefix or netmask",
-    });
-  });
+  it.each(["10.0.0.1/32", "10.0.0.1/24", "10.0.0.0/255.255.255.0", "2001:db8::1/128"])(
+    "rejects %s for carrying a prefix",
+    (value) => {
+      expect(validateIpAddressAttribute({}, value)).toEqual({
+        success: false,
+        error: "Must be a bare IP address, without a prefix or netmask",
+      });
+    }
+  );
 
   it.each([
     "010.0.0.1",
