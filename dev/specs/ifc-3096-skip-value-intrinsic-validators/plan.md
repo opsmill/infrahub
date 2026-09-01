@@ -62,7 +62,9 @@ Recorded as a deliberate, justified exemption rather than an omission.
 | CI/CD workflow change | No |
 | Authentication / authorization change | No |
 
-None crossed. A `housekeeping` changelog fragment is required.
+None crossed. Changelog fragments are required. This originally read `housekeeping`; the R10 scope
+addition made half the change a user-visible correctness fix, so it landed as a `changed` fragment
+plus a `fixed` fragment.
 
 ### Post-Phase-1 re-evaluation
 
@@ -130,7 +132,8 @@ dev/knowledge/backend/
 └── constraint-validation.md         # NEW: FR-005
 
 changelog/
-└── +<slug>.housekeeping.md          # NEW
+└── +<slug>.changed.md               # NEW
+└── +<slug>.fixed.md                 # NEW
 ```
 
 **Structure Decision**: Backend-only, following the existing `backend/infrahub/core/validators/` layout. Test files mirror source structure per Principle IV — the new unit test sits at `backend/tests/unit/core/validators/` mirroring `backend/infrahub/core/validators/`.
@@ -195,7 +198,7 @@ Add a DEBUG log at each of the determiner's two classification skip sites, namin
 - **the per-checker classification limit** — all identifiers sharing a checker necessarily share a classification; splitting the checker is the remedy if that ever stops holding;
 - **the measured baseline** from Step 9, so the figure survives the PR.
 
-Plus a `housekeeping` changelog fragment.
+Plus a `changed` and a `fixed` changelog fragment.
 
 ### Step 9 — Measure
 

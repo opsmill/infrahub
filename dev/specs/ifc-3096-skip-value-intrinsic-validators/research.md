@@ -121,6 +121,8 @@ That cover is not a safety net worth preserving:
 
 This does not change scope, but the task list must cover all six or the suite fails.
 
+**Confirmed at implementation time**: six edit sites is correct, and they fan out to **nine failing tests** — sites 1–3 are shared setup (site 1 by five tests, site 3 by `test_hierarchy_constraints_selected_for_both_endpoint_kinds`), sites 4–6 are per-test. The six sites are sufficient: no seventh site was needed and the 14-test module goes green with exactly these edits.
+
 **Observation that strengthens the safety case**: after these deletions, several expected sets shrink to *only* cross-node constraints — which is precisely the assertion FR-001 and FR-003 want. The existing tests become the narrowed-set assertions almost for free; the new work is the explicit data-only-diff test that names the exclusion intentionally rather than by omission.
 
 ## R6 — Pinning-test design
@@ -145,7 +147,7 @@ This does not change scope, but the task list must cover all six or the suite fa
 
 **Contents** (FR-005): the two constraint producers and their three call sites with their differing gates (the R3 table), the determiner's two decision points, the constraint info merger's union-with-unrestricted-scope-winning rule, the classification with each entry's justification, and — for each value-intrinsic constraint — the write-time enforcement point being relied on. The R3 argument is recorded there so the reliance is documented rather than assumed, as the spec's Constitution Alignment requires.
 
-**Changelog**: a `housekeeping` fragment under `changelog/`, per the spec's governance section. Existing fragments follow the `+<slug>.<type>.md` convention.
+**Changelog**: two fragments under `changelog/`, following the existing `+<slug>.<type>.md` convention — a `changed` fragment for the reduced validation work and a `fixed` fragment for the migration-gated gap R10 closed. The spec's governance section originally called for a single `housekeeping` fragment; that predates the R10 scope addition, and `housekeeping` is reserved for build, CI, and tooling maintenance rather than user-visible behaviour.
 
 ## R8 — Write-time enforcement points
 
@@ -154,3 +156,100 @@ FR-005 requires naming the write-time enforcement point relied on for each value
 **Decision**: treat this as an implementation task with a verification obligation, not a research conclusion. The one enforcement detail already confirmed is the strict-schema-validation interaction: `AttributeNumberChecker` declines to run under the same setting that gates its write-time counterpart, so the merge-time and write-time checks cannot desynchronise (spec edge case, PRD-supplied, consistent with the checker's `supports` logic).
 
 If tracing finds a value-intrinsic constraint with **no** universal write-time enforcement point, that constraint must be removed from the flip list and the finding recorded — the classification is only sound where the enforcement it relies on actually exists.
+
+## R9 — Tracing outcome
+
+The obligation R8 deferred, discharged. Every family was traced to a concrete `file::symbol`. **All eight survive. The flip list from R2 is unchanged.**
+
+### The spine: one enforcement point, reached on every attribute write
+
+Seven of the eight families are attribute families, and all seven funnel through a single classmethod:
+
+`backend/infrahub/core/attribute.py::BaseAttribute.validate` → `validate_format` + `validate_content`.
+
+It is reached from three places, which between them cover every attribute write:
+
+| Call site | Covers |
+|---|---|
+| `core/attribute.py::BaseAttribute.__init__` | Attribute construction, whenever a non-`None` value is present |
+| `core/node/__init__.py::Node._process_fields_attributes` | Node creation — called for **every** attribute of a new node, including ones left `None` |
+| `core/attribute.py::BaseAttribute._update` | Node update — the first statement of the method, before any DB work |
+
+The update path is the load-bearing one and is stronger than the classification strictly needs. `Node._update` iterates **every** attribute and calls `attr.save()`; `BaseAttribute.save` delegates to `_update`, which re-runs `validate` unconditionally. So a data write re-validates every attribute of the touched node against the branch's current schema, not merely the attributes it changed.
+
+`Node._process_fields_attributes` is what covers the `value is None` case that `__init__` skips (`__init__` only validates when `self.value is not None`), which is why mandatory-ness is caught at creation.
+
+Also on the same spine: `core/node/__init__.py::Node._process_macros` and `Node._recompute_local_jinja2` validate computed-attribute values before persisting them.
+
+The concrete `BaseAttribute` subclass — and therefore `cls.type` and any `validate_format` / `validate_content` override — is selected from the attribute's schema kind at `core/node/__init__.py::Node._generate_attribute_default` via `ATTRIBUTE_TYPES[schema.kind].get_infrahub_class()` (`infrahub/types.py::ATTRIBUTE_TYPES`).
+
+### Per-family findings
+
+| # | Family | Write-time enforcement point | Notes |
+|---|---|---|---|
+| T003 | Attribute kind | `core/attribute.py::BaseAttribute.validate_format` — `isinstance(value_to_check, cls.type)` | Per-kind overrides tighten it further: `Integer`, `DateTime`, `URL`, `IPNetwork`, `IPHost`, `IPAddress`, `MacAddress`, `ListAttribute`, `JSONAttribute`, all `.validate_format` in the same module |
+| T004 | Attribute optionality | `core/attribute.py::BaseAttribute.validate` — `if value is None and schema.optional is False: raise ValidationError` | Reads `schema.optional` directly, so it tracks the schema rather than the chosen class. Creation coverage comes from `Node._process_fields_attributes`, which calls `validate` even when the value is `None` |
+| T005 | Attribute regex | `core/attribute.py::BaseAttribute.validate_content` — `if regex := schema.get_regex()` | Both identifiers land here: `AttributeSchema.get_regex` returns `self.regex`; `TextAttributeSchema.get_regex` and `ListAttributeSchema.get_regex` return `self.parameters.regex` (`core/schema/attribute_schema.py`). `AttributeRegexUpdateValidatorQuery` calls the **same** accessor |
+| T006 | Attribute length | `core/attribute.py::BaseAttribute.validate_content` — `schema.get_min_length()` / `schema.get_max_length()` | Same accessor split as regex: base returns the top-level field, `TextAttributeSchema` returns the `parameters.*` variant. `AttributeLengthUpdateValidatorQuery` calls the same two accessors |
+| T007 | Attribute enum | `core/attribute.py::BaseAttribute.validate_content` — `schema.convert_value_to_enum(value)` inside a `try`, re-raised as `ValidationError` | `core/schema/attribute_schema.py::AttributeSchema.convert_value_to_enum` builds the enum class from `schema.enum` |
+| T008 | Attribute dropdown choices | `core/attribute.py::Dropdown.validate_content` — `if value not in [choice.name for choice in schema.choices]` | Overrides the base and calls `super()` first, so a dropdown gets both the generic content checks and the choices check |
+| T009 | Attribute numeric bounds / excluded values | `core/attribute.py::BaseAttribute.validate_content` → `core/schema/attribute_parameters.py::NumberAttributeParameters.check_valid_value` | **Strict-mode pairing confirmed.** The write-time call is guarded by `config.SETTINGS.main.schema_strict_mode and isinstance(schema.parameters, NumberAttributeParameters)`. `core/validators/attribute/min_max.py::AttributeNumberChecker.supports` returns `False` on `not config.SETTINGS.main.schema_strict_mode` — the **same** setting. The two cannot desynchronise, and `check_valid_value` covers `min_value`, `max_value`, `excluded_values` singles and `excluded_values` ranges, matching the checker's Cypher predicate one-for-one |
+
+### T010 — Relationship peer
+
+Both halves of the widening argument hold, and there is a write-time check as well.
+
+**`used_by` is derived, never set.** `core/schema/generated/genericnode_schema.py::GenericNodeSchema.used_by` carries `json_schema_extra={"update": "not_applicable"}`, and `core/schema/generic_schema.py::GenericSchema._get_field_names_for_diff` explicitly strips `used_by` from the diff field list. Its only writer is `core/schema/schema_branch.py::SchemaBranch.process_inheritance`, which rebuilds it from every node's `inherit_from` on each schema processing pass. A user cannot set it directly; it moves only when a node's inheritance declaration or the set of node kinds moves.
+
+**Removing a generic from `inherit_from` is rejected regardless of data.** `core/validators/node/inherit_from.py::NodeInheritFromChecker.check` compares the current schema's `inherit_from` against the candidate's by schema **id** (so a rename is not mistaken for a removal) and emits a `DataPath` for any removal. It runs no database query against instance data — the violation is produced from the schema comparison alone. That checker already declares `triggered_by_data_change = False`.
+
+**Write-time check (bonus, beyond what the argument needs).** `core/relationship/constraints/peer_kind.py::RelationshipPeerKindConstraint.check` computes the allowed set exactly as the merge-time query does — `peer_schema.used_by` for a generic peer, `[peer_schema.kind]` otherwise — and raises `ValidationError` for any peer outside it. It is invoked through `core/constraint/node/runner.py::NodeConstraintRunner.check`, wired from `graphql/mutations/main.py` and `core/node/create.py`.
+
+**Caveat, recorded rather than glossed**: `NodeConstraintRunner` sits at the mutation/service layer, not inside `Node.save()`, so backend code that constructs a node and calls `save()` directly bypasses the peer-kind check. This is why relationship peer keeps the widening argument as its *primary* justification and treats the write-time check as corroboration, not as the load-bearing evidence. The attribute families do not have this weakness — their enforcement is inside the core model.
+
+### Caveats on the attribute spine
+
+Two creation-time skips exist in `Node._process_fields_attributes`, both narrow and neither undermining the classification:
+
+- **Profile-provided attributes** (`attr_schema.name in self._profile_provided_attrs`) skip the create-time `validate` call. The value originates from a profile node whose own attribute was validated against the same `AttributeSchema`.
+- **Pool-pending attributes** (`pool_pending_fields`, and `from_pool` set while `process_pools` is `False`) skip it because no value is allocated yet.
+
+Both are re-validated on the next `Node._update` of that node, since `_update` re-runs `validate` for every attribute unconditionally.
+
+### Outcome
+
+Flip list unchanged from R2: `AttributeKindChecker`, `AttributeOptionalChecker`, `AttributeRegexChecker`, `AttributeLengthChecker`, `AttributeEnumChecker`, `AttributeChoicesChecker`, `AttributeNumberChecker`, `RelationshipPeerChecker` — 8 classes, 14 identifiers. No family removed. `data-model.md`'s classification tables need no change; only its "claim to be verified" note is updated to point here.
+
+## R10 — Migration-gated properties were not validated on merge or rebase
+
+**Status**: fixed on this branch. This is a scope addition beyond the original plan, approved after the functional experiments below.
+
+### The finding
+
+`SchemaUpdateValidationResult._process_field` (`backend/infrahub/core/models.py`) routes a property flagged `update: validate_constraint` to `self.constraints` and a property flagged `update: migration_required` to `self.migrations`. `add_validator_for_migration` converts a migration entry back into a constraint when its identifier has a checker in `CONSTRAINT_VALIDATOR_MAP`, but it was reached only from `validate_all`, whose sole caller is `SchemaBranch.validate_update` — the schema-**load** path.
+
+`MergeSchemaAnalyzer.calculate_validations` called `SchemaUpdateValidationResult.init` only. Merge (`GraphMerger._validate_constraints`) and rebase (`rebase_branch`) therefore never saw a constraint for any migration-gated property. `AttributeSchema.kind`, `AttributeSchema.optional`, `AttributeSchema.unique` and `BaseNodeSchema.uniqueness_constraints` are all `migration_required`, so on merge and rebase those four properties were checked only where the data-diff producer happened to emit them — i.e. only for the (kind, field) pairs the branch's own data changes touched.
+
+### Functional evidence
+
+Three experiments, all run against a real database through the real `rebase_branch` and merge paths:
+
+1. With `triggered_by_data_change = False` set on `AttributeKindChecker` and `AttributeOptionalChecker` — the flip this feature exists to make — a rebase silently accepted data violating a narrowed attribute kind and data violating a newly-mandatory attribute. Nothing else contributed those checks.
+2. A schema-only branch flipping an attribute to `unique=True` rebased cleanly over a destination already holding duplicate values. No uniqueness validation ran on the merge or rebase path at all, before any flip. The schema-load path did catch the same change (control run), which is what made the producer asymmetry visible.
+3. Adding the `add_validator_for_migration` call to `calculate_validations` closed both. Blast radius over `backend/tests/component/core/constraint_validators/` and `test_branch_rebase.py` (425 tests) was one failure — the test asserting the very premise the fix deletes. The merge and proposed-change side was then measured separately with the fix applied and was entirely unaffected: `test_branch_merge.py` + `core/merge/` gave **31 passed, 0 failed**, and `core/diff/` + `proposed_change/` + `merge_recompute_coalescing/` + the proposed-change GraphQL and message-bus component tests gave **334 passed, 0 failed**.
+
+### The fix
+
+One call added to `MergeSchemaAnalyzer.calculate_validations`:
+
+```python
+validation.add_validator_for_migration(validator_map=CONSTRAINT_VALIDATOR_MAP)
+```
+
+with `CONSTRAINT_VALIDATOR_MAP` imported at module level, matching how `schema_branch.py` reaches the same registry. No dependency injection was introduced: the analyzer already imports its collaborators for the load path this way, and inventing a new wiring shape for a one-line change would contradict `.agents/rules/backend-component-design.md`'s instruction not to reshape neighbouring code as part of an unrelated change.
+
+Migration calculation is unaffected — `calculate_migrations` builds its own `SchemaUpdateValidationResult` and reads `.migrations`.
+
+### Why this had to land before the flip
+
+Without it, `attribute.kind.update` and `attribute.optional.update` would have had to be dropped from the flip list (8 checkers / 14 identifiers down to 6 / 12), because flipping them would have removed those two checks from merge and rebase entirely and FR-002 would not have held for them. With it, the flip list stands, and the two producers now agree: a guarded property change reaches validation at unrestricted scope regardless of whether the property is gated on a constraint or on a migration.

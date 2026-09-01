@@ -91,7 +91,15 @@ Against a dev stack with a populated database, time a rebase of a data-only bran
 time <rebase invocation against the dev stack>
 ```
 
-Record both numbers and the approximate node population in the PR description. Also record the scheduled-constraint counts, which are the gated part (SC-001, SC-002): for a data-only diff touching K (kind, field) pairs, total scheduled constraints should fall by roughly 3K — the attribute-kind, attribute-optionality and relationship-peer triple previously emitted for every pair.
+Record both numbers and the approximate node population in the PR description.
+
+**What was actually recorded**: no full dev stack was available, so a proxy was measured instead —
+constraint determination plus checker execution against a real populated database, in-process, with
+the checkers flipped back for the "before" side. See [measurement-sc-004.md](./measurement-sc-004.md)
+for the figures, the method and the list of what remains unmeasured. The real rebase wall-clock is
+still outstanding.
+
+Also record the scheduled-constraint counts, which are the gated part (SC-001, SC-002): for a data-only diff touching K (kind, field) pairs, total scheduled constraints should fall by roughly 3K — the attribute-kind, attribute-optionality and relationship-peer triple previously emitted for every pair.
 
 ## 6. Pre-CI
 
@@ -118,6 +126,6 @@ Note the repo caveat: `invoke lint` runs ruff over a subset of paths while CI ru
 | 4 | Constraint, migration and validator suites green with no unexpected changes | SC-003 |
 | 5 | `dev/knowledge/backend/constraint-validation.md` exists, naming a confirmed write-time enforcement site per value-intrinsic family, and covering the profile/template asymmetry and the per-checker classification limit | FR-005 |
 | 6 | DEBUG log added at both determiner classification skip sites | Observability |
-| 7 | `housekeeping` changelog fragment added | Governance |
+| 7 | `changed` and `fixed` changelog fragments added | Governance |
 | 8 | Before/after wall-clock with node population recorded in the knowledge page **and** the PR description | SC-004 |
 | 9 | Rollback trigger stated in the spec | Operational |

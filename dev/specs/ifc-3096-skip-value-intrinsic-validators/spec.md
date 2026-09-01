@@ -88,6 +88,7 @@ A developer adds a new constraint checker. The codebase forces them to state whe
   *Verify*: the constraint-determination component test asserts the narrowed set for a data-only diff.
 - **FR-002**: The system MUST continue to schedule and run every value-intrinsic constraint via the schema-diff producer, at unrestricted scope, whenever the guarded property changes on either the source or the destination branch.
   *Verify*: a component test that composes the **schema-diff producer** with the constraint merger — not the data-diff producer, which by design contributes nothing here — changing an attribute kind on a branch that also has data changes, and asserting the kind constraint is present at unrestricted scope. Plus one end-to-end case through the real rebase/merge path.
+  *Note*: this did not hold before this feature. A property whose schema field is flagged `migration_required` — attribute kind, attribute optionality, attribute uniqueness, node uniqueness constraints — produced a migration entry rather than a constraint, and the migration-to-constraint conversion was reachable only from the schema-load path. Merge and rebase therefore never received those constraints from the schema-diff producer. Closing that gap in the merge schema analyzer was a prerequisite for the flip, not a consequence of it; see research R10.
 - **FR-003**: The system MUST continue to schedule all cross-node constraints from the data-diff producer unchanged — attribute uniqueness, node uniqueness constraints, relationship cardinality, minimum and maximum count, relationship optionality, common parent, and hierarchy.
   *Verify*: constraint-determination component test asserts each is still present for a data-only diff.
 - **FR-004**: The classification MUST be protected against silent drift, such that adding a new constraint checker fails a test until its classification is stated deliberately.
@@ -103,7 +104,7 @@ All existing. No new entities, no new persisted state, no new configuration.
 
 - **Constraint checker**: the component that knows how to verify one family of schema constraints against the database. It already carries an explicit declaration of whether a data change can violate the constraint it guards, and that declaration is already honoured. Eight checkers change their declaration; no checker changes its logic.
 - **Constraint validator determiner**: the component that decides which constraints to schedule for a given diff. Unchanged — it already consults the checker's declaration at both its node-level and its field-level decision points.
-- **Merge schema analyzer**: the component that computes which schema properties changed for a merge. Unchanged — it already performs a three-way comparison spanning the common ancestor, the source branch and the destination branch, so it owns property changes originating on either side.
+- **Merge schema analyzer**: the component that computes which schema properties changed for a merge. Its three-way comparison spanning the common ancestor, the source branch and the destination branch is unchanged, so it still owns property changes originating on either side. One line changed: it now also converts a migration-gated property change into a constraint when that property has a checker, which the schema-load path already did and the merge and rebase paths did not.
 - **Constraint info merger**: the component that combines the two producers' outputs. Unchanged — it unions constraints from both producers with unrestricted scope winning, so removing entries from one producer leaves the other's intact.
 
 ### Classification
@@ -192,7 +193,10 @@ Assessed against the "Ask First" list in `AGENTS.md`:
 | CI/CD workflow change | No |
 | Authentication / authorization change | No |
 
-None crossed. A `housekeeping` changelog fragment is required.
+None crossed. Two changelog fragments are required: a `changed` fragment for the reduced
+validation work on data-only diffs, and a `fixed` fragment for the migration-gated properties that
+were not validated on merge or rebase at all. A `housekeeping` fragment was the original plan, before
+the scope addition made half of this change a user-visible correctness fix.
 
 ## Open Questions
 

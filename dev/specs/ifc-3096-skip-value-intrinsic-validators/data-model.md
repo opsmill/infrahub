@@ -79,12 +79,14 @@ Enforced on every individual value at the moment it is written, so a data change
 | Attribute numeric bounds | `attribute.parameters.min_value.update`, `attribute.parameters.max_value.update`, `attribute.parameters.excluded_values.update` | Bounds and exclusions applied per value at write time, under the same strict-validation setting that gates the merge-time checker |
 | Relationship peer | `relationship.peer.update` | See the widening argument below |
 
-Each "why" column entry is a **claim to be verified during implementation** (research R8): the knowledge page must name the concrete write-time enforcement site. A family whose enforcement point cannot be confirmed is removed from this table and keeps its data trigger.
+Each "why" column entry has been **verified against the code** — see research R9 for the traced `file::symbol` per family. All eight families survived tracing, so this table is unchanged from the pre-tracing draft. The seven attribute families share one enforcement point, `core/attribute.py::BaseAttribute.validate`, reached on every attribute write including node update, where it re-runs for every attribute of the touched node.
 
 **Relationship peer** reaches the conclusion differently and is the least obvious entry. Its effective allowed set is the declared peer kind plus, for a generic peer, the kinds using that generic. That list is derived from every node's inheritance declaration and never set directly. It can only:
 
 - **grow** — widening the allowed set, which cannot invalidate an existing link; or
 - **shrink** — which requires either removing a generic from a node's inheritance (rejected outright by the inheritance checker regardless of data) or deleting the kind entirely (which removes its instances with it).
+
+Both halves are confirmed in R9: `used_by` is `update: not_applicable`, excluded from the schema diff, and written only by `SchemaBranch.process_inheritance`; `NodeInheritFromChecker.check` emits its violation from the schema comparison alone, running no data query. A write-time peer-kind check exists too (`RelationshipPeerKindConstraint`), but it is wired at the mutation/service layer rather than inside `Node.save()`, so it corroborates the argument rather than carrying it.
 
 ### Retains its data trigger — cross-node
 

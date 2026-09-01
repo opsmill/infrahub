@@ -39,7 +39,7 @@ US1 and US2 are both P1; the spec itself says US2 "shares P1 because shipping Us
 - [ ] T001 Confirm dependencies are installed and the SDK import resolves: run `uv sync --all-groups`, then `uv run python -c "import infrahub_sdk"`. If it fails, run `uv sync --all-groups --reinstall-package infrahub-server`
 - [ ] T002 Capture the pre-change baseline: run `uv run pytest backend/tests/component/core/constraint_validators/ backend/tests/unit/core/validators/ -q` and record the pass count. Every later phase compares against this number
 
-**Checkpoint**: Baseline green and recorded
+**Checkpoint**: Baseline green and recorded — 427 passed, 6 skipped (2026-08-31)
 
 ---
 
@@ -96,7 +96,36 @@ US1 and US2 are both P1; the spec itself says US2 "shares P1 because shipping Us
 - [ ] T017 [US2] Add one end-to-end case to `backend/tests/component/core/test_branch_rebase.py` (or `test_branch_merge.py`, whichever already has the closest fixture): rebase/merge a branch carrying both a guarded-property change and data changes, and assert the full-population validation still runs and reports correctly. Proves the composition in situ, not only in isolation
 - [ ] T018 [US2] Run T014–T017 against the **unmodified** codebase and confirm they **pass**. This is the point of sequencing US2 before US1: a safety test that has only ever been run after the change it guards against is not a guard
 
-**Checkpoint**: The safety property is proven to hold today. Any Phase 5 regression will now be caught.
+**Checkpoint**: The safety property is proven to hold for the constraint families whose schema property is flagged `validate_constraint` — but, at this point, **not** for the two flagged `migration_required`. Any Phase 5 regression on the former will now be caught; Phase 4b below closes the latter.
+
+### ⛔ Blocking finding from T014/T018 — resolved by T049–T053, flip list stands
+
+`MergeSchemaAnalyzer::calculate_validations` builds `SchemaUpdateValidationResult.init(...)`, which runs `process_diff` only. `process_diff._process_field` emits a **constraint** for a property flagged `update: validate_constraint` and a **migration** for one flagged `update: migration_required`. The migration→constraint conversion lives in `add_validator_for_migration`, reached only from `validate_all`, which only `SchemaBranch.validate_update` calls — i.e. the schema-load path, never merge or rebase.
+
+`AttributeSchema.kind` and `AttributeSchema.optional` are both `migration_required`. Therefore `attribute.kind.update` and `attribute.optional.update` were **never** contributed by the schema-diff producer on the merge or rebase path; they reached validation only because the determiner emitted them for a `migration_required` property that has a checker. Flipping `AttributeKindChecker` and `AttributeOptionalChecker` to `triggered_by_data_change = False` would have removed those two checks from merge and rebase entirely — FR-002 did not hold for them.
+
+Empirical evidence at the time: `test_migration_gated_properties_reach_validation_only_through_the_data_diff` in `backend/tests/component/core/constraint_validators/test_schema_diff_constraints.py` pinned this behaviour and passed. T053 inverts it.
+
+Two options were open:
+
+- Drop `attribute.kind.update` (`AttributeKindChecker`) and `attribute.optional.update` (`AttributeOptionalChecker`) from the flip list, taking it from 8 checkers / 14 identifiers to 6 checkers / 12 identifiers; or
+- First make the schema-diff producer emit constraints for migration-gated properties that have a checker, and only then flip them.
+
+**The second was taken** — see Phase 4b below and research R10. The flip list stays at 8 checkers / 14 identifiers. T014's and T015's kind-specific assertions remain covered against `attribute.parameters.regex.update` and `attribute.enum.update`, with `attribute.kind.update` now covered by its own test.
+
+---
+
+## Phase 4b: Close the migration-gated validation gap (scope addition, approved mid-implementation)
+
+**Purpose**: Make FR-002 true for migration-gated properties before Phase 5 relies on it. Not in the original plan; added after the functional experiments recorded in research R10 showed merge and rebase never receive constraints for `migration_required` properties.
+
+- [ ] T049 Measure the merge and proposed-change blast radius of the fix **before** landing it: apply the call temporarily and run `backend/tests/component/core/test_branch_merge.py`, `backend/tests/component/core/merge/`, `backend/tests/component/core/diff/`, `backend/tests/component/proposed_change/`, `backend/tests/component/merge_recompute_coalescing/` and the proposed-change graphql/message-bus component tests. Stop and revert if any failure is a genuine regression rather than a test asserting the deleted premise. **Result: 31 passed / 0 failed and 334 passed / 0 failed — clean, no regression on either path**
+- [ ] T050 Add `validation.add_validator_for_migration(validator_map=CONSTRAINT_VALIDATOR_MAP)` to `MergeSchemaAnalyzer.calculate_validations` in `backend/infrahub/core/merge/schema_analyzer.py`, importing `CONSTRAINT_VALIDATOR_MAP` at module level as `schema_branch.py` does. No dependency injection introduced — a one-line change must not reshape the surrounding wiring
+- [ ] T051 Add `test_merge_reports_duplicates_when_an_attribute_becomes_unique` to `backend/tests/component/core/test_branch_merge.py`: a schema-only branch flipping an attribute to `unique=True` merged over a destination already holding duplicates, driven through a real `GraphMerger`, asserting the exact `(constraint, node)` pairs reported and that the destination is unchanged. The gap was proven on rebase only; this evidences the fix on the merge path rather than inferring it
+- [ ] T052 Remove the `xfail(strict=True)` marker from `test_rebase_reports_duplicates_when_an_attribute_becomes_unique` in `backend/tests/component/core/test_branch_rebase.py` and let it assert positively. Update the docstrings of `test_rebase_reports_a_narrowed_attribute_kind` and `test_rebase_reports_a_newly_mandatory_attribute`, which described the now-removed behaviour
+- [ ] T053 Invert `test_migration_gated_properties_reach_validation_only_through_the_data_diff` in `backend/tests/component/core/constraint_validators/test_schema_diff_constraints.py` — renamed `test_migration_gated_property_change_validates_full_population` — so it asserts the exact set of schema-comparison constraints for the changed kind and that they arrive with `node_uuids is None`
+
+**Checkpoint**: FR-002 now holds for migration-gated properties as well as constraint-gated ones, on both the merge and the rebase path, so Phase 5 may flip all eight checkers.
 
 ---
 
@@ -138,8 +167,8 @@ US1 and US2 are both P1; the spec itself says US2 "shares P1 because shipping Us
 
 - [ ] T035 [US1] Add a test to `test_determiner.py` for a data-only diff that asserts **zero** constraints from the value-intrinsic identifiers, naming the exclusion explicitly rather than relying on shrunken sets (FR-001, SC-001)
 - [ ] T036 [US1] Add a test to `test_determiner.py` asserting **every** cross-node constraint is still scheduled for a data-only diff — attribute uniqueness, node uniqueness constraints, hierarchy parent/children, relationship cardinality/min_count/max_count/optional, common parent (FR-003)
-- [ ] T037 [US1] Add a parameterised count assertion to `test_determiner.py` implementing SC-002's `2A + R + P` over diffs with known A/R/P compositions (A = attribute pairs, R = relationship pairs, P = set optional attribute parameters). Use the dataclass parametrize pattern with `name` as the first field per the project testing rules. This is the gate that makes the headline reduction claim CI-enforced rather than narrated
-- [ ] T038 [US1] Re-run the US2 guard tests (T014–T017) and confirm they **still pass** after the flip. This is the regression check the whole US2-before-US1 ordering exists to enable
+- [ ] T037 [US1] Add a parameterised count assertion to `test_determiner.py` implementing SC-002's `2A + R + P` over diffs with known A/R/P compositions (A = attribute pairs, R = relationship pairs, P = set optional attribute parameters). Use the dataclass parametrize pattern with `name` as the first field per the project testing rules. This is the gate that makes the headline reduction claim CI-enforced rather than narrated. **The formula held exactly on all six cases.** Note that a deprecated top-level bound and its mirrored `parameters.*` twin each count towards P — the schema branch copies `max_length` into `parameters.max_length`, so `TestCar.color` contributes P = 2, not 1
+- [ ] T038 [US1] Re-run the US2 guard tests (T014–T017) and confirm they **still pass** after the flip. This is the regression check the whole US2-before-US1 ordering exists to enable. **21 passed after the flip, unchanged**
 
 **Checkpoint**: The deliverable is in, narrowing is asserted by intent, and the safety property survived it.
 
@@ -154,11 +183,11 @@ US1 and US2 are both P1; the spec itself says US2 "shares P1 because shipping Us
 - [ ] T041 Create `dev/knowledge/backend/constraint-validation.md` covering: the two constraint producers and their **three differing call-site gates** (merge recomputes via `has_schema_changes()`, Proposed Change has no gate, rebase uses the cached `Branch.schema_differs_from_default_branch`); the determiner's two decision points; the merger's union-with-unrestricted-scope-winning rule; and the full classification with each entry's justification including the enforcement sites traced in T003–T010
 - [ ] T042 Add to `dev/knowledge/backend/constraint-validation.md`: the **profile/template asymmetry** — the schema comparison excludes profile and template schemas, so those kinds rely on the write-time argument alone and the general "the schema-diff producer picks it up instead" claim does not hold for them; and the **per-checker classification limit** — all identifiers sharing a checker necessarily share a classification, and splitting the checker is the remedy if that ever stops holding
 - [ ] T043 Add to `dev/knowledge/backend/constraint-validation.md` the R3 safety argument: why the rebase hash gate does not become a correctness gap (the argument turns on the candidate schema, not the gate), and the residual fail-open when a schema hash is absent. Recording it here is what stops the next reader re-deriving it
-- [ ] T044 [P] Add a `housekeeping` changelog fragment under `changelog/` following the `+<slug>.housekeeping.md` convention. Use the `creating-changelog-entries` skill. Grep the actual diff before writing it — state what landed, not what the plan intended
-- [ ] T045 Measure and record (SC-004): before/after wall-clock for a data-only rebase against a populated dev stack, **with the node population it was measured against**. Record in the knowledge page *and* the PR description — a figure that lives only in a PR description is not recoverable later
-- [ ] T046 Run the full validation sweep from `quickstart.md`: the constraint, validator and migration suites, and confirm the pass count matches the T002 baseline plus the new tests
-- [ ] T047 Run `uv run invoke format`, then `/pre-ci`. Note the repo caveat: `invoke lint` runs ruff over a subset of paths while CI runs `ruff check . --exclude python_sdk` repo-wide; `/pre-ci` covers the whole-repo check
-- [ ] T048 Open the PR with the before/after measurement, the scheduled-constraint counts, and the list of identifiers whose classification changed (taken from the T027 diff, not from the plan)
+- [ ] T044 [P] Add changelog fragments under `changelog/` following the `+<slug>.<type>.md` convention. Use the `creating-changelog-entries` skill. Grep the actual diff before writing it — state what landed, not what the plan intended. **Landed as two fragments, not one `housekeeping` fragment**: the Phase 4b scope addition made half of this change a user-visible correctness fix, and `housekeeping` is reserved for build, CI, and tooling maintenance. `+skip-value-intrinsic-checks-on-data-only-diffs.changed.md` covers the reduced validation work; `+migration-gated-schema-checks-on-merge.fixed.md` covers the properties that were not validated on merge or rebase
+- [ ] T045 Measure and record (SC-004): before/after wall-clock for a data-only rebase against a populated dev stack, **with the node population it was measured against**. Record in the knowledge page *and* the PR description — a figure that lives only in a PR description is not recoverable later. **PARTIAL — proxy, not a real rebase.** No `infrahub-server` or task worker was available in the measurement environment, so a full-stack rebase could not be timed. What was measured instead: constraint determination plus checker execution against a real Neo4j population, in-process, with the eight checkers flipped back to `True` for the "before" side — 1.064 s → 0.310 s (70.9 %) at 2200 nodes and 0.288 s → 0.080 s (72.4 %) at 550 nodes, 27 → 11 constraints in both. Recorded in `dev/knowledge/backend/constraint-validation.md` and `measurement-sc-004.md`, with the reproduction script under `benchmarks/`. A real end-to-end rebase wall-clock is still unmeasured
+- [ ] T046 Run the full validation sweep from `quickstart.md`: the constraint, validator and migration suites, and confirm the pass count matches the T002 baseline plus the new tests. **Result: `backend/tests/component/core/constraint_validators/` + `backend/tests/unit/core/validators/` → 440 passed, 6 skipped (T002 baseline 427 + 13 new tests, skips unchanged). `backend/tests/unit/core/migrations/` + `backend/tests/component/core/migrations/` → 245 passed, 2 skipped.** The delta is fully explained by the new tests: 1 classification pinning test, 4 in the new `test_schema_diff_constraints.py`, and 8 collected from `test_determiner.py` (three new functions, one of them parametrized over the six `2A + R + P` count cases) — 1 + 4 + 8 = 13
+- [ ] T047 Run `uv run invoke format`, then `/pre-ci`. Note the repo caveat: `invoke lint` runs ruff over a subset of paths while CI runs `ruff check . --exclude python_sdk` repo-wide; `/pre-ci` covers the whole-repo check. **All applicable checks pass.** `uv run invoke format` — no changes. Repo-wide `ruff check . --exclude python_sdk` and `ruff format --check` — clean (the whole-repo run initially flagged the new measurement script under `benchmarks/`; fixed there, not by widening an exclude). `main.lint`, `backend.lint` (mypy, 1638 files), `ty check .`, `yamllint -s .`, both `uv lock --check`s, `backend.validate-generated`, `docs.validate`, `schema.validate-graphqlschema`, `schema.validate-jsonschema` — all clean, no generated file changed. Frontend lint trio (`biome ci`, `knip`, `betterer ci`) — clean. `backend.test-unit` — 2397 passed, 3 failed, all three in `backend/tests/unit/git/test_git_repository.py` from `git merge-tree --write-tree` on the local git 2.34.1 (the flag needs git ≥ 2.38); unrelated to this change and an environment limit, not a regression. Not runnable locally: `docs.lint` (markdownlint-cli2 not installed — and it globs `docs/docs/**` only, which this change does not touch), frontend unit tests and the codegen validations (no frontend or schema paths changed), testcontainers unit tests (no `python_testcontainers/` changes)
+- [ ] T048 Open the PR with the before/after measurement, the scheduled-constraint counts, and the list of identifiers whose classification changed (taken from the T027 diff, not from the plan). **Excluded by user instruction for this run** — no PR opened, nothing pushed, and the work is left uncommitted. Quote the SC-004 figures from `measurement-sc-004.md` and label them a proxy, not a rebase wall-clock
 
 ---
 
@@ -170,13 +199,15 @@ US1 and US2 are both P1; the spec itself says US2 "shares P1 because shipping Us
 - **Phase 2 (Foundational)**: depends on Phase 1. **Blocks everything** — T011 can change the flip list, so no flip may precede it
 - **Phase 3 (US3)**: depends on Phase 2. Must precede Phase 5 so the flip is a reviewable diff
 - **Phase 4 (US2)**: depends on Phase 2. Must precede Phase 5 so its tests are a genuine regression guard (T018 runs them pre-change)
-- **Phase 5 (US1)**: depends on Phases 3 and 4. The deliverable
+- **Phase 4b (migration-gated gap)**: depends on Phase 4, which surfaced it. **Blocks Phase 5** — without it, flipping `AttributeKindChecker` and `AttributeOptionalChecker` removes their checks from merge and rebase outright
+- **Phase 5 (US1)**: depends on Phases 3, 4 and 4b. The deliverable
 - **Phase 6 (Polish)**: depends on Phase 5, except T039 and T040 which are independent of the flip
 
 ### Critical path
 
 ```text
 T001 → T002 → T003..T010 (parallel) → T011 → T012 → T013 → T014..T017 → T018
+     → T049 → T050 → T051..T053
      → T019..T026 (parallel) → T027 → T028..T033 → T034 → T035..T037 → T038
      → T041..T043 → T045 → T046 → T047 → T048
 ```
@@ -186,6 +217,9 @@ T001 → T002 → T003..T010 (parallel) → T011 → T012 → T013 → T014..T01
 | Constraint | Why |
 |---|---|
 | T011 before any of T019–T026 | Tracing can remove a family from the flip list |
+| T049 before T050 | The blast radius decides whether the fix lands at all |
+| T050 before T052 and T053 | Both tests assert the post-fix behaviour |
+| T049–T053 before T019 and T020 | Flipping the kind and optional checkers is only safe once the schema comparison contributes their constraints |
 | T012 before T027 | The pinning test must exist at current values before it records the change |
 | T018 before T019 | A safety test never run pre-change is not a guard |
 | T019–T026 and T027 in **one commit** | A pinning test updated separately briefly did not pin |
