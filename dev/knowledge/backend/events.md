@@ -100,6 +100,8 @@ InfrahubEventService.send(event)
                    └──► emit_event() → Prefect Automations
 ```
 
+For example, `BranchDeletedEvent` drives the `branch-deleted-purge-tasks` automation, which deletes the deleted branch's flow runs so a same-named branch starts clean (see [Asynchronous Tasks](async-tasks.md)).
+
 ## Trigger action parameters
 
 A trigger definition's `ExecuteWorkflow` action passes parameters to the target deployment. Each parameter value is a Jinja template that Prefect renders server-side, against the triggering event, when the automation fires.
