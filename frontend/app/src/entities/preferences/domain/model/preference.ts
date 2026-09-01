@@ -15,14 +15,13 @@ export interface Preference<T = string> {
 }
 
 /**
- * An effective preference plus the layer it would fall back to.
+ * An effective preference plus the value it would fall back to with no override of its own.
  *
- * The API's invariant, which fixtures must mirror: a non-USER source inherits its own
- * {value, source} (nothing is being shadowed), while a USER source states the layer it shadows —
- * `inherited` never reports USER itself.
+ * `inherited` is null when there is nothing to inherit, so the client applies its own default. A
+ * non-USER source inherits its own value; a USER source states the value it shadows.
  */
 export interface EffectivePreference<T = string> extends Preference<T> {
-  inherited: Preference<T>;
+  inherited: T | null;
 }
 
 export interface EffectivePreferences {

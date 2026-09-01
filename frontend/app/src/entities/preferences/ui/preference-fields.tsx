@@ -12,16 +12,12 @@ import { FormField } from "@/shared/components/ui/form";
 import { formatWithPreferences } from "@/shared/context/date-preferences-context";
 import { supportedTimezone } from "@/shared/utils/date";
 
-import type {
-  EffectivePreference,
-  Preference,
-} from "@/entities/preferences/domain/model/preference";
+import type { EffectivePreference } from "@/entities/preferences/domain/model/preference";
 import {
   buildDateFormatPresets,
   dateFormatLabel,
   dateFormatPattern,
 } from "@/entities/preferences/domain/rules/date-format";
-import { inheritedValue } from "@/entities/preferences/domain/rules/resolve-date-preferences";
 
 const EMPTY_VALUE_LABEL = "Automatic (inherited)";
 
@@ -40,7 +36,7 @@ export function toFieldValue(value: string | null): FormAttributeValue {
 /** Explains where a field's pending value comes from — what saving the form as it stands would produce. */
 function sourceMessage(
   own: string | null,
-  inherited: Preference,
+  inherited: string | null,
   {
     formatValue,
     browserValue,
@@ -55,13 +51,11 @@ function sourceMessage(
 
   if (own) {
     // An own value equal to the organisation default overrides nothing worth naming.
-    return inherited.source === "GLOBAL" && inherited.value && inherited.value !== own
-      ? `Your preference, overriding the organisation default: ${formatValue(inherited.value)}.`
+    return inherited && inherited !== own
+      ? `Your preference, overriding the organisation default: ${formatValue(inherited)}.`
       : "Your preference.";
   }
-  return inherited.source === "GLOBAL" && inherited.value
-    ? `From the organisation default: ${formatValue(inherited.value)}.`
-    : fromBrowser;
+  return inherited ? `From the organisation default: ${formatValue(inherited)}.` : fromBrowser;
 }
 
 /** Presentational (i) tooltip trigger — the message is resolved by the field that owns it. */
@@ -107,7 +101,7 @@ export function DateFormatField({
   // Previews what saving would produce, so it follows the form's own (possibly unsaved) values.
   const timezoneValue = useWatch({ name: "timezone" }) as FormAttributeValue | undefined;
   const timezone = (timezoneValue?.value as string | null | undefined) ?? fallbackTimezone ?? null;
-  const previewFormat = selected ?? (preference ? inheritedValue(preference) : null);
+  const previewFormat = selected ?? preference?.inherited ?? null;
   // A null format is the browser's own rendering, which is exactly what saving no override produces.
   const example = formatWithPreferences(now, {
     pattern: previewFormat ? dateFormatPattern(previewFormat) : null,
@@ -157,7 +151,7 @@ function timezoneSourceMessage(
   preference: EffectivePreference,
   browserZone: string
 ): string {
-  const pending = own ?? inheritedValue(preference);
+  const pending = own ?? preference.inherited;
   if (pending && !supportedTimezone(pending)) {
     return `This browser can't display ${pending}; times are shown in ${browserZone}.`;
   }

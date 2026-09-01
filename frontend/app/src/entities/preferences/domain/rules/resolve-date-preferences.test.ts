@@ -1,10 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import type { EffectivePreferences } from "@/entities/preferences/domain/model/preference";
-import {
-  inheritedValue,
-  resolveDatePreferences,
-} from "@/entities/preferences/domain/rules/resolve-date-preferences";
+import { resolveDatePreferences } from "@/entities/preferences/domain/rules/resolve-date-preferences";
 
 describe("resolveDatePreferences", () => {
   test("maps a USER date-format key to its date-fns pattern", () => {
@@ -13,9 +10,9 @@ describe("resolveDatePreferences", () => {
       dateFormat: {
         value: "EU_DATETIME",
         source: "USER",
-        inherited: { value: null, source: "DEFAULT" },
+        inherited: null,
       },
-      timezone: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
+      timezone: { value: null, source: "DEFAULT", inherited: null },
     };
 
     // WHEN resolved
@@ -31,9 +28,9 @@ describe("resolveDatePreferences", () => {
       dateFormat: {
         value: "US_12H",
         source: "GLOBAL",
-        inherited: { value: "US_12H", source: "GLOBAL" },
+        inherited: "US_12H",
       },
-      timezone: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
+      timezone: { value: null, source: "DEFAULT", inherited: null },
     };
 
     // WHEN resolved
@@ -46,11 +43,11 @@ describe("resolveDatePreferences", () => {
   test("keeps the USER timezone value", () => {
     // GIVEN a user-set timezone
     const preferences: EffectivePreferences = {
-      dateFormat: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
+      dateFormat: { value: null, source: "DEFAULT", inherited: null },
       timezone: {
         value: "Europe/Paris",
         source: "USER",
-        inherited: { value: null, source: "DEFAULT" },
+        inherited: null,
       },
     };
 
@@ -67,12 +64,12 @@ describe("resolveDatePreferences", () => {
       dateFormat: {
         value: "EU_DATETIME",
         source: "DEFAULT",
-        inherited: { value: "EU_DATETIME", source: "DEFAULT" },
+        inherited: "EU_DATETIME",
       },
       timezone: {
         value: "Europe/Paris",
         source: "DEFAULT",
-        inherited: { value: "Europe/Paris", source: "DEFAULT" },
+        inherited: "Europe/Paris",
       },
     };
 
@@ -86,8 +83,8 @@ describe("resolveDatePreferences", () => {
   test("resolves a non-DEFAULT source with a missing value to null", () => {
     // GIVEN a USER source but no stored value
     const preferences: EffectivePreferences = {
-      dateFormat: { value: null, source: "USER", inherited: { value: null, source: "DEFAULT" } },
-      timezone: { value: null, source: "USER", inherited: { value: null, source: "DEFAULT" } },
+      dateFormat: { value: null, source: "USER", inherited: null },
+      timezone: { value: null, source: "USER", inherited: null },
     };
 
     // WHEN resolved
@@ -104,69 +101,5 @@ describe("resolveDatePreferences", () => {
 
     // THEN both fields fall back to null
     expect(resolved).toEqual({ pattern: null, timezone: null });
-  });
-});
-
-describe("inheritedValue", () => {
-  test("returns the GLOBAL value, which is what an unset field inherits", () => {
-    expect(
-      inheritedValue({
-        value: "Europe/Paris",
-        source: "GLOBAL",
-        inherited: { value: "Europe/Paris", source: "GLOBAL" },
-      })
-    ).toBe("Europe/Paris");
-  });
-
-  test("returns null for a DEFAULT source so the browser zone applies", () => {
-    expect(
-      inheritedValue({
-        value: null,
-        source: "DEFAULT",
-        inherited: { value: null, source: "DEFAULT" },
-      })
-    ).toBeNull();
-  });
-
-  test("ignores a value carried on a DEFAULT inherited layer, as the pattern resolver does", () => {
-    expect(
-      inheritedValue({
-        value: "Europe/Paris",
-        source: "DEFAULT",
-        inherited: { value: "Europe/Paris", source: "DEFAULT" },
-      })
-    ).toBeNull();
-  });
-
-  test("returns the GLOBAL layer a USER override shadows, which is what clearing it restores", () => {
-    // A caller's own override must not hide the layer beneath it: that layer is what clearing the
-    // override restores, so the preview needs it while the field is empty.
-    expect(
-      inheritedValue({
-        value: "Asia/Tokyo",
-        source: "USER",
-        inherited: { value: "Europe/Paris", source: "GLOBAL" },
-      })
-    ).toBe("Europe/Paris");
-  });
-
-  test("returns null for a USER override that shadows nothing", () => {
-    expect(
-      inheritedValue({
-        value: "Asia/Tokyo",
-        source: "USER",
-        inherited: { value: null, source: "DEFAULT" },
-      })
-    ).toBeNull();
-  });
-
-  test("reads the inherited layer of any field, not just the timezone", () => {
-    expect(
-      inheritedValue({
-        value: "EU_DATETIME",
-        source: "USER",
-        inherited: { value: "ISO_DATETIME", source: "GLOBAL" },
-      })
-    ).toBe("ISO_DATETIME");
   });
 });

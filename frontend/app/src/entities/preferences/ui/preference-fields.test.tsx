@@ -15,7 +15,7 @@ const FIXED_INSTANT = new Date("2026-06-11T23:30:00Z");
 const GLOBAL_DATE_FORMAT: EffectivePreference = {
   value: "EU_DATETIME",
   source: "GLOBAL",
-  inherited: { value: "EU_DATETIME", source: "GLOBAL" },
+  inherited: "EU_DATETIME",
 };
 
 // Shared by both zones below: this string does not depend on the timezone the form holds.

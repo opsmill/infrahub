@@ -15,7 +15,6 @@ class ResolutionCase:
     global_: Preference | None
     expected_date_format: ResolvedPreference
     expected_timezone: ResolvedPreference
-    # No defaults: a default would let a row's inherited expectation go silently unasserted.
     expected_inherited_date_format: ResolvedPreference
     expected_inherited_timezone: ResolvedPreference
 
@@ -98,15 +97,6 @@ def test_effective_preference_resolution(case: ResolutionCase) -> None:
     assert effective.resolved_timezone() == case.expected_timezone
     assert effective.inherited_date_format() == case.expected_inherited_date_format
     assert effective.inherited_timezone() == case.expected_inherited_timezone
-
-
-@pytest.mark.parametrize("case", RESOLUTION_CASES, ids=lambda case: case.name)
-def test_inherited_never_reports_the_user_layer(case: ResolutionCase) -> None:
-    """The inherited projection suppresses the user layer, so it can only ever be GLOBAL or DEFAULT."""
-    effective = EffectivePreferences(user=case.user, global_=case.global_)
-
-    assert effective.inherited_date_format().source != PreferenceSource.USER
-    assert effective.inherited_timezone().source != PreferenceSource.USER
 
 
 @pytest.mark.parametrize("case", RESOLUTION_CASES, ids=lambda case: case.name)

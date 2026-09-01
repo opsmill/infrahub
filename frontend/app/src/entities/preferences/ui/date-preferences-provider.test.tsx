@@ -69,12 +69,12 @@ describe("DatePreferencesProvider", () => {
       dateFormat: {
         value: "EU_DATETIME",
         source: "USER",
-        inherited: { value: null, source: "DEFAULT" },
+        inherited: null,
       },
       timezone: {
         value: "Europe/Paris",
         source: "USER",
-        inherited: { value: null, source: "DEFAULT" },
+        inherited: null,
       },
     });
 
@@ -89,12 +89,12 @@ describe("DatePreferencesProvider", () => {
       dateFormat: {
         value: "ISO_DATETIME",
         source: "GLOBAL",
-        inherited: { value: "ISO_DATETIME", source: "GLOBAL" },
+        inherited: "ISO_DATETIME",
       },
       timezone: {
         value: "Asia/Tokyo",
         source: "GLOBAL",
-        inherited: { value: "Asia/Tokyo", source: "GLOBAL" },
+        inherited: "Asia/Tokyo",
       },
     });
 
@@ -106,8 +106,8 @@ describe("DatePreferencesProvider", () => {
 
   test("resolves to null (browser fallback) when both fields are DEFAULT", async () => {
     const component = await renderWithEffective({
-      dateFormat: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
-      timezone: { value: null, source: "DEFAULT", inherited: { value: null, source: "DEFAULT" } },
+      dateFormat: { value: null, source: "DEFAULT", inherited: null },
+      timezone: { value: null, source: "DEFAULT", inherited: null },
     });
 
     await expect.element(component.getByTestId("pattern")).toHaveTextContent("null");

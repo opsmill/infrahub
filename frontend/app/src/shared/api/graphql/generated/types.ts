@@ -17682,11 +17682,12 @@ export type EdgedProfileIpamNamespace = {
 /**
  * An effective `date_format` value and the source it was resolved from.
  *
- * `value` is a DateFormat key, or null when nothing is set.
+ * `value` is a DateFormat key, or null when nothing is set. `inherited` is what the caller would
+ * fall back to with no override of their own, null when nothing is set for them to inherit.
  */
 export type EffectiveDateFormat = {
   __typename: 'EffectiveDateFormat';
-  inherited: InheritedDateFormat;
+  inherited: Maybe<DateFormat>;
   source: PreferenceSource;
   value: Maybe<DateFormat>;
 };
@@ -17698,10 +17699,15 @@ export type EffectivePreferencesType = {
   timezone: EffectiveTimezone;
 };
 
-/** An effective `timezone`: the resolved IANA name (null when nothing is set) and its source. */
+/**
+ * An effective `timezone`: the resolved IANA name (null when nothing is set) and its source.
+ *
+ * `inherited` is the IANA name the caller would fall back to with no override of their own, null
+ * when nothing is set for them to inherit.
+ */
 export type EffectiveTimezone = {
   __typename: 'EffectiveTimezone';
-  inherited: InheritedTimezone;
+  inherited: Maybe<Scalars['String']['output']>;
   source: PreferenceSource;
   value: Maybe<Scalars['String']['output']>;
 };
@@ -18309,20 +18315,6 @@ export type InfrahubTaskRetry = {
   __typename: 'InfrahubTaskRetry';
   ok: Maybe<Scalars['Boolean']['output']>;
   task: Maybe<TaskInfo>;
-};
-
-/** The date_format the caller would inherit with no override of their own; source is GLOBAL or DEFAULT. */
-export type InheritedDateFormat = {
-  __typename: 'InheritedDateFormat';
-  source: PreferenceSource;
-  value: Maybe<DateFormat>;
-};
-
-/** The timezone the caller would inherit with no override of their own; source is GLOBAL or DEFAULT. */
-export type InheritedTimezone = {
-  __typename: 'InheritedTimezone';
-  source: PreferenceSource;
-  value: Maybe<Scalars['String']['output']>;
 };
 
 /** Token for User Account */

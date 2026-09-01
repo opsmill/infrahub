@@ -20,11 +20,15 @@ if TYPE_CHECKING:
 
 
 def _effective_field(*, resolved: ResolvedPreference[Any], inherited: ResolvedPreference[Any]) -> dict[str, Any]:
-    """Shape one field as the plain nested dicts graphene resolves."""
+    """Shape one field as the plain dict graphene resolves.
+
+    `inherited` is projected down to its value: a null one means nothing is set to inherit, which is
+    the DEFAULT source it would otherwise report.
+    """
     return {
         "value": resolved.value,
         "source": resolved.source,
-        "inherited": {"value": inherited.value, "source": inherited.source},
+        "inherited": inherited.value,
     }
 
 

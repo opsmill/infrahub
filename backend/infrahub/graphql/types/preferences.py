@@ -46,37 +46,28 @@ PreferenceSource = Enum.from_enum(
 )
 
 
-class InheritedDateFormat(ObjectType):
-    """The date_format the caller would inherit with no override of their own; source is GLOBAL or DEFAULT."""
-
-    value = Field(DateFormat, required=False)
-    source = Field(PreferenceSource, required=True)
-
-
-class InheritedTimezone(ObjectType):
-    """The timezone the caller would inherit with no override of their own; source is GLOBAL or DEFAULT."""
-
-    value = Field(String, required=False)
-    source = Field(PreferenceSource, required=True)
-
-
 class EffectiveDateFormat(ObjectType):
     """An effective `date_format` value and the source it was resolved from.
 
-    `value` is a DateFormat key, or null when nothing is set.
+    `value` is a DateFormat key, or null when nothing is set. `inherited` is what the caller would
+    fall back to with no override of their own, null when nothing is set for them to inherit.
     """
 
     value = Field(DateFormat, required=False)
     source = Field(PreferenceSource, required=True)
-    inherited = Field(InheritedDateFormat, required=True)
+    inherited = Field(DateFormat, required=False)
 
 
 class EffectiveTimezone(ObjectType):
-    """An effective `timezone`: the resolved IANA name (null when nothing is set) and its source."""
+    """An effective `timezone`: the resolved IANA name (null when nothing is set) and its source.
+
+    `inherited` is the IANA name the caller would fall back to with no override of their own, null
+    when nothing is set for them to inherit.
+    """
 
     value = Field(String, required=False)
     source = Field(PreferenceSource, required=True)
-    inherited = Field(InheritedTimezone, required=True)
+    inherited = Field(String, required=False)
 
 
 class EffectivePreferencesType(ObjectType):

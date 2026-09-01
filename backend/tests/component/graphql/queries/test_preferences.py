@@ -16,12 +16,11 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
-# Selecting `inherited` on every effective read pins the invariant on all of the paths below.
 EFFECTIVE_QUERY = """
 query {
   InfrahubEffectivePreferences {
-    date_format { value source inherited { value source } }
-    timezone { value source inherited { value source } }
+    date_format { value source inherited }
+    timezone { value source inherited }
   }
 }
 """
@@ -79,12 +78,12 @@ async def test_effective_no_user_no_global_is_default(
     assert prefs["date_format"] == {
         "value": None,
         "source": "DEFAULT",
-        "inherited": {"value": None, "source": "DEFAULT"},
+        "inherited": None,
     }
     assert prefs["timezone"] == {
         "value": None,
         "source": "DEFAULT",
-        "inherited": {"value": None, "source": "DEFAULT"},
+        "inherited": None,
     }
 
 
@@ -106,12 +105,12 @@ async def test_effective_global_only_source_global(
     assert prefs["date_format"] == {
         "value": "ISO_DATETIME",
         "source": "GLOBAL",
-        "inherited": {"value": "ISO_DATETIME", "source": "GLOBAL"},
+        "inherited": "ISO_DATETIME",
     }
     assert prefs["timezone"] == {
         "value": "UTC",
         "source": "GLOBAL",
-        "inherited": {"value": "UTC", "source": "GLOBAL"},
+        "inherited": "UTC",
     }
 
 
@@ -138,12 +137,12 @@ async def test_effective_user_override_source_user(
     assert prefs["date_format"] == {
         "value": "EU_DATETIME",
         "source": "USER",
-        "inherited": {"value": "ISO_DATETIME", "source": "GLOBAL"},
+        "inherited": "ISO_DATETIME",
     }
     assert prefs["timezone"] == {
         "value": "Europe/Paris",
         "source": "USER",
-        "inherited": {"value": "UTC", "source": "GLOBAL"},
+        "inherited": "UTC",
     }
 
 
@@ -168,13 +167,13 @@ async def test_effective_mixed_per_attribute_sources(
     assert prefs["date_format"] == {
         "value": "EU_DATETIME",
         "source": "USER",
-        "inherited": {"value": None, "source": "DEFAULT"},
+        "inherited": None,
     }
     # timezone: no user override, global present -> GLOBAL, inheriting itself.
     assert prefs["timezone"] == {
         "value": "UTC",
         "source": "GLOBAL",
-        "inherited": {"value": "UTC", "source": "GLOBAL"},
+        "inherited": "UTC",
     }
 
 
@@ -205,13 +204,13 @@ async def test_effective_mixed_inherited_layers_per_attribute(
     assert prefs["date_format"] == {
         "value": "EU_DATETIME",
         "source": "USER",
-        "inherited": {"value": "ISO_DATETIME", "source": "GLOBAL"},
+        "inherited": "ISO_DATETIME",
     }
     # USER shadowing nothing: clearing this override would land on the client's own default.
     assert prefs["timezone"] == {
         "value": "Europe/Paris",
         "source": "USER",
-        "inherited": {"value": None, "source": "DEFAULT"},
+        "inherited": None,
     }
 
 
@@ -247,12 +246,12 @@ async def test_effective_is_private_per_caller(
     assert result_a.data["InfrahubEffectivePreferences"]["timezone"] == {
         "value": "Europe/Paris",
         "source": "USER",
-        "inherited": {"value": "UTC", "source": "GLOBAL"},
+        "inherited": "UTC",
     }
     assert result_b.data["InfrahubEffectivePreferences"]["timezone"] == {
         "value": "America/New_York",
         "source": "USER",
-        "inherited": {"value": "UTC", "source": "GLOBAL"},
+        "inherited": "UTC",
     }
 
 
@@ -379,7 +378,8 @@ async def test_effective_inherited_readable_without_manage_global_permission(
         db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_first_account
     )
     assert global_result.errors is not None
-    assert global_result.data is None or global_result.data.get("InfrahubGlobalPreferences") is None
+    assert [error.message for error in global_result.errors] == ["You are not allowed to manage global preferences"]
+    assert global_result.data is None
 
     effective_result = await run_query(
         db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account
@@ -389,5 +389,5 @@ async def test_effective_inherited_readable_without_manage_global_permission(
     assert effective_result.data["InfrahubEffectivePreferences"]["timezone"] == {
         "value": "Europe/Paris",
         "source": "USER",
-        "inherited": {"value": "UTC", "source": "GLOBAL"},
+        "inherited": "UTC",
     }

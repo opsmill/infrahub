@@ -8,18 +8,12 @@ const GET_EFFECTIVE_PREFERENCES = graphql(`
       date_format {
         value
         source
-        inherited {
-          value
-          source
-        }
+        inherited
       }
       timezone {
         value
         source
-        inherited {
-          value
-          source
-        }
+        inherited
       }
     }
   }
