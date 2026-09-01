@@ -21,6 +21,16 @@
 
   --accent: #087895;
 
+  /* Companions to --accent, covering the roles the legacy custom-blue ramp served with four
+     interchangeable shades: a pale tint behind a selected row or badge, a saturated fill for
+     avatars and pulse dots, and the foreground that sits on that fill. --accent-surface at 10%
+     reproduces the dominant bg-custom-blue-700/10 exactly, so those call sites do not move.
+     NOTE: --accent-strong / --accent-foreground contrast wants a designer's sign-off; they are
+     defined to preserve today's behaviour and have no consumer yet. */
+  --accent-surface: --alpha(var(--accent) / 10%);
+  --accent-strong: #0987a8;
+  --accent-foreground: var(--color-white);
+
   /* Marks the element the user is currently acting on: an open navigation menu, a column being
      sorted or filtered. Each theme needs its own end of the ramp to clear WCAG AA against its own
      background, so a single shade cannot serve both. */
@@ -29,6 +39,45 @@
 
   --danger: var(--color-rose-700);
   --danger-surface: --alpha(var(--color-rose-500) / 15%);
+  /* A second danger intensity, for the one place that needs it: the check-severity stripe uses
+     one step hotter for "critical" than for "error". */
+  --danger-strong: var(--color-rose-600);
+
+  /* The remaining status families, following the --danger recipe: foreground -700, surface
+     alpha(-500 / 15%), strong one step hotter. Amber (not yellow) is warning: the two hues mean
+     the same thing in this codebase and differ only by the age of the code. Sky (not blue or
+     cyan) is info: cyan collides with --accent and --ring, blue with --active. */
+  --success: var(--color-green-700);
+  --success-surface: --alpha(var(--color-green-500) / 15%);
+  --success-strong: var(--color-green-600);
+
+  --warning: var(--color-amber-700);
+  --warning-surface: --alpha(var(--color-amber-500) / 15%);
+  --warning-strong: var(--color-amber-500);
+  /* Warning is the only family that draws a hairline between surface and foreground. */
+  --warning-border: --alpha(var(--color-amber-500) / 35%);
+
+  /* Highlighted text (<mark>). Not --warning-surface: a highlight is an annotation, not a
+     warning, and coupling them would let a warning retune silently restyle marked text.
+     Intentionally not bridged into @theme: markdown.css reads var(--marked) directly and
+     nothing needs a bg-marked utility, so adding one would just be dead code. */
+  --marked: --alpha(var(--color-amber-400) / 35%);
+
+  --info: var(--color-sky-700);
+  --info-surface: --alpha(var(--color-sky-500) / 15%);
+
+  /* Diff status is deliberately NOT the status palette. The set has four members read relative to
+     one another in a single viewport, and "removed" is a successful operation, not an error —
+     mapping it to --danger makes every deletion in a proposed change look like a failure. Seeded
+     from the shades already in use, so this indirection moves no pixels. */
+  --diff-added: var(--color-green-700);
+  --diff-added-surface: --alpha(var(--color-green-500) / 15%);
+  --diff-removed: var(--color-rose-700);
+  --diff-removed-surface: --alpha(var(--color-rose-500) / 15%);
+  --diff-updated: var(--color-blue-700);
+  --diff-updated-surface: --alpha(var(--color-blue-500) / 15%);
+  --diff-conflict: var(--color-yellow-700);
+  --diff-conflict-surface: --alpha(var(--color-yellow-500) / 15%);
 
   /* A raised content surface: diff rows, check panels, rendered diagrams. Distinct from --surface,
      which sits lower, and from --input, which happens to share these values but tracks form fields. */
@@ -39,6 +88,11 @@
   --input: var(--color-white);
   --input-border: var(--border);
   --input-shadow: 0 2px 4px rgb(0 0 0 / 0.04);
+
+  /* The 1px top highlight that makes a small control read as raised: count badges, outline
+     buttons, checkbox cards. Light needs a near-white catch and dark a barely-there one, so no
+     single literal serves both — which is why each call site used to carry its own dark: twin. */
+  --raised-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9);
 
   --popover: --alpha(var(--color-stone-100) / 70%);
 
@@ -104,11 +158,40 @@
 
   --accent: #a7d9e6;
 
+  --accent-surface: --alpha(var(--accent) / 15%);
+  --accent-strong: #0b97bb;
+
   --active: var(--color-indigo-400);
   --active-surface: --alpha(var(--color-indigo-400) / 15%);
 
   --danger: var(--color-rose-400);
   --danger-surface: --alpha(var(--color-rose-400) / 20%);
+  --danger-strong: var(--color-rose-500);
+
+  --success: var(--color-green-400);
+  --success-surface: --alpha(var(--color-green-500) / 15%);
+  --success-strong: var(--color-green-500);
+
+  /* amber-300, not -400: the dark foreground twins already in the codebase are -300 nine times
+     out of eleven, and amber-400 reads far brighter than rose-400 at the same step. */
+  --warning: var(--color-amber-300);
+  --warning-surface: --alpha(var(--color-amber-400) / 20%);
+  --warning-strong: var(--color-amber-400);
+  --warning-border: --alpha(var(--color-amber-400) / 30%);
+
+  --marked: --alpha(var(--color-amber-400) / 25%);
+
+  --info: var(--color-sky-400);
+  --info-surface: --alpha(var(--color-sky-400) / 20%);
+
+  --diff-added: var(--color-green-400);
+  --diff-added-surface: --alpha(var(--color-green-400) / 20%);
+  --diff-removed: var(--color-rose-400);
+  --diff-removed-surface: --alpha(var(--color-rose-400) / 20%);
+  --diff-updated: var(--color-blue-400);
+  --diff-updated-surface: --alpha(var(--color-blue-400) / 20%);
+  --diff-conflict: var(--color-yellow-400);
+  --diff-conflict-surface: --alpha(var(--color-yellow-400) / 20%);
 
   --content: var(--color-stone-900);
   --content-muted: rgb(255 255 255 / 0.05);
@@ -117,6 +200,8 @@
   --input: var(--color-stone-900);
   --input-border: var(--border-strong);
   --input-shadow: 0 2px 4px rgb(0 0 0 / 0.35);
+
+  --raised-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
 
   --popover: --alpha(var(--color-stone-900) / 70%);
 
@@ -200,11 +285,36 @@
   --color-ring-halo: var(--ring-halo);
 
   --color-accent: var(--accent);
+  --color-accent-surface: var(--accent-surface);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-foreground: var(--accent-foreground);
   --color-active: var(--active);
   --color-active-surface: var(--active-surface);
 
   --color-danger: var(--danger);
   --color-danger-surface: var(--danger-surface);
+  --color-danger-strong: var(--danger-strong);
+
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-success-strong: var(--success-strong);
+
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-warning-strong: var(--warning-strong);
+  --color-warning-border: var(--warning-border);
+
+  --color-info: var(--info);
+  --color-info-surface: var(--info-surface);
+
+  --color-diff-added: var(--diff-added);
+  --color-diff-added-surface: var(--diff-added-surface);
+  --color-diff-removed: var(--diff-removed);
+  --color-diff-removed-surface: var(--diff-removed-surface);
+  --color-diff-updated: var(--diff-updated);
+  --color-diff-updated-surface: var(--diff-updated-surface);
+  --color-diff-conflict: var(--diff-conflict);
+  --color-diff-conflict-surface: var(--diff-conflict-surface);
 
   --color-content: var(--content);
   --color-content-muted: var(--content-muted);
@@ -213,6 +323,7 @@
   --color-input: var(--input);
   --color-input-border: var(--input-border);
   --shadow-input: var(--input-shadow);
+  --inset-shadow-raised: var(--raised-shadow);
 
   --color-popover: var(--popover);
 
@@ -244,6 +355,46 @@
   --color-table-cell: var(--table-cell);
   --color-table-cell-pinned: var(--table-cell-pinned);
   --background-image-table-frame: var(--table-frame);
+}
+
+/* Theme-invariant scales. Unlike everything above, .dark does not override these — they are
+   dimensions and timings, not colours. They live in a plain @theme (not @theme inline) so the
+   custom property is emitted as well as the utility: several call sites need to read the raw
+   value from inside a calc() or minmax() that has no utility form. */
+@theme {
+  /* One step below Tailwind's text-xs, for dense metadata: graph node labels, table sublabels.
+     Deliberately no --text-xxs--line-height: the value this replaces set font-size only, and
+     adding a line-height here would shift the 7 call sites already using text-xxs. */
+  --text-xxs: 0.625rem;
+
+  /* The term column of a definition-style row. Shared by the schema-driven object detail row and
+     the schema-free DetailRow, which have to line up when both appear on the same page. */
+  --detail-label-width: 200px;
+  --grid-template-columns-detail-row: var(--detail-label-width) auto;
+
+  /* Chrome stacked above a full-height page body: app header, breadcrumb, page title row. Page
+     bodies and their loading placeholders subtract it from the viewport. The -tabs variant is for
+     shells that add their own tab row. */
+  --height-page-body: calc(100vh - 10.5rem);
+  --height-page-body-tabs: calc(100vh - 14rem);
+
+  /* Vertical offset of the labelled tab sitting flush above a filter popover; equals that tab's
+     own rendered height. Used negated, as -top-filter-tab. */
+  --inset-filter-tab: 1.8rem;
+
+  /* Skeleton loading rhythm — twice the speed of Tailwind's animate-pulse. Own keyframes so the
+     token does not depend on the tailwindcss-animate plugin, which is disabled under CI. */
+  --animate-skeleton: skeleton-pulse 1s ease-in-out infinite;
+
+  @keyframes skeleton-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
 }
 
 @layer base {
