@@ -79,6 +79,24 @@ async def count_transform_runs(client: InfrahubClient, *, flow_name: str) -> int
     return len([task for task in tasks if task.title == flow_name])
 
 
+async def wait_for_transform_runs(
+    client: InfrahubClient, *, flow_name: str, at_least: int, seconds: int = PREFECT_EVENT_WAIT_SECONDS
+) -> int:
+    """Wait until at least ``at_least`` runs of ``flow_name`` exist, and report what was counted.
+
+    The recompute is submitted inside the merge flow but reaches the task API a moment later, so a
+    count taken as soon as the merge returns can read the queue before the submission lands.
+    """
+    count = 0
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        count = await count_transform_runs(client, flow_name=flow_name)
+        if count >= at_least:
+            break
+        await sleep(1)
+    return count
+
+
 async def create_device_and_wait(
     client: InfrahubClient, *, site: InfrahubNode, instance: int, expected: str, branch: str | None = None
 ) -> str:
@@ -574,6 +592,9 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         assert merged
 
         assert await wait_for_device_names(client, device_ids, expected) == expected
+
+        expected_runs = 1 if COALESCED_PYTHON_RECOMPUTE else len(MERGE_DEVICE_INSTANCES)
+        await wait_for_transform_runs(client, flow_name=DEVICE_NAME_FLOW, at_least=runs_before + expected_runs)
         await wait_until_tasks_settle(client)
 
         runs_for_the_merge = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW) - runs_before
@@ -605,6 +626,9 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         assert rebased
 
         assert await wait_for_device_names(client, device_ids, expected, branch=branch.name) == expected
+
+        expected_runs = 1 if COALESCED_PYTHON_RECOMPUTE else len(REBASE_DEVICE_INSTANCES)
+        await wait_for_transform_runs(client, flow_name=DEVICE_NAME_FLOW, at_least=runs_before + expected_runs)
         await wait_until_tasks_settle(client)
 
         runs_for_the_rebase = await count_transform_runs(client, flow_name=DEVICE_NAME_FLOW) - runs_before

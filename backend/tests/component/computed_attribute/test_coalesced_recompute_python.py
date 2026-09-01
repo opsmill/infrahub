@@ -119,7 +119,7 @@ def _schema_with_an_ungathered_transform() -> SchemaRoot:
 
 @dataclass
 class PythonRecomputeDataset:
-    """Two cars owned by one person, both subscribed to the owner-reading transform's query."""
+    """``CAR_COUNT`` cars owned by one person, all subscribed to the second transform's query."""
 
     car_ids: list[str]
     person_id: str
