@@ -58,15 +58,20 @@ def _dispatcher(
     event_service: InfrahubEventService,
     workflow: InfrahubWorkflow,
     schema_branch: SchemaBranch,
+    coalesced: bool = True,
 ) -> BulkRecomputeDispatcher:
-    return BulkRecomputeDispatcher(
-        db=db,
-        writer=BulkRecomputeWriter(db=db, event_service=event_service),
-        chain=RecomputeChainSubmitter(
+    chain = None
+    if coalesced:
+        chain = RecomputeChainSubmitter(
             builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
             submitter=CoalescedRecomputeSubmitter(workflow=workflow),
             python_resolver=DisabledPythonTargetResolver(),
-        ),
+        )
+    return BulkRecomputeDispatcher(
+        db=db,
+        writer=BulkRecomputeWriter(db=db, event_service=event_service),
+        chain=chain,
+        coalesced=coalesced,
     )
 
 
@@ -321,7 +326,6 @@ async def test_dispatch_returns_without_writing_when_branch_is_gone(
             writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="ignored")],
             branch_name="branch-that-was-deleted",
             context=_event_context(),
-            coalesced=True,
             recompute_depth=0,
         )
 
@@ -354,7 +358,11 @@ async def test_dispatch_live_path_stamps_live_and_does_not_chain(
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
     dispatcher = _dispatcher(
-        db=db, event_service=event_recorder, workflow=workflow_recorder, schema_branch=schema_branch
+        db=db,
+        event_service=event_recorder,
+        workflow=workflow_recorder,
+        schema_branch=schema_branch,
+        coalesced=False,
     )
 
     @flow(name="test-dispatch-live")
@@ -363,7 +371,6 @@ async def test_dispatch_live_path_stamps_live_and_does_not_chain(
             writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="live label")],
             branch_name=default_branch.name,
             context=_event_context(),
-            coalesced=False,
             recompute_depth=0,
         )
 
