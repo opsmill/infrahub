@@ -10,7 +10,14 @@ Applies to the properties `created_at`, `created_by`, `updated_at`, `updated_by`
 `:Attribute`, and `:Relationship` vertices.
 
 Does **not** apply to `previous_updated_at` / `previous_updated_by`, which are a rollback snapshot
-owned by the schema-migration and merge paths, not part of this cache.
+owned by the schema-migration and merge paths, not part of this cache. Two rules govern them, and they
+apply to different branches rather than competing:
+
+- A snapshot is written only where a rollback could consume it — i.e. where the write is on the
+  default or global branch. `GraphRollbacker` refuses to restore metadata for any other target branch,
+  so a snapshot written during a user-branch migration is unusable and must not be written.
+- Where a snapshot *is* written, the rollback must be able to reach it, including when the write it
+  accompanies landed on `-global-` rather than on the merge's target branch.
 
 ## The invariant
 
@@ -60,6 +67,10 @@ report the original creation time, which lives on the twin's edge.
 - **Write sites** must produce values equal to the recompute. This is SC-001: assertions compare a
   default-branch read against the recompute rather than against a hard-coded timestamp.
 - **The repair migration** (FR-005) applies the recompute directly.
+- **The rollback** — `core/rollback.py::GraphRollbacker` — must be able to *undo* any write this
+  contract permits. A write made at `branch_level = 1` on `-global-` during a default-branch merge is
+  as much in scope for rollback as one made on the default branch itself; a rollback that reaches only
+  one of the two branches has not restored the invariant.
 - **The read path** — `core/query/node.py::NodeListGetInfoQuery`,
   `core/query/node.py::NodeListGetAttributeQuery`, and
   `core/query/subquery.py::build_subquery_order_metadata` — consumes the properties only when the

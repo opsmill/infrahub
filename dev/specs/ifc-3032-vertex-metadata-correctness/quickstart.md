@@ -82,6 +82,29 @@ level-2 edges must still write no metadata.
 3. Assert every affected vertex equals the recompute.
 4. Run it again and assert zero vertices changed (SC-002).
 
+## Validation scenario 5 — the failed merge (User Story 5, FR-009)
+
+The highest-blast-radius scenario, and the one the ticket names.
+
+1. On a feature branch, add a branch-agnostic attribute to a branch-aware kind.
+2. Merge into the default branch and force the merge to fail after its schema-migration portion.
+3. Inspect the graph after the rollback.
+
+**Expected**: the `-global-` edges the migration created are reversed, and every vertex whose metadata
+it bumped is back to its pre-merge value.
+**Before the fix**: the rollback matches only the target branch, so those edges and their bumped
+metadata survive — a partial rollback no later write repairs.
+
+Repeat with the schema change *removing* an agnostic field instead of adding one.
+
+Also pin the opposite direction: an unrelated concurrent write on `-global-` inside the rollback
+window must **survive** an `AT_TIMESTAMP` rollback. Widening the branch set must not widen the window.
+
+```bash
+uv run pytest -x backend/tests/component/core/test_rollback.py \
+                backend/tests/component/core/merge/test_recovery_rollback.py
+```
+
 ## Performance check (SC-003)
 
 A check, not a gate. Benchmark relationship create/delete before and after the FR-004 peer guard:

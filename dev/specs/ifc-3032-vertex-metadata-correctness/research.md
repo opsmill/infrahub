@@ -181,3 +181,63 @@ for "small scope, may use database". Existing anchors to extend:
 - `backend/tests/component/core/migrations/graph/test_050.py` — the m050 pattern, including the
   agnostic/aware test schemas the SC-001 matrix needs for mismatch #2
 - `backend/tests/component/core/test_relationship_metadata.py` — FR-004's home
+
+
+## R10 — Why the rollback misses globally-published merge writes, and the narrowest fix
+
+**Decision**: Widen both rollback queries from a single `$target_branch` to the target branch **plus**
+`-global-`, gated on the target being the default branch. Nothing else changes: the timestamp window,
+the `RollbackScope` operator, the two-pass ordering, and the metadata-restore pipeline all stay as
+they are.
+
+**Rationale**: `core/query/rollback.py::RollbackReopenEdgesQuery` and `::RollbackDeleteEdgesQuery`
+both open with `MATCH (src)-[edge {branch: $target_branch}]->(dst)`. A merge into the default branch
+runs its schema-migration portion on that branch, so `$set_metadata` is true and the
+`previous_updated_at` / `previous_updated_by` snapshots are written — but when the migration adds or
+removes a branch-agnostic field on a branch-aware kind, the rows themselves go to `-global-`. The
+rollback's single-branch `MATCH` therefore never reaches them.
+
+The snapshot machinery is already correct; only its reach is wrong. `core/rollback.py::GraphRollbacker`
+already restricts `restore_metadata` to default/global target branches and raises otherwise, so the
+widening is safe by the guard that already exists: `-global-` is only ever added when the target is
+the default branch, which is exactly when level-1 global writes could have been made by the merge.
+
+**Alternatives considered**:
+
+- *Have the merge record which global rows it wrote and replay that list at rollback.* Introduces new
+  state that must survive the interruption the rollback exists to recover from, and
+  `GraphRollbacker`'s docstring makes a point of keeping nothing about progress outside the database.
+  Rejected on Constitution VII and on resumability.
+- *Run a second rollback pass with `target_branch=-global-`.* Would reverse **every** global write in
+  the window, including ones made by writers unrelated to the merge — the exact hazard
+  `RollbackScope.AT_TIMESTAMP` exists to avoid. Rejected as over-broad.
+- *Treat this as out of scope and let the repair migration clean up.* The repair fixes metadata, not
+  edges. A rollback that leaves the edges in place has not rolled back. Rejected as not addressing the
+  defect.
+
+**Interaction with FR-007** (research R4): the two rules apply to different branches and do not
+conflict. FR-007 stops a *user-branch* migration writing a snapshot no rollback can consume, because
+`GraphRollbacker` refuses to restore metadata for a non-default target. FR-009 makes a *default-branch*
+merge's already-written snapshot reachable. Neither changes the other's branch.
+
+## R11 — The delete path
+
+**Decision**: `core/query/node.py::NodeDeleteQuery` takes the same treatment as `Node._update`: gate on
+whether any deleted field wrote a level-1 edge, not on the node's branch support.
+
+**Rationale**: `NodeDeleteQuery` bumps the Node vertex behind
+`if self.branch.is_global or self.branch.is_default`, where the branch arrives from the node's
+`get_branch_based_on_support_type()` — textually the same proxy as F1, on a third path. `Node.delete`
+resolves that branch once and passes it to both `RelationshipDeleteAllQuery` and `NodeDeleteQuery`, so
+an aware node deleted on a user branch skips the bump while its agnostic attributes' deletion edges
+land on `-global-` at level 1.
+
+The per-field deletion edges are already correct: `core/query/attribute.py`'s delete variants guard on
+`$branch_level = 1` derived from the attribute's own support branch, exactly as the update variants do.
+
+**Alternatives considered**:
+
+- *Fold the delete gate into `Node._update`'s.* They are separate methods with separate changelogs and
+  no shared gate site; sharing one would mean extracting a helper for two callers, which is the
+  minimum Constitution VII allows but buys nothing over the same two-line predicate in each. Deferred
+  to implementation judgement — extract only if the predicate turns out to be more than a line.

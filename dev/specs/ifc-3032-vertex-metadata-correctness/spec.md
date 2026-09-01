@@ -8,7 +8,7 @@
 
 **Ticket**: [IFC-3032](https://opsmill.atlassian.net/browse/IFC-3032)
 
-**Input**: Idea brief `IFC-3032-brief.md` — verify that `created_at/by` and `updated_at/by` are correctly maintained on `:Node`, `:Attribute`, and `:Relationship` vertices, in particular for branch-agnostic fields on branch-aware objects where the write happens on a non-default branch but the change lands on the `-global-` branch.
+**Input**: Jira ticket IFC-3032 (authoritative) plus idea brief `IFC-3032-brief.md` — verify that `created_at/by` and `updated_at/by` are correctly maintained on `:Node`, `:Attribute`, and `:Relationship` vertices, in particular for branch-agnostic fields on branch-aware objects where the write happens on a non-default branch but the change lands on the `-global-` branch.
 
 ## Problem Statement
 
@@ -96,6 +96,31 @@ An operator upgrades an Infrahub instance whose graph was written by a version p
 
 ---
 
+### User Story 5 - A failed merge leaves no orphaned metadata (Priority: P2)
+
+A merge into the default branch runs a schema change that adds or removes a branch-agnostic field on a
+branch-aware kind, and then fails. The rollback restores the graph completely — including the vertex
+metadata those globally-published rows bumped.
+
+**Why this priority**: Named explicitly in the ticket. It is P2 rather than P1 because it needs a
+merge to fail, but its blast radius is the worst in the feature: a partial rollback leaves the graph
+in a state no later write repairs, with metadata attributed to a merge that did not happen.
+
+**Independent Test**: Fully testable by merging a schema change that adds an agnostic attribute to an
+aware kind, forcing the merge to fail, and asserting the rollback restored both the edges and the
+vertex metadata.
+
+**Acceptance Scenarios**:
+
+1. **Given** a merge into the default branch whose schema-migration portion adds a branch-agnostic
+   attribute to a branch-aware kind, **When** the merge fails and is rolled back, **Then** the
+   `-global-` edges the migration created are reversed and every vertex whose metadata it bumped is
+   restored from its `previous_updated_at` / `previous_updated_by` snapshot
+2. **Given** the same merge removing an agnostic field instead of adding one, **When** the merge fails
+   and is rolled back, **Then** the same restoration holds
+
+---
+
 ## Findings
 
 The four defects the fix must close, plus the two guard defects they depend on.
@@ -149,6 +174,18 @@ WHERE NOT EXISTS {
 
 The migrated-out twin keeps its original `active` `IS_PART_OF` open, so `status: "active" AND r.to IS NULL` matches both twins.
 
+### F4 — Delete path gates the Node vertex on the node's branch (under-set)
+
+`core/query/node.py::NodeDeleteQuery` bumps the Node vertex behind
+`if self.branch.is_global or self.branch.is_default`, where the branch comes from the node's
+`get_branch_based_on_support_type()` — the same proxy as F1, on a third path.
+
+An **aware** node deleted on a user branch resolves the gate to that branch and skips the bump, while
+its agnostic attributes' deletion edges land on `-global-` at level 1 and are visible on the default
+branch. Live wherever an aware kind carries an agnostic field.
+
+Named in the ticket's path list ("object delete") alongside create, update, and schema updates.
+
 ### F6 — Schema migrations gate vertex metadata on the migration's branch, not the edge's level
 
 All seven migration queries use the same Python-side scalar:
@@ -172,6 +209,21 @@ Three of them write level-1 edges from a level-2 branch, so the scalar is wrong 
 Sites: `core/migrations/query/attribute_add.py::AttributeAddQuery`; `core/migrations/query/node_duplicate.py::NodeDuplicateQuery`; `core/migrations/schema/node_remove.py::NodeRemoveMigrationBaseQuery` and its `NodeRemoveMigrationQueryIn` / `NodeRemoveMigrationQueryOut` subclasses.
 
 **Merge does not repair these** — see User Story 3. Highest severity alongside F1 / F1b, because the owning node already exists on the default branch.
+
+### F7 — Rollback cannot reach globally-published rows, or the metadata they bumped
+
+`core/query/rollback.py::RollbackReopenEdgesQuery` and `::RollbackDeleteEdgesQuery` both match
+`(src)-[edge {branch: $target_branch}]->(dst)` — a **single** branch.
+
+A merge into the default branch runs its schema-migration portion there, so `$set_metadata` is true
+and the `previous_updated_at` / `previous_updated_by` snapshots **are** written. But when that
+migration adds or removes a branch-agnostic field on a branch-aware kind, the rows it writes go to
+`-global-`, not to the target branch. A failed-merge rollback therefore never sees them: the edges
+are not reversed, and the vertices they bumped are never restored from their snapshots.
+
+The snapshot machinery is present and correct; the rollback simply looks on one branch when the write
+spanned two. Highest blast radius in the feature — a partial rollback leaves a state no later write
+repairs.
 
 ## The Four Live Mismatches (test matrix basis)
 
@@ -209,6 +261,14 @@ Enumerated by walking `core_models` and comparing each field's `branch` against 
   When the gate fires via this edge-level path on a **non-default** branch, the query MUST write `updated_at` / `updated_by` only and MUST NOT write the `previous_updated_at` / `previous_updated_by` snapshot. That snapshot exists solely so a rollback can restore it, and `core/rollback.py::GraphRollbacker` restores it only for default/global target branches — a snapshot written during a user-branch migration can never be consumed, and a later default-branch rollback whose window catches it could restore a stale value as if it were current.
   *Verify:* on a feature branch, add an agnostic attribute to a branch-aware kind; assert the new Attribute vertex has `created_at` / `created_by` set and the Node's `updated_at` advanced, both readable on the default branch, and that `previous_updated_at` / `previous_updated_by` are untouched. A test MUST also pin that a level-2-only migration still writes no metadata.
 
+- **FR-008**: `Node.delete` and `NodeDeleteQuery` MUST decide whether to write Node vertex metadata from whether any deleted field wrote a `branch_level = 1` edge, not from the node's own branch support — the same rule as FR-001, applied to the delete path named in the ticket.
+  *Verify:* delete an aware node carrying an agnostic attribute from a feature branch; assert the default-branch `updated_at` advanced. Delete an agnostic node carrying an aware attribute from a feature branch; assert it did not.
+
+- **FR-009**: `GraphRollbacker` MUST reverse the `branch_level = 1` writes a merge made on `-global-`, and MUST restore the `previous_updated_at` / `previous_updated_by` snapshots on the vertices those writes bumped, whenever the rollback's target branch is the default branch. Today both rollback queries match a single `$target_branch`, so rows a merge published globally — and the vertex metadata they bumped — survive the rollback.
+  The `-global-` half MUST use exact-timestamp semantics regardless of the caller's rollback scope. `SINCE_TIMESTAMP`'s safety argument is that the merge write-block gives the caller sole ownership of the target branch for the window — and that does not hold for `-global-`, which the write-block leaves open to every branch other than the merge's source and the default branch. Reversing every global write since the timestamp would therefore revert unrelated branches' agnostic-field writes.
+  This does **not** contradict FR-007's rule against writing a snapshot on a user branch. FR-007 is about not writing a snapshot no rollback can consume; FR-009 is about consuming one that a default-branch merge already wrote. The two apply to different branches.
+  *Verify:* SC-004, plus a pin that an unrelated branch's `-global-` write inside the rollback window survives.
+
 ### Key Entities *(include if feature involves data)*
 
 All existing; no new entities.
@@ -219,6 +279,7 @@ All existing; no new entities.
 - **`NodeUpdateMetadataQuery`** — the write path for Node vertex metadata (`core/query/node.py::NodeUpdateMetadataQuery`)
 - **`DiffMergeMetadataQuery`** — sets metadata at merge; unchanged by this feature, but its `node_uuids`-from-diff scope is why F6 is not self-healing
 - **`m050_backfill_vertex_metadata`** — the existing edge-derived recompute; its derivation is the oracle for both tests and the repair migration
+- **`GraphRollbacker`** — reverses a failed merge's writes and restores the `previous_updated_at/by` snapshots; currently scoped to a single branch, which FR-009 widens to include `-global-`
 
 ### Edge Cases
 
@@ -262,6 +323,8 @@ All existing; no new entities.
 
 - **SC-002** (gate): the repair migration is idempotent — a second run changes zero vertices.
 
+- **SC-004** (gate): a merge into the default branch whose schema-migration portion adds — and, separately, removes — a branch-agnostic field on a branch-aware kind, then fails, leaves no trace after rollback: the `-global-` edges it created are reversed, and every vertex whose metadata it bumped equals its pre-merge value, restored from `previous_updated_at` / `previous_updated_by`.
+
 - **SC-003** (check, not gate): no measured regression beyond noise on relationship create/delete. If the peer guard costs anything real, that indicates the wrong design — `RelationshipCreateQuery` already proves a level-1 `IS_PART_OF` in `add_source_match_to_query` when the peer's support branch is level 1, so only the aware-peer case needs an added `OPTIONAL MATCH`.
 
 ## Constitution Alignment
@@ -272,7 +335,7 @@ All existing; no new entities.
 
 ## Governance Gates Crossed
 
-- [x] **Database / migration change** — repair migration (FR-005). Approved for this ticket.
+- [x] **Database / migration change** — repair migration (FR-005) and the widened rollback scope (FR-009). Approved for this ticket.
 - [ ] API change — none; read shapes unchanged.
 - [ ] New dependency — none.
 - [ ] CI/CD change — none.
@@ -307,9 +370,10 @@ All existing; no new entities.
 
 Each is intended to be its own commit / PR, ordered so the tests land with the fix they cover.
 
-1. **FR-001 + FR-002** — `Node._update` gate and the branch passed to `NodeUpdateMetadataQuery`. Anchor test on F1b (`CoreReadOnlyRepository`) since it needs no custom schema.
+1. **FR-001 + FR-002 + FR-008** — the `Node._update` and `Node.delete` / `NodeDeleteQuery` gates, and the branch passed to `NodeUpdateMetadataQuery`. All three are the same defect on three paths. Anchor test on F1b (`CoreReadOnlyRepository`) since it needs no custom schema.
 2. **FR-007** — the three schema-migration queries. Highest-severity remaining after 1.
 3. **FR-003** — `NodeCreateAllQuery` per-field gating.
 4. **FR-004** — relationship create/delete peer guard. Staged separately so it can be reverted on perf grounds without touching the rest.
 5. **FR-005** — repair migration.
-6. **FR-006** — knowledge-doc correction.
+6. **FR-009** — rollback coverage for globally-published merge writes. Separate commit; the only part touching the merge-failure path.
+7. **FR-006** — knowledge-doc correction.

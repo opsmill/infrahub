@@ -19,9 +19,11 @@ Cypher it is the `on_global_branch` / `CASE WHEN ... = $global_branch` expressio
 evaluates to place its edges. Nothing new is derived — the fix makes the gate and the edge it guards
 read the same value instead of two independently-computed answers to the same question.
 
-Two additional pieces follow: a Node vertex is stamped only when the node itself has a level-1 active
-`IS_PART_OF` (which also fixes the migrated-twin and deleted-node guards), and a repair migration
-recomputes the cache for graphs already written wrong — including the NULLs that merge can never fill.
+Three further pieces follow. A Node vertex is stamped only when the node itself has a level-1 active
+`IS_PART_OF`, which also fixes the migrated-twin and deleted-node guards. A repair migration recomputes
+the cache for graphs already written wrong, including the NULLs merge can never fill. And the
+failed-merge rollback is widened to reach the rows a merge publishes on `-global-`, which it cannot see
+today — so a rollback that leaves those rows and their bumped metadata in place stops doing so.
 
 ## Technical Context
 
@@ -44,7 +46,7 @@ The cache exists so default-branch metadata reads stay fast; the fix must not tr
 **Constraints**: No API or read-shape change. No new vertex or edge properties. The repair migration
 must be idempotent (SC-002) and must not touch `previous_updated_at/by`
 
-**Scale/Scope**: 7 production code sites across 5 modules, 1 new graph migration, 1 knowledge-doc
+**Scale/Scope**: 10 production code sites across 7 modules, 1 new graph migration, 1 knowledge-doc
 correction, and a cross-product test suite over 4 live branch-support mismatches
 
 ## Constitution Check
@@ -54,7 +56,7 @@ correction, and a cross-product test suite over 4 live branch-support mismatches
 | Principle | Assessment | Verdict |
 |---|---|---|
 | **I. Schema-Driven Integrity** | No schema-layer change. The repair migration alters only derived properties, never data or constraints, and reads `branch_support` already persisted on each vertex rather than loading a schema — correct for a graph migration that may run against a database predating current models | PASS |
-| **II. Branch-Safe by Default** | The principle this feature restores. Every gate becomes an explicit `branch_level` test; edge activity resolution (`branch_level DESC, from DESC, status ASC`) is untouched; soft-delete semantics preserved. FR-006 documents the cross-branch side effect as the principle requires — replacing a statement that is currently wrong | PASS — remediates a violation |
+| **II. Branch-Safe by Default** | The principle this feature restores. FR-009 extends it to the recovery path: a rollback reaching only one of the two branches a merge wrote to is itself branch-unsafe. Every gate becomes an explicit `branch_level` test; edge activity resolution (`branch_level DESC, from DESC, status ASC`) is untouched; soft-delete semantics preserved. FR-006 documents the cross-branch side effect as the principle requires — replacing a statement that is currently wrong | PASS — remediates a violation |
 | **III. Type Safety & Explicit Contracts** | New Python is a predicate over existing typed objects. Cypher parameters stay bound (`$param`), never interpolated. The repair migration follows the existing `Query` + frozen-dataclass `get_data()` pattern | PASS |
 | **IV. Test Discipline** | SC-001's matrix is the coverage this area lacks. Component level is correct — the invariant is a claim about what a Cypher read returns after a Cypher write, so it cannot be unit-tested, and it spans no services. Existing fixtures reused (`metadata_helpers.py`, the `test_050.py` schemas) per the reuse rule; a new inline schema is added only for mismatch #2, which has no live instance | PASS |
 | **V. Query Performance & Efficiency** | SC-003 guards this explicitly. The FR-004 peer guard adds at most one `OPTIONAL MATCH` in the aware-peer case; `RelationshipCreateQuery` already proves a level-1 `IS_PART_OF` for level-1 peers. `EXPLAIN` on the modified relationship queries is required. The repair migration is scoped to mismatched kinds and batched `IN TRANSACTIONS`, matching m050 | PASS |
@@ -89,9 +91,12 @@ dev/specs/ifc-3032-vertex-metadata-correctness/
 ```text
 backend/infrahub/core/
 ├── node/__init__.py                     # FR-001, FR-002 — Node._update gate, _save_metadata branch
+├── rollback.py                          # FR-009 — GraphRollbacker reach
 ├── query/
 │   ├── node.py                          # FR-003 — NodeCreateAllQuery per-field gating
 │   │                                    # FR-002 — NodeUpdateMetadataQuery delete guard
+│   │                                    # FR-008 — NodeDeleteQuery gate
+│   ├── rollback.py                      # FR-009 — Reopen/DeleteEdges branch scope
 │   └── relationship.py                  # FR-004 — peer guard on Create/Delete/DeleteAll
 └── migrations/
     ├── query/
@@ -133,6 +138,17 @@ This is not a re-derivation. `core/query/attribute.py::AttributeQuery` sets its 
 exactly that call, and every attribute write query stamps its own vertex behind `WHERE $branch_level = 1`.
 The relationship side uses `core/relationship/model.py::Relationship.get_branch_based_on_support_type`
 identically. So the new gate reads the same value the edges were written with. (research.md R1, R2)
+
+### D1b — `Node.delete` / `NodeDeleteQuery` take the same gate (FR-008)
+
+`core/query/node.py::NodeDeleteQuery` bumps the Node vertex behind
+`if self.branch.is_global or self.branch.is_default`, where the branch arrives from `Node.delete`'s
+single `self.get_branch_based_on_support_type()` call — textually the same proxy as D1, on the third
+path the ticket names. Apply the same rule: stamp when any **deleted** field wrote a level-1 edge.
+
+The per-field deletion edges are already correct — `core/query/attribute.py`'s delete variants guard on
+`$branch_level = 1` from the attribute's own support branch, exactly as the update variants do. Only
+the node-level gate is wrong. (research.md R11)
 
 ### D2 — `_save_metadata` passes the default branch (FR-002)
 
@@ -250,6 +266,41 @@ migration's cost is proportional to the *mismatched-support population*, not to 
 every run examines the same set. The `branch_support <> ` scoping is therefore load-bearing for
 runtime as well as for blast radius. (research.md R5, R6, R7)
 
+### D6b — Rollback reaches globally-published merge writes (FR-009)
+
+`core/query/rollback.py::RollbackReopenEdgesQuery` and `::RollbackDeleteEdgesQuery` both open with
+`MATCH (src)-[edge {branch: $target_branch}]->(dst)`. Widen that to the target branch **plus**
+`-global-`, and only when the target is the default branch.
+
+Nothing else moves: the timestamp window, the `RollbackScope` operator, the two-pass reopen-then-delete
+ordering, and `_render_restore_metadata_pipeline` all stay as they are. The safety argument is the
+guard that already exists — `core/rollback.py::GraphRollbacker.rollback` raises unless the target is
+default or global, so `-global-` is only ever added in exactly the case where a merge could have made
+level-1 global writes.
+
+**The `-global-` half takes `AT_TIMESTAMP` semantics regardless of the caller's scope.** Both real
+callers (`core/merge/failure_recoverer.py`, `core/diff/merger/merger.py`) pass
+`RollbackScope.SINCE_TIMESTAMP`, whose documented safety argument is that the merge write-block gives
+the caller sole ownership of the target branch for the window. That argument does not transfer:
+`core/branch/status_checker.py::BranchStatusChecker._raise_if_blocked` blocks only the merge's source
+branch and the default branch, so any *other* branch may write during the merge window — and an
+agnostic-field write from such a branch lands on `-global-` at level 1. Reversing every global write
+since the timestamp would revert it. An exact match on the merge timestamp reaches the merge's own
+global writes and nobody else's.
+
+This rests on the merge's schema-migration portion stamping its global writes at the merge timestamp.
+**Verify that before writing the query**; if it does not hold, FR-009's scope needs revisiting rather
+than the query being widened anyway.
+
+The widened `MATCH` scans two branches' edges rather than one. It is bounded by the same timestamp
+window and runs only on the merge-failure recovery path, which is not hot — noted, not gated.
+
+This is the piece that makes the `previous_updated_at/by` snapshots useful rather than decorative. A
+merge into the default branch already writes them for globally-published rows; until now nothing could
+consume them. Note the deliberate pairing with D3: FR-007 stops a *user-branch* migration writing a
+snapshot no rollback can consume, while FR-009 makes a *default-branch* merge's snapshot reachable.
+Different branches, no conflict. (research.md R10)
+
 ### D7 — Knowledge-doc correction (FR-006)
 
 `dev/knowledge/backend/database-schema.md` describes these properties as *"When added to
@@ -289,6 +340,15 @@ Two specifics the helpers force:
 
 FR-007's snapshot rule needs its own assertion: after a user-branch migration writes global rows,
 `previous_updated_at` / `previous_updated_by` on the affected vertices must be untouched.
+
+FR-008 adds the delete cells to SC-001's Mechanism A, which the enumeration already counts.
+
+FR-009 (SC-004) is tested where the rollback already is —
+`backend/tests/component/core/test_rollback.py` for the widened branch scope and
+`backend/tests/component/core/merge/test_recovery_rollback.py` for the end-to-end failed-merge
+scenario — not in the vertex metadata suite. Two scenarios: a merge whose schema portion adds an agnostic field to an aware kind
+and fails, and the same removing one. Plus the over-reach pin: an unrelated concurrent `-global-`
+write inside the rollback window must survive an `AT_TIMESTAMP` rollback.
 (research.md R9)
 
 ## Risks
@@ -299,6 +359,7 @@ FR-007's snapshot rule needs its own assertion: after a user-branch migration wr
 | D3's `node_remove` reordering moves a metadata write across a `WITH` boundary and could change which rows reach it | The reorder only hoists a pure `WITH` that computes two scalars from an already-bound edge; no `MATCH` or filter moves. Covered by the existing `backend/tests/component/core/migrations/schema/` suite plus the D8 pins |
 | The FR-004 peer guard costs measurable time on relationship create/delete | SC-003 measures it. `RelationshipCreateQuery` already proves a level-1 `IS_PART_OF` for level-1 peers, so only the aware-peer case adds an `OPTIONAL MATCH`. A real regression means the guard is in the wrong place — staged as its own commit so it can be reverted alone |
 | FR-007 causes user-branch migrations to write vertex metadata, which `core/rollback.py::GraphRollbacker` documents as happening only for default/global operations — leaving `previous_*` snapshots no rollback can consume | D3 carries only the `updated_*` bump across the new gate and leaves the `previous_*` snapshot behind `$set_metadata`. Asserted directly in D8 |
+| Widening the rollback's branch `MATCH` reverts global writes made by branches unrelated to the merge — a real hazard, since the merge write-block covers only the source and default branches, leaving every other branch free to write to `-global-` during the window | The `-global-` half uses exact-timestamp semantics regardless of the caller's `RollbackScope`, so it reaches only writes stamped at the merge timestamp. Contingent on the merge stamping its global writes at that timestamp — verified before the query is written. Pinned by a test asserting an unrelated branch's concurrent global write in the window survives |
 | The two value-correctness defects surfaced during investigation (the `local`-on-`agnostic` create/update split; the three migrations with no `-global-` handling) get absorbed into this ticket | Both are in the spec's Out of Scope with the reasoning recorded. Each gate here is edge-derived, so the metadata stays correct under either resolution. File them as separate issues |
 
 ## Phase Outputs
