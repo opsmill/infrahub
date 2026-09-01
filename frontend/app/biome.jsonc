@@ -142,15 +142,9 @@
               "wrapperClass",
               "wrapperClassName"
             ],
-            "functions": [
-              "classNames",
-              "clsx",
-              "cva",
-              "tv",
-              "twMerge",
-              "twJoin",
-              "tw"
-            ]
+            // Helpers that exist in this tree, plus tv: packages/ui is built on
+            // tailwind-variants, so it is the one name likely to arrive here later.
+            "functions": ["classNames", "clsx", "cva", "twMerge", "tv"]
           }
         }
       },

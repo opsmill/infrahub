@@ -116,7 +116,10 @@ Two things about the config are worth knowing before you change it:
 - `options.functions` **is** needed, and defaults to empty. Without it, a helper call is only
   checked when it sits directly inside a listed attribute (`className={classNames("w-[400px]")}`);
   the same call assigned to a variable first is invisible to the rule. `classNames` is this
-  codebase's dominant helper at ~270 call sites, so it and its siblings are listed.
+  codebase's dominant helper at ~270 call sites, so it is listed along with the other helpers
+  actually in use here — plus `tv`, because `packages/ui` is built on `tailwind-variants` and it
+  is the one name likely to arrive later. Add a helper when you introduce it, rather than carrying
+  names the tree does not use.
 
 Prefer, in order: an on-scale utility (`min-w-33`) → an existing token (`text-xxs`, `bg-accent`) →
 a new token in `theme.css` → a suppression. Reach for a suppression last, and only for one of these:
