@@ -42,7 +42,7 @@ The mechanism already exists and is already honoured at both of the determiner's
 | **II. Branch-Safe by Default** | The load-bearing principle. Verified in research R3 that the schema-diff producer covers property changes originating on *either* branch (`get_3ways_diff_schema` sums ancestor→source and ancestor→destination), and that the rebase-path hash gate does not become a correctness gap. Merge behaviour is tested explicitly (FR-002, FR-003) rather than inferred. | ✅ Pass |
 | **III. Type Safety & Explicit Contracts** | One typed `bool` class attribute per checker, on an existing typed interface. The registry key normalisation (R4) makes all 29 keys uniformly `str`, removing a mixed key type. No untyped dicts, no new API contract. | ✅ Pass |
 | **IV. Test Discipline** | Unit tier for the classification pinning test (pure dict, no DB — cheapest tier per `.agents/rules/testing-python.md`); component tier for the behaviour, extending the established pattern in `test_determiner.py`. No mocks — the determiner component test already uses a hand-written `_NoDependentsResolver` adapter. **No E2E**: justified below. | ✅ Pass, with justification |
-| **V. Query Performance & Efficiency** | The entire purpose. Removes work whose cost scales with population rather than with change size. No query is modified; queries simply stop being scheduled. | ✅ Pass |
+| **V. Query Performance & Efficiency** | The entire purpose. Removes work whose cost scales with population rather than with change size. No query is modified; queries simply stop being scheduled. Principle V's "SHOULD include benchmark tests" is met by the SC-002 scheduled-constraint count assertion (Step 5) rather than a timing benchmark — a count is the deterministic, CI-stable proxy for work avoided, where a wall-clock threshold would be flaky and has no baseline to calibrate against. Wall-clock is reported separately (SC-004). | ✅ Pass, benchmark satisfied by proxy |
 | **VI. Security & Input Boundaries** | No boundary touched. No user input, no Cypher change, no authz change. | ✅ Not applicable |
 | **VII. Simplicity & Maintainability** | One class attribute per checker, reusing decision points that already exist. No new abstraction, no new component, no new configuration, no new dependency. The rejected alternative (a new determiner-side property-comparison gate) is the more complex option and was rejected on correctness grounds as well as simplicity — see research R1. | ✅ Pass |
 
@@ -116,8 +116,15 @@ backend/
 └── tests/
     ├── unit/core/validators/
     │   └── test_constraint_classification.py   # NEW: FR-004 pinning test
-    └── component/core/constraint_validators/
-        └── test_determiner.py                  # MODIFY: 6 edit sites + new tests
+    └── component/core/
+        ├── constraint_validators/
+        │   ├── test_determiner.py              # MODIFY: 6 edit sites, FR-001/FR-003
+        │   │                                   #         narrowed-set + SC-002 count
+        │   └── test_schema_diff_constraints.py # NEW: FR-002 — composes
+        │                                       #      MergeSchemaAnalyzer with
+        │                                       #      ConstraintInfoMerger
+        └── test_branch_rebase.py               # MODIFY: one end-to-end FR-002 case
+                                                #         (or test_branch_merge.py)
 
 dev/knowledge/backend/
 └── constraint-validation.md         # NEW: FR-005
@@ -141,6 +148,8 @@ Ordered so that each step is independently verifiable and the safety property is
 
 Write `test_constraint_classification.py` asserting full dict equality over all 29 identifiers with **today's** values (27 `True`, 2 `False`). It passes immediately. This establishes the baseline and proves the test is wired correctly before it is used to police a change.
 
+**Then prove it can fail.** Temporarily add a bogus registry entry and confirm the test fails naming it; then remove it. A full-dict-equality test built subtly wrong (comparing a dict against itself, or derived from the same source it pins) passes forever and satisfies nothing. This negative check is a required step, not optional validation prose.
+
 ### Step 2 — Trace the write-time enforcement points
 
 Before flipping anything, confirm each of the eight families has a universal write-time enforcement site (research R8). This is the evidence for the classification, and Principle I depends on it. A family whose enforcement cannot be confirmed drops out of the flip list and the finding is recorded — the plan must not assume all eight survive tracing.
@@ -155,20 +164,42 @@ Per research R5. Existing expected sets shrink; the suite must be green before n
 
 ### Step 5 — Add the intentional assertions
 
+**In `test_determiner.py`** (data-diff producer — this file can only ever see that producer):
+
 - A data-only-diff test naming the exclusion explicitly (FR-001) and asserting every cross-node constraint survives (FR-003), rather than relying on the shrunken sets from Step 4 to imply it by omission.
-- A test that a genuine guarded-property change still yields the constraint **at unrestricted scope from the schema-diff producer** (FR-002). Assert the scope, not merely presence — presence alone would pass if the data-diff producer supplied it, which is the opposite of the requirement.
+- A parameterised count assertion implementing SC-002's `2A + R + P` over a diff with a known A/R/P composition, so the headline reduction claim is gated rather than narrated.
+
+**In a new schema-diff-producer test** (FR-002 — the safety property):
+
+This must **not** live in `test_determiner.py`. That file exercises `ConstraintValidatorDeterminer.get_constraints`, which *is* the data-diff producer; after this change it contributes nothing for these constraints, so a test placed there would pass while FR-002 was entirely broken. The schema-diff producer is `MergeSchemaAnalyzer::calculate_validations`, and the composition happens in `ConstraintInfoMerger::merge` — and there is currently **no test anywhere covering `calculate_validations`**.
+
+- A component test composing `MergeSchemaAnalyzer::calculate_validations` with `ConstraintInfoMerger::merge` on a branch that changes an attribute's kind *and* edits instance data for that kind. Assert the kind constraint is present **at unrestricted scope** (`node_uuids is None`), not merely present — presence alone would also hold if the data-diff producer had supplied it, which is the opposite of the requirement.
+- One end-to-end case extending the existing `backend/tests/component/core/test_branch_rebase.py` or `test_branch_merge.py`, which already drive the real path, so the composition is proven in situ and not only in isolation.
 
 ### Step 6 — Registry key normalisation
 
 Two keys to `.value`. Behaviour-preserving under `StrEnum` (verified, R4). Kept as its own step so it is separable in review.
 
-### Step 7 — Knowledge page and changelog
+### Step 7 — Observability
 
-`dev/knowledge/backend/constraint-validation.md` (FR-005) carrying the two producers and their three differing gates, the determiner's decision points, the merger's union rule, and the classification with each entry's justification including the traced enforcement sites from Step 2. Plus a `housekeeping` changelog fragment.
+Add a DEBUG log at each of the determiner's two classification skip sites, naming the constraint and the reason. The skip is currently silent, while both neighbouring skip paths do log (kind-absent-from-schema at INFO, unmapped-validator at WARNING). This feature's one dangerous failure mode is a constraint silently not running; leaving the classification skip unlogged makes that mode undiagnosable from logs.
 
-### Step 8 — Measure
+### Step 8 — Knowledge page and changelog
 
-Before/after wall-clock for a data-only rebase and the scheduled-constraint counts, for the PR description (SC-004).
+`dev/knowledge/backend/constraint-validation.md` (FR-005) carrying:
+
+- the two producers and their three differing call-site gates (research R3 table);
+- the determiner's two decision points and the merger's union-with-unrestricted-scope-winning rule;
+- the classification with each entry's justification, including the traced enforcement sites from Step 2;
+- **the profile/template asymmetry** — the schema comparison excludes profile and template schemas, so those kinds rely on the write-time argument alone; the general "the schema-diff producer picks it up" claim does not hold for them;
+- **the per-checker classification limit** — all identifiers sharing a checker necessarily share a classification; splitting the checker is the remedy if that ever stops holding;
+- **the measured baseline** from Step 9, so the figure survives the PR.
+
+Plus a `housekeeping` changelog fragment.
+
+### Step 9 — Measure
+
+Before/after wall-clock for a data-only rebase, with the node population it was measured against. Record in **both** the PR description and the knowledge page (SC-004) — a figure that lives only in a PR description is not recoverable six months later. The scheduled-constraint counts are gated by the Step 5 assertion rather than measured here.
 
 ## Risks and Mitigations
 

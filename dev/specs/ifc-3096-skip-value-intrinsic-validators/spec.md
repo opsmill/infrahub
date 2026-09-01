@@ -64,7 +64,7 @@ A developer adds a new constraint checker. The codebase forces them to state whe
 **Acceptance Scenarios**:
 
 1. **Given** a new constraint identifier added to the validator registry, **When** the test suite runs without the classification record being updated, **Then** a test fails naming the unclassified identifier.
-2. **Given** an existing checker whose classification is changed, **When** the test suite runs without the classification record being updated, **Then** a test fails.
+2. **Given** a constraint identifier removed from the validator registry, **When** the test suite runs without the classification record being updated, **Then** a test fails — the record pins the registry in both directions, not merely that every identifier is classified.
 3. **Given** a developer reading the project's internal documentation, **When** they look for why a given constraint is classified as it is, **Then** they find the rationale and, for each value-intrinsic constraint, the write-time enforcement point being relied on.
 
 ---
@@ -76,6 +76,7 @@ A developer adds a new constraint checker. The codebase forces them to state whe
 - **The guarded property changed on the destination branch rather than the source.** Covered, because the merge schema comparison is three-way — it spans the common ancestor, the source branch and the destination branch — so it owns property changes originating on either side.
 - **Strict schema validation disabled.** The numeric-bounds checker already declines to run under the same setting that gates its write-time counterpart, so the merge-time check and the write-time check cannot desynchronise.
 - **Boolean-valued schema properties.** Mandatory-ness and uniqueness default to `false` rather than being absent, which is precisely why they are scheduled for every attribute in a diff today: the producer's own emptiness check cannot distinguish "not set" from "set to false". Reclassifying mandatory-ness is the fix for that half; the producer's emptiness check is deliberately left alone.
+- **Profile and template kinds.** The schema comparison excludes profile and template schemas, so the schema-diff producer structurally never emits constraints for a `Profile<Kind>` or `Template<Kind>`. Today the data-diff producer does, because those kinds appear in the data diff like any other. After this change **neither** producer schedules value-intrinsic constraints for them. This is sound rather than an oversight: profile and template attribute values are written through the same attribute layer as any other, so the write-time enforcement argument applies unchanged and is the only thing these kinds ever relied on. It is called out because the general claim "the schema-diff producer picks it up instead" is *not* true for these kinds, and a reader checking that claim against a profile would otherwise find a contradiction.
 - **Pre-existing invalid data in the database.** The full-population scans being removed would incidentally surface values that were already invalid before the branch existed. This is not treated as a capability being lost — pre-existing invalid data is owned by migrations, not by merge-time validation.
 
 ## Requirements *(mandatory)*
@@ -85,7 +86,7 @@ A developer adds a new constraint checker. The codebase forces them to state whe
 - **FR-001**: The system MUST NOT schedule value-intrinsic attribute or relationship constraints from the data-diff producer.
   *Verify*: the constraint-determination component test asserts the narrowed set for a data-only diff.
 - **FR-002**: The system MUST continue to schedule and run every value-intrinsic constraint via the schema-diff producer, at unrestricted scope, whenever the guarded property changes on either the source or the destination branch.
-  *Verify*: component test changes an attribute kind on a branch that also has data changes and asserts the kind constraint still runs against the full population.
+  *Verify*: a component test that composes the **schema-diff producer** with the constraint merger — not the data-diff producer, which by design contributes nothing here — changing an attribute kind on a branch that also has data changes, and asserting the kind constraint is present at unrestricted scope. Plus one end-to-end case through the real rebase/merge path.
 - **FR-003**: The system MUST continue to schedule all cross-node constraints from the data-diff producer unchanged — attribute uniqueness, node uniqueness constraints, relationship cardinality, minimum and maximum count, relationship optionality, common parent, and hierarchy.
   *Verify*: constraint-determination component test asserts each is still present for a data-only diff.
 - **FR-004**: The classification MUST be protected against silent drift, such that adding a new constraint checker fails a test until its classification is stated deliberately.
@@ -142,10 +143,20 @@ Already declared as having no data trigger before this change, and unaffected by
 ### Measurable Outcomes
 
 - **SC-001**: The time to rebase, merge, or validate a data-only branch does not increase as the database's node population grows, for the value-intrinsic constraint families.
-  *Measured by*: zero constraints scheduled from the eight value-intrinsic checkers for a data-only diff, independent of how many attributes or relationships it touches. Gated in CI.
-- **SC-002**: For a data-only diff touching K (kind, field) pairs, total scheduled constraints fall by approximately 3K — the attribute-kind, attribute-optionality and relationship-peer triple currently scheduled unconditionally for every pair. Gated in CI.
+  *Measured by*: zero constraints scheduled from the eight value-intrinsic checker classes — covering fourteen constraint identifiers — for a data-only diff, independent of how many attributes or relationships it touches. Gated in CI.
+- **SC-002**: For a data-only diff, total scheduled constraints fall by **2A + R + P**, where A is the number of attribute (kind, field) pairs, R the number of relationship pairs, and P the number of optional attribute parameters that are set among the value-intrinsic families.
+  *Rationale for the shape*: an attribute pair unconditionally schedules `kind`, `optional` and `unique`, of which the first two are value-intrinsic — hence 2A. A relationship pair unconditionally schedules `peer`, `cardinality`, `optional`, `min_count` and `max_count`, of which only `peer` is value-intrinsic — hence R. A pair is either an attribute or a relationship, never both, so no pair contributes to more than one term. Optional parameters (regex, enum, choices, length bounds, numeric bounds) are scheduled only when set, hence the separate P term.
+  *Measured by*: a parameterised assertion in the constraint-determination component test over a diff with a known A/R/P composition. Gated in CI.
 - **SC-003**: No scenario that previously caught a real violation stops catching it. The existing test suite passes unchanged apart from the assertions that deliberately invert.
-- **SC-004**: Before-and-after wall-clock for a data-only rebase is recorded in the pull request description. Reported, not gated — no baseline exists to set a defensible threshold against.
+- **SC-004**: Before-and-after wall-clock for a data-only rebase, with the node population it was measured against, is recorded **in the knowledge page** as well as the pull request description. Reported, not gated — no baseline exists to set a defensible threshold against, and a figure that lives only in a PR description is not recoverable later.
+
+### Rollback
+
+This change removes validation work, so its failure mode produces no error at the time it occurs. The rollback trigger is therefore stated explicitly rather than left to judgement:
+
+**Revert if** a constraint violation reaches the default branch that merge-time validation should have caught, for any constraint in the value-intrinsic table.
+
+Reverting is a single-commit operation — the change is class-attribute declarations with no migration, no persisted state and no configuration — so no feature flag or staged rollout is warranted.
 
 ## Assumptions
 

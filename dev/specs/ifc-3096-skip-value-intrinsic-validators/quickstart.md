@@ -46,6 +46,7 @@ uv run pytest backend/tests/component/core/constraint_validators/test_determiner
 
 - **Zero** constraints from the 14 value-intrinsic identifiers.
 - **Every** cross-node constraint still present — attribute uniqueness, node uniqueness constraints, hierarchy parent/children, relationship cardinality/min_count/max_count/optional, common parent.
+- The **count** assertion holds: total scheduled constraints fall by `2A + R + P` for a diff with A attribute pairs, R relationship pairs and P set optional attribute parameters (SC-002).
 
 Six existing sites in this file shrink their expected sets (see `research.md` R5). If any still expect `attribute.kind.update`, `attribute.optional.update`, `relationship.peer.update`, or `attribute.parameters.max_length.update` from a data-only diff, the update is incomplete.
 
@@ -54,10 +55,13 @@ Six existing sites in this file shrink their expected sets (see `research.md` R5
 The safety property. This is the one that must not regress.
 
 ```bash
-uv run pytest backend/tests/component/core/constraint_validators/test_determiner.py -v -k "schema_change or unrestricted"
+uv run pytest backend/tests/component/core/constraint_validators/test_schema_diff_constraints.py -v
+uv run pytest backend/tests/component/core/test_branch_rebase.py -v -k "constraint"
 ```
 
-**Expected**: on a branch that changes an attribute's kind *and* edits instance data for that kind, the kind constraint is present at unrestricted scope, contributed by the schema-diff producer and surviving the merge of the two producers' outputs.
+**Expected**: on a branch that changes an attribute's kind *and* edits instance data for that kind, the kind constraint is present at unrestricted scope (`node_uuids is None`), contributed by the schema-diff producer and surviving the merge of the two producers' outputs.
+
+**This must not be tested in `test_determiner.py`.** That file exercises `ConstraintValidatorDeterminer.get_constraints` — the *data-diff* producer — which after this change contributes nothing for these constraints. A test placed there would pass while FR-002 was entirely broken. The schema-diff producer is `MergeSchemaAnalyzer.calculate_validations`, composed by `ConstraintInfoMerger.merge`.
 
 **What a false pass looks like**: the constraint present but scoped to the changed nodes only. That would mean the data-diff producer supplied it, not the schema-diff producer — the opposite of what FR-002 requires. Assert the scope, not just presence.
 
@@ -109,9 +113,11 @@ Note the repo caveat: `invoke lint` runs ruff over a subset of paths while CI ru
 | # | Check | Requirement |
 |---|---|---|
 | 1 | Classification pinning test passes, and demonstrably fails on an unclassified new entry | FR-004, FR-006 |
-| 2 | Data-only diff schedules zero value-intrinsic constraints, all cross-node ones | FR-001, FR-003, SC-001, SC-002 |
-| 3 | Genuine schema change still schedules at unrestricted scope from the schema-diff producer | FR-002 |
+| 2 | Data-only diff schedules zero value-intrinsic constraints, all cross-node ones, and the `2A + R + P` count assertion holds | FR-001, FR-003, SC-001, SC-002 |
+| 3 | Genuine schema change still schedules at unrestricted scope **from the schema-diff producer**, verified outside `test_determiner.py`, plus one end-to-end case | FR-002 |
 | 4 | Constraint, migration and validator suites green with no unexpected changes | SC-003 |
-| 5 | `dev/knowledge/backend/constraint-validation.md` exists, naming a confirmed write-time enforcement site per value-intrinsic family | FR-005 |
-| 6 | `housekeeping` changelog fragment added | Governance |
-| 7 | Before/after wall-clock and constraint counts in the PR description | SC-004 |
+| 5 | `dev/knowledge/backend/constraint-validation.md` exists, naming a confirmed write-time enforcement site per value-intrinsic family, and covering the profile/template asymmetry and the per-checker classification limit | FR-005 |
+| 6 | DEBUG log added at both determiner classification skip sites | Observability |
+| 7 | `housekeeping` changelog fragment added | Governance |
+| 8 | Before/after wall-clock with node population recorded in the knowledge page **and** the PR description | SC-004 |
+| 9 | Rollback trigger stated in the spec | Operational |
