@@ -21,12 +21,12 @@ from .models import TargetSelection
 log = get_logger()
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Mapping
 
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
-    from infrahub.core.schema import MainSchemaTypes
+    from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 GATHER_GRAPHQL_QUERY_SUBSCRIBERS = """
@@ -51,7 +51,7 @@ query GatherGraphQLQuerySubscribers($members: [ID!]) {
 
 def reads_unscopable_derived_field(
     readable_fields_by_kind: Mapping[str, set[str]],
-    get_node_schema: Callable[[str], MainSchemaTypes | None],
+    schema_branch: SchemaBranch,
 ) -> bool:
     """Whether the query reads a computed field whose value is composed from a related peer.
 
@@ -65,8 +65,10 @@ def reads_unscopable_derived_field(
         derived_reads = fields & IMPRECISE_READ_FIELDS
         if not derived_reads:
             continue
-        node_schema = get_node_schema(kind)
-        if node_schema is None or any(
+        if not schema_branch.has(name=kind):
+            return True
+        node_schema = schema_branch.get(name=kind, duplicate=False)
+        if any(
             not derived_read_is_scopable(node_schema=node_schema, field_name=field_name) for field_name in derived_reads
         ):
             return True
@@ -115,9 +117,7 @@ async def get_field_level_impacted_subscribers(
         readable_fields_by_kind=readable_fields_by_kind,
         depends_on_everything=reads_unscopable_derived_field(
             readable_fields_by_kind=readable_fields_by_kind,
-            get_node_schema=lambda kind: (
-                query_schema_branch.get(name=kind, duplicate=False) if query_schema_branch.has(name=kind) else None
-            ),
+            schema_branch=query_schema_branch,
         ),
     )
     assessment = classifier.assess(diff_summary=diff_summary)

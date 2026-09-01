@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core.regeneration.impact import reads_unscopable_derived_field
+from infrahub.core.schema.schema_branch import SchemaBranch
 from tests.helpers.schema.car import CAR
 
 if TYPE_CHECKING:
@@ -18,6 +19,13 @@ def _car_with(**overrides: object) -> NodeSchema:
     for name, value in overrides.items():
         setattr(car, name, value)
     return car
+
+
+def _schema_branch(schemas: dict[str, MainSchemaTypes]) -> SchemaBranch:
+    branch = SchemaBranch(cache={}, name="test")
+    for kind, schema in schemas.items():
+        branch.set(name=kind, schema=schema)
+    return branch
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -81,7 +89,7 @@ def test_reads_unscopable_derived_field(case: UnscopableCase) -> None:
     assert (
         reads_unscopable_derived_field(
             readable_fields_by_kind=case.readable_fields_by_kind,
-            get_node_schema=case.schemas.get,
+            schema_branch=_schema_branch(case.schemas),
         )
         is case.expected
     )
