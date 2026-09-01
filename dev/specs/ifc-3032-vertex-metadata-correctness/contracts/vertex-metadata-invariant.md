@@ -44,8 +44,16 @@ Given a vertex, its metadata is defined as a pure function of its `branch_level 
 `created_by` / `updated_by` are the `from_user_id` — or `to_user_id`, when a `to` supplied the
 winning timestamp — of the edge that produced the corresponding timestamp.
 
-The uuid-wide `min()` for `:Node.created_at` is deliberate: kind- and inheritance-migration leave two
-vertices sharing one uuid, and both must report the original creation time.
+**Scope of the `:Node` rows.** Per corollary 2, a `:Node` vertex is a recompute target only when it
+holds an **active** `branch_level = 1` `IS_PART_OF` edge. A migrated-out twin — which keeps its
+original `active` edge open but carries a `deleted` edge on the default branch — is not a target, and
+neither is a node deleted on the default branch. Without this restriction the recompute would assign
+metadata to vertices the read path never returns, and the two consumers below could agree with each
+other while both disagreeing with what a reader sees.
+
+The uuid-wide `min()` inside `:Node.created_at` is deliberate and is **not** narrowed by that scope:
+kind- and inheritance-migration leave two vertices sharing one uuid, and the surviving one must
+report the original creation time, which lives on the twin's edge.
 
 ## Consumers
 

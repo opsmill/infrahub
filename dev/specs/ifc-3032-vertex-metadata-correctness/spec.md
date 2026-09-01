@@ -16,6 +16,10 @@ Vertex properties (`created_at`, `created_by`, `updated_at`, `updated_by`) exist
 
 A cache that disagrees with the graph is worse than no cache, because the slow path it replaces is correct.
 
+The defect is **silent by construction**: no error is raised, and a wrong timestamp is
+indistinguishable from a right one without recomputing it from the edges. The absence of user
+reports is therefore the expected symptom, not evidence of low impact.
+
 ### The Invariant
 
 > A vertex's `created_at/by` and `updated_at/by` MUST reflect the latest change **visible on the default branch** — i.e. the latest change carried by a `branch_level = 1` edge, whether that edge is on the default branch or on `-global-`.
@@ -196,13 +200,14 @@ Enumerated by walking `core_models` and comparing each field's `branch` against 
 - **FR-004**: `RelationshipCreateQuery`, `RelationshipDeleteQuery`, and `RelationshipDeleteAllQuery` MUST stamp a peer Node vertex only when that peer has a level-1 active `IS_PART_OF`.
   *Verify:* create an agnostic relationship between two aware nodes that exist only on a branch; assert neither peer's vertex metadata changed.
 
-- **FR-005**: A repair migration MUST recompute metadata on `Node`, `Attribute`, and `Relationship` vertices, restricted to kinds where some field's branch support differs from the node's, in both directions. Dropping m050's `IS NULL` guard handles both the NULLs F6 leaves and the wrong values F1b leaves.
-  *Verify:* SC-002.
+- **FR-005**: A repair migration MUST recompute metadata on `Node`, `Attribute`, and `Relationship` vertices, restricted to kinds where some field's branch support differs from the node's, in both directions. Dropping m050's `IS NULL` guard handles both the NULLs F6 leaves and the wrong values F1b leaves. The migration MUST report the number of vertices it changed, broken down by vertex label, in its migration result — the only signal an operator has that it did what was expected on their graph.
+  *Verify:* SC-002, plus an assertion that the reported counts match the vertices actually changed.
 
 - **FR-006**: `dev/knowledge/backend/database-schema.md` MUST state the level-1-edge invariant in place of *"set only on default/global branches"* in its Node/Attribute/Relationship vertex-property tables, which is the buggy proxy stated as fact. Constitution II requires cross-branch side effects be documented.
 
 - **FR-007**: `attribute_add`, `node_duplicate`, and `node_remove` MUST gate each vertex's metadata write on that vertex's own edge level — the `on_global_branch` / `CASE WHEN ... = $global_branch` decision already computed in Cypher — rather than on the Python-side `set_metadata` scalar. The four consistent migrations keep `set_metadata` unchanged.
-  *Verify:* on a feature branch, add an agnostic attribute to a branch-aware kind; assert the new Attribute vertex has `created_at` / `created_by` set and the Node's `updated_at` advanced, both readable on the default branch. A test MUST also pin that a level-2-only migration still writes no metadata.
+  When the gate fires via this edge-level path on a **non-default** branch, the query MUST write `updated_at` / `updated_by` only and MUST NOT write the `previous_updated_at` / `previous_updated_by` snapshot. That snapshot exists solely so a rollback can restore it, and `core/rollback.py::GraphRollbacker` restores it only for default/global target branches — a snapshot written during a user-branch migration can never be consumed, and a later default-branch rollback whose window catches it could restore a stale value as if it were current.
+  *Verify:* on a feature branch, add an agnostic attribute to a branch-aware kind; assert the new Attribute vertex has `created_at` / `created_by` set and the Node's `updated_at` advanced, both readable on the default branch, and that `previous_updated_at` / `previous_updated_by` are untouched. A test MUST also pin that a level-2-only migration still writes no metadata.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -228,7 +233,32 @@ All existing; no new entities.
 
 ### Measurable Outcomes
 
-- **SC-001** (gate): for each of the four live mismatches, crossed with {create, update, delete} × {write on default branch, write on user branch} × {via node save, via schema migration}, a default-branch read of `created_at/by` and `updated_at/by` equals the value the edge-derived recompute produces. The recompute is the oracle, so assertions do not hard-code timestamps. The migration axis needs only the three affected queries.
+- **SC-001** (gate): for every cell enumerated below, a default-branch read of `created_at/by` and `updated_at/by` equals the value the edge-derived recompute produces. The recompute is the oracle, so assertions do not hard-code timestamps.
+
+  **Mechanism A — via node save** (`Node._create` / `Node._update` / `Node.delete`): all cells valid.
+
+  | Mismatch | create | update | delete |
+  |---|---|---|---|
+  | #1 aware node / agnostic rel (`BuiltinIPPrefix.resource_pool`) | default + user | default + user | default + user |
+  | #2 aware node / agnostic attr (inline test schema) | default + user | default + user | default + user |
+  | #3 agnostic node / aware attr (`CoreReadOnlyRepository.ref`) | default + user | default + user | default + user |
+  | #4 agnostic node / local attr (`CoreRepository.commit`) | default + user | default + user | default + user |
+
+  24 cells (4 mismatches × 3 operations × 2 write branches).
+
+  **Mechanism B — via schema migration**: only the three queries FR-007 changes, each against the mismatches it can actually reach, on both write branches.
+
+  | Query | Operation | Mismatches reached | Cells |
+  |---|---|---|---|
+  | `AttributeAddQuery` | attribute create | #2, #3, #4 — **N/A for #1**, which is a relationship; `attribute_add` never creates one | 6 |
+  | `NodeDuplicateQuery` | node kind/inheritance change | #1–#4 | 8 |
+  | `NodeRemoveMigrationQuery{In,Out}` | node delete | #1–#4 | 8 |
+
+  22 cells. **N/A across all of mechanism B**: an in-place field-*value* update, which no schema migration performs — value updates reach the graph only through mechanism A.
+
+  Plus the FR-007 regression pin (a migration writing only level-2 edges writes no metadata), which is not a mismatch cell.
+
+  Cells sharing a fixture may share a test; the enumeration defines coverage, not test count.
 
 - **SC-002** (gate): the repair migration is idempotent — a second run changes zero vertices.
 
@@ -253,6 +283,11 @@ All existing; no new entities.
 - Vertex metadata is read only on default/global branches; user-branch reads derive from edges. Verified in code (`core/query/node.py::NodeListGetInfoQuery`, `core/query/node.py::NodeListGetAttributeQuery`, `core/query/subquery.py::build_subquery_order_metadata`), not assumed.
 - `DiffMergeMetadataQuery` correctly sets metadata at merge and needs no change — but it only covers nodes in the branch diff, which is why F6 is not self-healing.
 - m050's derivation (`max()` over level-1 edge `from` / `to`) is the authoritative recompute for both tests and repair.
+- **The repair migration is not reversible, and does not need to be.** Unlike m050, which only filled
+  NULLs, it overwrites existing values — that is what fixes the wrong ones F1b leaves. This is safe
+  because the properties are a derived cache: the migration never modifies the edges it derives from,
+  so the recompute can be re-run at any time from the source of truth. No pre-migration snapshot of
+  the properties is kept.
 - **m050 sets only `created_at` / `updated_at`, not `created_by` / `updated_by`.** Since SC-001 asserts on the `_by` fields too, the repair migration (FR-005) extends the same derivation to the actor fields by taking the `from_user_id` of the edge that supplied the winning timestamp. This is a completion of m050's rule, not a new requirement.
 - The repair migration is the next available graph migration number (m050 through m075 are taken; the repair lands at m076 or later depending on what is on `develop` at merge time).
 - Resolved from the brief's open question — **an agnostic node's kind/inheritance can be migrated**: `node_duplicate` applies no `branch_support` restriction and explicitly preserves `-global-` edges (`core/migrations/query/node_duplicate.py::NodeDuplicateQuery._render_sub_query_out` / `._render_sub_query_in`). F5 therefore fixes a live bug, not a latent one.

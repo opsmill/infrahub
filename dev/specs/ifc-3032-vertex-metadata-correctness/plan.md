@@ -110,7 +110,7 @@ backend/tests/component/core/
 │   └── graph/                           # FR-005 repair + SC-002 idempotency
 
 dev/knowledge/backend/database-schema.md # FR-006
-changelog/                               # Towncrier fragment (user-visible: wrong timestamps)
+changelog/                               # Towncrier fragment — REQUIRED (user-visible: wrong timestamps)
 ```
 
 **Structure Decision**: Backend-only. Every change lands in `backend/infrahub/core/` (the graph
@@ -166,6 +166,16 @@ unchanged. The four consistent migrations keep `set_metadata` as-is.
   `_branch_from_existing` helper. This needs a **reordering**: the metadata `CALL` currently runs
   before the `WITH` that computes `new_branch_level`, so that `WITH` moves above it.
 
+**The snapshot half of each write is not carried across.** Each of these `CALL` blocks currently
+writes two things: the `updated_at` / `updated_by` bump, and a `previous_updated_at` /
+`previous_updated_by` snapshot for rollback. Only the bump follows the new edge-level gate. When the
+gate fires on a non-default branch the snapshot MUST be skipped, because
+`core/rollback.py::GraphRollbacker` restores snapshots only for default/global target branches — it
+raises outright if asked to restore for a user branch. A snapshot written during a user-branch
+migration can therefore never be consumed, and a later default/global rollback whose window catches
+it could restore a stale value as if it were current. Concretely: the `previous_*` `SET`s stay behind
+`$set_metadata`, while the `updated_*` `SET`s move behind `$set_metadata OR <edge-level fact>`.
+
 (research.md R4)
 
 ### D4 — `NodeCreateAllQuery` gates per field (FR-003)
@@ -189,8 +199,14 @@ under either resolution of that separate defect. (research.md R3)
 Adopt the guard already in `core/query/relationship.py::RelationshipUpdatePropertyQuery`: require a
 level-1 active `IS_RELATED` **and** a level-1 active `IS_PART_OF` on the peer being stamped.
 
-Staged as its own commit so it can be reverted on performance grounds without disturbing D1–D4.
-(research.md R8)
+Only the **peer Node** stamps change. These queries also stamp the Relationship vertex `rl` itself,
+and that stamp is already correct — the relationship's own branch level is the right gate for the
+relationship's own vertex. Applying the peer guard to `rl` would reintroduce an under-set.
+
+Staged as its own commit so it can be reverted on performance grounds without disturbing D1–D4. Along
+with D4, this is the part of the feature that closes a latent/low-severity finding rather than an
+observable one; both are independently droppable if the schedule tightens, without weakening D1, D2,
+D3 or D6. (research.md R8)
 
 ### D6 — Repair migration (FR-005)
 
@@ -206,12 +222,33 @@ than the current models. The filter is a slight superset (it also matches consis
 `local`-on-`aware` pairs, where the recompute is a no-op), which is safe and avoids encoding the
 support lattice in Cypher.
 
+Per the contract's scope rule, `:Node` targets are restricted to vertices holding an active level-1
+`IS_PART_OF`, so migrated-out twins and nodes deleted on the default branch are left alone — while
+`created_at` still takes its uuid-wide `min()`, which is what lets the surviving twin report the true
+creation time.
+
 Idempotent by construction: a pure function of edges the migration does not modify, and it does not
 touch `previous_updated_at/by` — snapshotting those would make a second run report changes and would
 also corrupt the merge-rollback pair that owns them. Ordering follows m050: Attribute, then
 Relationship, then Node (whose `updated_at` derives from the field vertices). Batched
 `IN TRANSACTIONS`. The migration number is assigned at merge time against whatever is on `develop`
-(m075 is the highest today). (research.md R5, R6, R7)
+(m075 is the highest today).
+
+**Destructive, and deliberately not reversible.** m050 was purely additive — its `IS NULL` guard meant
+it could only fill blanks. Dropping that guard is what fixes the wrong values F1b leaves, and it makes
+this migration an overwrite of existing data with no pre-migration snapshot. That is acceptable for one
+specific reason, which must be stated rather than assumed: the properties are a **derived cache**, and
+the migration never modifies the edges it derives from. The source of truth is untouched, so the
+recompute can be re-run at any time. Keeping a snapshot would buy nothing a re-run does not.
+
+**Reports what it changed.** The migration returns the count of vertices it altered, per vertex label.
+This is the only signal an operator gets that it did the expected thing on their graph, and it is what
+makes SC-002's "zero changes on the second run" observable rather than inferred.
+
+**Cost model.** Unlike m050, whose `IS NULL` guard made it shrink monotonically across runs, this
+migration's cost is proportional to the *mismatched-support population*, not to the remaining damage —
+every run examines the same set. The `branch_support <> ` scoping is therefore load-bearing for
+runtime as well as for blast radius. (research.md R5, R6, R7)
 
 ### D7 — Knowledge-doc correction (FR-006)
 
@@ -239,6 +276,19 @@ branch stamps exactly one peer.
 
 Reuse `backend/tests/component/core/migrations/schema/metadata_helpers.py` (`VertexMetadata`,
 `get_node_vertex_metadata`, `get_attribute_vertex_metadata`), extending it with the recompute helper.
+
+Two specifics the helpers force:
+
+- `get_node_vertex_metadata` asserts **exactly one** Node vertex per uuid and tells callers that
+  duplicate-node scenarios must disambiguate themselves. FR-002's twin pin is exactly such a scenario,
+  so it needs a twin-aware helper added alongside — not a one-off query at the call site.
+- D3's `node_remove` reorder moves a metadata write across a `WITH` boundary. It gets no new
+  assertions; its regression pin is that the existing
+  `backend/tests/component/core/migrations/schema/` suite passes unchanged. The reorder is not done
+  until that suite is green.
+
+FR-007's snapshot rule needs its own assertion: after a user-branch migration writes global rows,
+`previous_updated_at` / `previous_updated_by` on the affected vertices must be untouched.
 (research.md R9)
 
 ## Risks
@@ -248,6 +298,7 @@ Reuse `backend/tests/component/core/migrations/schema/metadata_helpers.py` (`Ver
 | The repair migration changes values that are currently correct, because m050's `Node.updated_at` derivation (max over field vertices) is not identical to what the write path produces in every case | Scope the sweep to mismatched kinds via `branch_support`, exactly as FR-005 requires. This bounds the blast radius to the vertices the defect could have touched |
 | D3's `node_remove` reordering moves a metadata write across a `WITH` boundary and could change which rows reach it | The reorder only hoists a pure `WITH` that computes two scalars from an already-bound edge; no `MATCH` or filter moves. Covered by the existing `backend/tests/component/core/migrations/schema/` suite plus the D8 pins |
 | The FR-004 peer guard costs measurable time on relationship create/delete | SC-003 measures it. `RelationshipCreateQuery` already proves a level-1 `IS_PART_OF` for level-1 peers, so only the aware-peer case adds an `OPTIONAL MATCH`. A real regression means the guard is in the wrong place — staged as its own commit so it can be reverted alone |
+| FR-007 causes user-branch migrations to write vertex metadata, which `core/rollback.py::GraphRollbacker` documents as happening only for default/global operations — leaving `previous_*` snapshots no rollback can consume | D3 carries only the `updated_*` bump across the new gate and leaves the `previous_*` snapshot behind `$set_metadata`. Asserted directly in D8 |
 | The two value-correctness defects surfaced during investigation (the `local`-on-`agnostic` create/update split; the three migrations with no `-global-` handling) get absorbed into this ticket | Both are in the spec's Out of Scope with the reasoning recorded. Each gate here is edge-derived, so the metadata stays correct under either resolution. File them as separate issues |
 
 ## Phase Outputs
