@@ -381,6 +381,27 @@ class DatabaseSettings(BaseSettings):
         ge=1,
         description="Maximum number of connections the driver keeps in its pool per remote address.",
     )
+    max_connection_lifetime: int | None = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Maximum age in seconds of a pooled connection before the driver discards it and dials a "
+            "fresh one. Unset by default, leaving the driver's own default (3600s) in charge. Set it "
+            "below the idle timeout of every firewall, NAT gateway or load balancer between Infrahub "
+            "and the database: such middleboxes silently evict idle flows, and a request sent on an "
+            "evicted connection hangs until TCP gives up instead of failing fast."
+        ),
+    )
+    liveness_check_timeout: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Idle time in seconds after which a pooled connection is ping-tested before reuse, so a "
+            "connection closed by the server (e.g. a database restart) is replaced transparently instead "
+            "of failing the request. Costs one extra round trip per reuse of a connection that was idle "
+            "this long. Unset by default, leaving the driver's own default in charge: no liveness check."
+        ),
+    )
 
     @property
     def address_members(self) -> list[str]:

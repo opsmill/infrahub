@@ -32,8 +32,15 @@ export function StickyRightCell({ className, isMuted, children, ...props }: Stic
   return (
     <TableCell
       className={classNames(
+<<<<<<< HEAD
         "sticky right-0 -ml-px size-10 items-center justify-center border-l",
         isMuted ? cellMutedStyle : "bg-table-cell-pinned",
+=======
+        // Matches StickyLeftCell's z-1 so an over-wide first column can never paint
+        // over the row actions, even on a viewport narrower than the column cap.
+        "sticky right-0 z-1 -ml-px size-10 items-center justify-center border-l",
+        isMuted ? cellMutedStyle : "bg-white",
+>>>>>>> origin/stable
         className
       )}
       {...props}

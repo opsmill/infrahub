@@ -11,6 +11,40 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.11.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.1) - 2026-08-31
+
+### Added
+
+- Added the optional INFRAHUB_DB_MAX_CONNECTION_LIFETIME and INFRAHUB_DB_LIVENESS_CHECK_TIMEOUT database settings to protect queries from hanging on pooled connections that a firewall, NAT gateway or load balancer silently dropped while idle
+- Traces can now be exported to an OTLP collector that terminates TLS with a private or self-signed certificate. `INFRAHUB_TRACE_TLS_CA_BUNDLE` points at the certificate authority bundle used to verify the collector, and `INFRAHUB_TRACE_TLS_INSECURE` skips verification entirely in test environments. See the [observability documentation](https://docs.infrahub.app/deploy-manage/install-configure/install/observability-stack#exporting-to-a-collector-that-uses-tls) for the supported combinations.
+
+### Changed
+
+- Creating and updating objects is now faster: a mutation reads the peers of the relationships in its payload once, instead of once per validation step, and reading an object together with its relationships no longer costs an extra query for each relationship without a peer. Bulk loads and repeated upserts of unchanged data benefit the most.
+- Creating objects from an object template is now faster when the objects it creates share a related object, such as the transceiver model used by every interface of a device template.
+- Creating objects from an object template is now significantly faster, and no longer slows down as more objects are created from the same template. Bulk loads from templates, such as loading object files or synchronizing with the SDK, benefit the most.
+
+### Fixed
+
+- Attributes gained when an existing node kind starts inheriting from a generic are now created on pre-existing nodes, including their Profile and Template instances, with NumberPool attributes allocated from the generic's pool. Schema migrations now run kind-update migrations to completion before all other migrations to prevent them from racing each other. ([#9284](https://github.com/opsmill/infrahub/issues/9284))
+- Long values in an object table's first column no longer overflow onto the row action menu and the horizontal scrollbar. Table columns are now capped and truncated, with the full value shown on hover. ([#9743](https://github.com/opsmill/infrahub/issues/9743))
+- `INFRAHUB_TRACE_INSECURE` now takes effect: the gRPC OTLP trace exporter connects without TLS when it is true (the default), instead of always attempting a TLS connection and failing against plaintext collectors with `StatusCode.UNAVAILABLE`. An endpoint with an explicit `https://` scheme still uses TLS regardless of the setting. ([#9869](https://github.com/opsmill/infrahub/issues/9869))
+- Fixed flow runs that stopped being watched for crashes once they entered a retry wait. A run whose process died while waiting out a retry backoff, such as a webhook delivery between attempts, stayed scheduled forever instead of being marked as crashed. ([#10338](https://github.com/opsmill/infrahub/issues/10338))
+- Fixed the dropdown option list overflowing its container and hiding option labels when a choice had a long description. ([#10366](https://github.com/opsmill/infrahub/issues/10366))
+- The web UI no longer sends you back to the homepage on the default branch when a single refresh of the branch list happens to omit the branch you are working on. The branch is now re-checked against a freshly fetched list before the redirect, so a branch that still exists keeps its page and its selection, while a branch that really was deleted still redirects. If the default branch itself is missing from the deployment, the web UI now shows an error instead of redirecting in a loop. ([#10389](https://github.com/opsmill/infrahub/issues/10389))
+- Fixed adding a branch-agnostic attribute to an existing kind writing its edges to the branch the
+  schema update ran on instead of the global branch.
+- Fixed repositories whose default branch differs from the Infrahub default branch being flipped to the `error` operational status when a task worker synchronized them by pulling instead of checking out a pinned commit. The pull now targets the repository's own default branch instead of the Infrahub branch name, which does not exist on the remote.
+- Fixed unbounded memory growth in API server processes: the GraphQL type registry now evicts the previous schema of a branch when its schema changes, instead of retaining every historical GraphQL schema until restart.
+- Schema-change recompute scoping now applies to a Python computed attribute whose transform query reads a human-friendly id or display label. Such a read could not be mapped to the schema elements it depends on, so the attribute recomputed on every schema change, across every node of its kind. A derived value built from the kind's own attributes is now scoped to that kind; one that reaches through a relationship still recomputes on any schema change, because its impact cannot be determined.
+- Sped up GraphQL query execution by keeping non-mutation requests on the synchronous resolution path. The branch-status middleware previously wrapped every resolved field in a coroutine, which made large read queries — most visibly the GraphQL sandbox's schema introspection — take 10+ seconds and starve other requests handled by the same API worker while they ran.
+- The `BranchCreate` GraphQL mutation now rejects a client-supplied `branched_from` value with an error, and the field is marked deprecated. `branched_from` is an internal field managed by the application. The `origin_branch` field, which was already rejected for any value other than the default branch, is now also marked deprecated. An empty string is now rejected for either field instead of being silently accepted, and an explicit `null` on an optional field is treated the same as omitting it.
+- Upgrading now repairs nodes left without attribute rows by earlier versions, where an existing node kind that started inheriting from a generic never got rows created for the inherited attributes on its pre-existing nodes. Such nodes read the attribute back as unset, accepted updates that silently persisted nothing, and never matched a filter on its value. The upgrade repairs the default branch and every other branch is repaired when rebased. Profile and Template instances are repaired alongside concrete ones wherever they support the attribute. Rows are created at the time the repair runs: attributes with a default value carry it, attributes without one become editable rows holding no value, and NumberPool attributes are allocated from the generic's pool, which is created if it is missing. The repair is idempotent and writes nothing on healthy installs, and the upgrade fails with per-kind detail if any damage is left behind.
+
+### Housekeeping
+
+- Updated the base Python version of the Infrahub container image and the development environment from 3.14.3 to 3.14.7.
+
 ## [Infrahub - v1.11.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.0) - 2026-08-17
 
 We're excited to announce the release of Infrahub, v1.11.0!

@@ -36,6 +36,21 @@ query GetImpactCar($ids: [ID!]!) {
 }
 """
 
+# The query reads only the car's ``display_label``, a computed value built from the car's own
+# ``name`` and ``color``. A change to ``name`` moves the label but is reported under ``name``, which
+# an exact-name match against the read set never sees.
+QUERY_CAR_DISPLAY_LABEL = """
+query GetImpactCarLabel($ids: [ID!]!) {
+    TestingCar(ids: $ids) {
+        edges {
+            node {
+                display_label
+            }
+        }
+    }
+}
+"""
+
 # The car is the group member; the tag stands in for an artifact or generator definition. The impact
 # mapping reads only the subscriber's id and typename, so a plain kind keeps the fixture free of the
 # transformation and repository wiring a real definition would demand.
@@ -151,7 +166,40 @@ class TestFieldLevelImpact(TestInfrahubApp):
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
 
+<<<<<<< HEAD
     async def test_related_node_change_narrows_to_the_owning_member(
+=======
+    async def test_display_label_backing_change_selects_subscriber(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> None:
+        """A change to a backing field that moves a read display_label selects the subscriber.
+
+        The query reads only the car's display_label; the diff reports the backing ``name``. An
+        exact-name match would drop it and leave the artifact stale. The label is built from the
+        car's own attributes, so the routing narrows to the car's subscriber rather than widening.
+        """
+        resolved = await get_field_level_impacted_subscribers(
+            query_payload=QUERY_CAR_DISPLAY_LABEL,
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["car_id"],
+                    kind=TestKind.CAR,
+                    branch=default_branch.name,
+                    field_names=["name"],
+                )
+            ],
+            query_branch=default_branch.name,
+            subscriber_kind=SUBSCRIBER_KIND,
+            every_target=[dataset["subscriber_id"]],
+            client=client,
+        )
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
+
+    async def test_related_node_change_selects_subscriber(
+>>>>>>> origin/stable
         self,
         dataset: dict[str, Any],
         default_branch: Branch,
