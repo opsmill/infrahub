@@ -138,12 +138,7 @@ async def test_a_chained_level_derives_the_python_targets_of_its_writes() -> Non
 
 
 async def test_a_failing_resolution_widens_python_and_keeps_the_other_families() -> None:
-    """A failed resolution costs precision, never the recompute itself.
-
-    Only this family reads the database, so letting the failure out would drop the three that
-    cannot fail with it. Returning nothing would be just as wrong: the per-node automations ignore
-    a replayed change, so every declared attribute is refreshed over its whole kind instead.
-    """
+    """The widening covers every declared Python attribute over its whole kind."""
     resolver = FailingPythonTargetResolver()
     coordinator = MergeRecomputeCoordinator(
         builder=CoalescedRecomputeBuilder(schema_branch=_schema_branch_with_a_python_attribute()),
