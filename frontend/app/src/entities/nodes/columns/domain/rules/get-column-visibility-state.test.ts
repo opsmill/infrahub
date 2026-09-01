@@ -6,9 +6,9 @@ import {
   RELATIONSHIP_COLUMN_SURFACE,
 } from "@/entities/nodes/columns/domain/rules/column-surfaces";
 import {
-  type ColumnField,
-  getColumnFields,
-} from "@/entities/nodes/columns/domain/rules/get-column-fields";
+  type ColumnCandidate,
+  getColumnCandidates,
+} from "@/entities/nodes/columns/domain/rules/get-column-candidates";
 import {
   getColumnVisibilityState,
   getRevealedFields,
@@ -35,18 +35,18 @@ const generateSchema = () =>
   });
 
 /** The columns actually on screen: the state's departures applied on top of the surface's defaults. */
-const getVisibleNames = (state: ColumnVisibilityState, columnFields: ColumnField[]) =>
-  columnFields
+const getVisibleNames = (state: ColumnVisibilityState, columnCandidates: ColumnCandidate[]) =>
+  columnCandidates
     .filter(({ name, isDefaultVisible }) => state[name] ?? isDefaultVisible)
     .map(({ name }) => name);
 
 describe("getColumnVisibilityState", () => {
   it("returns an empty state when both params are absent", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const columnCandidates = getColumnCandidates(generateSchema(), OBJECT_COLUMN_SURFACE);
 
     // WHEN
-    const state = getColumnVisibilityState([], [], columnFields);
+    const state = getColumnVisibilityState([], [], columnCandidates);
 
     // THEN
     expect(state).toEqual({});
@@ -54,10 +54,10 @@ describe("getColumnVisibilityState", () => {
 
   it("hides a field that is visible by default", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const columnCandidates = getColumnCandidates(generateSchema(), OBJECT_COLUMN_SURFACE);
 
     // WHEN
-    const state = getColumnVisibilityState(["description"], [], columnFields);
+    const state = getColumnVisibilityState(["description"], [], columnCandidates);
 
     // THEN
     expect(state).toEqual({ description: false });
@@ -65,10 +65,10 @@ describe("getColumnVisibilityState", () => {
 
   it("reveals a field that is hidden by default", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const columnCandidates = getColumnCandidates(generateSchema(), OBJECT_COLUMN_SURFACE);
 
     // WHEN
-    const state = getColumnVisibilityState([], ["internal_note"], columnFields);
+    const state = getColumnVisibilityState([], ["internal_note"], columnCandidates);
 
     // THEN
     expect(state).toEqual({ internal_note: true });
@@ -76,11 +76,11 @@ describe("getColumnVisibilityState", () => {
 
   it("drops names the surface does not offer", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const columnCandidates = getColumnCandidates(generateSchema(), OBJECT_COLUMN_SURFACE);
     const hiddenNames = ["gone_from_this_schema", "id", "", "description"];
 
     // WHEN
-    const state = getColumnVisibilityState(hiddenNames, ["also_gone"], columnFields);
+    const state = getColumnVisibilityState(hiddenNames, ["also_gone"], columnCandidates);
 
     // THEN
     expect(state).toEqual({ description: false });
@@ -88,10 +88,10 @@ describe("getColumnVisibilityState", () => {
 
   it("drops a hidden name for a field that is already hidden by default", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const columnCandidates = getColumnCandidates(generateSchema(), OBJECT_COLUMN_SURFACE);
 
     // WHEN
-    const state = getColumnVisibilityState(["internal_note"], [], columnFields);
+    const state = getColumnVisibilityState(["internal_note"], [], columnCandidates);
 
     // THEN
     expect(state).toEqual({});
@@ -99,10 +99,10 @@ describe("getColumnVisibilityState", () => {
 
   it("drops a shown name for a field that is already visible by default", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const columnCandidates = getColumnCandidates(generateSchema(), OBJECT_COLUMN_SURFACE);
 
     // WHEN
-    const state = getColumnVisibilityState([], ["description"], columnFields);
+    const state = getColumnVisibilityState([], ["description"], columnCandidates);
 
     // THEN
     expect(state).toEqual({});
@@ -110,13 +110,13 @@ describe("getColumnVisibilityState", () => {
 
   it("dedupes a name repeated within one param", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const columnCandidates = getColumnCandidates(generateSchema(), OBJECT_COLUMN_SURFACE);
 
     // WHEN
     const state = getColumnVisibilityState(
       ["description", "description"],
       ["internal_note", "internal_note"],
-      columnFields
+      columnCandidates
     );
 
     // THEN
@@ -125,11 +125,11 @@ describe("getColumnVisibilityState", () => {
 
   it("lets hiding win over revealing when both params name the same field", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const columnCandidates = getColumnCandidates(generateSchema(), OBJECT_COLUMN_SURFACE);
     const contradictedNames = ["description", "internal_note"];
 
     // WHEN
-    const state = getColumnVisibilityState(contradictedNames, contradictedNames, columnFields);
+    const state = getColumnVisibilityState(contradictedNames, contradictedNames, columnCandidates);
 
     // THEN
     // `internal_note` gets no entry at all, so it stays at its default — hidden.
@@ -138,10 +138,10 @@ describe("getColumnVisibilityState", () => {
 
   it("drops a shown name on a surface that cannot reveal, and reveals nothing there", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), RELATIONSHIP_COLUMN_SURFACE);
+    const columnCandidates = getColumnCandidates(generateSchema(), RELATIONSHIP_COLUMN_SURFACE);
 
     // WHEN
-    const state = getColumnVisibilityState(["description"], ["internal_note"], columnFields);
+    const state = getColumnVisibilityState(["description"], ["internal_note"], columnCandidates);
     const revealed = getRevealedFields(state);
 
     // THEN
@@ -150,37 +150,37 @@ describe("getColumnVisibilityState", () => {
 
   it("keeps the first column visible when the hide list names every column", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
-    const everyColumnName = columnFields.map((field) => field.name);
+    const columnCandidates = getColumnCandidates(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const everyColumnName = columnCandidates.map((field) => field.name);
 
     // WHEN
-    const state = getColumnVisibilityState(everyColumnName, [], columnFields);
+    const state = getColumnVisibilityState(everyColumnName, [], columnCandidates);
 
     // THEN
     // The survivor is the first column in display order; every other hide request is kept.
-    expect(getVisibleNames(state, columnFields)).toEqual(["name"]);
+    expect(getVisibleNames(state, columnCandidates)).toEqual(["name"]);
   });
 
   // The picker greys out the last remaining item, so the only way to ask for an empty table is by
   // hand — an edited or stale link. Junk, duplicates and a contradicting show list get it no further.
   it("keeps a column visible when a crafted url hides every one of them", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
-    const everyColumnName = columnFields.map((field) => field.name);
+    const columnCandidates = getColumnCandidates(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const everyColumnName = columnCandidates.map((field) => field.name);
     const craftedHiddenNames = [...everyColumnName, "gone_from_this_schema", "name"];
 
     // WHEN
-    const state = getColumnVisibilityState(craftedHiddenNames, everyColumnName, columnFields);
+    const state = getColumnVisibilityState(craftedHiddenNames, everyColumnName, columnCandidates);
 
     // THEN
-    expect(getVisibleNames(state, columnFields)).toEqual(["name"]);
+    expect(getVisibleNames(state, columnCandidates)).toEqual(["name"]);
   });
 });
 
 describe("getRevealedFields", () => {
   it("returns the revealed names sorted, so param order cannot change the value", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const columnCandidates = getColumnCandidates(generateSchema(), OBJECT_COLUMN_SURFACE);
     const noteOrders = [
       ["owner_note", "internal_note"],
       ["internal_note", "owner_note"],
@@ -188,7 +188,7 @@ describe("getRevealedFields", () => {
 
     // WHEN
     const revealedLists = noteOrders.map((shownNames) =>
-      getRevealedFields(getColumnVisibilityState([], shownNames, columnFields))
+      getRevealedFields(getColumnVisibilityState([], shownNames, columnCandidates))
     );
 
     // THEN
@@ -200,11 +200,11 @@ describe("getRevealedFields", () => {
 
   it("ignores default-visible and unknown fields", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const columnCandidates = getColumnCandidates(generateSchema(), OBJECT_COLUMN_SURFACE);
     const shownNames = ["description", "gone_from_this_schema", "internal_note"];
 
     // WHEN
-    const revealed = getRevealedFields(getColumnVisibilityState([], shownNames, columnFields));
+    const revealed = getRevealedFields(getColumnVisibilityState([], shownNames, columnCandidates));
 
     // THEN
     expect(revealed).toEqual(["internal_note"]);
@@ -212,7 +212,7 @@ describe("getRevealedFields", () => {
 
   it("reveals nothing a hidden name contradicts, without the caller re-applying the rule", () => {
     // GIVEN
-    const columnFields = getColumnFields(generateSchema(), OBJECT_COLUMN_SURFACE);
+    const columnCandidates = getColumnCandidates(generateSchema(), OBJECT_COLUMN_SURFACE);
     const contradictedNames = ["internal_note"];
 
     // WHEN
@@ -220,7 +220,7 @@ describe("getRevealedFields", () => {
       getColumnVisibilityState(
         contradictedNames,
         [...contradictedNames, "owner_note"],
-        columnFields
+        columnCandidates
       )
     );
 

@@ -5,7 +5,7 @@ import { ArrowUpDownIcon, CheckIcon, ListFilterIcon, RotateCcwIcon } from "lucid
 import { Col, Row } from "@/shared/components/container";
 
 import type { ColumnSurface } from "@/entities/nodes/columns/domain/model/column-surface";
-import type { ColumnField } from "@/entities/nodes/columns/domain/rules/get-column-fields";
+import type { ColumnCandidate } from "@/entities/nodes/columns/domain/rules/get-column-candidates";
 import { useColumnVisibility } from "@/entities/nodes/columns/ui/hooks/use-column-visibility";
 import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
@@ -36,7 +36,7 @@ interface ColumnsEditorProps {
  * possible — the sort and the filter still apply to the rows, they are just no longer on display.
  */
 export function ColumnsEditor({ schema, surface }: ColumnsEditorProps) {
-  const { columnFields, columnVisibility, hasColumnParamsInUrl, toggleColumn, reset } =
+  const { columnCandidates, columnVisibility, hasColumnParamsInUrl, toggleColumn, reset } =
     useColumnVisibility(schema, surface);
   const { customSort } = useSort(schema);
   const [filters] = useFilters();
@@ -51,10 +51,10 @@ export function ColumnsEditor({ schema, surface }: ColumnsEditorProps) {
    *
    * `getRelationshipLabel` prefers the peer's own label for a hierarchical relationship, so the
    * picker and the header would otherwise disagree about the same column. Resolving the peer needs
-   * the loaded schemas, which is a `ui/` concern — `getColumnFields` stays pure and keeps returning
+   * the loaded schemas, which is a `ui/` concern — `getColumnCandidates` stays pure and keeps returning
    * the schema-declared label as the fallback used everywhere else.
    */
-  const getHeaderLabel = ({ label, fieldSchema }: ColumnField) => {
+  const getHeaderLabel = ({ label, fieldSchema }: ColumnCandidate) => {
     if (!isRelationshipSchema(fieldSchema)) return label;
 
     const { schema: peerSchema } = resolveSchema(fieldSchema.peer, {
@@ -69,12 +69,12 @@ export function ColumnsEditor({ schema, surface }: ColumnsEditorProps) {
 
   // The visibility state holds only the departures from the surface's defaults, so a column neither
   // param names is showing exactly when its surface shows it by default.
-  const isColumnVisible = ({ name, isDefaultVisible }: ColumnField) =>
+  const isColumnVisible = ({ name, isDefaultVisible }: ColumnCandidate) =>
     name in columnVisibility ? columnVisibility[name] : isDefaultVisible;
   // `getColumnVisibilityState` refuses to hide the last field column, so unchecking it would write a
   // param the trust boundary immediately relaxes — a click with nothing to show for it. Greying the
   // item out says why instead of letting the user hunt for the reason.
-  const visibleColumnCount = columnFields.filter(isColumnVisible).length;
+  const visibleColumnCount = columnCandidates.filter(isColumnVisible).length;
 
   return (
     <Col className="min-w-56">
@@ -85,10 +85,10 @@ export function ColumnsEditor({ schema, surface }: ColumnsEditorProps) {
           className="max-h-72"
           emptyMessage="No fields match"
         >
-          {columnFields.map((columnField) => {
-            const { name, fieldSchema } = columnField;
-            const label = getHeaderLabel(columnField);
-            const isVisible = isColumnVisible(columnField);
+          {columnCandidates.map((columnCandidate) => {
+            const { name, fieldSchema } = columnCandidate;
+            const label = getHeaderLabel(columnCandidate);
+            const isVisible = isColumnVisible(columnCandidate);
             const isLastVisible = isVisible && visibleColumnCount === 1;
 
             return (

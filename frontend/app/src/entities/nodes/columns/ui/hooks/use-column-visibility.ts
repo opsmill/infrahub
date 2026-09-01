@@ -6,9 +6,9 @@ import { QSP } from "@/shared/config/qsp";
 import type { ColumnSurface } from "@/entities/nodes/columns/domain/model/column-surface";
 import { OBJECT_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/rules/column-surfaces";
 import {
-  type ColumnField,
-  getColumnFields,
-} from "@/entities/nodes/columns/domain/rules/get-column-fields";
+  type ColumnCandidate,
+  getColumnCandidates,
+} from "@/entities/nodes/columns/domain/rules/get-column-candidates";
 import {
   getColumnVisibilityState,
   getRevealedFields,
@@ -27,19 +27,19 @@ const columnNamesParser = parseAsArrayOf(parseAsString).withOptions({ history: "
 
 interface ColumnVisibility {
   /** Every column this surface may offer, in display order — what the picker lists. */
-  columnFields: ColumnField[];
+  columnCandidates: ColumnCandidate[];
   /** TanStack's override map, holding only the departures from the surface's defaults. */
   columnVisibility: VisibilityState;
   /** The revealed default-hidden field names, sorted, so a cache key built from them is stable. */
   revealedFields: string[];
   /** The ordered field schemas a column builder must turn into ColumnDefs. */
-  builderFields: FieldSchema[];
+  columnSchemas: FieldSchema[];
   /** How many validated departures from the surface's defaults there are — what the badge counts. */
-  customizedCount: number;
+  customizedColumnCount: number;
   /**
    * Whether either param is in the URL at all, junk included — what gates the reset affordance.
    *
-   * Deliberately NOT `customizedCount > 0`. After a kind switch the params can name only fields the
+   * Deliberately NOT `customizedColumnCount > 0`. After a kind switch the params can name only fields the
    * new schema lacks; the trust boundary then drops every one, so nothing renders wrong and the
    * badge correctly counts zero — but the params are still there, still sticky, and still travelling
    * in any link the user shares. Reset has to stay reachable to clear them.
@@ -74,19 +74,19 @@ export function useColumnVisibility(
   const hiddenNamesInQsp = columnsInQsp[QSP.HIDE_COLUMNS] ?? [];
   const shownNamesInQsp = columnsInQsp[QSP.SHOW_COLUMNS] ?? [];
 
-  const columnFields = getColumnFields(schema, surface);
+  const columnCandidates = getColumnCandidates(schema, surface);
   // TanStack names this shape `VisibilityState`; the domain calls it `ColumnVisibilityState`. This
   // annotation is the one place the two vocabularies meet, which is what keeps the table library out
   // of `domain/` while consumers still get the type TanStack's `state` option expects.
   const columnVisibility: VisibilityState = getColumnVisibilityState(
     hiddenNamesInQsp,
     shownNamesInQsp,
-    columnFields
+    columnCandidates
   );
   // Read off the state above rather than re-derived from the params: one pass through the trust
   // boundary per render, and the two values cannot drift apart.
   const revealedFields = getRevealedFields(columnVisibility);
-  const builderFields = columnFields
+  const columnSchemas = columnCandidates
     .filter((field) => field.isDefaultVisible || revealedFields.includes(field.name))
     .map((field) => field.fieldSchema);
 
@@ -103,13 +103,13 @@ export function useColumnVisibility(
     });
 
   const toggleColumn = (fieldName: string) => {
-    const columnField = columnFields.find((field) => field.name === fieldName);
+    const columnCandidate = columnCandidates.find((field) => field.name === fieldName);
     // The picker only ever offers a candidate, so an unknown name is a no-op rather than a write
     // `getColumnVisibilityState` would immediately drop.
-    if (!columnField) return;
+    if (!columnCandidate) return;
 
     setColumns(
-      toggleColumnInLists(hiddenNames, shownNames, fieldName, columnField.isDefaultVisible)
+      toggleColumnInLists(hiddenNames, shownNames, fieldName, columnCandidate.isDefaultVisible)
     );
   };
 
@@ -119,11 +119,11 @@ export function useColumnVisibility(
   const reset = () => setColumnsInQsp({ [QSP.HIDE_COLUMNS]: null, [QSP.SHOW_COLUMNS]: null });
 
   return {
-    columnFields,
+    columnCandidates,
     columnVisibility,
     revealedFields,
-    builderFields,
-    customizedCount: Object.keys(columnVisibility).length,
+    columnSchemas,
+    customizedColumnCount: Object.keys(columnVisibility).length,
     // The raw query state, not the validated lists: `null` means the param is absent, and `?p=`
     // yields `[]`, which is a present-but-empty param the user should still be able to clear.
     hasColumnParamsInUrl:

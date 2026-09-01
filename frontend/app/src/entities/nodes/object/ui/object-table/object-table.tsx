@@ -14,7 +14,7 @@ import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 export const ObjectTable = () => {
   const { filters, selectedSchema, permission, columnSurface } = useObjectTableContext();
   const { customSort } = useSort(selectedSchema);
-  const { columnVisibility, revealedFields, builderFields } = useColumnVisibility(
+  const { columnVisibility, revealedFields, columnSchemas } = useColumnVisibility(
     selectedSchema,
     columnSurface
   );
@@ -36,7 +36,7 @@ export const ObjectTable = () => {
   }
 
   const columns = [
-    ...getObjectTableColumns(selectedSchema, { fields: builderFields }),
+    ...getObjectTableColumns(selectedSchema, { fields: columnSchemas }),
     getObjectActionsColumn(permission),
   ];
   const flatData = data?.pages.flat() ?? [];
