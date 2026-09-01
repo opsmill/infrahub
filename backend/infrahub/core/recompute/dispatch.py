@@ -36,14 +36,13 @@ class BulkRecomputeDispatcher:
         db: InfrahubDatabase,
         writer: BulkRecomputeWriter,
         chain: RecomputeChainSubmitter | None,
-        coalesced: bool,
     ) -> None:
-        if coalesced and chain is None:
-            raise ValueError("A coalesced dispatcher has a next level to drive, so it needs a chain submitter")
         self._db = db
         self._writer = writer
+        # Holding a chain is what makes a pass coalesced: it stamps the recompute origin and it
+        # drives the next level. Deriving one from the other leaves no way to ask for half of it.
         self._chain = chain
-        self._coalesced = coalesced
+        self._coalesced = chain is not None
 
     async def dispatch(
         self,
@@ -86,4 +85,4 @@ async def build_bulk_recompute_dispatcher(schema_branch: SchemaBranch, coalesced
             submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
             python_resolver=await build_python_target_resolver(db=db),
         )
-    return BulkRecomputeDispatcher(db=db, writer=writer, chain=chain, coalesced=coalesced)
+    return BulkRecomputeDispatcher(db=db, writer=writer, chain=chain)
