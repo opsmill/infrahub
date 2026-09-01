@@ -81,13 +81,13 @@ async def test_migration_077(
     assert linked_account is not None
     assert linked_account.get_id() == live_account.get_id()
 
-    await verify_graph(db=db)
-
     second_result = await Migration077().execute(migration_input=MigrationInput(db=db))
     assert not second_result.errors
     assert await _existing_ids(db=db, kind=InfrahubKind.EXTERNALIDENTITY) == {live_identity.get_id()}
     assert await _existing_ids(db=db, kind=InfrahubKind.ACCOUNTTOKEN) == {live_token.get_id()}
     assert await _existing_ids(db=db, kind=InfrahubKind.REFRESHTOKEN) == {live_refresh_token.get_id()}
+
+    await verify_graph(db=db)
 
 
 async def test_migration_077_no_orphans(
