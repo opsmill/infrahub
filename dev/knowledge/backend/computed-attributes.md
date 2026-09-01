@@ -119,7 +119,7 @@ All three run `process_transform_lifecycle`. On create or update it waits for th
 
 ### Node-Input Automations
 
-Besides the transform-lifecycle triggers, each `(kind, attribute)` has two data-path automations that recompute the value when a node feeding the transform's query changes: one on the attribute's own kind, one per kind the query reads. While the coalesced pass owns merge and rebase, both match `origin=live` only. `_reconcile_python_computed_attribute_automations` rebuilds these from the schema. One gather builds both trigger lists and they are applied under a single trigger-registry lock, so a concurrent reconcile cannot delete an automation another run just created, and a transform delete prunes its automation rather than leaving it stale.
+Besides the transform-lifecycle triggers, each `(kind, attribute)` has data-path automations in two families that recompute the value when a node feeding the transform's query changes: one on the attribute's own kind, and one per kind the query reads. While the coalesced pass owns merge and rebase, both families match `origin=live` only. `_reconcile_python_computed_attribute_automations` rebuilds these from the schema. One gather builds both trigger lists and they are applied under a single trigger-registry lock, so a concurrent reconcile cannot delete an automation another run just created, and a transform delete prunes its automation rather than leaving it stale.
 
 ### Batch Execution
 
