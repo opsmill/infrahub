@@ -301,7 +301,7 @@ A `branch_support="agnostic"` Attribute or Relationship writes all of its edges 
 
 The predicate lives once, in `core/query/agnostic_retention.py` (`UNRETAINED_AGNOSTIC_FIELD_PREDICATE`) — reuse it, don't re-derive it. Current call sites: `Node.delete`, `AttributeRemoveQuery`, `node_relationship_remove`, `DiffMerger.merge_graph`, branch rebase (`core/branch/tasks.py`), branch delete (`core/branch/data_deleter.py`), plus migration `m078` for the pre-existing backlog. Adding a seventh deletion path means adding a seventh call site.
 
-Every call site closes edges on the global branch — that is where the field's edges live. What singles out `DiffMerger.merge_graph` is *when*: it closes them inside the merge window, at the merge's `$at`. That is why merge-failure recovery has to roll back the global branch as well as the target, and why it matches the exact `$at` there rather than the merge-start range it uses on the target branch — see [merge-failure-recovery.md](merge-failure-recovery.md).
+Every call site closes edges on the global branch — that is where the field's edges live. `DiffMerger.merge_graph` is the merge-specific call site: it re-evaluates fields for nodes whose deletions the merge carries to the target and closes their global edges at the merge's `$at`. Schema-removal migrations can make the same global-branch closures during the merge window. That is why merge-failure recovery has to roll back the global branch as well as the target, and why it matches the exact `$at` there rather than the merge-start range it uses on the target branch — see [merge-failure-recovery.md](merge-failure-recovery.md).
 
 ## Attribute Updates
 
