@@ -49,7 +49,7 @@ class DatabasePythonReadSetSource:
         )
         if not registry.schema.has_schema_branch(name=branch):
             # The kinds of an unregistered branch are unknown, so there is nothing to widen to.
-            # Both entry points resolve the branch from the registry first, so this stays unreached.
+            # Every active branch is registered when the registry loads, so this stays unreached.
             log.warning("Skipping the Python computed attributes of %s: no schema is registered for it", branch)
             return []
 

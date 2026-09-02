@@ -552,8 +552,8 @@ async def _resolve_python_targets(
     too and leave the whole pass unrun.
 
     Dropping the family is safe only while the per-node automations still fire on a merge and a
-    rebase, which is what a unit test on the Python trigger definitions pins. IFC-3019 gates them
-    on the live origin, and this fallback has to widen to the whole kind before that lands.
+    rebase, which a test on the built trigger definitions pins. Gating them on the live origin
+    removes that cover, so this fallback has to widen to the whole kind in the same change.
     """
     try:
         return await resolver.resolve(changes=changes, branch=branch, schema_changed_elements=schema_changed_elements)

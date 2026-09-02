@@ -39,10 +39,8 @@ class BulkRecomputeDispatcher:
     ) -> None:
         self._db = db
         self._writer = writer
-        # Holding a chain is what makes a pass coalesced: it stamps the recompute origin and it
-        # drives the next level. Deriving one from the other leaves no way to ask for half of it.
+        # Holding a chain is what makes a pass coalesced, so there is no second flag to disagree.
         self._chain = chain
-        self._coalesced = chain is not None
 
     async def dispatch(
         self,
@@ -64,13 +62,13 @@ class BulkRecomputeDispatcher:
             branch=branch,
             writes=writes,
             context=context,
-            origin=NodeMutationOrigin.RECOMPUTE if self._coalesced else NodeMutationOrigin.LIVE,
+            origin=NodeMutationOrigin.RECOMPUTE if self._chain else NodeMutationOrigin.LIVE,
         )
         if self._chain is not None:
             await self._chain.submit(written=written, branch=branch_name, context=context, depth=recompute_depth)
 
 
-async def build_bulk_recompute_dispatcher(schema_branch: SchemaBranch, coalesced: bool) -> BulkRecomputeDispatcher:
+async def build_bulk_recompute_dispatcher(*, schema_branch: SchemaBranch, coalesced: bool) -> BulkRecomputeDispatcher:
     """Wire a bulk recompute dispatcher from the flow-level dependencies.
 
     Only a coalesced pass drives a next level, and only that chain needs an API client and the

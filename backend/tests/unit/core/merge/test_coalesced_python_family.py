@@ -114,11 +114,11 @@ async def test_a_chained_level_derives_the_python_targets_of_its_writes() -> Non
     assert python_calls[0]["parameters"]["coalesced"] is True
 
 
-async def test_a_failed_python_derivation_still_submits_the_schema_families() -> None:
+async def test_a_failed_python_derivation_still_submits_the_jinja2_family() -> None:
     """Only this family reads the database, so only this family may be lost when that read fails.
 
-    The other three are already derived by the time it runs, and the per-node automations still
-    cover the Python one until they are gated on the live origin.
+    The schema-derived families are already built by the time it runs. This change set moves a
+    computed attribute only, so that is the one submission left to see.
     """
     workflow = WorkflowRecorder()
     coordinator = MergeRecomputeCoordinator(
@@ -132,7 +132,7 @@ async def test_a_failed_python_derivation_still_submits_the_schema_families() ->
     assert _families(submissions) == {COMPUTED_ATTRIBUTE}
 
 
-async def test_a_failed_python_derivation_still_chains_the_schema_families() -> None:
+async def test_a_failed_python_derivation_still_chains_the_jinja2_family() -> None:
     """The chained levels run the same derivation, and carry the same risk."""
     workflow = WorkflowRecorder()
     chain = RecomputeChainSubmitter(
