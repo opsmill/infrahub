@@ -222,11 +222,15 @@ async def test_the_python_automations_fire_whatever_the_origin(
 ) -> None:
     """These automations still cover a merge and a rebase, unlike the other three families.
 
-    The coalesced pass leans on that: when its own derivation fails it drops this family and
-    lets them do the work. Gating them on the live origin removes that cover, so the fallback in
-    ``_resolve_python_targets`` has to widen to the whole kind in the same change.
+    The coalesced pass leans on that: when its own derivation fails it drops this family and lets
+    them do the work. Gating them on the live origin removes that cover, so the fallback that drops
+    the family has to widen to the whole kind in the same change.
     """
     triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
+
+    # Named, so that a gather returning nothing cannot satisfy the assertions below.
+    assert [trigger.name for trigger in triggers] == ["TestCar_computed_desc_python"]
+    assert [trigger.name for trigger in trigger_queries] == ["TestCar_computed_desc_python::kind::TestCar"]
 
     assert [trigger.name for trigger in triggers if NODE_ORIGIN_LABEL in trigger.trigger.match] == []
     assert [trigger.name for trigger in trigger_queries if NODE_ORIGIN_LABEL in trigger.trigger.match] == []

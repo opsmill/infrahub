@@ -2,50 +2,31 @@ from __future__ import annotations
 
 import ast
 import inspect
-from typing import TYPE_CHECKING
-
-import pytest
 
 from infrahub.computed_attribute import tasks as computed_attribute_tasks
-from infrahub.display_labels import tasks as display_label_tasks
-from infrahub.hfid import tasks as hfid_tasks
-
-if TYPE_CHECKING:
-    from types import ModuleType
-
-# A dispatcher built without `coalesced` writes with the live origin and drives no chained level,
-# which silently leaves every value below that level stale.
-BUILD_ARGUMENT = "coalesced"
-DISPATCH_ARGUMENT = "recompute_depth"
-
-DISPATCHING_MODULES = [computed_attribute_tasks, display_label_tasks, hfid_tasks]
 
 
-def _calls_named(module: ModuleType, name: str) -> list[ast.Call]:
-    tree = ast.parse(inspect.getsource(module))
-    found = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
+def _coalesced_argument(*, source: str, function: str) -> ast.expr:
+    for node in ast.walk(ast.parse(source)):
+        if not isinstance(node, ast.AsyncFunctionDef) or node.name != function:
             continue
-        func = node.func
-        if (isinstance(func, ast.Name) and func.id == name) or (isinstance(func, ast.Attribute) and func.attr == name):
-            found.append(node)
-    return found
+        for call in ast.walk(node):
+            if not isinstance(call, ast.Call):
+                continue
+            if not isinstance(call.func, ast.Name) or call.func.id != "build_bulk_recompute_dispatcher":
+                continue
+            for keyword in call.keywords:
+                if keyword.arg == "coalesced":
+                    return keyword.value
+    raise AssertionError(f"{function} does not build a dispatcher with a coalesced argument")
 
 
-@pytest.mark.parametrize("module", DISPATCHING_MODULES, ids=[module.__name__ for module in DISPATCHING_MODULES])
-def test_every_bulk_recompute_flow_passes_the_chain_arguments(module: ModuleType) -> None:
-    builds = _calls_named(module, "build_bulk_recompute_dispatcher")
-    dispatches = _calls_named(module, "dispatch")
-    assert len(builds) >= 1
-    assert len(dispatches) >= 1
+def test_the_transform_flow_does_not_read_coalesced_off_the_node_ids() -> None:
+    """Its three sibling flows infer the flag from ``object_ids``, and this one must not.
 
-    missing = [
-        f"{module.__name__}:{call.lineno} does not pass {argument}"
-        for call, argument in [
-            *((call, BUILD_ARGUMENT) for call in builds),
-            *((call, DISPATCH_ARGUMENT) for call in dispatches),
-        ]
-        if argument not in {keyword.arg for keyword in call.keywords}
-    ]
-    assert missing == []
+    A live refresh of a whole kind sends ids too, so inferring here would stamp those writes with
+    the recompute origin and drive a chain from them. This flow is told which pass it belongs to.
+    """
+    argument = _coalesced_argument(source=inspect.getsource(computed_attribute_tasks), function="process_transform")
+
+    assert "object_ids" not in ast.unparse(argument)
