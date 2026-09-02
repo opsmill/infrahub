@@ -210,9 +210,9 @@ The query shows the IP address is allocated in the test branch, preventing dupli
 
 ### Releasing an allocated resource
 
-Because an allocation is reserved across every branch, deleting the object it was allocated to on one branch does not necessarily return the resource to the pool. The object must be gone from **every** branch that can still read it. This includes any branch created while the object was active on the default branch.
+Because an allocation is reserved across every branch, deleting the object it was allocated to on one branch does not necessarily return the resource to the pool. For a delete to return it, the object has to be gone from **every** branch that can still read it. This includes any branch created while the object was active on the default branch.
 
-The resource returns to the pool as soon as no branch can reach the object, whether that happens through the delete itself, or through a later merge, rebase or branch deletion. See [Deleting a branch-agnostic attribute or relationship](../schema/branch-awareness#deleting-a-branch-agnostic-attribute-or-relationship) for the full rule.
+The resource returns to the pool as soon as no branch can reach the object, whether that happens through the delete itself or through a later merge, rebase or branch deletion. Removing the allocated attribute or relationship from the schema releases it too, without deleting any object — again only once no branch still declares the field. See [Deleting a branch-agnostic attribute or relationship](../schema/branch-awareness#deleting-a-branch-agnostic-attribute-or-relationship) for the full rule.
 
 ## Idempotent allocation
 
