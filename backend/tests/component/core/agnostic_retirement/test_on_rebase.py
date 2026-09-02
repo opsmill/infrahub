@@ -37,7 +37,6 @@ from tests.adapters.workflow import WorkflowRecorder
 from tests.component.core.agnostic_retirement.support import (
     FailingRetirementDatabase,
     RetirementFailureError,
-    create_widget,
     delete_node,
 )
 from tests.helpers.agnostic_edges import (
@@ -45,6 +44,7 @@ from tests.helpers.agnostic_edges import (
     assert_relationship_retired_at,
     attribute_global_edges,
     attribute_vertex_uuid,
+    create_widget,
     edge_summary,
     global_edges_by_vertex_uuid,
     open_edge_types,
@@ -191,8 +191,8 @@ class TestAgnosticRetirementOnRebase:
         await gadget.new(db=db, name="peer-of-the-branch-local-widget")
         await gadget.save(db=db)
         widget = await create_widget(db=db, branch=branch, name="branch-local-then-rebased", serial=2600, gadget=gadget)
-        attribute_uuid = await attribute_vertex_uuid(db=db, node_id=widget.id, attribute_name="serial")
-        relationship_uuid = await relationship_vertex_uuid(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
+        attribute_uuid = attribute_vertex_uuid(node=widget, attribute_name="serial")
+        relationship_uuid = relationship_vertex_uuid(node=widget, relationship_name="gadget")
 
         deleted_at = Timestamp()
         await delete_node(db=db, node_id=widget.id, branch=branch, at=deleted_at)
