@@ -55,8 +55,7 @@ BLOBS = {
 }
 
 # `watch` never becomes a fingerprint term of its own: it reaches the digest only through the
-# closure the builder derives from it. Substituting a `dependencies` edit here would assert
-# nothing about that derivation, so the field is proven end to end further down instead.
+# closure the builder derives from it, so it is proven end to end further down instead.
 DELEGATED_FIELDS = frozenset({"watch"})
 
 
@@ -167,7 +166,7 @@ class FoldedField:
     """The fingerprint-input change that editing this manifest field produces.
 
     None when the field reaches the digest only indirectly and a dedicated end-to-end test
-    proves it, rather than a direct substitution that would beg the question.
+    proves it.
     """
 
 
@@ -418,10 +417,10 @@ def test_watch_files_reaches_the_fingerprint_through_the_closure(
 ) -> None:
     """Declaring a file under `watch.files` widens the real closure and moves the digest.
 
-    This runs the whole chain rather than substituting a `dependencies` edit: the closure
-    builder derives the dependency list from the declaration, and the composer hashes that
-    list. Both declarations are non-empty objects, so the commit-id fold is absent from each
-    and the declared file is the only difference between the two digests.
+    The closure builder derives the dependency list from the declaration and the composer
+    hashes that list, so the whole chain runs here. Both declarations are non-empty objects,
+    which keeps the commit-id fold out of both digests and leaves the declared file as the
+    only difference between them.
     """
     worktree_root, commit = watch_chain_repo
     builder = build_default_closure_builder(logger=logging.getLogger(__name__))
