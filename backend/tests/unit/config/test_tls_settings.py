@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ssl
 from pathlib import Path
 
 import pytest
@@ -36,6 +37,15 @@ class TestTLSSettings:
         with pytest.raises(ValidationError, match=r"Unable to load CA bundle for tls.ca_bundle"):
             TLSSettings(ca_bundle=str(bad_bundle))
 
+    def test_unreadable_file_is_reported_as_a_configuration_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Tests run as root, so chmod cannot make the file unreadable; fail the loader the way the OS would.
+        def fake(*args: object, **kwargs: object) -> None:
+            raise PermissionError("Permission denied")
+
+        monkeypatch.setattr(ssl, "create_default_context", fake)
+        with pytest.raises(ValidationError, match=r"Unable to load CA bundle for tls.ca_bundle"):
+            TLSSettings.model_validate({"ca_bundle": CA_BUNDLE})
+
 
 class TestGitTLSSettings:
     def test_defaults_verify_with_the_system_store(self) -> None:
@@ -53,6 +63,15 @@ class TestGitTLSSettings:
     def test_insecure_and_ca_file_cannot_be_combined(self) -> None:
         with pytest.raises(ValidationError, match=r"git.tls_insecure cannot be combined with git.tls_ca_file"):
             GitSettings(tls_insecure=True, tls_ca_file=CA_BUNDLE)
+
+    def test_unreadable_ca_file_is_reported_as_a_configuration_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Tests run as root, so chmod cannot make the file unreadable; fail the loader the way the OS would.
+        def fake(*args: object, **kwargs: object) -> None:
+            raise PermissionError("Permission denied")
+
+        monkeypatch.setattr(ssl, "create_default_context", fake)
+        with pytest.raises(ValidationError, match=r"Unable to load CA bundle for git.tls_ca_file"):
+            GitSettings.model_validate({"tls_ca_file": CA_BUNDLE})
 
 
 class TestS3TLSSettings:

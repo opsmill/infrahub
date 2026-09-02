@@ -59,7 +59,8 @@ def _validate_ca_bundle_file(setting_name: str, path: str) -> None:
     """Fail at startup when a CA bundle setting does not point at a loadable PEM file.
 
     Raises:
-        ValueError: When the path is not an existing file or the file is not a valid PEM bundle.
+        ValueError: When the path is not an existing file, the file cannot be read, or the file is not a valid PEM
+            bundle.
 
     """
     ca_path = Path(path)
@@ -72,7 +73,7 @@ def _validate_ca_bundle_file(setting_name: str, path: str) -> None:
         raise ValueError(f"{setting_name} must be the path to an existing file, got {path!r}")
     try:
         ssl.create_default_context(cafile=str(ca_path))
-    except ssl.SSLError as exc:
+    except (OSError, ssl.SSLError) as exc:
         raise ValueError(f"Unable to load CA bundle for {setting_name} from {path}: {exc}") from exc
 
 
