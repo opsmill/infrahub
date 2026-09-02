@@ -24,13 +24,13 @@ if TYPE_CHECKING:
 from tests.component.core.agnostic_retirement.support import (
     FailingBranchRetirementDatabase,
     RetirementFailureError,
-    create_widget,
     delete_node,
 )
 from tests.helpers.agnostic_edges import (
     assert_attribute_retired_at,
     assert_relationship_retired_at,
     attribute_global_edges,
+    create_widget,
     edge_summary,
     open_edge_types,
     open_edges,
