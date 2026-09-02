@@ -54,7 +54,7 @@ class Migration078(ArbitraryMigration):
         # Each pass runs whatever the one before it did, but only the repairs decide the outcome.
         try:
             close_query = await CloseUnretainedAgnosticFieldsQuery.init(
-                db=db, at=migration_input.at, batch_size=self.batch_size
+                db=db, at=migration_input.at, batch_size=self.batch_size, user_id=migration_input.user_id
             )
             await close_query.execute(db=db)
         except Exception as exc:

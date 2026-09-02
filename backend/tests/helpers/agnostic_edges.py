@@ -48,6 +48,8 @@ class EdgeState:
     status: str
     from_time: str
     to_time: str | None
+    to_user_id: str | None = None
+    """Who closed the edge. `None` on an open edge, and on one closed before the actor was recorded."""
 
     @property
     def is_open(self) -> bool:
@@ -101,6 +103,15 @@ def to_times(edges: list[EdgeState]) -> set[str | None]:
     return {edge.to_time for edge in edges}
 
 
+def closing_actors(edges: list[EdgeState]) -> set[str | None]:
+    """The distinct actors recorded on the closed edges, for asserting who a release is attributed to.
+
+    Open edges are left out: they carry no actor, and including them would let a run that closed
+    nothing satisfy an assertion about who closed what.
+    """
+    return {edge.to_user_id for edge in edges if not edge.is_open}
+
+
 def expected_closed_at(edges: list[EdgeState], at: Timestamp) -> list[tuple[str, str, str]]:
     """What `edge_summary` should return once every open edge has been closed at `at`.
 
@@ -135,7 +146,7 @@ async def attribute_global_edges(db: InfrahubDatabase, node_id: str, attribute_n
         MATCH (a)-[e]-()
         WHERE e.branch = $global_branch
         RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
-               e.from AS from_time, e.to AS to_time
+               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id
         """,
         params={"node_id": node_id, "attribute_name": attribute_name, "global_branch": GLOBAL_BRANCH_NAME},
     )
@@ -156,7 +167,7 @@ async def relationship_global_edges(db: InfrahubDatabase, node_id: str, identifi
         MATCH (r)-[e]-()
         WHERE e.branch = $global_branch
         RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
-               e.from AS from_time, e.to AS to_time
+               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id
         """,
         params={"node_id": node_id, "identifier": identifier, "global_branch": GLOBAL_BRANCH_NAME},
     )
@@ -187,7 +198,7 @@ async def global_edges_by_vertex_uuid(db: InfrahubDatabase, vertex_uuid: str) ->
         MATCH (v)-[e]-()
         WHERE e.branch = $global_branch
         RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
-               e.from AS from_time, e.to AS to_time
+               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id
         """,
         params={"vertex_uuid": vertex_uuid, "global_branch": GLOBAL_BRANCH_NAME},
     )
@@ -202,7 +213,7 @@ async def attribute_owning_edges(db: InfrahubDatabase, node_id: str, attribute_n
         WITH DISTINCT a
         MATCH (:Node)-[e:HAS_ATTRIBUTE]->(a)
         RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
-               e.from AS from_time, e.to AS to_time
+               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id
         """,
         params={"node_id": node_id, "attribute_name": attribute_name},
     )
@@ -215,7 +226,7 @@ async def existence_edges(db: InfrahubDatabase, node_id: str) -> list[EdgeState]
         query="""
         MATCH (n:Node {uuid: $node_id})-[e:IS_PART_OF]->(:Root)
         RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
-               e.from AS from_time, e.to AS to_time
+               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id
         """,
         params={"node_id": node_id},
     )
@@ -360,7 +371,7 @@ async def pool_reservation_edges(db: InfrahubDatabase, pool_id: str, identifier:
         query="""
         MATCH (:Node {uuid: $pool_id})-[e:IS_RESERVED {identifier: $identifier}]->(:AttributeValue)
         RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
-               e.from AS from_time, e.to AS to_time
+               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id
         """,
         params={"pool_id": pool_id, "identifier": identifier},
     )

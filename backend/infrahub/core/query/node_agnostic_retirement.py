@@ -38,7 +38,7 @@ WHERE e.branch = $global_branch_name
   AND e.status = "active"
   AND e.from <= $at
   AND e.to IS NULL
-SET e.to = $at
+SET e.to = $at, e.to_user_id = $user_id
 RETURN count(e) AS edges_closed
 """ % {"unretained_predicate": UNRETAINED_AGNOSTIC_FIELD_PREDICATE}
 
@@ -64,6 +64,7 @@ class RetireNodeAgnosticFieldsQuery(Query):
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.params["node_uuids"] = self.node_uuids
         self.params["at"] = self.at.to_string()
+        self.params["user_id"] = self.user_id
 
         self.add_to_query(_RETIRE_UNRETAINED_FIELDS_OF_NODES)
         self.update_return_labels(["edges_closed"])
