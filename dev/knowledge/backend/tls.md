@@ -58,6 +58,15 @@ reaching public services.
   Compose env anchor the API server also needs the file mounted, or it refuses to start.
 - **Persisted gitconfig.** `/opt/infrahub/.gitconfig` can outlive a container, so `apply_git_tls_config`
   unsets `http.sslCAInfo` / `http.sslVerify` when the settings are absent instead of leaving old values.
+- **`--global` lies in an exec shell.** The worker selects `/opt/infrahub/.gitconfig` by exporting
+  `GIT_CONFIG_GLOBAL` in its own process; `docker compose exec task-worker git config --global ...` does
+  not inherit it and reads `$HOME/.gitconfig`, which only holds what the Dockerfile baked in. Inspect
+  the file directly: `git config --file /opt/infrahub/.gitconfig --get http.sslCAInfo`.
+- **Three TLS failure wordings.** git's HTTPS helper reports an untrusted certificate as "SSL certificate
+  problem" (OpenSSL), "server certificate verification failed" (older GnuTLS) or "server verification
+  failed" (GnuTLS with curl 8.x, what the shipped image uses). `git/base.py::GIT_TLS_VERIFICATION_ERRORS`
+  lists them; a wording missing there drops the repository into the generic `error` status instead of
+  `error-connection` with the certificate hint.
 - **Component sections do not see the global.** A section-level validator cannot know whether the
   global bundle will fill it later; only `Settings`-level validators can reason about the resolved value.
 
