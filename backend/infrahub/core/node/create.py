@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, cast, overload
 
-from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import (
     PROFILES_RELATIONSHIP_NAME,
@@ -19,8 +18,8 @@ from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import GenericSchema
+from infrahub.database import run_in_transaction_with_retry
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.lock import InfrahubMultiLock
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.templates.node_applier import get_relationship_names_to_read
 
@@ -515,50 +514,35 @@ async def create_node(
     # lock is built from that same template rather than reading it again.
     object_template = preview_obj._object_template
 
-    obj: Node
-    creation_context = NodeCreationContext()
-    async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
-        if db.is_transaction:
-            node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
+    node_schema: NonGenericSchemaTypes = schema
 
-            obj = await _do_create_node(
-                node_class=node_class,
-                node_constraint_runner=node_constraint_runner,
-                creation_context=creation_context,
-                db=db,
-                schema=schema,
-                branch=branch,
-                fields_to_validate=fields_to_validate,
-                data=data,
-                at=at,
-                user_id=user_id,
-                object_template=object_template,
-            )
-        else:
-            async with db.start_transaction() as dbt:
-                node_constraint_runner = await component_registry.get_component(
-                    NodeConstraintRunner, db=dbt, branch=branch
-                )
+    async def create_in_transaction(dbt: InfrahubDatabase) -> Node:
+        node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=dbt, branch=branch)
 
-                obj = await _do_create_node(
-                    node_class=node_class,
-                    node_constraint_runner=node_constraint_runner,
-                    creation_context=creation_context,
-                    db=dbt,
-                    schema=schema,
-                    branch=branch,
-                    fields_to_validate=fields_to_validate,
-                    data=data,
-                    at=at,
-                    user_id=user_id,
-                    object_template=object_template,
-                )
+        obj = await _do_create_node(
+            node_class=node_class,
+            node_constraint_runner=node_constraint_runner,
+            # A replayed attempt must not inherit the side effects the rolled-back one recorded.
+            creation_context=NodeCreationContext(),
+            db=dbt,
+            schema=node_schema,
+            branch=branch,
+            fields_to_validate=fields_to_validate,
+            data=data,
+            at=at,
+            user_id=user_id,
+            object_template=object_template,
+        )
 
-    # The node was written from its in-memory state, so the profiles it is linked to are the ones
-    # its payload or its template set on it; there is nothing to read back.
-    if _has_profiles_set(node=obj):
-        node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
-        await node_profiles_applier.apply_profiles(node=obj)
-        await obj.save(db=db, user_id=user_id)
+        # The node was written from its in-memory state, so the profiles it is linked to are the ones
+        # its payload or its template set on it; there is nothing to read back.
+        if _has_profiles_set(node=obj):
+            node_profiles_applier = NodeProfilesApplier(db=dbt, branch=branch)
+            await node_profiles_applier.apply_profiles(node=obj)
+            await obj.save(db=dbt, user_id=user_id)
 
-    return obj
+        return obj
+
+    return await run_in_transaction_with_retry(
+        db=db, name="object_create", func=create_in_transaction, lock_names=lock_names
+    )
