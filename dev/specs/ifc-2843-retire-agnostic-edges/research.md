@@ -233,13 +233,82 @@ not possible — retirement closes only once no branch retains the field, so in 
 path closes nothing and the state it explores cannot be produced by object deletion. The repair
 migration is the only producer of that state and writes its own tests.
 
-## Query plans
+## Query plans (delivered queries, 2026-08-31)
 
-> **Stale 2026-08-17.** The plans below were measured against the superseded single query class,
-> before the retention predicate was flattened, the branch read moved into Cypher, the stamp
-> derivation added and peer counting changed. They are kept as the record of the anchor-split
-> analysis; they do not describe any query that currently exists. Principle V's `EXPLAIN`
-> obligation is unmet for the current queries and is carried as an open task.
+Principle V's `EXPLAIN` obligation, re-measured against the queries that actually shipped (R07). The
+plans recorded further down this section were taken against the superseded single query class and
+describe no query that currently exists; they are kept only as the record of the anchor-split
+analysis that produced the split, and are marked as such.
+
+**Instance**: Neo4j 2026.05.0-enterprise, `bolt://localhost:7687`, throwaway database `ifc2843r07`,
+carrying the production index set from `backend/infrahub/core/graph/index.py`.
+
+**Dataset**: 285,007 vertices / 290,500 edges. 75,000 `HAS_ATTRIBUTE` edges, of which 35,000 are
+global owning edges with `status: "active"` (15,000 open, 20,000 closed), and 12,000 global
+`IS_RELATED` edges. Six `Branch` vertices: the global branch, the default branch, and four user
+branches. The populations are built to the shapes the enforcement points actually meet:
+
+| Population | Count | Shape |
+|---|---|---|
+| Live | 5,000 attrs / 4,000 rels | Owner live, every global edge open. Never a candidate |
+| Leaked | 5,000 attrs / 1,000 rels | Owner deleted **before** the fork, owning and property edges left open — what `Node.delete` used to leave |
+| Half-closed | 5,000 attrs | Owner deleted, owning edge closed, property edges still open — the reported damage, reachable only by the widened anchor |
+| Fully closed | 15,000 attrs / 1,000 rels | Already retired; the steady state a running deployment accumulates |
+| Retained | 5,000 attrs | Owner deleted **after** the fork, so all four branches retain it. Exercises the deferral path |
+| Branch-aware | 40,000 attrs | Noise the anchor must ignore |
+| Detached | 500 | No `:Node` edge at all; the `m077` hard-delete population |
+
+**Method**: `EXPLAIN` on the full write form of each delivered query (it does not execute, so nothing
+was closed or deleted), and `PROFILE` on a read-only truncation — everything above the writing
+subquery, ending in `RETURN count(field)` — for real rows and db hits rather than estimates. The
+schema-removal closure is planned under a faithful reproduction of `AttributeRemoveQuery`'s candidate
+bound (kind label, attribute name, collected into `agnostic_candidates`) rather than the whole removal
+query, whose other ~40 operators are pre-existing and unrelated to retirement.
+
+| Query | Enforcement point | Seed | Candidates | Unretained | Total db hits |
+|---|---|---|---|---|---|
+| `RetireNodeAgnosticFieldsQuery` | node delete, merge, rebase | `NodeIndexSeek` `Node(uuid) WHERE uuid IN $node_uuids` | 500 | 500 | 35,632 |
+| `RetireBranchAgnosticFieldsQuery` | branch delete | `UnionNodeByLabelsScan` `Attribute\|Relationship` | 5,000 | 0 | 1,134,173 |
+| `CLOSE_UNRETAINED_AGNOSTIC_FIELDS` | schema attribute / relationship removal | `NodeIndexSeek` `Attribute(name)` | 10,000 | 10,000 | 2,076,005 |
+| `CloseUnretainedAgnosticFieldsQuery` | `m077` pass 1 | `UndirectedRelationshipIndexSeek` on `HAS_ATTRIBUTE(branch)` ∪ `IS_RELATED(branch)` | 12,000 | 12,000 | 2,891,482 |
+| `DeleteDetachedAgnosticFieldsQuery` | `m077` pass 2 | `UnionNodeByLabelsScan` `Attribute\|Relationship` | 500 | 500 (deleted) | 406,002 |
+
+Findings:
+
+- **No `AllNodesScan` and no `CartesianProduct` in any of the five plans.** Three are index-seeded.
+  The two that are not are label scans over `Attribute|Relationship`, and one of them —
+  `DeleteDetachedAgnosticFieldsQuery` — cannot be otherwise: it matches the *absence* of an edge, and
+  no index seeds an absence.
+- **The node-bound query is the cheap one, by two orders of magnitude.** 35,632 db hits for a full
+  `RETIREMENT_BATCH_SIZE` slice of 500 uuids, all 500 unretained — about 71 db hits per candidate.
+  Three of the six enforcement points ride on it.
+- **The branch-delete query's label-scan seed is not what makes it expensive, and narrowing it does not
+  help.** Forcing the relationship-index seek with `USING INDEX SEEK anchor:HAS_ATTRIBUTE(branch)`
+  changes the seed as intended and cuts db hits 1,134,173 → 971,173 (−14%), but the median wall clock
+  gets slightly *worse* (328.6 → 357.1 ms over five runs). The cost is downstream: the top operator is
+  the anchor filter at 254,000 hits over 26,000 rows, and below it the per-branch existence resolution
+  (`(reachable_node)-[existence:IS_PART_OF]->()` plus its two filters) accounts for another 300,000.
+  That work scales with the branch count, which is exactly the shape T020 measured (+37.6% at ~100
+  branches, ~flat at 3). **This retires the "invert the candidate seed" option T020 listed**: the seed
+  is not where the time goes.
+- **`m077`'s widened anchor keeps its relationship-index seek.** Both arms seek, and the whole
+  unbounded pass costs 2.89M db hits on a 285,000-vertex graph, batched at 500 rows per transaction,
+  once per upgrade. That remains the split the anchor analysis below argued for: widened and unbounded
+  is acceptable in a migration, not at runtime.
+- **The retained population is correctly *not* retired anywhere.** The branch-delete query produces
+  5,000 candidates and closes none of them, because the four branches all forked before that
+  population was deleted. The floor cost of proving that is the 1.13M db hits above — paid to find
+  nothing, which is the honest price of the invariant.
+
+Reproduce with `r07_dataset.py` then `r07_explain.py` (method recorded here; the scripts are scratch,
+not committed).
+
+---
+
+> **Stale 2026-08-17 — superseded by the section above.** The plans below were measured against the
+> superseded single query class, before the retention predicate was flattened, the branch read moved
+> into Cypher, the stamp derivation added and peer counting changed. They are kept as the record of
+> the anchor-split analysis; they do not describe any query that currently exists.
 
 
 Principle V requires the candidate traversal to be planned, not assumed. All six combinations of the

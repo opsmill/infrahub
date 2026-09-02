@@ -181,9 +181,62 @@ optimize further. Until decided, R05 stays open.
 fixture is not evidence about a deployment with a hundred open branches. A gate passed only at the
 low count has not been passed.
 
-Branch deletion is the operation most at risk — it gains a query the other three do not. Also
-record the `EXPLAIN` plan for the candidate traversal under each of its three bounds
-(Principle V).
+Branch deletion is the operation most at risk — it gains a query the other three do not. The
+`EXPLAIN` plans for the delivered queries are recorded in `research.md` under "Query plans
+(delivered queries, 2026-08-31)" (Principle V).
+
+## Memory footprint (Principle V, T059)
+
+The FR-018 harness reports wall clock only, over small datasets, deleting one node per sample. Two
+dimensions grow with the size of a real rebase or merge and neither is bounded by the batch size:
+the uuid list the enforcement point holds before slicing it, and the candidate collection the query
+cross-joins against every branch. `test_t059_agnostic_retirement_memory.py` measures both by running
+the same operation at two deletion counts 4x apart — a footprint tracking the batch size stays flat,
+one tracking the total grows with it. Ten background branches fork between the population and the
+deletions, so every candidate is retained and the predicate does full work without pruning anything.
+
+```bash
+INFRAHUB_USE_TEST_CONTAINERS=false uv run pytest -s \
+    backend/tests/query_benchmark/test_t059_agnostic_retirement_memory.py
+```
+
+Measured 2026-08-31, dev database, after clearing the harness's own leftovers between cells (stale
+branches inflate the predicate and would make the two counts incomparable). RSS is sampled from
+`/proc/self/statm` on a polling thread, so the peak is in-window; growth is peak minus the reading
+taken as the operation starts, because the absolute peak also carries the resident population.
+
+| Operation | Deletions | Batches | Duration | RSS at start | Peak RSS | RSS growth |
+|---|---|---|---|---|---|---|
+| Branch rebase | 600 | 2 | 21.1 s | 366.8 MB | 441.4 MB | **74.6 MB** |
+| Branch rebase | 2,100 | 5 | 70.5 s | 378.9 MB | 556.4 MB | **177.5 MB** |
+| Branch merge | 600 | 2 | 1.5 s | 457.4 MB | 457.4 MB | **0.0 MB** |
+| Branch merge | 2,100 | 5 | 4.2 s | 536.8 MB | 536.8 MB | **0.0 MB** |
+
+**Merge is flat.** No measurable growth at either count, and 3.5x the deletions costs 2.9x the time.
+
+**Rebase grows with the total deletion count**, 74.6 → 177.5 MB. That figure is the whole rebase,
+so a separate run wrapped the retirement call in its own sampler to find out how much of it is this
+feature:
+
+| Slice of a 2,100-deletion rebase | Duration | RSS growth |
+|---|---|---|
+| Whole rebase | 63,662.9 ms | 188.4 MB |
+| Retirement only (2,100 candidates, 5 batches) | 768.7 ms | **2.0 MB** |
+
+Retirement is **1.2% of the time and 1.1% of the memory**. The growth is the rebase's own diff
+machinery, not the uuid list: 2,100 uuids is roughly 76 KB of strings, and even a million deletions
+would be about 36 MB. Streaming them out of the diff repository — the remedy T059 proposed if the
+process side turned out to grow — would therefore target a percent of the footprint and is not
+worth doing. The database side is bounded as designed: one 500-uuid batch costs 35,632 db hits
+(see the query plans in `research.md`), and the collected candidate list never exceeds one batch.
+
+The residual, recorded so a future large-scale report has the reference: the uuid list is still held
+whole, so it is linear in the deletion count. At the measured 2 MB per 2,100 deletions it is not
+worth bounding, but it is not constant either.
+
+Heap readings are taken before and after rather than sampled, and are dominated by GC — one merge
+cell read 879.7 MB before and 332.9 MB after. They are not reported above because they measure the
+JVM's collection schedule, not this feature.
 
 ## Pre-push checks
 
