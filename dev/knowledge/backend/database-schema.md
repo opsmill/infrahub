@@ -293,6 +293,14 @@ For any vertex pair:
 {status: "deleted", from: $deletion_time, to: NULL}
 ```
 
+### Branch-agnostic fields on branch-aware Nodes
+
+A `branch_support="agnostic"` Attribute or Relationship writes all of its edges on the global branch, which every branch reads. If the field is on a branch-aware Node, then deletion requires special handling because we need to check if the field is still accessible on any branch. If and only if the field is completely inaccessible, we must close the branch-agnostic field's edges on the global branch.
+
+**Rule: every code path that can stop an object being readable must re-evaluate whether its branch-agnostic fields are still retained**, and close their global edges when they are not. This includes direct object deletion, attribute and field remove schema migrations, branch merge, branch rebase, and branch delete. If the branch-agnostic field is not reachable on any branch, then it must be closed. If the field is accessible from any branch, then it must be kept open to make sure that the object is still valid on that branch.
+
+The predicate lives once, in `core/query/agnostic_retention.py` (`UNRETAINED_AGNOSTIC_FIELD_PREDICATE`) — reuse it, don't re-derive it. Current call sites: `Node.delete`, `AttributeRemoveQuery`, `node_relationship_remove`, `DiffMerger.merge_graph`, branch rebase (`core/branch/tasks.py`), branch delete (`core/branch/data_deleter.py`), plus migration `m078` for the pre-existing backlog. Adding a seventh deletion path means adding a seventh call site.
+
 ## Attribute Updates
 
 - Attributes are per-Node (not shared)

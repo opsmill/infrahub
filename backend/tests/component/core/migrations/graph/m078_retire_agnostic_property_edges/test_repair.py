@@ -22,7 +22,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
-from tests.component.core.migrations.graph.m077_retire_agnostic_property_edges.conftest import (
+from tests.component.core.migrations.graph.m078_retire_agnostic_property_edges.conftest import (
     MigrationRun,
     attribute_value_count,
     close_global_owning_edge,

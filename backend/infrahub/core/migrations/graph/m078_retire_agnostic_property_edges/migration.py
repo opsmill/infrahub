@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Migration077(ArbitraryMigration):
+class Migration078(ArbitraryMigration):
     """Release the branch-agnostic values that earlier versions left reserved forever.
 
     A branch-agnostic attribute or relationship keeps its value on edges carrying the global branch
@@ -37,9 +37,9 @@ class Migration077(ArbitraryMigration):
     closes the field without shifting any branch's view. A second run reports zero repairs.
     """
 
-    name: str = "077_retire_agnostic_property_edges"
+    name: str = "078_retire_agnostic_property_edges"
     description: str = "Release the branch-agnostic attribute and relationship values no branch can still read"
-    minimum_version: int = 76
+    minimum_version: int = 77
     batch_size: int = MAX_AGNOSTIC_PEER_BATCH_SIZE
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

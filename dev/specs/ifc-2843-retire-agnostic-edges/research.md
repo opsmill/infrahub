@@ -256,7 +256,7 @@ branches. The populations are built to the shapes the enforcement points actuall
 | Fully closed | 15,000 attrs / 1,000 rels | Already retired; the steady state a running deployment accumulates |
 | Retained | 5,000 attrs | Owner deleted **after** the fork, so all four branches retain it. Exercises the deferral path |
 | Branch-aware | 40,000 attrs | Noise the anchor must ignore |
-| Detached | 500 | No `:Node` edge at all; the `m077` hard-delete population |
+| Detached | 500 | No `:Node` edge at all; the `m078` hard-delete population |
 
 **Method**: `EXPLAIN` on the full write form of each delivered query (it does not execute, so nothing
 was closed or deleted), and `PROFILE` on a read-only truncation — everything above the writing
@@ -270,8 +270,8 @@ query, whose other ~40 operators are pre-existing and unrelated to retirement.
 | `RetireNodeAgnosticFieldsQuery` | node delete, merge, rebase | `NodeIndexSeek` `Node(uuid) WHERE uuid IN $node_uuids` | 500 | 500 | 35,632 |
 | `RetireBranchAgnosticFieldsQuery` | branch delete | `UnionNodeByLabelsScan` `Attribute\|Relationship` | 5,000 | 0 | 1,134,173 |
 | `CLOSE_UNRETAINED_AGNOSTIC_FIELDS` | schema attribute / relationship removal | `NodeIndexSeek` `Attribute(name)` | 10,000 | 10,000 | 2,076,005 |
-| `CloseUnretainedAgnosticFieldsQuery` | `m077` pass 1 | `UndirectedRelationshipIndexSeek` on `HAS_ATTRIBUTE(branch)` ∪ `IS_RELATED(branch)` | 12,000 | 12,000 | 2,891,482 |
-| `DeleteDetachedAgnosticFieldsQuery` | `m077` pass 2 | `UnionNodeByLabelsScan` `Attribute\|Relationship` | 500 | 500 (deleted) | 406,002 |
+| `CloseUnretainedAgnosticFieldsQuery` | `m078` pass 1 | `UndirectedRelationshipIndexSeek` on `HAS_ATTRIBUTE(branch)` ∪ `IS_RELATED(branch)` | 12,000 | 12,000 | 2,891,482 |
+| `DeleteDetachedAgnosticFieldsQuery` | `m078` pass 2 | `UnionNodeByLabelsScan` `Attribute\|Relationship` | 500 | 500 (deleted) | 406,002 |
 
 Findings:
 
@@ -291,7 +291,7 @@ Findings:
   That work scales with the branch count, which is exactly the shape T020 measured (+37.6% at ~100
   branches, ~flat at 3). **This retires the "invert the candidate seed" option T020 listed**: the seed
   is not where the time goes.
-- **`m077`'s widened anchor keeps its relationship-index seek.** Both arms seek, and the whole
+- **`m078`'s widened anchor keeps its relationship-index seek.** Both arms seek, and the whole
   unbounded pass costs 2.89M db hits on a 285,000-vertex graph, batched at 500 rows per transaction,
   once per upgrade. That remains the split the anchor analysis below argued for: widened and unbounded
   is acceptable in a migration, not at runtime.

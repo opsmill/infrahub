@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
-from tests.component.core.migrations.graph.m077_retire_agnostic_property_edges.conftest import (
+from tests.component.core.migrations.graph.m078_retire_agnostic_property_edges.conftest import (
     run_migration,
 )
 from tests.helpers.agnostic_edges import (

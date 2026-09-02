@@ -157,8 +157,8 @@ none treats its own occurrence as a release trigger (FR-009).
 ## C4 — Repair migration
 
 ```text
-minimum_version  = 76
-GRAPH_VERSION    : 76 -> 77
+minimum_version  = 77
+GRAPH_VERSION    : 77 -> 78
 ```
 
 **Guarantees**
@@ -184,4 +184,4 @@ GRAPH_VERSION    : 76 -> 77
 **Blocked on**
 
 - Nothing. The Ask-First migration gate (tasks T001) was signed off 2026-08-25 and the migration
-  shipped as `m077_retire_agnostic_property_edges`.
+  shipped as `m078_retire_agnostic_property_edges`.
