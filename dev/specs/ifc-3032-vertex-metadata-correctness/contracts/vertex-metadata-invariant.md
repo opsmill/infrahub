@@ -1,7 +1,7 @@
 # Contract: Vertex Metadata Invariant
 
 This feature introduces no external API. Its contract is internal but normative: it is the single
-rule that the write sites, the repair migration, and the SC-001 test oracle must all agree on. It is
+rule that the write sites, the repair migration, and the SC-001 tests must all agree on. It is
 recorded here so those three can be checked against one statement rather than against each other.
 
 ## Scope
@@ -37,7 +37,7 @@ apply to different branches rather than competing:
 3. **No write, no stamp.** A path that produces only `branch_level = 2` edges MUST leave every
    vertex property untouched, on every branch.
 
-## The recompute (oracle)
+## The recompute
 
 Given a vertex, its metadata is defined as a pure function of its `branch_level = 1` edges. This is
 `core/migrations/graph/m050_backfill_vertex_metadata.py`'s derivation, extended to the actor fields.
@@ -46,21 +46,35 @@ Given a vertex, its metadata is defined as a pure function of its `branch_level 
 |---|---|---|
 | `:Attribute` | `from` of the level-1 `HAS_ATTRIBUTE` edge | `max()` over `from` and non-null `to` of the vertex's level-1 edges; falls back to `created_at` |
 | `:Relationship` | `min(from)` over level-1 `IS_RELATED` edges | `max()` over `from` and non-null `to` of the vertex's level-1 non-`IS_RELATED` edges; falls back to `created_at` |
-| `:Node` | `min(from)` over level-1 `IS_PART_OF` edges **across every vertex sharing the uuid** | `max(updated_at)` over linked `:Attribute` / `:Relationship` vertices; falls back to `created_at` |
+| `:Node` | `min(from)` over level-1 `IS_PART_OF` edges **across every vertex sharing the uuid** | `max()` over the vertex's level-1 field edges and the edges of the fields they actively hold (see below); falls back to `created_at` |
 
 `created_by` / `updated_by` are the `from_user_id` — or `to_user_id`, when a `to` supplied the
 winning timestamp — of the edge that produced the corresponding timestamp.
 
-**Scope of the `:Node` rows.** Per corollary 2, a `:Node` vertex is a recompute target only when it
-holds an **active** `branch_level = 1` `IS_PART_OF` edge. A migrated-out twin — which keeps its
-original `active` edge open but carries a `deleted` edge on the default branch — is not a target, and
-neither is a node deleted on the default branch. Without this restriction the recompute would assign
-metadata to vertices the read path never returns, and the two consumers below could agree with each
-other while both disagreeing with what a reader sees.
+**Which vertex owns a change.** The recompute is total: every vertex has metadata derived from its
+own level-1 edges, and none is excluded. Selecting targets is not how the twin case is handled.
 
-The uuid-wide `min()` inside `:Node.created_at` is deliberate and is **not** narrowed by that scope:
-kind- and inheritance-migration leave two vertices sharing one uuid, and the surviving one must
-report the original creation time, which lives on the twin's edge.
+Kind- and inheritance-migration leave two `:Node` vertices sharing one uuid, and those two vertices
+**share their field vertices outright** — the migration repoints the edges, it does not copy the
+`:Attribute` and `:Relationship` vertices. So a change to a field cannot be attributed to one of the
+two by looking at the field: only the edge between the Node and the field says which of them was
+holding it at the time. That is why a field's own edges count towards a Node's `updated_at` only
+while the Node still holds it through an `active` edge with a null `to`, and why the edge to the
+field counts as a change in its own right. A migrated-out twin's last change is then the moment the
+migration took its fields away, which is exactly what the migration stamps on it.
+
+Both halves of that test are load-bearing. The migration leaves the twin a *new* `deleted`-status
+edge to each field whose `to` is null, so an open-edge test alone still reaches through it; and the
+`to` is what excludes the edge the migration closed.
+
+A node deleted on the default branch is likewise not excluded. Its `HAS_ATTRIBUTE` edges close at the
+delete, so its last change is the deletion — which is what the delete path stamps, and which SC-001
+therefore checks like any other write.
+
+The uuid-wide `min()` inside `:Node.created_at` is deliberate: the surviving vertex must report the
+original creation time, which lives on the other vertex's edge. `node_duplicate` copies `created_at`
+forward onto the new vertex, so a derivation narrowed to one vertex's own edges would report the
+migration timestamp instead.
 
 ## Consumers
 
