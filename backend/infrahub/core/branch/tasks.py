@@ -16,7 +16,7 @@ from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.delete_coordinator import BranchDeleteOrchestrator
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
-from infrahub.core.constants import DiffAction, MutationAction
+from infrahub.core.constants import SYSTEM_USER_ID, DiffAction, MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
@@ -148,6 +148,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
     medium_context = context.model_copy(update={"priority": WorkflowPriority.MEDIUM})
     low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
+    user_id = context.account.account_id or SYSTEM_USER_ID
 
     async with database.start_session() as db:
         log = get_run_logger()
@@ -244,13 +245,13 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 pre_rebase_schema = registry.schema.get_schema_branch(name=user_branch.name).duplicate()
 
             async with db.start_transaction() as dbt:
-                await user_branch.rebase(db=dbt, user_id=context.account.account_id, at=rebase_at)
+                await user_branch.rebase(db=dbt, user_id=user_id, at=rebase_at)
                 log.info("Branch graph rebased")
                 await _retire_agnostic_fields_of_base_deletions(
                     db=dbt,
                     node_uuids=base_deleted_node_uuids,
                     at=rebase_at,
-                    user_id=context.account.account_id,
+                    user_id=user_id,
                     log=log,
                 )
 
@@ -283,7 +284,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                     migrations=migrations,
                     update_db=False,
                     update_registry=True,
-                    user_id=context.account.account_id,
+                    user_id=user_id,
                     manage_rollback=True,
                 )
                 log.info("Migrations completed")
