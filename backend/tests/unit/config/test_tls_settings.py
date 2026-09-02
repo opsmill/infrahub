@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from infrahub.config import GitSettings, Settings, TLSSettings, load
+from infrahub.config import GitSettings, S3StorageSettings, Settings, TLSSettings, load
 
 TEST_DATA_DIR = Path(__file__).parent.parent / "test_data"
 CA_BUNDLE = str(TEST_DATA_DIR / "ca-bundle.pem")
@@ -53,6 +53,24 @@ class TestGitTLSSettings:
     def test_insecure_and_ca_file_cannot_be_combined(self) -> None:
         with pytest.raises(ValidationError, match=r"git.tls_insecure cannot be combined with git.tls_ca_file"):
             GitSettings(tls_insecure=True, tls_ca_file=CA_BUNDLE)
+
+
+class TestS3TLSSettings:
+    def test_ca_file_is_accepted_on_a_tls_endpoint(self) -> None:
+        # Keys are the environment variable names, the way operators set them; use_ssl defaults to true.
+        settings = S3StorageSettings.model_validate({"INFRAHUB_STORAGE_TLS_CA_FILE": CA_BUNDLE})
+
+        assert settings.use_ssl is True
+        assert settings.tls_ca_file == CA_BUNDLE
+
+    def test_ca_file_on_a_plaintext_endpoint_is_rejected(self) -> None:
+        # boto3 never reads verify= on an http:// endpoint, so the setting would give a false sense of security.
+        with pytest.raises(
+            ValidationError, match=r"storage.s3.tls_ca_file cannot be combined with storage.s3.use_ssl=false"
+        ):
+            S3StorageSettings.model_validate(
+                {"INFRAHUB_STORAGE_TLS_CA_FILE": CA_BUNDLE, "INFRAHUB_STORAGE_USE_SSL": False}
+            )
 
 
 class TestGlobalCaBundleResolution:
@@ -124,6 +142,16 @@ class TestGlobalCaBundleResolution:
         assert settings.git.tls_ca_file is None
         assert settings.http.tls_ca_bundle is None
         assert settings.cache.tls_ca_file is None
+        assert settings.database.tls_ca_file == CA_BUNDLE
+
+    def test_plaintext_s3_endpoint_is_left_alone(self) -> None:
+        # With use_ssl disabled boto3 talks http:// and ignores verify=, so the plaintext endpoint must not
+        # inherit the global bundle while the other components still do.
+        settings = Settings.model_validate(
+            {"tls": {"ca_bundle": CA_BUNDLE}, "storage": {"s3": {"INFRAHUB_STORAGE_USE_SSL": False}}}
+        )
+
+        assert settings.storage.s3.tls_ca_file is None
         assert settings.database.tls_ca_file == CA_BUNDLE
 
     @pytest.mark.parametrize(

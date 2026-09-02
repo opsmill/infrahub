@@ -47,7 +47,7 @@ Global TLS defaults shared by every component that opens outbound TLS connection
 
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
-| `INFRAHUB_TLS_CA_BUNDLE` | File path to a CA cert or bundle in PEM format trusted by every component that opens outbound TLS connections: git, the HTTP client (webhooks, SSO, telemetry, task manager), the database, the message broker, the cache, S3 object storage, the trace exporter, log forwarding and LDAP. A component with its own `tls_ca_file` or `tls_ca_bundle` keeps that value, and a component with `tls_insecure` enabled is left alone. The bundle replaces the system trust store for the components it applies to, so include the public root certificates in the file when those components must keep reaching public services. When unset, each component uses the system trust store. | None | None |
+| `INFRAHUB_TLS_CA_BUNDLE` | File path to a CA cert or bundle in PEM format trusted by every component that opens outbound TLS connections: git, the HTTP client (webhooks, SSO, telemetry, task manager), the database, the message broker, the cache, S3 object storage, the trace exporter, log forwarding and LDAP. A component with its own `tls_ca_file` or `tls_ca_bundle` keeps that value, and a component with `tls_insecure` enabled or a plaintext connection (S3 with `use_ssl` disabled, a trace exporter without TLS) is left alone. The bundle replaces the system trust store for the components it applies to, so include the public root certificates in the file when those components must keep reaching public services. When unset, each component uses the system trust store. | None | None |
 
 ## Api
 

@@ -18,9 +18,9 @@ For each component, the first rule that applies wins:
 
 `infrahub/config.py::Settings.apply_global_tls_ca_bundle` implements rules 2 and 3 at load time by
 copying the global path into every component field that is still `None` and whose component is not
-insecure. Adapters never read `tls.ca_bundle`; they keep reading their own section, and the value they
-see is already resolved. Inspecting `config.SETTINGS.<section>` therefore shows the effective CA, not
-what the operator typed.
+insecure and connects over TLS. Adapters never read `tls.ca_bundle`; they keep reading their own
+section, and the value they see is already resolved. Inspecting `config.SETTINGS.<section>` therefore
+shows the effective CA, not what the operator typed.
 
 A CA bundle *replaces* the system trust store, it never extends it: `ssl.create_default_context(cafile=...)`,
 git's `http.sslCAInfo`, boto3's `verify`, the Neo4j driver's `TrustCustomCAs` and redis-py's `ssl_ca_certs`
@@ -39,7 +39,7 @@ reaching public services.
 | Neo4j | `database.tls_ca_file` | `database/__init__.py` (`TrustCustomCAs`) |
 | Cache (Redis, NATS) | `cache.tls_ca_file` | `services/adapters/cache/` |
 | Broker (RabbitMQ, NATS) | `broker.tls_ca_file` | `services/adapters/message_bus/` |
-| S3 object storage | `storage.s3.tls_ca_file` (alias `AWS_CA_BUNDLE`) | `storage.py::InfrahubS3ObjectStorage` passes `verify=` to boto3 |
+| S3 object storage | `storage.s3.tls_ca_file` (alias `AWS_CA_BUNDLE`) | `storage.py::InfrahubS3ObjectStorage` passes `verify=` to boto3; inherits the global bundle only when `use_ssl` is on |
 | OTLP trace exporter | `trace.tls_ca_bundle` | `trace.py`; inherits the global bundle only when `TraceSettings.uses_tls` |
 | Log forwarding | `tls_ca_bundle` per destination | Infrahub Enterprise; this repo only defines the settings |
 | LDAP | `ldap.tls_ca_bundle` | Infrahub Enterprise; this repo only defines the settings |
@@ -51,6 +51,9 @@ reaching public services.
   loadable file for that reason.
 - **gRPC trace exporter.** Passing a CA bundle to the gRPC exporter switches it from plaintext to TLS,
   so the global bundle is only copied into `trace` when the exporter connection is already encrypted.
+- **Plaintext S3 endpoint.** boto3 ignores `verify=` when `use_ssl` is off, so `S3StorageSettings` rejects an
+  explicit `tls_ca_file` with `use_ssl=false`, and the global bundle is only copied into `storage.s3` when
+  `use_ssl` is on.
 - **`force_verify=bool(ca_bundle)`.** Some HTTP paths build the context with `force_verify` derived from
   the bundle, which re-enables verification despite `tls_insecure`. The fill-in skips insecure
   components so a global bundle never changes what an insecure component does.

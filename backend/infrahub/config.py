@@ -322,9 +322,24 @@ class S3StorageSettings(BaseSettings):
         validation_alias=AliasChoices("INFRAHUB_STORAGE_TLS_CA_FILE", "AWS_CA_BUNDLE"),
         description=(
             "File path to a CA cert or bundle in PEM format used to verify the certificate of the S3 endpoint. "
-            "Falls back to `tls.ca_bundle` when unset."
+            "Falls back to `tls.ca_bundle` when unset. Cannot be combined with `use_ssl=false`."
         ),
     )
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        """Reject a CA bundle on a plaintext endpoint, where boto3 would silently ignore it.
+
+        Raises:
+            ValueError: If ``tls_ca_file`` is set while ``use_ssl`` is disabled.
+
+        """
+        if self.tls_ca_file is not None and not self.use_ssl:
+            raise ValueError(
+                "storage.s3.tls_ca_file cannot be combined with storage.s3.use_ssl=false, because the CA bundle "
+                "would be silently ignored on a plaintext endpoint. Enable use_ssl or drop the CA setting."
+            )
+        return self
 
 
 class StorageSettings(BaseSettings):
@@ -826,8 +841,9 @@ class TLSSettings(BaseSettings):
             "File path to a CA cert or bundle in PEM format trusted by every component that opens outbound TLS "
             "connections: git, the HTTP client (webhooks, SSO, telemetry, task manager), the database, the message "
             "broker, the cache, S3 object storage, the trace exporter, log forwarding and LDAP. A component with its "
-            "own `tls_ca_file` or `tls_ca_bundle` keeps that value, and a component with `tls_insecure` enabled is "
-            "left alone. The bundle replaces the system trust store for the components it applies to, so include the "
+            "own `tls_ca_file` or `tls_ca_bundle` keeps that value, and a component with `tls_insecure` enabled or "
+            "a plaintext connection (S3 with `use_ssl` disabled, a trace exporter without TLS) is left alone. The "
+            "bundle replaces the system trust store for the components it applies to, so include the "
             "public root certificates in the file when those components must keep reaching public services. When "
             "unset, each component uses the system trust store."
         ),
@@ -2017,8 +2033,9 @@ class Settings(BaseSettings):
         """Resolve the CA bundle each component ends up trusting.
 
         A component-specific CA setting always wins. The global ``tls.ca_bundle`` only fills the components
-        that left theirs unset and still verify certificates, so every adapter keeps reading its own setting
-        and the resolved values are what shows up when inspecting the settings.
+        that left theirs unset, still verify certificates and connect over TLS (S3 with ``use_ssl`` disabled
+        and a plaintext trace exporter are left alone), so every adapter keeps reading its own setting and
+        the resolved values are what shows up when inspecting the settings.
         """
         ca_bundle = self.tls.ca_bundle
         if ca_bundle is None:
@@ -2030,10 +2047,11 @@ class Settings(BaseSettings):
             (self.database, "tls_ca_file"),
             (self.broker, "tls_ca_file"),
             (self.cache, "tls_ca_file"),
-            (self.storage.s3, "tls_ca_file"),
             (self.ldap, "tls_ca_bundle"),
             *((destination, "tls_ca_bundle") for destination in self.log_forwarding.destinations),
         ]
+        if self.storage.s3.use_ssl:
+            components.append((self.storage.s3, "tls_ca_file"))
         if self.trace.uses_tls:
             components.append((self.trace, "tls_ca_bundle"))
 
