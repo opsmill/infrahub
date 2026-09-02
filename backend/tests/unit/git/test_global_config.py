@@ -56,6 +56,31 @@ async def read_global_setting(name: str) -> str | None:
     return stdout.decode().strip()
 
 
+async def read_all_global_settings(name: str) -> list[str]:
+    proc = await asyncio.create_subprocess_exec(
+        "git", "config", "--global", "--get-all", name, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    stdout, _ = await proc.communicate()
+    if proc.returncode != 0:
+        return []
+    return stdout.decode().splitlines()
+
+
+async def add_global_setting(name: str, value: str) -> None:
+    proc = await asyncio.create_subprocess_exec(
+        "git",
+        "config",
+        "--global",
+        "--add",
+        name,
+        value,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    await proc.communicate()
+    assert proc.returncode == 0
+
+
 class TestGitGlobalSettings:
     async def test_set_writes_the_key(self, git_global_config: Path) -> None:
         await set_git_global_setting("user.name", "Infrahub Test")
@@ -103,6 +128,22 @@ class TestApplyGitTlsConfig:
 
         assert await read_global_setting(GIT_HTTP_SSL_CA_INFO) is None
         assert await read_global_setting(GIT_HTTP_SSL_VERIFY) is None
+
+    async def test_duplicate_ca_info_entries_are_replaced_by_a_single_value(self, git_global_config: Path) -> None:
+        await add_global_setting(GIT_HTTP_SSL_CA_INFO, "/a")
+        await add_global_setting(GIT_HTTP_SSL_CA_INFO, "/b")
+
+        await apply_git_tls_config(settings=GitSettings(tls_ca_file=CA_BUNDLE))
+
+        assert await read_all_global_settings(GIT_HTTP_SSL_CA_INFO) == [CA_BUNDLE]
+
+    async def test_duplicate_ssl_verify_entries_are_replaced_by_a_single_value(self, git_global_config: Path) -> None:
+        await add_global_setting(GIT_HTTP_SSL_VERIFY, "true")
+        await add_global_setting(GIT_HTTP_SSL_VERIFY, "false")
+
+        await apply_git_tls_config(settings=GitSettings(tls_insecure=True))
+
+        assert await read_all_global_settings(GIT_HTTP_SSL_VERIFY) == ["false"]
 
 
 # --- End to end: git really trusts the configured bundle ------------------------------------------------

@@ -30,9 +30,15 @@ async def _run_git_config_global(*args: str) -> tuple[int, str]:
     return proc.returncode or 0, stderr.decode("utf-8", errors="ignore").strip()
 
 
-async def set_git_global_setting(setting_name: str, *values: str) -> None:
-    """Write one key in the global git configuration, logging instead of raising on failure."""
-    returncode, stderr = await _run_git_config_global(setting_name, *values)
+async def set_git_global_setting(setting_name: str, *values: str, replace_all: bool = False) -> None:
+    """Write one key in the global git configuration, logging instead of raising on failure.
+
+    With ``replace_all`` every existing value of the key is replaced; a plain set refuses to overwrite a
+    key that holds multiple values. The flag has to precede the key name because git stops parsing
+    options at the first positional argument.
+    """
+    options = ("--replace-all",) if replace_all else ()
+    returncode, stderr = await _run_git_config_global(*options, setting_name, *values)
     if returncode != 0:
         log.error(f"Failed to set git {setting_name}: {stderr or 'unknown error'}")
     else:
@@ -52,14 +58,16 @@ async def apply_git_tls_config(settings: GitSettings) -> None:
     Git reads ``http.sslCAInfo`` and ``http.sslVerify`` from the global configuration on every HTTPS clone,
     fetch and push, so writing them once at startup covers every repository without touching the git
     command paths. Keys that are no longer configured are removed, so a value written by an earlier run
-    cannot outlive its setting when the global gitconfig file is persisted between runs.
+    cannot outlive its setting when the global gitconfig file is persisted between runs. Both keys are
+    written with ``--replace-all`` because a persisted gitconfig may hold duplicate entries, and a plain set
+    refuses to overwrite multiple values and would leave the stale ones active.
     """
     if settings.tls_ca_file:
-        await set_git_global_setting(GIT_HTTP_SSL_CA_INFO, settings.tls_ca_file)
+        await set_git_global_setting(GIT_HTTP_SSL_CA_INFO, settings.tls_ca_file, replace_all=True)
     else:
         await unset_git_global_setting(GIT_HTTP_SSL_CA_INFO)
 
     if settings.tls_insecure:
-        await set_git_global_setting(GIT_HTTP_SSL_VERIFY, "false")
+        await set_git_global_setting(GIT_HTTP_SSL_VERIFY, "false", replace_all=True)
     else:
         await unset_git_global_setting(GIT_HTTP_SSL_VERIFY)
