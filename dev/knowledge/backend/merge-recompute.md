@@ -50,7 +50,7 @@ nothing that survives a process moves when a transform query is edited.
 
 While the switch is on, the two Python per-node automations still fire on `merge` and `rebase` events: the work happens twice, and nothing is missed. Gating those automations on the `live` origin is what removes the per-node fan-out.
 
-That duplicate is load-bearing in one place. When the derivation of this family raises, the pass logs it and drops the family rather than letting the failure cancel the three schema-derived ones, which is the only place here that does less work rather than more. It is safe only because those automations still cover it. IFC-3019 gates them, so the same change has to make that fallback widen to the whole kind instead of dropping the family. A component test on the built trigger definitions asserts the Python ones carry no origin match, and fails as soon as the gate lands.
+That duplicate is load-bearing in one place. When the derivation of this family raises, the pass logs it and drops the family rather than letting the failure cancel the three schema-derived ones, which is the only place here that does less work rather than more. It is safe only because those automations still cover it. Gating them on the `live` origin removes that cover, so the same change has to make that fallback widen to the whole kind instead of dropping the family. A component test on the built trigger definitions asserts the Python ones carry no origin match, and fails as soon as the gate lands.
 
 ## Node mutation origin
 
