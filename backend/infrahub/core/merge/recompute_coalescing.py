@@ -538,28 +538,43 @@ class CoalescedRecomputeSubmitter:
         return submitted
 
 
+def _every_python_attribute_widened(schema_branch: SchemaBranch) -> list[AffectedTarget]:
+    """Every Python computed attribute the schema declares, each over its whole kind."""
+    return [
+        AffectedTarget(
+            family=PYTHON_COMPUTED_ATTRIBUTE,
+            target_kind=kind,
+            attribute_name=attribute.name,
+            reads_across_relationship=False,
+            reader_lookups=frozenset(),
+            precise=False,
+            whole_kind=True,
+        )
+        for kind, attributes in schema_branch.computed_attributes.get_python_attributes_per_node().items()
+        for attribute in attributes
+    ]
+
+
 async def _resolve_python_targets(
     *,
     resolver: PythonTargetResolver,
     changes: list[MergeChange],
     branch: str,
     schema_changed_elements: ChangedElementSet | None,
+    schema_branch: SchemaBranch,
 ) -> list[AffectedTarget]:
-    """The Python targets of a change set, or none of them when the derivation fails.
+    """The affected Python targets, or every declared one widened when the resolution fails.
 
-    This family is the only one that reads the database and the API to derive its targets. The other
-    three come from the schema alone, so letting a failure here escape would cancel their submissions
-    too and leave the whole pass unrun.
-
-    Dropping the family is safe only while the per-node automations still fire on a merge and a
-    rebase, which a test on the built trigger definitions pins. Gating them on the live origin
-    removes that cover, so this fallback has to widen to the whole kind in the same change.
+    Never raises: this is the only family that reads the database, and the four are submitted
+    together.
     """
     try:
         return await resolver.resolve(changes=changes, branch=branch, schema_changed_elements=schema_changed_elements)
     except Exception:
-        log.exception("Leaving the Python computed attributes of branch %s to the per-node automations", branch)
-        return []
+        log.exception(
+            "Widening every Python computed attribute on branch %s to its whole kind: the resolution failed", branch
+        )
+        return _every_python_attribute_widened(schema_branch)
 
 
 class MergeRecomputeCoordinator:
@@ -595,6 +610,7 @@ class MergeRecomputeCoordinator:
             changes=change_list,
             branch=branch,
             schema_changed_elements=schema_changed_elements,
+            schema_branch=self.builder.schema_branch,
         )
         return await self.submitter.submit(coalesced=coalesced.with_targets(python_targets), context=context)
 
@@ -661,7 +677,11 @@ class RecomputeChainSubmitter:
         ]
         coalesced = self.builder.build(changes=changes, branch=branch)
         python_targets = await _resolve_python_targets(
-            resolver=self.python_resolver, changes=changes, branch=branch, schema_changed_elements=None
+            resolver=self.python_resolver,
+            changes=changes,
+            branch=branch,
+            schema_changed_elements=None,
+            schema_branch=self.builder.schema_branch,
         )
         return await self.submitter.submit(
             coalesced=coalesced.with_targets(python_targets), context=context, recompute_depth=next_depth

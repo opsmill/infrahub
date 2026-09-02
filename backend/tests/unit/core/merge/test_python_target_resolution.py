@@ -112,6 +112,20 @@ async def test_created_nodes_are_their_own_targets() -> None:
     assert subscribers.calls == []
 
 
+async def test_a_deleted_node_of_the_target_kind_is_not_its_own_target() -> None:
+    """Self-targeting applies to an update, never to a deletion: the node has no value left.
+
+    Its readers still come from the lookup, so only the deleted node itself drops out.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[SUMMARY], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(branch=BRANCH, changes=[MergeChange(node_id="d1", kind=DEVICE, action="deleted")])
+
+    assert subscribers.calls == [("d1",)]
+    assert targets == []
+
+
 async def test_an_update_selects_the_readers_of_the_changed_field_in_one_lookup() -> None:
     """Two changed sites resolve their readers with a single union lookup, not one per node."""
     subscribers = RecordingSubscriberSource(
@@ -370,6 +384,22 @@ async def test_only_a_pair_the_schema_pass_can_see_is_covered() -> None:
 
     assert _identities(targets) == [(OWNER, "hash")]
     assert targets[0].whole_kind is True
+
+
+async def test_every_lookup_of_a_pass_runs_on_the_branch_it_was_asked_for() -> None:
+    """One resolver serves several branches, so the branch travels per call, not per instance.
+
+    A rebase recomputes on the user branch while a merge recomputes on the destination, and a
+    lookup sent to the wrong branch answers with that branch's query groups.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={"s1": [("d1", DEVICE)]})
+    resolver = _resolver(read_sets=[SUMMARY], subscriber_source=subscribers)
+    change = MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"}))
+
+    await resolver.resolve(branch=BRANCH, changes=[change])
+    await resolver.resolve(branch="user-branch", changes=[change])
+
+    assert subscribers.branches == [BRANCH, "user-branch"]
 
 
 async def test_the_read_set_index_is_fetched_once_per_pass() -> None:
