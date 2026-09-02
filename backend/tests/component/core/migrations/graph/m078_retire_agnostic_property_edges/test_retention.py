@@ -18,7 +18,9 @@ from tests.component.core.migrations.graph.m078_retire_agnostic_property_edges.c
     run_migration,
 )
 from tests.helpers.agnostic_edges import (
+    TEST_ACTOR_ID,
     attribute_global_edges,
+    closing_actors,
     create_gadget,
     create_widget,
     edge_summary,
@@ -82,3 +84,5 @@ async def test_a_branch_forked_before_the_deletion_keeps_the_value_reserved(
     assert open_edges(relationship_after) == []
     assert to_times(attribute_after) == {gone_at.to_string()}
     assert to_times(relationship_after) == {gone_at.to_string()}
+    assert closing_actors(attribute_after) == {TEST_ACTOR_ID}, "the release names the account the run was given"
+    assert closing_actors(relationship_after) == {TEST_ACTOR_ID}

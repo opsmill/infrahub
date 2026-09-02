@@ -29,6 +29,7 @@ from infrahub.core.query.node_agnostic_retirement import (
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from tests.helpers.agnostic_edges import (
+    TEST_ACTOR_ID,
     assert_attribute_retired_at,
     attribute_global_edges,
     attribute_vertex_count,
@@ -70,8 +71,10 @@ async def _rename_widget_kind(db: InfrahubDatabase, branch: Branch) -> None:
     await query.execute(db=db)
 
 
-async def _retire(db: InfrahubDatabase, node_id: str, at: Timestamp) -> NodeAgnosticRetirementResult:
-    query = await RetireNodeAgnosticFieldsQuery.init(db=db, node_uuids=[node_id], at=at)
+async def _retire(
+    db: InfrahubDatabase, node_id: str, at: Timestamp, user_id: str = TEST_ACTOR_ID
+) -> NodeAgnosticRetirementResult:
+    query = await RetireNodeAgnosticFieldsQuery.init(db=db, node_uuids=[node_id], at=at, user_id=user_id)
     await query.execute(db=db)
     return query.get_data()
 
@@ -204,7 +207,7 @@ class TestRetireNodeAgnosticFields:
         )
 
         after = await attribute_global_edges(db=db, node_id=widget.get_id(), attribute_name="serial")
-        assert_attribute_retired_at(after=after, before=before, at=retired_at)
+        assert_attribute_retired_at(after=after, before=before, at=retired_at, by=TEST_ACTOR_ID)
 
     async def test_a_relationship_stays_open_while_both_peers_are_live_on_one_branch(
         self,
@@ -261,7 +264,7 @@ class TestRetireNodeAgnosticFields:
         )
 
         after = await attribute_global_edges(db=db, node_id=widget.get_id(), attribute_name="serial")
-        assert_attribute_retired_at(after=after, before=before, at=at)
+        assert_attribute_retired_at(after=after, before=before, at=at, by=TEST_ACTOR_ID)
 
     async def test_a_partially_closed_relationship_is_retired(
         self,

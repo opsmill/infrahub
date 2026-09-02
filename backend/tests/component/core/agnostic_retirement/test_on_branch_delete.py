@@ -27,10 +27,10 @@ from tests.component.core.agnostic_retirement.support import (
     delete_node,
 )
 from tests.helpers.agnostic_edges import (
+    TEST_ACTOR_ID,
     assert_attribute_retired_at,
     assert_relationship_retired_at,
     attribute_global_edges,
-    closing_actors,
     create_widget,
     edge_summary,
     open_edge_types,
@@ -94,7 +94,7 @@ class TestAgnosticRetirementOnBranchDelete:
         ), "the branch still reads the object through its fork window, so the delete released nothing"
 
         lower_bound = Timestamp()
-        result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch)
+        result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch, user_id=TEST_ACTOR_ID)
         upper_bound = Timestamp()
         assert result.branch_deleted
 
@@ -110,8 +110,10 @@ class TestAgnosticRetirementOnBranchDelete:
             "the close carries the branch deletion's own time"
         )
         retired_at = Timestamp(stamp)
-        assert_attribute_retired_at(after=attribute_after, before=attribute_before, at=retired_at)
-        assert_relationship_retired_at(after=relationship_after, before=relationship_before, at=retired_at)
+        assert_attribute_retired_at(after=attribute_after, before=attribute_before, at=retired_at, by=TEST_ACTOR_ID)
+        assert_relationship_retired_at(
+            after=relationship_after, before=relationship_before, at=retired_at, by=TEST_ACTOR_ID
+        )
 
     async def test_deleting_a_branch_releases_nothing_while_another_branch_retains_the_object(
         self,
@@ -132,7 +134,7 @@ class TestAgnosticRetirementOnBranchDelete:
         assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
         await delete_node(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=doomed)
+        await BranchDataDeleter(db=db, batch_size=5).delete(branch=doomed, user_id=TEST_ACTOR_ID)
 
         assert edge_summary(await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")) == (
             edge_summary(before)
@@ -141,33 +143,11 @@ class TestAgnosticRetirementOnBranchDelete:
         assert on_retainer is not None
         assert on_retainer.get_attribute(name="serial").value == 3200
 
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=retainer)
+        await BranchDataDeleter(db=db, batch_size=5).delete(branch=retainer, user_id=TEST_ACTOR_ID)
 
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
         assert open_edges(after) == [], "the last retainer's deletion released it"
         assert {edge.status for edge in after} == {"active"}
-
-    async def test_the_release_records_the_account_that_deleted_the_branch(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        agnostic_schema: None,
-    ) -> None:
-        """A branch delete's release is attributed to whoever asked for the delete."""
-        actor_id = "17ce4c8a-6bf1-4b5f-9ec0-5cf6a9d4d1a2"
-        widget = await create_widget(db=db, branch=default_branch, name="released-by-a-named-account", serial=3400)
-        branch = await create_branch(db=db, branch_name="deleted-by-a-named-account")
-
-        await delete_node(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
-        after_node_delete = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert open_edges(after_node_delete) != [], "the branch still reads the object, so nothing is closed yet"
-
-        result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch, user_id=actor_id)
-        assert result.branch_deleted
-
-        after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
-        assert open_edges(after) == [], "the last retainer's deletion released it"
-        assert closing_actors(after) == {actor_id}, "every edge the branch delete closed names the deleting account"
 
     async def test_a_retirement_failure_fails_the_branch_delete(
         self,
@@ -199,7 +179,7 @@ class TestAgnosticRetirementOnBranchDelete:
             edge_summary(before)
         ), "the failed run closed nothing"
 
-        result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch)
+        result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch, user_id=TEST_ACTOR_ID)
         assert result.branch_deleted
         assert await self._branch_vertex_count(db=db, branch_name=branch.name) == 0
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")

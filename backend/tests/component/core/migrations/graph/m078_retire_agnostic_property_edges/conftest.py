@@ -16,6 +16,7 @@ from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.migrations.graph.m078_retire_agnostic_property_edges import Migration078
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult
+from tests.helpers.agnostic_edges import TEST_ACTOR_ID
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA
 
 if TYPE_CHECKING:
@@ -42,10 +43,10 @@ async def agnostic_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     registry.schema.register_schema(schema=AGNOSTIC_RETIREMENT_SCHEMA, branch=default_branch.name)
 
 
-async def run_migration(db: InfrahubDatabase) -> MigrationRun:
+async def run_migration(db: InfrahubDatabase, user_id: str = TEST_ACTOR_ID) -> MigrationRun:
     console = Console(record=True, width=250)
     migration = Migration078()
-    migration_input = MigrationInput(db=db, console=console)
+    migration_input = MigrationInput(db=db, console=console, user_id=user_id)
     result = await migration.execute(migration_input=migration_input)
     validation = await migration.validate_migration(db=db)
     assert not validation.errors

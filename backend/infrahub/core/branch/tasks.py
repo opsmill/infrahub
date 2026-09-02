@@ -247,7 +247,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 await user_branch.rebase(db=dbt, user_id=context.account.account_id, at=rebase_at)
                 log.info("Branch graph rebased")
                 await _retire_agnostic_fields_of_base_deletions(
-                    db=dbt, node_uuids=base_deleted_node_uuids, at=rebase_at, log=log
+                    db=dbt,
+                    node_uuids=base_deleted_node_uuids,
+                    at=rebase_at,
+                    user_id=context.account.account_id,
+                    log=log,
                 )
 
             # Only update registry after txn commit. Otherwise, branch status and branched_from
@@ -491,6 +495,7 @@ async def _retire_agnostic_fields_of_base_deletions(
     db: InfrahubDatabase,
     node_uuids: list[str],
     at: Timestamp,
+    user_id: str,
     log: Logger | LoggerAdapter[Logger],
 ) -> None:
     """Re-evaluate branch-agnostic retention for the base-branch deletions this rebase absorbs.
@@ -504,6 +509,7 @@ async def _retire_agnostic_fields_of_base_deletions(
         db: The transaction the rebase itself runs in.
         node_uuids: The nodes the base-branch diff records as removed within the rebased window.
         at: The rebase timestamp; closed edges are stamped with it.
+        user_id: The account the rebase runs as, recorded on the edges the re-evaluation closes.
         log: The flow's run logger.
 
     """
@@ -512,7 +518,9 @@ async def _retire_agnostic_fields_of_base_deletions(
     log.info(f"Re-evaluating branch-agnostic retirement for {len(node_uuids)} deletions absorbed by the rebase")
     for batch_start in range(0, len(node_uuids), RETIREMENT_BATCH_SIZE):
         batch_uuids = node_uuids[batch_start : batch_start + RETIREMENT_BATCH_SIZE]
-        retirement_query = await RetireNodeAgnosticFieldsQuery.init(db=db, node_uuids=batch_uuids, at=at)
+        retirement_query = await RetireNodeAgnosticFieldsQuery.init(
+            db=db, node_uuids=batch_uuids, at=at, user_id=user_id
+        )
         await retirement_query.execute(db=db)
         retired = retirement_query.get_data()
         log.info(

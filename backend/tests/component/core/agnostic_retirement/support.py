@@ -16,6 +16,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.query.branch_agnostic_retirement import RetireBranchAgnosticFieldsQuery
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode
+from tests.helpers.agnostic_edges import TEST_ACTOR_ID
 
 if TYPE_CHECKING:
     from neo4j import Record
@@ -70,6 +71,8 @@ class FailingBranchRetirementDatabase(FailingRetirementDatabase):
     failing_query_name = RetireBranchAgnosticFieldsQuery.name
 
 
-async def delete_node(db: InfrahubDatabase, node_id: str, branch: Branch, at: Timestamp) -> None:
+async def delete_node(
+    db: InfrahubDatabase, node_id: str, branch: Branch, at: Timestamp, user_id: str = TEST_ACTOR_ID
+) -> None:
     to_delete = await NodeManager.get_one(db=db, id=node_id, branch=branch, raise_on_error=True)
-    await to_delete.delete(db=db, at=at)
+    await to_delete.delete(db=db, at=at, user_id=user_id)

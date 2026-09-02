@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
+TEST_ACTOR_ID = "17ce4c8a-6bf1-4b5f-9ec0-5cf6a9d4d1a2"
+"""A named account to drive an operation as, so a release attributed to nobody is distinguishable."""
+
 
 async def create_widget(
     db: InfrahubDatabase, branch: Branch, name: str, serial: int, at: Timestamp | None = None, **kwargs: Any
@@ -112,6 +115,15 @@ def closing_actors(edges: list[EdgeState]) -> set[str | None]:
     return {edge.to_user_id for edge in edges if not edge.is_open}
 
 
+def actors_closing_at(edges: list[EdgeState], at: Timestamp) -> set[str | None]:
+    """The actors recorded on the edges closed at `at`, isolating one operation's own closes.
+
+    A vertex can hold edges an earlier operation already closed, and those carry that operation's
+    actor; scoping by the stamp keeps them out of an assertion about this one.
+    """
+    return {edge.to_user_id for edge in edges if edge.to_time == at.to_string()}
+
+
 def expected_closed_at(edges: list[EdgeState], at: Timestamp) -> list[tuple[str, str, str]]:
     """What `edge_summary` should return once every open edge has been closed at `at`.
 
@@ -121,13 +133,14 @@ def expected_closed_at(edges: list[EdgeState], at: Timestamp) -> list[tuple[str,
     return sorted((edge.edge_type, edge.status, edge.to_time or at.to_string()) for edge in edges)
 
 
-def assert_attribute_retired_at(after: list[EdgeState], before: list[EdgeState], at: Timestamp) -> None:
-    """The attribute's global edges were time-closed at `at`, never tombstoned."""
+def assert_attribute_retired_at(after: list[EdgeState], before: list[EdgeState], at: Timestamp, by: str) -> None:
+    """The attribute's global edges were time-closed at `at` by `by`, never tombstoned."""
     assert edge_summary(after) == expected_closed_at(before, at)
     assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
+    assert actors_closing_at(after, at) == {by}, "a release records the account it is attributed to"
 
 
-def assert_relationship_retired_at(after: list[EdgeState], before: list[EdgeState], at: Timestamp) -> None:
+def assert_relationship_retired_at(after: list[EdgeState], before: list[EdgeState], at: Timestamp, by: str) -> None:
     """No branch reads both peers live once the operation lands, so every open peer edge closes at `at`.
 
     Compared edge by edge against `before`: a peer update leaves a superseded relationship vertex
@@ -135,6 +148,7 @@ def assert_relationship_retired_at(after: list[EdgeState], before: list[EdgeStat
     """
     assert edge_summary(after) == expected_closed_at(before, at)
     assert {edge.status for edge in after} == {"active"}, "retirement is a time-close, never a status tombstone"
+    assert actors_closing_at(after, at) == {by}, "a release records the account it is attributed to"
 
 
 async def attribute_global_edges(db: InfrahubDatabase, node_id: str, attribute_name: str) -> list[EdgeState]:
