@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .predicates import has_change_on_branch, relevant_node_changes
+from .predicates import relevant_node_changes
 
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
@@ -69,10 +69,10 @@ class QueryImpactClassifier:
 
     def _must_widen(self, *, diff_summary: list[NodeDiff], changed_node_ids: list[str]) -> bool:
         if self.depends_on_everything:
-            # The read surface cannot be pinned to specific kinds: the derived value is moved by a
-            # peer the read set never names, so a kind-filtered scan misses that change. Any change
-            # on the branch has to widen rather than risk leaving the reader stale.
-            return has_change_on_branch(diff_summary=diff_summary, query_branch=self.query_branch)
+            # The read surface cannot be pinned to specific kinds: the change that moves the derived
+            # value can land on a peer the read set never names. Widen unconditionally rather than
+            # risk leaving the reader stale.
+            return True
 
         if not self.only_has_unique_targets:
             # A changed node cannot be traced back to the targets reading it: the query answers from

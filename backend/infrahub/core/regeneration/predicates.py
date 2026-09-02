@@ -97,23 +97,6 @@ def relevant_node_changes(
     return relevant_node_ids
 
 
-def has_change_on_branch(diff_summary: list[NodeDiff], query_branch: str) -> bool:
-    """Return whether any node on the branch carries a real change, regardless of its kind.
-
-    A query whose read surface cannot be pinned to specific kinds -- it reads a derived value
-    composed from a peer the read set never names -- cannot tell which change moved the value. The
-    moving change lands on that peer, whose kind the read set never lists, so a kind-filtered scan
-    passes over it. Any change on the branch therefore has to force regeneration rather than risk
-    serving a stale value.
-    """
-    for node_diff in diff_summary:
-        if node_diff["branch"] != query_branch or _is_unchanged(node_diff["action"]):
-            continue
-        if any(not _is_unchanged(element["action"]) for element in node_diff["elements"]):
-            return True
-    return False
-
-
 def query_changed(
     definition: RegenerationDefinition,
     diff_summary: list[NodeDiff],
